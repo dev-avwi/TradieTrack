@@ -46,9 +46,13 @@ export default function VerifyEmail() {
           description: data.message,
         });
         
-        // Redirect to dashboard after successful verification
+        // Redirect to onboarding for new users, otherwise dashboard
         setTimeout(() => {
-          setLocation('/');
+          if (data.isNewUser) {
+            setLocation('/onboarding');
+          } else {
+            setLocation('/');
+          }
         }, 2000);
       } else {
         setVerificationStatus('error');
@@ -127,7 +131,7 @@ export default function VerifyEmail() {
                 <Alert>
                   <CheckCircle2 className="h-4 w-4" />
                   <AlertDescription className="text-green-600">
-                    Email verified successfully! Redirecting to dashboard...
+                    Email verified successfully! Redirecting...
                   </AlertDescription>
                 </Alert>
               )}

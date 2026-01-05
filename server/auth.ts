@@ -2,7 +2,6 @@ import bcrypt from 'bcrypt';
 import { storage } from './storage';
 import { loginSchema, insertUserSchema, SafeUser, User } from '@shared/schema';
 import crypto from 'crypto';
-import { sendWelcomeEmail } from './emailService';
 
 const SALT_ROUNDS = 12;
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
@@ -62,14 +61,8 @@ export class AuthService {
         password: hashedPassword,
       });
 
-      // Send welcome email (async, don't block registration)
-      sendWelcomeEmail({
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName
-      }).catch(err => {
-        console.error('Failed to send welcome email:', err);
-      });
+      // Note: Welcome email is sent AFTER email verification, not at registration
+      // This prevents duplicate emails (verification + welcome at signup)
 
       // Return user without password
       const { password, ...safeUser } = user;

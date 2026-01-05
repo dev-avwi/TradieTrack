@@ -836,20 +836,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (result.success) {
         // Generate and send email verification token (non-blocking)
+        // Welcome email will be sent after verification, not here
         try {
           const verificationToken = await AuthService.createEmailVerificationToken(result.user.id);
           await sendEmailVerificationEmail(result.user, verificationToken);
         } catch (emailError) {
           console.error('Failed to send verification email:', emailError);
           // Don't fail registration if email fails - user can resend later
-        }
-
-        // Send welcome email with quick-start tips (non-blocking)
-        try {
-          await sendWelcomeEmail(result.user);
-        } catch (welcomeEmailError) {
-          console.error('Failed to send welcome email:', welcomeEmailError);
-          // Don't fail registration if welcome email fails
         }
 
         // Auto-login after registration to allow immediate onboarding
@@ -1135,6 +1128,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.verifyEmail(token);
       
       if (result.success) {
+        // Send welcome email now that email is verified (non-blocking)
+        try {
+          await sendWelcomeEmail(result.user);
+        } catch (welcomeEmailError) {
+          console.error('Failed to send welcome email:', welcomeEmailError);
+          // Don't fail verification if welcome email fails
+        }
+        
         // Set session after successful verification and explicitly save
         req.session.userId = result.user.id;
         req.session.user = result.user;
@@ -1144,7 +1145,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(500).json({ error: "Failed to create session" });
           }
           // Return session token for iOS/Safari fallback where cookies may not work
-          res.json({ success: true, user: result.user, message: 'Email verified successfully!', sessionToken: req.sessionID });
+          // Include isNewUser flag so frontend shows onboarding
+          res.json({ 
+            success: true, 
+            user: result.user, 
+            message: 'Email verified successfully!', 
+            sessionToken: req.sessionID,
+            isNewUser: true 
+          });
         });
       } else {
         res.status(400).json({ error: result.error });

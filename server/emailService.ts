@@ -743,41 +743,38 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Verify Your Email - TradieTrack</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your business management platform</p>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f9fafb;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); padding: 40px 32px; border-radius: 16px 16px 0 0; text-align: center;">
+          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
+          <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to TradieTrack!</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 12px 0 0 0; font-size: 15px; font-weight: 400;">Your business management platform</p>
         </div>
         
-        <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
-          <h2 style="color: #333; margin-top: 0;">Hi ${user.firstName || 'there'},</h2>
-          <p>Thanks for signing up for TradieTrack! We're excited to help you streamline your trade business operations.</p>
-          <p>To get started, please verify your email address by clicking the button below:</p>
+        <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+          <h2 style="color: #111827; margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Hi ${user.firstName || 'there'},</h2>
+          <p style="margin: 0 0 16px 0; color: #4b5563;">Thanks for signing up for TradieTrack! We're excited to help you streamline your trade business operations.</p>
+          <p style="margin: 0 0 24px 0; color: #4b5563;">To get started, please verify your email address by clicking the button below:</p>
           
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationUrl}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Verify Email Address</a>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${verificationUrl}" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 10px; display: inline-block; font-weight: 600; font-size: 15px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">Verify Email Address</a>
           </div>
           
-          <p style="color: #666; font-size: 14px;">If the button doesn't work, you can also copy and paste this link into your browser:</p>
-          <p style="background: #e5e7eb; padding: 10px; border-radius: 4px; font-size: 14px; word-break: break-all;">${verificationUrl}</p>
+          <p style="color: #6b7280; font-size: 13px; margin: 24px 0 8px 0;">If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="background: #f3f4f6; padding: 12px 16px; border-radius: 8px; font-size: 13px; word-break: break-all; color: #374151; margin: 0;">${verificationUrl}</p>
         </div>
         
-        <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px;">
-          <p><strong>Why verify your email?</strong></p>
-          <ul>
+        <div style="margin-top: 24px; padding: 24px; color: #6b7280; font-size: 13px;">
+          <p style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">Why verify your email?</p>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
             <li>Secure your account and data</li>
-            <li>Receive important notifications about quotes and invoices</li>
+            <li>Receive notifications about quotes and invoices</li>
             <li>Enable password recovery options</li>
-            <li>Get product updates and tips</li>
           </ul>
           
-          <p style="margin-top: 30px;">This verification link will expire in 24 hours for security reasons.</p>
-          <p>If you didn't create this account, you can safely ignore this email.</p>
+          <p style="margin: 24px 0 8px 0; font-size: 12px; color: #9ca3af;">This verification link will expire in 24 hours. If you didn't create this account, you can safely ignore this email.</p>
           
-          <p style="margin-top: 30px; text-align: center; color: #999;">
-            <strong>TradieTrack</strong><br>
-            Streamline your trade business operations
+          <p style="margin: 24px 0 0 0; text-align: center; color: #9ca3af; font-size: 12px;">
+            <strong style="color: #6b7280;">TradieTrack</strong> &bull; Built for Australian tradies
           </p>
           ${UNSUBSCRIBE_FOOTER}
         </div>
@@ -1216,96 +1213,97 @@ export async function sendWelcomeEmail(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Welcome to TradieTrack</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
-          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">The business management platform built for Australian tradies</p>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f9fafb;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); padding: 44px 32px; border-radius: 16px 16px 0 0; text-align: center;">
+          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
+          <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to TradieTrack!</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 12px 0 0 0; font-size: 15px; font-weight: 400;">The business management platform built for Australian tradies</p>
         </div>
         
-        <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <p style="font-size: 18px; margin-bottom: 20px;">G'day ${userName}!</p>
+        <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+          <p style="font-size: 18px; margin: 0 0 20px 0; font-weight: 500; color: #111827;">G'day ${userName}!</p>
           
-          <p>Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
+          <p style="margin: 0 0 20px 0; color: #4b5563;">Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
           
-          <div style="background: #f0f9ff; padding: 25px; border-radius: 8px; margin: 25px 0;">
-            <h3 style="margin: 0 0 20px 0; color: #1d4ed8; text-align: center;">Quick Start Guide</h3>
+          <div style="background: #eff6ff; padding: 28px; border-radius: 12px; margin: 28px 0;">
+            <h3 style="margin: 0 0 24px 0; color: #1e40af; text-align: center; font-size: 17px; font-weight: 600; letter-spacing: -0.3px;">Quick Start Guide</h3>
             
             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
               <tr>
-                <td style="padding-bottom: 15px; vertical-align: top; width: 40px;">
-                  <div style="background-color: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px; display: inline-block;">1</div>
+                <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
+                  <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">1</div>
                 </td>
-                <td style="padding-bottom: 15px; vertical-align: top;">
-                  <strong style="color: #1d4ed8;">Set up your business profile</strong>
-                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Add your ABN, logo, and business details for professional quotes and invoices</p>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding-bottom: 15px; vertical-align: top; width: 40px;">
-                  <div style="background-color: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px; display: inline-block;">2</div>
-                </td>
-                <td style="padding-bottom: 15px; vertical-align: top;">
-                  <strong style="color: #1d4ed8;">Add your first client</strong>
-                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Store customer details and job history in one place</p>
+                <td style="padding-bottom: 18px; vertical-align: top;">
+                  <strong style="color: #1e40af; font-size: 14px; font-weight: 600;">Set up your business profile</strong>
+                  <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Add your ABN, logo, and business details for professional quotes and invoices</p>
                 </td>
               </tr>
               <tr>
-                <td style="padding-bottom: 15px; vertical-align: top; width: 40px;">
-                  <div style="background-color: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px; display: inline-block;">3</div>
+                <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
+                  <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">2</div>
                 </td>
-                <td style="padding-bottom: 15px; vertical-align: top;">
-                  <strong style="color: #1d4ed8;">Create a quote</strong>
-                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Use our templates to send professional quotes with one click</p>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding-bottom: 15px; vertical-align: top; width: 40px;">
-                  <div style="background-color: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px; display: inline-block;">4</div>
-                </td>
-                <td style="padding-bottom: 15px; vertical-align: top;">
-                  <strong style="color: #1d4ed8;">Convert quote to job</strong>
-                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Once accepted, turn it into a trackable job with scheduling</p>
+                <td style="padding-bottom: 18px; vertical-align: top;">
+                  <strong style="color: #1e40af; font-size: 14px; font-weight: 600;">Add your first client</strong>
+                  <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Store customer details and job history in one place</p>
                 </td>
               </tr>
               <tr>
-                <td style="vertical-align: top; width: 40px;">
-                  <div style="background-color: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px; display: inline-block;">5</div>
+                <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
+                  <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">3</div>
+                </td>
+                <td style="padding-bottom: 18px; vertical-align: top;">
+                  <strong style="color: #1e40af; font-size: 14px; font-weight: 600;">Create a quote</strong>
+                  <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Use our templates to send professional quotes with one click</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
+                  <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">4</div>
+                </td>
+                <td style="padding-bottom: 18px; vertical-align: top;">
+                  <strong style="color: #1e40af; font-size: 14px; font-weight: 600;">Convert quote to job</strong>
+                  <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Once accepted, turn it into a trackable job with scheduling</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="vertical-align: top; width: 44px;">
+                  <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">5</div>
                 </td>
                 <td style="vertical-align: top;">
-                  <strong style="color: #10b981;">Invoice & get paid</strong>
-                  <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Send invoices with Stripe payment links - get paid online instantly</p>
+                  <strong style="color: #047857; font-size: 14px; font-weight: 600;">Invoice & get paid</strong>
+                  <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Send invoices with Stripe payment links - get paid online instantly</p>
                 </td>
               </tr>
             </table>
           </div>
           
-          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <p style="margin: 0; font-size: 14px; color: #92400e;">
+          <div style="background: #fef3c7; padding: 16px 18px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
               <strong>Pro tip:</strong> Download our mobile app to manage your jobs on the go. Same account, synced data!
             </p>
           </div>
           
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${effectiveBaseUrl}" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${effectiveBaseUrl}" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; display: inline-block; font-size: 15px; font-weight: 600; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
               Get Started Now
             </a>
           </div>
           
-          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+          <p style="color: #6b7280; font-size: 13px; margin-top: 28px;">
             Need help? Just reply to this email and we'll get back to you.
           </p>
           
-          <p style="margin-top: 25px;">
-            Cheers,<br>
-            <strong>The TradieTrack Team</strong><br>
-            <span style="color: #666; font-size: 14px;">AVWeb Innovation</span>
-          </p>
+          <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: #374151; font-size: 14px;">
+              Cheers,<br>
+              <strong>The TradieTrack Team</strong>
+            </p>
+          </div>
         </div>
         
-        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-          <p style="margin: 0;">TradieTrack - Making Australian tradies more professional</p>
-          <p style="margin: 5px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
+        <div style="text-align: center; padding: 24px; color: #9ca3af; font-size: 12px;">
+          <p style="margin: 0;"><strong style="color: #6b7280;">TradieTrack</strong> &bull; Built for Australian tradies</p>
+          <p style="margin: 8px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
         </div>
       </body>
       </html>
