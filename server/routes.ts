@@ -14380,6 +14380,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get payment configuration' });
     }
   });
+
+  // ============ PayPal Integration Routes ============
+  // PayPal SDK setup - returns client token for frontend
+  app.get("/api/paypal/setup", async (req, res) => {
+    try {
+      const { loadPaypalDefault } = await import("./paypal");
+      await loadPaypalDefault(req, res);
+    } catch (error: any) {
+      console.error('PayPal setup error:', error);
+      res.status(500).json({ error: error.message || 'PayPal not configured' });
+    }
+  });
+
+  // Create PayPal order
+  app.post("/api/paypal/order", async (req, res) => {
+    try {
+      const { createPaypalOrder } = await import("./paypal");
+      await createPaypalOrder(req, res);
+    } catch (error: any) {
+      console.error('PayPal order creation error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
+    }
+  });
+
+  // Capture PayPal order after approval
+  app.post("/api/paypal/order/:orderID/capture", async (req, res) => {
+    try {
+      const { capturePaypalOrder } = await import("./paypal");
+      await capturePaypalOrder(req, res);
+    } catch (error: any) {
+      console.error('PayPal capture error:', error);
+      res.status(500).json({ error: error.message || 'Failed to capture PayPal order' });
+    }
+  });
+
+  // PayPal webhook handler
+  app.post("/api/paypal/webhook", async (req, res) => {
+    try {
+      const { handlePaypalWebhook } = await import("./paypal");
+      await handlePaypalWebhook(req, res);
+    } catch (error: any) {
+      console.error('PayPal webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+  // ============ End PayPal Routes ============
   
   // Get Connect account status
   app.get("/api/stripe-connect/status", requireAuth, async (req: any, res) => {
