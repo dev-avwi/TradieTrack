@@ -673,8 +673,18 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
   };
 
   const handleShare = async () => {
+    // Use the public payment URL with the payment token - NOT the dashboard URL
     const publicUrl = invoice?.stripePaymentLink 
-      || `${window.location.origin}/invoices/${invoiceId}/pay`;
+      || (invoice?.paymentToken ? `${window.location.origin}/pay/${invoice.paymentToken}` : null);
+    
+    if (!publicUrl) {
+      toast({
+        title: "Cannot Share",
+        description: "No payment link available. Try sending the invoice first.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const shareData = {
       title: `Invoice ${invoice?.number || invoiceId}`,

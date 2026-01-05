@@ -868,6 +868,8 @@ export const tradieQuoteTemplates = [
   },
 
   // JOB TEMPLATES (Multiple varieties for each trade)
+  
+  // PLUMBING JOB TEMPLATES
   {
     type: 'job',
     familyKey: 'plumbing-maintenance',
@@ -886,11 +888,128 @@ export const tradieQuoteTemplates = [
     },
     defaults: {
       title: 'Routine Plumbing Maintenance',
-      description: 'Regular maintenance and inspection of plumbing systems',
-      terms: 'Annual maintenance contract. Includes inspection of all taps, toilets, hot water system. Minor repairs included. Emergency call-out priority.'
+      description: 'Regular maintenance and inspection of plumbing systems including taps, toilets, and hot water.',
+      terms: 'Annual maintenance contract. Includes inspection of all taps, toilets, hot water system. Minor repairs included. Emergency call-out priority. Work compliant with AS/NZS 3500.'
     },
     defaultLineItems: []
   },
+  {
+    type: 'job',
+    familyKey: 'plumbing-blocked-drain',
+    name: 'Blocked Drain Clearing Job',
+    tradeType: 'plumbing',
+    styling: {
+      brandColor: '#2563eb',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Blocked Drain Clearing',
+      description: 'Professional drain clearing using high-pressure water jetting and CCTV inspection.',
+      terms: 'Work guaranteed for 3 months. CCTV footage provided on request. Compliant with AS/NZS 3500. Root cutting and debris removal included.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'plumbing-leak-repair',
+    name: 'Leak Detection & Repair Job',
+    tradeType: 'plumbing',
+    styling: {
+      brandColor: '#2563eb',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Leak Detection & Repair',
+      description: 'Locate and repair water leaks in pipes, fittings, and fixtures using advanced detection equipment.',
+      terms: 'Leak detection report provided. Repairs guaranteed for 12 months. Water damage assessment included. Compliant with AS/NZS 3500.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'plumbing-hot-water-service',
+    name: 'Hot Water System Service Job',
+    tradeType: 'plumbing',
+    styling: {
+      brandColor: '#2563eb',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Hot Water System Service',
+      description: 'Complete service and maintenance of electric, gas, or solar hot water systems.',
+      terms: 'Service includes anode inspection, pressure relief valve test, and thermostat check. Extends system life. Manufacturer warranty preserved. Compliant with AS/NZS 3500.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'plumbing-gas-fitting',
+    name: 'Gas Fitting & Appliance Connection Job',
+    tradeType: 'plumbing',
+    styling: {
+      brandColor: '#2563eb',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Gas Fitting & Appliance Connection',
+      description: 'Licensed gas fitting for cooktops, heaters, BBQs, and other gas appliances.',
+      terms: 'Licensed gas fitter. Gas compliance certificate provided. Work compliant with AS/NZS 5601. Pressure testing included. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'plumbing-backflow-testing',
+    name: 'Backflow Prevention Testing Job',
+    tradeType: 'plumbing',
+    styling: {
+      brandColor: '#2563eb',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Backflow Prevention Testing',
+      description: 'Annual backflow prevention device testing and certification as required by water authorities.',
+      terms: 'Accredited backflow tester. Test report submitted to water authority. Compliant with AS/NZS 3500.1. Device registration maintained.'
+    },
+    defaultLineItems: []
+  },
+
+  // ELECTRICAL JOB TEMPLATES
   {
     type: 'job',
     familyKey: 'electrical-safety',
@@ -909,8 +1028,963 @@ export const tradieQuoteTemplates = [
     },
     defaults: {
       title: 'Electrical Safety Inspection',
-      description: 'Comprehensive electrical safety check and testing',
-      terms: 'AS/NZS 3000:2018 compliant testing. Safety certificate provided. Includes switchboard, RCD, and circuit testing.'
+      description: 'Comprehensive electrical safety check and testing of all circuits and equipment.',
+      terms: 'AS/NZS 3000:2018 compliant testing. Certificate of Electrical Safety provided. Includes switchboard, RCD, and circuit testing.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'electrical-powerpoint-install',
+    name: 'Power Point Installation Job',
+    tradeType: 'electrical',
+    styling: {
+      brandColor: '#dc2626',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Power Point Installation',
+      description: 'Install new power points including GPOs, USB outlets, and outdoor weatherproof outlets.',
+      terms: 'Licensed electrician. All work compliant with AS/NZS 3000:2018. Certificate of Electrical Safety provided. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'electrical-lighting-install',
+    name: 'Lighting Installation Job',
+    tradeType: 'electrical',
+    styling: {
+      brandColor: '#dc2626',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Lighting Installation',
+      description: 'Supply and install indoor and outdoor lighting including LED downlights, pendants, and garden lights.',
+      terms: 'Licensed electrician. Energy-efficient LED options available. Compliant with AS/NZS 3000:2018. Dimmer switches available. 12-month guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'electrical-switchboard-upgrade',
+    name: 'Switchboard Upgrade Job',
+    tradeType: 'electrical',
+    styling: {
+      brandColor: '#dc2626',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Switchboard Upgrade',
+      description: 'Replace old ceramic fuse switchboard with modern safety switch and circuit breaker board.',
+      terms: 'Licensed electrician. Temporary power disconnection required. All work compliant with AS/NZS 3000:2018. Certificate of Electrical Safety provided. RCDs installed for personal protection.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'electrical-smoke-alarm',
+    name: 'Smoke Alarm Installation Job',
+    tradeType: 'electrical',
+    styling: {
+      brandColor: '#dc2626',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Smoke Alarm Installation & Compliance',
+      description: 'Install interconnected smoke alarms to meet Australian residential compliance requirements.',
+      terms: 'Compliant with AS 3786 and state legislation. Interconnected alarms as required. Certificate of compliance provided. 10-year battery life options available.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'electrical-ev-charger',
+    name: 'EV Charger Installation Job',
+    tradeType: 'electrical',
+    styling: {
+      brandColor: '#dc2626',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Electric Vehicle Charger Installation',
+      description: 'Install dedicated EV charging circuit and wall-mounted charging station for electric vehicles.',
+      terms: 'Licensed electrician. Dedicated 32A or 40A circuit required. Compliant with AS/NZS 3000:2018. Smart charging options available. Manufacturer warranty applies.'
+    },
+    defaultLineItems: []
+  },
+
+  // CARPENTRY JOB TEMPLATES
+  {
+    type: 'job',
+    familyKey: 'carpentry-deck-build',
+    name: 'Deck Construction Job',
+    tradeType: 'carpentry',
+    styling: {
+      brandColor: '#ea580c',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Timber Deck Construction',
+      description: 'Design and construct custom timber deck using treated pine, hardwood, or composite decking.',
+      terms: 'Structural warranty 12 months. Council permit application assistance available. Compliant with NCC/BCA requirements. Handrails to AS 1170.1 if required.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'carpentry-pergola',
+    name: 'Pergola Construction Job',
+    tradeType: 'carpentry',
+    styling: {
+      brandColor: '#ea580c',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Pergola Construction',
+      description: 'Custom pergola design and construction with options for shade cloth, polycarbonate, or open rafters.',
+      terms: 'Structural warranty 12 months. Council permit assistance if required. Compliant with NCC/BCA. Options for attached or freestanding designs.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'carpentry-door-install',
+    name: 'Door Installation & Replacement Job',
+    tradeType: 'carpentry',
+    styling: {
+      brandColor: '#ea580c',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Door Installation & Replacement',
+      description: 'Supply and install interior and exterior doors including frames, hardware, and weather seals.',
+      terms: 'Includes frame adjustment and hardware installation. Fire door compliance where required. Old door disposal available. 12-month guarantee on workmanship.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'carpentry-fence-build',
+    name: 'Fence Construction Job',
+    tradeType: 'carpentry',
+    styling: {
+      brandColor: '#ea580c',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Timber Fence Construction',
+      description: 'Build timber fencing including paling, lapped, and decorative styles with concrete-set posts.',
+      terms: 'Boundary survey responsibility of property owner. Council regulations followed. Posts concreted for stability. Treated pine or hardwood options. 12-month structural guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'carpentry-window-install',
+    name: 'Window Installation Job',
+    tradeType: 'carpentry',
+    styling: {
+      brandColor: '#ea580c',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Window Installation & Replacement',
+      description: 'Remove and replace windows including timber, aluminium, and double-glazed units.',
+      terms: 'Weatherproofing and flashing included. Compliant with NCC energy requirements. Old window disposal available. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'carpentry-shelving',
+    name: 'Custom Shelving & Storage Job',
+    tradeType: 'carpentry',
+    styling: {
+      brandColor: '#ea580c',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Custom Shelving & Storage',
+      description: 'Design and build custom shelving, wardrobes, and storage solutions tailored to your space.',
+      terms: 'Custom design consultation included. Premium materials and soft-close hardware. Built-in or freestanding options. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+
+  // HVAC JOB TEMPLATES
+  {
+    type: 'job',
+    familyKey: 'hvac-split-install',
+    name: 'Split System Installation Job',
+    tradeType: 'hvac',
+    styling: {
+      brandColor: '#0ea5e9',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Split System Air Conditioner Installation',
+      description: 'Supply and install wall-mounted split system air conditioner with outdoor unit.',
+      terms: 'Licensed refrigeration technician. 5-year manufacturer warranty. Electrical work by licensed electrician. Compliant with AS/NZS 5149. Includes commissioning and user training.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'hvac-service',
+    name: 'Air Conditioning Service Job',
+    tradeType: 'hvac',
+    styling: {
+      brandColor: '#0ea5e9',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Air Conditioning Service & Clean',
+      description: 'Complete service including filter clean, coil clean, refrigerant check, and performance test.',
+      terms: 'Licensed technician. Maintains manufacturer warranty. Improves efficiency and air quality. Refrigerant top-up if required at additional cost. Service report provided.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'hvac-ducted-install',
+    name: 'Ducted System Installation Job',
+    tradeType: 'hvac',
+    styling: {
+      brandColor: '#0ea5e9',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Ducted Air Conditioning Installation',
+      description: 'Complete ducted air conditioning system with zoning, ductwork, and central controller.',
+      terms: 'Licensed refrigeration technician. 5-year manufacturer warranty on unit. Ductwork design for optimal airflow. Zone control system included. Compliant with AS/NZS 5149.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'hvac-repair',
+    name: 'Air Conditioning Repair Job',
+    tradeType: 'hvac',
+    styling: {
+      brandColor: '#0ea5e9',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Air Conditioning Repair',
+      description: 'Diagnose and repair faults in split, ducted, and multi-head air conditioning systems.',
+      terms: 'Licensed refrigeration technician. Diagnostic fee applies. Parts warranty as per manufacturer. Labour guaranteed 3 months. Compliant with AS/NZS 5149.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'hvac-gas-heater-service',
+    name: 'Gas Heater Service Job',
+    tradeType: 'hvac',
+    styling: {
+      brandColor: '#0ea5e9',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Gas Heater Service & Safety Check',
+      description: 'Annual gas heater service including burner clean, flue inspection, and carbon monoxide testing.',
+      terms: 'Licensed gas technician. Carbon monoxide testing included. Maintains manufacturer warranty. Service sticker applied. Compliant with AS/NZS 5601.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'hvac-duct-cleaning',
+    name: 'Duct Cleaning Job',
+    tradeType: 'hvac',
+    styling: {
+      brandColor: '#0ea5e9',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Duct Cleaning Service',
+      description: 'Professional cleaning of air conditioning ducts, vents, and return air grilles.',
+      terms: 'Removes dust, allergens, and mould. Improves air quality and system efficiency. Before and after photos provided. Sanitising treatment available.'
+    },
+    defaultLineItems: []
+  },
+
+  // PAINTING JOB TEMPLATES
+  {
+    type: 'job',
+    familyKey: 'painting-interior',
+    name: 'Interior Painting Job',
+    tradeType: 'painting',
+    styling: {
+      brandColor: '#7c3aed',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Interior House Painting',
+      description: 'Complete interior painting including walls, ceilings, doors, and trim with premium paints.',
+      terms: 'Surface preparation and gap filling included. Premium paint brands used. Furniture protection included. Clean-up included. 7-year paint guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'painting-exterior',
+    name: 'Exterior Painting Job',
+    tradeType: 'painting',
+    styling: {
+      brandColor: '#7c3aed',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Exterior House Painting',
+      description: 'Complete exterior painting including weatherboards, render, trim, and fascia with weather-resistant paints.',
+      terms: 'High-pressure cleaning included. Premium exterior paints used. Weather-dependent scheduling. Scaffolding arranged if required. 10-year paint guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'painting-fence',
+    name: 'Fence Painting & Staining Job',
+    tradeType: 'painting',
+    styling: {
+      brandColor: '#7c3aed',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Fence Painting & Staining',
+      description: 'Paint or stain timber fencing with options for solid colour or natural timber finish.',
+      terms: 'Surface preparation included. UV-resistant stains available. Extends fence life. Minor repairs included. 5-year guarantee on finish.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'painting-deck-stain',
+    name: 'Deck Staining & Oiling Job',
+    tradeType: 'painting',
+    styling: {
+      brandColor: '#7c3aed',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Deck Staining & Oiling',
+      description: 'Sand and apply protective stain or decking oil to timber deck surfaces.',
+      terms: 'Light sanding included. Deck cleaning prior to application. Premium decking oils used. Extends timber life and appearance. Reapplication recommended annually.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'painting-commercial',
+    name: 'Commercial Painting Job',
+    tradeType: 'painting',
+    styling: {
+      brandColor: '#7c3aed',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Commercial Painting',
+      description: 'Professional painting for offices, retail spaces, and commercial buildings.',
+      terms: 'After-hours work available to minimise disruption. Low-VOC paints available. OHS compliant. Fully insured. Progress payments for large projects.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'painting-wallpaper',
+    name: 'Wallpaper Installation Job',
+    tradeType: 'painting',
+    styling: {
+      brandColor: '#7c3aed',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Wallpaper Installation',
+      description: 'Professional wallpaper hanging including feature walls and full room installations.',
+      terms: 'Wall preparation included. Pattern matching guaranteed. Premium adhesives used. Old wallpaper removal available. 5-year installation guarantee.'
+    },
+    defaultLineItems: []
+  },
+
+  // LANDSCAPING JOB TEMPLATES
+  {
+    type: 'job',
+    familyKey: 'landscaping-garden-design',
+    name: 'Garden Design & Installation Job',
+    tradeType: 'landscaping',
+    styling: {
+      brandColor: '#16a34a',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Garden Design & Installation',
+      description: 'Complete garden design with plant selection, soil preparation, and professional installation.',
+      terms: 'Design consultation included. Quality plants with 6-month guarantee. Soil conditioning and mulching included. Watering schedule and care instructions provided.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'landscaping-lawn-install',
+    name: 'Lawn Installation Job',
+    tradeType: 'landscaping',
+    styling: {
+      brandColor: '#16a34a',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Turf & Lawn Installation',
+      description: 'Supply and lay new lawn turf including soil preparation, levelling, and establishment care.',
+      terms: 'Site levelling and soil preparation included. Premium turf varieties available. Starter fertiliser applied. Watering guide provided. 6-week establishment guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'landscaping-irrigation',
+    name: 'Irrigation System Installation Job',
+    tradeType: 'landscaping',
+    styling: {
+      brandColor: '#16a34a',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Irrigation System Installation',
+      description: 'Design and install automated irrigation system with timer, sprinklers, and drip lines.',
+      terms: 'Smart controller available. Water-efficient design. Backflow prevention included. System programming and training provided. 12-month warranty on installation.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'landscaping-retaining-wall',
+    name: 'Retaining Wall Construction Job',
+    tradeType: 'landscaping',
+    styling: {
+      brandColor: '#16a34a',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Retaining Wall Construction',
+      description: 'Build timber sleeper, concrete block, or boulder retaining walls with proper drainage.',
+      terms: 'Engineering certification if over 500mm high. Drainage system included. Compliant with NCC requirements. Council permits arranged if required. 12-month structural guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'landscaping-paving',
+    name: 'Paving Installation Job',
+    tradeType: 'landscaping',
+    styling: {
+      brandColor: '#16a34a',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Paving & Pathway Installation',
+      description: 'Install pavers, flagstones, or concrete pathways with proper base preparation and edging.',
+      terms: 'Base preparation and compaction included. Variety of paver styles available. Edge restraints installed. Sealing available. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'landscaping-tree-removal',
+    name: 'Tree Removal & Pruning Job',
+    tradeType: 'landscaping',
+    styling: {
+      brandColor: '#16a34a',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Tree Removal & Pruning',
+      description: 'Professional tree removal, pruning, and stump grinding by qualified arborists.',
+      terms: 'Council permit responsibility of property owner. Fully insured. Debris removal and site clean-up included. Stump grinding available. Mulch available on request.'
+    },
+    defaultLineItems: []
+  },
+
+  // ROOFING JOB TEMPLATES
+  {
+    type: 'job',
+    familyKey: 'roofing-repair',
+    name: 'Roof Repair Job',
+    tradeType: 'roofing',
+    styling: {
+      brandColor: '#78350f',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Roof Repair',
+      description: 'Repair damaged, cracked, or missing roof tiles and metal sheets to prevent leaks.',
+      terms: 'Licensed roof plumber. Height safety compliant. Weather-dependent work. Matching tiles sourced where possible. 12-month leak-free guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'roofing-restoration',
+    name: 'Roof Restoration Job',
+    tradeType: 'roofing',
+    styling: {
+      brandColor: '#78350f',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Roof Restoration',
+      description: 'Complete roof restoration including cleaning, repairs, repointing, and protective coating.',
+      terms: 'High-pressure cleaning included. Ridge cap repointing. Broken tiles replaced. Premium roof paint/coating applied. 10-year coating warranty. Height safety compliant.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'roofing-gutter-install',
+    name: 'Gutter Installation Job',
+    tradeType: 'roofing',
+    styling: {
+      brandColor: '#78350f',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Gutter & Downpipe Installation',
+      description: 'Supply and install new gutters, downpipes, and leaf guard systems.',
+      terms: 'Licensed roof plumber. Colorbond colour matching. Old gutter removal and disposal. Correct fall for drainage. 15-year material warranty on Colorbond.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'roofing-gutter-clean',
+    name: 'Gutter Cleaning Job',
+    tradeType: 'roofing',
+    styling: {
+      brandColor: '#78350f',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Gutter Cleaning Service',
+      description: 'Clean gutters and downpipes of leaves, debris, and blockages to prevent water damage.',
+      terms: 'All debris removed from site. Downpipes flushed. Minor repairs included. Before and after photos available. Recommended twice yearly.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'roofing-metal-reroof',
+    name: 'Metal Roof Installation Job',
+    tradeType: 'roofing',
+    styling: {
+      brandColor: '#78350f',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Metal Roof Installation',
+      description: 'Remove old roof and install new Colorbond or Zincalume metal roofing with insulation.',
+      terms: 'Licensed roof plumber. Compliant with NCC/BCA. Includes sarking/insulation. 25-year Colorbond warranty. Asbestos removal arranged separately if required.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'roofing-skylight',
+    name: 'Skylight Installation Job',
+    tradeType: 'roofing',
+    styling: {
+      brandColor: '#78350f',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Skylight Installation',
+      description: 'Supply and install skylights including tubular and flat glass options with flashing.',
+      terms: 'Compliant with NCC requirements. Weatherproof flashing system. Ceiling work by licensed plasterer. 10-year manufacturer warranty. Reduces energy costs.'
+    },
+    defaultLineItems: []
+  },
+
+  // TILING JOB TEMPLATES
+  {
+    type: 'job',
+    familyKey: 'tiling-bathroom',
+    name: 'Bathroom Tiling Job',
+    tradeType: 'tiling',
+    styling: {
+      brandColor: '#0891b2',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Bathroom Tiling',
+      description: 'Supply and install floor and wall tiles for bathroom renovations with waterproofing.',
+      terms: 'Waterproofing by licensed applicator. Compliant with AS 3740. Premium adhesives and grout. Tile supplied by client or sourced to order. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'tiling-kitchen-splashback',
+    name: 'Kitchen Splashback Tiling Job',
+    tradeType: 'tiling',
+    styling: {
+      brandColor: '#0891b2',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Kitchen Splashback Tiling',
+      description: 'Install decorative or functional tile splashback behind benchtops and cooktops.',
+      terms: 'Surface preparation included. Heat-resistant adhesive near cooktop. Grout colour matching available. Clean-up included. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'tiling-floor',
+    name: 'Floor Tiling Job',
+    tradeType: 'tiling',
+    styling: {
+      brandColor: '#0891b2',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Floor Tiling Installation',
+      description: 'Install floor tiles for living areas, kitchens, and entrances with optional underfloor heating.',
+      terms: 'Floor levelling if required at additional cost. Expansion joints included. Anti-slip options for wet areas. Furniture moving not included. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'tiling-outdoor',
+    name: 'Outdoor Tiling Job',
+    tradeType: 'tiling',
+    styling: {
+      brandColor: '#0891b2',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Outdoor Tiling',
+      description: 'Install outdoor tiles for patios, balconies, and pool surrounds with appropriate drainage.',
+      terms: 'Frost-resistant and slip-resistant tiles required. External grade adhesive and grout. Drainage fall maintained. Pool-safe options available. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'tiling-repair',
+    name: 'Tile Repair & Replacement Job',
+    tradeType: 'tiling',
+    styling: {
+      brandColor: '#0891b2',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Tile Repair & Replacement',
+      description: 'Remove and replace cracked, chipped, or hollow tiles with colour-matched replacements.',
+      terms: 'Matching tiles sourced where possible. Grout colour matching. Underlying issues assessed. Waterproofing check in wet areas. 12-month workmanship guarantee.'
+    },
+    defaultLineItems: []
+  },
+  {
+    type: 'job',
+    familyKey: 'tiling-waterproofing',
+    name: 'Waterproofing & Tiling Job',
+    tradeType: 'tiling',
+    styling: {
+      brandColor: '#0891b2',
+      logoDisplay: true
+    },
+    sections: {
+      showHeader: true,
+      showLineItems: false,
+      showTotals: false,
+      showTerms: true,
+      showSignature: false
+    },
+    defaults: {
+      title: 'Waterproofing & Tiling',
+      description: 'Complete waterproofing membrane application and tiling for bathrooms, laundries, and wet areas.',
+      terms: 'Licensed waterproofer. Compliant with AS 3740. Waterproofing certificate provided. Membrane inspection prior to tiling. 7-year waterproofing guarantee.'
     },
     defaultLineItems: []
   },
