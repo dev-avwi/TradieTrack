@@ -43,15 +43,12 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
 
   const optimizeMutation = useMutation({
     mutationFn: async (date: Date) => {
-      const response = await apiRequest('/api/schedule/ai-optimize', {
-        method: 'POST',
-        body: JSON.stringify({
-          date: date.toISOString(),
-          workdayStart: '07:00',
-          workdayEnd: '17:00'
-        }),
+      const response = await apiRequest('POST', '/api/schedule/ai-optimize', {
+        date: date.toISOString(),
+        workdayStart: '07:00',
+        workdayEnd: '17:00'
       });
-      return response as OptimizedSchedule;
+      return await response.json() as OptimizedSchedule;
     },
     onSuccess: () => {
       setIsOptimizing(false);
