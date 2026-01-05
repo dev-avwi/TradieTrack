@@ -2285,7 +2285,6 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
                 <label for="notes">Additional Notes (optional)</label>
                 <textarea id="notes" name="notes" rows="3" placeholder="Any special requests or notes?"></textarea>
               </div>
-              <input type="hidden" name="action" value="accept"/>
             </div>
             
             <div id="decline-section" class="hidden">
@@ -2293,8 +2292,10 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
                 <label for="decline_reason">Reason for Declining (optional)</label>
                 <textarea id="decline_reason" name="decline_reason" rows="3" placeholder="Help us understand why..."></textarea>
               </div>
-              <input type="hidden" name="action" value="decline"/>
             </div>
+            
+            <!-- Single action input to avoid duplicate form fields -->
+            <input type="hidden" id="action-input" name="action" value="accept"/>
             
             <div class="actions" id="action-buttons">
               <button type="button" class="btn btn-accept" onclick="showAcceptForm()">Accept Quote</button>
@@ -2556,7 +2557,7 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               document.getElementById('action-buttons').classList.add('hidden');
               document.getElementById('confirm-accept').classList.remove('hidden');
               document.getElementById('confirm-decline').classList.add('hidden');
-              document.querySelector('input[name="action"]').value = 'accept';
+              document.getElementById('action-input').value = 'accept';
               
               // Also make sure signature-draw-section is visible (in case it was hidden for saved signature)
               const drawSection = document.getElementById('signature-draw-section');
@@ -2580,7 +2581,7 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
               document.getElementById('action-buttons').classList.add('hidden');
               document.getElementById('confirm-decline').classList.remove('hidden');
               document.getElementById('confirm-accept').classList.add('hidden');
-              document.querySelector('input[name="action"]').value = 'decline';
+              document.getElementById('action-input').value = 'decline';
             }
             
             function resetForm() {
