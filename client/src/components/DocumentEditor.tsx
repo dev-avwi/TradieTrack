@@ -661,7 +661,7 @@ export default function DocumentEditor({ type, onSave, onCancel }: DocumentEdito
                 className={`w-24 h-24 sm:w-28 sm:h-28 border-2 border-dashed rounded-lg flex-shrink-0 flex items-center justify-center transition-all group relative overflow-visible no-underline ${
                   isLoadingSubscription ? 'opacity-50 cursor-wait pointer-events-none' : 'cursor-pointer hover:bg-muted/50'
                 }`}
-                style={{ borderColor: business.logo ? 'transparent' : `${brandColor}40` }}
+                style={{ borderColor: business.logoUrl ? 'transparent' : `${brandColor}40` }}
                 onClick={(e) => {
                   // While loading, prevent any interaction
                   if (isLoadingSubscription) {
@@ -693,10 +693,10 @@ export default function DocumentEditor({ type, onSave, onCancel }: DocumentEdito
                     <div className="h-6 w-6 mx-auto mb-1 rounded-full border-2 border-muted-foreground/30 border-t-transparent animate-spin" />
                     <span className="text-[10px] text-muted-foreground block">Loading...</span>
                   </div>
-                ) : business.logo ? (
+                ) : business.logoUrl ? (
                   <div className="relative w-full h-full flex items-center justify-center">
                     <img 
-                      src={business.logo} 
+                      src={business.logoUrl} 
                       alt="Business Logo" 
                       className="max-w-full max-h-full object-contain rounded"
                     />
