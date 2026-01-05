@@ -429,12 +429,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
   demoModeBanner: {
-    backgroundColor: colors.warningLight,
+    backgroundColor: colors.infoLight || colors.primaryLight,
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.warning,
+    borderColor: colors.info || colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -1456,11 +1456,11 @@ export default function CollectScreen() {
 
           {terminal.isSimulation && (
             <View style={styles.demoModeBanner}>
-              <Feather name="alert-triangle" size={24} color={colors.warning} />
+              <Feather name="info" size={24} color={colors.info} />
               <View style={styles.demoModeText}>
-                <Text style={styles.demoModeTitle}>Demo Mode Active</Text>
+                <Text style={[styles.demoModeTitle, { color: colors.info }]}>Tap to Pay Preview Mode</Text>
                 <Text style={styles.demoModeDescription}>
-                  Payments are simulated. No actual charges will be made.
+                  NFC Tap to Pay requires a native app build. QR codes, payment links, and record cash work normally.
                 </Text>
               </View>
             </View>
