@@ -1,6 +1,19 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +43,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -406,9 +421,39 @@ function UsersView({
   usersData: AdminUsersResponse | undefined;
   usersLoading: boolean;
 }) {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete user");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "User Deleted",
+        description: data.message || "User account has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setDeletingUserId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setDeletingUserId(null);
+    },
+  });
 
   const filteredUsers = useMemo(() => {
     if (!usersData?.users) return [];
@@ -513,13 +558,14 @@ function UsersView({
                   <TableHead className="hidden md:table-cell">Signup</TableHead>
                   <TableHead>Tier</TableHead>
                   <TableHead className="hidden lg:table-cell">Last Active</TableHead>
-                  <TableHead className="pr-6">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Status</TableHead>
+                  <TableHead className="pr-6 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {usersLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={9} className="text-center py-12">
                       <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                     </TableCell>
                   </TableRow>
@@ -555,7 +601,7 @@ function UsersView({
                       <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                         {formatRelativeDate(user.updatedAt)}
                       </TableCell>
-                      <TableCell className="pr-6">
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex flex-wrap gap-1">
                           {user.hasCompletedOnboarding ? (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs">
@@ -573,11 +619,51 @@ function UsersView({
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              data-testid={`button-delete-user-${user.id}`}
+                            >
+                              {deletingUserId === user.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete User Account</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete <strong>{user.email}</strong>? 
+                                This will permanently remove their account and all associated data including jobs, invoices, quotes, and clients.
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => {
+                                  setDeletingUserId(user.id);
+                                  deleteUserMutation.mutate(user.id);
+                                }}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete Account
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={9} className="text-center py-12">
                       <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                       <p className="text-muted-foreground">
                         {searchQuery || tierFilter !== "all" || statusFilter !== "all" 
