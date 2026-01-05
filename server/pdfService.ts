@@ -955,6 +955,18 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   const { invoice, lineItems, client, business, job, timeEntries, paymentUrl, termsTemplate, warrantyTemplate } = data;
+  
+  // Validate required fields with helpful error messages
+  if (!invoice) {
+    throw new Error('Invoice data is missing');
+  }
+  if (!client) {
+    throw new Error('Client data is missing for invoice');
+  }
+  if (!business) {
+    throw new Error('Business settings are missing');
+  }
+  
   // Use new unified template extraction that supports both predefined and custom AI-analyzed templates
   const { template, accentColor } = getTemplateFromBusinessSettings(business);
   
@@ -964,9 +976,10 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
   const remainingMinutes = totalMinutes % 60;
   const timeTrackingFormatted = totalMinutes > 0 ? `${totalHours}h ${remainingMinutes}m` : null;
   
-  const subtotal = parseFloat(invoice.subtotal as unknown as string);
-  const gstAmount = parseFloat(invoice.gstAmount as unknown as string);
-  const total = parseFloat(invoice.total as unknown as string);
+  // Handle null/undefined numeric fields gracefully
+  const subtotal = parseFloat(String(invoice.subtotal ?? '0')) || 0;
+  const gstAmount = parseFloat(String(invoice.gstAmount ?? '0')) || 0;
+  const total = parseFloat(String(invoice.total ?? '0')) || 0;
   
   const warnings = getMissingInfoWarnings(business, total);
   const isGstRegistered = business.gstEnabled && gstAmount > 0;

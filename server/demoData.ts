@@ -975,72 +975,103 @@ export async function createDemoTeamMembers() {
 
     console.log('🔧 Setting up demo team members...');
 
-    // Check if team already has members
-    const existingTeam = await storage.getTeamMembers(demoUser.id);
-    if (existingTeam.length > 2) {
-      console.log(`✅ Demo team already has ${existingTeam.length} members`);
+    // Cairns QLD area locations for demo team members
+    const cairnsLocations = [
+      { lat: -16.9186, lng: 145.7781, address: 'Cairns City QLD 4870', status: 'working' },
+      { lat: -16.9246, lng: 145.7621, address: 'Parramatta Park QLD 4870', status: 'driving' },
+      { lat: -16.9073, lng: 145.7478, address: 'Edge Hill QLD 4870', status: 'online' },
+      { lat: -16.9361, lng: 145.7514, address: 'Manunda QLD 4870', status: 'working' },
+      { lat: -16.9147, lng: 145.7568, address: 'Cairns North QLD 4870', status: 'online' },
+    ];
 
-      // Still update locations for map display
-      console.log('🔧 Ensuring team members have location data for map...');
-      const cairnsLocations = [
-        { lat: -16.9186, lng: 145.7781 }, // Cairns City
-        { lat: -16.9246, lng: 145.7621 }, // Parramatta Park
-        { lat: -16.9073, lng: 145.7478 }, // Edge Hill
-        { lat: -16.9361, lng: 145.7514 }, // Manunda
-        { lat: -16.9147, lng: 145.7568 }, // Cairns North
-        { lat: -16.8995, lng: 145.7687 }, // Whitfield
-      ];
-
-      for (let i = 0; i < existingTeam.length && i < cairnsLocations.length; i++) {
-        const member = existingTeam[i];
-        if (member.id !== demoUser.id) {
-          await storage.updateUser(member.id, {
-            lastKnownLatitude: cairnsLocations[i].lat.toString(),
-            lastKnownLongitude: cairnsLocations[i].lng.toString(),
-            lastLocationUpdate: new Date(),
-          });
-        }
-      }
-      return;
+    // Get or create a worker role
+    const existingRoles = await storage.getUserRoles();
+    let workerRole = existingRoles.find(r => r.name.toLowerCase() === 'worker' || r.name.toLowerCase() === 'field worker');
+    if (!workerRole) {
+      workerRole = await storage.createUserRole({
+        name: 'Worker',
+        permissions: ['read_jobs', 'update_job_status', 'create_time_entries', 'read_clients'],
+        description: 'Field worker with job access',
+        isActive: true,
+      });
+      console.log('✅ Created Worker role for team members');
     }
 
-    // Create additional team members if needed
-    const teamMembers = [
-      { name: 'Tom Richards', email: 'tom@demoplumbing.com.au', phone: '+61412111222', role: 'worker' as const },
-      { name: 'Sam Cooper', email: 'sam@demoplumbing.com.au', phone: '+61412333444', role: 'worker' as const },
-      { name: 'Kate Williams', email: 'kate@demoplumbing.com.au', phone: '+61412555666', role: 'worker' as const },
+    // Team member data
+    const teamMemberData = [
+      { name: 'Jake Morrison', email: DEMO_WORKER.email, phone: DEMO_WORKER.phone },
+      { name: 'Tom Richards', email: 'tom@demoplumbing.com.au', phone: '+61412111222' },
+      { name: 'Sam Cooper', email: 'sam@demoplumbing.com.au', phone: '+61412333444' },
+      { name: 'Kate Williams', email: 'kate@demoplumbing.com.au', phone: '+61412555666' },
     ];
 
-    const cairnsLocations = [
-      { lat: -16.9073, lng: 145.7478 }, // Edge Hill
-      { lat: -16.9361, lng: 145.7514 }, // Manunda
-      { lat: -16.9147, lng: 145.7568 }, // Cairns North
-    ];
+    // Check existing team members
+    const existingTeam = await storage.getTeamMembers(demoUser.id);
+    console.log(`ℹ️ Found ${existingTeam.length} existing team members`);
 
-    for (let i = 0; i < teamMembers.length; i++) {
-      const memberData = teamMembers[i];
-      const location = cairnsLocations[i];
+    for (let i = 0; i < teamMemberData.length; i++) {
+      const memberInfo = teamMemberData[i];
+      const location = cairnsLocations[i % cairnsLocations.length];
+      const nameParts = memberInfo.name.split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ');
 
-      let member = await storage.getUserByEmail(memberData.email);
-      if (!member) {
+      // Create or get user account
+      let memberUser = await storage.getUserByEmail(memberInfo.email);
+      if (!memberUser) {
         const hashedPassword = await bcrypt.hash('worker123', 10);
-        member = await storage.createUser({
-          email: memberData.email,
+        memberUser = await storage.createUser({
+          email: memberInfo.email,
           password: hashedPassword,
-          name: memberData.name,
-          phone: memberData.phone,
-          role: memberData.role,
+          name: memberInfo.name,
+          firstName,
+          lastName,
+          phone: memberInfo.phone,
+          role: 'worker',
           businessOwnerId: demoUser.id,
-          lastKnownLatitude: location.lat.toString(),
-          lastKnownLongitude: location.lng.toString(),
-          lastLocationUpdate: new Date(),
         });
-        console.log(`✅ Created team member: ${member.name}`);
+        console.log(`✅ Created user: ${memberUser.name}`);
       }
+
+      // Check if team member record exists
+      const existingMember = existingTeam.find(m => m.memberId === memberUser!.id || m.email === memberInfo.email);
+      if (!existingMember) {
+        // Create team member record
+        await storage.createTeamMember({
+          businessOwnerId: demoUser.id,
+          memberId: memberUser.id,
+          roleId: workerRole.id,
+          email: memberInfo.email,
+          firstName,
+          lastName,
+          phone: memberInfo.phone,
+          inviteStatus: 'accepted',
+          inviteAcceptedAt: new Date(),
+          isActive: true,
+          allowLocationSharing: true,
+          locationEnabledByOwner: true,
+        });
+        console.log(`✅ Registered team member: ${memberInfo.name}`);
+      }
+
+      // Create or update tradieStatus with location data for map display
+      await storage.upsertTradieStatus({
+        userId: memberUser.id,
+        businessOwnerId: demoUser.id,
+        currentLatitude: location.lat.toString(),
+        currentLongitude: location.lng.toString(),
+        currentAddress: location.address,
+        activityStatus: location.status,
+        lastSeenAt: new Date(),
+        lastLocationUpdate: new Date(),
+        batteryLevel: Math.floor(Math.random() * 40) + 60, // 60-100%
+        isCharging: Math.random() > 0.7,
+      });
+      console.log(`📍 Set location for ${memberInfo.name}: ${location.address}`);
     }
 
     const finalTeam = await storage.getTeamMembers(demoUser.id);
-    console.log(`✅ Demo team has ${finalTeam.length} members`);
+    console.log(`✅ Demo team has ${finalTeam.length} members with location data`);
   } catch (error) {
     console.error('Error creating demo team members:', error);
   }

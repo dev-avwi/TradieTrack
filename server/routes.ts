@@ -9222,72 +9222,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PDF Download - Invoice (team-aware)
   app.get("/api/invoices/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
+    const invoiceId = req.params.id;
     try {
       const userContext = await getUserContext(req.userId);
       const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
       
-      const invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, userContext.effectiveUserId);
+      const invoiceWithItems = await storage.getInvoiceWithLineItems(invoiceId, userContext.effectiveUserId);
       if (!invoiceWithItems) {
-        return res.status(404).json({ error: "Invoice not found" });
+        console.error(`[Invoice PDF] Invoice not found: ${invoiceId}`);
+        return res.status(404).json({ error: "Invoice not found", details: `Invoice ${invoiceId} could not be found` });
       }
       
       const client = await storage.getClient(invoiceWithItems.clientId, userContext.effectiveUserId);
       const business = await storage.getBusinessSettings(userContext.effectiveUserId);
       
-      if (!client || !business) {
-        return res.status(404).json({ error: "Client or business settings not found" });
+      if (!client) {
+        console.error(`[Invoice PDF] Client not found for invoice ${invoiceId}, clientId: ${invoiceWithItems.clientId}`);
+        return res.status(404).json({ error: "Client not found", details: `Client for invoice ${invoiceId} could not be found` });
+      }
+      
+      if (!business) {
+        console.error(`[Invoice PDF] Business settings not found for user ${userContext.effectiveUserId}`);
+        return res.status(404).json({ error: "Business settings not found", details: "Please complete your business profile in settings" });
       }
       
       // Get linked job and time entries for site address and time tracking
-      const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, userContext.effectiveUserId) : undefined;
-      const timeEntries = invoiceWithItems.jobId ? await storage.getTimeEntries(userContext.effectiveUserId, invoiceWithItems.jobId) : [];
+      let job = undefined;
+      let timeEntries: any[] = [];
+      try {
+        job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, userContext.effectiveUserId) : undefined;
+        timeEntries = invoiceWithItems.jobId ? await storage.getTimeEntries(userContext.effectiveUserId, invoiceWithItems.jobId) : [];
+      } catch (jobError) {
+        console.warn(`[Invoice PDF] Could not fetch job/time entries for invoice ${invoiceId}:`, jobError);
+      }
       
       // Get job signatures if there's a linked job
       let jobSignatures: any[] = [];
       if (invoiceWithItems.jobId) {
-        const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
-        jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
+        try {
+          const signatures = await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, invoiceWithItems.jobId));
+          jobSignatures = signatures.filter(s => s.documentType === 'job_completion');
+        } catch (sigError) {
+          console.warn(`[Invoice PDF] Could not fetch signatures for job ${invoiceWithItems.jobId}:`, sigError);
+        }
       }
       
       // Fetch business templates for terms and warranty
-      const termsTemplateResult = await db.select().from(businessTemplates)
-        .where(and(
-          eq(businessTemplates.userId, userContext.effectiveUserId),
-          eq(businessTemplates.family, 'terms_conditions'),
-          eq(businessTemplates.isActive, true)
-        ))
-        .limit(1);
-      const warrantyTemplateResult = await db.select().from(businessTemplates)
-        .where(and(
-          eq(businessTemplates.userId, userContext.effectiveUserId),
-          eq(businessTemplates.family, 'warranty'),
-          eq(businessTemplates.isActive, true)
-        ))
-        .limit(1);
+      let termsTemplate = undefined;
+      let warrantyTemplate = undefined;
+      try {
+        const termsTemplateResult = await db.select().from(businessTemplates)
+          .where(and(
+            eq(businessTemplates.userId, userContext.effectiveUserId),
+            eq(businessTemplates.family, 'terms_conditions'),
+            eq(businessTemplates.isActive, true)
+          ))
+          .limit(1);
+        const warrantyTemplateResult = await db.select().from(businessTemplates)
+          .where(and(
+            eq(businessTemplates.userId, userContext.effectiveUserId),
+            eq(businessTemplates.family, 'warranty'),
+            eq(businessTemplates.isActive, true)
+          ))
+          .limit(1);
+        
+        termsTemplate = termsTemplateResult[0]?.content;
+        warrantyTemplate = warrantyTemplateResult[0]?.content;
+      } catch (templateError) {
+        console.warn(`[Invoice PDF] Could not fetch templates for invoice ${invoiceId}:`, templateError);
+      }
       
-      const termsTemplate = termsTemplateResult[0]?.content;
-      const warrantyTemplate = warrantyTemplateResult[0]?.content;
+      let html: string;
+      try {
+        html = generateInvoicePDF({
+          invoice: invoiceWithItems,
+          lineItems: invoiceWithItems.lineItems || [],
+          client,
+          business,
+          job,
+          timeEntries,
+          jobSignatures,
+          termsTemplate,
+          warrantyTemplate
+        });
+      } catch (htmlError: any) {
+        console.error(`[Invoice PDF] HTML generation failed for invoice ${invoiceId}:`, htmlError);
+        return res.status(500).json({ 
+          error: "Failed to generate invoice document", 
+          details: htmlError?.message || "Error creating invoice HTML content"
+        });
+      }
       
-      const html = generateInvoicePDF({
-        invoice: invoiceWithItems,
-        lineItems: invoiceWithItems.lineItems || [],
-        client,
-        business,
-        job,
-        timeEntries,
-        jobSignatures,
-        termsTemplate,
-        warrantyTemplate
-      });
-      
-      const pdfBuffer = await generatePDFBuffer(html);
+      let pdfBuffer: Buffer;
+      try {
+        pdfBuffer = await generatePDFBuffer(html);
+      } catch (pdfError: any) {
+        console.error(`[Invoice PDF] PDF buffer generation failed for invoice ${invoiceId}:`, pdfError);
+        return res.status(500).json({ 
+          error: "Failed to create PDF file", 
+          details: pdfError?.message || "Error converting invoice to PDF"
+        });
+      }
       
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoiceWithItems.number}.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoiceWithItems.number || invoiceId}.pdf"`);
       res.send(pdfBuffer);
-    } catch (error) {
-      console.error("Error generating invoice PDF:", error);
-      res.status(500).json({ error: "Failed to generate invoice PDF" });
+    } catch (error: any) {
+      console.error(`[Invoice PDF] Unexpected error generating PDF for invoice ${invoiceId}:`, error);
+      res.status(500).json({ 
+        error: "Failed to generate invoice PDF", 
+        details: error?.message || "An unexpected error occurred while generating the PDF"
+      });
     }
   });
 

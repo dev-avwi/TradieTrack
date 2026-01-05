@@ -1224,6 +1224,145 @@ export default function InvoiceDetailScreen() {
             </View>
           )}
 
+          {/* Document Preview Section - Matches Receipt View Style */}
+          <Text style={styles.sectionTitle}>Invoice Details</Text>
+          <View style={styles.documentPreviewCard}>
+            <View style={[styles.documentHeader, { borderBottomColor: brandColor }]}>
+              <View style={styles.businessInfo}>
+                {businessSettings?.logoUrl && (
+                  <Image 
+                    source={{ uri: businessSettings.logoUrl }} 
+                    style={styles.documentLogo}
+                    resizeMode="contain"
+                  />
+                )}
+                <Text style={styles.documentBusinessName}>
+                  {businessSettings?.businessName || user?.businessName || 'Your Business Name'}
+                </Text>
+                {(businessSettings?.abn || user?.abn) && (
+                  <Text style={styles.documentBusinessDetail}>ABN: {businessSettings?.abn || user?.abn}</Text>
+                )}
+              </View>
+              
+              <View style={styles.documentTitleContainer}>
+                <Text style={[styles.documentTitle, { color: isPaid ? colors.success : brandColor }]}>
+                  {(businessSettings?.gstEnabled ?? true) && invoice.gstAmount > 0 ? 'TAX INVOICE' : 'INVOICE'}
+                </Text>
+                <Text style={styles.documentNumber}>{invoice.invoiceNumber}</Text>
+              </View>
+            </View>
+
+            <View style={styles.documentSection}>
+              <View style={styles.documentRow}>
+                <View style={styles.documentColumn}>
+                  <Text style={styles.documentSectionLabel}>BILL TO</Text>
+                  <Text style={styles.documentClientName}>{client?.name || 'Customer'}</Text>
+                  {client?.address && <Text style={styles.documentInfoText}>{client.address}</Text>}
+                  {client?.email && <Text style={styles.documentInfoText}>{client.email}</Text>}
+                  {client?.phone && <Text style={styles.documentInfoText}>{client.phone}</Text>}
+                </View>
+                
+                <View style={styles.documentColumn}>
+                  <Text style={styles.documentSectionLabel}>INVOICE DETAILS</Text>
+                  <Text style={styles.documentInfoText}>
+                    <Text style={styles.documentInfoLabel}>Date: </Text>
+                    {formatDate(invoice.createdAt)}
+                  </Text>
+                  {invoice.dueDate && (
+                    <Text style={[styles.documentInfoText, invoice.status === 'overdue' && { color: colors.destructive }]}>
+                      <Text style={styles.documentInfoLabel}>Due: </Text>
+                      {formatDate(invoice.dueDate)}
+                    </Text>
+                  )}
+                  {invoice.status === 'paid' && invoice.paidAt && (
+                    <Text style={[styles.documentInfoText, { color: colors.success }]}>
+                      <Text style={styles.documentInfoLabel}>Paid: </Text>
+                      {formatDate(invoice.paidAt)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* Line Items Preview */}
+            {lineItems.length > 0 && (
+              <View style={styles.documentItemsSection}>
+                <View style={styles.documentItemsHeader}>
+                  <Text style={[styles.documentItemsHeaderText, { flex: 2 }]}>Description</Text>
+                  <Text style={[styles.documentItemsHeaderText, { flex: 0.5, textAlign: 'center' }]}>Qty</Text>
+                  <Text style={[styles.documentItemsHeaderText, { flex: 1, textAlign: 'right' }]}>Price</Text>
+                  <Text style={[styles.documentItemsHeaderText, { flex: 1, textAlign: 'right' }]}>Amount</Text>
+                </View>
+                {lineItems.slice(0, 5).map((item: any, index: number) => (
+                  <View key={item.id || index} style={styles.documentItemRow}>
+                    <Text style={[styles.documentItemText, { flex: 2 }]} numberOfLines={1}>{item.description}</Text>
+                    <Text style={[styles.documentItemText, { flex: 0.5, textAlign: 'center' }]}>{item.quantity}</Text>
+                    <Text style={[styles.documentItemText, { flex: 1, textAlign: 'right' }]}>{formatCurrency(item.unitPrice)}</Text>
+                    <Text style={[styles.documentItemText, { flex: 1, textAlign: 'right' }]}>{formatCurrency(item.quantity * item.unitPrice)}</Text>
+                  </View>
+                ))}
+                {lineItems.length > 5 && (
+                  <Text style={styles.documentMoreItems}>+{lineItems.length - 5} more items...</Text>
+                )}
+              </View>
+            )}
+
+            <View style={[styles.documentSummary, { borderColor: isPaid ? colors.success : brandColor }]}>
+              <View style={styles.documentSummaryHeader}>
+                <Text style={[styles.documentSummaryTitle, { color: isPaid ? colors.success : brandColor }]}>
+                  {isPaid ? 'Payment Received' : (invoice.status === 'overdue' ? 'Overdue Amount' : 'Amount Due')}
+                </Text>
+                <View style={[styles.documentStatusBadge, { backgroundColor: status.bgColor }]}>
+                  <Text style={[styles.documentStatusBadgeText, { color: status.textColor }]}>{status.label}</Text>
+                </View>
+              </View>
+              
+              {invoice.gstAmount > 0 && (
+                <>
+                  <View style={styles.documentSummaryRow}>
+                    <Text style={styles.documentSummaryLabel}>Subtotal (excl. GST)</Text>
+                    <Text style={styles.documentSummaryValue}>{formatCurrency(invoice.subtotal)}</Text>
+                  </View>
+                  <View style={[styles.documentSummaryRow, styles.documentSummaryDivider]}>
+                    <Text style={styles.documentSummaryLabel}>GST (10%)</Text>
+                    <Text style={styles.documentSummaryValue}>{formatCurrency(invoice.gstAmount)}</Text>
+                  </View>
+                </>
+              )}
+              
+              <View style={styles.documentTotalRow}>
+                <Text style={styles.documentTotalLabel}>
+                  Total {invoice.gstAmount > 0 ? '(incl. GST)' : ''}
+                </Text>
+                <Text style={[styles.documentTotalValue, isPaid && { color: colors.success }]}>{formatCurrency(invoice.total)}</Text>
+              </View>
+              
+              {invoice.amountPaid > 0 && invoice.amountPaid < invoice.total && (
+                <>
+                  <View style={styles.documentSummaryRow}>
+                    <Text style={[styles.documentSummaryLabel, { color: colors.success }]}>Amount Paid</Text>
+                    <Text style={[styles.documentSummaryValue, { color: colors.success }]}>-{formatCurrency(invoice.amountPaid)}</Text>
+                  </View>
+                  <View style={styles.documentTotalRow}>
+                    <Text style={[styles.documentTotalLabel, { color: colors.warning }]}>Balance Due</Text>
+                    <Text style={[styles.documentTotalValue, { color: colors.warning }]}>{formatCurrency(amountDue)}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            <View style={[styles.documentFooterSection, { backgroundColor: `${brandColor}10` }]}>
+              <Text style={[styles.documentFooterText, { color: brandColor }]}>
+                Thank you for your business!
+              </Text>
+              <Text style={styles.documentFooterSubtext}>
+                {isPaid 
+                  ? 'This invoice has been paid in full.' 
+                  : `Payment is due ${invoice.dueDate ? `by ${formatDate(invoice.dueDate)}` : 'upon receipt'}.`}
+              </Text>
+            </View>
+          </View>
+
           {/* Status History (Parity with Web Timeline) */}
           <Text style={styles.sectionTitle}>Status History</Text>
           <View style={styles.card}>
@@ -3183,5 +3322,200 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  documentPreviewCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  documentHeader: {
+    padding: 16,
+    borderBottomWidth: 3,
+  },
+  businessInfo: {
+    marginBottom: 16,
+  },
+  documentLogo: {
+    width: 120,
+    height: 50,
+    marginBottom: 8,
+  },
+  documentBusinessName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  documentBusinessDetail: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  documentTitleContainer: {
+    alignItems: 'flex-end',
+  },
+  documentTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  documentNumber: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 4,
+  },
+  documentSection: {
+    padding: 16,
+  },
+  documentRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  documentColumn: {
+    flex: 1,
+  },
+  documentSectionLabel: {
+    fontSize: 10,
+    color: colors.mutedForeground,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  documentClientName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  documentInfoText: {
+    fontSize: 12,
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  documentInfoLabel: {
+    fontWeight: '600',
+  },
+  documentItemsSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  documentItemsHeader: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 4,
+  },
+  documentItemsHeaderText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  documentItemRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  documentItemText: {
+    fontSize: 11,
+    color: colors.foreground,
+  },
+  documentMoreItems: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    fontStyle: 'italic',
+    paddingVertical: 8,
+    textAlign: 'center',
+  },
+  documentSummary: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  documentSummaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  documentSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  documentStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  documentStatusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  documentSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  documentSummaryDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  documentSummaryLabel: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  documentSummaryValue: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  documentTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  documentTotalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  documentTotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  documentFooterSection: {
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  documentFooterText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  documentFooterSubtext: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
