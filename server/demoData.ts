@@ -115,21 +115,21 @@ export async function createDemoUserAndData() {
       // Delete existing data in correct order (foreign key constraints)
       const existingJobs = await storage.getJobs(demoUser.id);
       for (const job of existingJobs) {
-        await storage.deleteJob(job.id);
+        await storage.deleteJob(job.id, demoUser.id);
       }
 
       const existingQuotes = await storage.getQuotes(demoUser.id);
       for (const quote of existingQuotes) {
-        await storage.deleteQuote(quote.id);
+        await storage.deleteQuote(quote.id, demoUser.id);
       }
 
       const existingInvoices = await storage.getInvoices(demoUser.id);
       for (const invoice of existingInvoices) {
-        await storage.deleteInvoice(invoice.id);
+        await storage.deleteInvoice(invoice.id, demoUser.id);
       }
 
       for (const client of existingClients) {
-        await storage.deleteClient(client.id);
+        await storage.deleteClient(client.id, demoUser.id);
       }
 
       console.log('🗑️ Existing demo data deleted');
