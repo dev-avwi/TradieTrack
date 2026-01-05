@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, setSessionToken, queryClient } from "@/lib/queryClient";
 import { CheckCircle2, Mail, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,14 +46,18 @@ export default function VerifyEmail() {
           description: data.message,
         });
         
-        // Redirect to onboarding for new users, otherwise dashboard
+        // Save session token for Safari/iOS fallback where cookies may not work
+        if (data.sessionToken) {
+          setSessionToken(data.sessionToken);
+        }
+        
+        // Invalidate auth queries to trigger refetch with new session
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        
+        // Redirect to dashboard - App.tsx will show onboarding if business settings are missing
         setTimeout(() => {
-          if (data.isNewUser) {
-            setLocation('/onboarding');
-          } else {
-            setLocation('/');
-          }
-        }, 2000);
+          setLocation('/');
+        }, 1500);
       } else {
         setVerificationStatus('error');
         setErrorMessage(data.error || 'Verification failed');

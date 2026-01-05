@@ -900,6 +900,13 @@ function AppLayout() {
         />
       );
     }
+    // Show email verification pages without authentication (required for signup flow)
+    if (location === '/verify-email-pending' || location.startsWith('/verify-email-pending')) {
+      return <VerifyEmailPending />;
+    }
+    if (location === '/verify-email' || location.startsWith('/verify-email')) {
+      return <VerifyEmail />;
+    }
     // Show privacy policy and terms of service without authentication (Apple App Store requirement)
     if (location === '/privacy' || location === '/privacy-policy') {
       return <PrivacyPolicy />;

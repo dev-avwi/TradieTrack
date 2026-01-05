@@ -234,17 +234,15 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       const result = await response.json();
 
       if (result.success) {
-        // Save session token for Bearer auth (iOS/Safari fallback)
-        if (result.sessionToken) {
-          setSessionToken(result.sessionToken);
-        }
+        // Registration successful - redirect to verify email pending page
+        // (Session is NOT created until email is verified)
         toast({
-          title: "Account created!",
-          description: "Let's set up your business profile"
+          title: "Registration Successful",
+          description: "Please check your email to verify your account."
         });
-        onLoginSuccess();
-        // Navigate to dashboard (will show onboarding if needed)
-        setLocation('/');
+        // Redirect to verify email pending page
+        const emailParam = encodeURIComponent(registerData.email);
+        setLocation(`/verify-email-pending?email=${emailParam}`);
       } else {
         setError(result.error || 'Registration failed');
       }
