@@ -676,8 +676,9 @@ function AppLayout() {
     }
   });
 
-  // Staff users (team members) should skip onboarding entirely
-  const isTeamMember = !!teamRoleInfo;
+  // Staff users (team members on someone else's team) should skip onboarding entirely
+  // Owners without business settings still need to complete onboarding
+  const isStaffOnOtherTeam = !!teamRoleInfo && teamRoleInfo.role !== 'owner';
 
   // Initialize and update trade colors based on theme and trade selection
   // IMPORTANT: All useEffect hooks must be called before any conditional returns
@@ -953,9 +954,9 @@ function AppLayout() {
     );
   }
 
-  if (userCheck && businessSettings === null && !isTeamMember && !userCheck.isPlatformAdmin) {
-    // User exists but no business settings AND not a team member AND not a platform admin - show simple onboarding
-    // Staff users (team members) skip onboarding - they use their employer's business settings
+  if (userCheck && businessSettings === null && !isStaffOnOtherTeam && !userCheck.isPlatformAdmin) {
+    // User exists but no business settings AND not staff on another team AND not a platform admin - show simple onboarding
+    // Staff users (on someone else's team) skip onboarding - they use their employer's business settings
     // Platform admins don't need business settings - they have a separate admin interface
     return <SimpleOnboarding onComplete={handleSimpleOnboardingComplete} onSkip={handleSimpleOnboardingComplete} />;
   }
