@@ -2317,11 +2317,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { sendEmailViaIntegration } = await import('./emailIntegrationService');
+      const { sendSMS: twilioSendSMS, isTwilioInitialized, initializeTwilio } = await import('./twilioClient');
       
-      // SMS disabled for beta
+      // Real SMS sending via Twilio
       const sendSMS = async (options: { to: string; message: string }) => {
-        console.log('[BETA] SMS disabled - would send to:', options.to);
-        return { success: true, simulated: true };
+        // Ensure Twilio is initialized
+        if (!isTwilioInitialized()) {
+          const initialized = await initializeTwilio();
+          if (!initialized) {
+            console.error('[SMS] Twilio not configured - cannot send SMS');
+            return { success: false, error: 'SMS service not configured' };
+          }
+        }
+        return twilioSendSMS(options);
       };
 
       // Helper to find client by name (team-aware)
@@ -4505,12 +4513,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sendgridMessage: sendgridConfigured
           ? 'SendGrid configured for email delivery'
           : 'Running in demo mode - emails are logged to console',
-        // SMS/Twilio disabled for beta
-        twilioSecretsAvailable: false,
-        twilioManaged: false,
-        twilioSource: 'disabled',
-        twilioStatus: 'disabled',
-        twilioMessage: 'SMS notifications disabled for beta',
+        // Twilio SMS - check connector availability
+        twilioSecretsAvailable: !!process.env.REPLIT_CONNECTORS_HOSTNAME || !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+        twilioManaged: !!process.env.REPLIT_CONNECTORS_HOSTNAME,
+        twilioSource: process.env.TWILIO_ACCOUNT_SID ? 'environment' : (process.env.REPLIT_CONNECTORS_HOSTNAME ? 'replit' : 'none'),
+        twilioStatus: (process.env.REPLIT_CONNECTORS_HOSTNAME || process.env.TWILIO_ACCOUNT_SID) ? 'connected' : 'not_configured',
+        twilioMessage: (process.env.REPLIT_CONNECTORS_HOSTNAME || process.env.TWILIO_ACCOUNT_SID) ? 'Twilio SMS connected' : 'SMS not configured',
         stripePublicKeyMasked,
         stripeSecretKeyMasked: stripeConnected 
           ? (stripeSource === 'environment' ? 'Configured' : 'Platform managed') 
