@@ -398,7 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public quote acceptance page - client views and accepts/declines quote
   app.get("/public/quote/:token", async (req: any, res) => {
     try {
-      const { generateQuoteAcceptancePage } = await import('./pdfService');
+      const { generateQuoteAcceptancePage, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       // Check if this is a success redirect after accepting
       const showSuccess = req.query.success === '1';
@@ -416,9 +416,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const client = await storage.getClientById(quoteWithItems.clientId);
-      const business = await storage.getBusinessSettings(quoteWithItems.userId);
+      const businessRaw = await storage.getBusinessSettings(quoteWithItems.userId);
       
-      if (!client || !business) {
+      if (!client || !businessRaw) {
         return res.status(404).send(`
           <!DOCTYPE html>
           <html><head><title>Error</title></head>
@@ -428,6 +428,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           </body></html>
         `);
       }
+      
+      // Resolve logo URL to base64 for HTML rendering
+      const business = await resolveBusinessLogoForPdf(businessRaw);
       
       // Fetch signature if quote is accepted
       let signature = null;
@@ -609,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/public/quote/:token/pdf", async (req, res) => {
     try {
       const { token } = req.params;
-      const { generateQuotePDF, generatePDFBuffer } = await import('./pdfService');
+      const { generateQuotePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       const quoteWithItems = await storage.getQuoteWithLineItemsByToken(token);
       if (!quoteWithItems) {
@@ -617,11 +620,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const client = await storage.getClientById(quoteWithItems.clientId);
-      const business = await storage.getBusinessSettingsByUserId(quoteWithItems.userId);
+      const businessRaw = await storage.getBusinessSettingsByUserId(quoteWithItems.userId);
       
-      if (!client || !business) {
+      if (!client || !businessRaw) {
         return res.status(404).json({ error: 'Quote details not found' });
       }
+      
+      // Resolve logo URL to base64 for PDF generation
+      const business = await resolveBusinessLogoForPdf(businessRaw);
       
       // Get linked job for site address if available (matching authenticated route)
       // Use getJobByIdWithContext to get full job data like the authenticated route
@@ -2442,12 +2448,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const termsTemplate = termsTemplateResult[0]?.content;
         const warrantyTemplate = warrantyTemplateResult[0]?.content;
         
-        const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
+        const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
+        const businessForPdf = await resolveBusinessLogoForPdf(business);
         const html = generateInvoicePDF({
           invoice,
           lineItems: invoice.lineItems || [],
           client,
-          business,
+          business: businessForPdf,
           termsTemplate,
           warrantyTemplate
         });
@@ -2496,8 +2503,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const business = await storage.getBusinessSettings(userContext.effectiveUserId);
-        const { generateQuotePDF } = await import('./pdfService');
-        const pdfBuffer = await generateQuotePDF(quote, quote.lineItems || [], client, business);
+        const { generateQuotePDF, resolveBusinessLogoForPdf } = await import('./pdfService');
+        const businessForPdf = await resolveBusinessLogoForPdf(business);
+        const pdfBuffer = await generateQuotePDF(quote, quote.lineItems || [], client, businessForPdf);
 
         const result = await sendEmailViaIntegration({
           to: client.email,
@@ -8576,7 +8584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/quotes/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { generateQuotePDF, generatePDFBuffer } = await import('./pdfService');
+      const { generateQuotePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
       if (!quoteWithItems) {
@@ -8622,11 +8630,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      const businessForPdf = await resolveBusinessLogoForPdf(business);
       const html = generateQuotePDF({
         quote: quoteWithItems,
         lineItems: quoteWithItems.lineItems || [],
         client,
-        business,
+        business: businessForPdf,
         job,
         jobSignatures,
         signature: acceptanceSignature,
@@ -8647,7 +8656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quotes/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { generateQuotePDF, generatePDFBuffer } = await import('./pdfService');
+      const { generateQuotePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       const { clientId, title, description, validUntil, subtotal, gstAmount, total, lineItems, notes } = req.body;
       
@@ -8698,21 +8707,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sortOrder: index + 1,
       }));
       
+      const businessForPdf = await resolveBusinessLogoForPdf(business || {
+        id: 'default',
+        userId: req.userId,
+        businessName: 'Your Business',
+        abn: '',
+        address: '',
+        phone: '',
+        email: '',
+        brandColor: '#2563eb',
+        gstEnabled: true,
+      });
       const html = generateQuotePDF({
         quote: mockQuote,
         lineItems: formattedLineItems,
         client,
-        business: business || {
-          id: 'default',
-          userId: req.userId,
-          businessName: 'Your Business',
-          abn: '',
-          address: '',
-          phone: '',
-          email: '',
-          brandColor: '#2563eb',
-          gstEnabled: true,
-        }
+        business: businessForPdf
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
@@ -9225,7 +9235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const invoiceId = req.params.id;
     try {
       const userContext = await getUserContext(req.userId);
-      const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
+      const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       const invoiceWithItems = await storage.getInvoiceWithLineItems(invoiceId, userContext.effectiveUserId);
       if (!invoiceWithItems) {
@@ -9294,11 +9304,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let html: string;
       try {
+        const businessForPdf = await resolveBusinessLogoForPdf(business);
         html = generateInvoicePDF({
           invoice: invoiceWithItems,
           lineItems: invoiceWithItems.lineItems || [],
           client,
-          business,
+          business: businessForPdf,
           job,
           timeEntries,
           jobSignatures,
@@ -9340,7 +9351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/invoices/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
+      const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       const { clientId, title, description, dueDate, subtotal, gstAmount, total, lineItems, notes } = req.body;
       
@@ -9410,21 +9421,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const termsTemplate = termsTemplateResult[0]?.content;
       const warrantyTemplate = warrantyTemplateResult[0]?.content;
       
+      const businessForPdf = await resolveBusinessLogoForPdf(business || {
+        id: 'default',
+        userId: req.userId,
+        businessName: 'Your Business',
+        abn: '',
+        address: '',
+        phone: '',
+        email: '',
+        brandColor: '#dc2626',
+        gstEnabled: true,
+      });
       const html = generateInvoicePDF({
         invoice: mockInvoice,
         lineItems: formattedLineItems,
         client,
-        business: business || {
-          id: 'default',
-          userId: req.userId,
-          businessName: 'Your Business',
-          abn: '',
-          address: '',
-          phone: '',
-          email: '',
-          brandColor: '#dc2626',
-          gstEnabled: true,
-        },
+        business: businessForPdf,
         termsTemplate,
         warrantyTemplate
       });
@@ -14581,8 +14593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const warrantyTemplate = warrantyTemplateResult[0]?.content;
       
       // Generate PDF
-      const { generateInvoicePDF, generatePDFBuffer } = await import('./pdfService');
+      const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
+      const businessForPdf = await resolveBusinessLogoForPdf(settings || { businessName: 'TradieTrack' });
       const pdfHtml = generateInvoicePDF({
         invoice: {
           id: invoice.id,
@@ -14598,7 +14611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         lineItems: invoice.lineItems || [],
         client: client || { name: 'Customer' },
-        business: settings || { businessName: 'TradieTrack' },
+        business: businessForPdf,
         termsTemplate,
         warrantyTemplate,
       } as any);

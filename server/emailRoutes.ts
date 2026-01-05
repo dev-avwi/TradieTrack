@@ -2,7 +2,7 @@
 import crypto from 'crypto';
 import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml, replaceMergeFields } from './emailService';
 import { sendEmailViaIntegration } from './emailIntegrationService';
-import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer } from './pdfService';
+import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } from './pdfService';
 import { notifyPaymentReceived } from './pushNotifications';
 import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
@@ -291,11 +291,12 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
             }));
           }
           
+          const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
           const pdfHtml = generateQuotePDF({
             quote: quoteWithItems,
             lineItems: lineItems || [],
             client,
-            business: businessSettings,
+            business: businessForPdf,
             acceptanceUrl: quoteAcceptanceUrl || undefined,
             jobSignatures,
           });
@@ -616,11 +617,12 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
             jobSignatures = [...jobSignatures, ...quoteSignatures];
           }
           
+          const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
           const pdfHtml = generateInvoicePDF({
             invoice: invoiceWithItems,
             lineItems: lineItems || [],
             client,
-            business: businessSettings,
+            business: businessForPdf,
             paymentUrl: paymentUrl || undefined,
             job,
             jobSignatures,
@@ -1007,11 +1009,12 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     const canAcceptPayments = businessSettings.stripeAccountId && businessSettings.stripeDetailsSubmitted;
     
     // 7. Generate PDF buffer
+    const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
     const pdfBuffer = await generatePDFBuffer(generateQuotePDF({
       quote: quoteWithItems,
       lineItems: quoteWithItems.lineItems || [],
       client,
-      business: businessSettings,
+      business: businessForPdf,
       signature: quoteWithItems.signature,
       canAcceptPayments,
       acceptanceUrl: quoteAcceptanceUrl || undefined,
@@ -1287,11 +1290,12 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     }
     
     // 7. Generate PDF buffer
+    const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
     const pdfBuffer = await generatePDFBuffer(generateInvoicePDF({
       invoice: invoiceWithItems,
       lineItems: invoiceWithItems.lineItems || [],
       client,
-      business: businessSettings,
+      business: businessForPdf,
       job: linkedJob,
       timeEntries,
       paymentUrl: paymentUrl || undefined,

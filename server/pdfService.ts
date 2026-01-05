@@ -1,4 +1,65 @@
 import type { Quote, Invoice, QuoteLineItem, InvoiceLineItem, Client, BusinessSettings, DigitalSignature, Job, TimeEntry } from "@shared/schema";
+import { ObjectStorageService, parseObjectPath, objectStorageClient } from './objectStorage';
+
+/**
+ * Resolves a logo URL from object storage path to a base64 data URL.
+ * This is necessary because Puppeteer can't access /objects/* paths directly.
+ * 
+ * @param logoUrl - The logo URL (could be /objects/*, data:*, https://* or null)
+ * @returns A base64 data URL that can be used in HTML img tags, or the original URL if not an object path
+ */
+export async function resolveLogoUrl(logoUrl: string | null | undefined): Promise<string | null> {
+  if (!logoUrl) {
+    return null;
+  }
+  
+  // Already a data URL - return as is
+  if (logoUrl.startsWith('data:')) {
+    return logoUrl;
+  }
+  
+  // Already an https URL - return as is (external URL)
+  if (logoUrl.startsWith('https://') || logoUrl.startsWith('http://')) {
+    return logoUrl;
+  }
+  
+  // Object storage path - fetch and convert to base64
+  if (logoUrl.startsWith('/objects/')) {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const file = await objectStorageService.getObjectEntityFile(logoUrl);
+      
+      // Download the file content
+      const [buffer] = await file.download();
+      
+      // Get the content type
+      const [metadata] = await file.getMetadata();
+      const contentType = metadata.contentType || 'image/png';
+      
+      // Convert to base64 data URL
+      const base64 = buffer.toString('base64');
+      return `data:${contentType};base64,${base64}`;
+    } catch (error) {
+      console.error('Failed to resolve logo from object storage:', error);
+      return null;
+    }
+  }
+  
+  // Unknown format - return as is
+  return logoUrl;
+}
+
+/**
+ * Resolves the logo URL in a business settings object for PDF generation.
+ * Returns a new object with the resolved logo URL.
+ */
+export async function resolveBusinessLogoForPdf<T extends { logoUrl?: string | null }>(business: T): Promise<T> {
+  const resolvedLogoUrl = await resolveLogoUrl(business.logoUrl);
+  return {
+    ...business,
+    logoUrl: resolvedLogoUrl,
+  };
+}
 
 // Document Template Definitions (mirrored from client/src/lib/document-templates.ts)
 type TemplateId = 'professional' | 'modern' | 'minimal';
