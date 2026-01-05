@@ -404,7 +404,8 @@ interface RouteJob {
 
 function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwner: boolean; isManager: boolean }) {
   const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  // Handle 'system' theme by checking actual system preference
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   

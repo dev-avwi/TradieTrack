@@ -41,7 +41,6 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   
-  const login = useAuthStore((state) => state.login);
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -91,11 +90,12 @@ export default function RegisterScreen() {
       return;
     }
 
-    const loginSuccess = await login(email.trim(), password);
-    
-    if (loginSuccess) {
-      router.replace('/(onboarding)/setup');
-    }
+    // Registration successful - redirect to email verification pending screen
+    // Server requires email verification before login is allowed
+    router.replace({
+      pathname: '/(auth)/verify-email-pending',
+      params: { email: email.trim() }
+    });
   };
 
   const handleGoogleSignIn = async () => {

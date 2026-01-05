@@ -149,6 +149,16 @@ All services are configured for production with **no silent mock fallbacks**:
 
 ### Recent Updates (January 2026)
 
+**JobMap Dark Mode Fix**: Fixed map tile layer not switching to dark theme when system theme is set to 'system':
+- `isDark` check now handles 'system' theme by checking `window.matchMedia('(prefers-color-scheme: dark)').matches`
+- File: client/src/pages/JobMap.tsx
+
+**Mobile App Email Verification Flow**: Aligned mobile registration with web app email verification requirements:
+- Added verify-email-pending screen (mobile/app/(auth)/verify-email-pending.tsx)
+- Registration now redirects to verification pending screen instead of auto-login
+- Users must verify email via link before logging in (same as web flow)
+- Includes resend verification email functionality
+
 **Xero Integration Visibility Badges**: Visual badges on job, quote, and invoice cards to distinguish Xero-imported items from TradieTrack-created items:
 - Web: XeroRibbon component with corner badge (client/src/components/XeroRibbon.tsx)
 - Mobile: XeroBadge component (mobile/src/components/ui/XeroBadge.tsx)
