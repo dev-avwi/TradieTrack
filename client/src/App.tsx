@@ -46,6 +46,7 @@ import More from "@/pages/More";
 import Integrations from "@/pages/Integrations";
 import NotFound from "@/pages/not-found";
 import VerifyEmail from "@/pages/VerifyEmail";
+import VerifyEmailPending from "@/pages/VerifyEmailPending";
 import ResetPassword from "@/pages/ResetPassword";
 import AcceptInvite from "@/pages/AcceptInvite";
 import QuoteModal from "@/components/QuoteModal";
@@ -506,6 +507,7 @@ function Router({
       </Route>
       
       <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/verify-email-pending" component={VerifyEmailPending} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/accept-invite/:token" component={AcceptInvite} />
       

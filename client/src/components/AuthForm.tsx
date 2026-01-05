@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ onLogin }: AuthFormProps) {
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -241,25 +243,14 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        setSuccess(result.message || 'Registration successful! Please check your email to verify your account.');
         toast({
           title: "Registration Successful",
-          description: "Please check your email to verify your account before logging in.",
+          description: "Please check your email to verify your account.",
         });
         
-        // Clear form
-        setRegisterData({
-          email: '',
-          username: '',
-          password: '',
-          confirmPassword: '',
-          firstName: '',
-          lastName: '',
-          tradeType: ''
-        });
-        
-        // Switch to login tab after a delay
-        setTimeout(() => setActiveTab('login'), 3000);
+        // Redirect to verify email pending page
+        const emailParam = encodeURIComponent(registerData.email);
+        setLocation(`/verify-email-pending?email=${emailParam}`);
       } else {
         setError(result.error || "Couldn't create your account. Try a different email or check your details.");
       }
