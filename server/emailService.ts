@@ -37,14 +37,23 @@ const PLATFORM_FROM_NAME = 'TradieTrack';
 
 // Get the correct base URL for emails
 const getBaseUrl = () => {
-  // Check for explicitly set app URL first
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
+  
+  // In development mode, use Replit dev domain so verification links work
+  if (!isProduction && process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
+  
+  // In production, use the explicitly set app URL
   if (process.env.VITE_APP_URL) {
     return process.env.VITE_APP_URL;
   }
-  // Use Replit dev domain if available
+  
+  // Fallback to Replit dev domain if available
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
+  
   // Fallback to localhost
   return 'http://localhost:5000';
 };
