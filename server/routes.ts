@@ -8265,7 +8265,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
-      res.json(quote);
+      
+      // Include digital signature for accepted quotes
+      let signature = null;
+      if (quote.status === 'accepted') {
+        const signatures = await db.select().from(digitalSignatures).where(
+          sql`${digitalSignatures.quoteId} = ${quote.id}`
+        ).orderBy(desc(digitalSignatures.signedAt)).limit(1);
+        
+        if (signatures.length > 0) {
+          signature = {
+            id: signatures[0].id,
+            signerName: signatures[0].signerName,
+            signatureData: signatures[0].signatureData,
+            signedAt: signatures[0].signedAt,
+            ipAddress: signatures[0].ipAddress,
+          };
+        }
+      }
+      
+      res.json({ ...quote, signature });
     } catch (error) {
       console.error("Error fetching quote:", error);
       res.status(500).json({ error: "Failed to fetch quote" });

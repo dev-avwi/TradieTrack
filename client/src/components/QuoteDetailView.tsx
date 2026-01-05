@@ -634,7 +634,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             </Button>
             <Button variant="outline" onClick={handleSaveAsPDF} className="w-full sm:w-auto" data-testid="button-save-pdf">
               <Download className="h-4 w-4 mr-2" />
-              Save as PDF
+              {quote.status === 'accepted' && quote.signature ? 'Download Signed Quote' : 'Save as PDF'}
             </Button>
             <Button variant="outline" onClick={handleShare} className="w-full sm:w-auto" data-testid="button-share">
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
@@ -910,7 +910,28 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                   <div className="text-sm" style={{ color: '#166534' }}>
                     <p>Accepted by: {quote.acceptedBy}</p>
                     <p>Date: {formatDate(quote.acceptedAt)}</p>
+                    {quote.signature?.ipAddress && (
+                      <p className="text-xs mt-1 opacity-75">IP Address: {quote.signature.ipAddress}</p>
+                    )}
                   </div>
+                  {quote.signature?.signatureData && (
+                    <div className="mt-3 pt-3 border-t border-green-300">
+                      <p className="text-xs font-medium mb-2" style={{ color: '#166534' }}>Client Signature</p>
+                      <div className="bg-white rounded-md p-2 inline-block border border-green-200">
+                        <img 
+                          src={quote.signature.signatureData.startsWith('data:') 
+                            ? quote.signature.signatureData 
+                            : `data:image/png;base64,${quote.signature.signatureData}`}
+                          alt={`Signature by ${quote.signature.signerName || quote.acceptedBy}`}
+                          className="max-h-16 max-w-[200px]"
+                          data-testid="img-quote-signature"
+                        />
+                      </div>
+                      <p className="text-xs mt-1 opacity-75" style={{ color: '#166534' }}>
+                        Signed by {quote.signature.signerName || quote.acceptedBy} on {formatDate(quote.signature.signedAt)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
