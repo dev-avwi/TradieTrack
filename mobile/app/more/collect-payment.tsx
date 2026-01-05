@@ -1456,11 +1456,11 @@ export default function CollectScreen() {
 
           {terminal.isSimulation && (
             <View style={styles.demoModeBanner}>
-              <Feather name="info" size={24} color={colors.info} />
+              <Feather name="smartphone" size={24} color={colors.info} />
               <View style={styles.demoModeText}>
-                <Text style={[styles.demoModeTitle, { color: colors.info }]}>Tap to Pay Preview Mode</Text>
+                <Text style={[styles.demoModeTitle, { color: colors.info }]}>Native App Required for NFC</Text>
                 <Text style={styles.demoModeDescription}>
-                  NFC Tap to Pay requires a native app build. QR codes, payment links, and record cash work normally.
+                  Install the TradieTrack app from the App Store or Google Play to use Tap to Pay. QR codes, payment links, and record cash work now.
                 </Text>
               </View>
             </View>
