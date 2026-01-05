@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { storage } from './storage';
 
 // ============================================
@@ -62,6 +63,16 @@ function getDaysAgo(days: number): Date {
 function generateXeroId(prefix: string): string {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   return `${prefix}-${randomNum}`;
+}
+
+function generatePaymentToken(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.randomBytes(32);
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars[bytes[i] % chars.length];
+  }
+  return token;
 }
 
 export async function fixTestUserPasswords() {
@@ -547,7 +558,7 @@ export async function createDemoUserAndData() {
     await storage.createInvoiceLineItem({ invoiceId: draftInvoice2.id, description: 'Fill Valve', quantity: '1.00', unitPrice: '40.00', total: '40.00', sortOrder: 2 });
     await storage.createInvoiceLineItem({ invoiceId: draftInvoice2.id, description: 'Labour (1 hour)', quantity: '1.00', unitPrice: '120.00', total: '120.00', sortOrder: 3 });
 
-    // SENT INVOICES (3) - 2 with Xero import
+    // SENT INVOICES (3) - 2 with Xero import - all have online payment enabled
     const sentInv1Num = await storage.generateInvoiceNumber(demoUser.id);
     const sentInvoice1 = await storage.createInvoice({
       userId: demoUser.id,
@@ -564,6 +575,8 @@ export async function createDemoUserAndData() {
       isXeroImport: true,
       xeroInvoiceId: generateXeroId('INV'),
       xeroContactId: generateXeroId('CON'),
+      allowOnlinePayment: true,
+      paymentToken: generatePaymentToken(),
     });
     await storage.createInvoiceLineItem({ invoiceId: sentInvoice1.id, description: 'High-Pressure Jetter Service', quantity: '1.00', unitPrice: '280.00', total: '280.00', sortOrder: 1 });
     await storage.createInvoiceLineItem({ invoiceId: sentInvoice1.id, description: 'Call-Out Fee', quantity: '1.00', unitPrice: '40.00', total: '40.00', sortOrder: 2 });
@@ -584,6 +597,8 @@ export async function createDemoUserAndData() {
       isXeroImport: true,
       xeroInvoiceId: generateXeroId('INV'),
       xeroContactId: generateXeroId('CON'),
+      allowOnlinePayment: true,
+      paymentToken: generatePaymentToken(),
     });
     await storage.createInvoiceLineItem({ invoiceId: sentInvoice2.id, description: 'Gas Heater Service', quantity: '1.00', unitPrice: '165.00', total: '165.00', sortOrder: 1 });
 
@@ -600,11 +615,13 @@ export async function createDemoUserAndData() {
       dueDate: getDaysFromNow(14),
       sentAt: getDaysAgo(2),
       number: sentInv3Num,
+      allowOnlinePayment: true,
+      paymentToken: generatePaymentToken(),
     });
     await storage.createInvoiceLineItem({ invoiceId: sentInvoice3.id, description: 'Thermostatic Shower Mixer', quantity: '1.00', unitPrice: '325.00', total: '325.00', sortOrder: 1 });
     await storage.createInvoiceLineItem({ invoiceId: sentInvoice3.id, description: 'Labour (1.5 hours)', quantity: '1.50', unitPrice: '106.67', total: '160.00', sortOrder: 2 });
 
-    // OVERDUE INVOICES (2)
+    // OVERDUE INVOICES (2) - also have online payment enabled
     const overdueInv1Num = await storage.generateInvoiceNumber(demoUser.id);
     const overdueInvoice1 = await storage.createInvoice({
       userId: demoUser.id,
@@ -618,6 +635,8 @@ export async function createDemoUserAndData() {
       dueDate: getDaysAgo(14),
       sentAt: getDaysAgo(35),
       number: overdueInv1Num,
+      allowOnlinePayment: true,
+      paymentToken: generatePaymentToken(),
     });
     await storage.createInvoiceLineItem({ invoiceId: overdueInvoice1.id, description: 'Garden Tap Repair', quantity: '1.00', unitPrice: '135.00', total: '135.00', sortOrder: 1 });
 
@@ -637,6 +656,8 @@ export async function createDemoUserAndData() {
       isXeroImport: true,
       xeroInvoiceId: generateXeroId('INV'),
       xeroContactId: generateXeroId('CON'),
+      allowOnlinePayment: true,
+      paymentToken: generatePaymentToken(),
     });
     await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: 'Pressure Relief Valve', quantity: '1.00', unitPrice: '80.00', total: '80.00', sortOrder: 1 });
     await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: 'Labour (1 hour)', quantity: '1.00', unitPrice: '140.00', total: '140.00', sortOrder: 2 });

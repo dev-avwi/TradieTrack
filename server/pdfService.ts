@@ -1988,7 +1988,7 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
   <div class="container">
     <div class="card">
       <div class="header">
-        ${business.logo ? `<img src="${business.logo}" alt="${business.businessName}" class="header-logo" />` : ''}
+        ${business.logoUrl ? `<img src="${business.logoUrl}" alt="${business.businessName}" class="header-logo" />` : ''}
         <h1>${business.businessName}</h1>
         <p>Quote ${quote.number}</p>
       </div>
