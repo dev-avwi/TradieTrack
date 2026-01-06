@@ -88,3 +88,9 @@ Key architectural and design decisions include:
 - **Context-Aware Quick Actions**: Job detail view shows "Running Late" vs "On My Way" button based on whether the job's scheduled time has passed
 - **Voice Note Transcription**: AI-powered voice transcription with "Add to Notes", "Copy", and "Edit" buttons for quick workflow integration
 - **Authentication Improvements**: All API calls now properly include auth headers for Safari/iOS token-based authentication
+- **Quick Actions from Dashboard**: All dashboard types now include quick action buttons for Log Hours, Photo Receipt, and Request Payment navigation
+- **First-Time User Video Walkthrough**: 6-step interactive intro walkthrough for new users with localStorage tracking and replay option in Settings
+- **Recurring Job Templates**: Full CRUD for weekly/monthly maintenance contracts with RecurringJobs.tsx management page
+- **Before/After Photo Comparison**: Side-by-side, slider, and overlay viewing modes for comparing job photos (integrated into JobPhotoGallery)
+- **Simple CRM / Lead Pipeline**: Kanban-style lead tracking from enquiry to won/lost with convert-to-client functionality (/leads page)
+- **End-of-Day Summary Email**: Daily digest email with jobs completed, invoices, quotes, payments, and action items (configurable in Automations)
