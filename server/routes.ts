@@ -20311,33 +20311,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Cannot delete platform admin accounts' });
       }
       
-      // Delete all user data in order (respecting foreign key constraints)
-      // 1. Delete sessions
-      await db.delete(sessions).where(eq(sessions.sid, userIdToDelete)).catch(() => {});
-      
-      // 2. Delete team-related data
-      await db.delete(teamMembers).where(eq(teamMembers.userId, userIdToDelete)).catch(() => {});
-      await db.delete(teamInvitations).where(eq(teamInvitations.invitedUserId, userIdToDelete)).catch(() => {});
-      
-      // 3. Delete business-related data
-      const userBusinessSettings = await db.select().from(businessSettings).where(eq(businessSettings.userId, userIdToDelete));
-      if (userBusinessSettings.length > 0) {
-        const businessId = userBusinessSettings[0].id;
-        
-        // Delete all data associated with the business
-        await db.delete(receipts).where(eq(receipts.businessId, businessId)).catch(() => {});
-        await db.delete(invoicePayments).where(eq(invoicePayments.businessId, businessId)).catch(() => {});
-        await db.delete(invoices).where(eq(invoices.businessId, businessId)).catch(() => {});
-        await db.delete(quotes).where(eq(quotes.businessId, businessId)).catch(() => {});
-        await db.delete(jobs).where(eq(jobs.businessId, businessId)).catch(() => {});
-        await db.delete(clients).where(eq(clients.businessId, businessId)).catch(() => {});
-        await db.delete(catalogItems).where(eq(catalogItems.businessId, businessId)).catch(() => {});
-        await db.delete(timesheetEntries).where(eq(timesheetEntries.businessId, businessId)).catch(() => {});
-        await db.delete(defects).where(eq(defects.businessId, businessId)).catch(() => {});
-        await db.delete(businessSettings).where(eq(businessSettings.userId, userIdToDelete)).catch(() => {});
+      // Prevent deleting the demo user
+      if (userToDelete.email === 'demo@tradietrack.app') {
+        return res.status(403).json({ error: 'Cannot delete the demo account' });
       }
       
-      // 4. Delete the user
+      // Delete team memberships first (these reference userId)
+      await db.delete(teamMembers).where(eq(teamMembers.userId, userIdToDelete)).catch(() => {});
+      
+      // Delete the user - PostgreSQL CASCADE will handle related data automatically
+      // All foreign keys in the schema use onDelete: 'cascade'
       await db.delete(users).where(eq(users.id, userIdToDelete));
       
       console.log(`Admin ${adminUserId} deleted user ${userIdToDelete} (${userToDelete.email})`);
