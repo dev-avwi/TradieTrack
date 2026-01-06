@@ -2,10 +2,33 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import { useOfflineStore } from './offline-storage';
 
-// Production API URL - fallback to production domain for App Store builds
-const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 
-  process.env.EXPO_PUBLIC_API_URL || 
-  'https://tradietrack.com';
+// Automatic API URL detection
+// - Development (Expo): Uses Replit dev URL
+// - Production (App Store): Uses production domain
+const getApiBaseUrl = (): string => {
+  // Explicit environment variable takes priority
+  if (Constants.expoConfig?.extra?.apiUrl) {
+    return Constants.expoConfig.extra.apiUrl;
+  }
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  
+  // Auto-detect based on __DEV__ flag (set by React Native/Expo)
+  if (__DEV__) {
+    // Development mode - use Replit dev server
+    // This URL is the current Replit workspace
+    return 'https://ff735932-1a5e-42dc-89e5-b025f7feea5d-00-3hwzylsjthmgp.worf.replit.dev';
+  }
+  
+  // Production builds use the production domain
+  return 'https://tradietrack.com';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Log which API URL is being used (helps debug connection issues)
+console.log(`[API] Mode: ${__DEV__ ? 'Development' : 'Production'}, URL: ${API_BASE_URL}`);
 
 export const API_URL = API_BASE_URL;
 

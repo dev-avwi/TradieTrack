@@ -84,12 +84,14 @@ Key architectural and design decisions include:
 - Tap to Pay requires Apple entitlement approval before availability
 
 ### Mobile App Development
-**API URL Configuration**:
-- Production: `https://tradietrack.com` (default in app.json)
-- Development: Set `EXPO_PUBLIC_API_URL` environment variable to Replit dev URL
-- Example: `EXPO_PUBLIC_API_URL=https://xxx.replit.dev npx expo start`
+**API URL Configuration** (Automatic Detection):
+- Development mode (`__DEV__`): Automatically uses Replit dev server URL
+- Production builds: Automatically uses `https://tradietrack.com`
+- Override: Set `EXPO_PUBLIC_API_URL` to force a specific URL
+- Console log shows: `[API] Mode: Development/Production, URL: ...`
 
 ### Recent Updates (January 2026)
+- **Mobile API Auto-Detection**: Mobile app now automatically uses Replit dev server in development mode and production URL in App Store builds - no manual configuration needed
 - **Mobile Map Team Locations Fix**: Fixed bug where mobile map was ignoring `activityStatus` from API response - now correctly displays team member status
 - **Route Permissions Fix**: Fixed critical bug where /leads and /recurring-jobs pages were redirecting to dashboard - added missing routes to PAGE_PERMISSIONS in client/src/lib/permissions.ts
 - **RecurringJobs EmptyState Fix**: Fixed React render error in RecurringJobs.tsx by passing icon as component reference instead of JSX element
