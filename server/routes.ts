@@ -17889,22 +17889,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clients = await storage.getClients(userContext.effectiveUserId);
       const clientMap = new Map(clients.map(c => [c.id, c]));
       
-      // Transform jobs to map data format - only include jobs with valid coordinates
-      const mapData = jobs
-        .filter(job => {
-          if (!job.latitude || !job.longitude) return false;
-          const lat = parseFloat(job.latitude);
-          const lng = parseFloat(job.longitude);
-          return isValidCoordinate(lat, lng);
+      // Process jobs - geocode those with addresses but no coordinates
+      const processedJobs = await Promise.all(
+        jobs.map(async (job) => {
+          let lat = job.latitude ? parseFloat(job.latitude) : null;
+          let lng = job.longitude ? parseFloat(job.longitude) : null;
+          
+          // If no valid coordinates but has address, try to geocode
+          if ((!lat || !lng || !isValidCoordinate(lat, lng)) && job.address) {
+            try {
+              const coords = await geocodeAddress(job.address);
+              if (coords) {
+                lat = coords.latitude;
+                lng = coords.longitude;
+                // Update job with coordinates for future use (fire and forget)
+                storage.updateJob(job.id, userContext.effectiveUserId, {
+                  latitude: lat.toString(),
+                  longitude: lng.toString()
+                }).catch(e => console.error(`Failed to save geocoded coords for job ${job.id}:`, e));
+              }
+            } catch (e) {
+              // Geocoding failed, skip this job for map display
+            }
+          }
+          
+          return { ...job, lat, lng };
         })
+      );
+      
+      // Transform jobs to map data format - only include jobs with valid coordinates
+      const mapData = processedJobs
+        .filter(job => job.lat && job.lng && isValidCoordinate(job.lat, job.lng))
         .map(job => {
           const client = job.clientId ? clientMap.get(job.clientId) : null;
           return {
             id: job.id,
             title: job.title,
             address: job.address || '',
-            latitude: parseFloat(job.latitude!),
-            longitude: parseFloat(job.longitude!),
+            latitude: job.lat!,
+            longitude: job.lng!,
             status: job.status,
             scheduledAt: job.scheduledAt,
             assignedTo: job.assignedToId,
@@ -20212,9 +20235,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       invoices.forEach(invoice => {
-        const paidAt = invoice.paidAt ? new Date(invoice.paidAt) : null;
-        if (paidAt && paidAt.getFullYear() === targetYear && invoice.status === 'paid') {
-          const month = paidAt.getMonth();
+        if (invoice.status !== 'paid') return;
+        
+        // Use paidAt if available, otherwise fall back to createdAt (consistent with summary)
+        const paymentDate = invoice.paidAt ? new Date(invoice.paidAt) : 
+                           invoice.createdAt ? new Date(invoice.createdAt) : null;
+        
+        if (paymentDate && paymentDate.getFullYear() === targetYear) {
+          const month = paymentDate.getMonth();
           const amount = Number(invoice.total || 0);
           monthlyRevenue[month].total += amount;
           monthlyRevenue[month].gst += amount / 11;
@@ -21307,28 +21335,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const teamMembership = await storage.getTeamMembershipByMemberId(userId);
       const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
-      // Get all presence records for this business
-      const presenceRecords = await storage.getTeamPresence(businessOwnerId);
+      // Get all team members for this business
+      const teamMembers = await storage.getTeamMembers(businessOwnerId);
       
-      // Enhance with user info
+      // Always include the business owner, plus all team members (deduplicated)
+      const memberIds = new Set<string>([businessOwnerId]);
+      teamMembers.forEach(m => {
+        if (m.memberId) memberIds.add(m.memberId);
+      });
+      const allMemberIds = Array.from(memberIds);
+      
+      // Build presence data from tradieStatus (same source as map) and locationTracking
       const presenceWithUserInfo = await Promise.all(
-        presenceRecords.map(async (presence) => {
-          const user = await storage.getUser(presence.userId);
+        allMemberIds.map(async (memberId) => {
+          const user = await storage.getUser(memberId);
+          if (!user) return null;
+          
+          // Get tradie status (this is what the map uses)
+          const tradieStatus = await storage.getTradieStatus(memberId);
+          // Get latest location as fallback
+          const latestLocation = await storage.getLatestLocationForUser(memberId);
+          // Get traditional presence record
+          const presence = await storage.getPresenceByUserId(memberId);
+          
+          // Derive activity status from tradieStatus (matches map logic)
+          let activityStatus = 'offline';
+          const lastActivity = tradieStatus?.lastSeenAt || latestLocation?.timestamp;
+          if (lastActivity) {
+            const minutesSinceActivity = (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60);
+            if (minutesSinceActivity < 15) {
+              activityStatus = tradieStatus?.activityStatus || 'online';
+            } else if (minutesSinceActivity < 60) {
+              activityStatus = 'idle';
+            }
+          }
+          
           return {
-            ...presence,
-            user: user ? {
+            id: presence?.id || memberId,
+            userId: memberId,
+            businessOwnerId,
+            status: activityStatus,
+            statusMessage: tradieStatus?.statusMessage || presence?.statusMessage || null,
+            currentJobId: tradieStatus?.currentJobId || presence?.currentJobId || null,
+            lastLocationLat: tradieStatus?.currentLatitude || (latestLocation?.latitude ? parseFloat(latestLocation.latitude) : null),
+            lastLocationLng: tradieStatus?.currentLongitude || (latestLocation?.longitude ? parseFloat(latestLocation.longitude) : null),
+            lastLocationUpdatedAt: tradieStatus?.lastSeenAt || latestLocation?.timestamp || null,
+            lastSeenAt: tradieStatus?.lastSeenAt || presence?.lastSeenAt || null,
+            user: {
               id: user.id,
               firstName: user.firstName,
               lastName: user.lastName,
               email: user.email,
               profileImageUrl: user.profileImageUrl,
               themeColor: user.themeColor,
-            } : null,
+            },
           };
         })
       );
       
-      res.json(presenceWithUserInfo);
+      res.json(presenceWithUserInfo.filter(Boolean));
     } catch (error: any) {
       console.error('Error getting team presence:', error);
       res.status(500).json({ error: error.message });
