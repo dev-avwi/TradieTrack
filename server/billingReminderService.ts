@@ -4,6 +4,7 @@ import { sendSMS as sendSms } from './twilioClient';
 import Stripe from 'stripe';
 import { PRICING } from '@shared/schema';
 import type { User, BusinessSettings } from '@shared/schema';
+import { sendPushNotification } from './pushNotifications';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20',
@@ -286,6 +287,27 @@ export async function processBillingReminders(): Promise<{
           await storage.updateBusinessSettings(settings.userId, {
             lastBillingReminderSentAt: new Date(),
           });
+          
+          // Send push notification for billing reminder
+          try {
+            const subscriptionTier = user.subscriptionTier || 'free';
+            const subscriptionStatus = settings.subscriptionStatus || 'none';
+            const isTrialing = subscriptionStatus === 'trialing';
+            const planName = subscriptionTier === 'team' ? 'Team' : 'Pro';
+            
+            await sendPushNotification({
+              userId: user.id,
+              type: 'general',
+              title: isTrialing ? 'Trial Ending Soon' : 'Billing Reminder',
+              body: isTrialing 
+                ? `Your ${planName} trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`
+                : `Your ${planName} subscription renews in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`,
+              data: { type: 'billing_reminder', daysUntilBilling },
+            });
+            console.log(`[PushNotification] Sent billing reminder notification to user ${user.id}`);
+          } catch (pushError) {
+            console.error('[PushNotification] Error sending billing reminder notification:', pushError);
+          }
         }
 
       } catch (error: any) {

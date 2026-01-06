@@ -1,5 +1,6 @@
 import { storage } from './storage';
 import { sendInvoiceEmail } from './emailService';
+import { notifyInvoiceOverdue } from './pushNotifications';
 
 // SMS disabled for beta - stub function
 const sendSMS = async (options: { to: string; message: string }) => {
@@ -174,6 +175,14 @@ export async function processOverdueReminders(): Promise<ReminderResult[]> {
           emailSent,
           smsSent,
         });
+        
+        // Send push notification for overdue invoice
+        try {
+          await notifyInvoiceOverdue(user.id, invoice.number, invoice.id, daysPastDue);
+          console.log(`[PushNotification] Sent overdue invoice notification for invoice ${invoice.number} to user ${user.id}`);
+        } catch (pushError) {
+          console.error('[PushNotification] Error sending overdue invoice notification:', pushError);
+        }
         
         results.push({
           invoiceId: invoice.id,

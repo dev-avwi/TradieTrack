@@ -97,7 +97,7 @@ import {
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted } from "./notifications";
-import { notifyJobAssigned, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected } from "./pushNotifications";
+import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { checkTwilioAvailability, sendSMS } from "./twilioClient";
@@ -157,6 +157,33 @@ function formatRelativeTime(date: Date | string): string {
     return `${diffDays} days ago`;
   } else {
     return past.toLocaleDateString();
+  }
+}
+
+// Helper function to resolve job.assignedTo to a valid user ID
+// The assignedTo field can contain either a user ID or a team member record ID
+async function resolveAssigneeUserId(assignedTo: string | null | undefined, businessOwnerId: string): Promise<string | null> {
+  if (!assignedTo) return null;
+  
+  try {
+    // First try to look up as a direct user ID
+    const directUser = await storage.getUser(assignedTo);
+    if (directUser) {
+      return directUser.id;
+    }
+    
+    // If not found, try to find a team member with this ID and get their user ID
+    const teamMembers = await storage.getTeamMembers(businessOwnerId);
+    const member = teamMembers.find((m: any) => m.id === assignedTo || m.memberId === assignedTo);
+    if (member?.memberId) {
+      return member.memberId; // memberId references users.id
+    }
+    
+    console.log(`[resolveAssigneeUserId] Could not resolve assignedTo: ${assignedTo}`);
+    return null;
+  } catch (error) {
+    console.error('[resolveAssigneeUserId] Error resolving assignee:', error);
+    return null;
   }
 }
 
@@ -7580,6 +7607,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Trigger automation rules for job status change
         processStatusChangeAutomation(effectiveUserId, 'job', job.id, existingJob.status, status)
           .catch(err => console.error('[Automations] Error processing job status change:', err));
+        
+        // Send push notification for job status change
+        try {
+          const statusDescription = status === 'in_progress' ? 'started' : 
+                                   status === 'done' ? 'completed' : 
+                                   status === 'invoiced' ? 'invoiced' : 
+                                   `changed to ${status}`;
+          
+          // Notify job owner if status changed by someone else
+          if (req.userId !== effectiveUserId) {
+            await notifyJobUpdate(effectiveUserId, job.title, job.id, statusDescription);
+            console.log(`[PushNotification] Sent job update notification to owner ${effectiveUserId}`);
+          }
+          
+          // Notify assignee if they exist and are different from who made the change
+          // Resolve assignedTo to proper user ID (it may be a team member record ID)
+          const assigneeUserId = await resolveAssigneeUserId(job.assignedTo, effectiveUserId);
+          if (assigneeUserId && assigneeUserId !== req.userId && assigneeUserId !== effectiveUserId) {
+            await notifyJobUpdate(assigneeUserId, job.title, job.id, statusDescription);
+            console.log(`[PushNotification] Sent job update notification to assignee ${assigneeUserId}`);
+          }
+        } catch (pushError) {
+          console.error('[PushNotification] Error sending job status update notification:', pushError);
+        }
       }
       
       res.json(job);
@@ -7646,9 +7697,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found" });
       }
       
+      // Resolve assignedTo to proper user ID for notifications
+      // (assignedTo may be a team member record ID or a user ID)
+      const assigneeUserId = await resolveAssigneeUserId(assignedTo, userContext.effectiveUserId) || assignedTo;
+      
       // Create notification for the assigned team member
       await storage.createNotification({
-        userId: assignedTo,
+        userId: assigneeUserId,
         type: 'job_assigned',
         title: 'New Job Assigned',
         message: `You have been assigned to: ${job.title}`,
@@ -7657,11 +7712,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Send push notification to assigned team member
-      await notifyJobAssigned(assignedTo, job.title, job.id);
+      await notifyJobAssigned(assigneeUserId, job.title, job.id);
       
       // Send email notification to assigned team member
       try {
-        const assigneeUser = await storage.getUser(assignedTo);
+        const assigneeUser = await storage.getUser(assigneeUserId);
         const assigner = await storage.getUser(req.userId);
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         
@@ -16565,11 +16620,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enrich with user info
       const user = await storage.getUser(userId);
+      const senderName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown';
       const enrichedMessage = {
         ...message,
-        senderName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown',
+        senderName,
         senderAvatar: user?.profileImageUrl,
       };
+      
+      // Send push notifications to other job chat participants
+      try {
+        const messagePreview = req.body.message || '';
+        
+        // Notify job owner if they didn't send the message
+        if (job.userId !== userId) {
+          await notifyTeamMessage(job.userId, senderName, messagePreview, 'job');
+          console.log(`[PushNotification] Sent job chat notification to owner ${job.userId}`);
+        }
+        
+        // Notify assigned user if they exist and didn't send the message
+        // Resolve assignedTo to proper user ID (it may be a team member record ID)
+        const assigneeUserId = await resolveAssigneeUserId(job.assignedTo, job.userId);
+        if (assigneeUserId && assigneeUserId !== userId && assigneeUserId !== job.userId) {
+          await notifyTeamMessage(assigneeUserId, senderName, messagePreview, 'job');
+          console.log(`[PushNotification] Sent job chat notification to assignee ${assigneeUserId}`);
+        }
+      } catch (pushError) {
+        console.error('[PushNotification] Error sending job chat notification:', pushError);
+      }
       
       res.json(enrichedMessage);
     } catch (error: any) {
@@ -17521,11 +17598,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enrich with user info
       const user = await storage.getUser(userId);
+      const senderName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown';
       const enrichedMessage = {
         ...message,
-        senderName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown',
+        senderName,
         senderAvatar: user?.profileImageUrl,
       };
+      
+      // Send push notifications to all team members except sender
+      try {
+        const messagePreview = req.body.message || '';
+        const teamMembers = await storage.getTeamMembers(context.businessOwnerId);
+        
+        // Notify business owner if they didn't send the message
+        if (context.businessOwnerId !== userId) {
+          await notifyTeamMessage(context.businessOwnerId, senderName, messagePreview, 'team');
+          console.log(`[PushNotification] Sent team chat notification to owner ${context.businessOwnerId}`);
+        }
+        
+        // Notify active team members except sender
+        for (const member of teamMembers) {
+          if (member.memberId !== userId && member.inviteStatus === 'accepted' && member.isActive) {
+            await notifyTeamMessage(member.memberId, senderName, messagePreview, 'team');
+            console.log(`[PushNotification] Sent team chat notification to member ${member.memberId}`);
+          }
+        }
+      } catch (pushError) {
+        console.error('[PushNotification] Error sending team chat notification:', pushError);
+      }
       
       res.json(enrichedMessage);
     } catch (error: any) {
