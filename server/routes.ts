@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { z } from "zod";
 import multer from "multer";
 import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { AuthService } from "./auth";
 import { setupGoogleAuth } from "./googleAuth";
@@ -112,6 +113,35 @@ import * as myobService from "./myobService";
 
 // Environment check for development-only endpoints
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Rate limiting configurations for security-sensitive endpoints
+// Strict limiter for auth endpoints (prevent brute force attacks)
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: { error: 'Too many attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+});
+
+// Less strict limiter for password reset (prevent email spam)
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 attempts per hour
+  message: { error: 'Too many password reset requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Limiter for payment endpoints (prevent abuse)
+const paymentRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute
+  message: { error: 'Too many payment requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Helper function to log activity events for dashboard feed
 type ActivityType = 'job_created' | 'job_status_changed' | 'job_completed' | 'job_scheduled' | 'job_started' |
@@ -850,7 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Registration endpoint
-  app.post("/api/auth/register", async (req: any, res) => {
+  app.post("/api/auth/register", authRateLimiter, async (req: any, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
       // Convert nullable fields to undefined for AuthService
@@ -893,7 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Login endpoint
-  app.post("/api/auth/login", async (req: any, res) => {
+  app.post("/api/auth/login", authRateLimiter, async (req: any, res) => {
     try {
       const loginData = loginSchema.parse(req.body);
       const result = await AuthService.login(loginData);
@@ -928,7 +958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email-based passwordless authentication endpoints
-  app.post("/api/auth/request-code", async (req: any, res) => {
+  app.post("/api/auth/request-code", authRateLimiter, async (req: any, res) => {
     try {
       const { email } = requestLoginCodeSchema.parse(req.body);
       
@@ -969,7 +999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/verify-code", async (req: any, res) => {
+  app.post("/api/auth/verify-code", authRateLimiter, async (req: any, res) => {
     try {
       const { email, code } = verifyLoginCodeSchema.parse(req.body);
       
@@ -1185,7 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/resend-verification", async (req: any, res) => {
+  app.post("/api/auth/resend-verification", passwordResetLimiter, async (req: any, res) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -1219,7 +1249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Password Reset - Request reset email
-  app.post("/api/auth/forgot-password", async (req: any, res) => {
+  app.post("/api/auth/forgot-password", passwordResetLimiter, async (req: any, res) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -1274,7 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mobile Google Sign-In endpoint (accepts Google ID token from mobile app)
-  app.post("/api/auth/google/mobile", async (req: any, res) => {
+  app.post("/api/auth/google/mobile", authRateLimiter, async (req: any, res) => {
     try {
       const { idToken, accessToken, email, firstName, lastName, googleId, profileImageUrl } = req.body;
       
@@ -1333,7 +1363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Apple Sign In endpoint (accepts Apple identity token from mobile app)
-  app.post("/api/auth/apple", async (req: any, res) => {
+  app.post("/api/auth/apple", authRateLimiter, async (req: any, res) => {
     try {
       const { identityToken, fullName, email } = req.body;
       
@@ -10465,7 +10495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     clientId: z.string().uuid().optional(),
   });
 
-  app.post("/api/payment-links", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  app.post("/api/payment-links", paymentRateLimiter, requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       // Validate request body with Zod
       const validationResult = paymentLinkSchema.safeParse(req.body);
@@ -11370,7 +11400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a payment intent for terminal payment
-  app.post("/api/terminal/payment-intent", requireAuth, async (req: any, res) => {
+  app.post("/api/terminal/payment-intent", paymentRateLimiter, requireAuth, async (req: any, res) => {
     try {
       const { amount, description, clientId, invoiceId, jobId } = req.body;
       
@@ -15301,7 +15331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create payment intent for customer invoice payment (with platform fee)
-  app.post("/api/stripe-connect/create-payment-intent", requireAuth, async (req: any, res) => {
+  app.post("/api/stripe-connect/create-payment-intent", paymentRateLimiter, requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { invoiceId } = req.body;
@@ -15874,7 +15904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== STRIPE TERMINAL (TAP TO PAY) ROUTES =====
 
   // Create Terminal connection token for mobile Tap to Pay
-  app.post("/api/stripe/terminal-connection-token", requireAuth, async (req: any, res) => {
+  app.post("/api/stripe/terminal-connection-token", paymentRateLimiter, requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const stripe = await getUncachableStripeClient();
@@ -15949,7 +15979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create payment intent for Terminal (Tap to Pay)
-  app.post("/api/stripe/create-terminal-payment-intent", requireAuth, async (req: any, res) => {
+  app.post("/api/stripe/create-terminal-payment-intent", paymentRateLimiter, requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const stripe = await getUncachableStripeClient();
