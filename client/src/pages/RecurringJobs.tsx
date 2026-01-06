@@ -262,7 +262,7 @@ export default function RecurringJobs() {
 
       {contracts.length === 0 ? (
         <EmptyState
-          icon={<Repeat className="h-12 w-12" />}
+          icon={Repeat}
           title="No recurring jobs yet"
           description="Set up recurring jobs for regular maintenance, inspections, or any work that repeats on a schedule."
           action={

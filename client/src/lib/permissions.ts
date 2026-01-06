@@ -116,6 +116,12 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Automations - owner only
   { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
   
+  // Leads / CRM - owner/solo_owner/manager
+  { path: '/leads', label: 'Leads', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  
+  // Recurring Jobs - owner/solo_owner/manager
+  { path: '/recurring-jobs', label: 'Recurring Jobs', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  
   // Custom Forms - owner/manager only (redirects to /templates)
   { path: '/custom-forms', label: 'Forms', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   

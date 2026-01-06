@@ -84,6 +84,8 @@ Key architectural and design decisions include:
 - Tap to Pay requires Apple entitlement approval before availability
 
 ### Recent Updates (January 2026)
+- **Route Permissions Fix**: Fixed critical bug where /leads and /recurring-jobs pages were redirecting to dashboard - added missing routes to PAGE_PERMISSIONS in client/src/lib/permissions.ts
+- **RecurringJobs EmptyState Fix**: Fixed React render error in RecurringJobs.tsx by passing icon as component reference instead of JSX element
 - **SMS Delivery for Documents**: Quotes, invoices, and receipts can now be sent via SMS in addition to email, with a unified SendDocumentModal component
 - **Context-Aware Quick Actions**: Job detail view shows "Running Late" vs "On My Way" button based on whether the job's scheduled time has passed
 - **Voice Note Transcription**: AI-powered voice transcription with "Add to Notes", "Copy", and "Edit" buttons for quick workflow integration
