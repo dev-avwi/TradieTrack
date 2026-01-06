@@ -289,6 +289,7 @@ export async function updateVoiceNoteTitle(
 }
 
 // AI Transcription using OpenAI Whisper
+// Note: Whisper API requires direct OpenAI API key (not supported by Replit AI Integration)
 export async function transcribeVoiceNote(
   voiceNoteId: string,
   userId: string
@@ -296,9 +297,18 @@ export async function transcribeVoiceNote(
   try {
     const { default: OpenAI } = await import('openai');
     
+    // Check for direct OpenAI API key first (required for Whisper audio transcription)
+    // Replit AI Integration doesn't support audio endpoints
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return { 
+        success: false, 
+        error: 'Voice transcription requires an OpenAI API key. Please add OPENAI_API_KEY in Settings > Secrets to enable this feature.' 
+      };
+    }
+    
     const openai = new OpenAI({
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+      apiKey: apiKey
     });
     
     // Get the voice note from database
