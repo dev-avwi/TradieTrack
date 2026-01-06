@@ -71,8 +71,8 @@ Key architectural and design decisions include:
 
 **Mobile App**:
 - React Native/Expo app with 80 screens
-- Tap to Pay on iPhone - Pending Apple entitlement approval (1-2 days for dev, 1-3 weeks for production)
-- Can publish to App Store without Tap to Pay initially, add via update later
+- Tap to Pay on iPhone - Apple entitlement APPROVED (January 2026)
+- Ready for App Store submission
 
 **Pre-publish Cleanup Completed**:
 - Removed dead mock data files

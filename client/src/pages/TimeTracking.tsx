@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { 
   TimerWidget, 
@@ -22,8 +24,14 @@ import {
   RefreshCw,
   AlertCircle,
   TrendingUp,
-  Briefcase
+  Briefcase,
+  Coffee,
+  DollarSign,
+  Timer,
+  User
 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { format, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { 
   BarChart, 
@@ -474,6 +482,50 @@ function TimeTrackingAnalytics() {
 // Main Time Tracking Page
 export default function TimeTrackingPage() {
   const [activeTab, setActiveTab] = useState('timer');
+  const [showActiveTimers, setShowActiveTimers] = useState(false);
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+
+  // Query for active timers
+  const { data: activeTimers = [], refetch: refetchTimers } = useQuery<any[]>({
+    queryKey: ['/api/time-entries/active'],
+  });
+
+  // Start break timer mutation
+  const startBreakMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/time-entries', {
+        description: 'Break',
+        isBreak: true,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      toast({
+        title: "Break Started",
+        description: "Your break timer has started. Take a well-deserved rest!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to start break timer",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+    toast({
+      title: "Refreshed",
+      description: "Time tracking data has been updated.",
+    });
+  };
 
   return (
     <PageShell data-testid="page-time-tracking">
@@ -482,7 +534,7 @@ export default function TimeTrackingPage() {
         subtitle="Track your work hours and manage timesheets"
         action={
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" data-testid="button-refresh">
+            <Button variant="outline" size="sm" data-testid="button-refresh" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" data-testid="button-filter">
@@ -525,17 +577,41 @@ export default function TimeTrackingPage() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start" data-testid="button-start-break">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Start Break Timer
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  data-testid="button-start-break"
+                  onClick={() => startBreakMutation.mutate()}
+                  disabled={startBreakMutation.isPending}
+                >
+                  <Coffee className="h-4 w-4 mr-2" />
+                  {startBreakMutation.isPending ? 'Starting...' : 'Start Break Timer'}
                 </Button>
-                <Button variant="outline" className="w-full justify-start" data-testid="button-edit-rates">
-                  <BarChart3 className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  data-testid="button-edit-rates"
+                  onClick={() => navigate('/settings?tab=rates')}
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
                   Edit Hourly Rates
                 </Button>
-                <Button variant="outline" className="w-full justify-start" data-testid="button-view-active">
-                  <Calendar className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start" 
+                  data-testid="button-view-active"
+                  onClick={() => {
+                    refetchTimers();
+                    setShowActiveTimers(true);
+                  }}
+                >
+                  <Timer className="h-4 w-4 mr-2" />
                   View All Active Timers
+                  {activeTimers.length > 0 && (
+                    <Badge variant="secondary" className="ml-auto">
+                      {activeTimers.length}
+                    </Badge>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -556,6 +632,62 @@ export default function TimeTrackingPage() {
           <TimeTrackingAnalytics />
         </TabsContent>
       </Tabs>
+
+      {/* Active Timers Dialog */}
+      <Dialog open={showActiveTimers} onOpenChange={setShowActiveTimers}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5" />
+              Active Timers
+            </DialogTitle>
+            <DialogDescription>
+              Currently running timers across all jobs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {activeTimers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Timer className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>No active timers</p>
+                <p className="text-sm mt-1">Start a timer to track your work</p>
+              </div>
+            ) : (
+              activeTimers.map((timer: any) => (
+                <Card key={timer.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{timer.description || 'Untitled'}</p>
+                      {timer.jobTitle && (
+                        <p className="text-sm text-muted-foreground truncate">{timer.jobTitle}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={timer.isBreak ? "secondary" : "default"} className="text-xs">
+                          {timer.isBreak ? 'Break' : 'Working'}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Started {format(new Date(timer.startTime), 'h:mm a')}
+                        </span>
+                      </div>
+                    </div>
+                    {timer.user && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="h-3 w-3" />
+                        {timer.user.firstName || timer.user.email?.split('@')[0]}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowActiveTimers(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
