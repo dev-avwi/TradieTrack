@@ -1221,13 +1221,16 @@ export default function InvoiceDetailScreen() {
               )}
               <Text style={styles.quickActionText}>{isDownloadingPdf ? 'Generating...' : 'PDF'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.quickAction}
-              onPress={() => isPaid ? router.push(`/more/receipt/new?invoiceId=${id}`) : setShowTemplateSelector(true)}
-            >
-              <Feather name={isPaid ? "receipt" : "layout"} size={20} color={colors.primary} />
-              <Text style={styles.quickActionText}>{isPaid ? "Receipt" : "Template"}</Text>
-            </TouchableOpacity>
+            {/* Only show Template for non-paid invoices - receipt viewing is in primary actions */}
+            {!isPaid && (
+              <TouchableOpacity 
+                style={styles.quickAction}
+                onPress={() => setShowTemplateSelector(true)}
+              >
+                <Feather name="layout" size={20} color={colors.primary} />
+                <Text style={styles.quickActionText}>Template</Text>
+              </TouchableOpacity>
+            )}
             {invoice.status === 'draft' && (
               <TouchableOpacity 
                 style={styles.quickAction}
