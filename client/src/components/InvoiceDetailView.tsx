@@ -18,7 +18,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
-import EmailComposeModal from "./EmailComposeModal";
+import SendDocumentModal from "./SendDocumentModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 import DemoPaymentSimulator from "./DemoPaymentSimulator";
 import type { BusinessTemplate } from "@shared/schema";
@@ -1466,15 +1466,16 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
         </Dialog>
       )}
 
-      {/* Email Compose Modal with PDF attachment */}
+      {/* Send Document Modal with email/SMS support */}
       {invoice && client && (
-        <EmailComposeModal
+        <SendDocumentModal
           isOpen={showEmailCompose}
           onClose={() => setShowEmailCompose(false)}
           type="invoice"
           documentId={invoiceId}
           clientName={client.name || ''}
           clientEmail={client.email || ''}
+          clientPhone={client?.phone}
           documentNumber={invoice.number || invoice.id.slice(0, 8)}
           documentTitle={invoice.title || 'Invoice'}
           total={invoice.total || '0'}

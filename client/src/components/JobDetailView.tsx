@@ -573,6 +573,13 @@ export default function JobDetailView({
     deleteJobMutation.mutate();
   };
 
+  // Helper to check if job is overdue (past scheduled time)
+  const isJobOverdue = (): boolean => {
+    if (!job?.scheduledAt) return false;
+    const scheduledTime = new Date(job.scheduledAt);
+    return currentTime > scheduledTime;
+  };
+
   // On My Way mutation - sends SMS to client
   const onMyWayMutation = useMutation({
     mutationFn: async () => {
@@ -581,6 +588,25 @@ export default function JobDetailView({
     onSuccess: () => {
       toast({
         title: "On My Way notification sent to client",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send notification",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Running Late mutation - sends SMS to client when past scheduled time
+  const runningLateMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/jobs/${jobId}/running-late`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Running Late notification sent to client",
       });
     },
     onError: (error: any) => {
@@ -896,68 +922,97 @@ export default function JobDetailView({
           </div>
         )}
 
-        {/* On My Way Quick Action - only for scheduled/in_progress jobs with a client */}
-        {(job.status === 'scheduled' || job.status === 'in_progress') && job.clientId && (
-          <div 
-            className={`rounded-xl p-4 border ${twilioConnected ? 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30' : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'}`}
-            data-testid="banner-on-my-way"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${twilioConnected ? 'bg-blue-200 dark:bg-blue-800' : 'bg-amber-200 dark:bg-amber-800'}`}>
-                  {twilioConnected ? (
-                    <Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  ) : (
-                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  )}
+        {/* On My Way / Running Late Quick Action - only for scheduled/in_progress jobs with a client */}
+        {(job.status === 'scheduled' || job.status === 'in_progress') && job.clientId && (() => {
+          const overdue = isJobOverdue();
+          const activeMutation = overdue ? runningLateMutation : onMyWayMutation;
+          
+          return (
+            <div 
+              className={`rounded-xl p-4 border ${
+                !twilioConnected 
+                  ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
+                  : overdue
+                    ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
+                    : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30'
+              }`}
+              data-testid={overdue ? "banner-running-late" : "banner-on-my-way"}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${
+                    !twilioConnected
+                      ? 'bg-amber-200 dark:bg-amber-800'
+                      : overdue
+                        ? 'bg-amber-200 dark:bg-amber-800'
+                        : 'bg-blue-200 dark:bg-blue-800'
+                  }`}>
+                    {!twilioConnected ? (
+                      <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    ) : overdue ? (
+                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    ) : (
+                      <Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    )}
+                  </div>
+                  <div>
+                    {!twilioConnected ? (
+                      <>
+                        <p className="font-semibold text-amber-700 dark:text-amber-300">SMS Not Connected</p>
+                        <p className="text-sm text-muted-foreground">Connect Twilio in Settings to text clients</p>
+                      </>
+                    ) : overdue ? (
+                      <>
+                        <p className="font-semibold text-amber-700 dark:text-amber-300">Running behind schedule?</p>
+                        <p className="text-sm text-muted-foreground">Let the client know you're running late</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
+                        <p className="text-sm text-muted-foreground">Let the client know you're on your way</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  {twilioConnected ? (
-                    <>
-                      <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
-                      <p className="text-sm text-muted-foreground">Let the client know you're on your way</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold text-amber-700 dark:text-amber-300">SMS Not Connected</p>
-                      <p className="text-sm text-muted-foreground">Connect Twilio in Settings to text clients</p>
-                    </>
-                  )}
-                </div>
+                {twilioConnected ? (
+                  <Button
+                    onClick={() => activeMutation.mutate()}
+                    disabled={activeMutation.isPending}
+                    className={`shrink-0 ${overdue ? 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/50' : ''}`}
+                    variant="outline"
+                    data-testid={overdue ? "button-running-late" : "button-on-my-way"}
+                  >
+                    {activeMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : overdue ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2 text-amber-600" />
+                        Running Late
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="h-4 w-4 mr-2" />
+                        On My Way
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => navigate('/integrations')}
+                    className="shrink-0"
+                    variant="outline"
+                    data-testid="button-setup-twilio"
+                  >
+                    Set Up SMS
+                  </Button>
+                )}
               </div>
-              {twilioConnected ? (
-                <Button
-                  onClick={() => onMyWayMutation.mutate()}
-                  disabled={onMyWayMutation.isPending}
-                  className="shrink-0"
-                  variant="outline"
-                  data-testid="button-on-my-way"
-                >
-                  {onMyWayMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Navigation className="h-4 w-4 mr-2" />
-                      On My Way
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => navigate('/integrations')}
-                  className="shrink-0"
-                  variant="outline"
-                  data-testid="button-setup-twilio"
-                >
-                  Set Up SMS
-                </Button>
-              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <JobFlowWizard
           status={job.status}
@@ -1425,7 +1480,11 @@ export default function JobDetailView({
         <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         {/* Voice Notes - show for ALL job statuses so team sync works */}
-        <JobVoiceNotes jobId={jobId} canUpload={job.status !== 'invoiced'} />
+        <JobVoiceNotes 
+          jobId={jobId} 
+          canUpload={job.status !== 'invoiced'} 
+          existingNotes={job.notes}
+        />
 
         {/* Uploaded Documents - external quotes, invoices, PDFs */}
         <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />

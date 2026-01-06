@@ -10,7 +10,7 @@ import { queryClient, getSessionToken } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useIntegrationHealth, isEmailReady } from "@/hooks/use-integration-health";
 import StatusBadge from "./StatusBadge";
-import EmailComposeModal from "./EmailComposeModal";
+import SendDocumentModal from "./SendDocumentModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
 import type { BusinessTemplate } from "@shared/schema";
 
@@ -946,15 +946,16 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
         </div>
       </div>
 
-      {/* Email Compose Modal with PDF attachment */}
+      {/* Send Document Modal with email/SMS support */}
       {quote && client && (
-        <EmailComposeModal
+        <SendDocumentModal
           isOpen={showEmailCompose}
           onClose={() => setShowEmailCompose(false)}
           type="quote"
           documentId={quoteId}
           clientName={client.name || ''}
           clientEmail={client.email || ''}
+          clientPhone={client?.phone}
           documentNumber={quote.number || quote.id.slice(0, 8)}
           documentTitle={quote.title || 'Quote'}
           total={quote.total || '0'}

@@ -7851,6 +7851,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send "Running Late" notification to client
+  app.post("/api/jobs/:id/running-late", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (!job.clientId) {
+        return res.status(400).json({ error: "Job has no associated client" });
+      }
+
+      const client = await storage.getClient(job.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      if (!client.phone) {
+        return res.status(400).json({ error: "Client has no phone number for SMS notification" });
+      }
+
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const businessName = business?.businessName || 'Your tradesperson';
+      const user = await storage.getUser(req.userId);
+      const tradieName = user?.firstName || businessName;
+
+      const message = `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - will be there as soon as possible.`;
+      
+      // Send SMS via shared Twilio client (supports connector and env vars)
+      const smsResult = await sendSMS({
+        to: client.phone,
+        message: message
+      });
+
+      // Log activity - handles both real SMS and demo mode
+      await logActivity(
+        userContext.effectiveUserId,
+        'job_started',
+        `Running Late - ${job.title || 'Job'}`,
+        smsResult.simulated 
+          ? `Running Late notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`
+          : `Running Late SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
+        'job',
+        job.id,
+        { 
+          clientName: client.firstName, 
+          clientPhone: client.phone,
+          demoMode: smsResult.simulated || false
+        }
+      );
+
+      if (!smsResult.success && !smsResult.simulated) {
+        return res.status(500).json({ error: `Failed to send SMS: ${smsResult.error || 'Unknown error'}` });
+      }
+
+      res.json({ 
+        success: true, 
+        message: smsResult.simulated ? 'Running Late logged (SMS not configured)' : 'Running Late notification sent',
+        demoMode: smsResult.simulated || false
+      });
+    } catch (error: any) {
+      console.error("Error sending running-late notification:", error);
+      res.status(500).json({ error: error.message || "Failed to send notification" });
+    }
+  });
+
   // Quick Collect Payment - collect payment at job site without full invoice workflow
   app.post("/api/jobs/:id/quick-collect", requireAuth, async (req: any, res) => {
     try {
@@ -8502,6 +8569,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return handleQuoteEmailWithPDF(req, res, storage);
   });
 
+  // Send quote via SMS
+  app.post("/api/quotes/:id/send-sms", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { sendSmsToClient } = await import('./services/smsService');
+      const { smsTemplates } = await import('./twilioClient');
+      
+      const quote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      const client = await storage.getClient(quote.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      if (!client.phone) {
+        return res.status(400).json({ error: "Client does not have a phone number. Please add a phone number to the client record." });
+      }
+      
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const businessName = businessSettings?.businessName || 'Your tradie';
+      
+      // Ensure quote has acceptance token for public link
+      let acceptanceToken = quote.acceptanceToken;
+      if (!acceptanceToken) {
+        const { nanoid } = await import('nanoid');
+        acceptanceToken = nanoid(12);
+        await storage.updateQuote(req.params.id, userContext.effectiveUserId, { acceptanceToken });
+      }
+      
+      // Build public URL and message
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const publicUrl = `${baseUrl}/q/${acceptanceToken}`;
+      
+      const message = `${smsTemplates.quoteReady(client.name, businessName, quote.number || quote.id.slice(0, 8))} View: ${publicUrl}`;
+      
+      // Send SMS
+      const smsMessage = await sendSmsToClient({
+        businessOwnerId: userContext.effectiveUserId,
+        clientId: client.id,
+        clientPhone: client.phone,
+        clientName: client.name,
+        jobId: quote.jobId || undefined,
+        message,
+        senderUserId: req.userId,
+      });
+      
+      // Update quote status to sent if it was draft
+      if (quote.status === 'draft') {
+        await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
+          status: 'sent',
+          sentAt: new Date(),
+        });
+      }
+      
+      // Log activity for SMS sent
+      await logActivity(
+        userContext.effectiveUserId,
+        'quote_sent',
+        `Quote ${quote.number || quote.id} sent via SMS`,
+        `SMS sent to ${client.name} (${client.phone})`,
+        'quote',
+        quote.id,
+        { deliveryMethod: 'sms', clientPhone: client.phone, smsMessageId: smsMessage.id }
+      );
+      
+      res.json({ 
+        success: true, 
+        message: `Quote SMS sent to ${client.phone}`,
+        smsMessageId: smsMessage.id,
+        publicUrl,
+      });
+    } catch (error: any) {
+      console.error("Error sending quote SMS:", error);
+      res.status(500).json({ error: error.message || "Failed to send quote SMS" });
+    }
+  });
+
   // Accept quote (team-aware) - Enhanced to update linked job and log activity
   app.post("/api/quotes/:id/accept", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
@@ -9079,6 +9226,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/invoices/:id/email-with-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     const { handleInvoiceEmailWithPDF } = await import('./emailRoutes');
     return handleInvoiceEmailWithPDF(req, res, storage);
+  });
+
+  // Send invoice via SMS
+  app.post("/api/invoices/:id/send-sms", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { sendSmsToClient } = await import('./services/smsService');
+      const { smsTemplates } = await import('./twilioClient');
+      
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      const client = await storage.getClient(invoice.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      if (!client.phone) {
+        return res.status(400).json({ error: "Client does not have a phone number. Please add a phone number to the client record." });
+      }
+      
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const businessName = businessSettings?.businessName || 'Your tradie';
+      
+      // Ensure invoice has payment token for public link
+      let paymentToken = invoice.paymentToken;
+      if (!paymentToken) {
+        const bytes = randomBytes(16);
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        paymentToken = '';
+        for (let i = 0; i < 16; i++) {
+          paymentToken += chars[bytes[i] % chars.length];
+        }
+        await storage.updateInvoice(req.params.id, userContext.effectiveUserId, { 
+          paymentToken,
+          allowOnlinePayment: true 
+        });
+      }
+      
+      // Build public URL and message
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const publicUrl = `${baseUrl}/pay/${paymentToken}`;
+      const amount = `$${parseFloat(String(invoice.total || '0')).toFixed(2)}`;
+      
+      const message = `${smsTemplates.invoiceSent(client.name, businessName, invoice.number || invoice.id.slice(0, 8), amount)} Pay: ${publicUrl}`;
+      
+      // Send SMS
+      const smsMessage = await sendSmsToClient({
+        businessOwnerId: userContext.effectiveUserId,
+        clientId: client.id,
+        clientPhone: client.phone,
+        clientName: client.name,
+        jobId: invoice.jobId || undefined,
+        message,
+        senderUserId: req.userId,
+      });
+      
+      // Update invoice status to sent if it was draft
+      if (invoice.status === 'draft') {
+        await storage.updateInvoice(req.params.id, userContext.effectiveUserId, {
+          status: 'sent',
+          sentAt: new Date(),
+        });
+      }
+      
+      // Log activity for SMS sent
+      await logActivity(
+        userContext.effectiveUserId,
+        'invoice_sent',
+        `Invoice ${invoice.number || invoice.id} sent via SMS`,
+        `SMS sent to ${client.name} (${client.phone})`,
+        'invoice',
+        invoice.id,
+        { deliveryMethod: 'sms', clientPhone: client.phone, smsMessageId: smsMessage.id, amount }
+      );
+      
+      res.json({ 
+        success: true, 
+        message: `Invoice SMS sent to ${client.phone}`,
+        smsMessageId: smsMessage.id,
+        publicUrl,
+      });
+    } catch (error: any) {
+      console.error("Error sending invoice SMS:", error);
+      res.status(500).json({ error: error.message || "Failed to send invoice SMS" });
+    }
   });
 
   app.post("/api/invoices/:id/mark-paid", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
@@ -11200,6 +11435,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending receipt email:", error);
       res.status(500).json({ error: "Failed to send receipt email" });
+    }
+  });
+
+  // Send receipt via SMS
+  app.post("/api/receipts/:id/send-sms", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { sendSmsToClient } = await import('./services/smsService');
+      const { smsTemplates } = await import('./twilioClient');
+      
+      const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found" });
+      }
+      
+      // Get client info - either from receipt.clientId or find via invoice
+      let client = null;
+      let clientPhone: string | null = null;
+      let clientName: string | null = null;
+      
+      if (receipt.clientId) {
+        client = await storage.getClient(receipt.clientId, effectiveUserId);
+        clientPhone = client?.phone || null;
+        clientName = client?.name || null;
+      }
+      
+      // If no client phone from direct link, try via invoice
+      if (!clientPhone && receipt.invoiceId) {
+        const invoice = await storage.getInvoice(receipt.invoiceId, effectiveUserId);
+        if (invoice?.clientId) {
+          client = await storage.getClient(invoice.clientId, effectiveUserId);
+          clientPhone = client?.phone || null;
+          clientName = client?.name || null;
+        }
+      }
+      
+      if (!clientPhone) {
+        return res.status(400).json({ error: "No phone number found for this receipt's client. Please add a phone number to the client record." });
+      }
+      
+      const businessSettings = await storage.getBusinessSettings(effectiveUserId);
+      const businessName = businessSettings?.businessName || 'Your tradie';
+      
+      const amount = `$${parseFloat(receipt.amount).toFixed(2)}`;
+      
+      // Use paymentReceived template
+      const message = smsTemplates.paymentReceived(clientName || 'Customer', amount, businessName);
+      
+      // Send SMS
+      const smsMessage = await sendSmsToClient({
+        businessOwnerId: effectiveUserId,
+        clientId: client?.id,
+        clientPhone,
+        clientName: clientName || undefined,
+        jobId: receipt.jobId || undefined,
+        message,
+        senderUserId: req.userId,
+      });
+      
+      // Update receipt with SMS sent timestamp
+      await storage.updateReceipt(receipt.id, effectiveUserId, {
+        smsSentAt: new Date(),
+        recipientPhone: clientPhone,
+      });
+      
+      // Log activity for SMS sent
+      await logActivity(
+        effectiveUserId,
+        'payment_received',
+        `Receipt ${receipt.receiptNumber} sent via SMS`,
+        `SMS sent to ${clientName || 'customer'} (${clientPhone})`,
+        'invoice',
+        receipt.invoiceId || null,
+        { deliveryMethod: 'sms', clientPhone, smsMessageId: smsMessage.id, receiptNumber: receipt.receiptNumber, amount }
+      );
+      
+      res.json({ 
+        success: true, 
+        message: `Receipt SMS sent to ${clientPhone}`,
+        smsMessageId: smsMessage.id,
+      });
+    } catch (error: any) {
+      console.error("Error sending receipt SMS:", error);
+      res.status(500).json({ error: error.message || "Failed to send receipt SMS" });
     }
   });
 
