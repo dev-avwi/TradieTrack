@@ -184,7 +184,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
         }
         toast({
           title: "Welcome back!",
-          description: `Signed in as ${result.user.firstName || result.user.username}`
+          description: `Signed in as ${result.user.firstName || result.user.username || result.user.email || 'your account'}`
         });
         onLoginSuccess();
         // Navigate to dashboard
