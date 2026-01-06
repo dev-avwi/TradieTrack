@@ -845,6 +845,8 @@ export const receipts = pgTable("receipts", {
   smsSentAt: timestamp("sms_sent_at"),
   recipientEmail: text("recipient_email"),
   recipientPhone: text("recipient_phone"),
+  // Public access token for SMS links
+  viewToken: text("view_token").unique(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

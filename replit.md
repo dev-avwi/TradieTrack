@@ -83,7 +83,14 @@ Key architectural and design decisions include:
 - Stripe Connect requires user to complete onboarding to enable payments
 - Tap to Pay requires Apple entitlement approval before availability
 
+### Mobile App Development
+**API URL Configuration**:
+- Production: `https://tradietrack.com` (default in app.json)
+- Development: Set `EXPO_PUBLIC_API_URL` environment variable to Replit dev URL
+- Example: `EXPO_PUBLIC_API_URL=https://xxx.replit.dev npx expo start`
+
 ### Recent Updates (January 2026)
+- **Mobile Map Team Locations Fix**: Fixed bug where mobile map was ignoring `activityStatus` from API response - now correctly displays team member status
 - **Route Permissions Fix**: Fixed critical bug where /leads and /recurring-jobs pages were redirecting to dashboard - added missing routes to PAGE_PERMISSIONS in client/src/lib/permissions.ts
 - **RecurringJobs EmptyState Fix**: Fixed React render error in RecurringJobs.tsx by passing icon as component reference instead of JSX element
 - **SMS Delivery for Documents**: Quotes, invoices, and receipts can now be sent via SMS in addition to email, with a unified SendDocumentModal component

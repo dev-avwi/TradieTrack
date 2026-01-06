@@ -11836,8 +11836,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveUserId = req.effectiveUserId || req.userId;
       const { sendSmsToClient } = await import('./services/smsService');
       const { smsTemplates } = await import('./twilioClient');
+      const crypto = await import('crypto');
       
-      const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
+      let receipt = await storage.getReceipt(req.params.id, effectiveUserId);
       if (!receipt) {
         return res.status(404).json({ error: "Receipt not found" });
       }
@@ -11872,8 +11873,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const amount = `$${parseFloat(receipt.amount).toFixed(2)}`;
       
-      // Use paymentReceived template
-      const message = smsTemplates.paymentReceived(clientName || 'Customer', amount, businessName);
+      // Generate view token if not exists for public receipt access
+      let viewToken = receipt.viewToken;
+      if (!viewToken) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const bytes = crypto.randomBytes(12);
+        viewToken = '';
+        for (let i = 0; i < 12; i++) {
+          viewToken += chars[bytes[i] % chars.length];
+        }
+        await storage.updateReceipt(receipt.id, effectiveUserId, { viewToken });
+        receipt = { ...receipt, viewToken };
+      }
+      
+      // Generate receipt URL for SMS
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000');
+      const receiptUrl = `${baseUrl}/receipt/${viewToken}`;
+      
+      // Use paymentReceived template with receipt URL
+      const message = smsTemplates.paymentReceived(clientName || 'Customer', amount, businessName, receiptUrl);
       
       // Send SMS
       const smsMessage = await sendSmsToClient({
@@ -11900,13 +11921,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `SMS sent to ${clientName || 'customer'} (${clientPhone})`,
         'invoice',
         receipt.invoiceId || null,
-        { deliveryMethod: 'sms', clientPhone, smsMessageId: smsMessage.id, receiptNumber: receipt.receiptNumber, amount }
+        { deliveryMethod: 'sms', clientPhone, smsMessageId: smsMessage.id, receiptNumber: receipt.receiptNumber, amount, receiptUrl }
       );
       
       res.json({ 
         success: true, 
         message: `Receipt SMS sent to ${clientPhone}`,
         smsMessageId: smsMessage.id,
+        receiptUrl,
       });
     } catch (error: any) {
       console.error("Error sending receipt SMS:", error);
@@ -15466,6 +15488,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to generate PDF' });
     }
   });
+
+  // Public endpoint: Get receipt PDF by view token (for SMS links)
+  app.get("/api/public/receipt/:token/pdf", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const receipt = await storage.getReceiptByViewToken(token);
+      if (!receipt) {
+        return res.status(404).json({ error: 'Receipt not found' });
+      }
+      
+      const client = receipt.clientId ? await storage.getClientById(receipt.clientId) : null;
+      const settings = await storage.getBusinessSettingsByUserId(receipt.userId);
+      
+      // Get job and invoice details if linked
+      let job = null;
+      let invoice = null;
+      if (receipt.jobId) {
+        job = await storage.getJob(receipt.jobId, receipt.userId);
+      }
+      if (receipt.invoiceId) {
+        invoice = await storage.getInvoice(receipt.invoiceId, receipt.userId);
+      }
+      
+      // Generate PDF
+      const { generatePaymentReceiptPDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
+      
+      const businessForPdf = await resolveBusinessLogoForPdf(settings || { businessName: 'TradieTrack' });
+      
+      const pdfHtml = generatePaymentReceiptPDF({
+        payment: {
+          id: receipt.id,
+          amount: parseFloat(receipt.amount),
+          paymentMethod: receipt.paymentMethod || 'card',
+          paidAt: receipt.paidAt,
+          receiptNumber: receipt.receiptNumber,
+          description: receipt.description,
+        },
+        client: client || undefined,
+        business: businessForPdf,
+        invoice: invoice ? {
+          number: invoice.number,
+          title: invoice.title,
+        } : undefined,
+        job: job ? {
+          title: job.title,
+          address: job.address,
+        } : undefined,
+      });
+      
+      const pdfBuffer = await generatePDFBuffer(pdfHtml);
+      
+      const filename = `Receipt_${receipt.receiptNumber || receipt.id.slice(0, 8)}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error('Error generating public receipt PDF:', error);
+      res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
   
   // Public endpoint: Create payment intent for client (no auth required)
   app.post("/api/public/invoice/:token/pay", async (req, res) => {
@@ -17631,14 +17715,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userContext = await getUserContext(req.userId);
       
+      console.log('[TeamLocations] User context:', { 
+        userId: req.userId, 
+        isOwner: userContext.isOwner, 
+        effectiveUserId: userContext.effectiveUserId 
+      });
+      
       // Only owners and managers can view team locations
       if (!userContext.isOwner && !hasPermission(userContext, PERMISSIONS.VIEW_ALL)) {
+        console.log('[TeamLocations] Access denied for user:', req.userId);
         return res.status(403).json({ error: 'Access denied' });
       }
       
       const effectiveUserId = userContext.effectiveUserId;
       const teamMembers = await storage.getTeamMembers(effectiveUserId);
       const activeMembers = teamMembers.filter(m => m.inviteStatus === 'accepted' && m.isActive);
+      
+      console.log('[TeamLocations] Found', teamMembers.length, 'total team members,', activeMembers.length, 'active');
       
       const locations = [];
       
@@ -17688,6 +17781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log('[TeamLocations] Returning', locations.length, 'locations');
       res.json(locations);
     } catch (error: any) {
       console.error('Error fetching team locations:', error);

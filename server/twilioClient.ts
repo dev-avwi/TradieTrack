@@ -320,8 +320,10 @@ export const smsTemplates = {
   invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string) =>
     `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready. Check your email to pay online.`,
   
-  paymentReceived: (clientName: string, amount: string, businessName: string) =>
-    `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}`,
+  paymentReceived: (clientName: string, amount: string, businessName: string, receiptUrl?: string) =>
+    receiptUrl 
+      ? `Thanks ${clientName}! We received your payment of ${amount}. Your receipt: ${receiptUrl} - ${businessName}`
+      : `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}`,
   
   jobScheduled: (clientName: string, businessName: string, date: string) =>
     `Hi ${clientName}, ${businessName} has scheduled your job for ${date}. We'll see you then!`,

@@ -136,6 +136,24 @@ function OfflineIndicator() {
   );
 }
 
+// Public Receipt Redirect - redirects to PDF download for SMS links
+function PublicReceiptRedirect({ token }: { token: string }) {
+  useEffect(() => {
+    if (token) {
+      window.location.href = `/api/public/receipt/${token}/pdf`;
+    }
+  }, [token]);
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center" data-testid="public-receipt-redirect">
+      <div className="text-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Downloading your receipt...</p>
+      </div>
+    </div>
+  );
+}
+
 // Stable Settings wrapper - prevents remounting on parent re-renders
 function SettingsWrapper() {
   return (
@@ -1125,6 +1143,7 @@ function App() {
             {/* Public routes - no auth required */}
             <Route path="/pay/:token" component={PaymentPage} />
             <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
+            <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
             <Route path="/privacy" component={PrivacyPolicy} />
             <Route path="/terms" component={TermsOfService} />
             {/* All other routes go through AppLayout */}

@@ -633,17 +633,19 @@ export default function MapScreen() {
 
   const fetchTeamLocations = useCallback(async () => {
     try {
+      console.log('[Map] Fetching team locations...');
       const response = await api.get<any[]>('/api/team/locations');
       // API returns { data, error } - not a raw fetch response
       if (response.error) {
-        console.log('Team locations API error:', response.error);
+        console.log('[Map] Team locations API error:', response.error);
         setTeamMembers([]);
         return;
       }
       const data = response.data;
+      console.log('[Map] Team locations response:', Array.isArray(data) ? `${data.length} members` : 'not an array');
       // Defensive check for array response
       if (!Array.isArray(data)) {
-        console.log('Team locations response is not an array:', data);
+        console.log('[Map] Team locations response is not an array:', data);
         setTeamMembers([]);
         return;
       }
@@ -672,7 +674,8 @@ export default function MapScreen() {
             speed: m.speed != null ? Number(m.speed) : undefined,
             battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
           } : undefined,
-          activityStatus: m.currentJobId ? 'working' : 'online',
+          // Use activityStatus from API response, fallback to computed value
+          activityStatus: m.activityStatus || (m.currentJobId ? 'working' : 'online'),
         };
       });
       setTeamMembers(transformedMembers);
