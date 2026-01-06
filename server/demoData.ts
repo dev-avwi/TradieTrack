@@ -853,7 +853,10 @@ export async function createDemoUserAndData() {
     // SEED TEMPLATES (if needed)
     // ============================================
     const templates = await storage.getDocumentTemplates(demoUser.id);
-    if (templates.length < 15) {
+    const existingJobTemplates = templates.filter(t => t.type === 'job');
+    const needsSeeding = templates.length < 15 || existingJobTemplates.length < 10;
+    
+    if (needsSeeding) {
       console.log('🔄 Seeding tradie templates...');
       try {
         const { tradieQuoteTemplates, tradieLineItems, tradieRateCards } = await import('./tradieTemplates');
@@ -862,7 +865,13 @@ export async function createDemoUserAndData() {
         let itemCount = 0;
         let rateCardCount = 0;
 
+        // Get existing family keys to avoid duplicates
+        const existingFamilyKeys = new Set(templates.map(t => `${t.type}-${t.familyKey}`));
+
         for (const template of tradieQuoteTemplates) {
+          const key = `${template.type}-${template.familyKey}`;
+          if (existingFamilyKeys.has(key)) continue;
+          
           try {
             await storage.createDocumentTemplate({
               type: template.type,
@@ -917,18 +926,64 @@ export async function createDemoUserAndData() {
           }
         }
 
-        console.log(`✅ Templates seeded: ${templateCount} templates, ${itemCount} line items, ${rateCardCount} rate cards`);
+        console.log(`✅ Templates seeded: ${templateCount} new templates, ${itemCount} line items, ${rateCardCount} rate cards`);
       } catch (error) {
         console.error('Error seeding templates:', error);
       }
     } else {
-      console.log(`✅ Templates already exist: ${templates.length} templates found`);
+      console.log(`✅ Templates already exist: ${templates.length} templates (${existingJobTemplates.length} job templates)`);
     }
 
     return demoUser;
   } catch (error) {
     console.error('Error setting up demo data:', error);
     return null;
+  }
+}
+
+// Helper function to seed templates for any user
+export async function seedTemplatesForUser(userId: string) {
+  try {
+    const templates = await storage.getDocumentTemplates(userId);
+    const existingJobTemplates = templates.filter(t => t.type === 'job');
+    
+    if (existingJobTemplates.length >= 10) {
+      return; // User already has enough job templates
+    }
+    
+    console.log(`🔄 Seeding templates for user ${userId}...`);
+    const { tradieQuoteTemplates, tradieLineItems, tradieRateCards } = await import('./tradieTemplates');
+    
+    let templateCount = 0;
+    const existingFamilyKeys = new Set(templates.map(t => `${t.type}-${t.familyKey}`));
+    
+    for (const template of tradieQuoteTemplates) {
+      const key = `${template.type}-${template.familyKey}`;
+      if (existingFamilyKeys.has(key)) continue;
+      
+      try {
+        await storage.createDocumentTemplate({
+          type: template.type,
+          familyKey: template.familyKey,
+          name: template.name,
+          tradeType: template.tradeType,
+          userId: userId,
+          styling: template.styling,
+          sections: template.sections,
+          defaults: template.defaults,
+          defaultLineItems: template.defaultLineItems,
+        });
+        templateCount++;
+      } catch (error) {
+        // Template might already exist
+      }
+    }
+    
+    if (templateCount > 0) {
+      console.log(`✅ Seeded ${templateCount} templates for user`);
+    }
+  } catch (error) {
+    console.error('Error seeding templates for user:', error);
   }
 }
 
@@ -940,6 +995,9 @@ export async function seedSmsDataForTestUsers() {
       console.log('No test user found for SMS demo data');
       return;
     }
+    
+    // Seed templates for test user if missing
+    await seedTemplatesForUser(testUser.id);
 
     const existingSmsConversations = await storage.getSmsConversationsByBusiness(testUser.id);
     if (existingSmsConversations.length > 0) {
