@@ -104,3 +104,7 @@ Key architectural and design decisions include:
 - **Simple CRM / Lead Pipeline**: Kanban-style lead tracking from enquiry to won/lost with convert-to-client functionality (/leads page)
 - **End-of-Day Summary Email**: Daily digest email with jobs completed, invoices, quotes, payments, and action items (configurable in Automations)
 - **Dashboard Pipeline Integration**: Added "Pipeline & Recurring" section to both OwnerManagerDashboard and TeamOwnerDashboard showing active leads count (hot/new) and recurring jobs due this week with direct navigation links
+- **Data Consistency Fixes**: Fixed three data synchronization issues:
+  - Job Map now geocodes addresses on-the-fly with Australian suburb fallback (shows 40 jobs correctly)
+  - Team Operations uses tradieStatus table (same as map) for consistent Working/Online status display
+  - Revenue Export falls back to createdAt when paidAt is missing, matching dashboard totals
