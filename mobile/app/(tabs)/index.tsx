@@ -2217,45 +2217,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
 
-  // Quick Actions - matches web feed-card styling
-  quickActionsCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  quickActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    backgroundColor: colors.background,
-    minHeight: 44,
-  },
-  quickActionButtonPrimary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  quickActionText: {
-    ...typography.button,
-    color: colors.foreground,
-  },
-  quickActionTextPrimary: {
-    color: colors.primaryForeground,
-  },
-
   // Job Scheduler styles
   schedulerCaption: {
     ...typography.caption,

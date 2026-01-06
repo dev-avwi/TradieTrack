@@ -144,6 +144,7 @@ const createStyles = (colors: ThemeColors) => {
         borderWidth: 1,
         borderColor: colors.border,
         ...shadows.lg,
+        zIndex: 30,
       },
       headerRow: {
         flexDirection: 'row',
@@ -280,6 +281,7 @@ const createStyles = (colors: ThemeColors) => {
         borderColor: colors.border,
         ...shadows.lg,
         minWidth: 130,
+        zIndex: 25,
       },
       legendTitle: {
         fontSize: 12,
@@ -425,6 +427,7 @@ const createStyles = (colors: ThemeColors) => {
         position: 'absolute',
         right: spacing.lg,
         gap: spacing.md,
+        zIndex: 20,
       },
       fabPrimary: {
         width: 56,
@@ -463,6 +466,7 @@ const createStyles = (colors: ThemeColors) => {
         alignItems: 'center',
         justifyContent: 'space-between',
         ...shadows.lg,
+        zIndex: 25,
       },
       assignModeBannerText: {
         color: '#fff',
@@ -1625,8 +1629,9 @@ export default function MapScreen() {
           position: 'absolute',
           bottom: bottomNavHeight + spacing.lg,
           left: 0,
-          right: 0,
+          right: 70,
           paddingHorizontal: spacing.md,
+          zIndex: 15,
         }}>
           <ScrollView 
             horizontal 
@@ -2002,6 +2007,7 @@ export default function MapScreen() {
           ...shadows.lg,
           borderWidth: 1,
           borderColor: colors.border,
+          zIndex: 18,
         }}>
           {/* Collapsed Header - Matches header card style */}
           <TouchableOpacity
