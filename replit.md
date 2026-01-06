@@ -82,3 +82,9 @@ Key architectural and design decisions include:
 **Known Limitations**:
 - Stripe Connect requires user to complete onboarding to enable payments
 - Tap to Pay requires Apple entitlement approval before availability
+
+### Recent Updates (January 2026)
+- **SMS Delivery for Documents**: Quotes, invoices, and receipts can now be sent via SMS in addition to email, with a unified SendDocumentModal component
+- **Context-Aware Quick Actions**: Job detail view shows "Running Late" vs "On My Way" button based on whether the job's scheduled time has passed
+- **Voice Note Transcription**: AI-powered voice transcription with "Add to Notes", "Copy", and "Edit" buttons for quick workflow integration
+- **Authentication Improvements**: All API calls now properly include auth headers for Safari/iOS token-based authentication
