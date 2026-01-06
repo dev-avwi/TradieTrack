@@ -103,3 +103,4 @@ Key architectural and design decisions include:
 - **Before/After Photo Comparison**: Side-by-side, slider, and overlay viewing modes for comparing job photos (integrated into JobPhotoGallery)
 - **Simple CRM / Lead Pipeline**: Kanban-style lead tracking from enquiry to won/lost with convert-to-client functionality (/leads page)
 - **End-of-Day Summary Email**: Daily digest email with jobs completed, invoices, quotes, payments, and action items (configurable in Automations)
+- **Dashboard Pipeline Integration**: Added "Pipeline & Recurring" section to both OwnerManagerDashboard and TeamOwnerDashboard showing active leads count (hot/new) and recurring jobs due this week with direct navigation links
