@@ -931,16 +931,16 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
     
-    // 2. For manual mode, check Gmail connection
-    if (emailSendingMode === 'manual') {
-      const gmailConnected = await isGmailConnected();
-      if (!gmailConnected) {
-        return res.status(400).json({
-          title: "Gmail Not Connected",
-          message: "Gmail needs to be connected to use this feature.",
-          fix: "Go to Settings → Email Integration and connect your Gmail account."
-        });
-      }
+    // Check Gmail connection status
+    const gmailConnected = await isGmailConnected();
+    
+    // For manual mode, require Gmail connection - user wants to review draft before sending
+    if (emailSendingMode === 'manual' && !gmailConnected) {
+      return res.status(400).json({
+        title: "Gmail Not Connected",
+        message: "Gmail needs to be connected to review emails before sending.",
+        fix: "Go to Settings → Email Integration and connect Gmail, or switch to 'Automatic' email mode to send directly without review."
+      });
     }
     
     // 2. Get quote with line items
@@ -1099,11 +1099,10 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       }
     }
     
-    // 10. Send email based on user preference (manual=Gmail draft, automatic=SendGrid)
-    if (emailSendingMode === 'automatic') {
-      // Send directly via SendGrid
+    // 10. Send email based on user preference
+    // Helper to send via SendGrid (used for automatic mode or as fallback)
+    const sendViaSendGrid = async () => {
       const { sendEmailWithAttachment } = await import('./emailService');
-      
       await sendEmailWithAttachment({
         to: client.email,
         subject,
@@ -1114,9 +1113,14 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
           contentType: 'application/pdf'
         }]
       });
-      
-      // Update quote status to sent
       await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+    };
+    
+    // Automatic mode sends directly via SendGrid
+    if (emailSendingMode === 'automatic') {
+      console.log('[Email] Sending quote via SendGrid (automatic mode)');
+      
+      await sendViaSendGrid();
       
       res.json({
         success: true,
@@ -1125,7 +1129,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         message: `Quote emailed to ${client.email} with PDF attached.`
       });
     } else {
-      // Try Gmail draft first, fallback to SendGrid if Gmail fails
+      // Manual mode - create Gmail draft, fallback to SendGrid if draft creation fails
       const draftResult = await createGmailDraftWithAttachment({
         to: client.email,
         subject,
@@ -1141,21 +1145,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       if (!draftResult.success) {
         // Gmail failed - fallback to SendGrid
         console.log('[Email] Gmail draft failed, falling back to SendGrid:', draftResult.error);
-        
-        const { sendEmailWithAttachment } = await import('./emailService');
-        await sendEmailWithAttachment({
-          to: client.email,
-          subject,
-          html: emailHtml,
-          attachments: [{
-            filename: pdfFilename,
-            content: pdfBuffer,
-            contentType: 'application/pdf'
-          }]
-        });
-        
-        // Update quote status to sent
-        await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+        await sendViaSendGrid();
         
         return res.json({
           success: true,
@@ -1204,16 +1194,16 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
     
-    // 2. For manual mode, check Gmail connection
-    if (emailSendingMode === 'manual') {
-      const gmailConnected = await isGmailConnected();
-      if (!gmailConnected) {
-        return res.status(400).json({
-          title: "Gmail Not Connected",
-          message: "Gmail needs to be connected to use this feature.",
-          fix: "Go to Settings → Email Integration and connect your Gmail account."
-        });
-      }
+    // Check Gmail connection status
+    const gmailConnected = await isGmailConnected();
+    
+    // For manual mode, require Gmail connection - user wants to review draft before sending
+    if (emailSendingMode === 'manual' && !gmailConnected) {
+      return res.status(400).json({
+        title: "Gmail Not Connected",
+        message: "Gmail needs to be connected to review emails before sending.",
+        fix: "Go to Settings → Email Integration and connect Gmail, or switch to 'Automatic' email mode to send directly without review."
+      });
     }
     
     // 3. Get invoice with line items
@@ -1382,11 +1372,10 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       }
     }
     
-    // 10. Send email based on user preference (manual=Gmail draft, automatic=SendGrid)
-    if (emailSendingMode === 'automatic') {
-      // Send directly via SendGrid
+    // 10. Send email based on user preference
+    // Helper to send via SendGrid (used for automatic mode or as fallback)
+    const sendViaSendGrid = async () => {
       const { sendEmailWithAttachment } = await import('./emailService');
-      
       await sendEmailWithAttachment({
         to: client.email,
         subject,
@@ -1397,9 +1386,14 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
           contentType: 'application/pdf'
         }]
       });
-      
-      // Update invoice status to sent
       await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
+    };
+    
+    // Automatic mode sends directly via SendGrid
+    if (emailSendingMode === 'automatic') {
+      console.log('[Email] Sending invoice via SendGrid (automatic mode)');
+      
+      await sendViaSendGrid();
       
       res.json({
         success: true,
@@ -1408,7 +1402,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         message: `Invoice emailed to ${client.email} with PDF attached.`
       });
     } else {
-      // Try Gmail draft first, fallback to SendGrid if Gmail fails
+      // Manual mode - create Gmail draft, fallback to SendGrid if draft creation fails
       const draftResult = await createGmailDraftWithAttachment({
         to: client.email,
         subject,
@@ -1424,21 +1418,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       if (!draftResult.success) {
         // Gmail failed - fallback to SendGrid
         console.log('[Email] Gmail draft failed for invoice, falling back to SendGrid:', draftResult.error);
-        
-        const { sendEmailWithAttachment } = await import('./emailService');
-        await sendEmailWithAttachment({
-          to: client.email,
-          subject,
-          html: emailHtml,
-          attachments: [{
-            filename: pdfFilename,
-            content: pdfBuffer,
-            contentType: 'application/pdf'
-          }]
-        });
-        
-        // Update invoice status to sent
-        await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
+        await sendViaSendGrid();
         
         return res.json({
           success: true,
