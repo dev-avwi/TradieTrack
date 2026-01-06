@@ -137,7 +137,8 @@ export async function createTerminalPaymentIntent(
   amount: number,
   currency: string = 'aud',
   metadata?: Record<string, string>,
-  captureMethod: 'manual' | 'automatic' = 'automatic'
+  captureMethod: 'manual' | 'automatic' = 'automatic',
+  idempotencyKey?: string
 ): Promise<TerminalPaymentIntentResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -151,6 +152,12 @@ export async function createTerminalPaymentIntent(
       return { success: false, error: 'Minimum payment amount is $1.00 AUD' };
     }
 
+    // Use idempotency key to prevent duplicate charges
+    const requestOptions: { idempotencyKey?: string } = {};
+    if (idempotencyKey) {
+      requestOptions.idempotencyKey = idempotencyKey;
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency,
@@ -161,7 +168,7 @@ export async function createTerminalPaymentIntent(
         source: 'terminal',
         platform: 'tradietrack',
       },
-    });
+    }, requestOptions);
 
     return {
       success: true,
@@ -180,7 +187,8 @@ export async function createTerminalPaymentIntentWithConnect(
   connectedAccountId: string,
   platformFeePercent: number = 2.5,
   currency: string = 'aud',
-  metadata?: Record<string, string>
+  metadata?: Record<string, string>,
+  idempotencyKey?: string
 ): Promise<TerminalPaymentIntentResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -195,6 +203,12 @@ export async function createTerminalPaymentIntentWithConnect(
     }
 
     const platformFeeAmount = Math.max(Math.round(amountInCents * (platformFeePercent / 100)), 50);
+
+    // Use idempotency key to prevent duplicate charges
+    const requestOptions: { idempotencyKey?: string } = {};
+    if (idempotencyKey) {
+      requestOptions.idempotencyKey = idempotencyKey;
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
@@ -211,7 +225,7 @@ export async function createTerminalPaymentIntentWithConnect(
         platform: 'tradietrack',
         platformFee: platformFeeAmount.toString(),
       },
-    });
+    }, requestOptions);
 
     return {
       success: true,
@@ -227,7 +241,8 @@ export async function createTerminalPaymentIntentWithConnect(
 
 export async function captureTerminalPayment(
   paymentIntentId: string,
-  amountToCapture?: number
+  amountToCapture?: number,
+  idempotencyKey?: string
 ): Promise<TerminalCaptureResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -240,7 +255,13 @@ export async function captureTerminalPayment(
       params.amount_to_capture = Math.round(amountToCapture * 100);
     }
 
-    const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, params);
+    // Use idempotency key to prevent double-capture
+    const requestOptions: { idempotencyKey?: string } = {};
+    if (idempotencyKey) {
+      requestOptions.idempotencyKey = idempotencyKey;
+    }
+
+    const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, params, requestOptions);
 
     return {
       success: true,

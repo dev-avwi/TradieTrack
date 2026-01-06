@@ -11402,7 +11402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a payment intent for terminal payment
   app.post("/api/terminal/payment-intent", paymentRateLimiter, requireAuth, async (req: any, res) => {
     try {
-      const { amount, description, clientId, invoiceId, jobId } = req.body;
+      const { amount, description, clientId, invoiceId, jobId, idempotencyKey } = req.body;
       
       if (!amount || amount <= 0) {
         return res.status(400).json({ error: "Amount is required and must be positive" });
@@ -11439,7 +11439,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
       
-      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+      // Use idempotency key to prevent duplicate charges (client provides or we generate)
+      const requestOptions: { idempotencyKey?: string } = {};
+      if (idempotencyKey) {
+        requestOptions.idempotencyKey = idempotencyKey;
+      } else {
+        // Generate idempotency key from user, amount, and timestamp (5-minute window)
+        const timeWindow = Math.floor(Date.now() / (5 * 60 * 1000));
+        requestOptions.idempotencyKey = `terminal_${req.userId}_${amountInCents}_${invoiceId || jobId || 'direct'}_${timeWindow}`;
+      }
+      
+      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, requestOptions);
       
       // Store terminal payment record
       await storage.createTerminalPayment({
