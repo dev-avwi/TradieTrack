@@ -18,7 +18,6 @@ import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
-import { useWorkerPermission } from '../../src/hooks/useWorkerPermission';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
@@ -747,45 +746,6 @@ function KPICard({
   );
 }
 
-// Quick Action Button Component - compact
-function QuickActionButton({ 
-  title, 
-  icon, 
-  variant = 'outline',
-  onPress 
-}: { 
-  title: string; 
-  icon: keyof typeof Feather.glyphMap;
-  variant?: 'primary' | 'outline';
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={[
-        styles.quickActionButton,
-        variant === 'primary' && styles.quickActionButtonPrimary
-      ]}
-    >
-      <Feather 
-        name={icon} 
-        size={iconSizes.md} 
-        color={variant === 'primary' ? colors.white : colors.foreground} 
-      />
-      <Text style={[
-        styles.quickActionText,
-        variant === 'primary' && styles.quickActionTextPrimary
-      ]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 // Job Card Component - matches web Today's Schedule cards
 function TodayJobCard({ 
   job, 
@@ -1278,13 +1238,6 @@ export default function DashboardScreen() {
   const canViewMap = isOwnerUser || isManager;
   const hasActiveTeam = teamMembers.length > 0;
   
-  // Worker permissions for staff Quick Actions
-  const { 
-    canCollectPayments, 
-    canCreateQuotes, 
-    canCreateInvoices, 
-    canViewDocuments 
-  } = useWorkerPermission();
   
   const handleNavigateToItem = (type: string, id: string) => {
     switch (type) {
@@ -1661,45 +1614,6 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* Quick Actions - Staff Only (Permission-gated) */}
-      {isStaffUser && (canCollectPayments || canCreateQuotes || canCreateInvoices || canViewDocuments) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Quick Actions</Text>
-          <View style={styles.quickActionsCard}>
-            <View style={styles.quickActionsRow}>
-              {canCollectPayments && (
-                <QuickActionButton
-                  title="Collect Payment"
-                  icon="credit-card"
-                  variant="primary"
-                  onPress={() => router.push('/more/collect-payment')}
-                />
-              )}
-              {canCreateQuotes && (
-                <QuickActionButton
-                  title="Create Quote"
-                  icon="file-text"
-                  onPress={() => router.push('/more/quotes/new')}
-                />
-              )}
-              {canCreateInvoices && (
-                <QuickActionButton
-                  title="Create Invoice"
-                  icon="dollar-sign"
-                  onPress={() => router.push('/more/invoices/new')}
-                />
-              )}
-              {canViewDocuments && (
-                <QuickActionButton
-                  title="View Documents"
-                  icon="folder"
-                  onPress={() => router.push('/more/documents')}
-                />
-              )}
-            </View>
-          </View>
-        </View>
-      )}
 
       {/* Quick Stats - Different for staff vs owner */}
       <View style={styles.section}>
