@@ -112,3 +112,4 @@ Key architectural and design decisions include:
   - Revenue Export falls back to createdAt when paidAt is missing, matching dashboard totals
 - **Mobile Quote/Invoice Email with PDF**: Fixed "Open Email App" option to now download PDF and use native share sheet - PDF is automatically attached when shared to any email app. User picks their preferred email app from share sheet
 - **Production Security Hardening**: Added rate limiting to auth/payment endpoints, idempotency keys to Stripe Terminal to prevent double-charges, demo data seeding gated to development mode only
+- **Mobile UI Polish**: Removed redundant Quick Actions section from dashboard (FAB handles this), improved map page z-index hierarchy to eliminate overlapping elements (header z30, legend/banner z25, FAB z20, route panel z18, team chips z15)
