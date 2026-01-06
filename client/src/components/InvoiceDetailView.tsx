@@ -130,10 +130,10 @@ export default function InvoiceDetailView({
   });
 
   const { data: quoteSignature } = useQuery({
-    queryKey: ['/api/digital-signatures', invoice?.quoteId, 'quote'],
+    queryKey: ['/api/digital-signatures', invoice?.quoteId, 'quote_acceptance'],
     queryFn: async () => {
       if (!invoice?.quoteId) return null;
-      const response = await fetch(`/api/digital-signatures?documentType=quote&documentId=${invoice.quoteId}`, {
+      const response = await fetch(`/api/digital-signatures?documentType=quote_acceptance&documentId=${invoice.quoteId}`, {
         credentials: 'include',
         headers: getAuthHeaders()
       });

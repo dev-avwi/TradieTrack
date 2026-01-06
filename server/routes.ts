@@ -544,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedQuote = await storage.acceptQuoteByToken(token, accepted_by.trim(), clientIp);
         
         if (updatedQuote) {
-          // Save the digital signature
+          // Save the digital signature with documentType 'quote_acceptance' to match PDF query
           try {
             await storage.createDigitalSignature({
               quoteId: quote.id,
@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               signedAt: new Date(),
               ipAddress: clientIp,
               userAgent: userAgent,
-              documentType: 'quote',
+              documentType: 'quote_acceptance',
               isValid: true,
             });
           } catch (e) {

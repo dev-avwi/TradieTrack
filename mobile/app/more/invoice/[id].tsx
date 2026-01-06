@@ -150,15 +150,15 @@ export default function InvoiceDetailScreen() {
       const quoteData = await getQuote(invoiceData.quoteId);
       setLinkedQuote(quoteData);
       
-      // Fetch quote signature
+      // Fetch quote acceptance signature
       try {
-        const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${invoiceData.quoteId}`, {
+        const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote_acceptance&documentId=${invoiceData.quoteId}`, {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
         if (response.ok) {
           const quoteSignatures = await response.json();
           quoteSignatures.forEach((sig: any) => {
-            signatures.push({ ...sig, documentType: 'quote' });
+            signatures.push({ ...sig, documentType: 'quote_acceptance' });
           });
         }
       } catch (err) {
@@ -1908,7 +1908,7 @@ export default function InvoiceDetailScreen() {
               {allSignatures.map((signature, index) => {
                 const getSignatureLabel = (sig: Signature) => {
                   switch (sig.documentType) {
-                    case 'quote':
+                    case 'quote_acceptance':
                       return 'Quote Acceptance';
                     case 'job_completion':
                       return sig.signerRole === 'worker' ? 'Worker Completion' : 'Client Approval';
@@ -1923,7 +1923,7 @@ export default function InvoiceDetailScreen() {
                   <View key={signature.id || index} style={styles.card}>
                     <View style={styles.signatureLabelRow}>
                       <Feather 
-                        name={signature.documentType === 'quote' ? 'file-text' : signature.documentType === 'job_completion' ? 'check-square' : 'edit-3'} 
+                        name={signature.documentType === 'quote_acceptance' ? 'file-text' : signature.documentType === 'job_completion' ? 'check-square' : 'edit-3'} 
                         size={16} 
                         color={colors.primary} 
                       />
@@ -2237,61 +2237,67 @@ export default function InvoiceDetailScreen() {
               {formatCurrency(invoice?.total || 0)}
             </Text>
             
-            <Text style={styles.paymentMethodSectionTitle}>Payment Method</Text>
-            <View style={styles.paymentMethodOptions}>
-              {PAYMENT_METHODS.map((method) => (
-                <TouchableOpacity
-                  key={method.id}
-                  style={[
-                    styles.paymentMethodOption,
-                    selectedPaymentMethod === method.id && styles.paymentMethodOptionSelected
-                  ]}
-                  onPress={() => setSelectedPaymentMethod(method.id)}
-                >
-                  <View style={[
-                    styles.paymentMethodIcon,
-                    selectedPaymentMethod === method.id && styles.paymentMethodIconSelected
-                  ]}>
-                    <Feather 
-                      name={method.icon as any} 
-                      size={20} 
-                      color={selectedPaymentMethod === method.id ? colors.white : colors.primary} 
-                    />
-                  </View>
-                  <Text style={[
-                    styles.paymentMethodLabel,
-                    selectedPaymentMethod === method.id && styles.paymentMethodLabelSelected
-                  ]}>
-                    {method.label}
-                  </Text>
-                  {selectedPaymentMethod === method.id && (
-                    <Feather name="check" size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.paymentMethodSectionTitle}>Reference (Optional)</Text>
-            <TextInput
-              style={styles.paymentReferenceInput}
-              placeholder="e.g. Check #1234 or Transfer ID"
-              placeholderTextColor={colors.mutedForeground}
-              value={paymentReference}
-              onChangeText={setPaymentReference}
-            />
-
-            <View style={styles.receiptToggleContainer}>
-              <View style={styles.receiptToggleTextContainer}>
-                <Text style={styles.receiptToggleLabel}>Also generate receipt</Text>
-                <Text style={styles.receiptToggleHint}>Create a receipt document automatically</Text>
+            <ScrollView 
+              style={styles.paymentMethodScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <Text style={styles.paymentMethodSectionTitle}>Payment Method</Text>
+              <View style={styles.paymentMethodOptions}>
+                {PAYMENT_METHODS.map((method) => (
+                  <TouchableOpacity
+                    key={method.id}
+                    style={[
+                      styles.paymentMethodOption,
+                      selectedPaymentMethod === method.id && styles.paymentMethodOptionSelected
+                    ]}
+                    onPress={() => setSelectedPaymentMethod(method.id)}
+                  >
+                    <View style={[
+                      styles.paymentMethodIcon,
+                      selectedPaymentMethod === method.id && styles.paymentMethodIconSelected
+                    ]}>
+                      <Feather 
+                        name={method.icon as any} 
+                        size={20} 
+                        color={selectedPaymentMethod === method.id ? colors.white : colors.primary} 
+                      />
+                    </View>
+                    <Text style={[
+                      styles.paymentMethodLabel,
+                      selectedPaymentMethod === method.id && styles.paymentMethodLabelSelected
+                    ]}>
+                      {method.label}
+                    </Text>
+                    {selectedPaymentMethod === method.id && (
+                      <Feather name="check" size={18} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
-              <Switch
-                value={createReceiptOnPayment}
-                onValueChange={setCreateReceiptOnPayment}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
+
+              <Text style={styles.paymentMethodSectionTitle}>Reference (Optional)</Text>
+              <TextInput
+                style={styles.paymentReferenceInput}
+                placeholder="e.g. Check #1234 or Transfer ID"
+                placeholderTextColor={colors.mutedForeground}
+                value={paymentReference}
+                onChangeText={setPaymentReference}
               />
-            </View>
+
+              <View style={styles.receiptToggleContainer}>
+                <View style={styles.receiptToggleTextContainer}>
+                  <Text style={styles.receiptToggleLabel}>Also generate receipt</Text>
+                  <Text style={styles.receiptToggleHint}>Create a receipt document automatically</Text>
+                </View>
+                <Switch
+                  value={createReceiptOnPayment}
+                  onValueChange={setCreateReceiptOnPayment}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+            </ScrollView>
 
             <View style={styles.paymentMethodActions}>
               <TouchableOpacity
@@ -3271,6 +3277,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
     maxHeight: '85%',
+  },
+  paymentMethodScrollContent: {
+    flexGrow: 0,
+    marginBottom: 16,
   },
   paymentMethodSectionTitle: {
     fontSize: 14,

@@ -156,15 +156,15 @@ export default function QuoteDetailScreen() {
     const signatures: Signature[] = [];
     const authToken = await api.getToken();
     
-    // Fetch quote signatures
+    // Fetch quote acceptance signatures
     try {
-      const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote&documentId=${id}`, {
+      const response = await fetch(`${API_URL}/api/digital-signatures?documentType=quote_acceptance&documentId=${id}`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
       if (response.ok) {
         const quoteSignatures = await response.json();
         quoteSignatures.forEach((sig: any) => {
-          signatures.push({ ...sig, documentType: 'quote' });
+          signatures.push({ ...sig, documentType: 'quote_acceptance' });
         });
       }
     } catch (err) {
@@ -1183,7 +1183,7 @@ export default function QuoteDetailScreen() {
           {quote.status === 'accepted' && allSignatures.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Quote Accepted</Text>
-              {allSignatures.filter(sig => sig.documentType === 'quote').map((sig, index) => (
+              {allSignatures.filter(sig => sig.documentType === 'quote_acceptance').map((sig, index) => (
                 <View key={sig.id || index} style={[styles.card, styles.acceptedCard]}>
                   <View style={styles.signatureImageContainer}>
                     <Text style={styles.signatureLabel}>Client Signature:</Text>
@@ -1203,7 +1203,7 @@ export default function QuoteDetailScreen() {
             </>
           )}
 
-          {quote.status === 'accepted' && allSignatures.filter(sig => sig.documentType === 'quote').length === 0 && quote.acceptedBy && (
+          {quote.status === 'accepted' && allSignatures.filter(sig => sig.documentType === 'quote_acceptance').length === 0 && quote.acceptedBy && (
             <>
               <Text style={styles.sectionTitle}>Quote Accepted</Text>
               <View style={[styles.card, styles.acceptedCard]}>
