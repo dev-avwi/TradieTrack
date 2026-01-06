@@ -298,23 +298,36 @@ export default function InvoiceDetailScreen() {
       return;
     }
     
-    const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
-    const total = formatCurrency(invoice.total);
-    const subject = `Invoice ${invoiceNumber} - ${total}`;
-    const paymentUrl = invoice.stripePaymentLink 
-      || `${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay`;
-    
-    const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${invoice.title || 'the completed work'}.\n\nTotal: ${total}\nDue: ${formatDate(invoice.dueDate)}\n\nPay online here:\n${paymentUrl}\n\nThanks for your business!\n\nCheers`;
-    
-    const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // Show loading while we prepare the PDF
+    setIsDownloadingPdf(true);
     
     try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
+      // Download the PDF first so we can share it
+      const pdfUri = await downloadPdfToCache();
+      
+      if (!pdfUri) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      // Check if sharing is available
+      const canShare = await Sharing.isAvailableAsync();
+      
+      if (canShare) {
+        // Use share sheet which allows user to select email app AND attaches the PDF
+        const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
+        const total = formatCurrency(invoice.total);
+        
+        // Note: Share sheet will pass the PDF - user types their own message in their email app
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Email Invoice ${invoiceNumber} to ${client.name}`,
+          UTI: 'com.adobe.pdf',
+        });
+        
+        // After sharing, ask if they want to mark as sent
         Alert.alert(
-          'Email App Opened',
-          'Your email app has the invoice details ready. After you send it, would you like to mark this invoice as sent?',
+          'Did you send the invoice?',
+          'Would you like to mark this invoice as sent?',
           [
             { text: 'Not Yet', style: 'cancel' },
             { 
@@ -327,11 +340,34 @@ export default function InvoiceDetailScreen() {
           ]
         );
       } else {
-        Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+        // Fallback to mailto without attachment
+        const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
+        const total = formatCurrency(invoice.total);
+        const subject = `Invoice ${invoiceNumber} - ${total}`;
+        const paymentUrl = invoice.stripePaymentLink 
+          || `${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay`;
+        
+        const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${invoice.title || 'the completed work'}.\n\nTotal: ${total}\nDue: ${formatDate(invoice.dueDate)}\n\nPay online here:\n${paymentUrl}\n\nThanks for your business!\n\nCheers`;
+        
+        const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        const canOpen = await Linking.canOpenURL(mailtoUrl);
+        if (canOpen) {
+          await Linking.openURL(mailtoUrl);
+          Alert.alert(
+            'Note',
+            'Your device doesn\'t support file sharing. Please use "Use TradieTrack" option to send with PDF attached.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+        }
       }
-    } catch (error) {
-      console.log('Error opening email:', error);
-      Alert.alert('Error', 'Failed to open email app.');
+    } catch (error: any) {
+      console.log('Error preparing email:', error);
+      Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use TradieTrack" option instead.');
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 

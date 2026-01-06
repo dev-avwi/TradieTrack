@@ -278,25 +278,39 @@ export default function QuoteDetailScreen() {
       return;
     }
     
-    const quoteNumber = quote.quoteNumber || quote.id?.slice(0, 8);
-    const total = formatCurrency(quote.total);
-    const subject = `Quote ${quoteNumber} - ${total}`;
-    const publicUrl = quote.acceptanceToken 
-      ? `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}` 
-      : '';
-    
-    const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${quote.title || 'the requested work'}.\n\nTotal: ${total}\n\n${publicUrl ? `View and accept your quote here:\n${publicUrl}\n\n` : ''}Let me know if you have any questions!\n\nCheers`;
-    
-    const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // Show loading while we prepare the PDF
+    setIsDownloadingPdf(true);
     
     try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
-        // Mark quote as sent after opening email app
+      // Download the PDF first so we can share it
+      const pdfUri = await downloadPdfToCache();
+      
+      if (!pdfUri) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      // Check if sharing is available
+      const canShare = await Sharing.isAvailableAsync();
+      
+      if (canShare) {
+        // Use share sheet which allows user to select email app AND attaches the PDF
+        const quoteNumber = quote.quoteNumber || quote.id?.slice(0, 8);
+        const total = formatCurrency(quote.total);
+        const publicUrl = quote.acceptanceToken 
+          ? `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}` 
+          : '';
+        
+        // Note: Share sheet will pass the PDF - user types their own message in their email app
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Email Quote ${quoteNumber} to ${client.name}`,
+          UTI: 'com.adobe.pdf',
+        });
+        
+        // After sharing, ask if they want to mark as sent
         Alert.alert(
-          'Email App Opened',
-          'Your email app has the quote details ready. After you send it, would you like to mark this quote as sent?',
+          'Did you send the quote?',
+          'Would you like to mark this quote as sent?',
           [
             { text: 'Not Yet', style: 'cancel' },
             { 
@@ -309,11 +323,35 @@ export default function QuoteDetailScreen() {
           ]
         );
       } else {
-        Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+        // Fallback to mailto without attachment
+        const quoteNumber = quote.quoteNumber || quote.id?.slice(0, 8);
+        const total = formatCurrency(quote.total);
+        const subject = `Quote ${quoteNumber} - ${total}`;
+        const publicUrl = quote.acceptanceToken 
+          ? `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}` 
+          : '';
+        
+        const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${quote.title || 'the requested work'}.\n\nTotal: ${total}\n\n${publicUrl ? `View and accept your quote here:\n${publicUrl}\n\n` : ''}Let me know if you have any questions!\n\nCheers`;
+        
+        const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        const canOpen = await Linking.canOpenURL(mailtoUrl);
+        if (canOpen) {
+          await Linking.openURL(mailtoUrl);
+          Alert.alert(
+            'Note',
+            'Your device doesn\'t support file sharing. Please use "Use TradieTrack" option to send with PDF attached.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+        }
       }
-    } catch (error) {
-      console.log('Error opening email:', error);
-      Alert.alert('Error', 'Failed to open email app.');
+    } catch (error: any) {
+      console.log('Error preparing email:', error);
+      Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use TradieTrack" option instead.');
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 

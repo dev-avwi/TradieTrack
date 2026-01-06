@@ -110,3 +110,5 @@ Key architectural and design decisions include:
   - Job Map now geocodes addresses on-the-fly with Australian suburb fallback (shows 40 jobs correctly)
   - Team Operations uses tradieStatus table (same as map) for consistent Working/Online status display
   - Revenue Export falls back to createdAt when paidAt is missing, matching dashboard totals
+- **Mobile Quote/Invoice Email with PDF**: Fixed "Open Email App" option to now download PDF and use native share sheet - PDF is automatically attached when shared to any email app. User picks their preferred email app from share sheet
+- **Production Security Hardening**: Added rate limiting to auth/payment endpoints, idempotency keys to Stripe Terminal to prevent double-charges, demo data seeding gated to development mode only
