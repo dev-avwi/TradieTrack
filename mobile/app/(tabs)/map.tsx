@@ -16,7 +16,7 @@ import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region, MapStyleElement } fr
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
-import { useJobsStore, useClientsStore, useAuthStore } from '../../src/lib/store';
+import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserRole } from '../../src/hooks/use-user-role';
@@ -322,39 +322,50 @@ const createStyles = (colors: ThemeColors) => {
         borderWidth: 3,
         ...shadows.md,
       },
+      // Life360-style team marker - smooth bubble with subtle shadow
       teamMarkerOuter: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 46,
+        height: 46,
+        borderRadius: 23,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
-        borderColor: colors.white,
-        ...shadows.lg,
+        borderColor: 'rgba(255,255,255,0.9)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
       },
       teamMarkerSelected: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        borderWidth: 4,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 3,
       },
+      // Life360-style activity indicator - small dot at bottom right
       activityDot: {
         position: 'absolute',
-        top: -2,
-        left: -2,
+        bottom: -1,
+        right: -1,
         width: 14,
         height: 14,
         borderRadius: 7,
-        borderWidth: 2,
-        borderColor: colors.white,
+        borderWidth: 2.5,
+        borderColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+        elevation: 2,
       },
       teamMarkerText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         color: '#ffffff',
-        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowColor: 'rgba(0,0,0,0.2)',
         textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
+        textShadowRadius: 1,
       },
       callout: {
         backgroundColor: colors.card,
@@ -535,23 +546,28 @@ const createStyles = (colors: ThemeColors) => {
       modalButtonTextConfirm: {
         color: '#fff',
       },
+      // Life360-style name label - clean pill shape below marker
       nameLabel: {
         position: 'absolute',
-        bottom: -20,
+        bottom: -22,
         left: '50%',
         transform: [{ translateX: -40 }],
-        backgroundColor: colors.card,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: radius.sm,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        paddingHorizontal: spacing.sm + 2,
+        paddingVertical: 3,
+        borderRadius: 10,
         minWidth: 80,
         alignItems: 'center',
-        ...shadows.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
+        elevation: 3,
       },
       nameLabelText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '600',
-        color: colors.foreground,
+        color: '#333',
         textAlign: 'center',
       },
     }),
@@ -565,8 +581,6 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   
-  const { jobs, fetchJobs, isLoading: jobsLoading } = useJobsStore();
-  const { clients, fetchClients } = useClientsStore();
   const { user } = useAuthStore();
   const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner, isManager } = useUserRole();
   
@@ -576,6 +590,10 @@ export default function MapScreen() {
   const showTeamToggle = isAuthenticated && (isOwner || isManager || canAccessMap);
   const canViewTeamMode = isAuthenticated && (isOwner || isManager || canAccessMap);
   const canAssignJobs = isOwner || isManager;
+  
+  // Map jobs state - uses /api/map/jobs which geocodes addresses
+  const [mapJobs, setMapJobs] = useState<JobWithLocation[]>([]);
+  const [mapJobsLoading, setMapJobsLoading] = useState(false);
   
   // Filter states - both can be active simultaneously
   const [showJobs, setShowJobs] = useState(true);
@@ -604,32 +622,52 @@ export default function MapScreen() {
   const [geofenceAlerts, setGeofenceAlerts] = useState<GeofenceAlert[]>([]);
   const [showAlerts, setShowAlerts] = useState(false);
 
-  const getClientName = useCallback((clientId?: string) => {
-    if (!clientId) return undefined;
-    const client = clients.find(c => c.id === clientId);
-    return client?.name;
-  }, [clients]);
-
-  const jobsWithLocations: JobWithLocation[] = useMemo(() => {
-    return jobs
-      .filter(job => job.latitude && job.longitude)
-      .map(job => ({
+  // Fetch jobs from /api/map/jobs which geocodes addresses on-the-fly
+  const fetchMapJobs = useCallback(async () => {
+    try {
+      setMapJobsLoading(true);
+      console.log('[Map] Fetching geocoded jobs from /api/map/jobs...');
+      const response = await api.get<any[]>('/api/map/jobs');
+      
+      if (response.error) {
+        console.log('[Map] Map jobs API error:', response.error);
+        setMapJobs([]);
+        return;
+      }
+      
+      const data = response.data;
+      if (!Array.isArray(data)) {
+        console.log('[Map] Map jobs response is not an array:', data);
+        setMapJobs([]);
+        return;
+      }
+      
+      // Transform API response to JobWithLocation format
+      const transformedJobs: JobWithLocation[] = data.map((job: any) => ({
         id: job.id,
         title: job.title,
         status: job.status,
         address: job.address,
-        clientId: job.clientId,
-        clientName: getClientName(job.clientId),
+        clientName: job.clientName,
         latitude: job.latitude,
         longitude: job.longitude,
         assignedTo: job.assignedTo,
       }));
-  }, [jobs, getClientName]);
+      
+      console.log(`[Map] Loaded ${transformedJobs.length} geocoded jobs`);
+      setMapJobs(transformedJobs);
+    } catch (error) {
+      console.log('[Map] Failed to fetch map jobs:', error);
+      setMapJobs([]);
+    } finally {
+      setMapJobsLoading(false);
+    }
+  }, []);
 
   const filteredJobs = useMemo(() => {
-    if (statusFilter === 'all') return jobsWithLocations;
-    return jobsWithLocations.filter(job => job.status === statusFilter);
-  }, [jobsWithLocations, statusFilter]);
+    if (statusFilter === 'all') return mapJobs;
+    return mapJobs.filter(job => job.status === statusFilter);
+  }, [mapJobs, statusFilter]);
 
   const fetchTeamLocations = useCallback(async () => {
     try {
@@ -737,7 +775,7 @@ export default function MapScreen() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchJobs(), fetchClients()]);
+    await fetchMapJobs();
     if (showTeamMembers && canViewTeamMode) {
       await Promise.all([fetchTeamLocations(), fetchGeofenceAlerts()]);
     }
@@ -792,10 +830,9 @@ export default function MapScreen() {
   }, [showJobs, showTeamMembers, filteredJobs, teamMembers, bottomNavHeight, headerCollapsed, canViewTeamMode]);
 
   useEffect(() => {
-    fetchJobs();
-    fetchClients();
+    fetchMapJobs();
     requestLocation();
-  }, []);
+  }, [fetchMapJobs]);
 
   useEffect(() => {
     if (showTeamMembers && canViewTeamMode) {
@@ -881,7 +918,7 @@ export default function MapScreen() {
           [{ text: 'OK' }]
         );
         // Refresh jobs to reflect the assignment
-        await fetchJobs();
+        await fetchMapJobs();
       } else {
         const errorData = await response.json().catch(() => ({}));
         Alert.alert('Assignment Failed', errorData.error || 'Failed to assign job. Please try again.');
@@ -1158,13 +1195,15 @@ export default function MapScreen() {
           );
         })}
 
-        {/* Team Member Markers */}
+        {/* Team Member Markers - Life360 Style */}
         {showTeamMembers && canViewTeamMode && teamMembers.map((member) => {
-          const memberColor = member.themeColor || getActivityColor(member.activityStatus);
+          // Use member's theme color as base, fallback to a nice blue
+          const memberColor = member.themeColor || '#3B82F6';
           const activityColor = getActivityColor(member.activityStatus);
           const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
           const isSelected = selectedWorker?.id === member.id;
           const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
+          const shortName = member.user?.firstName || fullName.split(' ')[0] || 'Unknown';
           
           return member.lastLocation && (
             <Marker
@@ -1174,26 +1213,23 @@ export default function MapScreen() {
                 longitude: member.lastLocation.longitude,
               }}
               onPress={() => handleWorkerTap(member)}
+              anchor={{ x: 0.5, y: 0.5 }}
             >
-              <View style={{ alignItems: 'center' }}>
+              <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+                {/* Main bubble - Life360 style smooth circle */}
                 <View style={[
                   styles.teamMarkerOuter, 
                   { 
-                    borderColor: isSelected ? colors.primary : memberColor, 
                     backgroundColor: memberColor,
-                    transform: [{ scale: isSelected ? 1.15 : 1 }],
+                    borderColor: isSelected ? colors.primary : 'rgba(255,255,255,0.95)',
                   },
-                  isSelected && { 
-                    borderWidth: 4,
-                    borderColor: colors.primary,
-                  }
+                  isSelected && styles.teamMarkerSelected,
                 ]}>
                   <Text style={styles.teamMarkerText}>{initials}</Text>
-                  {member.themeColor && (
-                    <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
-                  )}
+                  {/* Activity dot - always visible, positioned at bottom-right */}
+                  <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
                 </View>
-                {/* Name label below marker */}
+                {/* Name label - clean pill below marker */}
                 <View style={[
                   styles.nameLabel,
                   isSelected && { backgroundColor: colors.primary }
@@ -1202,7 +1238,7 @@ export default function MapScreen() {
                     styles.nameLabelText,
                     isSelected && { color: '#fff' }
                   ]} numberOfLines={1}>
-                    {fullName}
+                    {shortName}
                   </Text>
                 </View>
               </View>
@@ -1583,7 +1619,7 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* Team Member Chips (horizontal scroll) - Owners/Managers only, hide when route panel visible */}
+      {/* Team Member Chips - Life360 Style horizontal scroll */}
       {canViewTeamMode && showTeamMembers && teamMembers.length > 0 && !selectedWorker && routeJobs.length === 0 && (
         <View style={{
           position: 'absolute',
@@ -1595,14 +1631,16 @@ export default function MapScreen() {
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.sm }}
+            contentContainerStyle={{ gap: spacing.md, paddingRight: spacing.md }}
           >
             {teamMembers.map((member) => {
-              const memberColor = member.themeColor || getActivityColor(member.activityStatus);
+              const memberColor = member.themeColor || '#3B82F6';
+              const activityColor = getActivityColor(member.activityStatus);
               const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
-              const firstName = member.user?.firstName || '';
+              const firstName = member.user?.firstName || 'Unknown';
               const isWorking = member.activityStatus === 'working';
               const isDriving = member.activityStatus === 'driving';
+              const isOnline = member.activityStatus === 'online';
               const speed = member.lastLocation?.speed;
               
               return (
@@ -1612,39 +1650,61 @@ export default function MapScreen() {
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: spacing.sm,
-                    paddingHorizontal: spacing.sm,
-                    paddingVertical: spacing.xs + 2,
-                    backgroundColor: colors.card,
-                    borderRadius: radius['2xl'],
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    ...shadows.md,
+                    paddingHorizontal: spacing.sm + 2,
+                    paddingVertical: spacing.sm,
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    borderRadius: 24,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    elevation: 4,
                   }}
                   onPress={() => handleWorkerTap(member)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.8}
                 >
-                  <View style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: memberColor,
-                    borderWidth: 2,
-                    borderColor: memberColor,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>{initials}</Text>
+                  {/* Avatar with activity dot */}
+                  <View style={{ position: 'relative' }}>
+                    <View style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: memberColor,
+                      borderWidth: 2,
+                      borderColor: 'rgba(255,255,255,0.9)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 2,
+                      elevation: 2,
+                    }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+                    </View>
+                    {/* Activity indicator dot */}
+                    <View style={{
+                      position: 'absolute',
+                      bottom: -1,
+                      right: -1,
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
+                      backgroundColor: activityColor,
+                      borderWidth: 2,
+                      borderColor: '#fff',
+                    }} />
                   </View>
-                  <View>
-                    <Text style={{ fontSize: 13, fontWeight: '500', color: colors.foreground }} numberOfLines={1}>
+                  <View style={{ marginRight: spacing.xs }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#333' }} numberOfLines={1}>
                       {firstName}
                     </Text>
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                    <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>
                       {isDriving && speed && speed > 0
                         ? `${Math.round(speed * 3.6)} km/h`
                         : isWorking 
                           ? 'Working' 
-                          : member.activityStatus === 'online' 
+                          : isOnline 
                             ? 'Online' 
                             : 'Offline'}
                     </Text>
@@ -1657,7 +1717,7 @@ export default function MapScreen() {
       )}
 
       {/* Loading Overlay */}
-      {jobsLoading && !filteredJobs.length && (
+      {mapJobsLoading && !filteredJobs.length && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
