@@ -21,6 +21,7 @@ import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { API_URL, api } from '../../../src/lib/api';
 import { spacing, radius, shadows, typography, iconSizes } from '../../../src/lib/design-tokens';
 import { format } from 'date-fns';
+import { getEmailPreference, setEmailPreference, EmailAppPreference } from '../../../src/lib/email-preference';
 
 interface ReceiptData {
   id: string;
@@ -73,6 +74,7 @@ export default function ReceiptDetailScreen() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showEmailOptions, setShowEmailOptions] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#22c55e';
 
@@ -286,12 +288,10 @@ export default function ReceiptDetailScreen() {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!receipt || isSendingEmail) return;
+  const handleSendReceipt = async () => {
+    if (!receipt) return;
     
-    const recipientEmail = client?.email;
-    
-    if (!recipientEmail) {
+    if (!client?.email) {
       Alert.alert(
         'No Email Address',
         'This client does not have an email address on file. Please add an email address to the client record first.',
@@ -300,31 +300,99 @@ export default function ReceiptDetailScreen() {
       return;
     }
     
-    Alert.alert(
-      'Send Receipt',
-      `Send receipt to ${recipientEmail}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send',
-          onPress: async () => {
-            setIsSendingEmail(true);
-            try {
-              await api.post(`/api/receipts/${receipt.id}/send-email`, {
-                email: recipientEmail,
-              });
-              Alert.alert('Success', `Receipt sent to ${recipientEmail}`);
-            } catch (error: any) {
-              console.error('Error sending receipt email:', error);
-              const message = error?.response?.data?.error || error?.message || 'Failed to send receipt email';
-              Alert.alert('Error', message);
-            } finally {
-              setIsSendingEmail(false);
-            }
+    const preference = await getEmailPreference();
+    
+    if (preference === 'tradietrack') {
+      handleSendViaTradieTrack();
+    } else if (preference === 'ask') {
+      Alert.alert(
+        'Send Receipt',
+        'How would you like to send this receipt?',
+        [
+          {
+            text: 'Open Email App',
+            onPress: () => handleSendViaEmailApp(),
           },
-        },
-      ]
-    );
+          {
+            text: 'Use TradieTrack',
+            onPress: () => handleSendViaTradieTrack(),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    } else {
+      handleSendViaEmailApp();
+    }
+  };
+  
+  const handleSendViaEmailApp = async () => {
+    if (!receipt) return;
+    
+    if (!client?.email) {
+      Alert.alert('No Email', "This client doesn't have an email address on file.");
+      return;
+    }
+    
+    const businessName = businessSettings?.businessName || 'Your Business';
+    const receiptNumber = receipt.receiptNumber || receipt.id?.slice(0, 8);
+    const total = formatCurrency(receipt.amount);
+    const subject = `Payment Receipt ${receiptNumber} - ${total}`;
+    const paidDate = receipt.paidAt 
+      ? format(new Date(receipt.paidAt), 'd MMMM yyyy') 
+      : format(new Date(receipt.createdAt), 'd MMMM yyyy');
+    
+    const body = `G'day ${client.name || 'there'},\n\nThank you for your payment of ${total}.\n\nReceipt: ${receiptNumber}\nDate: ${paidDate}\nMethod: ${formatPaymentMethod(receipt.paymentMethod)}\n\nThanks for your business!\n\nCheers,\n${businessName}`;
+    
+    const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+        Alert.alert(
+          'Email App Opened',
+          'Your email app has the receipt details ready. The receipt has already been recorded.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+      }
+    } catch (error) {
+      console.log('Error opening email:', error);
+      Alert.alert('Error', 'Failed to open email app.');
+    }
+  };
+  
+  const handleSendViaTradieTrack = async () => {
+    if (!receipt || isSendingEmail) return;
+    
+    const recipientEmail = client?.email;
+    
+    if (!recipientEmail) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address on file.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setIsSendingEmail(true);
+    try {
+      await api.post(`/api/receipts/${receipt.id}/send-email`, {
+        email: recipientEmail,
+      });
+      Alert.alert('Receipt Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+    } catch (error: any) {
+      console.error('Error sending receipt email:', error);
+      const message = error?.response?.data?.error || error?.message || 'Failed to send receipt email';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleShareViaSMS = async () => {
@@ -502,7 +570,7 @@ export default function ReceiptDetailScreen() {
           
           <TouchableOpacity 
             style={[styles.actionButton, !client?.email && styles.actionButtonDisabled]}
-            onPress={handleSendEmail}
+            onPress={handleSendReceipt}
             disabled={isSendingEmail || !client?.email}
             data-testid="button-send-email"
           >

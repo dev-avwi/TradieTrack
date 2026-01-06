@@ -9122,7 +9122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleRecordPayment = async (req: any, res: any) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { amount, paymentMethod, reference, notes } = req.body;
+      const { amount, paymentMethod, reference, notes, createReceipt = false } = req.body;
       
       // Validate and parse amount with proper string handling
       const amountStr = String(amount || '').trim();
@@ -9193,53 +9193,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       processPaymentReceivedAutomation(req.userId, invoice.id)
         .catch(err => console.error('[Automations] Error processing payment received:', err));
       
-      // Auto-create receipt for the payment
-      try {
-        const receiptNumber = await storage.generateReceiptNumber(userContext.effectiveUserId);
-        const gstAmount = parsedAmount / 11; // GST = 1/11 of total (Australian standard)
-        const subtotal = parsedAmount - gstAmount;
-        
-        // Get client info if available
-        let clientId = null;
-        if (invoice.clientId) {
-          clientId = invoice.clientId;
+      // Only create receipt if explicitly requested (not automatic)
+      let receiptId = null;
+      if (createReceipt) {
+        try {
+          const receiptNumber = await storage.generateReceiptNumber(userContext.effectiveUserId);
+          const gstAmount = parsedAmount / 11; // GST = 1/11 of total (Australian standard)
+          const subtotal = parsedAmount - gstAmount;
+          
+          // Get client info if available
+          let clientId = null;
+          if (invoice.clientId) {
+            clientId = invoice.clientId;
+          }
+          
+          const receipt = await storage.createReceipt({
+            userId: userContext.effectiveUserId,
+            receiptNumber,
+            invoiceId: invoice.id,
+            jobId: invoice.jobId,
+            clientId,
+            amount: parsedAmount.toFixed(2),
+            gstAmount: gstAmount.toFixed(2),
+            subtotal: subtotal.toFixed(2),
+            paymentMethod: paymentMethod,
+            paymentReference: reference || null,
+            description: `Payment for Invoice ${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
+            paidAt: new Date(),
+          });
+          
+          receiptId = receipt.id;
+          
+          // Log receipt creation activity using helper function
+          await logActivity(
+            userContext.effectiveUserId,
+            'payment_received',
+            `Receipt ${receiptNumber} created`,
+            `Payment of $${parsedAmount.toFixed(2)} received via ${paymentMethod}`,
+            'invoice',
+            invoice.id,
+            { receiptNumber, receiptId: receipt.id, amount: parsedAmount.toFixed(2), invoiceId: invoice.id, jobId: invoice.jobId, paymentMethod }
+          );
+          
+          console.log(`✅ Created receipt ${receiptNumber} for invoice payment`);
+        } catch (receiptError) {
+          console.error('Failed to create receipt:', receiptError);
+          // Don't fail the payment if receipt creation fails
         }
-        
-        const receipt = await storage.createReceipt({
-          userId: userContext.effectiveUserId,
-          receiptNumber,
-          invoiceId: invoice.id,
-          jobId: invoice.jobId,
-          clientId,
-          amount: parsedAmount.toFixed(2),
-          gstAmount: gstAmount.toFixed(2),
-          subtotal: subtotal.toFixed(2),
-          paymentMethod: paymentMethod,
-          paymentReference: reference || null,
-          description: `Payment for Invoice ${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
-          paidAt: new Date(),
-        });
-        
-        // Log receipt creation activity using helper function
-        await logActivity(
-          userContext.effectiveUserId,
-          'payment_received',
-          `Receipt ${receiptNumber} created`,
-          `Payment of $${parsedAmount.toFixed(2)} received via ${paymentMethod}`,
-          'invoice',
-          invoice.id,
-          { receiptNumber, receiptId: receipt.id, amount: parsedAmount.toFixed(2), invoiceId: invoice.id, jobId: invoice.jobId, paymentMethod }
-        );
-        
-        console.log(`✅ Auto-created receipt ${receiptNumber} for invoice payment`);
-      } catch (receiptError) {
-        console.error('Failed to auto-create receipt:', receiptError);
-        // Don't fail the payment if receipt creation fails
       }
       
       res.json({
         ...updatedInvoice,
-        message: `Payment of $${parsedAmount.toFixed(2)} recorded via ${paymentMethod}`
+        receiptId,
+        message: `Payment of $${parsedAmount.toFixed(2)} recorded via ${paymentMethod}${receiptId ? ' - Receipt created' : ''}`
       });
     } catch (error) {
       console.error("Error recording payment:", error);

@@ -81,6 +81,7 @@ export default function InvoiceDetailScreen() {
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [isSendingInvoice, setIsSendingInvoice] = useState(false);
   const [isSendingPaymentLinkEmail, setIsSendingPaymentLinkEmail] = useState(false);
+  const [createReceiptOnPayment, setCreateReceiptOnPayment] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
   
@@ -473,14 +474,18 @@ export default function InvoiceDetailScreen() {
           amount: Number(invoice.total) || 0,
           paymentMethod: selectedPaymentMethod,
           reference: paymentReference || undefined,
+          createReceipt: createReceiptOnPayment,
         }),
       });
 
       if (response.ok) {
+        const result = await response.json();
         setShowPaymentMethodModal(false);
         setPaymentReference('');
         setSelectedPaymentMethod('cash');
+        setCreateReceiptOnPayment(false);
         await loadData();
+        
         const methodLabels: Record<string, string> = {
           cash: 'Cash',
           bank_transfer: 'Bank Transfer',
@@ -488,10 +493,28 @@ export default function InvoiceDetailScreen() {
           card: 'Card',
           other: 'Other'
         };
-        Alert.alert(
-          'Payment Recorded',
-          `${formatCurrency(invoice.total)} received via ${methodLabels[selectedPaymentMethod]}`
-        );
+        
+        if (createReceiptOnPayment && result.receiptId) {
+          Alert.alert(
+            'Payment Recorded',
+            `${formatCurrency(invoice.total)} received via ${methodLabels[selectedPaymentMethod]}. Receipt created.`
+          );
+        } else {
+          Alert.alert(
+            'Payment Recorded',
+            `${formatCurrency(invoice.total)} received via ${methodLabels[selectedPaymentMethod]}`,
+            [
+              { 
+                text: 'Not Now', 
+                style: 'cancel',
+              },
+              {
+                text: 'Generate Receipt',
+                onPress: () => router.push(`/more/receipt/new?invoiceId=${id}`),
+              },
+            ]
+          );
+        }
       } else {
         const error = await response.json();
         Alert.alert('Error', error.error || 'Failed to record payment');
@@ -2257,6 +2280,19 @@ export default function InvoiceDetailScreen() {
               onChangeText={setPaymentReference}
             />
 
+            <View style={styles.receiptToggleContainer}>
+              <View style={styles.receiptToggleTextContainer}>
+                <Text style={styles.receiptToggleLabel}>Also generate receipt</Text>
+                <Text style={styles.receiptToggleHint}>Create a receipt document automatically</Text>
+              </View>
+              <Switch
+                value={createReceiptOnPayment}
+                onValueChange={setCreateReceiptOnPayment}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.white}
+              />
+            </View>
+
             <View style={styles.paymentMethodActions}>
               <TouchableOpacity
                 style={styles.paymentMethodCancelButton}
@@ -2264,6 +2300,7 @@ export default function InvoiceDetailScreen() {
                   setShowPaymentMethodModal(false);
                   setPaymentReference('');
                   setSelectedPaymentMethod('cash');
+                  setCreateReceiptOnPayment(false);
                 }}
               >
                 <Text style={styles.paymentMethodCancelText}>Cancel</Text>
@@ -3288,6 +3325,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 15,
     color: colors.foreground,
     backgroundColor: colors.background,
+  },
+  receiptToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  receiptToggleTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  receiptToggleLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  receiptToggleHint: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
   paymentMethodActions: {
     flexDirection: 'row',
