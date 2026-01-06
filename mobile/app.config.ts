@@ -27,6 +27,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSLocationAlwaysAndWhenInUseUsageDescription: 'TradieTrack needs location access for team tracking',
       NFCReaderUsageDescription: 'TradieTrack uses NFC for Tap to Pay contactless payments',
     },
+    entitlements: {
+      'com.apple.developer.proximity-reader.payment.acceptance': true,
+    },
   },
   android: {
     adaptiveIcon: {
@@ -74,6 +77,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         icon: './assets/notification-icon.png',
         color: '#f97316',
       },
+    ],
+    [
+      '@stripe/stripe-terminal-react-native',
+      {},
     ],
   ],
   experiments: {
