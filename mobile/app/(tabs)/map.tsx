@@ -324,48 +324,49 @@ const createStyles = (colors: ThemeColors) => {
         borderWidth: 3,
         ...shadows.md,
       },
-      // Life360-style team marker - smooth bubble with subtle shadow
+      // Life360-style team marker - compact bubble with subtle shadow
       teamMarkerOuter: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 2.5,
+        borderColor: 'rgba(255,255,255,0.95)',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 4,
       },
       teamMarkerSelected: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         borderWidth: 3,
+        borderColor: 'rgba(255,255,255,1)',
       },
       // Life360-style activity indicator - small dot at bottom right
       activityDot: {
         position: 'absolute',
-        bottom: -1,
-        right: -1,
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        borderWidth: 2.5,
+        bottom: -2,
+        right: -2,
+        width: 11,
+        height: 11,
+        borderRadius: 5.5,
+        borderWidth: 2,
         borderColor: '#fff',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.15,
         shadowRadius: 1,
         elevation: 2,
       },
       teamMarkerText: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
         color: '#ffffff',
-        textShadowColor: 'rgba(0,0,0,0.2)',
+        textShadowColor: 'rgba(0,0,0,0.15)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 1,
       },
@@ -480,15 +481,17 @@ const createStyles = (colors: ThemeColors) => {
         marginTop: 2,
       },
       cancelButton: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: radius.md,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        paddingHorizontal: spacing.md + 2,
+        paddingVertical: spacing.sm + 2,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
       },
       cancelButtonText: {
         color: '#fff',
         fontWeight: '600',
-        fontSize: 13,
+        fontSize: 14,
       },
       modalOverlay: {
         flex: 1,
@@ -550,28 +553,28 @@ const createStyles = (colors: ThemeColors) => {
       modalButtonTextConfirm: {
         color: '#fff',
       },
-      // Life360-style name label - clean pill shape below marker
+      // Life360-style name label - compact pill below marker
       nameLabel: {
         position: 'absolute',
-        bottom: -22,
+        bottom: -18,
         left: '50%',
-        transform: [{ translateX: -40 }],
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        paddingHorizontal: spacing.sm + 2,
-        paddingVertical: 3,
-        borderRadius: 10,
-        minWidth: 80,
+        transform: [{ translateX: -32 }],
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: 8,
+        minWidth: 64,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
-        shadowRadius: 2,
-        elevation: 3,
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
+        elevation: 2,
       },
       nameLabelText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '600',
-        color: '#333',
+        color: '#444',
         textAlign: 'center',
       },
     }),
@@ -1219,8 +1222,8 @@ export default function MapScreen() {
               onPress={() => handleWorkerTap(member)}
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              <View style={{ alignItems: 'center', paddingBottom: 24 }}>
-                {/* Main bubble - Life360 style smooth circle */}
+              <View style={{ alignItems: 'center', paddingBottom: 20 }}>
+                {/* Main bubble - Life360 style compact circle */}
                 <View style={[
                   styles.teamMarkerOuter, 
                   { 
@@ -1233,7 +1236,7 @@ export default function MapScreen() {
                   {/* Activity dot - always visible, positioned at bottom-right */}
                   <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
                 </View>
-                {/* Name label - clean pill below marker */}
+                {/* Name label - compact pill below marker */}
                 <View style={[
                   styles.nameLabel,
                   isSelected && { backgroundColor: colors.primary }
@@ -1583,7 +1586,7 @@ export default function MapScreen() {
 
       {/* Selected Worker Banner */}
       {selectedWorker && (
-        <View style={[styles.assignModeBanner, { bottom: bottomNavHeight + spacing.lg + 70 }]}>
+        <View style={[styles.assignModeBanner, { bottom: bottomNavHeight + spacing.md }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.assignModeBannerText}>
               {selectedWorker.user?.firstName} {selectedWorker.user?.lastName} selected
@@ -1593,9 +1596,13 @@ export default function MapScreen() {
             </Text>
           </View>
           <TouchableOpacity 
-            style={styles.cancelButton}
-            onPress={clearWorkerSelection}
-            activeOpacity={0.7}
+            style={[styles.cancelButton, { minWidth: 70, alignItems: 'center' }]}
+            onPress={() => {
+              console.log('[Map] Cancel button pressed - clearing selection');
+              setSelectedWorker(null);
+            }}
+            activeOpacity={0.6}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -1623,20 +1630,20 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* Team Member Chips - Life360 Style horizontal scroll */}
+      {/* Team Member Chips - Life360 Style compact horizontal scroll */}
       {canViewTeamMode && showTeamMembers && teamMembers.length > 0 && !selectedWorker && routeJobs.length === 0 && (
         <View style={{
           position: 'absolute',
-          bottom: bottomNavHeight + spacing.lg,
+          bottom: bottomNavHeight + spacing.sm,
           left: 0,
-          right: 70,
-          paddingHorizontal: spacing.md,
+          right: 64,
+          paddingHorizontal: spacing.sm,
           zIndex: 15,
         }}>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.md, paddingRight: spacing.md }}
+            contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.sm }}
           >
             {teamMembers.map((member) => {
               const memberColor = member.themeColor || '#3B82F6';
@@ -1654,57 +1661,52 @@ export default function MapScreen() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: spacing.sm,
-                    paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: spacing.sm,
-                    backgroundColor: 'rgba(255,255,255,0.95)',
-                    borderRadius: 24,
+                    gap: spacing.xs + 2,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: spacing.xs + 2,
+                    backgroundColor: 'rgba(255,255,255,0.96)',
+                    borderRadius: 20,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 4,
-                    elevation: 4,
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 3,
+                    elevation: 3,
                   }}
                   onPress={() => handleWorkerTap(member)}
                   activeOpacity={0.8}
                 >
-                  {/* Avatar with activity dot */}
+                  {/* Compact avatar with activity dot */}
                   <View style={{ position: 'relative' }}>
                     <View style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
+                      width: 30,
+                      height: 30,
+                      borderRadius: 15,
                       backgroundColor: memberColor,
                       borderWidth: 2,
-                      borderColor: 'rgba(255,255,255,0.9)',
+                      borderColor: 'rgba(255,255,255,0.95)',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 2,
-                      elevation: 2,
                     }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{initials}</Text>
                     </View>
                     {/* Activity indicator dot */}
                     <View style={{
                       position: 'absolute',
                       bottom: -1,
                       right: -1,
-                      width: 12,
-                      height: 12,
-                      borderRadius: 6,
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
                       backgroundColor: activityColor,
-                      borderWidth: 2,
+                      borderWidth: 1.5,
                       borderColor: '#fff',
                     }} />
                   </View>
-                  <View style={{ marginRight: spacing.xs }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#333' }} numberOfLines={1}>
+                  <View>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }} numberOfLines={1}>
                       {firstName}
                     </Text>
-                    <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>
+                    <Text style={{ fontSize: 10, color: '#666', fontWeight: '500' }}>
                       {isDriving && speed && speed > 0
                         ? `${Math.round(speed * 3.6)} km/h`
                         : isWorking 
