@@ -140,12 +140,17 @@ if (process.env.DATABASE_URL) {
     next();
   });
 
-  // Demo data seeding - ALWAYS run to ensure demo account works for Apple review
-  // This creates/updates demo@tradietrack.com.au with password demo123456
-  await createDemoUserAndData();
-  
-  // Create demo team members with realistic Australian data and live locations
-  await createDemoTeamMembers();
+  // Demo data seeding - only run in development or when explicitly enabled for Apple review
+  // Set ENABLE_DEMO_DATA=true in production only during App Store review periods
+  const enableDemoData = process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_DATA === 'true';
+  if (enableDemoData) {
+    // This creates/updates demo@tradietrack.com.au with password demo123456
+    await createDemoUserAndData();
+    
+    // Create demo team members with realistic Australian data and live locations
+    await createDemoTeamMembers();
+    console.log('[Demo] Demo data seeding enabled');
+  }
   
   const server = await registerRoutes(app);
 

@@ -27,8 +27,10 @@ const getApiBaseUrl = (): string => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Log which API URL is being used (helps debug connection issues)
-console.log(`[API] Mode: ${__DEV__ ? 'Development' : 'Production'}, URL: ${API_BASE_URL}`);
+// Log mode only in development (don't expose URLs in production logs)
+if (__DEV__) {
+  console.log(`[API] Development mode, connecting to dev server`);
+}
 
 export const API_URL = API_BASE_URL;
 
