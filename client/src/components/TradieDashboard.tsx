@@ -32,7 +32,10 @@ import {
   PhoneCall,
   Wrench,
   Flag,
-  ChevronDown
+  ChevronDown,
+  Receipt,
+  DollarSign,
+  CreditCard
 } from "lucide-react";
 
 interface TradieDashboardProps {
@@ -811,17 +814,40 @@ export default function TradieDashboard({
           <CardTitle className="text-base">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {onViewJobs && (
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={onViewJobs}
-              data-testid="button-view-all-jobs"
-            >
-              <Briefcase className="h-4 w-4 mr-2" />
-              All Jobs
-            </Button>
-          )}
+          {/* Log Hours - Time Tracking */}
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => onNavigate?.('/time-tracking')}
+            data-testid="button-log-hours"
+          >
+            <Timer className="h-4 w-4 mr-2" />
+            Log Hours
+          </Button>
+          
+          {/* Photo Receipt - Expense Tracking */}
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => onNavigate?.('/expenses')}
+            data-testid="button-photo-receipt"
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            Photo Receipt
+          </Button>
+          
+          {/* Request Payment - From Unpaid Invoices */}
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => onNavigate?.('/collect-payment')}
+            data-testid="button-request-payment"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Request Payment
+          </Button>
+          
+          {/* Ask AI */}
           <Button 
             variant="outline" 
             className="w-full"
@@ -838,6 +864,19 @@ export default function TradieDashboard({
             <Sparkles className="h-4 w-4 mr-2" style={{ color: 'hsl(var(--trade))' }} />
             Ask AI
           </Button>
+          
+          {onViewJobs && (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={onViewJobs}
+              data-testid="button-view-all-jobs"
+            >
+              <Briefcase className="h-4 w-4 mr-2" />
+              All Jobs
+            </Button>
+          )}
+          
           {onOpenTeamChat && (
             <Button 
               variant="outline" 
@@ -849,6 +888,7 @@ export default function TradieDashboard({
               Team
             </Button>
           )}
+          
           <Button 
             variant="outline" 
             className="w-full"

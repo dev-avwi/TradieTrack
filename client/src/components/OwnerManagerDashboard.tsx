@@ -31,7 +31,10 @@ import {
   MessageSquare,
   Navigation,
   Zap,
-  Sparkles
+  Sparkles,
+  Timer,
+  Receipt,
+  CreditCard
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -389,7 +392,7 @@ export default function OwnerManagerDashboard({
       <section className="animate-fade-up" style={{ animationDelay: '100ms' }}>
         <h2 className="ios-label mb-3">Quick Actions</h2>
         <div className="feed-card" data-testid="quick-actions-section">
-          <div className="card-padding">
+          <div className="card-padding space-y-2">
             <div className="flex gap-2">
               {onCreateJob && (
                 <Button 
@@ -427,6 +430,38 @@ export default function OwnerManagerDashboard({
                   <span className="truncate">Invoice</span>
                 </Button>
               )}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 px-3 rounded-xl press-scale"
+                onClick={() => onNavigate?.('/time-tracking')}
+                data-testid="button-log-hours"
+              >
+                <Timer className="h-4 w-4 mr-1.5" />
+                <span className="truncate">Log Hours</span>
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 px-3 rounded-xl press-scale"
+                onClick={() => onNavigate?.('/expenses')}
+                data-testid="button-photo-receipt"
+              >
+                <Receipt className="h-4 w-4 mr-1.5" />
+                <span className="truncate">Photo Receipt</span>
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 px-3 rounded-xl press-scale"
+                onClick={() => onNavigate?.('/collect-payment')}
+                data-testid="button-request-payment"
+              >
+                <CreditCard className="h-4 w-4 mr-1.5" />
+                <span className="truncate">Request Payment</span>
+              </Button>
             </div>
           </div>
         </div>

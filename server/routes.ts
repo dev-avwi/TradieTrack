@@ -59,6 +59,10 @@ import {
   getValidPurposesForFamily,
   type BusinessTemplateFamily,
   type BusinessTemplatePurpose,
+  // Recurring contracts schema
+  insertRecurringContractSchema,
+  // Leads schema
+  insertLeadSchema,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -6121,6 +6125,394 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error testing email connection:", error);
       res.status(500).json({ success: false, message: error.message || "Failed to test email connection" });
+    }
+  });
+
+  // ================================
+  // Daily Summary Email Endpoints
+  // ================================
+
+  // GET /api/email/daily-summary/preview - Preview the daily summary without sending
+  app.get("/api/email/daily-summary/preview", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      
+      const businessSettingsData = await storage.getBusinessSettings(userId);
+      if (!businessSettingsData) {
+        return res.status(400).json({ error: "Business settings not found" });
+      }
+
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+      // Get all data for today
+      const [allJobs, allQuotes, allInvoices, allClients] = await Promise.all([
+        storage.getJobs(userId),
+        storage.getQuotes(userId),
+        storage.getInvoices(userId),
+        storage.getClients(userId),
+      ]);
+
+      // Filter for today's activity
+      const todayJobs = allJobs.filter(job => {
+        const completedAt = job.completedAt ? new Date(job.completedAt) : null;
+        return completedAt && completedAt >= startOfDay && completedAt < endOfDay;
+      });
+
+      const todayQuotesSent = allQuotes.filter(quote => {
+        const sentAt = quote.sentAt ? new Date(quote.sentAt) : null;
+        return sentAt && sentAt >= startOfDay && sentAt < endOfDay;
+      });
+
+      const todayQuotesAccepted = allQuotes.filter(quote => {
+        const acceptedAt = quote.acceptedAt ? new Date(quote.acceptedAt) : null;
+        return acceptedAt && acceptedAt >= startOfDay && acceptedAt < endOfDay;
+      });
+
+      const todayQuotesRejected = allQuotes.filter(quote => {
+        return quote.status === 'rejected' && quote.updatedAt && 
+          new Date(quote.updatedAt) >= startOfDay && new Date(quote.updatedAt) < endOfDay;
+      });
+
+      const todayInvoicesSent = allInvoices.filter(invoice => {
+        const sentAt = invoice.sentAt ? new Date(invoice.sentAt) : null;
+        return sentAt && sentAt >= startOfDay && sentAt < endOfDay;
+      });
+
+      const todayInvoicesPaid = allInvoices.filter(invoice => {
+        const paidAt = invoice.paidAt ? new Date(invoice.paidAt) : null;
+        return paidAt && paidAt >= startOfDay && paidAt < endOfDay;
+      });
+
+      const overdueInvoices = allInvoices.filter(invoice => {
+        return invoice.status === 'overdue' || 
+          (invoice.dueDate && new Date(invoice.dueDate) < today && invoice.status !== 'paid');
+      });
+
+      // Calculate totals
+      const quoteSentTotal = todayQuotesSent.reduce((sum, q) => sum + Number(q.total || 0), 0);
+      const quoteAcceptedTotal = todayQuotesAccepted.reduce((sum, q) => sum + Number(q.total || 0), 0);
+      const invoiceSentTotal = todayInvoicesSent.reduce((sum, i) => sum + Number(i.total || 0), 0);
+      const invoicePaidTotal = todayInvoicesPaid.reduce((sum, i) => sum + Number(i.total || 0), 0);
+      const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+      // Get client names for completed jobs and payments
+      const getClientName = (clientId: string | null) => {
+        if (!clientId) return 'Unknown';
+        const client = allClients.find(c => c.id === clientId);
+        return client?.name || 'Unknown';
+      };
+
+      const completedJobsList = todayJobs.map(job => ({
+        title: job.title,
+        client: getClientName(job.clientId),
+        value: Number(job.value || 0),
+      }));
+
+      const paymentsList = todayInvoicesPaid.map(invoice => ({
+        client: getClientName(invoice.clientId),
+        amount: Number(invoice.total || 0),
+        invoice: invoice.number || `INV-${invoice.id?.substring(0, 8).toUpperCase()}`,
+      }));
+
+      // Calculate conversion rate
+      const pendingQuotes = allQuotes.filter(q => q.status === 'sent' || q.status === 'viewed');
+      const totalQuotesConsidered = todayQuotesAccepted.length + todayQuotesRejected.length;
+      const conversionRate = totalQuotesConsidered > 0 
+        ? Math.round((todayQuotesAccepted.length / totalQuotesConsidered) * 100) 
+        : 0;
+
+      // Build action items
+      const actionItems: Array<{ type: 'overdue' | 'followup' | 'reminder'; message: string; priority: 'high' | 'medium' | 'low' }> = [];
+      
+      if (overdueInvoices.length > 0) {
+        actionItems.push({
+          type: 'overdue',
+          message: `${overdueInvoices.length} invoice${overdueInvoices.length > 1 ? 's are' : ' is'} overdue (${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(overdueTotal)})`,
+          priority: 'high',
+        });
+      }
+
+      if (pendingQuotes.length > 0) {
+        actionItems.push({
+          type: 'followup',
+          message: `${pendingQuotes.length} quote${pendingQuotes.length > 1 ? 's' : ''} awaiting client response`,
+          priority: 'medium',
+        });
+      }
+
+      const inProgressJobs = allJobs.filter(j => j.status === 'in_progress');
+      if (inProgressJobs.length > 0) {
+        actionItems.push({
+          type: 'reminder',
+          message: `${inProgressJobs.length} job${inProgressJobs.length > 1 ? 's' : ''} currently in progress`,
+          priority: 'low',
+        });
+      }
+
+      // Build summary data
+      const { DailySummaryData, createDailySummaryEmail } = await import("./emailService");
+      
+      const summaryData = {
+        date: today.toISOString().split('T')[0],
+        dateFormatted: today.toLocaleDateString('en-AU', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        business: {
+          name: businessSettingsData.businessName || 'Your Business',
+          email: businessSettingsData.email || '',
+          brandColor: businessSettingsData.brandColor || undefined,
+        },
+        jobs: {
+          completed: todayJobs.length,
+          completedList: completedJobsList,
+          scheduled: allJobs.filter(j => j.status === 'scheduled').length,
+          inProgress: inProgressJobs.length,
+        },
+        quotes: {
+          sent: todayQuotesSent.length,
+          sentTotal: quoteSentTotal,
+          accepted: todayQuotesAccepted.length,
+          acceptedTotal: quoteAcceptedTotal,
+          rejected: todayQuotesRejected.length,
+          pending: pendingQuotes.length,
+          conversionRate,
+        },
+        invoices: {
+          sent: todayInvoicesSent.length,
+          sentTotal: invoiceSentTotal,
+          paid: todayInvoicesPaid.length,
+          paidTotal: invoicePaidTotal,
+          overdue: overdueInvoices.length,
+          overdueTotal,
+        },
+        payments: {
+          received: todayInvoicesPaid.length,
+          totalAmount: invoicePaidTotal,
+          paymentsList,
+        },
+        metrics: {
+          totalRevenue: invoicePaidTotal,
+          outstandingInvoices: overdueTotal,
+          quoteConversionRate: conversionRate,
+        },
+        actionItems,
+      };
+
+      // Generate the email HTML for preview
+      const emailData = createDailySummaryEmail(summaryData);
+
+      res.json({
+        success: true,
+        preview: {
+          subject: emailData.subject,
+          html: emailData.html,
+          recipientEmail: summaryData.business.email,
+        },
+        data: summaryData,
+      });
+    } catch (error: any) {
+      console.error("Error generating daily summary preview:", error);
+      res.status(500).json({ error: error.message || "Failed to generate preview" });
+    }
+  });
+
+  // POST /api/email/daily-summary - Send the daily summary email
+  app.post("/api/email/daily-summary", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      
+      const businessSettingsData = await storage.getBusinessSettings(userId);
+      if (!businessSettingsData) {
+        return res.status(400).json({ error: "Business settings not found" });
+      }
+
+      if (!businessSettingsData.email) {
+        return res.status(400).json({ error: "Business email is required to send daily summary" });
+      }
+
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+      // Get all data for today
+      const [allJobs, allQuotes, allInvoices, allClients] = await Promise.all([
+        storage.getJobs(userId),
+        storage.getQuotes(userId),
+        storage.getInvoices(userId),
+        storage.getClients(userId),
+      ]);
+
+      // Filter for today's activity
+      const todayJobs = allJobs.filter(job => {
+        const completedAt = job.completedAt ? new Date(job.completedAt) : null;
+        return completedAt && completedAt >= startOfDay && completedAt < endOfDay;
+      });
+
+      const todayQuotesSent = allQuotes.filter(quote => {
+        const sentAt = quote.sentAt ? new Date(quote.sentAt) : null;
+        return sentAt && sentAt >= startOfDay && sentAt < endOfDay;
+      });
+
+      const todayQuotesAccepted = allQuotes.filter(quote => {
+        const acceptedAt = quote.acceptedAt ? new Date(quote.acceptedAt) : null;
+        return acceptedAt && acceptedAt >= startOfDay && acceptedAt < endOfDay;
+      });
+
+      const todayQuotesRejected = allQuotes.filter(quote => {
+        return quote.status === 'rejected' && quote.updatedAt && 
+          new Date(quote.updatedAt) >= startOfDay && new Date(quote.updatedAt) < endOfDay;
+      });
+
+      const todayInvoicesSent = allInvoices.filter(invoice => {
+        const sentAt = invoice.sentAt ? new Date(invoice.sentAt) : null;
+        return sentAt && sentAt >= startOfDay && sentAt < endOfDay;
+      });
+
+      const todayInvoicesPaid = allInvoices.filter(invoice => {
+        const paidAt = invoice.paidAt ? new Date(invoice.paidAt) : null;
+        return paidAt && paidAt >= startOfDay && paidAt < endOfDay;
+      });
+
+      const overdueInvoices = allInvoices.filter(invoice => {
+        return invoice.status === 'overdue' || 
+          (invoice.dueDate && new Date(invoice.dueDate) < today && invoice.status !== 'paid');
+      });
+
+      // Calculate totals
+      const quoteSentTotal = todayQuotesSent.reduce((sum, q) => sum + Number(q.total || 0), 0);
+      const quoteAcceptedTotal = todayQuotesAccepted.reduce((sum, q) => sum + Number(q.total || 0), 0);
+      const invoiceSentTotal = todayInvoicesSent.reduce((sum, i) => sum + Number(i.total || 0), 0);
+      const invoicePaidTotal = todayInvoicesPaid.reduce((sum, i) => sum + Number(i.total || 0), 0);
+      const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+      // Get client names
+      const getClientName = (clientId: string | null) => {
+        if (!clientId) return 'Unknown';
+        const client = allClients.find(c => c.id === clientId);
+        return client?.name || 'Unknown';
+      };
+
+      const completedJobsList = todayJobs.map(job => ({
+        title: job.title,
+        client: getClientName(job.clientId),
+        value: Number(job.value || 0),
+      }));
+
+      const paymentsList = todayInvoicesPaid.map(invoice => ({
+        client: getClientName(invoice.clientId),
+        amount: Number(invoice.total || 0),
+        invoice: invoice.number || `INV-${invoice.id?.substring(0, 8).toUpperCase()}`,
+      }));
+
+      // Calculate conversion rate
+      const pendingQuotes = allQuotes.filter(q => q.status === 'sent' || q.status === 'viewed');
+      const totalQuotesConsidered = todayQuotesAccepted.length + todayQuotesRejected.length;
+      const conversionRate = totalQuotesConsidered > 0 
+        ? Math.round((todayQuotesAccepted.length / totalQuotesConsidered) * 100) 
+        : 0;
+
+      // Build action items
+      const actionItems: Array<{ type: 'overdue' | 'followup' | 'reminder'; message: string; priority: 'high' | 'medium' | 'low' }> = [];
+      
+      if (overdueInvoices.length > 0) {
+        actionItems.push({
+          type: 'overdue',
+          message: `${overdueInvoices.length} invoice${overdueInvoices.length > 1 ? 's are' : ' is'} overdue (${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(overdueTotal)})`,
+          priority: 'high',
+        });
+      }
+
+      if (pendingQuotes.length > 0) {
+        actionItems.push({
+          type: 'followup',
+          message: `${pendingQuotes.length} quote${pendingQuotes.length > 1 ? 's' : ''} awaiting client response`,
+          priority: 'medium',
+        });
+      }
+
+      const inProgressJobs = allJobs.filter(j => j.status === 'in_progress');
+      if (inProgressJobs.length > 0) {
+        actionItems.push({
+          type: 'reminder',
+          message: `${inProgressJobs.length} job${inProgressJobs.length > 1 ? 's' : ''} currently in progress`,
+          priority: 'low',
+        });
+      }
+
+      // Build and send summary
+      const { sendDailySummaryEmail } = await import("./emailService");
+      
+      const summaryData = {
+        date: today.toISOString().split('T')[0],
+        dateFormatted: today.toLocaleDateString('en-AU', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        business: {
+          name: businessSettingsData.businessName || 'Your Business',
+          email: businessSettingsData.email,
+          brandColor: businessSettingsData.brandColor || undefined,
+        },
+        jobs: {
+          completed: todayJobs.length,
+          completedList: completedJobsList,
+          scheduled: allJobs.filter(j => j.status === 'scheduled').length,
+          inProgress: inProgressJobs.length,
+        },
+        quotes: {
+          sent: todayQuotesSent.length,
+          sentTotal: quoteSentTotal,
+          accepted: todayQuotesAccepted.length,
+          acceptedTotal: quoteAcceptedTotal,
+          rejected: todayQuotesRejected.length,
+          pending: pendingQuotes.length,
+          conversionRate,
+        },
+        invoices: {
+          sent: todayInvoicesSent.length,
+          sentTotal: invoiceSentTotal,
+          paid: todayInvoicesPaid.length,
+          paidTotal: invoicePaidTotal,
+          overdue: overdueInvoices.length,
+          overdueTotal,
+        },
+        payments: {
+          received: todayInvoicesPaid.length,
+          totalAmount: invoicePaidTotal,
+          paymentsList,
+        },
+        metrics: {
+          totalRevenue: invoicePaidTotal,
+          outstandingInvoices: overdueTotal,
+          quoteConversionRate: conversionRate,
+        },
+        actionItems,
+      };
+
+      const result = await sendDailySummaryEmail(summaryData);
+
+      // Update last sent timestamp
+      await storage.upsertAutomationSettings(userId, {
+        dailySummaryLastSent: new Date(),
+      });
+
+      res.json({
+        success: true,
+        message: result.message,
+        sentTo: businessSettingsData.email,
+      });
+    } catch (error: any) {
+      console.error("Error sending daily summary:", error);
+      res.status(500).json({ error: error.message || "Failed to send daily summary" });
     }
   });
 
@@ -21870,6 +22262,343 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(approval);
     } catch (error: any) {
       console.error('Error requesting revision:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // RECURRING CONTRACTS (Job Templates)
+  // ============================================
+
+  // Get all recurring contracts for user
+  app.get("/api/recurring-contracts", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const contracts = await storage.getRecurringContracts(userId);
+      res.json(contracts);
+    } catch (error: any) {
+      console.error('Error getting recurring contracts:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new recurring contract
+  app.post("/api/recurring-contracts", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const validated = insertRecurringContractSchema.parse(req.body);
+      
+      const contract = await storage.createRecurringContract({
+        ...validated,
+        userId,
+      });
+      
+      res.json(contract);
+    } catch (error: any) {
+      console.error('Error creating recurring contract:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a single recurring contract
+  app.get("/api/recurring-contracts/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const contract = await storage.getRecurringContract(id, userId);
+      if (!contract) {
+        return res.status(404).json({ error: 'Recurring contract not found' });
+      }
+      
+      res.json(contract);
+    } catch (error: any) {
+      console.error('Error getting recurring contract:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a recurring contract
+  app.put("/api/recurring-contracts/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const contract = await storage.updateRecurringContract(id, userId, req.body);
+      if (!contract) {
+        return res.status(404).json({ error: 'Recurring contract not found' });
+      }
+      
+      res.json(contract);
+    } catch (error: any) {
+      console.error('Error updating recurring contract:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a recurring contract
+  app.delete("/api/recurring-contracts/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      await storage.deleteRecurringContract(id, userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting recurring contract:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get schedules for a recurring contract
+  app.get("/api/recurring-contracts/:id/schedules", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      // Verify contract ownership
+      const contract = await storage.getRecurringContract(id, userId);
+      if (!contract) {
+        return res.status(404).json({ error: 'Recurring contract not found' });
+      }
+      
+      const schedules = await storage.getRecurringSchedules(id);
+      res.json(schedules);
+    } catch (error: any) {
+      console.error('Error getting recurring schedules:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate a job from recurring contract template
+  app.post("/api/recurring-contracts/:id/generate-job", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      // Get the recurring contract
+      const contract = await storage.getRecurringContract(id, userId);
+      if (!contract) {
+        return res.status(404).json({ error: 'Recurring contract not found' });
+      }
+      
+      // Get the client for the job
+      const client = await storage.getClient(contract.clientId, userId);
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+      
+      // Create a job from the template
+      const jobTemplate = contract.jobTemplate as Record<string, any> || {};
+      const job = await storage.createJob({
+        userId,
+        clientId: contract.clientId,
+        title: contract.title,
+        description: contract.description || jobTemplate.description || '',
+        status: 'pending',
+        priority: jobTemplate.priority || 'medium',
+        scheduledDate: contract.nextJobDate,
+        address: client.address,
+        city: client.city,
+        state: client.state,
+        postcode: client.postcode,
+        country: client.country,
+      });
+      
+      // Create a schedule entry linking the job to the contract
+      await storage.createRecurringSchedule({
+        contractId: contract.id,
+        jobId: job.id,
+        scheduledDate: contract.nextJobDate,
+        status: 'scheduled',
+      });
+      
+      // Calculate and update the next job date based on frequency
+      const nextDate = new Date(contract.nextJobDate);
+      switch (contract.frequency) {
+        case 'weekly':
+          nextDate.setDate(nextDate.getDate() + 7);
+          break;
+        case 'fortnightly':
+          nextDate.setDate(nextDate.getDate() + 14);
+          break;
+        case 'monthly':
+          nextDate.setMonth(nextDate.getMonth() + 1);
+          break;
+        case 'quarterly':
+          nextDate.setMonth(nextDate.getMonth() + 3);
+          break;
+        case 'yearly':
+          nextDate.setFullYear(nextDate.getFullYear() + 1);
+          break;
+      }
+      
+      // Check if the contract has an end date and if we've passed it
+      let newStatus = contract.status;
+      if (contract.endDate && nextDate > new Date(contract.endDate)) {
+        newStatus = 'completed';
+      }
+      
+      await storage.updateRecurringContract(id, userId, {
+        nextJobDate: nextDate,
+        status: newStatus,
+      });
+      
+      res.json({ job, message: 'Job generated successfully' });
+    } catch (error: any) {
+      console.error('Error generating job from recurring contract:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ========================
+  // Leads / CRM Pipeline
+  // ========================
+
+  // Get all leads for user
+  app.get("/api/leads", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const leads = await storage.getLeads(userId);
+      res.json(leads);
+    } catch (error: any) {
+      console.error('Error getting leads:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new lead
+  app.post("/api/leads", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const validated = insertLeadSchema.parse(req.body);
+      
+      const lead = await storage.createLead({
+        ...validated,
+        userId,
+      });
+      
+      res.json(lead);
+    } catch (error: any) {
+      console.error('Error creating lead:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a single lead
+  app.get("/api/leads/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const lead = await storage.getLead(id, userId);
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      res.json(lead);
+    } catch (error: any) {
+      console.error('Error getting lead:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a lead
+  app.put("/api/leads/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const lead = await storage.updateLead(id, userId, req.body);
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      res.json(lead);
+    } catch (error: any) {
+      console.error('Error updating lead:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a lead
+  app.delete("/api/leads/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      await storage.deleteLead(id, userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting lead:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Convert lead to client (and optionally create job/quote)
+  app.post("/api/leads/:id/convert", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { createJob, createQuote } = req.body;
+      
+      // Get the lead
+      const lead = await storage.getLead(id, userId);
+      if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+      }
+      
+      // Create a client from the lead
+      const client = await storage.createClient({
+        userId,
+        name: lead.name,
+        email: lead.email || undefined,
+        phone: lead.phone || undefined,
+        notes: lead.notes || undefined,
+      });
+      
+      // Update the lead with the new client ID and mark as won
+      await storage.updateLead(id, userId, {
+        clientId: client.id,
+        status: 'won',
+        wonLostReason: 'Converted to client',
+      });
+      
+      let job = null;
+      let quote = null;
+      
+      // Optionally create a job
+      if (createJob) {
+        job = await storage.createJob({
+          userId,
+          clientId: client.id,
+          title: lead.description || `Job for ${lead.name}`,
+          description: lead.notes || '',
+          status: 'pending',
+        });
+      }
+      
+      // Optionally create a quote
+      if (createQuote) {
+        const quoteNumber = await storage.generateQuoteNumber(userId);
+        quote = await storage.createQuote({
+          userId,
+          clientId: client.id,
+          quoteNumber,
+          status: 'draft',
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        });
+      }
+      
+      res.json({
+        success: true,
+        client,
+        job,
+        quote,
+        message: 'Lead converted successfully',
+      });
+    } catch (error: any) {
+      console.error('Error converting lead:', error);
       res.status(500).json({ error: error.message });
     }
   });

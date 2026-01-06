@@ -13,10 +13,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check } from "lucide-react";
+import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check, ArrowLeftRight } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
+import BeforeAfterComparison from "./BeforeAfterComparison";
 
 interface JobPhoto {
   id: string;
@@ -62,6 +63,7 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
   const [isComplete, setIsComplete] = useState(false);
   const [isAddingToNotes, setIsAddingToNotes] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { data: settings } = useBusinessSettings();
 
@@ -326,6 +328,18 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
             Media {photos.length > 0 && `(${photos.length})`}
           </CardTitle>
           <div className="flex items-center gap-2">
+            {groupedPhotos['before']?.length > 0 && groupedPhotos['after']?.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsComparisonOpen(true)}
+                className="border-green-500/30 text-green-600 dark:text-green-400"
+                data-testid="button-compare-before-after"
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-1" />
+                Compare
+              </Button>
+            )}
             {canUseAI && (
               <Button
                 size="sm"
@@ -855,6 +869,14 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Before/After Comparison Modal */}
+      <BeforeAfterComparison
+        isOpen={isComparisonOpen}
+        onClose={() => setIsComparisonOpen(false)}
+        beforePhotos={groupedPhotos['before'] || []}
+        afterPhotos={groupedPhotos['after'] || []}
+      />
     </Card>
   );
 }

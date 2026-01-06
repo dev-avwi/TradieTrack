@@ -211,6 +211,15 @@ import {
   terminalPayments,
   type TerminalPayment,
   type InsertTerminalPayment,
+  recurringContracts,
+  leads,
+  type Lead,
+  type InsertLead,
+  type RecurringContract,
+  type InsertRecurringContract,
+  recurringSchedules,
+  type RecurringSchedule,
+  type InsertRecurringSchedule,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -642,6 +651,22 @@ export interface IStorage {
   // Activity Feed
   getActivityFeed(businessOwnerId: string, limit?: number, before?: Date): Promise<ActivityFeed[]>;
   createActivity(activity: InsertActivityFeed): Promise<ActivityFeed>;
+
+  // Recurring Contracts
+  getRecurringContracts(userId: string): Promise<RecurringContract[]>;
+  getRecurringContract(id: string, userId: string): Promise<RecurringContract | undefined>;
+  createRecurringContract(contract: InsertRecurringContract & { userId: string }): Promise<RecurringContract>;
+  updateRecurringContract(id: string, userId: string, updates: Partial<InsertRecurringContract>): Promise<RecurringContract | undefined>;
+  deleteRecurringContract(id: string, userId: string): Promise<boolean>;
+  getRecurringSchedules(contractId: string): Promise<RecurringSchedule[]>;
+  createRecurringSchedule(schedule: InsertRecurringSchedule): Promise<RecurringSchedule>;
+
+  // Leads / CRM Pipeline
+  getLeads(userId: string): Promise<Lead[]>;
+  getLead(id: string, userId: string): Promise<Lead | undefined>;
+  createLead(lead: InsertLead & { userId: string }): Promise<Lead>;
+  updateLead(id: string, userId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
+  deleteLead(id: string, userId: string): Promise<boolean>;
 }
 
 // Initialize database connection
@@ -4953,6 +4978,125 @@ Thank you for your prompt attention to this matter.`,
       .where(eq(timesheetApprovals.id, id))
       .returning();
     return updated;
+  }
+
+  // Recurring Contracts
+  async getRecurringContracts(userId: string): Promise<RecurringContract[]> {
+    return db
+      .select()
+      .from(recurringContracts)
+      .where(eq(recurringContracts.userId, userId))
+      .orderBy(desc(recurringContracts.createdAt));
+  }
+
+  async getRecurringContract(id: string, userId: string): Promise<RecurringContract | undefined> {
+    const [contract] = await db
+      .select()
+      .from(recurringContracts)
+      .where(and(
+        eq(recurringContracts.id, id),
+        eq(recurringContracts.userId, userId)
+      ));
+    return contract;
+  }
+
+  async createRecurringContract(contract: InsertRecurringContract & { userId: string }): Promise<RecurringContract> {
+    const [created] = await db
+      .insert(recurringContracts)
+      .values({
+        id: randomUUID(),
+        ...contract,
+      })
+      .returning();
+    return created;
+  }
+
+  async updateRecurringContract(id: string, userId: string, updates: Partial<InsertRecurringContract>): Promise<RecurringContract | undefined> {
+    const [updated] = await db
+      .update(recurringContracts)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(recurringContracts.id, id),
+        eq(recurringContracts.userId, userId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteRecurringContract(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(recurringContracts)
+      .where(and(
+        eq(recurringContracts.id, id),
+        eq(recurringContracts.userId, userId)
+      ));
+    return true;
+  }
+
+  async getRecurringSchedules(contractId: string): Promise<RecurringSchedule[]> {
+    return db
+      .select()
+      .from(recurringSchedules)
+      .where(eq(recurringSchedules.contractId, contractId))
+      .orderBy(desc(recurringSchedules.scheduledDate));
+  }
+
+  async createRecurringSchedule(schedule: InsertRecurringSchedule): Promise<RecurringSchedule> {
+    const [created] = await db
+      .insert(recurringSchedules)
+      .values({
+        id: randomUUID(),
+        ...schedule,
+      })
+      .returning();
+    return created;
+  }
+
+  // Leads / CRM Pipeline
+  async getLeads(userId: string): Promise<Lead[]> {
+    return db.select().from(leads).where(eq(leads.userId, userId)).orderBy(desc(leads.createdAt));
+  }
+
+  async getLead(id: string, userId: string): Promise<Lead | undefined> {
+    const result = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.id, id), eq(leads.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createLead(lead: InsertLead & { userId: string }): Promise<Lead> {
+    const [created] = await db
+      .insert(leads)
+      .values({
+        id: randomUUID(),
+        ...lead,
+      })
+      .returning();
+    return created;
+  }
+
+  async updateLead(id: string, userId: string, updates: Partial<InsertLead>): Promise<Lead | undefined> {
+    const [updated] = await db
+      .update(leads)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(leads.id, id), eq(leads.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteLead(id: string, userId: string): Promise<boolean> {
+    await db
+      .delete(leads)
+      .where(and(eq(leads.id, id), eq(leads.userId, userId)));
+    return true;
   }
 }
 

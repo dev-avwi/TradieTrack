@@ -52,7 +52,10 @@ import {
   MapPin,
   Phone,
   Save,
-  Loader2
+  Loader2,
+  Eye,
+  Send,
+  Calendar
 } from "lucide-react";
 
 interface AutomationRule {
@@ -91,6 +94,9 @@ interface AutomationSettings {
   requirePhotoAfterComplete: boolean;
   autoCheckInOnArrival: boolean;
   autoCheckOutOnDeparture: boolean;
+  dailySummaryEnabled: boolean;
+  dailySummaryTime: string;
+  dailySummaryLastSent?: string;
 }
 
 const TRIGGER_TYPES = [
@@ -368,6 +374,53 @@ export default function Automations() {
       toast({
         title: "Automation deleted",
         description: "The automation has been removed",
+      });
+    },
+  });
+
+  // Daily Summary state and mutations
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewSubject, setPreviewSubject] = useState<string>('');
+
+  const previewSummaryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/email/daily-summary/preview', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to load preview');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setPreviewHtml(data.preview.html);
+      setPreviewSubject(data.preview.subject);
+      setPreviewDialogOpen(true);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to load daily summary preview",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendSummaryMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/email/daily-summary');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/automation-settings'] });
+      toast({
+        title: "Daily summary sent",
+        description: "The summary email has been sent to your business email",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send daily summary email",
+        variant: "destructive",
       });
     },
   });
@@ -1083,6 +1136,144 @@ export default function Automations() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Daily Summary Email */}
+              <Card data-testid="settings-daily-summary">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                      <Calendar className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">End-of-Day Summary Email</CardTitle>
+                      <CardDescription>
+                        Receive a daily recap of jobs completed, invoices, quotes, and payments
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="daily-summary-enabled">Enable daily summary emails</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive an email summary at the end of each business day
+                      </p>
+                    </div>
+                    <Switch
+                      id="daily-summary-enabled"
+                      checked={settingsForm.dailySummaryEnabled ?? false}
+                      onCheckedChange={(checked) => 
+                        setSettingsForm(prev => ({ ...prev, dailySummaryEnabled: checked }))
+                      }
+                      data-testid="switch-daily-summary-enabled"
+                    />
+                  </div>
+                  
+                  {settingsForm.dailySummaryEnabled && (
+                    <>
+                      <div>
+                        <Label htmlFor="daily-summary-time">Send time</Label>
+                        <Select
+                          value={settingsForm.dailySummaryTime ?? '18:00'}
+                          onValueChange={(v) => 
+                            setSettingsForm(prev => ({ ...prev, dailySummaryTime: v }))
+                          }
+                        >
+                          <SelectTrigger id="daily-summary-time" className="w-full md:w-48" data-testid="select-daily-summary-time">
+                            <SelectValue placeholder="Select time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="16:00">4:00 PM</SelectItem>
+                            <SelectItem value="17:00">5:00 PM</SelectItem>
+                            <SelectItem value="18:00">6:00 PM</SelectItem>
+                            <SelectItem value="19:00">7:00 PM</SelectItem>
+                            <SelectItem value="20:00">8:00 PM</SelectItem>
+                            <SelectItem value="21:00">9:00 PM</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Summary will be sent at this time each day
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => previewSummaryMutation.mutate()}
+                          disabled={previewSummaryMutation.isPending}
+                          data-testid="button-preview-summary"
+                        >
+                          {previewSummaryMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Eye className="h-4 w-4 mr-2" />
+                          )}
+                          Preview Summary
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => sendSummaryMutation.mutate()}
+                          disabled={sendSummaryMutation.isPending}
+                          data-testid="button-send-summary-now"
+                        >
+                          {sendSummaryMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-2" />
+                          )}
+                          Send Now
+                        </Button>
+                      </div>
+
+                      {settingsForm.dailySummaryLastSent && (
+                        <p className="text-xs text-muted-foreground">
+                          Last sent: {new Date(settingsForm.dailySummaryLastSent).toLocaleString('en-AU')}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Daily Summary Preview Dialog */}
+              <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>Daily Summary Preview</DialogTitle>
+                    <DialogDescription>
+                      {previewSubject}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="flex-1 max-h-[60vh]">
+                    <div 
+                      className="p-4"
+                      dangerouslySetInnerHTML={{ __html: previewHtml }}
+                    />
+                  </ScrollArea>
+                  <DialogFooter className="flex-shrink-0">
+                    <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+                      Close
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        sendSummaryMutation.mutate();
+                        setPreviewDialogOpen(false);
+                      }}
+                      disabled={sendSummaryMutation.isPending}
+                    >
+                      {sendSummaryMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      Send Now
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Save Button */}
               <div className="flex justify-end">

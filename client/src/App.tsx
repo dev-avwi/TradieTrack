@@ -66,6 +66,8 @@ import DirectMessagesPage from "@/pages/DirectMessages";
 import DispatchBoard from "@/pages/DispatchBoard";
 import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
+import RecurringJobs from "@/pages/RecurringJobs";
+import Leads from "@/pages/Leads";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -77,6 +79,7 @@ import TemplatesHub from "@/pages/TemplatesHub";
 import DocumentsHub from "@/pages/DocumentsHub";
 import CommunicationsHub from "@/pages/CommunicationsHub";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
 
 // Types for job completion
 interface JobPhoto {
@@ -481,6 +484,14 @@ function Router({
       
       <Route path="/automations" component={() => (
         <Automations />
+      )} />
+      
+      <Route path="/recurring-jobs" component={() => (
+        <RecurringJobs />
+      )} />
+      
+      <Route path="/leads" component={() => (
+        <Leads />
       )} />
       
       <Route path="/custom-forms">
@@ -1094,6 +1105,9 @@ function AppLayout() {
         onClose={closeTour}
         onComplete={completeTour}
       />
+      
+      {/* First-Time User Walkthrough */}
+      <FirstTimeWalkthrough />
       
       {/* Keyboard Shortcuts */}
       <KeyboardShortcutsDialog />

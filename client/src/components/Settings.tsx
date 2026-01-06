@@ -61,7 +61,8 @@ import {
   Banknote,
   Percent,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  PlayCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -2670,21 +2671,34 @@ function SupportTab() {
                     New to TradieTrack? Our quick walkthrough will show you how to create jobs, 
                     send quotes, and get paid faster.
                   </p>
-                  <Button 
-                    variant="default"
-                    size="sm"
-                    onClick={() => {
-                      localStorage.removeItem("tradietrack-tour-completed");
-                      localStorage.removeItem("tradietrack-tour-completed-date");
-                      localStorage.removeItem("tradietrack-tour-skipped");
-                      window.dispatchEvent(new CustomEvent("start-guided-tour"));
-                    }}
-                    className="mt-2"
-                    data-testid="button-start-tour"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Start App Tour
-                  </Button>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        localStorage.removeItem("tradietrack-tour-completed");
+                        localStorage.removeItem("tradietrack-tour-completed-date");
+                        localStorage.removeItem("tradietrack-tour-skipped");
+                        window.dispatchEvent(new CustomEvent("start-guided-tour"));
+                      }}
+                      data-testid="button-start-tour"
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Start App Tour
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        localStorage.removeItem("tradietrack_walkthrough_seen");
+                        window.location.reload();
+                      }}
+                      data-testid="button-replay-walkthrough"
+                    >
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Replay Welcome Tour
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

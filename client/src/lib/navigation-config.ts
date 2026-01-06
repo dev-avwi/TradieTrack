@@ -21,6 +21,7 @@ import {
   ClipboardList,
   Files,
   Send,
+  Repeat,
   type LucideIcon
 } from "lucide-react";
 
@@ -198,6 +199,30 @@ export const mainMenuItems: NavItem[] = [
     url: "/templates",
     icon: Files,
     description: "Manage email, SMS, and document templates",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Recurring Jobs",
+    url: "/recurring-jobs",
+    icon: Repeat,
+    description: "Manage scheduled recurring work",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: UserPlus,
+    description: "Track enquiries and convert to clients",
     color: "text-primary",
     bgColor: "bg-primary/10",
     hideForStaff: true,

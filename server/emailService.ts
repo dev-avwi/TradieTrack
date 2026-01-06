@@ -1973,3 +1973,317 @@ export async function sendInvoiceEmailWithTemplate(
     throw new Error('Email sending failed. Please try again.');
   }
 }
+
+// ================================
+// Daily Summary Email
+// ================================
+
+export interface DailySummaryData {
+  date: string;
+  dateFormatted: string;
+  business: {
+    name: string;
+    email: string;
+    brandColor?: string;
+  };
+  jobs: {
+    completed: number;
+    completedList: Array<{ title: string; client: string; value: number }>;
+    scheduled: number;
+    inProgress: number;
+  };
+  quotes: {
+    sent: number;
+    sentTotal: number;
+    accepted: number;
+    acceptedTotal: number;
+    rejected: number;
+    pending: number;
+    conversionRate: number;
+  };
+  invoices: {
+    sent: number;
+    sentTotal: number;
+    paid: number;
+    paidTotal: number;
+    overdue: number;
+    overdueTotal: number;
+  };
+  payments: {
+    received: number;
+    totalAmount: number;
+    paymentsList: Array<{ client: string; amount: number; invoice: string }>;
+  };
+  metrics: {
+    totalRevenue: number;
+    outstandingInvoices: number;
+    quoteConversionRate: number;
+  };
+  actionItems: Array<{ type: 'overdue' | 'followup' | 'reminder'; message: string; priority: 'high' | 'medium' | 'low' }>;
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatDateAustralian(date: Date): string {
+  return date.toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+export function createDailySummaryEmail(data: DailySummaryData): { to: string; from: any; subject: string; html: string } {
+  const brandColor = data.business.brandColor || '#2563eb';
+  const hasActivity = data.jobs.completed > 0 || data.quotes.sent > 0 || data.invoices.sent > 0 || data.payments.received > 0;
+
+  const completedJobsHtml = data.jobs.completedList.length > 0 
+    ? data.jobs.completedList.map(job => `
+      <tr>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee;">${job.title}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee;">${job.client}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(job.value)}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="3" style="padding: 20px; text-align: center; color: #666;">No jobs completed today</td></tr>';
+
+  const paymentsHtml = data.payments.paymentsList.length > 0
+    ? data.payments.paymentsList.map(payment => `
+      <tr>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee;">${payment.client}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee;">${payment.invoice}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; color: #10b981; font-weight: 600;">${formatCurrency(payment.amount)}</td>
+      </tr>
+    `).join('')
+    : '';
+
+  const actionItemsHtml = data.actionItems.length > 0
+    ? data.actionItems.map(item => {
+        const priorityColor = item.priority === 'high' ? '#dc2626' : item.priority === 'medium' ? '#f59e0b' : '#6b7280';
+        const priorityBg = item.priority === 'high' ? '#fef2f2' : item.priority === 'medium' ? '#fffbeb' : '#f9fafb';
+        return `
+          <div style="padding: 12px 16px; margin-bottom: 8px; background: ${priorityBg}; border-left: 4px solid ${priorityColor}; border-radius: 4px;">
+            <span style="color: ${priorityColor}; font-weight: 600; text-transform: uppercase; font-size: 11px;">${item.priority}</span>
+            <p style="margin: 4px 0 0 0; color: #333;">${item.message}</p>
+          </div>
+        `;
+      }).join('')
+    : '<p style="color: #666; text-align: center; padding: 20px;">No action items - great job!</p>';
+
+  return {
+    to: data.business.email,
+    from: {
+      email: PLATFORM_FROM_EMAIL,
+      name: 'TradieTrack Daily Summary'
+    },
+    subject: `📊 Daily Summary for ${data.dateFormatted} - ${data.business.name}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Daily Summary - ${data.dateFormatted}</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, ${brandColor}, ${brandColor}dd); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600;">📊 End of Day Summary</h1>
+          <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 16px;">${data.dateFormatted}</p>
+          <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: 14px;">${data.business.name}</p>
+        </div>
+
+        <!-- Main Content -->
+        <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          
+          ${!hasActivity ? `
+          <div style="text-align: center; padding: 40px 20px;">
+            <p style="font-size: 48px; margin: 0;">😴</p>
+            <p style="color: #666; font-size: 16px; margin-top: 16px;">Quiet day today - no activity to report!</p>
+          </div>
+          ` : `
+          <!-- Key Metrics -->
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 30px;">
+            <div style="flex: 1; min-width: 140px; background: #f0fdf4; padding: 20px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; color: #059669; font-size: 28px; font-weight: 700;">${formatCurrency(data.payments.totalAmount)}</p>
+              <p style="margin: 4px 0 0 0; color: #047857; font-size: 13px;">Payments Received</p>
+            </div>
+            <div style="flex: 1; min-width: 140px; background: #eff6ff; padding: 20px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; color: #2563eb; font-size: 28px; font-weight: 700;">${data.jobs.completed}</p>
+              <p style="margin: 4px 0 0 0; color: #1d4ed8; font-size: 13px;">Jobs Completed</p>
+            </div>
+            <div style="flex: 1; min-width: 140px; background: #faf5ff; padding: 20px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; color: #7c3aed; font-size: 28px; font-weight: 700;">${data.quotes.conversionRate}%</p>
+              <p style="margin: 4px 0 0 0; color: #6d28d9; font-size: 13px;">Quote Conversion</p>
+            </div>
+          </div>
+
+          <!-- Jobs Summary -->
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: ${brandColor}; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid ${brandColor}20;">
+              🔧 Jobs Summary
+            </h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+              <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #10b981; font-weight: 600;">${data.jobs.completed}</span> Completed
+              </div>
+              <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #3b82f6; font-weight: 600;">${data.jobs.inProgress}</span> In Progress
+              </div>
+              <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #8b5cf6; font-weight: 600;">${data.jobs.scheduled}</span> Scheduled
+              </div>
+            </div>
+            ${data.jobs.completedList.length > 0 ? `
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="background: #f8f9fa;">
+                  <th style="padding: 10px 12px; text-align: left; font-weight: 600;">Job</th>
+                  <th style="padding: 10px 12px; text-align: left; font-weight: 600;">Client</th>
+                  <th style="padding: 10px 12px; text-align: right; font-weight: 600;">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${completedJobsHtml}
+              </tbody>
+            </table>
+            ` : ''}
+          </div>
+
+          <!-- Quotes Summary -->
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: ${brandColor}; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid ${brandColor}20;">
+              📝 Quotes Summary
+            </h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+              <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #3b82f6; font-weight: 600;">${data.quotes.sent}</span> Sent (${formatCurrency(data.quotes.sentTotal)})
+              </div>
+              <div style="background: #f0fdf4; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #10b981; font-weight: 600;">${data.quotes.accepted}</span> Accepted (${formatCurrency(data.quotes.acceptedTotal)})
+              </div>
+              <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #dc2626; font-weight: 600;">${data.quotes.rejected}</span> Rejected
+              </div>
+              <div style="background: #fffbeb; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #f59e0b; font-weight: 600;">${data.quotes.pending}</span> Pending
+              </div>
+            </div>
+          </div>
+
+          <!-- Invoices Summary -->
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: ${brandColor}; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid ${brandColor}20;">
+              💰 Invoices Summary
+            </h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+              <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #3b82f6; font-weight: 600;">${data.invoices.sent}</span> Sent (${formatCurrency(data.invoices.sentTotal)})
+              </div>
+              <div style="background: #f0fdf4; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #10b981; font-weight: 600;">${data.invoices.paid}</span> Paid (${formatCurrency(data.invoices.paidTotal)})
+              </div>
+              ${data.invoices.overdue > 0 ? `
+              <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px;">
+                <span style="color: #dc2626; font-weight: 600;">${data.invoices.overdue}</span> Overdue (${formatCurrency(data.invoices.overdueTotal)})
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Payments Received -->
+          ${data.payments.paymentsList.length > 0 ? `
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: ${brandColor}; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid ${brandColor}20;">
+              ✅ Payments Received
+            </h2>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="background: #f0fdf4;">
+                  <th style="padding: 10px 12px; text-align: left; font-weight: 600;">Client</th>
+                  <th style="padding: 10px 12px; text-align: left; font-weight: 600;">Invoice</th>
+                  <th style="padding: 10px 12px; text-align: right; font-weight: 600;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${paymentsHtml}
+              </tbody>
+              <tfoot>
+                <tr style="background: #f0fdf4;">
+                  <td colspan="2" style="padding: 12px; font-weight: 600;">Total Received</td>
+                  <td style="padding: 12px; text-align: right; font-weight: 700; color: #10b981; font-size: 16px;">${formatCurrency(data.payments.totalAmount)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          ` : ''}
+
+          <!-- Action Items -->
+          ${data.actionItems.length > 0 ? `
+          <div style="margin-bottom: 20px;">
+            <h2 style="color: ${brandColor}; font-size: 18px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid ${brandColor}20;">
+              ⚡ Action Items
+            </h2>
+            ${actionItemsHtml}
+          </div>
+          ` : ''}
+          `}
+
+          <!-- Footer Stats -->
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; text-align: center;">
+              <div>
+                <p style="margin: 0; color: #666; font-size: 12px;">Total Revenue Today</p>
+                <p style="margin: 4px 0 0 0; font-weight: 700; color: #10b981; font-size: 18px;">${formatCurrency(data.metrics.totalRevenue)}</p>
+              </div>
+              <div>
+                <p style="margin: 0; color: #666; font-size: 12px;">Outstanding Invoices</p>
+                <p style="margin: 4px 0 0 0; font-weight: 700; color: #f59e0b; font-size: 18px;">${formatCurrency(data.metrics.outstandingInvoices)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <p style="margin: 0;">This is your automated daily summary from TradieTrack</p>
+          <p style="margin: 8px 0 0 0;">You can manage your summary preferences in Settings → Automations</p>
+        </div>
+      </body>
+      </html>
+    `
+  };
+}
+
+export async function sendDailySummaryEmail(summaryData: DailySummaryData): Promise<{ success: boolean; message: string }> {
+  const sendGridInitialized = initializeSendGrid();
+  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+
+  if (!summaryData.business.email) {
+    throw new Error('Business email address is required');
+  }
+
+  try {
+    const emailData = createDailySummaryEmail(summaryData);
+    await emailService.send(emailData);
+    
+    console.log(`📧 Daily summary sent to ${summaryData.business.email}`);
+    
+    return {
+      success: true,
+      message: 'Daily summary sent successfully'
+    };
+  } catch (error: any) {
+    console.error('Error sending daily summary email:', error);
+    if (error.message?.includes('SendGrid') || error.response?.body) {
+      throw new Error('Email service error. Please check your configuration.');
+    }
+    throw new Error('Email sending failed. Please try again.');
+  }
+}

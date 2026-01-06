@@ -40,7 +40,10 @@ import {
   Loader2,
   X,
   Zap,
-  Sparkles
+  Sparkles,
+  Timer,
+  Receipt,
+  CreditCard
 } from "lucide-react";
 
 interface TeamOwnerDashboardProps {
@@ -457,7 +460,7 @@ export default function TeamOwnerDashboard({
       <section className="animate-fade-up" style={{ animationDelay: '100ms' }}>
         <h2 className="ios-label mb-3">Quick Actions</h2>
         <div className="feed-card" data-testid="quick-actions-section">
-          <div className="card-padding">
+          <div className="card-padding space-y-2">
             <div className="flex gap-2 flex-wrap">
               {onCreateJob && (
                 <Button 
@@ -517,6 +520,38 @@ export default function TeamOwnerDashboard({
                   <span className="truncate">Team</span>
                 </Button>
               )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
+                onClick={() => onNavigate?.('/time-tracking')}
+                data-testid="button-log-hours"
+              >
+                <Timer className="h-4 w-4 mr-1.5" />
+                <span className="truncate">Log Hours</span>
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
+                onClick={() => onNavigate?.('/expenses')}
+                data-testid="button-photo-receipt"
+              >
+                <Receipt className="h-4 w-4 mr-1.5" />
+                <span className="truncate">Photo Receipt</span>
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
+                onClick={() => onNavigate?.('/collect-payment')}
+                data-testid="button-request-payment"
+              >
+                <CreditCard className="h-4 w-4 mr-1.5" />
+                <span className="truncate">Request Payment</span>
+              </Button>
             </div>
           </div>
         </div>

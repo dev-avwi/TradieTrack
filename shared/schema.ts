@@ -3049,6 +3049,10 @@ export const automationSettings = pgTable("automation_settings", {
   // GPS Check-in
   autoCheckInOnArrival: boolean("auto_check_in_on_arrival").default(false),
   autoCheckOutOnDeparture: boolean("auto_check_out_on_departure").default(false),
+  // Daily Summary Email
+  dailySummaryEnabled: boolean("daily_summary_enabled").default(false),
+  dailySummaryTime: text("daily_summary_time").default('18:00'), // HH:mm format
+  dailySummaryLastSent: timestamp("daily_summary_last_sent"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3103,3 +3107,35 @@ export const terminalPayments = pgTable("terminal_payments", {
 export const insertTerminalPaymentSchema = createInsertSchema(terminalPayments).omit({ id: true, createdAt: true });
 export type InsertTerminalPayment = z.infer<typeof insertTerminalPaymentSchema>;
 export type TerminalPayment = typeof terminalPayments.$inferSelect;
+
+// ========================
+// CRM / Lead Pipeline
+// ========================
+
+export const LEAD_SOURCES = ['phone', 'email', 'website', 'referral', 'other'] as const;
+export type LeadSource = typeof LEAD_SOURCES[number];
+
+export const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'won', 'lost'] as const;
+export type LeadStatus = typeof LEAD_STATUSES[number];
+
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  source: text("source").default('other'), // phone, email, website, referral, other
+  status: text("status").default('new'), // new, contacted, quoted, won, lost
+  description: text("description"),
+  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  followUpDate: timestamp("follow_up_date"),
+  wonLostReason: text("won_lost_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
