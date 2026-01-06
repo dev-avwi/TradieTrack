@@ -101,9 +101,15 @@ export async function createDemoUserAndData() {
         password: hashedPassword,
         name: DEMO_USER.name,
         phone: DEMO_USER.phone,
+        emailVerified: true, // Demo user should be pre-verified
       });
       console.log('✅ Demo user created:', demoUser.email);
     } else {
+      // Ensure demo user has email verified set
+      if (!demoUser.emailVerified) {
+        await storage.updateUser(demoUser.id, { emailVerified: true });
+        console.log('✅ Demo user email verified updated');
+      }
       console.log('ℹ️ Demo user already exists:', demoUser.email);
     }
 

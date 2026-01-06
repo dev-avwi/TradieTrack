@@ -92,9 +92,9 @@ export class AuthService {
         return { success: false, error: 'Account is deactivated. Please contact support.' };
       }
 
-      // Check if email is verified (allow demo users to bypass in development only)
-      if (!user.emailVerified && 
-          !(process.env.NODE_ENV === 'development' && user.email === 'demo@tradietrack.com.au')) {
+      // Check if email is verified (allow demo users to bypass)
+      const isDemoUser = user.email === 'demo@tradietrack.app' || user.email === 'demo@tradietrack.com.au';
+      if (!user.emailVerified && !isDemoUser) {
         return { success: false, error: 'Please verify your email address before logging in. Check your email for verification instructions.' };
       }
 
