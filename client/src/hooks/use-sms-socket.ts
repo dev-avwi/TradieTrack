@@ -28,12 +28,18 @@ export function useSmsSocket({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+  const isConnectingRef = useRef(false);
+  const onSmsNotificationRef = useRef(onSmsNotification);
   const queryClient = useQueryClient();
+
+  onSmsNotificationRef.current = onSmsNotification;
 
   const connect = useCallback(() => {
     if (!enabled || !businessId) return;
+    if (isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    // Use the current host for WebSocket connection - works in both dev and production
+    isConnectingRef.current = true;
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/ws/location?businessId=${businessId}&isTradie=false`;
@@ -46,6 +52,7 @@ export function useSmsSocket({
         console.log('[SmsSocket] Connected');
         setIsConnected(true);
         reconnectAttempts.current = 0;
+        isConnectingRef.current = false;
       };
 
       ws.onmessage = (event) => {
@@ -63,7 +70,7 @@ export function useSmsSocket({
               timestamp: message.timestamp,
             };
             setLastNotification(notification);
-            onSmsNotification?.(notification);
+            onSmsNotificationRef.current?.(notification);
             
             queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
             queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
@@ -74,25 +81,25 @@ export function useSmsSocket({
       };
 
       ws.onclose = () => {
-        console.log('[SmsSocket] Disconnected');
         setIsConnected(false);
         wsRef.current = null;
+        isConnectingRef.current = false;
 
         if (reconnectAttempts.current < maxReconnectAttempts && enabled) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
-          console.log(`[SmsSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
           reconnectTimeoutRef.current = setTimeout(connect, delay);
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('[SmsSocket] Error:', error);
+      ws.onerror = () => {
+        isConnectingRef.current = false;
       };
     } catch (error) {
       console.error('[SmsSocket] Failed to connect:', error);
+      isConnectingRef.current = false;
     }
-  }, [enabled, businessId, onSmsNotification, queryClient]);
+  }, [enabled, businessId, queryClient]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -104,16 +111,19 @@ export function useSmsSocket({
       wsRef.current = null;
     }
     setIsConnected(false);
+    isConnectingRef.current = false;
+    reconnectAttempts.current = maxReconnectAttempts;
   }, []);
 
   useEffect(() => {
-    if (enabled) {
+    if (enabled && businessId) {
+      reconnectAttempts.current = 0;
       connect();
     }
     return () => {
       disconnect();
     };
-  }, [enabled, connect, disconnect]);
+  }, [enabled, businessId, connect, disconnect]);
 
   return {
     isConnected,

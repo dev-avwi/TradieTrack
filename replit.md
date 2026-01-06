@@ -56,3 +56,29 @@ Key architectural and design decisions include:
 -   **Maps**: Leaflet with react-leaflet
 -   **Accounting Integration**: Xero, MYOB AccountRight
 -   **Calendar Integration**: Google Calendar
+
+### Production Status (January 2026)
+**Version**: 1.0.0 - Ready for publishing
+
+**All Integrations Verified**:
+- ✅ PostgreSQL (Neon serverless) - Connected
+- ✅ Stripe payments - Initialized and syncing
+- ✅ SendGrid email - Initialized
+- ✅ Twilio SMS - Connected via Replit managed connector
+- ✅ Google OAuth - Production mode with real credentials
+- ✅ OpenAI (GPT-4o) - API key configured
+- ✅ Object Storage (GCS) - Bucket configured
+
+**Mobile App**:
+- React Native/Expo app with 80 screens
+- Tap to Pay on iPhone - Pending Apple entitlement approval (1-2 days for dev, 1-3 weeks for production)
+- Can publish to App Store without Tap to Pay initially, add via update later
+
+**Pre-publish Cleanup Completed**:
+- Removed dead mock data files
+- Updated browserslist database
+- Fixed SMS WebSocket reconnection loop (added exponential backoff)
+
+**Known Limitations**:
+- Stripe Connect requires user to complete onboarding to enable payments
+- Tap to Pay requires Apple entitlement approval before availability
