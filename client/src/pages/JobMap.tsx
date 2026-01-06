@@ -363,6 +363,61 @@ function FitBoundsController({
   return null;
 }
 
+function FlyToTeamMember({ 
+  selectedId, 
+  teamLocations,
+  markersRef,
+  onComplete 
+}: { 
+  selectedId: string | null, 
+  teamLocations: TeamMemberLocation[],
+  markersRef: React.MutableRefObject<Map<string, L.Marker>>,
+  onComplete?: () => void
+}) {
+  const map = useMap();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  useEffect(() => {
+    // Clear any pending timeout when selection changes
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    if (!selectedId) return;
+    
+    const member = teamLocations.find(m => m.id === selectedId);
+    if (!member) return;
+    
+    // Capture the current selection for the timeout callback
+    const currentSelectionId = selectedId;
+    
+    // Fly to the team member's location
+    map.flyTo([member.latitude, member.longitude], 16, {
+      duration: 0.8,
+    });
+    
+    // Open the popup after flying
+    timeoutRef.current = setTimeout(() => {
+      const marker = markersRef.current.get(currentSelectionId);
+      if (marker) {
+        marker.openPopup();
+      }
+      onComplete?.();
+    }, 850);
+    
+    // Cleanup on unmount or when selectedId changes
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [selectedId, teamLocations, map, markersRef, onComplete]);
+  
+  return null;
+}
+
 function AccessDeniedMessage() {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background z-[5]">
@@ -415,6 +470,10 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   const [showAlerts, setShowAlerts] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  
+  // Selected team member - when clicking a chip, fly to this member and show their info
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string | null>(null);
+  const teamMemberMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   
   // Worker assignment mode - when a worker is selected, show jobs to assign
   const [selectedWorkerForAssignment, setSelectedWorkerForAssignment] = useState<TeamMemberLocation | null>(null);
@@ -972,6 +1031,13 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
             showTeamMembers={showTeamMembers}
           />
           
+          <FlyToTeamMember
+            selectedId={selectedTeamMemberId}
+            teamLocations={teamLocations}
+            markersRef={teamMemberMarkersRef}
+            onComplete={() => setSelectedTeamMemberId(null)}
+          />
+          
           {/* Route polyline - draw line between stops */}
           {showRoutePanel && routeCoordinates.length >= 2 && (
             <Polyline
@@ -1187,6 +1253,11 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
               key={member.id}
               position={[member.latitude, member.longitude]}
               icon={createTeamMemberIcon(member, isDark)}
+              ref={(markerRef) => {
+                if (markerRef) {
+                  teamMemberMarkersRef.current.set(member.id, markerRef);
+                }
+              }}
             >
               <Popup>
                 <div className="min-w-[260px] p-2">
@@ -1774,7 +1845,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
       
       {/* Team member chips at bottom - above mobile nav */}
       {isTeam && teamLocations.length > 0 && showTeamMembers && (
-        <div className="absolute bottom-24 md:bottom-4 left-0 right-0 z-[1000] px-3 md:px-4 pointer-events-none">
+        <div className="absolute bottom-24 md:bottom-4 left-0 right-0 z-[15] px-3 md:px-4 pointer-events-none">
           <div className="overflow-x-auto pb-2 scrollbar-hide pointer-events-auto">
             <div className="flex gap-2 w-max">
               {teamLocations.map((member) => {
@@ -1784,35 +1855,52 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                   : ACTIVITY_COLORS.offline;
                 
                 return (
-                  <button
+                  <div
                     key={member.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark ? 'bg-gray-900/90' : 'bg-white/90'} backdrop-blur-xl shadow-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} hover-elevate transition-all`}
-                    data-testid={`button-team-member-${member.id}`}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full ${isDark ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-xl shadow-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
                   >
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs border-2"
-                      style={{
-                        backgroundColor: color,
-                        backgroundImage: member.profileImageUrl ? `url(${member.profileImageUrl})` : undefined,
-                        backgroundSize: 'cover',
-                        borderColor: color,
-                      }}
+                    <button
+                      onClick={() => setSelectedTeamMemberId(member.id)}
+                      className="flex items-center gap-2 hover-elevate transition-all rounded-full"
+                      data-testid={`button-team-member-${member.id}`}
                     >
-                      {!member.profileImageUrl && initials}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium leading-tight">
-                        {member.name.split(' ')[0]}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {member.isDriving && member.speed > 0 
-                          ? `${Math.round(member.speed)} km/h`
-                          : member.isActive 
-                            ? (member.activityStatus === 'working' ? 'Working' : 'Online')
-                            : 'Offline'}
-                      </p>
-                    </div>
-                  </button>
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs border-2"
+                        style={{
+                          backgroundColor: color,
+                          backgroundImage: member.profileImageUrl ? `url(${member.profileImageUrl})` : undefined,
+                          backgroundSize: 'cover',
+                          borderColor: color,
+                        }}
+                      >
+                        {!member.profileImageUrl && initials}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium leading-tight">
+                          {member.name.split(' ')[0]}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.isDriving && member.speed > 0 
+                            ? `${Math.round(member.speed)} km/h`
+                            : member.isActive 
+                              ? (member.activityStatus === 'working' ? 'Working' : 'Online')
+                              : 'Offline'}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/chat?to=${member.id}&type=direct`);
+                      }}
+                      className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-l pl-2 ml-1"
+                      style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}
+                      data-testid={`button-message-chip-${member.id}`}
+                      title="Send message"
+                    >
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
