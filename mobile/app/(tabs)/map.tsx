@@ -1156,7 +1156,7 @@ export default function MapScreen() {
         assignedTo: pendingAssignment.worker.userId,
       });
       
-      if (response.ok) {
+      if (response.data && !response.error) {
         Alert.alert(
           'Job Assigned',
           `${pendingAssignment.job.title} has been assigned to ${pendingAssignment.worker.user?.firstName} ${pendingAssignment.worker.user?.lastName}`,
@@ -1165,8 +1165,7 @@ export default function MapScreen() {
         // Refresh jobs to reflect the assignment
         await fetchMapJobs();
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        Alert.alert('Assignment Failed', errorData.error || 'Failed to assign job. Please try again.');
+        Alert.alert('Assignment Failed', response.error || 'Failed to assign job. Please try again.');
       }
     } catch (error) {
       console.error('Assignment error:', error);
