@@ -16348,6 +16348,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== TAP TO PAY TERMS & CONDITIONS (Apple Requirement 3.5, 3.8, 3.8.1) =====
+
+  // Get T&C acceptance status
+  app.get("/api/tap-to-pay/terms-status", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const acceptance = await storage.getTapToPayTermsAcceptance(userId);
+      
+      if (!acceptance) {
+        return res.json({ 
+          accepted: false,
+          tutorialCompleted: false,
+          splashShown: false 
+        });
+      }
+      
+      res.json({
+        accepted: true,
+        acceptedAt: acceptance.acceptedAt,
+        acceptedByName: acceptance.acceptedByName,
+        tutorialCompleted: acceptance.tutorialCompleted || false,
+        tutorialCompletedAt: acceptance.tutorialCompletedAt,
+        splashShown: acceptance.splashShown || false,
+        splashShownAt: acceptance.splashShownAt,
+        termsVersion: acceptance.termsVersion,
+      });
+    } catch (error) {
+      console.error('Error getting T&C status:', error);
+      res.status(500).json({ error: 'Failed to get terms status' });
+    }
+  });
+
+  // Accept Terms & Conditions (admin only)
+  app.post("/api/tap-to-pay/accept-terms", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      
+      // Check if user is admin/owner - only admins can accept T&C per Apple requirement
+      // Check team membership to see if user is owner or has admin role
+      const teamMember = await storage.getTeamMemberByUserId(userId);
+      const isOwner = !teamMember; // If no team member record, user is the owner
+      const isAdmin = teamMember?.role === 'admin' || teamMember?.role === 'owner';
+      
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ 
+          error: 'Only administrators can accept Tap to Pay terms',
+          message: 'Contact your admin to enable Tap to Pay on iPhone'
+        });
+      }
+      
+      const ipAddress = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      // Upsert the acceptance record
+      const acceptance = await storage.createOrUpdateTapToPayTermsAcceptance({
+        userId,
+        acceptedByUserId: userId,
+        acceptedByName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown',
+        acceptedByEmail: user.email || undefined,
+        acceptedAt: new Date(),
+        termsVersion: '1.0',
+        ipAddress,
+        userAgent,
+      });
+      
+      res.json({ 
+        success: true, 
+        acceptance: {
+          accepted: true,
+          acceptedAt: acceptance.acceptedAt,
+          acceptedByName: acceptance.acceptedByName,
+        }
+      });
+    } catch (error) {
+      console.error('Error accepting T&C:', error);
+      res.status(500).json({ error: 'Failed to accept terms' });
+    }
+  });
+
+  // Mark tutorial as completed
+  app.post("/api/tap-to-pay/complete-tutorial", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      const acceptance = await storage.getTapToPayTermsAcceptance(userId);
+      if (!acceptance) {
+        return res.status(400).json({ error: 'Terms must be accepted first' });
+      }
+      
+      const updated = await storage.updateTapToPayTermsAcceptance(userId, {
+        tutorialCompleted: true,
+        tutorialCompletedAt: new Date(),
+      });
+      
+      res.json({ success: true, tutorialCompleted: true });
+    } catch (error) {
+      console.error('Error completing tutorial:', error);
+      res.status(500).json({ error: 'Failed to complete tutorial' });
+    }
+  });
+
+  // Mark splash screen as shown
+  app.post("/api/tap-to-pay/mark-splash-shown", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Create record if it doesn't exist (just tracking splash shown)
+      let acceptance = await storage.getTapToPayTermsAcceptance(userId);
+      if (!acceptance) {
+        // Just mark splash as shown without accepting terms
+        await storage.markTapToPaySplashShown(userId);
+      } else {
+        await storage.updateTapToPayTermsAcceptance(userId, {
+          splashShown: true,
+          splashShownAt: new Date(),
+        });
+      }
+      
+      res.json({ success: true, splashShown: true });
+    } catch (error) {
+      console.error('Error marking splash shown:', error);
+      res.status(500).json({ error: 'Failed to mark splash as shown' });
+    }
+  });
+
   // Create payment intent for Terminal (Tap to Pay)
   app.post("/api/stripe/create-terminal-payment-intent", paymentRateLimiter, requireAuth, async (req: any, res) => {
     try {

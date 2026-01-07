@@ -3110,6 +3110,29 @@ export const insertTerminalPaymentSchema = createInsertSchema(terminalPayments).
 export type InsertTerminalPayment = z.infer<typeof insertTerminalPaymentSchema>;
 export type TerminalPayment = typeof terminalPayments.$inferSelect;
 
+// Tap to Pay Terms & Conditions Acceptance - Required by Apple (3.5, 3.8, 3.8.1)
+export const tapToPayTermsAcceptance = pgTable("tap_to_pay_terms_acceptance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  acceptedAt: timestamp("accepted_at").notNull().defaultNow(),
+  acceptedByUserId: varchar("accepted_by_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  acceptedByName: text("accepted_by_name"),
+  acceptedByEmail: text("accepted_by_email"),
+  termsVersion: text("terms_version").default('1.0'),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  tutorialCompleted: boolean("tutorial_completed").default(false),
+  tutorialCompletedAt: timestamp("tutorial_completed_at"),
+  splashShown: boolean("splash_shown").default(false),
+  splashShownAt: timestamp("splash_shown_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTapToPayTermsAcceptanceSchema = createInsertSchema(tapToPayTermsAcceptance).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTapToPayTermsAcceptance = z.infer<typeof insertTapToPayTermsAcceptanceSchema>;
+export type TapToPayTermsAcceptance = typeof tapToPayTermsAcceptance.$inferSelect;
+
 // ========================
 // CRM / Lead Pipeline
 // ========================

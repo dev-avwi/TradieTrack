@@ -211,6 +211,9 @@ import {
   terminalPayments,
   type TerminalPayment,
   type InsertTerminalPayment,
+  tapToPayTermsAcceptance,
+  type TapToPayTermsAcceptance,
+  type InsertTapToPayTermsAcceptance,
   recurringContracts,
   leads,
   type Lead,
@@ -668,6 +671,13 @@ export interface IStorage {
   createLead(lead: InsertLead & { userId: string }): Promise<Lead>;
   updateLead(id: string, userId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string, userId: string): Promise<boolean>;
+
+  // Tap to Pay Terms & Conditions (Apple Requirement)
+  getTapToPayTermsAcceptance(userId: string): Promise<TapToPayTermsAcceptance | undefined>;
+  createOrUpdateTapToPayTermsAcceptance(data: Partial<InsertTapToPayTermsAcceptance> & { userId: string; acceptedByUserId: string }): Promise<TapToPayTermsAcceptance>;
+  updateTapToPayTermsAcceptance(userId: string, updates: Partial<TapToPayTermsAcceptance>): Promise<TapToPayTermsAcceptance | undefined>;
+  markTapToPaySplashShown(userId: string): Promise<void>;
+  getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
 }
 
 // Initialize database connection
@@ -5107,6 +5117,74 @@ Thank you for your prompt attention to this matter.`,
       .delete(leads)
       .where(and(eq(leads.id, id), eq(leads.userId, userId)));
     return true;
+  }
+
+  // Tap to Pay Terms & Conditions (Apple Requirement)
+  async getTapToPayTermsAcceptance(userId: string): Promise<TapToPayTermsAcceptance | undefined> {
+    const result = await db
+      .select()
+      .from(tapToPayTermsAcceptance)
+      .where(eq(tapToPayTermsAcceptance.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createOrUpdateTapToPayTermsAcceptance(data: Partial<InsertTapToPayTermsAcceptance> & { userId: string; acceptedByUserId: string }): Promise<TapToPayTermsAcceptance> {
+    const [result] = await db
+      .insert(tapToPayTermsAcceptance)
+      .values({
+        id: randomUUID(),
+        ...data,
+        acceptedAt: data.acceptedAt || new Date(),
+      })
+      .onConflictDoUpdate({
+        target: tapToPayTermsAcceptance.userId,
+        set: {
+          acceptedByUserId: data.acceptedByUserId,
+          acceptedByName: data.acceptedByName,
+          acceptedByEmail: data.acceptedByEmail,
+          acceptedAt: data.acceptedAt || new Date(),
+          termsVersion: data.termsVersion || '1.0',
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async updateTapToPayTermsAcceptance(userId: string, updates: Partial<TapToPayTermsAcceptance>): Promise<TapToPayTermsAcceptance | undefined> {
+    const [result] = await db
+      .update(tapToPayTermsAcceptance)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(tapToPayTermsAcceptance.userId, userId))
+      .returning();
+    return result;
+  }
+
+  async markTapToPaySplashShown(userId: string): Promise<void> {
+    // Try to update, if no record exists just log it
+    await db
+      .update(tapToPayTermsAcceptance)
+      .set({
+        splashShown: true,
+        splashShownAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(tapToPayTermsAcceptance.userId, userId));
+  }
+
+  async getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined> {
+    const result = await db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.memberId, userId))
+      .limit(1);
+    return result[0];
   }
 }
 
