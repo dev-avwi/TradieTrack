@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,6 +129,43 @@ export default function ClientDetailView({
       return response.json();
     },
     enabled: !!clientId
+  });
+
+  // Fetch client's saved signature (stored on the client profile)
+  const { data: savedSignature } = useQuery<{
+    hasSavedSignature: boolean;
+    signatureData: string | null;
+    signatureDate: string | null;
+    clientName: string;
+  }>({
+    queryKey: ['/api/clients', clientId, 'saved-signature'],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${clientId}/saved-signature`);
+      if (!response.ok) throw new Error('Failed to fetch saved signature');
+      return response.json();
+    },
+    enabled: !!clientId
+  });
+
+  // Clear saved signature mutation
+  const clearSignatureMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('DELETE', `/api/clients/${clientId}/saved-signature`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId, 'saved-signature'] });
+      toast({
+        title: "Signature cleared",
+        description: "The saved signature has been removed from this client's profile",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to clear signature",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
   });
 
   const [copiedAssetId, setCopiedAssetId] = useState<string | null>(null);
@@ -872,7 +910,7 @@ export default function ClientDetailView({
                 </div>
               </CardContent>
             </Card>
-          ) : !clientAssets || (clientAssets.photos?.length === 0 && clientAssets.signatures?.length === 0) ? (
+          ) : !clientAssets || (clientAssets.photos?.length === 0 && clientAssets.signatures?.length === 0 && !savedSignature?.hasSavedSignature) ? (
             <Card>
               <CardContent className="py-8">
                 <div className="text-center">
@@ -886,6 +924,52 @@ export default function ClientDetailView({
             </Card>
           ) : (
             <>
+              {/* Saved Signature on Client Profile */}
+              {savedSignature?.hasSavedSignature && savedSignature.signatureData && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <PenTool className="h-4 w-4" />
+                      Saved Signature
+                      <Badge variant="default" className="ml-auto text-xs bg-green-500/15 text-green-600 dark:text-green-400">Primary</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 p-3 rounded-lg border-2 border-green-500/30 bg-green-50/50 dark:bg-green-950/20">
+                      <div className="w-24 h-16 rounded border bg-white flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={savedSignature.signatureData} 
+                          alt="Saved Signature" 
+                          className="max-w-full max-h-full object-contain"
+                          data-testid="img-saved-signature"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{client?.name || 'Client Signature'}</p>
+                        {savedSignature.signatureDate && (
+                          <p className="text-xs text-muted-foreground">
+                            Saved on {formatDate(savedSignature.signatureDate)}
+                          </p>
+                        )}
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          Auto-fills on new quotes & invoices
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => clearSignatureMutation.mutate()}
+                        disabled={clearSignatureMutation.isPending}
+                        data-testid="button-clear-saved-signature"
+                        className="text-red-500 hover:text-red-600 hover:border-red-500"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {clientAssets.latestSignature && (
                 <Card>
                   <CardHeader className="pb-3">

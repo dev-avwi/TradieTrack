@@ -578,6 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             await storage.createDigitalSignature({
               quoteId: quote.id,
+              clientId: quote.clientId,
               signerName: accepted_by.trim(),
               signatureData: signature_data,
               signedAt: new Date(),
@@ -586,6 +587,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               documentType: 'quote_acceptance',
               isValid: true,
             });
+            
+            // Also save signature to client's profile for future use
+            if (quote.clientId) {
+              try {
+                await db.update(clients)
+                  .set({ 
+                    savedSignatureData: signature_data,
+                    savedSignatureDate: new Date(),
+                    updatedAt: new Date()
+                  })
+                  .where(eq(clients.id, quote.clientId));
+                console.log(`[Quote Acceptance] Saved signature to client ${quote.clientId} profile`);
+              } catch (clientError) {
+                console.error('Could not save signature to client profile:', clientError);
+              }
+            }
           } catch (e) {
             console.error('Failed to save signature:', e);
           }
