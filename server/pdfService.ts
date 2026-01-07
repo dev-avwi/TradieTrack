@@ -946,28 +946,6 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
       </div>
     ` : ''}
     
-    ${quote.status !== 'accepted' && quote.status !== 'declined' ? `
-      <div class="acceptance-section">
-        <div class="acceptance-title">Quote Acceptance</div>
-        <p style="font-size: 10px; color: #666; margin-bottom: 20px;">
-          By signing below, I accept this quote and authorise the work to proceed in accordance with the terms and conditions above.
-        </p>
-        <div class="signature-line">
-          <div class="signature-block">
-            <div class="signature-label">Client Signature</div>
-            <div class="signature-underline"></div>
-          </div>
-          <div class="signature-block">
-            <div class="signature-label">Print Name</div>
-            <div class="signature-underline"></div>
-          </div>
-          <div class="signature-block">
-            <div class="signature-label">Date</div>
-            <div class="signature-underline"></div>
-          </div>
-        </div>
-      </div>
-    ` : ''}
     
     ${quote.status === 'accepted' && quote.acceptedBy ? `
       <div class="quote-acceptance-block" style="page-break-inside: avoid; display: block; margin-top: 20px; border: 1px solid #22c55e; border-radius: 8px; overflow: hidden;">
