@@ -160,6 +160,12 @@ export async function createDemoUserAndData() {
       console.log(`ℹ️ Demo data already exists for ${demoUser.email} - deleting and recreating`);
 
       // Delete existing data in correct order (foreign key constraints)
+      // Receipts first (depend on invoices)
+      const existingReceipts = await storage.getReceipts(demoUser.id);
+      for (const receipt of existingReceipts) {
+        await storage.deleteReceipt(receipt.id, demoUser.id);
+      }
+      
       const existingJobs = await storage.getJobs(demoUser.id);
       for (const job of existingJobs) {
         await storage.deleteJob(job.id, demoUser.id);
