@@ -1462,7 +1462,6 @@ export default function MapScreen() {
           const activityColor = getActivityColor(member.activityStatus);
           const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
           const isSelected = selectedWorker?.id === member.id;
-          const wasJustDeselected = prevSelectedWorkerIdRef.current === member.id && !isSelected;
           const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
           const shortName = member.user?.firstName || fullName.split(' ')[0] || 'Unknown';
           
@@ -1478,9 +1477,9 @@ export default function MapScreen() {
           // This prevents stale state issues that cause markers to appear at screen (0,0)
           const markerKey = `team-${member.id}-${coordLat.toFixed(4)}-${coordLng.toFixed(4)}`;
           
-          // Enable view tracking when marker is selected or was just deselected
-          // This prevents the iOS bug where markers flash at (0,0) during selection transitions
-          const needsViewTracking = isSelected || wasJustDeselected;
+          // IMPORTANT: Keep marker appearance 100% static to avoid iOS react-native-maps bug
+          // where markers flash at (0,0) when their view content changes.
+          // Selection is shown ONLY through the name label below the marker.
           
           return (
             <Marker
@@ -1491,7 +1490,7 @@ export default function MapScreen() {
               }}
               onPress={() => handleWorkerTap(member)}
               anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={needsViewTracking}
+              tracksViewChanges={false}
             >
               <View 
                 style={{ 
@@ -1500,19 +1499,20 @@ export default function MapScreen() {
                 }}
               >
                 {/* Main bubble - Life360 style compact circle */}
+                {/* STATIC appearance - never changes based on selection to avoid iOS glitch */}
                 <View style={[
                   styles.teamMarkerOuter, 
                   { 
                     backgroundColor: memberColor,
-                    borderColor: isSelected ? colors.primary : 'rgba(255,255,255,0.95)',
+                    borderColor: 'rgba(255,255,255,0.95)',
                   },
-                  isSelected && styles.teamMarkerSelected,
                 ]}>
                   <Text style={styles.teamMarkerText}>{initials}</Text>
                   {/* Activity dot - always visible, positioned at bottom-right */}
                   <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
                 </View>
-                {/* Name label - compact pill below marker */}
+                {/* Name label - this is where selection is shown */}
+                {/* Only color changes, no size/transform changes to avoid triggering iOS glitch */}
                 <View style={[
                   styles.nameLabel,
                   isSelected && { backgroundColor: colors.primary }
