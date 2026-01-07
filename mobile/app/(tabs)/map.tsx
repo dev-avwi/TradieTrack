@@ -639,6 +639,10 @@ export default function MapScreen() {
   const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
   const locationPollRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Track if user has manually interacted with map (to prevent auto-zoom)
+  const userHasInteractedRef = useRef(false);
+  const isInitialFitDoneRef = useRef(false);
+  
   // Animation state for smooth marker transitions
   const markerScaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -909,13 +913,37 @@ export default function MapScreen() {
     }
   }, [canViewTeamMode, fetchGeofenceAlerts]);
 
+  // Auto-fit map to markers ONLY on initial load or when user explicitly toggles filters
+  // Don't auto-fit when: worker is selected, user has interacted, or just polling updates
   useEffect(() => {
     const hasData = (showJobs && filteredJobs.length > 0) || (showTeamMembers && teamMembers.length > 0);
-    if (hasData && mapRef.current) {
-      const timeout = setTimeout(fitToMarkers, 300);
+    
+    // Skip if user has interacted with map or has a worker selected
+    if (userHasInteractedRef.current || selectedWorker) {
+      return;
+    }
+    
+    // Only auto-fit on initial load or when filters change (not on polling updates)
+    if (hasData && mapRef.current && !isInitialFitDoneRef.current) {
+      const timeout = setTimeout(() => {
+        fitToMarkers();
+        isInitialFitDoneRef.current = true;
+      }, 300);
       return () => clearTimeout(timeout);
     }
-  }, [showJobs, showTeamMembers, statusFilter, filteredJobs.length, teamMembers.length, fitToMarkers]);
+  }, [showJobs, showTeamMembers, statusFilter, selectedWorker, fitToMarkers]);
+  
+  // Reset interaction flag when user explicitly toggles jobs/team visibility
+  useEffect(() => {
+    // When user toggles filter buttons, allow one auto-fit
+    userHasInteractedRef.current = false;
+    isInitialFitDoneRef.current = false;
+  }, [showJobs, showTeamMembers, statusFilter]);
+  
+  // Handle map interaction to prevent auto-zoom after user pans/zooms
+  const handleMapPanDrag = useCallback(() => {
+    userHasInteractedRef.current = true;
+  }, []);
 
   const navigateToJob = (jobId: string) => {
     router.push(`/job/${jobId}`);
@@ -1249,6 +1277,7 @@ export default function MapScreen() {
         mapType="standard"
         customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         userInterfaceStyle={isDark ? 'dark' : 'light'}
+        onPanDrag={handleMapPanDrag}
         onMapReady={() => {
           if (filteredJobs.length > 0 || teamMembers.length > 0) {
             fitToMarkers();
