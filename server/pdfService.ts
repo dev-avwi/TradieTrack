@@ -392,15 +392,15 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .document {
       max-width: 800px;
       margin: 0 auto;
-      padding: 40px;
+      padding: 25px 30px;
     }
     
     .header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
       ${headerBorder}
     }
     
@@ -455,8 +455,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .info-section {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 30px;
-      gap: 40px;
+      margin-bottom: 18px;
+      gap: 30px;
     }
     
     .info-block {
@@ -482,8 +482,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .description-section {
-      margin-bottom: 30px;
-      padding: 16px;
+      margin-bottom: 18px;
+      padding: 12px;
       background: ${template.noteStyle === 'simple' ? 'transparent' : '#f8f9fa'};
       border-radius: 6px;
     }
@@ -497,7 +497,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .line-items-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
     
     .line-items-table th {
@@ -536,7 +536,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .totals-section {
       display: flex;
       justify-content: flex-end;
-      margin-bottom: 30px;
+      margin-bottom: 16px;
     }
     
     .totals-table {
@@ -684,8 +684,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .footer {
-      margin-top: 40px;
-      padding-top: 20px;
+      margin-top: 20px;
+      padding-top: 12px;
       border-top: 1px solid #eee;
       text-align: center;
       font-size: 9px;
@@ -3155,27 +3155,27 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
       color: ${accentColor};
     }
     
-    /* Compact thank you section */
+    /* Compact thank you section - minimal for single page fit */
     .thank-you-section {
       text-align: center;
-      margin: 16px 0 12px 0;
-      padding: 14px;
+      margin: 10px 0 8px 0;
+      padding: 10px;
       background: linear-gradient(135deg, ${accentColor}08, ${accentColor}03);
       border: 1px solid ${accentColor}20;
-      border-radius: 6px;
+      border-radius: 4px;
     }
     
     .thank-you-text {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: ${template.headingWeight};
       color: ${accentColor};
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     
     .thank-you-subtext {
-      font-size: 10px;
+      font-size: 9px;
       color: #666;
-      line-height: 1.4;
+      line-height: 1.3;
     }
     
     .footer {
