@@ -886,6 +886,28 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
       </div>
     </div>
     
+    ${quote.status !== 'accepted' && quote.status !== 'declined' && ((business as any).bankBsb || (business as any).bankAccountNumber || (business as any).bankAccountName || business.paymentInstructions) ? `
+      <div class="payment-section">
+        <div class="payment-title">Payment Details</div>
+        <div class="payment-details">
+${(business as any).bankBsb || (business as any).bankAccountNumber || (business as any).bankAccountName ? `
+<strong style="display: block; margin-bottom: 8px; color: #374151;">Bank Transfer Details</strong>
+<table style="margin-bottom: 12px; font-size: 11px;">
+${(business as any).bankAccountName ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Name:</td><td style="font-weight: 500;">${(business as any).bankAccountName}</td></tr>` : ''}
+${(business as any).bankBsb ? `<tr><td style="color: #6b7280; padding-right: 12px;">BSB:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankBsb}</td></tr>` : ''}
+${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Number:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankAccountNumber}</td></tr>` : ''}
+<tr><td style="color: #6b7280; padding-right: 12px;">Reference:</td><td style="font-weight: 500;">${quote.number || 'QTE-' + quote.id.substring(0,8).toUpperCase()}</td></tr>
+</table>
+${business.paymentInstructions ? `<p style="font-size: 11px; color: #666; margin-top: 8px;">${business.paymentInstructions}</p>` : ''}
+` : business.paymentInstructions ? `
+<p style="font-size: 11px; color: #666;">${business.paymentInstructions}</p>
+` : `
+<p style="font-size: 11px; color: #666;">Please contact us for payment options.</p>
+`}
+        </div>
+      </div>
+    ` : ''}
+    
     ${acceptanceUrl && quote.status !== 'accepted' && quote.status !== 'declined' ? `
       <div style="margin: 24px 0; padding: 20px; background: linear-gradient(135deg, ${accentColor}10 0%, ${accentColor}05 100%); border-radius: 8px; border: 2px solid ${accentColor}; text-align: center;">
         <p style="font-size: 12px; font-weight: 600; color: ${accentColor}; margin: 0 0 8px 0;">Accept This Quote Online</p>
@@ -2301,6 +2323,49 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
             <span>${formatCurrency(total)}</span>
           </div>
         </div>
+        
+        ${!isAlreadyActioned && ((business as any).bankBsb || (business as any).bankAccountNumber || (business as any).bankAccountName) ? `
+          <div class="card" style="margin-top: 28px; background: #f8fafc; border: 1px solid #e2e8f0; box-shadow: none;">
+            <div style="padding: 20px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${brandColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <line x1="2" y1="10" x2="22" y2="10"/>
+                </svg>
+                <h3 style="font-size: 14px; font-weight: 600; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Bank Transfer Details</h3>
+              </div>
+              <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+                ${(business as any).bankAccountName ? `
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b; width: 140px;">Account Name:</td>
+                    <td style="padding: 6px 0; font-weight: 500; color: #0f172a;">${(business as any).bankAccountName}</td>
+                  </tr>
+                ` : ''}
+                ${(business as any).bankBsb ? `
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b;">BSB:</td>
+                    <td style="padding: 6px 0; font-weight: 500; font-family: monospace; color: #0f172a;">${(business as any).bankBsb}</td>
+                  </tr>
+                ` : ''}
+                ${(business as any).bankAccountNumber ? `
+                  <tr>
+                    <td style="padding: 6px 0; color: #64748b;">Account Number:</td>
+                    <td style="padding: 6px 0; font-weight: 500; font-family: monospace; color: #0f172a;">${(business as any).bankAccountNumber}</td>
+                  </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b;">Reference:</td>
+                  <td style="padding: 6px 0; font-weight: 500; color: #0f172a;">${quote.number}</td>
+                </tr>
+              </table>
+              ${business.paymentInstructions ? `
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #475569; line-height: 1.5;">
+                  ${business.paymentInstructions}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : ''}
         
         ${quote.notes ? `
           <div class="description" style="margin-bottom: 24px;">
