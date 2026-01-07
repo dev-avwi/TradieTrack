@@ -1845,7 +1845,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
       
       {/* Team member chips at bottom - above mobile nav */}
       {isTeam && teamLocations.length > 0 && showTeamMembers && (
-        <div className="absolute bottom-24 md:bottom-4 left-0 right-0 z-[15] px-3 md:px-4 pointer-events-none">
+        <div className="absolute bottom-24 md:bottom-4 left-0 right-0 z-[1000] px-3 md:px-4 pointer-events-none">
           <div className="overflow-x-auto pb-2 scrollbar-hide pointer-events-auto">
             <div className="flex gap-2 w-max">
               {teamLocations.map((member) => {
