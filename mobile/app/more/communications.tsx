@@ -450,20 +450,29 @@ export default function CommunicationsScreen() {
             let hasAttachment = false;
             let attachmentType = '';
             
-            if (log.type === 'quote_sent') {
+            // Use stored emailSubject if available (actual subject sent to client)
+            if (metadata.emailSubject) {
+              subject = metadata.emailSubject;
+            } else if (log.type === 'quote_sent') {
               subject = `Quote ${metadata.quoteNumber || ''} - ${metadata.quoteTitle || 'Quote'}`;
+            } else if (log.type === 'invoice_sent') {
+              subject = `Invoice ${metadata.invoiceNumber || ''} - ${metadata.invoiceTitle || 'Invoice'}`;
+            } else if (log.type === 'receipt_sent') {
+              subject = `Receipt ${metadata.receiptNumber || ''} - Payment Confirmation`;
+            } else {
+              subject = log.title || `${log.type?.replace(/_/g, ' ')}`;
+            }
+            
+            // Set attachment info based on type
+            if (log.type === 'quote_sent') {
               hasAttachment = true;
               attachmentType = 'Quote';
             } else if (log.type === 'invoice_sent') {
-              subject = `Invoice ${metadata.invoiceNumber || ''} - ${metadata.invoiceTitle || 'Invoice'}`;
               hasAttachment = true;
               attachmentType = 'Invoice';
             } else if (log.type === 'receipt_sent') {
-              subject = `Receipt ${metadata.receiptNumber || ''} - Payment Confirmation`;
               hasAttachment = true;
               attachmentType = 'Receipt';
-            } else {
-              subject = log.title || `${log.type?.replace(/_/g, ' ')}`;
             }
             
             items.push({

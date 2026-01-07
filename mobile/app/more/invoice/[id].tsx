@@ -1803,6 +1803,125 @@ ${businessName}`;
             )}
           </View>
 
+          {/* Payment Options - Only show if not paid - MOVED TO TOP for tradie visibility */}
+          {invoice.status !== 'paid' && (
+            <>
+              <Text style={styles.sectionTitle}>Payment Options</Text>
+              <View style={styles.card}>
+                {/* Record On-Site Payment Button */}
+                <TouchableOpacity 
+                  style={styles.onSitePaymentButton}
+                  onPress={handleRecordOnSitePayment}
+                  disabled={isRecordingOnSitePayment}
+                >
+                  {isRecordingOnSitePayment ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Feather name="dollar-sign" size={20} color={colors.white} />
+                  )}
+                  <Text style={styles.onSitePaymentButtonText}>
+                    Record On-Site Payment
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.onSitePaymentHint}>
+                  Use when client pays cash, check, or direct transfer on-site
+                </Text>
+                
+                <View style={styles.paymentDivider} />
+
+                {/* Online Payment Toggle */}
+                <View style={styles.paymentToggleRow}>
+                  <View style={styles.paymentToggleInfo}>
+                    <Feather name="credit-card" size={20} color={colors.primary} />
+                    <View style={styles.paymentToggleText}>
+                      <Text style={styles.paymentToggleTitle}>Accept Online Payments</Text>
+                      <Text style={styles.paymentToggleDesc}>
+                        Allow clients to pay with card, Apple Pay, or Google Pay
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={invoice.allowOnlinePayment || false}
+                    onValueChange={async () => {
+                      const newValue = !invoice.allowOnlinePayment;
+                      await toggleOnlinePayment();
+                      // If enabling and no payment link exists, generate one
+                      if (newValue && !invoice.stripePaymentLink && !invoice.paymentToken) {
+                        await generatePaymentLink();
+                      }
+                    }}
+                    disabled={isTogglingPayment || isGeneratingPaymentLink}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={invoice.allowOnlinePayment ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+                
+                {/* Payment Link Section */}
+                {invoice.allowOnlinePayment && (
+                  <>
+                    {(invoice.stripePaymentLink || invoice.paymentToken) ? (
+                      <View style={styles.paymentLinkSection}>
+                        <View style={styles.paymentLinkInfo}>
+                          <Feather name="check-circle" size={16} color={colors.success} />
+                          <Text style={styles.paymentLinkText}>
+                            Payment link active
+                          </Text>
+                        </View>
+                        <View style={styles.paymentLinkActions}>
+                          <TouchableOpacity 
+                            style={styles.copyLinkButton}
+                            onPress={sharePaymentLink}
+                          >
+                            <Feather name="share-2" size={16} color={colors.primary} />
+                            <Text style={styles.copyLinkButtonText}>Share</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.copyLinkButton}
+                            onPress={copyPaymentLinkToClipboard}
+                          >
+                            <Feather name="copy" size={16} color={colors.primary} />
+                            <Text style={styles.copyLinkButtonText}>Copy</Text>
+                          </TouchableOpacity>
+                          {client?.email && (
+                            <TouchableOpacity 
+                              style={styles.copyLinkButton}
+                              onPress={handleEmailPaymentLink}
+                              disabled={isSendingPaymentLinkEmail}
+                            >
+                              {isSendingPaymentLinkEmail ? (
+                                <ActivityIndicator size="small" color={colors.primary} />
+                              ) : (
+                                <Feather name="mail" size={16} color={colors.primary} />
+                              )}
+                              <Text style={styles.copyLinkButtonText}>Email</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.paymentLinkSection}>
+                        <TouchableOpacity 
+                          style={styles.generateLinkButton}
+                          onPress={generatePaymentLink}
+                          disabled={isGeneratingPaymentLink}
+                        >
+                          {isGeneratingPaymentLink ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <>
+                              <Feather name="link" size={16} color={colors.primary} />
+                              <Text style={styles.generateLinkButtonText}>Generate Payment Link</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            </>
+          )}
+
           {/* Overdue Alert */}
           {invoice.status === 'overdue' && (
             <View style={styles.overdueAlert}>
@@ -2273,125 +2392,6 @@ ${businessName}`;
               </>
             )}
           </View>
-
-          {/* Payment Options - Only show if not paid */}
-          {invoice.status !== 'paid' && (
-            <>
-              <Text style={styles.sectionTitle}>Payment Options</Text>
-              <View style={styles.card}>
-                {/* Record On-Site Payment Button */}
-                <TouchableOpacity 
-                  style={styles.onSitePaymentButton}
-                  onPress={handleRecordOnSitePayment}
-                  disabled={isRecordingOnSitePayment}
-                >
-                  {isRecordingOnSitePayment ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Feather name="dollar-sign" size={20} color={colors.white} />
-                  )}
-                  <Text style={styles.onSitePaymentButtonText}>
-                    Record On-Site Payment
-                  </Text>
-                </TouchableOpacity>
-                <Text style={styles.onSitePaymentHint}>
-                  Use when client pays cash, check, or direct transfer on-site
-                </Text>
-                
-                <View style={styles.paymentDivider} />
-
-                {/* Online Payment Toggle */}
-                <View style={styles.paymentToggleRow}>
-                  <View style={styles.paymentToggleInfo}>
-                    <Feather name="credit-card" size={20} color={colors.primary} />
-                    <View style={styles.paymentToggleText}>
-                      <Text style={styles.paymentToggleTitle}>Accept Online Payments</Text>
-                      <Text style={styles.paymentToggleDesc}>
-                        Allow clients to pay with card, Apple Pay, or Google Pay
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={invoice.allowOnlinePayment || false}
-                    onValueChange={async () => {
-                      const newValue = !invoice.allowOnlinePayment;
-                      await toggleOnlinePayment();
-                      // If enabling and no payment link exists, generate one
-                      if (newValue && !invoice.stripePaymentLink && !invoice.paymentToken) {
-                        await generatePaymentLink();
-                      }
-                    }}
-                    disabled={isTogglingPayment || isGeneratingPaymentLink}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={invoice.allowOnlinePayment ? colors.primary : colors.mutedForeground}
-                  />
-                </View>
-                
-                {/* Payment Link Section */}
-                {invoice.allowOnlinePayment && (
-                  <>
-                    {(invoice.stripePaymentLink || invoice.paymentToken) ? (
-                      <View style={styles.paymentLinkSection}>
-                        <View style={styles.paymentLinkInfo}>
-                          <Feather name="check-circle" size={16} color={colors.success} />
-                          <Text style={styles.paymentLinkText}>
-                            Payment link active
-                          </Text>
-                        </View>
-                        <View style={styles.paymentLinkActions}>
-                          <TouchableOpacity 
-                            style={styles.copyLinkButton}
-                            onPress={sharePaymentLink}
-                          >
-                            <Feather name="share-2" size={16} color={colors.primary} />
-                            <Text style={styles.copyLinkButtonText}>Share</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.copyLinkButton}
-                            onPress={copyPaymentLinkToClipboard}
-                          >
-                            <Feather name="copy" size={16} color={colors.primary} />
-                            <Text style={styles.copyLinkButtonText}>Copy</Text>
-                          </TouchableOpacity>
-                          {client?.email && (
-                            <TouchableOpacity 
-                              style={styles.copyLinkButton}
-                              onPress={handleEmailPaymentLink}
-                              disabled={isSendingPaymentLinkEmail}
-                            >
-                              {isSendingPaymentLinkEmail ? (
-                                <ActivityIndicator size="small" color={colors.primary} />
-                              ) : (
-                                <Feather name="mail" size={16} color={colors.primary} />
-                              )}
-                              <Text style={styles.copyLinkButtonText}>Email</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={styles.paymentLinkSection}>
-                        <TouchableOpacity 
-                          style={styles.generateLinkButton}
-                          onPress={generatePaymentLink}
-                          disabled={isGeneratingPaymentLink}
-                        >
-                          {isGeneratingPaymentLink ? (
-                            <ActivityIndicator size="small" color={colors.primary} />
-                          ) : (
-                            <>
-                              <Feather name="link" size={16} color={colors.primary} />
-                              <Text style={styles.generateLinkButtonText}>Generate Payment Link</Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </>
-                )}
-              </View>
-            </>
-          )}
 
           {/* Payment Info - Show when already paid */}
           {invoice.status === 'paid' && (
