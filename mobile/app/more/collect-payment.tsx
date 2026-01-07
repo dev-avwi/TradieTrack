@@ -867,7 +867,7 @@ export default function CollectScreen() {
 
       await api.post('/api/payments/send-receipt', {
         email: recipientEmail,
-        amount: lastPaymentAmount / 100, // Convert cents to dollars for API
+        amount: lastPaymentAmount, // Amount in cents - backend divides by 100
         description: description || 'Payment received',
         invoiceId: selectedInvoice?.id,
         invoiceNumber: selectedInvoice?.invoiceNumber,
@@ -898,7 +898,7 @@ export default function CollectScreen() {
 
       await api.post('/api/payments/send-receipt', {
         phone: recipientPhone,
-        amount: lastPaymentAmount / 100, // Convert cents to dollars for API
+        amount: lastPaymentAmount, // Amount in cents - backend divides by 100
         description: description || 'Payment received',
         invoiceId: selectedInvoice?.id,
         invoiceNumber: selectedInvoice?.invoiceNumber,
