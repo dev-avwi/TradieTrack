@@ -803,7 +803,21 @@ export default function MapScreen() {
           };
         })
         .filter((m): m is TeamMember => m !== null);
-      setTeamMembers(transformedMembers);
+      
+      // Deduplicate by name to prevent multiple markers for the same person
+      const uniqueMembers = transformedMembers.reduce((acc, member) => {
+        const name = `${member.user?.firstName} ${member.user?.lastName}`.trim();
+        const existing = acc.find(m => 
+          `${m.user?.firstName} ${m.user?.lastName}`.trim() === name
+        );
+        // Keep the one with most recent data or first occurrence
+        if (!existing) {
+          acc.push(member);
+        }
+        return acc;
+      }, [] as TeamMember[]);
+      
+      setTeamMembers(uniqueMembers);
     } catch (error) {
       console.log('Failed to fetch team locations:', error);
     }
@@ -1434,9 +1448,13 @@ export default function MapScreen() {
             return null;
           }
           
+          // Use coordinate-based key to force full re-render when position changes
+          // This prevents stale state issues that cause markers to appear at screen (0,0)
+          const markerKey = `team-${member.id}-${coordLat.toFixed(4)}-${coordLng.toFixed(4)}`;
+          
           return (
             <Marker
-              key={`team-${member.id}`}
+              key={markerKey}
               coordinate={{
                 latitude: coordLat,
                 longitude: coordLng,
@@ -1445,12 +1463,10 @@ export default function MapScreen() {
               anchor={{ x: 0.5, y: 0.5 }}
               tracksViewChanges={false}
             >
-              <Animated.View 
+              <View 
                 style={{ 
                   alignItems: 'center', 
                   paddingBottom: 20,
-                  // Apply scale animation only to selected marker
-                  transform: [{ scale: isSelected ? markerScaleAnim : 1 }],
                 }}
               >
                 {/* Main bubble - Life360 style compact circle */}
@@ -1478,7 +1494,7 @@ export default function MapScreen() {
                     {shortName}
                   </Text>
                 </View>
-              </Animated.View>
+              </View>
               <Callout tooltip>
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>
