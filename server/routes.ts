@@ -9363,6 +9363,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Image Download - Quote (for sharing via messaging apps)
+  app.get("/api/quotes/:id/image", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { generateQuotePDF, generatePDFBuffer, convertPdfToImage, resolveBusinessLogoForPdf } = await import('./pdfService');
+      
+      const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
+      if (!quoteWithItems) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      const client = await storage.getClient(quoteWithItems.clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      
+      if (!client || !business) {
+        return res.status(404).json({ error: "Client or business settings not found" });
+      }
+      
+      // Get linked job for site address if available
+      const job = quoteWithItems.jobId ? await storage.getJob(quoteWithItems.jobId, userContext.effectiveUserId) : undefined;
+      
+      const businessForPdf = await resolveBusinessLogoForPdf(business);
+      const html = generateQuotePDF({
+        quote: quoteWithItems,
+        lineItems: quoteWithItems.lineItems || [],
+        client,
+        business: businessForPdf,
+        job,
+      });
+      
+      // Generate PDF first, then convert to image
+      const pdfBuffer = await generatePDFBuffer(html);
+      const imageBuffer = await convertPdfToImage(pdfBuffer);
+      
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `inline; filename="Quote-${quoteWithItems.number}.png"`);
+      res.send(imageBuffer);
+    } catch (error) {
+      console.error("Error generating quote image:", error);
+      res.status(500).json({ error: "Failed to generate quote image" });
+    }
+  });
+
   // Preview PDF - Generate PDF from draft quote data (before saving) (team-aware)
   app.post("/api/quotes/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
@@ -10149,6 +10192,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to generate invoice PDF", 
         details: error?.message || "An unexpected error occurred while generating the PDF"
       });
+    }
+  });
+
+  // Image Download - Invoice (for sharing via messaging apps)
+  app.get("/api/invoices/:id/image", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
+    const invoiceId = req.params.id;
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { generateInvoicePDF, generatePDFBuffer, convertPdfToImage, resolveBusinessLogoForPdf } = await import('./pdfService');
+      
+      const invoiceWithItems = await storage.getInvoiceWithLineItems(invoiceId, userContext.effectiveUserId);
+      if (!invoiceWithItems) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      const client = await storage.getClient(invoiceWithItems.clientId, userContext.effectiveUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      
+      if (!client || !business) {
+        return res.status(404).json({ error: "Client or business settings not found" });
+      }
+      
+      // Get linked job for site address
+      const job = invoiceWithItems.jobId ? await storage.getJob(invoiceWithItems.jobId, userContext.effectiveUserId) : undefined;
+      
+      const businessForPdf = await resolveBusinessLogoForPdf(business);
+      const html = generateInvoicePDF({
+        invoice: invoiceWithItems,
+        lineItems: invoiceWithItems.lineItems || [],
+        client,
+        business: businessForPdf,
+        job,
+      });
+      
+      // Generate PDF first, then convert to image
+      const pdfBuffer = await generatePDFBuffer(html);
+      const imageBuffer = await convertPdfToImage(pdfBuffer);
+      
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `inline; filename="Invoice-${invoiceWithItems.number || invoiceId}.png"`);
+      res.send(imageBuffer);
+    } catch (error) {
+      console.error("Error generating invoice image:", error);
+      res.status(500).json({ error: "Failed to generate invoice image" });
     }
   });
 
@@ -11846,6 +11933,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating receipt PDF:", error);
       res.status(500).json({ error: "Failed to generate receipt PDF" });
+    }
+  });
+
+  // Generate receipt image (for sharing via messaging apps)
+  app.get("/api/receipts/:id/image", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { generatePaymentReceiptPDF, generatePDFBuffer, convertPdfToImage, resolveBusinessLogoForPdf } = await import('./pdfService');
+      
+      const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found" });
+      }
+      
+      const business = await storage.getBusinessSettings(effectiveUserId);
+      if (!business) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+      
+      const businessWithLogo = await resolveBusinessLogoForPdf(business);
+      
+      let client = null;
+      let job = null;
+      let invoice = null;
+      
+      if (receipt.clientId) {
+        client = await storage.getClient(receipt.clientId, effectiveUserId);
+      }
+      if (receipt.jobId) {
+        job = await storage.getJob(receipt.jobId, effectiveUserId);
+      }
+      if (receipt.invoiceId) {
+        invoice = await storage.getInvoice(receipt.invoiceId, effectiveUserId);
+      }
+      
+      const pdfHtml = generatePaymentReceiptPDF({
+        payment: {
+          id: receipt.id,
+          amount: parseFloat(receipt.amount),
+          gstAmount: parseFloat(receipt.gstAmount || '0'),
+          subtotal: parseFloat(receipt.subtotal || receipt.amount),
+          paymentMethod: receipt.paymentMethod || 'card',
+          paymentReference: receipt.paymentReference,
+          paidAt: receipt.paidAt,
+          receiptNumber: receipt.receiptNumber,
+          description: receipt.description,
+        },
+        client: client ? {
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          address: client.address,
+        } : null,
+        business: {
+          businessName: businessWithLogo.businessName,
+          abn: businessWithLogo.abn,
+          address: businessWithLogo.address,
+          phone: businessWithLogo.phone,
+          email: businessWithLogo.email,
+          logoUrl: businessWithLogo.logoUrl,
+          brandColor: businessWithLogo.brandColor || '#dc2626',
+        },
+        invoice: invoice ? {
+          id: invoice.id,
+          number: invoice.number,
+        } : null,
+        job: job ? {
+          id: job.id,
+          title: job.title,
+        } : null,
+      });
+      
+      // Generate PDF first, then convert to image
+      const pdfBuffer = await generatePDFBuffer(pdfHtml);
+      const imageBuffer = await convertPdfToImage(pdfBuffer);
+      
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `inline; filename="${receipt.receiptNumber}.png"`);
+      res.send(imageBuffer);
+    } catch (error) {
+      console.error("Error generating receipt image:", error);
+      res.status(500).json({ error: "Failed to generate receipt image" });
     }
   });
 

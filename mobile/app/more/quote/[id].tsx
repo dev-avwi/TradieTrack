@@ -262,8 +262,8 @@ export default function QuoteDetailScreen() {
           onPress: () => setShowEmailCompose(true),
         },
         {
-          text: 'Manual: Share PDF',
-          onPress: () => handleSendViaEmailApp(),
+          text: 'Manual: Share',
+          onPress: () => showManualShareOptions(),
         },
         {
           text: 'Cancel',
@@ -318,14 +318,100 @@ export default function QuoteDetailScreen() {
     }
   };
   
-  const handleSendViaEmailApp = async () => {
+  const showManualShareOptions = () => {
+    if (!quote) return;
+    
+    Alert.alert(
+      'Share Format',
+      'How would you like to share this quote?',
+      [
+        {
+          text: 'PDF (Email attachment)',
+          onPress: () => handleShareAsPdf(),
+        },
+        {
+          text: 'Image (Messaging apps)',
+          onPress: () => handleShareAsImage(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+  
+  const handleShareAsImage = async () => {
     if (!quote) return;
     const client = getClient(quote.clientId);
+    const quoteNumber = quote.quoteNumber || quote.id?.slice(0, 8);
     
-    if (!client?.email) {
-      Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
-      return;
+    setIsDownloadingPdf(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/quotes/${quote.id}/image`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate image');
+      }
+      
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      const imageUri = FileSystem.cacheDirectory + `quote-${quoteNumber}.png`;
+      await FileSystem.writeAsStringAsync(imageUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(imageUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Share Quote ${quoteNumber}`,
+          UTI: 'public.png',
+        });
+        
+        Alert.alert(
+          'Did you send the quote?',
+          'Would you like to mark this quote as sent?',
+          [
+            { text: 'Not Yet', style: 'cancel' },
+            { 
+              text: 'Mark as Sent', 
+              onPress: async () => {
+                await updateQuoteStatus(id!, 'sent');
+                await loadData();
+              }
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+      }
+    } catch (error: any) {
+      console.log('Error sharing as image:', error);
+      Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
+    } finally {
+      setIsDownloadingPdf(false);
     }
+  };
+  
+  const handleShareAsPdf = async () => {
+    if (!quote) return;
+    const client = getClient(quote.clientId);
     
     // Show loading while we prepare the PDF
     setIsDownloadingPdf(true);
@@ -345,14 +431,11 @@ export default function QuoteDetailScreen() {
         // Use share sheet which allows user to select email app AND attaches the PDF
         const quoteNumber = quote.quoteNumber || quote.id?.slice(0, 8);
         const total = formatCurrency(quote.total);
-        const publicUrl = quote.acceptanceToken 
-          ? `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}` 
-          : '';
         
         // Note: Share sheet will pass the PDF - user types their own message in their email app
         await Sharing.shareAsync(pdfUri, {
           mimeType: 'application/pdf',
-          dialogTitle: `Email Quote ${quoteNumber} to ${client.name}`,
+          dialogTitle: `Share Quote ${quoteNumber} to ${client?.name || 'client'}`,
           UTI: 'com.adobe.pdf',
         });
         

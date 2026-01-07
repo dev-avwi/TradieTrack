@@ -286,8 +286,8 @@ export default function InvoiceDetailScreen() {
           onPress: () => setShowEmailCompose(true),
         },
         {
-          text: 'Manual: Share PDF',
-          onPress: () => handleSendViaEmailApp(),
+          text: 'Manual: Share',
+          onPress: () => showManualShareOptions(),
         },
         {
           text: 'Cancel',
@@ -297,14 +297,100 @@ export default function InvoiceDetailScreen() {
     );
   };
   
-  const handleSendViaEmailApp = async () => {
+  const showManualShareOptions = () => {
+    if (!invoice) return;
+    
+    Alert.alert(
+      'Share Format',
+      'How would you like to share this invoice?',
+      [
+        {
+          text: 'PDF (Email attachment)',
+          onPress: () => handleShareAsPdf(),
+        },
+        {
+          text: 'Image (Messaging apps)',
+          onPress: () => handleShareAsImage(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+  
+  const handleShareAsImage = async () => {
     if (!invoice) return;
     const client = getClient(invoice.clientId);
+    const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
     
-    if (!client?.email) {
-      Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
-      return;
+    setIsDownloadingPdf(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/image`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate image');
+      }
+      
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      const imageUri = FileSystem.cacheDirectory + `invoice-${invoiceNumber}.png`;
+      await FileSystem.writeAsStringAsync(imageUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(imageUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Share Invoice ${invoiceNumber}`,
+          UTI: 'public.png',
+        });
+        
+        Alert.alert(
+          'Did you send the invoice?',
+          'Would you like to mark this invoice as sent?',
+          [
+            { text: 'Not Yet', style: 'cancel' },
+            { 
+              text: 'Mark as Sent', 
+              onPress: async () => {
+                await updateInvoiceStatus(id!, 'sent');
+                await loadData();
+              }
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+      }
+    } catch (error: any) {
+      console.log('Error sharing as image:', error);
+      Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
+    } finally {
+      setIsDownloadingPdf(false);
     }
+  };
+  
+  const handleShareAsPdf = async () => {
+    if (!invoice) return;
+    const client = getClient(invoice.clientId);
     
     // Show loading while we prepare the PDF
     setIsDownloadingPdf(true);
@@ -323,12 +409,11 @@ export default function InvoiceDetailScreen() {
       if (canShare) {
         // Use share sheet which allows user to select email app AND attaches the PDF
         const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
-        const total = formatCurrency(invoice.total);
         
         // Note: Share sheet will pass the PDF - user types their own message in their email app
         await Sharing.shareAsync(pdfUri, {
           mimeType: 'application/pdf',
-          dialogTitle: `Email Invoice ${invoiceNumber} to ${client.name}`,
+          dialogTitle: `Share Invoice ${invoiceNumber} to ${client?.name || 'client'}`,
           UTI: 'com.adobe.pdf',
         });
         
@@ -348,32 +433,11 @@ export default function InvoiceDetailScreen() {
           ]
         );
       } else {
-        // Fallback to mailto without attachment
-        const invoiceNumber = invoice.invoiceNumber || invoice.id?.slice(0, 8);
-        const total = formatCurrency(invoice.total);
-        const subject = `Invoice ${invoiceNumber} - ${total}`;
-        const paymentUrl = invoice.stripePaymentLink 
-          || `${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay`;
-        
-        const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${invoice.title || 'the completed work'}.\n\nTotal: ${total}\nDue: ${formatDate(invoice.dueDate)}\n\nPay online here:\n${paymentUrl}\n\nThanks for your business!\n\nCheers`;
-        
-        const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        const canOpen = await Linking.canOpenURL(mailtoUrl);
-        if (canOpen) {
-          await Linking.openURL(mailtoUrl);
-          Alert.alert(
-            'Note',
-            'Your device doesn\'t support file sharing. Please use "Use TradieTrack" option to send with PDF attached.',
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
-        }
+        Alert.alert('Sharing Not Available', 'Please use "TradieTrack" option to send with PDF attached.');
       }
     } catch (error: any) {
-      console.log('Error preparing email:', error);
-      Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use TradieTrack" option instead.');
+      console.log('Error preparing PDF:', error);
+      Alert.alert('Error', error.message || 'Failed to prepare PDF. Please try "TradieTrack" option instead.');
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -693,10 +757,8 @@ export default function InvoiceDetailScreen() {
           onPress: () => setShowReceiptEmailCompose(true),
         },
         {
-          text: 'Manual: Share PDF',
-          onPress: async () => {
-            await handleSendReceiptViaEmailApp();
-          },
+          text: 'Manual: Share',
+          onPress: () => showReceiptManualShareOptions(),
         },
         {
           text: 'Cancel',
@@ -771,15 +833,86 @@ export default function InvoiceDetailScreen() {
     }
   }, [linkedReceipt]);
   
-  const handleSendReceiptViaEmailApp = async () => {
+  const showReceiptManualShareOptions = () => {
+    if (!invoice || !linkedReceipt) return;
+    
+    Alert.alert(
+      'Share Format',
+      'How would you like to share this receipt?',
+      [
+        {
+          text: 'PDF (Email attachment)',
+          onPress: () => handleShareReceiptAsPdf(),
+        },
+        {
+          text: 'Image (Messaging apps)',
+          onPress: () => handleShareReceiptAsImage(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+  
+  const handleShareReceiptAsImage = async () => {
+    if (!invoice || !linkedReceipt || isSendingReceipt) return;
+    const client = getClient(invoice.clientId);
+    const receiptNumber = linkedReceipt.receiptNumber || linkedReceipt.id?.slice(0, 8);
+    
+    setIsSendingReceipt(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/receipts/${linkedReceipt.id}/image`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate image');
+      }
+      
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      const imageUri = FileSystem.cacheDirectory + `receipt-${receiptNumber}.png`;
+      await FileSystem.writeAsStringAsync(imageUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(imageUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Share Receipt ${receiptNumber}`,
+          UTI: 'public.png',
+        });
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+      }
+    } catch (error: any) {
+      console.log('Error sharing receipt as image:', error);
+      Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
+    } finally {
+      setIsSendingReceipt(false);
+    }
+  };
+  
+  const handleShareReceiptAsPdf = async () => {
     if (!invoice || isSendingReceipt) return;
     
     const client = getClient(invoice.clientId);
-    
-    if (!client?.email) {
-      Alert.alert('No Email', "This client doesn't have an email address on file.");
-      return;
-    }
     
     if (!linkedReceipt) {
       Alert.alert('No Receipt', 'No receipt found for this invoice. Please generate a receipt first.');
@@ -798,11 +931,11 @@ export default function InvoiceDetailScreen() {
         const receiptNumber = linkedReceipt.receiptNumber || linkedReceipt.id?.slice(0, 8);
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
-          dialogTitle: `Share Receipt ${receiptNumber} to ${client.name}`,
+          dialogTitle: `Share Receipt ${receiptNumber} to ${client?.name || 'client'}`,
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Please use "TradieTrack" to send with PDF attached.');
+        Alert.alert('Sharing Not Available', 'Please use "TradieTrack" to send with PDF attached.');
       }
     } catch (error: any) {
       console.log('Share receipt PDF error:', error);
