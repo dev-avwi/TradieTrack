@@ -360,7 +360,7 @@ export function EmailComposeModal({
                   style={styles.generateButton}
                   onPress={generateAISuggestion}
                 >
-                  <Feather name="sparkles" size={18} color={colors.primaryForeground} />
+                  <Feather name="zap" size={18} color={colors.primaryForeground} />
                   <Text style={styles.generateButtonText}>Generate AI Suggestion</Text>
                 </TouchableOpacity>
               )}

@@ -194,7 +194,7 @@ export default function ReceiptDetailScreen() {
       }
     );
     
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let didTimeout = false;
     
     try {
@@ -738,7 +738,7 @@ export default function ReceiptDetailScreen() {
           </View>
 
           <View style={[styles.paymentSummary, { borderColor: '#22c55e' }]}>
-            <View style={styles.summaryHeader}>
+            <View style={styles.paymentSummaryHeader}>
               <Text style={styles.summaryTitle}>Payment Received</Text>
               <View style={styles.paidBadgeSmall}>
                 <Text style={styles.paidBadgeSmallText}>Paid</Text>
@@ -1098,8 +1098,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   paidBadgeText: {
-    ...typography.captionSemibold,
+    ...typography.caption,
     color: '#ffffff',
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   section: {
@@ -1140,7 +1141,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 2,
   },
-  summaryHeader: {
+  paymentSummaryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
