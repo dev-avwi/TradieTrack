@@ -419,11 +419,31 @@ export async function createDemoUserAndData() {
 
     // ============================================
     // CREATE QUOTES (9 total: 2 draft, 3 sent, 2 accepted, 2 rejected)
+    // With line items for proper preview display
     // ============================================
+
+    // Helper function to create quote with line items
+    const createQuoteWithLineItems = async (
+      quoteData: Parameters<typeof storage.createQuote>[0],
+      lineItems: Array<{ description: string; quantity: string; unitPrice: string; total: string }>
+    ) => {
+      const quote = await storage.createQuote(quoteData);
+      for (let i = 0; i < lineItems.length; i++) {
+        await storage.createQuoteLineItem({
+          quoteId: quote.id,
+          description: lineItems[i].description,
+          quantity: lineItems[i].quantity,
+          unitPrice: lineItems[i].unitPrice,
+          total: lineItems[i].total,
+          sortOrder: i,
+        });
+      }
+      return quote;
+    };
 
     // DRAFT QUOTES (2)
     const draft1Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[0].id,
       title: 'Bathroom Renovation Plumbing',
@@ -434,10 +454,15 @@ export async function createDemoUserAndData() {
       total: '3520.00',
       validUntil: getDaysFromNow(30),
       number: draft1Num,
-    });
+    }, [
+      { description: 'Rough-in plumbing - shower, toilet, vanity', quantity: '1', unitPrice: '1800.00', total: '1800.00' },
+      { description: 'Supply and install new toilet', quantity: '1', unitPrice: '650.00', total: '650.00' },
+      { description: 'Supply and install vanity basin mixer', quantity: '1', unitPrice: '350.00', total: '350.00' },
+      { description: 'Labour - fit-out and connections', quantity: '4', unitPrice: '100.00', total: '400.00' },
+    ]);
 
     const draft2Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[1].id,
       title: 'Hot Water System Replacement',
@@ -448,11 +473,16 @@ export async function createDemoUserAndData() {
       total: '4950.00',
       validUntil: getDaysFromNow(30),
       number: draft2Num,
-    });
+    }, [
+      { description: 'Reclaim 315L Heat Pump Hot Water System', quantity: '1', unitPrice: '3200.00', total: '3200.00' },
+      { description: 'Removal and disposal of old hot water system', quantity: '1', unitPrice: '250.00', total: '250.00' },
+      { description: 'Plumbing connections and commissioning', quantity: '1', unitPrice: '650.00', total: '650.00' },
+      { description: 'Electrical connection (by licensed electrician)', quantity: '1', unitPrice: '400.00', total: '400.00' },
+    ]);
 
     // SENT QUOTES (3) - 2 with Xero import
     const sent1Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[2].id,
       title: 'Kitchen Plumbing Upgrade',
@@ -467,10 +497,15 @@ export async function createDemoUserAndData() {
       isXeroImport: true,
       xeroQuoteId: generateXeroId('QUO'),
       xeroContactId: generateXeroId('CON'),
-    });
+    }, [
+      { description: 'Relocate sink waste and water supply', quantity: '1', unitPrice: '850.00', total: '850.00' },
+      { description: 'Install dishwasher connection', quantity: '1', unitPrice: '350.00', total: '350.00' },
+      { description: 'Supply and install kitchen mixer tap', quantity: '1', unitPrice: '450.00', total: '450.00' },
+      { description: 'Miscellaneous fittings and materials', quantity: '1', unitPrice: '200.00', total: '200.00' },
+    ]);
 
     const sent2Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[3].id,
       title: 'Gas BBQ Connection',
@@ -485,10 +520,14 @@ export async function createDemoUserAndData() {
       isXeroImport: true,
       xeroQuoteId: generateXeroId('QUO'),
       xeroContactId: generateXeroId('CON'),
-    });
+    }, [
+      { description: 'Run 15m gas line from meter to BBQ area', quantity: '1', unitPrice: '580.00', total: '580.00' },
+      { description: 'Gas bayonet fitting with isolation valve', quantity: '1', unitPrice: '220.00', total: '220.00' },
+      { description: 'Pressure test and compliance certificate', quantity: '1', unitPrice: '180.00', total: '180.00' },
+    ]);
 
     const sent3Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[4].id,
       title: 'Ensuite Addition Plumbing',
@@ -500,11 +539,16 @@ export async function createDemoUserAndData() {
       validUntil: getDaysFromNow(30),
       sentAt: getDaysAgo(7),
       number: sent3Num,
-    });
+    }, [
+      { description: 'Rough-in plumbing for ensuite (shower, toilet, vanity)', quantity: '1', unitPrice: '2400.00', total: '2400.00' },
+      { description: 'Supply and install frameless shower screen', quantity: '1', unitPrice: '1200.00', total: '1200.00' },
+      { description: 'Wall-hung vanity and basin package', quantity: '1', unitPrice: '1100.00', total: '1100.00' },
+      { description: 'Wall-hung toilet with concealed cistern', quantity: '1', unitPrice: '900.00', total: '900.00' },
+    ]);
 
     // ACCEPTED QUOTES (2)
     const accepted1Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[5].id,
       title: 'Outdoor Shower Installation',
@@ -518,10 +562,14 @@ export async function createDemoUserAndData() {
       acceptedAt: getDaysAgo(7),
       acceptedBy: 'Michael Brown',
       number: accepted1Num,
-    });
+    }, [
+      { description: 'Run hot and cold water lines to outdoor area', quantity: '1', unitPrice: '550.00', total: '550.00' },
+      { description: 'Outdoor shower mixer and head (marine grade)', quantity: '1', unitPrice: '380.00', total: '380.00' },
+      { description: 'Drainage connection to stormwater', quantity: '1', unitPrice: '270.00', total: '270.00' },
+    ]);
 
     const accepted2Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[6].id,
       title: 'Laundry Renovation Plumbing',
@@ -538,11 +586,16 @@ export async function createDemoUserAndData() {
       isXeroImport: true,
       xeroQuoteId: generateXeroId('QUO'),
       xeroContactId: generateXeroId('CON'),
-    });
+    }, [
+      { description: 'Relocate washing machine taps and waste', quantity: '1', unitPrice: '450.00', total: '450.00' },
+      { description: 'Supply and install stainless steel laundry trough', quantity: '1', unitPrice: '580.00', total: '580.00' },
+      { description: 'Install new laundry mixer tap', quantity: '1', unitPrice: '320.00', total: '320.00' },
+      { description: 'Connect to existing drainage', quantity: '1', unitPrice: '300.00', total: '300.00' },
+    ]);
 
     // REJECTED QUOTES (2)
     const rejected1Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[7].id,
       title: 'Whole House Repipe',
@@ -554,10 +607,16 @@ export async function createDemoUserAndData() {
       validUntil: getDaysAgo(5),
       sentAt: getDaysAgo(20),
       number: rejected1Num,
-    });
+    }, [
+      { description: 'Remove existing copper piping throughout house', quantity: '1', unitPrice: '2500.00', total: '2500.00' },
+      { description: 'Install new PEX piping system (whole house)', quantity: '1', unitPrice: '6500.00', total: '6500.00' },
+      { description: 'New main water shutoff valve', quantity: '1', unitPrice: '450.00', total: '450.00' },
+      { description: 'Pressure test and compliance', quantity: '1', unitPrice: '350.00', total: '350.00' },
+      { description: 'Make good - patch walls and ceilings', quantity: '1', unitPrice: '2200.00', total: '2200.00' },
+    ]);
 
     const rejected2Num = await storage.generateQuoteNumber(demoUser.id);
-    await storage.createQuote({
+    await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[8].id,
       title: 'Solar Hot Water System',
@@ -569,7 +628,13 @@ export async function createDemoUserAndData() {
       validUntil: getDaysAgo(10),
       sentAt: getDaysAgo(30),
       number: rejected2Num,
-    });
+    }, [
+      { description: 'Solar collector panels (2 x 2m)', quantity: '2', unitPrice: '1800.00', total: '3600.00' },
+      { description: 'Solar storage tank 315L', quantity: '1', unitPrice: '2200.00', total: '2200.00' },
+      { description: 'Mounting frame and hardware', quantity: '1', unitPrice: '850.00', total: '850.00' },
+      { description: 'Plumbing connections and pump', quantity: '1', unitPrice: '950.00', total: '950.00' },
+      { description: 'Installation labour (full day)', quantity: '1', unitPrice: '900.00', total: '900.00' },
+    ]);
 
     console.log('✅ 9 Demo quotes created (2 draft, 3 sent, 2 accepted, 2 rejected)');
 
