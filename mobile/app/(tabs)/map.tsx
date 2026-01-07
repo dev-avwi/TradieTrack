@@ -741,9 +741,10 @@ export default function MapScreen() {
           const newLat = Number(m.latitude);
           const newLng = Number(m.longitude);
           
-          // Check if new coordinates are valid
-          const hasValidNewCoords = Number.isFinite(newLat) && Number.isFinite(newLng) && 
-            (newLat !== 0 || newLng !== 0);
+          // Check if new coordinates are valid and within reasonable geographic bounds
+          // Australia bounds: lat -45 to -10, lng 110 to 155 (with some buffer)
+          const isWithinBounds = newLat >= -50 && newLat <= 0 && newLng >= 100 && newLng <= 180;
+          const hasValidNewCoords = Number.isFinite(newLat) && Number.isFinite(newLng) && isWithinBounds;
           
           // Get last known position from cache
           const lastKnown = lastKnownPositionsRef.current.get(m.id);
@@ -1076,10 +1077,15 @@ export default function MapScreen() {
       // Mark as interacted to prevent any auto-fit from triggering
       userHasInteractedRef.current = true;
       
-      // Animate camera to the member's location with zoom
-      // Use longer duration for smoother feel when zooming from far away
-      const animDuration = 800; // Longer for smooth zoom from overview to street level
+      // Determine animation speed - faster when switching between members (already zoomed in)
+      const isSwitching = selectedWorker !== null;
+      const animDuration = isSwitching ? 400 : 700; // Faster for member-to-member
       const targetZoom = 17; // Street-level zoom for close-up view
+      
+      // Set selected immediately when switching between members for snappier feel
+      if (isSwitching) {
+        setSelectedWorker(member);
+      }
       
       if (memberLat && memberLng) {
         animateCameraToLocation(memberLat, memberLng, { 
@@ -1088,28 +1094,29 @@ export default function MapScreen() {
         });
       }
       
-      // Set selected worker after camera has moved significantly
-      // Wait for most of the camera animation to complete to prevent flash
-      setTimeout(() => {
-        setSelectedWorker(member);
-        
-        // Pulse animation for selected marker
-        markerScaleAnim.setValue(1);
-        Animated.sequence([
-          Animated.spring(markerScaleAnim, {
-            toValue: 1.2,
-            friction: 4,
-            tension: 120,
-            useNativeDriver: true,
-          }),
-          Animated.spring(markerScaleAnim, {
-            toValue: 1,
-            friction: 6,
-            tension: 100,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, animDuration * 0.5); // Wait for 50% of animation before state update
+      // For initial selection (not switching), delay state update
+      if (!isSwitching) {
+        setTimeout(() => {
+          setSelectedWorker(member);
+        }, animDuration * 0.4);
+      }
+      
+      // Pulse animation for selected marker
+      markerScaleAnim.setValue(1);
+      Animated.sequence([
+        Animated.spring(markerScaleAnim, {
+          toValue: 1.15,
+          friction: 5,
+          tension: 150,
+          useNativeDriver: true,
+        }),
+        Animated.spring(markerScaleAnim, {
+          toValue: 1,
+          friction: 6,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [selectedWorker, animateCameraToLocation, fitToMarkers, markerScaleAnim]);
 
@@ -1403,8 +1410,13 @@ export default function MapScreen() {
         {/* Team Member Markers - Life360 Style */}
         {/* Note: Members are pre-filtered at transformation time - all members in state have valid coords */}
         {showTeamMembers && canViewTeamMode && teamMembers.map((member) => {
-          // Safety check (should never fail since we filter at transformation)
-          if (!member.lastLocation) return null;
+          // Safety check - validate coordinates are within Australia bounds
+          const lat = member.lastLocation?.latitude;
+          const lng = member.lastLocation?.longitude;
+          if (!member.lastLocation || !lat || !lng || 
+              lat < -50 || lat > 0 || lng < 100 || lng > 180) {
+            return null;
+          }
           
           // Use member's theme color as base, fallback to a nice blue
           const memberColor = member.themeColor || '#3B82F6';
@@ -1423,7 +1435,7 @@ export default function MapScreen() {
               }}
               onPress={() => handleWorkerTap(member)}
               anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={isSelected} // Only track when selected for animation
+              tracksViewChanges={false}
             >
               <Animated.View 
                 style={{ 
