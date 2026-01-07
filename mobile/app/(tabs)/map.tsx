@@ -956,17 +956,18 @@ export default function MapScreen() {
     }
   }, [canViewTeamMode, fetchGeofenceAlerts]);
 
-  // Auto-fit map to markers ONLY on initial load or when user explicitly toggles filters
-  // Don't auto-fit when: worker is selected, user has interacted, or just polling updates
+  // Auto-fit map to markers ONLY when user explicitly toggles filters (not on polling)
+  // The effect is gated by filter changes, not data changes
   useEffect(() => {
-    const hasData = (showJobs && filteredJobs.length > 0) || (showTeamMembers && teamMembers.length > 0);
-    
     // Skip if user has interacted with map or has a worker selected
     if (userHasInteractedRef.current || selectedWorker) {
       return;
     }
     
-    // Only auto-fit on initial load or when filters change (not on polling updates)
+    // Check if we have data to fit to
+    const hasData = (showJobs && filteredJobs.length > 0) || (showTeamMembers && teamMembers.length > 0);
+    
+    // Only auto-fit when filters change and we haven't already done initial fit
     if (hasData && mapRef.current && !isInitialFitDoneRef.current) {
       const timeout = setTimeout(() => {
         fitToMarkers();
@@ -974,13 +975,22 @@ export default function MapScreen() {
       }, 300);
       return () => clearTimeout(timeout);
     }
-  }, [showJobs, showTeamMembers, statusFilter, selectedWorker, fitToMarkers]);
+    // Note: Intentionally NOT including fitToMarkers, teamMembers.length, or filteredJobs.length
+    // in dependencies to prevent re-running on polling updates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showJobs, showTeamMembers, statusFilter, selectedWorker]);
   
-  // Reset interaction flag when user explicitly toggles jobs/team visibility
+  // Reset interaction flag when user explicitly toggles jobs/team visibility (via buttons)
+  // This is a separate effect to avoid circular dependencies
+  const prevFiltersRef = useRef({ showJobs, showTeamMembers, statusFilter });
   useEffect(() => {
-    // When user toggles filter buttons, allow one auto-fit
-    userHasInteractedRef.current = false;
-    isInitialFitDoneRef.current = false;
+    const prev = prevFiltersRef.current;
+    // Only reset if filters actually changed (not on initial mount)
+    if (prev.showJobs !== showJobs || prev.showTeamMembers !== showTeamMembers || prev.statusFilter !== statusFilter) {
+      userHasInteractedRef.current = false;
+      isInitialFitDoneRef.current = false;
+      prevFiltersRef.current = { showJobs, showTeamMembers, statusFilter };
+    }
   }, [showJobs, showTeamMembers, statusFilter]);
   
   // Handle map interaction to prevent auto-zoom after user pans/zooms
@@ -1322,8 +1332,10 @@ export default function MapScreen() {
         userInterfaceStyle={isDark ? 'dark' : 'light'}
         onPanDrag={handleMapPanDrag}
         onMapReady={() => {
-          if (filteredJobs.length > 0 || teamMembers.length > 0) {
+          // Only fit to markers on initial map ready if not already done
+          if (!isInitialFitDoneRef.current && (filteredJobs.length > 0 || teamMembers.length > 0)) {
             fitToMarkers();
+            isInitialFitDoneRef.current = true;
           }
         }}
       >

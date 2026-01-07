@@ -17793,30 +17793,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Use locationTracking first, fall back to tradieStatus for demo data
+        // Include all Life360-style fields for mobile parity with web
         if (recentLocation) {
+          const speed = recentLocation.speed ? parseFloat(recentLocation.speed) : 
+                        tradieStatusData?.speed ? parseFloat(tradieStatusData.speed) : 0;
           locations.push({
             id: member.memberId,
             name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
             email: user.email,
+            profileImageUrl: user.profileImageUrl || null,
+            themeColor: user.themeColor || null,
             latitude: parseFloat(recentLocation.latitude),
             longitude: parseFloat(recentLocation.longitude),
             lastUpdated: recentLocation.timestamp,
             currentJobId: currentJob?.id || null,
             currentJobTitle: currentJob?.title || null,
             activityStatus: tradieStatusData?.activityStatus || 'online',
+            speed: speed,
+            batteryLevel: tradieStatusData?.batteryLevel || recentLocation.batteryLevel || null,
+            heading: recentLocation.heading ? parseFloat(recentLocation.heading) : null,
           });
         } else if (tradieStatusData?.currentLatitude && tradieStatusData?.currentLongitude) {
           // Fallback to tradieStatus data (used by demo data)
+          const speed = tradieStatusData.speed ? parseFloat(tradieStatusData.speed) : 0;
           locations.push({
             id: member.memberId,
             name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
             email: user.email,
+            profileImageUrl: user.profileImageUrl || null,
+            themeColor: user.themeColor || null,
             latitude: parseFloat(tradieStatusData.currentLatitude),
             longitude: parseFloat(tradieStatusData.currentLongitude),
             lastUpdated: tradieStatusData.lastLocationUpdate || tradieStatusData.lastSeenAt,
             currentJobId: currentJob?.id || null,
             currentJobTitle: currentJob?.title || null,
             activityStatus: tradieStatusData.activityStatus || 'online',
+            speed: speed,
+            batteryLevel: tradieStatusData.batteryLevel || null,
+            heading: tradieStatusData.heading ? parseFloat(tradieStatusData.heading) : null,
           });
         }
       }
