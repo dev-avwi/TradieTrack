@@ -1426,12 +1426,20 @@ export default function MapScreen() {
           const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
           const shortName = member.user?.firstName || fullName.split(' ')[0] || 'Unknown';
           
+          // Double-check coordinates are valid numbers before creating marker
+          const coordLat = Number(member.lastLocation.latitude);
+          const coordLng = Number(member.lastLocation.longitude);
+          if (!Number.isFinite(coordLat) || !Number.isFinite(coordLng)) {
+            console.log(`[Map] Skipping ${member.user?.firstName} - non-finite coords:`, coordLat, coordLng);
+            return null;
+          }
+          
           return (
             <Marker
               key={`team-${member.id}`}
               coordinate={{
-                latitude: member.lastLocation.latitude,
-                longitude: member.lastLocation.longitude,
+                latitude: coordLat,
+                longitude: coordLng,
               }}
               onPress={() => handleWorkerTap(member)}
               anchor={{ x: 0.5, y: 0.5 }}
