@@ -595,24 +595,24 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .payment-section {
-      margin-bottom: 30px;
-      padding: 20px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
       background: linear-gradient(135deg, ${brandColor}10, ${brandColor}05);
       border: 1px solid ${brandColor}30;
-      border-radius: 8px;
+      border-radius: 6px;
     }
     
     .payment-title {
       font-weight: ${template.headingWeight};
-      margin-bottom: 12px;
+      margin-bottom: 6px;
       color: ${brandColor};
-      font-size: 12px;
+      font-size: 10px;
     }
     
     .payment-details {
       color: #444;
-      font-size: 10px;
-      line-height: 1.8;
+      font-size: 9px;
+      line-height: 1.4;
       white-space: pre-wrap;
     }
     
@@ -891,18 +891,18 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
         <div class="payment-title">Payment Details</div>
         <div class="payment-details">
 ${(business as any).bankBsb || (business as any).bankAccountNumber || (business as any).bankAccountName ? `
-<strong style="display: block; margin-bottom: 8px; color: #374151;">Bank Transfer Details</strong>
-<table style="margin-bottom: 12px; font-size: 11px;">
-${(business as any).bankAccountName ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Name:</td><td style="font-weight: 500;">${(business as any).bankAccountName}</td></tr>` : ''}
-${(business as any).bankBsb ? `<tr><td style="color: #6b7280; padding-right: 12px;">BSB:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankBsb}</td></tr>` : ''}
-${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Number:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankAccountNumber}</td></tr>` : ''}
-<tr><td style="color: #6b7280; padding-right: 12px;">Reference:</td><td style="font-weight: 500;">${quote.number || 'QTE-' + quote.id.substring(0,8).toUpperCase()}</td></tr>
+<strong style="display: block; margin-bottom: 4px; color: #374151; font-size: 9px;">Bank Transfer</strong>
+<table style="margin-bottom: 6px; font-size: 9px;">
+${(business as any).bankAccountName ? `<tr><td style="color: #6b7280; padding-right: 8px;">Account:</td><td style="font-weight: 500;">${(business as any).bankAccountName}</td></tr>` : ''}
+${(business as any).bankBsb ? `<tr><td style="color: #6b7280; padding-right: 8px;">BSB:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankBsb}</td></tr>` : ''}
+${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-right: 8px;">Acc #:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankAccountNumber}</td></tr>` : ''}
+<tr><td style="color: #6b7280; padding-right: 8px;">Ref:</td><td style="font-weight: 500;">${quote.number || 'QTE-' + quote.id.substring(0,8).toUpperCase()}</td></tr>
 </table>
-${business.paymentInstructions ? `<p style="font-size: 11px; color: #666; margin-top: 8px;">${business.paymentInstructions}</p>` : ''}
+${business.paymentInstructions ? `<span style="font-size: 9px; color: #666;">${business.paymentInstructions}</span>` : ''}
 ` : business.paymentInstructions ? `
-<p style="font-size: 11px; color: #666;">${business.paymentInstructions}</p>
+<span style="font-size: 9px; color: #666;">${business.paymentInstructions}</span>
 ` : `
-<p style="font-size: 11px; color: #666;">Please contact us for payment options.</p>
+<span style="font-size: 9px; color: #666;">Please contact us for payment options.</span>
 `}
         </div>
       </div>
@@ -1212,18 +1212,15 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         <div class="payment-title">Payment Details</div>
         <div class="payment-details">
 ${(business as any).bankBsb || (business as any).bankAccountNumber || (business as any).bankAccountName ? `
-<strong style="display: block; margin-bottom: 8px; color: #374151;">Bank Transfer Details</strong>
-<table style="margin-bottom: 12px; font-size: 11px;">
-${(business as any).bankAccountName ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Name:</td><td style="font-weight: 500;">${(business as any).bankAccountName}</td></tr>` : ''}
-${(business as any).bankBsb ? `<tr><td style="color: #6b7280; padding-right: 12px;">BSB:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankBsb}</td></tr>` : ''}
-${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Number:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankAccountNumber}</td></tr>` : ''}
-<tr><td style="color: #6b7280; padding-right: 12px;">Reference:</td><td style="font-weight: 500;">${invoice.number || 'INV-' + invoice.id.substring(0,8).toUpperCase()}</td></tr>
+<strong style="display: block; margin-bottom: 4px; color: #374151; font-size: 9px;">Bank Transfer</strong>
+<table style="margin-bottom: 6px; font-size: 9px;">
+${(business as any).bankAccountName ? `<tr><td style="color: #6b7280; padding-right: 8px;">Account:</td><td style="font-weight: 500;">${(business as any).bankAccountName}</td></tr>` : ''}
+${(business as any).bankBsb ? `<tr><td style="color: #6b7280; padding-right: 8px;">BSB:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankBsb}</td></tr>` : ''}
+${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-right: 8px;">Acc #:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankAccountNumber}</td></tr>` : ''}
+<tr><td style="color: #6b7280; padding-right: 8px;">Ref:</td><td style="font-weight: 500;">${invoice.number || 'INV-' + invoice.id.substring(0,8).toUpperCase()}</td></tr>
 </table>
 ` : ''}
-${business.paymentInstructions || (!((business as any).bankBsb || (business as any).bankAccountNumber) ? 'Please contact us for payment options.' : '')}
-
-${invoice.dueDate ? `Payment is due by ${formatDate(invoice.dueDate)}.` : ''}
-${business.lateFeeRate ? `Late payments may incur interest at ${business.lateFeeRate}.` : ''}
+${business.paymentInstructions || (!((business as any).bankBsb || (business as any).bankAccountNumber) ? 'Please contact us for payment options.' : '')}${invoice.dueDate ? ` Due by ${formatDate(invoice.dueDate)}.` : ''}${business.lateFeeRate ? ` Late payments may incur interest at ${business.lateFeeRate}.` : ''}
         </div>
       </div>
     ` : ''}
