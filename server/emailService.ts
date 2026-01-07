@@ -815,6 +815,7 @@ export interface EmailOptions {
   text?: string;
   html?: string;
   replyTo?: string;
+  fromName?: string; // Custom sender name (e.g., business name)
 }
 
 export interface EmailResult {
@@ -826,17 +827,20 @@ export interface EmailResult {
 
 // Send a generic email - used by notification service
 export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => {
-  const { to, subject, text, html, replyTo } = options;
+  const { to, subject, text, html, replyTo, fromName } = options;
   const sendGridEnabled = initializeSendGrid();
   
   // Generate plain text from HTML if not provided
   const plainText = text || (html ? html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : 'Please view this email in an HTML-capable email client.');
   
+  // Use custom fromName if provided (e.g., business name), otherwise use platform default
+  const senderName = fromName || PLATFORM_FROM_NAME;
+  
   const emailData = {
     to,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: PLATFORM_FROM_NAME
+      name: senderName
     },
     subject,
     text: plainText,

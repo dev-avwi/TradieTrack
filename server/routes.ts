@@ -2439,6 +2439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
         const result = await sendEmailViaIntegration({
           to: recipientEmail,
           subject: action.data.subject || 'Message from your tradie',
@@ -2446,7 +2447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           text: action.data.body || '',
           userId: req.userId,
           type: action.data.emailType === 'invoice' ? 'invoice' : 
-                action.data.emailType === 'quote' ? 'quote' : 'reminder'
+                action.data.emailType === 'quote' ? 'quote' : 'reminder',
+          fromName: businessSettings?.businessName,
         });
 
         return res.json({ 
@@ -2549,7 +2551,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: userContext.effectiveUserId,
           type: 'invoice',
           relatedId: invoice.id.toString(),
-          attachments: [{ filename: `Invoice-${invoice.number || invoice.id}.pdf`, content: pdfBuffer }]
+          attachments: [{ filename: `Invoice-${invoice.number || invoice.id}.pdf`, content: pdfBuffer }],
+          fromName: business?.businessName,
         });
 
         if (result.success) {
@@ -2596,7 +2599,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: userContext.effectiveUserId,
           type: 'quote',
           relatedId: quote.id.toString(),
-          attachments: [{ filename: `Quote-${quote.number || quote.id}.pdf`, content: pdfBuffer }]
+          attachments: [{ filename: `Quote-${quote.number || quote.id}.pdf`, content: pdfBuffer }],
+          fromName: business?.businessName,
         });
 
         if (result.success) {
@@ -2809,7 +2813,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             text: message,
             userId: userContext.effectiveUserId,
             type: 'reminder',
-            relatedId: invoice.id.toString()
+            relatedId: invoice.id.toString(),
+            fromName: business?.businessName,
           });
           results.push(emailResult.success ? 'Email sent' : 'Email failed');
         }

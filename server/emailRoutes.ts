@@ -352,6 +352,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
           userId: req.userId,
           type: 'quote',
           relatedId: req.params.id,
+          fromName: businessSettings.businessName,
         });
         
         if (result.success) {
@@ -705,6 +706,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
           userId: req.userId,
           type: 'invoice',
           relatedId: req.params.id,
+          fromName: businessSettings.businessName,
         });
         
         if (result.success) {
@@ -917,6 +919,7 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
           userId: req.userId,
           type: 'receipt',
           relatedId: req.params.id,
+          fromName: businessSettings.businessName,
         });
         
         if (result.success) {
@@ -1670,7 +1673,8 @@ export const handleSendPaymentLink = async (req: any, res: any, storage: any) =>
       html: emailHtml,
       userId,
       type: 'payment_link',
-      relatedId: invoice.id
+      relatedId: invoice.id,
+      fromName: businessSettings.businessName,
     });
     
     if (!emailResult.success) {

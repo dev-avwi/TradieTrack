@@ -27,6 +27,7 @@ interface SendEmailOptions {
   userId: string;
   type: 'quote' | 'invoice' | 'receipt' | 'reminder' | 'payment_link';
   relatedId?: string;
+  fromName?: string; // Custom sender name (e.g., business name)
 }
 
 interface EmailResult {
@@ -166,7 +167,7 @@ export async function disconnectEmail(userId: string): Promise<{ success: boolea
 // Send email through tradie's connected account or fallback to platform
 // Fallback cascade: User SMTP → Gmail Connector → SendGrid Platform
 export async function sendEmailViaIntegration(options: SendEmailOptions): Promise<EmailResult> {
-  const { to, subject, html, text, attachments, userId, type, relatedId } = options;
+  const { to, subject, html, text, attachments, userId, type, relatedId, fromName } = options;
 
   // Get user's email integration from database (SMTP only for now)
   const integration = await getEmailIntegration(userId);
@@ -221,7 +222,7 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
 
     // 4. Final fallback - SendGrid platform email
     console.log('Using SendGrid platform email as final fallback');
-    return await sendViaPlatform({ to, subject, html, text });
+    return await sendViaPlatform({ to, subject, html, text, fromName });
   };
 
   try {
@@ -427,7 +428,7 @@ async function sendViaOutlook(
 
 // Send email via platform (SendGrid)
 async function sendViaPlatform(
-  options: { to: string; subject: string; html: string; text?: string }
+  options: { to: string; subject: string; html: string; text?: string; fromName?: string }
 ): Promise<EmailResult> {
   try {
     const result = await sendPlatformEmail({
@@ -435,6 +436,7 @@ async function sendViaPlatform(
       subject: options.subject,
       html: options.html,
       text: options.text,
+      fromName: options.fromName,
     });
 
     return {
