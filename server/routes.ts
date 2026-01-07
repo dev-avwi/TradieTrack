@@ -10383,7 +10383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create Stripe checkout session for invoice payment (with Connect destination charges) (team-aware)
+  // Create payment link for invoice (uses custom tradie-branded payment page, NOT Stripe Checkout)
   app.post("/api/invoices/:id/create-checkout-session", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
@@ -10412,142 +10412,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalAmountCents = Math.round(parsedTotal * 100);
       
       // Minimum invoice amount check - must cover platform fee + Stripe fees ($5.00 AUD minimum)
-      // This applies to both real Stripe and mock payments to ensure consistency
       if (totalAmountCents < 500) {
         return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD" });
       }
       
-      const stripe = await getUncachableStripeClient();
-
-      if (stripe) {
-        // Determine enabled payment methods based on business settings
-        const paymentMethods: string[] = [];
-        if (business.acceptCardPayments !== false) {
-          paymentMethods.push('card');
+      // Generate or use existing payment token (12-char alphanumeric for shorter URLs)
+      let paymentToken = invoice.paymentToken;
+      if (!paymentToken) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const bytes = randomBytes(12);
+        paymentToken = '';
+        for (let i = 0; i < 12; i++) {
+          paymentToken += chars[bytes[i] % chars.length];
         }
-        if (business.acceptBecsDebit) {
-          paymentMethods.push('au_becs_debit'); // BECS Direct Debit for Australian bank accounts
-        }
-        // Fallback to card if no methods enabled
-        if (paymentMethods.length === 0) {
-          paymentMethods.push('card');
-        }
-        
-        // Calculate card surcharge if enabled
-        let finalAmountCents = totalAmountCents;
-        let surchargeAmountCents = 0;
-        let surchargeDescription = '';
-        
-        // Note: Stripe Checkout applies the same amount to all payment methods
-        // To properly apply card-only surcharges, we'd need separate sessions or use Stripe's dynamic pricing
-        // For now, we inform the customer about the surcharge in metadata
-        if (business.enableCardSurcharge && business.acceptCardPayments !== false) {
-          const surchargePercent = parseFloat(String(business.cardSurchargePercent || '1.95'));
-          const surchargeFixed = business.cardSurchargeFixedCents || 30;
-          surchargeAmountCents = Math.round((totalAmountCents * surchargePercent / 100) + surchargeFixed);
-          // For card-only surcharge, we add it as a separate line item for transparency
-          surchargeDescription = business.surchargeDisclaimer || 'Card payment processing fee';
-        }
-        
-        // Build line items
-        const lineItems: any[] = [
-          {
-            price_data: {
-              currency: 'aud',
-              product_data: {
-                name: `Invoice #${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
-                description: invoice.title || 'Invoice payment',
-              },
-              unit_amount: totalAmountCents,
-            },
-            quantity: 1,
-          },
-        ];
-        
-        // Add surcharge line item if card surcharge enabled and card is the only method
-        // (For mixed payment methods, surcharge is handled differently or not applied)
-        if (surchargeAmountCents > 0 && paymentMethods.length === 1 && paymentMethods[0] === 'card') {
-          lineItems.push({
-            price_data: {
-              currency: 'aud',
-              product_data: {
-                name: 'Card Payment Surcharge',
-                description: surchargeDescription,
-              },
-              unit_amount: surchargeAmountCents,
-            },
-            quantity: 1,
-          });
-          finalAmountCents += surchargeAmountCents;
-        }
-
-        // Build checkout session config
-        const sessionConfig: any = {
-          payment_method_types: paymentMethods,
-          line_items: lineItems,
-          mode: 'payment',
-          success_url: `${req.headers.origin}/invoices/${invoice.id}?payment=success`,
-          cancel_url: `${req.headers.origin}/invoices/${invoice.id}?payment=cancelled`,
-          client_reference_id: invoice.id,
-          customer_email: client.email || undefined,
-          metadata: {
-            invoiceId: invoice.id,
-            userId: req.userId,
-            businessName: business.businessName || '',
-            surchargeApplied: surchargeAmountCents > 0 ? 'true' : 'false',
-            surchargeAmount: (surchargeAmountCents / 100).toFixed(2),
-            originalAmount: (totalAmountCents / 100).toFixed(2),
-          },
-        };
-
-        // Add Stripe Connect destination charges if tradie has Connect account
-        if (business.stripeConnectAccountId && business.connectChargesEnabled) {
-          // Platform fee: 2.5% (minimum $0.50)
-          const platformFee = Math.max(Math.round(totalAmountCents * 0.025), 50);
-          const tradieAmount = totalAmountCents - platformFee;
-          sessionConfig.payment_intent_data = {
-            application_fee_amount: platformFee,
-            transfer_data: {
-              destination: business.stripeConnectAccountId,
-            },
-            on_behalf_of: business.stripeConnectAccountId,
-            metadata: {
-              invoiceId: invoice.id,
-              tradieUserId: req.userId,
-              clientId: client.id || '',
-              clientName: client.name || '',
-              platformFee: (platformFee / 100).toFixed(2),
-              tradieAmount: (tradieAmount / 100).toFixed(2),
-            },
-          };
-        }
-
-        const session = await stripe.checkout.sessions.create(sessionConfig);
-
-        res.json({ 
-          paymentUrl: session.url,
-          sessionId: session.id,
-          mode: 'stripe',
-          connectEnabled: !!(business.stripeConnectAccountId && business.connectChargesEnabled)
-        });
-      } else {
-        // Mock payment for testing
-        const mockPaymentUrl = `https://checkout.stripe.com/mock/${invoice.id}?total=${invoice.total}&currency=AUD&business=${encodeURIComponent(business.businessName || '')}&client=${encodeURIComponent(client.name)}`;
-        
-        res.json({ 
-          paymentUrl: mockPaymentUrl,
-          sessionId: `mock_session_${invoice.id}`,
-          mode: 'mock',
-          message: 'Mock payment link created for testing'
-        });
       }
+      
+      // Determine base URL
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : req.headers.origin || 'http://localhost:5000');
+      
+      // Use custom tradie-branded payment page (NOT Stripe's checkout.stripe.com)
+      const paymentUrl = `${baseUrl}/pay/${paymentToken}`;
+      
+      // Save the payment token and URL to the invoice
+      await storage.updateInvoice(invoice.id, userContext.effectiveUserId, {
+        paymentToken,
+        stripePaymentLink: paymentUrl,
+        allowOnlinePayment: true,
+      });
+
+      console.log(`✅ Custom payment link created for invoice ${invoice.number}: ${paymentUrl}`);
+      
+      // Check if Connect is properly configured
+      const connectEnabled = !!(business.stripeConnectAccountId && business.connectChargesEnabled);
+
+      res.json({ 
+        paymentUrl,
+        url: paymentUrl,
+        mode: 'custom',
+        connectEnabled,
+        message: connectEnabled 
+          ? 'Payment link created - funds will go to your connected bank account'
+          : 'Payment link created with your tradie branding'
+      });
     } catch (error) {
-      console.error("Error creating checkout session:", error);
+      console.error("Error creating payment link:", error);
       res.status(500).json({ error: "Failed to create payment link" });
     }
   });
 
-  // Generate and persist Stripe payment link for invoice
+  // Generate and persist payment link for invoice (uses custom tradie-branded payment page, NOT Stripe Checkout)
   app.post("/api/invoices/:id/generate-payment-link", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       // Get invoice with line items
@@ -10580,102 +10496,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalAmountCents = Math.round(parsedTotal * 100);
       
       // Minimum invoice amount check - must cover platform fee + Stripe fees ($5.00 AUD minimum)
-      // This applies to both real Stripe and mock payments to ensure consistency
       if (totalAmountCents < 500) {
         return res.status(400).json({ error: "Minimum payment amount is $5.00 AUD" });
       }
       
-      const stripe = await getUncachableStripeClient();
-
-      if (stripe) {
-        // Determine base URL for success/cancel redirects
-        const baseUrl = process.env.APP_BASE_URL 
-          || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-            ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-            : req.headers.origin || 'http://localhost:5000');
-
-        // Build checkout session config
-        const sessionConfig: any = {
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency: 'aud',
-                product_data: {
-                  name: `Invoice #${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
-                  description: invoice.title || 'Invoice payment',
-                },
-                unit_amount: totalAmountCents,
-              },
-              quantity: 1,
-            },
-          ],
-          mode: 'payment',
-          success_url: `${baseUrl}/invoices/${invoice.id}?payment=success`,
-          cancel_url: `${baseUrl}/invoices/${invoice.id}?payment=cancelled`,
-          client_reference_id: invoice.id,
-          customer_email: client.email || undefined,
-          metadata: {
-            invoiceId: invoice.id,
-            userId: req.userId,
-            businessName: business.businessName || '',
-          },
-        };
-
-        // Add Stripe Connect destination charges if tradie has Connect account
-        if (business.stripeConnectAccountId && business.connectChargesEnabled) {
-          const platformFee = Math.max(Math.round(totalAmountCents * 0.025), 50);
-          const tradieAmount = totalAmountCents - platformFee;
-          sessionConfig.payment_intent_data = {
-            application_fee_amount: platformFee,
-            transfer_data: {
-              destination: business.stripeConnectAccountId,
-            },
-            on_behalf_of: business.stripeConnectAccountId,
-            metadata: {
-              invoiceId: invoice.id,
-              tradieUserId: req.userId,
-              clientId: client.id || '',
-              clientName: client.name || '',
-              platformFee: (platformFee / 100).toFixed(2),
-              tradieAmount: (tradieAmount / 100).toFixed(2),
-            },
-          };
+      // Generate or use existing payment token (12-char alphanumeric for shorter URLs)
+      let paymentToken = invoice.paymentToken;
+      if (!paymentToken) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        const bytes = randomBytes(12);
+        paymentToken = '';
+        for (let i = 0; i < 12; i++) {
+          paymentToken += chars[bytes[i] % chars.length];
         }
-
-        const session = await stripe.checkout.sessions.create(sessionConfig);
-
-        // Save the payment link to the invoice
-        await storage.updateInvoice(invoice.id, req.userId, {
-          stripePaymentLink: session.url,
-          allowOnlinePayment: true,
-        });
-
-        console.log(`✅ Payment link generated for invoice ${invoice.number}: ${session.url}`);
-
-        res.json({ 
-          paymentUrl: session.url,
-          sessionId: session.id,
-          saved: true,
-          message: 'Payment link generated and saved to invoice'
-        });
-      } else {
-        // Mock payment for testing when Stripe is not configured
-        const mockPaymentUrl = `${req.headers.origin || 'http://localhost:5000'}/pay/mock-${invoice.id}`;
-        
-        await storage.updateInvoice(invoice.id, req.userId, {
-          stripePaymentLink: mockPaymentUrl,
-          allowOnlinePayment: true,
-        });
-        
-        res.json({ 
-          paymentUrl: mockPaymentUrl,
-          sessionId: `mock_session_${invoice.id}`,
-          saved: true,
-          mode: 'mock',
-          message: 'Mock payment link created for testing'
-        });
       }
+      
+      // Determine base URL
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : req.headers.origin || 'http://localhost:5000');
+      
+      // Use custom tradie-branded payment page (NOT Stripe's checkout.stripe.com)
+      const paymentUrl = `${baseUrl}/pay/${paymentToken}`;
+      
+      // Save the payment token and URL to the invoice
+      await storage.updateInvoice(invoice.id, req.userId, {
+        paymentToken,
+        stripePaymentLink: paymentUrl,
+        allowOnlinePayment: true,
+      });
+
+      console.log(`✅ Custom payment link generated for invoice ${invoice.number}: ${paymentUrl}`);
+      
+      // Check if Connect is properly configured
+      const connectEnabled = !!(business.stripeConnectAccountId && business.connectChargesEnabled);
+
+      res.json({ 
+        paymentUrl,
+        url: paymentUrl,
+        saved: true,
+        connectEnabled,
+        message: connectEnabled 
+          ? 'Payment link created - funds will go to your connected bank account'
+          : 'Payment link created - please set up Stripe Connect to receive payments directly'
+      });
     } catch (error) {
       console.error("Error generating payment link:", error);
       res.status(500).json({ error: "Failed to generate payment link" });
