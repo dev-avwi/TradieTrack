@@ -302,7 +302,10 @@ export default function QuoteDetailScreen() {
 
       if (response.ok) {
         await loadData();
-        Alert.alert('Quote Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+        Alert.alert(
+          'Quote Sent!', 
+          `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email, PDF preview and delivery status.`
+        );
       } else {
         const error = await response.json();
         Alert.alert('Error', error.error || 'Failed to send quote');
@@ -440,7 +443,7 @@ export default function QuoteDetailScreen() {
         setShowEmailCompose(false);
         Alert.alert(
           'Quote Sent!',
-          `Email sent to ${result.recipientEmail} with PDF attached.`
+          `Email sent to ${result.recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
         );
         return;
       }

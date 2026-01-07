@@ -387,7 +387,10 @@ export default function ReceiptDetailScreen() {
       await api.post(`/api/receipts/${receipt.id}/send-email`, {
         email: recipientEmail,
       });
-      Alert.alert('Receipt Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+      Alert.alert(
+        'Receipt Sent!', 
+        `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
+      );
     } catch (error: any) {
       console.error('Error sending receipt email:', error);
       const message = error?.response?.data?.error || error?.message || 'Failed to send receipt email';
@@ -412,7 +415,10 @@ export default function ReceiptDetailScreen() {
       // Refresh receipt data to show updated email sent status
       loadData();
       setShowEmailCompose(false);
-      Alert.alert('Receipt Sent!', `Email sent to ${client.email} with PDF attached.`);
+      Alert.alert(
+        'Receipt Sent!', 
+        `Email sent to ${client.email} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
+      );
     } catch (error: any) {
       console.error('Error sending receipt email:', error);
       const message = error?.response?.data?.error || error?.message || 'Failed to send receipt email';

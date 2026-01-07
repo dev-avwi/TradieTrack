@@ -408,7 +408,10 @@ export default function InvoiceDetailScreen() {
 
       if (response.ok) {
         await loadData();
-        Alert.alert('Invoice Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+        Alert.alert(
+          'Invoice Sent!', 
+          `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email, PDF preview and delivery status.`
+        );
       } else {
         const error = await response.json();
         Alert.alert('Error', error.error || 'Failed to send invoice');
@@ -460,7 +463,7 @@ export default function InvoiceDetailScreen() {
         setShowEmailCompose(false);
         Alert.alert(
           'Invoice Sent!',
-          `Email sent to ${result.recipientEmail} with PDF attached.`
+          `Email sent to ${result.recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
         );
         return;
       }
@@ -838,7 +841,10 @@ export default function InvoiceDetailScreen() {
       });
 
       if (response.ok) {
-        Alert.alert('Receipt Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+        Alert.alert(
+          'Receipt Sent!', 
+          `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
+        );
       } else {
         const error = await response.json();
         Alert.alert('Error', error.error || 'Failed to send receipt');
