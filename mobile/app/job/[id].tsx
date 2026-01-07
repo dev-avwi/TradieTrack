@@ -4720,12 +4720,28 @@ export default function JobDetailScreen() {
               <VoiceNotePlayer
                 key={note.id}
                 noteId={note.id}
+                jobId={id as string}
                 uri={`${api.getBaseUrl()}/api/jobs/${id}/voice-notes/${note.id}/stream`}
                 fallbackUri={note.signedUrl || ''}
                 title={note.title || undefined}
                 duration={note.duration || undefined}
                 createdAt={note.createdAt || undefined}
+                transcription={note.transcription}
                 onDelete={() => handleDeleteVoiceNote(note.id)}
+                onTranscriptionUpdate={(text) => {
+                  // Update local state with new transcription
+                  setVoiceNotes(prev => prev.map(v => 
+                    v.id === note.id ? { ...v, transcription: text } : v
+                  ));
+                }}
+                onAddToNotes={(text) => {
+                  // Append transcription to job notes
+                  const currentNotes = job?.notes || '';
+                  const newNotes = currentNotes 
+                    ? `${currentNotes}\n\n[Voice Note Transcription]\n${text}`
+                    : `[Voice Note Transcription]\n${text}`;
+                  handleUpdateJobField('notes', newNotes);
+                }}
               />
             ))}
             <TouchableOpacity

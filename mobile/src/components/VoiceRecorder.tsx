@@ -405,7 +405,11 @@ interface VoiceNotePlayerProps {
   title?: string;
   duration?: number;
   createdAt?: string;
+  transcription?: string | null;
   onDelete?: () => void;
+  onTranscriptionUpdate?: (transcription: string) => void;
+  onAddToNotes?: (text: string) => void;
+  jobId?: string;
 }
 
 export function VoiceNotePlayer({ 
@@ -415,7 +419,11 @@ export function VoiceNotePlayer({
   title, 
   duration, 
   createdAt,
-  onDelete 
+  transcription: initialTranscription,
+  onDelete,
+  onTranscriptionUpdate,
+  onAddToNotes,
+  jobId,
 }: VoiceNotePlayerProps) {
   const theme = useTheme();
   const soundRef = useRef<any>(null);
@@ -424,6 +432,9 @@ export function VoiceNotePlayer({
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcription, setTranscription] = useState<string | null>(initialTranscription || null);
+  const [showTranscription, setShowTranscription] = useState(!!initialTranscription);
 
   // Cleanup sound on unmount
   useEffect(() => {
@@ -655,41 +666,141 @@ export function VoiceNotePlayer({
     });
   };
 
+  // AI Transcription
+  const handleTranscribe = async () => {
+    if (!noteId || !jobId) {
+      Alert.alert('Error', 'Cannot transcribe - voice note or job ID missing');
+      return;
+    }
+    
+    setIsTranscribing(true);
+    try {
+      const response = await api.post<{ transcription: string }>(`/api/jobs/${jobId}/voice-notes/${noteId}/transcribe`);
+      if (response.error) {
+        Alert.alert('Transcription Failed', response.error || 'Could not transcribe voice note');
+        return;
+      }
+      if (response.data?.transcription) {
+        setTranscription(response.data.transcription);
+        setShowTranscription(true);
+        onTranscriptionUpdate?.(response.data.transcription);
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      Alert.alert('Error', 'Failed to transcribe voice note');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleCopyTranscription = async () => {
+    if (!transcription) return;
+    try {
+      const Clipboard = require('expo-clipboard');
+      await Clipboard.setStringAsync(transcription);
+      Alert.alert('Copied', 'Transcription copied to clipboard');
+    } catch (e) {
+      Alert.alert('Error', 'Could not copy to clipboard');
+    }
+  };
+
+  const handleAddToNotes = () => {
+    if (!transcription) return;
+    if (onAddToNotes) {
+      onAddToNotes(transcription);
+    } else {
+      Alert.alert('Note', 'Add to Notes callback not provided');
+    }
+  };
+
   const styles = createStyles(theme);
 
   return (
-    <View style={[styles.playerContainer, hasError && styles.playerContainerError]}>
-      <TouchableOpacity 
-        style={[styles.playButton, isLoading && styles.playButtonDisabled]} 
-        onPress={togglePlay}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-        ) : (
-          <Ionicons 
-            name={hasError ? "reload" : (isPlaying ? "pause" : "play")} 
-            size={24} 
-            color={hasError ? theme.colors.mutedForeground : theme.colors.primary} 
-          />
-        )}
-      </TouchableOpacity>
-      
-      <View style={styles.playerInfo}>
-        <Text style={[styles.playerTitle, hasError && styles.playerTitleError]} numberOfLines={1}>
-          {title || 'Voice Note'}
-        </Text>
-        <Text style={styles.playerMeta}>
-          {hasError ? 'Tap to retry' : (
-            `${formatDuration(isPlaying ? currentTime : 0)} / ${formatDuration(duration || 0)}${createdAt ? ` | ${formatDate(createdAt)}` : ''}`
+    <View style={styles.playerWrapper}>
+      <View style={[styles.playerContainer, hasError && styles.playerContainerError]}>
+        <TouchableOpacity 
+          style={[styles.playButton, isLoading && styles.playButtonDisabled]} 
+          onPress={togglePlay}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <Ionicons 
+              name={hasError ? "reload" : (isPlaying ? "pause" : "play")} 
+              size={24} 
+              color={hasError ? theme.colors.mutedForeground : theme.colors.primary} 
+            />
           )}
-        </Text>
+        </TouchableOpacity>
+        
+        <View style={styles.playerInfo}>
+          <Text style={[styles.playerTitle, hasError && styles.playerTitleError]} numberOfLines={1}>
+            {title || 'Voice Note'}
+          </Text>
+          <Text style={styles.playerMeta}>
+            {hasError ? 'Tap to retry' : (
+              `${formatDuration(isPlaying ? currentTime : 0)} / ${formatDuration(duration || 0)}${createdAt ? ` | ${formatDate(createdAt)}` : ''}`
+            )}
+          </Text>
+        </View>
+        
+        {/* Transcribe button - requires both noteId and jobId */}
+        {noteId && jobId && !transcription && (
+          <TouchableOpacity 
+            style={styles.transcribeButton} 
+            onPress={handleTranscribe}
+            disabled={isTranscribing}
+          >
+            {isTranscribing ? (
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            ) : (
+              <Ionicons name="text" size={18} color={theme.colors.primary} />
+            )}
+          </TouchableOpacity>
+        )}
+        
+        {onDelete && (
+          <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
+            <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
+          </TouchableOpacity>
+        )}
       </View>
       
-      {onDelete && (
-        <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-          <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
-        </TouchableOpacity>
+      {/* Transcription section */}
+      {transcription && (
+        <View style={styles.transcriptionContainer}>
+          <TouchableOpacity 
+            style={styles.transcriptionHeader}
+            onPress={() => setShowTranscription(!showTranscription)}
+          >
+            <Ionicons name="text" size={14} color={theme.colors.mutedForeground} />
+            <Text style={styles.transcriptionLabel}>AI Transcription</Text>
+            <Ionicons 
+              name={showTranscription ? "chevron-up" : "chevron-down"} 
+              size={14} 
+              color={theme.colors.mutedForeground} 
+            />
+          </TouchableOpacity>
+          
+          {showTranscription && (
+            <>
+              <Text style={styles.transcriptionText}>{transcription}</Text>
+              <View style={styles.transcriptionActions}>
+                {onAddToNotes && (
+                  <TouchableOpacity style={styles.actionButton} onPress={handleAddToNotes}>
+                    <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
+                    <Text style={styles.actionButtonText}>Add to Notes</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.actionButton} onPress={handleCopyTranscription}>
+                  <Ionicons name="copy-outline" size={16} color={theme.colors.primary} />
+                  <Text style={styles.actionButtonText}>Copy</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
       )}
     </View>
   );
@@ -849,5 +960,64 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     fontSize: 13,
     color: theme.colors.mutedForeground,
     marginTop: 2,
+  },
+  playerWrapper: {
+    width: '100%',
+  },
+  transcribeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  transcriptionContainer: {
+    marginTop: 8,
+    backgroundColor: theme.colors.card,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  transcriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  transcriptionLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
+    color: theme.colors.mutedForeground,
+  },
+  transcriptionText: {
+    fontSize: 14,
+    color: theme.colors.foreground,
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  transcriptionActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: theme.colors.primary + '10',
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: theme.colors.primary,
   },
 });
