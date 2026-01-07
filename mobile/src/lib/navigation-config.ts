@@ -284,6 +284,18 @@ export const mainMenuItems: NavItem[] = [
     category: "communication",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
+  {
+    title: "Communications Hub",
+    url: "/more/communications",
+    icon: "send",
+    description: "View all sent emails and SMS",
+    color: "success",
+    bgColor: "success",
+    hideForStaff: true,
+    showInMore: true,
+    category: "communication",
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
   // Team Chat and Direct Messages merged into Chat Hub
   // {
   //   title: "Team Chat",
