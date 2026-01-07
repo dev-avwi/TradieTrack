@@ -198,12 +198,13 @@ function createRawMessage(options: {
     .replace(/=+$/, '');
 }
 
-// Create a raw email message WITHOUT From header - Gmail will auto-fill it
+// Create a raw email message with optional From display name - Gmail will auto-fill the email
 function createRawMessageWithoutFrom(options: {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  fromName?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -211,14 +212,24 @@ function createRawMessageWithoutFrom(options: {
   }>;
 }): string {
   const boundary = `boundary_${Date.now()}`;
-  const { to, subject, html, text, attachments } = options;
+  const { to, subject, html, text, fromName, attachments } = options;
 
-  // Note: No From header - Gmail API will use authenticated user's email
-  let message = [
-    `To: ${to}`,
-    `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
-    'MIME-Version: 1.0',
-  ];
+  // Build message headers - include From with display name if provided
+  // Gmail API will merge the email address when sending
+  let message: string[] = [];
+  
+  // Add From header with display name if provided
+  // Gmail API will replace/merge the email but preserve the display name
+  if (fromName) {
+    // Encode the display name for email headers (RFC 2047)
+    const encodedName = `=?UTF-8?B?${Buffer.from(fromName).toString('base64')}?=`;
+    // Use 'me' as placeholder - Gmail API will replace with actual authenticated email
+    message.push(`From: ${encodedName} <me>`);
+  }
+  
+  message.push(`To: ${to}`);
+  message.push(`Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`);
+  message.push('MIME-Version: 1.0');
 
   if (attachments && attachments.length > 0) {
     message.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
@@ -320,13 +331,14 @@ export async function sendViaGmailAPI(options: {
     // 3. If we still don't have an email, we'll try sending anyway
     // Gmail API will use the authenticated user's email as the From address
     if (!fromEmail) {
-      console.log('[Gmail] No from email available, attempting send with auto-from');
-      // Create a minimal raw message - Gmail will add the From header
+      console.log(`[Gmail] No from email available, attempting send with auto-from (fromName: ${options.fromName || 'none'})`);
+      // Create a message with display name - Gmail will add the email address
       const raw = createRawMessageWithoutFrom({
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
+        fromName: options.fromName,
         attachments: options.attachments,
       });
 
@@ -431,6 +443,7 @@ export async function createGmailDraftWithAttachment(options: {
         subject: options.subject,
         html: options.html,
         text: options.text,
+        fromName: options.fromName,
         attachments: options.attachments,
       });
     }
