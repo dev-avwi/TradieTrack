@@ -801,6 +801,31 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
     return enrichedRouteJobs.filter(job => job.address);
   }, [enrichedRouteJobs]);
 
+  // Sort team members: active members first, then by activity type (working > driving > online > offline)
+  const sortedTeamLocations = useMemo(() => {
+    return [...teamLocations].sort((a, b) => {
+      // Active members first
+      if (a.isActive && !b.isActive) return -1;
+      if (!a.isActive && b.isActive) return 1;
+      
+      // Within active members, prioritize by activity status
+      if (a.isActive && b.isActive) {
+        const activityPriority: Record<string, number> = {
+          'working': 0,
+          'driving': 1,
+          'online': 2,
+          'idle': 3,
+          'offline': 4,
+        };
+        const aPriority = activityPriority[a.activityStatus] ?? 5;
+        const bPriority = activityPriority[b.activityStatus] ?? 5;
+        return aPriority - bPriority;
+      }
+      
+      return 0;
+    });
+  }, [teamLocations]);
+
   const handleRefresh = () => {
     refetchJobs();
     if (isTeam) {
@@ -1843,12 +1868,12 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
         </div>
       )}
       
-      {/* Team member chips at bottom - above mobile nav */}
-      {isTeam && teamLocations.length > 0 && showTeamMembers && (
+      {/* Team member chips at bottom - above mobile nav (sorted: active first) */}
+      {isTeam && sortedTeamLocations.length > 0 && showTeamMembers && (
         <div className="absolute bottom-24 md:bottom-4 left-0 right-0 z-[1000] px-3 md:px-4 pointer-events-none">
           <div className="overflow-x-auto pb-2 scrollbar-hide pointer-events-auto">
             <div className="flex gap-2 w-max">
-              {teamLocations.map((member) => {
+              {sortedTeamLocations.map((member) => {
                 const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                 const color = member.isActive 
                   ? (member.isDriving ? ACTIVITY_COLORS.driving : member.activityStatus === 'working' ? ACTIVITY_COLORS.working : ACTIVITY_COLORS.online)

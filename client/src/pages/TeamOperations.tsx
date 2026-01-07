@@ -261,6 +261,29 @@ function LiveOpsTab() {
     return members.filter(m => m.inviteStatus === 'accepted');
   }, [members]);
 
+  // Sort accepted members: active/on-job first, then online, then offline
+  const sortedAcceptedMembers = useMemo(() => {
+    return [...acceptedMembers].sort((a, b) => {
+      const aPresence = presence.find(p => p.userId === a.userId);
+      const bPresence = presence.find(p => p.userId === b.userId);
+      
+      const statusPriority: Record<string, number> = {
+        'on_job': 0,
+        'online': 1,
+        'busy': 2,
+        'break': 3,
+        'offline': 4,
+      };
+      
+      const aStatus = aPresence?.status || 'offline';
+      const bStatus = bPresence?.status || 'offline';
+      const aPriority = statusPriority[aStatus] ?? 5;
+      const bPriority = statusPriority[bStatus] ?? 5;
+      
+      return aPriority - bPriority;
+    });
+  }, [acceptedMembers, presence]);
+
   const jobs = useMemo(() => {
     return allJobs.filter((j) => j.status === "in_progress" || j.status === "scheduled");
   }, [allJobs]);
@@ -408,7 +431,7 @@ function LiveOpsTab() {
                 <CardContent className="pt-0">
                   <ScrollArea className="h-[300px]">
                     <div className="space-y-2">
-                      {acceptedMembers.map((member) => {
+                      {sortedAcceptedMembers.map((member) => {
                         const memberPresence = presence.find(p => p.userId === member.userId);
                         const status = memberPresence?.status || 'offline';
                         const statusDisplay = getStatusDisplay(status);
@@ -446,7 +469,7 @@ function LiveOpsTab() {
                           </div>
                         );
                       })}
-                      {acceptedMembers.length === 0 && (
+                      {sortedAcceptedMembers.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">
                           No team members yet
                         </p>
