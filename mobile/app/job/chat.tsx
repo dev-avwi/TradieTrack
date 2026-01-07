@@ -977,7 +977,7 @@ export default function JobChatScreen() {
                   </View>
                   <View style={styles.documentInfo}>
                     <Text style={styles.documentTitle}>{quote.quoteNumber}</Text>
-                    <Text style={styles.documentMeta}>${(quote.total / 100).toFixed(2)} - {quote.status}</Text>
+                    <Text style={styles.documentMeta}>${parseFloat(String(quote.total || 0)).toFixed(2)} - {quote.status}</Text>
                   </View>
                   <Feather name="send" size={18} color={colors.primary} />
                 </TouchableOpacity>
@@ -993,7 +993,7 @@ export default function JobChatScreen() {
                   </View>
                   <View style={styles.documentInfo}>
                     <Text style={styles.documentTitle}>{invoice.invoiceNumber}</Text>
-                    <Text style={styles.documentMeta}>${(invoice.total / 100).toFixed(2)} - {invoice.status}</Text>
+                    <Text style={styles.documentMeta}>${parseFloat(String(invoice.total || 0)).toFixed(2)} - {invoice.status}</Text>
                   </View>
                   <Feather name="send" size={18} color={colors.primary} />
                 </TouchableOpacity>

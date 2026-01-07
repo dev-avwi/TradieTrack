@@ -143,12 +143,15 @@ export default function ReceiptDetailScreen() {
     }
   };
 
-  const formatCurrency = (cents: number) => {
+  // Format currency from dollar amounts (database stores as decimal)
+  const formatCurrency = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '$0.00';
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
       currency: 'AUD',
       minimumFractionDigits: 2,
-    }).format(cents / 100);
+    }).format(num);
   };
 
   const formatPaymentMethod = (method: string) => {

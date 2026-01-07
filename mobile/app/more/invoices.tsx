@@ -54,11 +54,14 @@ function InvoiceCard({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const formatCurrency = (amount: number) => {
+  // Format currency from dollar amounts (database stores as decimal)
+  const formatCurrency = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '$0';
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
       currency: 'AUD'
-    }).format(amount / 100);
+    }).format(num);
   };
 
   const formatDate = (dateStr: string) => {
@@ -225,8 +228,11 @@ export default function InvoicesScreen() {
     return client?.name || 'Unknown Client';
   };
 
-  const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+  // Format currency from dollar amounts (database stores as decimal)
+  const formatCurrency = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '$0.00';
+    return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
   };
 
   const totalOutstanding = invoices
@@ -560,7 +566,7 @@ export default function InvoicesScreen() {
           clientEmail={selectedInvoiceForEmail.client?.email || ''}
           documentNumber={selectedInvoiceForEmail.invoiceNumber || ''}
           documentTitle={selectedInvoiceForEmail.description || 'Services'}
-          total={`$${((selectedInvoiceForEmail.total || 0) / 100).toFixed(2)}`}
+          total={`$${parseFloat(String(selectedInvoiceForEmail.total || 0)).toFixed(2)}`}
           businessName={businessSettings?.businessName || user?.businessName || 'Your Business'}
           publicUrl={`${API_URL}/public/invoice/${selectedInvoiceForEmail.id}`}
           onSend={handleSendEmail}

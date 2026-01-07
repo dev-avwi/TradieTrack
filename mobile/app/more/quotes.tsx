@@ -89,11 +89,14 @@ function QuoteCard({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const formatCurrency = (amount: number) => {
+  // Format currency from dollar amounts (database stores as decimal)
+  const formatCurrency = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(num)) return '$0';
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
       currency: 'AUD'
-    }).format(amount / 100);
+    }).format(num);
   };
 
   const formatDate = (dateStr: string) => {
@@ -562,7 +565,7 @@ export default function QuotesScreen() {
           clientEmail={selectedQuoteForEmail.client?.email || ''}
           documentNumber={selectedQuoteForEmail.quoteNumber || ''}
           documentTitle={selectedQuoteForEmail.title || 'Services'}
-          total={`$${((selectedQuoteForEmail.total || 0) / 100).toFixed(2)}`}
+          total={`$${parseFloat(String(selectedQuoteForEmail.total || 0)).toFixed(2)}`}
           businessName={businessSettings?.businessName || user?.businessName || 'Your Business'}
           publicUrl={`${API_URL}/public/quote/${selectedQuoteForEmail.id}`}
           onSend={handleSendEmail}

@@ -76,13 +76,16 @@ type TabType = 'overview' | 'invoices' | 'quotes' | 'payments';
 type InvoiceFilterType = 'all' | 'outstanding' | 'overdue' | 'paid' | 'draft';
 type TimeRangeType = '7d' | '30d' | '90d' | 'all';
 
-const formatCurrency = (amount: number) => {
+// Format currency from dollar amounts (database stores as decimal with 2 decimal places)
+const formatCurrency = (amount: number | string) => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '$0';
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',
     currency: 'AUD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount / 100);
+  }).format(num);
 };
 
 export default function PaymentHubScreen() {
