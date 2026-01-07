@@ -733,18 +733,6 @@ export default function MapScreen() {
       // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
       // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
       const transformedMembers: TeamMember[] = data
-        .filter((m: any) => {
-          // Filter out members without valid coordinates at transformation time
-          // This prevents any (0,0) or null coordinates from entering state
-          const lat = Number(m.latitude);
-          const lng = Number(m.longitude);
-          const isValidCoord = Number.isFinite(lat) && Number.isFinite(lng) && 
-            (lat !== 0 || lng !== 0); // Allow (0, lng) or (lat, 0) but not (0,0)
-          if (!isValidCoord) {
-            console.log(`[Map] Skipping team member ${m.name} - invalid coordinates`);
-          }
-          return isValidCoord;
-        })
         .map((m: any) => {
           const nameParts = (m.name || '').trim().split(' ');
           const firstName = nameParts[0] || '';
@@ -753,25 +741,44 @@ export default function MapScreen() {
           const newLat = Number(m.latitude);
           const newLng = Number(m.longitude);
           
-          // Apply movement threshold to prevent marker jitter
-          // Only use new coordinates if moved more than threshold distance
-          const lastKnown = lastKnownPositionsRef.current.get(m.id);
-          let useLat = newLat;
-          let useLng = newLng;
+          // Check if new coordinates are valid
+          const hasValidNewCoords = Number.isFinite(newLat) && Number.isFinite(newLng) && 
+            (newLat !== 0 || newLng !== 0);
           
-          if (lastKnown) {
-            const distance = calculateDistance(lastKnown.lat, lastKnown.lng, newLat, newLng);
-            if (distance < MOVEMENT_THRESHOLD_METERS) {
-              // Use last known position to prevent jitter
-              useLat = lastKnown.lat;
-              useLng = lastKnown.lng;
+          // Get last known position from cache
+          const lastKnown = lastKnownPositionsRef.current.get(m.id);
+          let useLat: number;
+          let useLng: number;
+          
+          if (hasValidNewCoords) {
+            // New coordinates are valid - check movement threshold
+            if (lastKnown) {
+              const distance = calculateDistance(lastKnown.lat, lastKnown.lng, newLat, newLng);
+              if (distance < MOVEMENT_THRESHOLD_METERS) {
+                // Use last known position to prevent jitter
+                useLat = lastKnown.lat;
+                useLng = lastKnown.lng;
+              } else {
+                // Significant movement - update last known position
+                useLat = newLat;
+                useLng = newLng;
+                lastKnownPositionsRef.current.set(m.id, { lat: newLat, lng: newLng });
+              }
             } else {
-              // Significant movement - update last known position
+              // First time seeing this member - save position
+              useLat = newLat;
+              useLng = newLng;
               lastKnownPositionsRef.current.set(m.id, { lat: newLat, lng: newLng });
             }
+          } else if (lastKnown) {
+            // API returned invalid coords - use last known good position
+            console.log(`[Map] Using cached position for ${m.name} (API returned invalid coords)`);
+            useLat = lastKnown.lat;
+            useLng = lastKnown.lng;
           } else {
-            // First time seeing this member - save position
-            lastKnownPositionsRef.current.set(m.id, { lat: newLat, lng: newLng });
+            // No valid coords and no cache - skip this member
+            console.log(`[Map] Skipping ${m.name} - no valid coordinates available`);
+            return null;
           }
           
           return {
@@ -793,7 +800,8 @@ export default function MapScreen() {
             // Use activityStatus from API response, fallback to computed value
             activityStatus: m.activityStatus || (m.currentJobId ? 'working' : 'online'),
           };
-        });
+        })
+        .filter((m): m is TeamMember => m !== null);
       setTeamMembers(transformedMembers);
     } catch (error) {
       console.log('Failed to fetch team locations:', error);
@@ -1062,8 +1070,12 @@ export default function MapScreen() {
       // Deselect if tapping same worker - stay at current zoom (don't zoom out)
       setSelectedWorker(null);
       markerScaleAnim.setValue(1); // Reset scale
-      // Don't zoom out - user wants to stay where they are
+      // Mark as interacted to prevent auto-fit from triggering
+      userHasInteractedRef.current = true;
     } else {
+      // Mark as interacted to prevent any auto-fit from triggering
+      userHasInteractedRef.current = true;
+      
       // Animate camera to the member's location with zoom
       // Use longer duration for smoother feel when zooming from far away
       const animDuration = 800; // Longer for smooth zoom from overview to street level
@@ -1347,8 +1359,6 @@ export default function MapScreen() {
               key={`job-${job.id}`}
               coordinate={{ latitude: job.latitude, longitude: job.longitude }}
               onPress={() => handleJobMarkerPress(job)}
-              onCalloutPress={() => navigateToJob(job.id)}
-              calloutAnchor={{ x: 0.5, y: 0 }}
               stopPropagation={!!selectedWorker}
             >
               <View style={{ alignItems: 'center' }}>
@@ -1386,27 +1396,6 @@ export default function MapScreen() {
                   </View>
                 )}
               </View>
-              {/* Only show callout when no worker is selected - avoids messy popup behind assign modal */}
-              {!selectedWorker && (
-                <Callout tooltip onPress={() => navigateToJob(job.id)}>
-                  <View style={styles.callout}>
-                    <Text style={styles.calloutTitle}>{job.title}</Text>
-                    {job.clientName && (
-                      <Text style={styles.calloutSubtitle}>{job.clientName}</Text>
-                    )}
-                    <View style={[styles.calloutBadge, { backgroundColor: getMarkerColor(job.status) }]}>
-                      <Text style={styles.calloutBadgeText}>{STATUS_LABELS[job.status]}</Text>
-                    </View>
-                    {jobInRoute ? (
-                      <Text style={[styles.calloutHint, { color: colors.primary }]}>
-                        Stop #{routeJobs.findIndex(j => j.id === job.id) + 1} in route
-                      </Text>
-                    ) : (
-                      <Text style={styles.calloutHint}>Tap for options</Text>
-                    )}
-                  </View>
-                </Callout>
-              )}
             </Marker>
           );
         })}
