@@ -393,8 +393,12 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
       });
     }
 
-    // Log activity for dashboard feed
+    // Log activity for dashboard feed with full email content for Communications Hub
     try {
+      // Get the email subject and body that was used
+      const loggedSubject = customSubject || `Quote ${updatedQuote.number || updatedQuote.id} from ${businessSettings.businessName}`;
+      const loggedBody = customMessage || `G'day ${client.name},\n\nPlease find attached our quote for ${updatedQuote.title || 'the requested work'}.\n\nTotal: ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(updatedQuote.total || '0'))}\n\nCheers,\n${businessSettings.businessName}`;
+      
       await storage.createActivityLog({
         userId: req.userId,
         type: 'quote_sent',
@@ -402,7 +406,16 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
         description: `Sent to ${client.name}`,
         entityType: 'quote',
         entityId: updatedQuote.id,
-        metadata: { quoteNumber: updatedQuote.number, clientName: client.name, clientEmail: client.email, total: updatedQuote.total }
+        metadata: { 
+          quoteNumber: updatedQuote.number, 
+          quoteTitle: updatedQuote.title,
+          clientName: client.name, 
+          clientEmail: client.email, 
+          recipientEmail: client.email,
+          total: updatedQuote.total,
+          emailSubject: loggedSubject,
+          emailBody: loggedBody,
+        }
       });
     } catch (activityError) {
       console.error('Failed to log quote sent activity:', activityError);
@@ -748,8 +761,12 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       console.warn('[Xero] Auto-sync error (non-blocking):', xeroError);
     }
 
-    // Log activity for dashboard feed
+    // Log activity for dashboard feed with full email content for Communications Hub
     try {
+      // Get the email subject and body that was used
+      const loggedSubject = customSubject || `${documentType} ${updatedInvoice.number || updatedInvoice.id} from ${businessSettings.businessName}`;
+      const loggedBody = customMessage || `G'day ${client.name},\n\nPlease find attached your ${documentType.toLowerCase()} for ${updatedInvoice.title || 'the completed work'}.\n\nTotal: ${formattedTotal}\n${paymentUrl ? `\nPay online: ${paymentUrl}` : ''}\n\nCheers,\n${businessSettings.businessName}`;
+      
       await storage.createActivityLog({
         userId: req.userId,
         type: 'invoice_sent',
@@ -757,7 +774,16 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
         description: `Sent to ${client.name}`,
         entityType: 'invoice',
         entityId: updatedInvoice.id,
-        metadata: { invoiceNumber: updatedInvoice.number, clientName: client.name, clientEmail: client.email, total: updatedInvoice.total }
+        metadata: { 
+          invoiceNumber: updatedInvoice.number, 
+          invoiceTitle: updatedInvoice.title,
+          clientName: client.name, 
+          clientEmail: client.email, 
+          recipientEmail: client.email,
+          total: updatedInvoice.total,
+          emailSubject: loggedSubject,
+          emailBody: loggedBody,
+        }
       });
     } catch (activityError) {
       console.error('Failed to log invoice sent activity:', activityError);

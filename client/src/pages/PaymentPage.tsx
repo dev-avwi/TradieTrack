@@ -386,35 +386,89 @@ function InvoicePaymentView({
         </div>
 
         <div className="grid gap-6">
-          {/* Invoice Card */}
+          {/* Payment Card - MOVED TO TOP */}
+          {clientSecret && stripePromise && (
+            <div className="bg-blue-50/30 rounded-2xl shadow-xl border-2 border-blue-200 overflow-hidden ring-4 ring-blue-50/50">
+              <div className="px-6 py-5 border-b border-blue-100 bg-white/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      <span className="font-bold text-xl text-slate-900">Secure Online Payment</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Lock className="h-3 w-3 text-green-600" />
+                      <span className="text-sm font-medium text-slate-600">Encrypted & Secure via Stripe</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount Due</p>
+                    <p className="text-2xl font-black text-blue-600">${total.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 bg-white">
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <PaymentForm 
+                    clientSecret={clientSecret}
+                    onSuccess={() => setPaymentSuccess(true)}
+                    onError={(error) => console.error('Payment error:', error)}
+                  />
+                </Elements>
+              </div>
+              
+              {/* Trust badges */}
+              <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 backdrop-blur-sm">
+                <div className="flex items-center justify-center gap-8 text-xs font-medium text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4 text-green-600" />
+                    <span>Bank-level Security</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="h-4 w-4 text-blue-600" />
+                    <span>PCI Compliant</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {createPaymentIntentMutation.isPending && (
+            <div className="bg-white rounded-2xl shadow-lg border-2 border-dashed border-slate-200 p-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-slate-600 font-medium">Setting up your secure payment session...</p>
+            </div>
+          )}
+
+          {/* Invoice Card - MOVED BELOW */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
             {/* Invoice Header with Accent */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
+            <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  <span className="font-semibold text-lg">Invoice #{invoiceData.number}</span>
+                  <FileText className="h-5 w-5 text-slate-300" />
+                  <span className="font-semibold text-lg">Invoice #{invoiceData.number} Details</span>
                 </div>
-                <span className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-sm font-medium">
+                <span className="bg-white/10 backdrop-blur px-3 py-1 rounded-full text-sm font-medium border border-white/20">
                   {invoiceData.status.toUpperCase()}
                 </span>
               </div>
               {invoiceData.title && (
-                <p className="text-blue-100 text-sm mt-1">{invoiceData.title}</p>
+                <p className="text-slate-300 text-sm mt-1">{invoiceData.title}</p>
               )}
             </div>
             
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Bill To</p>
-                  <p className="font-medium text-slate-900">{invoiceData.client?.name || 'Customer'}</p>
+                  <p className="text-slate-500 text-xs uppercase tracking-wide mb-1 font-semibold">Bill To</p>
+                  <p className="font-bold text-slate-900">{invoiceData.client?.name || 'Customer'}</p>
                 </div>
                 <div className="text-right">
                   {invoiceData.dueDate && (
                     <>
-                      <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Due Date</p>
-                      <p className="font-medium text-slate-900">{formatDate(invoiceData.dueDate)}</p>
+                      <p className="text-slate-500 text-xs uppercase tracking-wide mb-1 font-semibold">Due Date</p>
+                      <p className="font-bold text-slate-900">{formatDate(invoiceData.dueDate)}</p>
                     </>
                   )}
                 </div>
@@ -426,19 +480,19 @@ function InvoicePaymentView({
                     {lineItems.map((item, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <div>
-                          <p className="font-medium text-slate-900">{item.description}</p>
+                          <p className="font-semibold text-slate-900">{item.description}</p>
                           <p className="text-slate-500">
                             {item.quantity} × ${parseFloat(item.unitPrice).toFixed(2)}
                           </p>
                         </div>
-                        <p className="font-medium text-slate-900">${parseFloat(item.total).toFixed(2)}</p>
+                        <p className="font-bold text-slate-900">${parseFloat(item.total).toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-100">
                 <div className="flex justify-between text-sm text-slate-600">
                   <span>Subtotal</span>
                   <span>${subtotal.toFixed(2)}</span>
@@ -448,49 +502,49 @@ function InvoicePaymentView({
                   <span>${gstAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold text-slate-900 pt-2 border-t border-slate-200">
-                  <span>Total</span>
-                  <span className="text-blue-600">${total.toFixed(2)} AUD</span>
+                  <span>Total Due</span>
+                  <span className="text-slate-900">${total.toFixed(2)} AUD</span>
                 </div>
               </div>
 
               {/* Bank Transfer Details - show if available */}
               {(invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName) && (
-                <div className="bg-green-50 rounded-xl p-4 border border-green-200" data-testid="bank-transfer-details">
+                <div className="bg-green-50/50 rounded-xl p-4 border border-green-100" data-testid="bank-transfer-details">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                       <FileText className="h-4 w-4 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-green-900 text-sm">Bank Transfer Details</h3>
-                      <p className="text-xs text-green-700">Pay by direct deposit - no fees</p>
+                      <h3 className="font-semibold text-green-900 text-sm">Other Payment Methods</h3>
+                      <p className="text-xs text-green-700">Bank Transfer</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     {invoiceData.business.bankAccountName && (
                       <div className="col-span-2">
-                        <span className="text-green-700 text-xs">Account Name</span>
+                        <span className="text-green-700 text-xs font-semibold">Account Name</span>
                         <p className="font-medium text-green-900">{invoiceData.business.bankAccountName}</p>
                       </div>
                     )}
                     {invoiceData.business.bankBsb && (
                       <div>
-                        <span className="text-green-700 text-xs">BSB</span>
+                        <span className="text-green-700 text-xs font-semibold">BSB</span>
                         <p className="font-medium text-green-900 font-mono">{invoiceData.business.bankBsb}</p>
                       </div>
                     )}
                     {invoiceData.business.bankAccountNumber && (
                       <div>
-                        <span className="text-green-700 text-xs">Account Number</span>
+                        <span className="text-green-700 text-xs font-semibold">Account Number</span>
                         <p className="font-medium text-green-900 font-mono">{invoiceData.business.bankAccountNumber}</p>
                       </div>
                     )}
                     <div className="col-span-2">
-                      <span className="text-green-700 text-xs">Reference (use this when paying)</span>
+                      <span className="text-green-700 text-xs font-semibold">Payment Reference</span>
                       <p className="font-bold text-green-900">{invoiceData.number}</p>
                     </div>
                   </div>
                   {invoiceData.business.paymentInstructions && (
-                    <p className="text-xs text-green-700 mt-3 pt-3 border-t border-green-200">
+                    <p className="text-xs text-green-700 mt-3 pt-3 border-t border-green-100">
                       {invoiceData.business.paymentInstructions}
                     </p>
                   )}
@@ -499,12 +553,12 @@ function InvoicePaymentView({
               
               {/* Payment Instructions only - when no bank details but has instructions */}
               {!(invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName) && invoiceData.business.paymentInstructions && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200" data-testid="payment-instructions">
+                <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100" data-testid="payment-instructions">
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="h-4 w-4 text-blue-600" />
                     <h3 className="font-semibold text-blue-900 text-sm">Payment Instructions</h3>
                   </div>
-                  <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                  <p className="text-sm text-blue-800 whitespace-pre-wrap italic">
                     {invoiceData.business.paymentInstructions}
                   </p>
                 </div>
@@ -513,54 +567,15 @@ function InvoicePaymentView({
               <Button 
                 variant="outline"
                 size="sm"
-                className="w-full border-slate-300 text-slate-700 hover:bg-slate-50"
+                className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold"
                 onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
                 data-testid="button-download-invoice"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                Download Invoice
+                Download PDF Invoice
               </Button>
             </div>
           </div>
-
-          {/* Payment Card */}
-          {clientSecret && stripePromise && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-blue-600" />
-                  <span className="font-semibold text-lg text-slate-900">Pay Now</span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Lock className="h-3 w-3 text-green-600" />
-                  <span className="text-sm text-slate-500">Secure payment powered by Stripe</span>
-                </div>
-              </div>
-              <div className="p-6">
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <PaymentForm 
-                    clientSecret={clientSecret}
-                    onSuccess={() => setPaymentSuccess(true)}
-                    onError={(error) => console.error('Payment error:', error)}
-                  />
-                </Elements>
-              </div>
-              
-              {/* Trust badges */}
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
-                <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
-                  <div className="flex items-center gap-1">
-                    <ShieldCheck className="h-4 w-4 text-green-600" />
-                    <span>256-bit SSL</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Lock className="h-4 w-4 text-blue-600" />
-                    <span>Secure Checkout</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {createPaymentIntentMutation.isPending && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">

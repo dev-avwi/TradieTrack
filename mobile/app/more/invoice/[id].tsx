@@ -329,7 +329,7 @@ export default function InvoiceDetailScreen() {
     try {
       // Enable online payment and get payment token
       const authToken = await api.getToken();
-      const tokenResponse = await fetch(`${API_URL}/api/invoices/${invoice.id}/toggle-online-payment`, {
+      const tokenResponse = await fetch(`${API_URL}/api/invoices/${invoice.id}/online-payment`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -663,8 +663,8 @@ ${businessName}`;
     setIsTogglingPayment(true);
     
     try {
-      const response = await fetch(`${API_URL}/api/invoices/${id}/toggle-online-payment`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/invoices/${id}/online-payment`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
