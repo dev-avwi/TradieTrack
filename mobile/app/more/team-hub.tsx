@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,34 +11,22 @@ import {
   Modal,
   Linking,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import MapView, { Marker, Region, PROVIDER_DEFAULT, MapStyleElement } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
-import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow } from 'date-fns';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const DARK_MAP_STYLE: MapStyleElement[] = [
-  { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#304a7d' }] },
-];
-
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: keyof typeof Feather.glyphMap }> = {
-  online: { color: '#22c55e', label: 'Online', icon: 'circle' },
-  busy: { color: '#f59e0b', label: 'Busy', icon: 'circle' },
-  on_job: { color: '#3b82f6', label: 'On Job', icon: 'tool' },
-  break: { color: '#a855f7', label: 'On Break', icon: 'coffee' },
-  offline: { color: '#6b7280', label: 'Offline', icon: 'circle' },
+  online: { color: '#22c55e', label: 'Online', icon: 'wifi' },
+  driving: { color: '#3b82f6', label: 'Driving', icon: 'truck' },
+  working: { color: '#8B5CF6', label: 'Working', icon: 'tool' },
+  offline: { color: '#6b7280', label: 'Offline', icon: 'wifi-off' },
 };
 
 const ACTIVITY_CONFIG: Record<string, { icon: keyof typeof Feather.glyphMap; color: string; bgColor: string }> = {
@@ -118,14 +106,7 @@ interface MemberWithDetails extends TeamMemberData {
   presence?: TeamPresenceData;
 }
 
-type ViewMode = 'status' | 'activity' | 'map';
-
-const DEFAULT_REGION: Region = {
-  latitude: -16.9186,
-  longitude: 145.7781,
-  latitudeDelta: 0.5,
-  longitudeDelta: 0.5,
-};
+type ViewMode = 'status' | 'activity';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -324,108 +305,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.captionSmall,
     color: colors.warning,
     fontWeight: '600',
-  },
-  mapContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  mapOverlay: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  mapToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.card,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.md,
-  },
-  mapToggleActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  mapToggleText: {
-    ...typography.caption,
-    color: colors.foreground,
-    fontWeight: '500',
-  },
-  mapToggleTextActive: {
-    color: '#ffffff',
-  },
-  assignBanner: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: colors.primary,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    ...shadows.lg,
-  },
-  assignBannerContent: {
-    flex: 1,
-  },
-  assignBannerTitle: {
-    ...typography.subtitle,
-    color: '#ffffff',
-  },
-  assignBannerSubtitle: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  cancelButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
-  },
-  cancelButtonText: {
-    ...typography.caption,
-    color: '#ffffff',
-    fontWeight: '600',
-  },
-  teamMarker: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#ffffff',
-    ...shadows.lg,
-  },
-  teamMarkerText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  jobMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    ...shadows.md,
   },
   modalOverlay: {
     flex: 1,
@@ -675,10 +554,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 });
 
 export default function TeamHubScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('status');
   const [isLoading, setIsLoading] = useState(true);
@@ -689,9 +567,6 @@ export default function TeamHubScreen() {
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberWithDetails | null>(null);
   const [showMemberModal, setShowMemberModal] = useState(false);
-  const [showTeamOnMap, setShowTeamOnMap] = useState(true);
-  const [showJobsOnMap, setShowJobsOnMap] = useState(true);
-  const [selectedWorkerForAssign, setSelectedWorkerForAssign] = useState<TeamMemberData | null>(null);
   const [pendingAssignment, setPendingAssignment] = useState<{ worker: TeamMemberData; job: JobData } | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
 
@@ -783,7 +658,7 @@ export default function TeamHubScreen() {
   }, [jobs]);
 
   const sortedMembers = useMemo(() => {
-    const statusOrder = ['online', 'on_job', 'busy', 'break', 'offline'];
+    const statusOrder = ['online', 'working', 'driving', 'offline'];
     const members = Array.isArray(teamMembers) ? teamMembers : [];
     return [...members].sort((a, b) => {
       const aStatus = getMemberPresence(a.userId)?.status || 'offline';
@@ -834,25 +709,8 @@ export default function TeamHubScreen() {
     } finally {
       setIsAssigning(false);
       setPendingAssignment(null);
-      setSelectedWorkerForAssign(null);
     }
   }, [fetchData]);
-
-  const handleJobMarkerPress = useCallback((job: JobData) => {
-    if (selectedWorkerForAssign) {
-      setPendingAssignment({ worker: selectedWorkerForAssign, job });
-    } else {
-      router.push(`/job/${job.id}`);
-    }
-  }, [selectedWorkerForAssign]);
-
-  const handleTeamMarkerPress = useCallback((member: TeamMemberData) => {
-    if (selectedWorkerForAssign?.userId === member.userId) {
-      setSelectedWorkerForAssign(null);
-    } else {
-      setSelectedWorkerForAssign(member);
-    }
-  }, [selectedWorkerForAssign]);
 
   const getStatusColor = (status: string) => {
     return STATUS_CONFIG[status]?.color || STATUS_CONFIG.offline.color;
@@ -990,124 +848,6 @@ export default function TeamHubScreen() {
       )}
     </ScrollView>
   );
-
-  const renderTeamMap = () => {
-    const teamLocations = presence.filter(p => p.lastLocationLat && p.lastLocationLng);
-    const jobLocations = jobs.filter(j => j.latitude && j.longitude);
-
-    return (
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={Platform.OS === 'ios' ? PROVIDER_DEFAULT : undefined}
-          initialRegion={DEFAULT_REGION}
-          customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
-          showsUserLocation
-          showsMyLocationButton={false}
-        >
-          {showTeamOnMap && Array.isArray(teamMembers) && teamLocations.map(p => {
-            const member = teamMembers.find(m => m.userId === p.userId);
-            if (!member) return null;
-            const status = p.status || 'offline';
-            const isSelected = selectedWorkerForAssign?.userId === p.userId;
-            const fullName = `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Team';
-
-            return (
-              <Marker
-                key={`team-${p.userId}`}
-                coordinate={{
-                  latitude: p.lastLocationLat!,
-                  longitude: p.lastLocationLng!,
-                }}
-                onPress={() => handleTeamMarkerPress(member)}
-              >
-                <View
-                  style={[
-                    styles.teamMarker,
-                    { backgroundColor: getStatusColor(status) },
-                    isSelected && { borderColor: colors.primary, borderWidth: 4 },
-                  ]}
-                >
-                  <Text style={styles.teamMarkerText}>
-                    {getInitials(member.firstName, member.lastName, member.email)}
-                  </Text>
-                </View>
-              </Marker>
-            );
-          })}
-
-          {showJobsOnMap && jobLocations.map(job => (
-            <Marker
-              key={`job-${job.id}`}
-              coordinate={{
-                latitude: job.latitude!,
-                longitude: job.longitude!,
-              }}
-              onPress={() => handleJobMarkerPress(job)}
-            >
-              <View
-                style={[
-                  styles.jobMarker,
-                  { backgroundColor: getJobStatusColor(job.status) },
-                ]}
-              >
-                <Feather name="briefcase" size={14} color="#ffffff" />
-              </View>
-            </Marker>
-          ))}
-        </MapView>
-
-        <View style={[styles.mapOverlay, { marginTop: insets.top + spacing.md }]}>
-          <TouchableOpacity
-            style={[styles.mapToggle, showTeamOnMap && styles.mapToggleActive]}
-            onPress={() => setShowTeamOnMap(!showTeamOnMap)}
-          >
-            <Feather
-              name="users"
-              size={16}
-              color={showTeamOnMap ? '#ffffff' : colors.foreground}
-            />
-            <Text style={[styles.mapToggleText, showTeamOnMap && styles.mapToggleTextActive]}>
-              Team
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mapToggle, showJobsOnMap && styles.mapToggleActive]}
-            onPress={() => setShowJobsOnMap(!showJobsOnMap)}
-          >
-            <Feather
-              name="briefcase"
-              size={16}
-              color={showJobsOnMap ? '#ffffff' : colors.foreground}
-            />
-            <Text style={[styles.mapToggleText, showJobsOnMap && styles.mapToggleTextActive]}>
-              Jobs
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {selectedWorkerForAssign && (
-          <View style={styles.assignBanner}>
-            <View style={styles.assignBannerContent}>
-              <Text style={styles.assignBannerTitle}>
-                Assigning to {selectedWorkerForAssign.firstName || selectedWorkerForAssign.email}
-              </Text>
-              <Text style={styles.assignBannerSubtitle}>
-                Tap a job marker to assign
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setSelectedWorkerForAssign(null)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
 
   const renderMemberModal = () => {
     if (!selectedMember) return null;
@@ -1356,7 +1096,7 @@ export default function TeamHubScreen() {
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Team Hub</Text>
           <Text style={styles.headerSubtitle}>
-            {Array.isArray(teamMembers) ? teamMembers.length : 0} member{(Array.isArray(teamMembers) ? teamMembers.length : 0) !== 1 ? 's' : ''} • {Array.isArray(presence) ? presence.filter(p => p.status === 'online' || p.status === 'on_job').length : 0} active
+            {Array.isArray(teamMembers) ? teamMembers.length : 0} member{(Array.isArray(teamMembers) ? teamMembers.length : 0) !== 1 ? 's' : ''} • {Array.isArray(presence) ? presence.filter(p => p.status === 'online' || p.status === 'working' || p.status === 'driving').length : 0} active
           </Text>
         </View>
         <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
@@ -1395,24 +1135,10 @@ export default function TeamHubScreen() {
             Activity
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, viewMode === 'map' && styles.tabButtonActive]}
-          onPress={() => setViewMode('map')}
-        >
-          <Feather
-            name="map"
-            size={16}
-            color={viewMode === 'map' ? colors.primary : colors.mutedForeground}
-          />
-          <Text style={[styles.tabButtonText, viewMode === 'map' && styles.tabButtonTextActive]}>
-            Map
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {viewMode === 'status' && renderTeamStatusBoard()}
       {viewMode === 'activity' && renderActivityFeed()}
-      {viewMode === 'map' && renderTeamMap()}
 
       {renderMemberModal()}
       {renderConfirmModal()}
