@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus } from 'react-native';
+import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus, Image } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -370,8 +370,22 @@ function RootLayoutContent() {
   // Show loading screen while checking auth to prevent sign-in page flash
   if (!isInitialized || isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: colors.background 
+      }}>
+        <Image 
+          source={require('../assets/tradietrack-logo.png')} 
+          style={{ 
+            width: 180, 
+            height: 60, 
+            resizeMode: 'contain',
+            marginBottom: 32 
+          }} 
+        />
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   }
