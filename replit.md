@@ -93,3 +93,14 @@ class NotificationService {
 **Tap to Pay on iPhone**: When using the real Stripe Terminal SDK (native builds via EAS), the SDK's `collectPaymentMethod()` function automatically presents Apple's native dark "Hold Here to Pay" interface. The custom React Native modal is only shown in simulation mode (Expo Go) as a fallback. Check `terminal.isSimulation` and `terminal.isSDKAvailable` to determine which path to use. Requirements: iOS 16.4+, iPhone XS or later, Stripe Terminal enabled, Apple Tap to Pay entitlement.
 
 **Unified Notifications (Web + Mobile Parity)**: Both web and mobile now use the `/api/notifications/unified` endpoint which combines system notifications, SMS notifications, and chat notifications into a single feed. Mobile uses `useNotificationsStore` with 30-second polling for real-time updates. Notification types include `notificationType: 'system' | 'sms' | 'chat'` for proper routing and icon display. SMS notifications show emerald phone icon, chat notifications show indigo message-circle icon, with type badges displayed next to titles.
+
+**Permission System (Web-Mobile Parity)**:
+- Two parallel permission systems exist: `WORKER_PERMISSIONS` (17 backend operational toggles) and `ActionPermissions` (24 UI action flags)
+- The translation layer in `client/src/lib/permission-map.ts` maps 10 ActionPermissions to their WORKER_PERMISSIONS equivalents:
+  - Clients: canCreateClients → CREATE_CLIENTS, canEditClients → EDIT_CLIENTS
+  - Quotes: canCreateQuotes → CREATE_QUOTES, canEditQuotes → EDIT_DOCUMENTS, canSendQuotes → SEND_QUOTES
+  - Invoices: canCreateInvoices → CREATE_INVOICES, canEditInvoices → EDIT_DOCUMENTS, canSendInvoices → SEND_INVOICES
+  - Jobs: canViewAllJobs → VIEW_ALL_JOBS, canEditJobs → EDIT_JOBS
+- When `useCustomPermissions` is true for a team member, their custom permission toggles override role-based defaults via `mergeWithCustomPermissions()`
+- Known limitations: Job create/delete remain role-based (no WORKER_PERMISSIONS equivalents); EDIT_DOCUMENTS is shared across quotes/invoices
+- Mobile uses the same WORKER_PERMISSIONS via `hasPermission()` checks with offline SQLite caching
