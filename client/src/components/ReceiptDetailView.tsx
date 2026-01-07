@@ -144,8 +144,8 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
       return methods[method] || method;
     };
 
-    const amount = receipt.amount || 0;
-    const gstAmount = receipt.gstAmount || 0;
+    const amount = typeof receipt.amount === 'string' ? parseFloat(receipt.amount) : (receipt.amount || 0);
+    const gstAmount = typeof receipt.gstAmount === 'string' ? parseFloat(receipt.gstAmount) : (receipt.gstAmount || 0);
     const color = primaryColor || '#2563eb';
 
     const logoHtml = businessSettings.logoUrl ? `<img src="${businessSettings.logoUrl}" alt="Logo" style="max-width: 150px; max-height: 60px; object-fit: contain; margin-bottom: 12px;" crossorigin="anonymous" />` : '';
