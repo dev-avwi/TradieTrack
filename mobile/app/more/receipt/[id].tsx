@@ -22,6 +22,7 @@ import { API_URL, api } from '../../../src/lib/api';
 import { spacing, radius, shadows, typography, iconSizes } from '../../../src/lib/design-tokens';
 import { format } from 'date-fns';
 import { getEmailPreference, setEmailPreference, EmailAppPreference } from '../../../src/lib/email-preference';
+import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 
 interface ReceiptData {
   id: string;
@@ -74,7 +75,7 @@ export default function ReceiptDetailScreen() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [showEmailOptions, setShowEmailOptions] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#22c55e';
 
@@ -300,32 +301,50 @@ export default function ReceiptDetailScreen() {
       return;
     }
     
+    // Check saved email preference
     const preference = await getEmailPreference();
     
     if (preference === 'tradietrack') {
-      handleSendViaTradieTrack();
-    } else if (preference === 'ask') {
-      Alert.alert(
-        'Send Receipt',
-        'How would you like to send this receipt?',
-        [
-          {
-            text: 'Open Email App',
-            onPress: () => handleSendViaEmailApp(),
-          },
-          {
-            text: 'Use TradieTrack',
-            onPress: () => handleSendViaTradieTrack(),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-    } else {
-      handleSendViaEmailApp();
+      // Auto-send via TradieTrack
+      await handleSendViaTradieTrack();
+      return;
+    } else if (preference === 'gmail' || preference === 'outlook' || preference === 'native_mail') {
+      // Auto-open email app
+      await handleSendViaEmailApp();
+      return;
     }
+    
+    // Preference is 'ask' - Show options for sending
+    Alert.alert(
+      'Send Receipt',
+      'How would you like to send this receipt?',
+      [
+        {
+          text: 'TradieTrack (Edit Message)',
+          onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'TradieTrack (Send Now)',
+          onPress: async () => {
+            await handleSendViaTradieTrack();
+            // Save preference for next time
+            await setEmailPreference('tradietrack');
+          },
+        },
+        {
+          text: 'Open Email App',
+          onPress: async () => {
+            await handleSendViaEmailApp();
+            // Save preference for next time
+            await setEmailPreference('native_mail');
+          },
+        },
+        {
+          text: 'Always Ask',
+          style: 'cancel',
+        },
+      ]
+    );
   };
   
   const handleSendViaEmailApp = async () => {
@@ -392,6 +411,30 @@ export default function ReceiptDetailScreen() {
       Alert.alert('Error', message);
     } finally {
       setIsSendingEmail(false);
+    }
+  };
+
+  const handleSendWithCustomMessage = async (customSubject: string, customMessage: string) => {
+    if (!receipt || !client?.email) {
+      throw new Error('Missing receipt or client email information.');
+    }
+    
+    try {
+      await api.post(`/api/receipts/${receipt.id}/send-email`, {
+        email: client.email,
+        customSubject,
+        customMessage,
+      });
+      
+      // Refresh receipt data to show updated email sent status
+      loadData();
+      setShowEmailCompose(false);
+      Alert.alert('Receipt Sent!', `Email sent to ${client.email} with PDF attached.`);
+    } catch (error: any) {
+      console.error('Error sending receipt email:', error);
+      const message = error?.response?.data?.error || error?.message || 'Failed to send receipt email';
+      // Throw error so EmailComposeModal shows it and stays open for retry
+      throw new Error(message);
     }
   };
 
@@ -760,6 +803,23 @@ export default function ReceiptDetailScreen() {
 
         <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
+
+      {/* Email Compose Modal for customizing receipt email */}
+      {receipt && client && (
+        <EmailComposeModal
+          visible={showEmailCompose}
+          onClose={() => setShowEmailCompose(false)}
+          type="receipt"
+          documentId={receipt.id}
+          clientName={client.name || 'Customer'}
+          clientEmail={client.email || ''}
+          documentNumber={receipt.receiptNumber || receipt.id.slice(0, 8)}
+          documentTitle={invoice?.title || job?.title || 'Payment'}
+          total={formatCurrency(receipt.amount)}
+          businessName={businessSettings?.businessName || 'Your Business'}
+          onSend={handleSendWithCustomMessage}
+        />
+      )}
     </>
   );
 }

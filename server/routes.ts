@@ -11821,7 +11821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/receipts/:id/send-email", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
-      const { email } = req.body;
+      const { email, customSubject, customMessage } = req.body;
       
       if (!email) {
         return res.status(400).json({ error: "Email is required" });
@@ -11834,6 +11834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const business = await storage.getBusinessSettings(effectiveUserId);
       const businessName = business?.businessName || 'Your tradie';
+      const brandColor = business?.brandColor || '#dc2626';
       
       // Generate PDF for attachment
       const { generatePaymentReceiptPDF, generatePDFBuffer } = await import('./pdfService');
@@ -11868,7 +11869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phone: business?.phone,
           email: business?.email,
           logoUrl: business?.logoUrl,
-          brandColor: business?.brandColor || '#dc2626',
+          brandColor: brandColor,
         },
         invoice: null,
         job: null,
@@ -11876,12 +11877,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const pdfBuffer = await generatePDFBuffer(pdfHtml);
       
-      // Send email with receipt attachment
-      const { sendEmailWithAttachment } = await import('./emailService');
-      await sendEmailWithAttachment({
-        to: email,
-        subject: `Payment Receipt from ${businessName} - ${receipt.receiptNumber}`,
-        html: `
+      // Determine email subject and body based on custom message or default
+      let emailSubject: string;
+      let emailHtml: string;
+      
+      if (customSubject && customMessage) {
+        // Use custom subject and message with professional branded template
+        emailSubject = customSubject;
+        emailHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">${businessName}</h1>
+              ${business?.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+              <div style="margin-top: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 16px; border-radius: 20px;">
+                <span style="color: white; font-size: 13px; font-weight: 600;">RECEIPT ${receipt.receiptNumber}</span>
+              </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 25px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+              ${customMessage.split('\n').map((p: string) => p.trim() ? `<p style="margin: 0 0 16px 0;">${p}</p>` : '<br>').join('')}
+              
+              <div style="background: white; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb;">
+                <p style="margin: 0 0 8px 0; color: #666; font-size: 13px;">Payment Confirmed:</p>
+                <p style="margin: 0; font-size: 20px; color: #22c55e; font-weight: 700;">$${parseFloat(receipt.amount).toFixed(2)} AUD</p>
+              </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 16px; text-align: center; color: #666; font-size: 12px;">
+              ${business?.phone ? `<p style="margin: 4px 0;">Phone: ${business.phone}</p>` : ''}
+              ${business?.email ? `<p style="margin: 4px 0;">Email: ${business.email}</p>` : ''}
+              ${business?.address ? `<p style="margin: 4px 0;">${business.address}</p>` : ''}
+            </div>
+          </body>
+          </html>
+        `;
+      } else {
+        // Use default template
+        emailSubject = `Payment Receipt from ${businessName} - ${receipt.receiptNumber}`;
+        emailHtml = `
           <h2>Thank you for your payment!</h2>
           <p>Please find your payment receipt attached.</p>
           <p><strong>Receipt Number:</strong> ${receipt.receiptNumber}</p>
@@ -11889,7 +11928,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <p><strong>Payment Date:</strong> ${new Date(receipt.paidAt).toLocaleDateString('en-AU')}</p>
           <br/>
           <p>Best regards,<br/>${businessName}</p>
-        `,
+        `;
+      }
+      
+      // Send email with receipt attachment
+      const { sendEmailWithAttachment } = await import('./emailService');
+      await sendEmailWithAttachment({
+        to: email,
+        subject: emailSubject,
+        html: emailHtml,
         attachments: [{
           filename: `${receipt.receiptNumber}.pdf`,
           content: pdfBuffer,

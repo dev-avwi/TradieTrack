@@ -28,7 +28,7 @@ interface AIEmailSuggestion {
 interface EmailComposeModalProps {
   visible: boolean;
   onClose: () => void;
-  type: 'quote' | 'invoice';
+  type: 'quote' | 'invoice' | 'receipt';
   documentId: string;
   clientName: string;
   clientEmail: string;
@@ -65,29 +65,50 @@ export function EmailComposeModal({
   const [isSending, setIsSending] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AIEmailSuggestion | null>(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  // Track the document ID and type to detect when we need to reinitialize
+  const [initializedFor, setInitializedFor] = useState<string | null>(null);
 
   const clientFirstName = useMemo(() => clientName?.split(' ')[0] || 'there', [clientName]);
 
-  useEffect(() => {
-    if (visible && !hasInitialized) {
-      const defaultSubject = type === 'quote'
-        ? `Quote ${documentNumber} from ${businessName || 'Us'}`
-        : `Invoice ${documentNumber} from ${businessName || 'Us'}`;
+  // Create a unique key for this document to detect when we need to reinitialize
+  const documentKey = `${type}-${documentId}-${documentNumber}`;
 
-      const defaultMessage = type === 'quote'
-        ? `Hi ${clientFirstName},\n\nPlease find attached your quote for ${documentTitle}.\n\nTotal: ${total}\n\nIf you have any questions, please don't hesitate to reach out.\n\nKind regards,\n${businessName || 'Your Business'}`
-        : `Hi ${clientFirstName},\n\nPlease find attached your invoice for ${documentTitle}.\n\nTotal: ${total}\n\nPayment is due within 14 days.\n\nThank you for your business.\n\nKind regards,\n${businessName || 'Your Business'}`;
+  useEffect(() => {
+    if (visible && initializedFor !== documentKey) {
+      // Initialize/reinitialize for this specific document
+      let defaultSubject: string;
+      let defaultMessage: string;
+
+      if (type === 'quote') {
+        defaultSubject = `Quote ${documentNumber} from ${businessName || 'Us'}`;
+        defaultMessage = `Hi ${clientFirstName},\n\nPlease find attached your quote for ${documentTitle}.\n\nTotal: ${total}\n\nIf you have any questions, please don't hesitate to reach out.\n\nKind regards,\n${businessName || 'Your Business'}`;
+      } else if (type === 'invoice') {
+        defaultSubject = `Invoice ${documentNumber} from ${businessName || 'Us'}`;
+        defaultMessage = `Hi ${clientFirstName},\n\nPlease find attached your invoice for ${documentTitle}.\n\nTotal: ${total}\n\nPayment is due within 14 days.\n\nThank you for your business.\n\nKind regards,\n${businessName || 'Your Business'}`;
+      } else {
+        // Receipt
+        defaultSubject = `Payment Receipt ${documentNumber} from ${businessName || 'Us'}`;
+        defaultMessage = `Hi ${clientFirstName},\n\nThank you for your payment!\n\nPlease find attached your receipt for ${total}.\n\nWe appreciate your business.\n\nKind regards,\n${businessName || 'Your Business'}`;
+      }
 
       setSubject(defaultSubject);
       setMessage(defaultMessage);
       setAiSuggestion(null);
       setActiveTab('compose');
-      setHasInitialized(true);
+      setIsSending(false);
+      setIsGeneratingAI(false);
+      setInitializedFor(documentKey);
     } else if (!visible) {
-      setHasInitialized(false);
+      // Reset all state when modal closes - important for clean reopen
+      setInitializedFor(null);
+      setSubject('');
+      setMessage('');
+      setAiSuggestion(null);
+      setActiveTab('compose');
+      setIsSending(false);
+      setIsGeneratingAI(false);
     }
-  }, [visible, hasInitialized, type, documentNumber, documentTitle, total, businessName, clientFirstName]);
+  }, [visible, documentKey, initializedFor, type, documentNumber, documentTitle, total, businessName, clientFirstName]);
 
   const generateAISuggestion = useCallback(async () => {
     setIsGeneratingAI(true);
@@ -123,18 +144,36 @@ export function EmailComposeModal({
 
   // Quick tone adjustments with Australian English (matches web app)
   const adjustTone = (tone: 'formal' | 'friendly' | 'brief') => {
-    const tones = {
-      formal: type === 'quote'
-        ? `Dear ${clientFirstName},\n\nPlease find attached the quotation for "${documentTitle}" as requested.\n\nThe quoted amount is ${total}. This quote remains valid for 30 days from the date of issue.\n\nShould you have any queries or require clarification, please do not hesitate to contact us.\n\nKind regards,\n${businessName || 'Your Business'}`
-        : `Dear ${clientFirstName},\n\nPlease find attached your tax invoice for "${documentTitle}".\n\nThe total amount payable is ${total}. Payment is due within the terms specified on the invoice.\n\nShould you have any queries regarding this invoice, please do not hesitate to contact us.\n\nKind regards,\n${businessName || 'Your Business'}`,
-      friendly: type === 'quote'
-        ? `Hey ${clientFirstName}!\n\nGreat chatting with you - here's the quote we discussed for "${documentTitle}".\n\nIt comes to ${total} all up. Let me know if you've got any questions or want to tweak anything!\n\nCheers mate,\n${businessName || 'Your Business'}`
-        : `Hey ${clientFirstName}!\n\nJust popping this invoice through for "${documentTitle}".\n\nThe total is ${total}. You can pay online using the link below - super easy!\n\nThanks heaps for your custom - really appreciate it!\n\nCheers mate,\n${businessName || 'Your Business'}`,
-      brief: type === 'quote'
-        ? `Hi ${clientFirstName},\n\nAttached: Quote for "${documentTitle}" - ${total}.\n\nAny questions, just ask.\n\nCheers,\n${businessName || 'Your Business'}`
-        : `Hi ${clientFirstName},\n\nAttached: Invoice for "${documentTitle}" - ${total}.\n\nPayment link included.\n\nCheers,\n${businessName || 'Your Business'}`
-    };
-    setMessage(tones[tone]);
+    let toneMessage: string;
+    
+    if (type === 'quote') {
+      if (tone === 'formal') {
+        toneMessage = `Dear ${clientFirstName},\n\nPlease find attached the quotation for "${documentTitle}" as requested.\n\nThe quoted amount is ${total}. This quote remains valid for 30 days from the date of issue.\n\nShould you have any queries or require clarification, please do not hesitate to contact us.\n\nKind regards,\n${businessName || 'Your Business'}`;
+      } else if (tone === 'friendly') {
+        toneMessage = `Hey ${clientFirstName}!\n\nGreat chatting with you - here's the quote we discussed for "${documentTitle}".\n\nIt comes to ${total} all up. Let me know if you've got any questions or want to tweak anything!\n\nCheers mate,\n${businessName || 'Your Business'}`;
+      } else {
+        toneMessage = `Hi ${clientFirstName},\n\nAttached: Quote for "${documentTitle}" - ${total}.\n\nAny questions, just ask.\n\nCheers,\n${businessName || 'Your Business'}`;
+      }
+    } else if (type === 'invoice') {
+      if (tone === 'formal') {
+        toneMessage = `Dear ${clientFirstName},\n\nPlease find attached your tax invoice for "${documentTitle}".\n\nThe total amount payable is ${total}. Payment is due within the terms specified on the invoice.\n\nShould you have any queries regarding this invoice, please do not hesitate to contact us.\n\nKind regards,\n${businessName || 'Your Business'}`;
+      } else if (tone === 'friendly') {
+        toneMessage = `Hey ${clientFirstName}!\n\nJust popping this invoice through for "${documentTitle}".\n\nThe total is ${total}. You can pay online using the link below - super easy!\n\nThanks heaps for your custom - really appreciate it!\n\nCheers mate,\n${businessName || 'Your Business'}`;
+      } else {
+        toneMessage = `Hi ${clientFirstName},\n\nAttached: Invoice for "${documentTitle}" - ${total}.\n\nPayment link included.\n\nCheers,\n${businessName || 'Your Business'}`;
+      }
+    } else {
+      // Receipt
+      if (tone === 'formal') {
+        toneMessage = `Dear ${clientFirstName},\n\nThank you for your recent payment.\n\nPlease find attached your official receipt for ${total}.\n\nWe appreciate your prompt payment and look forward to being of service again.\n\nKind regards,\n${businessName || 'Your Business'}`;
+      } else if (tone === 'friendly') {
+        toneMessage = `Hey ${clientFirstName}!\n\nThanks heaps for the payment!\n\nHere's your receipt for ${total} - all sorted!\n\nReally appreciate your business mate!\n\nCheers,\n${businessName || 'Your Business'}`;
+      } else {
+        toneMessage = `Hi ${clientFirstName},\n\nAttached: Receipt for ${total}.\n\nThanks for your payment!\n\nCheers,\n${businessName || 'Your Business'}`;
+      }
+    }
+    
+    setMessage(toneMessage);
   };
 
   const handleSend = async () => {
@@ -178,7 +217,7 @@ export function EmailComposeModal({
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
-              {type === 'quote' ? 'Send Quote' : 'Send Invoice'}
+              {type === 'quote' ? 'Send Quote' : type === 'invoice' ? 'Send Invoice' : 'Send Receipt'}
             </Text>
             <Text style={styles.headerSubtitle}>to {clientName}</Text>
           </View>
@@ -297,7 +336,7 @@ export function EmailComposeModal({
               <View style={styles.autoIncludedInfo}>
                 <Feather name="paperclip" size={14} color={colors.mutedForeground} />
                 <Text style={styles.autoIncludedText}>
-                  PDF + payment link included automatically
+                  {type === 'receipt' ? 'PDF attached automatically' : 'PDF + payment link included automatically'}
                 </Text>
               </View>
             </View>
@@ -394,7 +433,7 @@ export function EmailComposeModal({
                   <View style={styles.attachmentPreview}>
                     <Feather name="paperclip" size={16} color={colors.mutedForeground} />
                     <Text style={styles.attachmentText}>
-                      {type === 'quote' ? 'Quote PDF' : 'Invoice PDF'} will be attached
+                      {type === 'quote' ? 'Quote PDF' : type === 'invoice' ? 'Invoice PDF' : 'Receipt PDF'} will be attached
                     </Text>
                   </View>
                 )}
