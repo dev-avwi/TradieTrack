@@ -11,11 +11,13 @@ import {
   Alert,
   Linking,
   ScrollView,
+  Animated,
 } from 'react-native';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region, MapStyleElement } from 'react-native-maps';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region, MapStyleElement, Camera } from 'react-native-maps';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +25,9 @@ import { useUserRole } from '../../src/hooks/use-user-role';
 import { api } from '../../src/lib/api';
 import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+
+// Real-time polling interval for team locations (10 seconds)
+const LOCATION_POLL_INTERVAL = 10000;
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
   { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
@@ -628,6 +633,14 @@ export default function MapScreen() {
   // Geofence alerts state
   const [geofenceAlerts, setGeofenceAlerts] = useState<GeofenceAlert[]>([]);
   const [showAlerts, setShowAlerts] = useState(false);
+  
+  // Real-time location tracking state
+  const [isLive, setIsLive] = useState(true);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
+  const locationPollRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Animation state for smooth marker transitions
+  const markerScaleAnim = useRef(new Animated.Value(1)).current;
 
   // Fetch jobs from /api/map/jobs which geocodes addresses on-the-fly
   const fetchMapJobs = useCallback(async () => {
@@ -697,32 +710,43 @@ export default function MapScreen() {
       // Transform API response to match TeamMember interface
       // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
       // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
-      const transformedMembers: TeamMember[] = data.map((m: any) => {
-        const nameParts = (m.name || '').trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-        // Use explicit null/undefined checks to handle coordinates at 0,0 correctly
-        const hasValidLocation = m.latitude != null && m.longitude != null;
-        return {
-          id: m.id,
-          userId: m.id,
-          role: 'worker',
-          themeColor: m.themeColor || null,
-          user: {
-            firstName,
-            lastName,
-          },
-          lastLocation: hasValidLocation ? {
-            latitude: Number(m.latitude),
-            longitude: Number(m.longitude),
-            timestamp: m.lastUpdated || new Date().toISOString(),
-            speed: m.speed != null ? Number(m.speed) : undefined,
-            battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
-          } : undefined,
-          // Use activityStatus from API response, fallback to computed value
-          activityStatus: m.activityStatus || (m.currentJobId ? 'working' : 'online'),
-        };
-      });
+      const transformedMembers: TeamMember[] = data
+        .filter((m: any) => {
+          // Filter out members without valid coordinates at transformation time
+          // This prevents any (0,0) or null coordinates from entering state
+          const lat = Number(m.latitude);
+          const lng = Number(m.longitude);
+          const isValidCoord = Number.isFinite(lat) && Number.isFinite(lng) && 
+            (lat !== 0 || lng !== 0); // Allow (0, lng) or (lat, 0) but not (0,0)
+          if (!isValidCoord) {
+            console.log(`[Map] Skipping team member ${m.name} - invalid coordinates`);
+          }
+          return isValidCoord;
+        })
+        .map((m: any) => {
+          const nameParts = (m.name || '').trim().split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          return {
+            id: m.id,
+            userId: m.id,
+            role: 'worker',
+            themeColor: m.themeColor || null,
+            user: {
+              firstName,
+              lastName,
+            },
+            lastLocation: {
+              latitude: Number(m.latitude),
+              longitude: Number(m.longitude),
+              timestamp: m.lastUpdated || new Date().toISOString(),
+              speed: m.speed != null ? Number(m.speed) : undefined,
+              battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
+            },
+            // Use activityStatus from API response, fallback to computed value
+            activityStatus: m.activityStatus || (m.currentJobId ? 'working' : 'online'),
+          };
+        });
       setTeamMembers(transformedMembers);
     } catch (error) {
       console.log('Failed to fetch team locations:', error);
@@ -841,13 +865,40 @@ export default function MapScreen() {
     requestLocation();
   }, [fetchMapJobs]);
 
+  // Real-time team location polling - Life360 style live updates
   useEffect(() => {
-    if (showTeamMembers && canViewTeamMode) {
-      fetchTeamLocations();
-      const interval = setInterval(fetchTeamLocations, 30000);
-      return () => clearInterval(interval);
+    // Always clean up existing interval first to prevent overlap
+    if (locationPollRef.current) {
+      clearInterval(locationPollRef.current);
+      locationPollRef.current = null;
     }
-  }, [showTeamMembers, fetchTeamLocations, canViewTeamMode]);
+    
+    if (showTeamMembers && canViewTeamMode && isLive) {
+      // Initial fetch
+      fetchTeamLocations().then(() => {
+        setLastLocationUpdate(new Date());
+      }).catch(err => {
+        console.log('[Map] Initial location fetch failed:', err);
+      });
+      
+      // Set up frequent polling for live tracking (every 10 seconds)
+      locationPollRef.current = setInterval(() => {
+        fetchTeamLocations().then(() => {
+          setLastLocationUpdate(new Date());
+          console.log('[Map] Live location update received');
+        }).catch(err => {
+          console.log('[Map] Live location poll failed:', err);
+        });
+      }, LOCATION_POLL_INTERVAL);
+    }
+    
+    return () => {
+      if (locationPollRef.current) {
+        clearInterval(locationPollRef.current);
+        locationPollRef.current = null;
+      }
+    };
+  }, [showTeamMembers, fetchTeamLocations, canViewTeamMode, isLive]);
 
   // Fetch geofence alerts for owners/managers
   useEffect(() => {
@@ -884,17 +935,73 @@ export default function MapScreen() {
     return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
-  // Handle worker selection for assignment
-  const handleWorkerTap = (member: TeamMember) => {
-    if (!canAssignJobs) return;
+  // Animate camera to a specific location with smooth zoom - Life360 style
+  const animateCameraToLocation = useCallback((
+    latitude: number, 
+    longitude: number, 
+    options: { zoom?: number; duration?: number } = {}
+  ) => {
+    if (!mapRef.current) return;
+    
+    const { zoom = 15, duration = 600 } = options;
+    
+    // Use animateCamera for smooth animation
+    mapRef.current.animateCamera(
+      {
+        center: { latitude, longitude },
+        zoom,
+        heading: 0,
+        pitch: 0,
+      },
+      { duration }
+    );
+  }, []);
+
+  // Handle worker selection for assignment - with smooth camera animation
+  const handleWorkerTap = useCallback((member: TeamMember) => {
+    // Provide haptic feedback for tap
+    Haptics.selectionAsync();
+    
+    const memberLat = member.lastLocation?.latitude;
+    const memberLng = member.lastLocation?.longitude;
     
     if (selectedWorker?.id === member.id) {
-      // Deselect if tapping same worker
+      // Deselect if tapping same worker - zoom out to show all
       setSelectedWorker(null);
+      markerScaleAnim.setValue(1); // Reset scale
+      // Fit to all markers after a brief delay
+      setTimeout(() => fitToMarkers(), 200);
     } else {
-      setSelectedWorker(member);
+      // First animate camera to the member's location for smooth transition
+      const animDuration = 500;
+      if (memberLat && memberLng) {
+        animateCameraToLocation(memberLat, memberLng, { zoom: 16, duration: animDuration });
+      }
+      
+      // Set selected worker after camera has moved significantly
+      // Wait for most of the camera animation to complete to prevent flash
+      setTimeout(() => {
+        setSelectedWorker(member);
+        
+        // Pulse animation for selected marker
+        markerScaleAnim.setValue(1);
+        Animated.sequence([
+          Animated.spring(markerScaleAnim, {
+            toValue: 1.2,
+            friction: 4,
+            tension: 120,
+            useNativeDriver: true,
+          }),
+          Animated.spring(markerScaleAnim, {
+            toValue: 1,
+            friction: 6,
+            tension: 100,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, animDuration * 0.6); // Wait for 60% of animation before state update
     }
-  };
+  }, [selectedWorker, animateCameraToLocation, fitToMarkers, markerScaleAnim]);
 
   // Handle job tap when worker is selected
   const handleJobTapForAssignment = (job: JobWithLocation) => {
@@ -1203,7 +1310,11 @@ export default function MapScreen() {
         })}
 
         {/* Team Member Markers - Life360 Style */}
+        {/* Note: Members are pre-filtered at transformation time - all members in state have valid coords */}
         {showTeamMembers && canViewTeamMode && teamMembers.map((member) => {
+          // Safety check (should never fail since we filter at transformation)
+          if (!member.lastLocation) return null;
+          
           // Use member's theme color as base, fallback to a nice blue
           const memberColor = member.themeColor || '#3B82F6';
           const activityColor = getActivityColor(member.activityStatus);
@@ -1212,7 +1323,7 @@ export default function MapScreen() {
           const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
           const shortName = member.user?.firstName || fullName.split(' ')[0] || 'Unknown';
           
-          return member.lastLocation && (
+          return (
             <Marker
               key={`team-${member.id}`}
               coordinate={{
@@ -1221,8 +1332,16 @@ export default function MapScreen() {
               }}
               onPress={() => handleWorkerTap(member)}
               anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={isSelected} // Only track when selected for animation
             >
-              <View style={{ alignItems: 'center', paddingBottom: 20 }}>
+              <Animated.View 
+                style={{ 
+                  alignItems: 'center', 
+                  paddingBottom: 20,
+                  // Apply scale animation only to selected marker
+                  transform: [{ scale: isSelected ? markerScaleAnim : 1 }],
+                }}
+              >
                 {/* Main bubble - Life360 style compact circle */}
                 <View style={[
                   styles.teamMarkerOuter, 
@@ -1248,7 +1367,7 @@ export default function MapScreen() {
                     {shortName}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
               <Callout tooltip>
                 <View style={styles.callout}>
                   <Text style={styles.calloutTitle}>
@@ -1301,7 +1420,29 @@ export default function MapScreen() {
             <Feather name="map" size={20} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Job Map</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text style={styles.headerTitle}>Job Map</Text>
+              {/* Live indicator - shows when real-time tracking is active */}
+              {isLive && showTeamMembers && canViewTeamMode && (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 10,
+                }}>
+                  <View style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: '#22C55E',
+                  }} />
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#22C55E' }}>LIVE</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.headerSubtitle}>
               {filteredJobs.length} jobs
               {showTeamMembers && canViewTeamMode && ` • ${activeTeamCount} active`}
