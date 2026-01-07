@@ -251,15 +251,19 @@ export default function QuoteDetailScreen() {
     
     Alert.alert(
       'Send Quote',
-      'How would you like to send this quote?',
+      `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Open Email App',
-          onPress: () => handleSendViaEmailApp(),
+          text: 'Send Now (PDF + Message)',
+          onPress: () => handleSendViaTradieTrack(),
         },
         {
-          text: 'Use TradieTrack',
+          text: 'Edit Message First',
           onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Share PDF Only',
+          onPress: () => handleSendViaEmailApp(),
         },
         {
           text: 'Cancel',
@@ -267,6 +271,48 @@ export default function QuoteDetailScreen() {
         },
       ]
     );
+  };
+  
+  const handleSendViaTradieTrack = async () => {
+    if (!quote) return;
+    
+    const client = getClient(quote.clientId);
+    const recipientEmail = client?.email;
+    
+    if (!recipientEmail) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address on file.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setIsDownloadingPdf(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/quotes/${id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ email: recipientEmail }),
+      });
+
+      if (response.ok) {
+        await loadData();
+        Alert.alert('Quote Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+      } else {
+        const error = await response.json();
+        Alert.alert('Error', error.error || 'Failed to send quote');
+      }
+    } catch (error) {
+      console.log('Error sending quote:', error);
+      Alert.alert('Error', 'Failed to send quote. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
   
   const handleSendViaEmailApp = async () => {

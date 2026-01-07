@@ -275,15 +275,19 @@ export default function InvoiceDetailScreen() {
     const client = getClient(invoice?.clientId || '');
     Alert.alert(
       'Send Invoice',
-      `Send to ${client?.email || 'client'}`,
+      `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Send with PDF Attached',
+          text: 'Send Now (PDF + Message)',
           onPress: () => handleSendViaTradieTrack(),
         },
         {
           text: 'Edit Message First',
           onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Share PDF Only',
+          onPress: () => handleSendViaEmailApp(),
         },
         {
           text: 'Cancel',
@@ -673,10 +677,10 @@ export default function InvoiceDetailScreen() {
     // Show options for sending
     Alert.alert(
       'Send Receipt',
-      `Send to ${client?.email || 'client'}`,
+      `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Send with PDF Attached',
+          text: 'Send Now (PDF + Message)',
           onPress: async () => {
             await handleSendReceiptViaTradieTrack();
           },
@@ -684,6 +688,12 @@ export default function InvoiceDetailScreen() {
         {
           text: 'Edit Message First',
           onPress: () => setShowReceiptEmailCompose(true),
+        },
+        {
+          text: 'Share PDF Only',
+          onPress: async () => {
+            await handleSendReceiptViaEmailApp();
+          },
         },
         {
           text: 'Cancel',

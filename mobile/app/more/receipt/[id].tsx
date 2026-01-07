@@ -307,10 +307,10 @@ export default function ReceiptDetailScreen() {
     // Show options for sending
     Alert.alert(
       'Send Receipt',
-      `Send to ${client?.email || 'client'}`,
+      `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Send with PDF Attached',
+          text: 'Send Now (PDF + Message)',
           onPress: async () => {
             await handleSendViaTradieTrack();
           },
@@ -318,6 +318,12 @@ export default function ReceiptDetailScreen() {
         {
           text: 'Edit Message First',
           onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Share PDF Only',
+          onPress: async () => {
+            await handleSendViaEmailApp();
+          },
         },
         {
           text: 'Cancel',
