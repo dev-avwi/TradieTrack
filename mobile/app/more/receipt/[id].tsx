@@ -335,7 +335,7 @@ export default function ReceiptDetailScreen() {
           },
         },
         {
-          text: 'Open Email App',
+          text: 'Share PDF',
           onPress: async () => {
             await handleSendViaEmailApp();
             // Save preference for next time
@@ -351,40 +351,37 @@ export default function ReceiptDetailScreen() {
   };
   
   const handleSendViaEmailApp = async () => {
-    if (!receipt) return;
+    if (!receipt || isDownloadingPdf) return;
     
     if (!client?.email) {
       Alert.alert('No Email', "This client doesn't have an email address on file.");
       return;
     }
     
-    const businessName = businessSettings?.businessName || 'Your Business';
-    const receiptNumber = receipt.receiptNumber || receipt.id?.slice(0, 8);
-    const total = formatCurrency(receipt.amount);
-    const subject = `Payment Receipt ${receiptNumber} - ${total}`;
-    const paidDate = receipt.paidAt 
-      ? format(new Date(receipt.paidAt), 'd MMMM yyyy') 
-      : format(new Date(receipt.createdAt), 'd MMMM yyyy');
-    
-    const body = `G'day ${client.name || 'there'},\n\nThank you for your payment of ${total}.\n\nReceipt: ${receiptNumber}\nDate: ${paidDate}\nMethod: ${formatPaymentMethod(receipt.paymentMethod)}\n\nThanks for your business!\n\nCheers,\n${businessName}`;
-    
-    const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
+    setIsDownloadingPdf(true);
     try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
-        Alert.alert(
-          'Email App Opened',
-          'Your email app has the receipt details ready. The receipt has already been recorded.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+      const uri = await downloadPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
       }
-    } catch (error) {
-      console.log('Error opening email:', error);
-      Alert.alert('Error', 'Failed to open email app.');
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        const receiptNumber = receipt.receiptNumber || receipt.id?.slice(0, 8);
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Share Receipt ${receiptNumber} to ${client.name}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Please use "TradieTrack" to send with PDF attached.');
+      }
+    } catch (error: any) {
+      console.log('Share receipt PDF error:', error);
+      const message = error?.message || 'Failed to share PDF. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
   

@@ -24,6 +24,8 @@ import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { API_URL, api } from '../../../src/lib/api';
+import { getEmailPreference, setEmailPreference, EmailAppPreference } from '../../../src/lib/email-preference';
+import { format } from 'date-fns';
 
 interface Signature {
   id: string;
@@ -82,6 +84,7 @@ export default function InvoiceDetailScreen() {
   const [isSendingInvoice, setIsSendingInvoice] = useState(false);
   const [isSendingPaymentLinkEmail, setIsSendingPaymentLinkEmail] = useState(false);
   const [createReceiptOnPayment, setCreateReceiptOnPayment] = useState(false);
+  const [showReceiptEmailCompose, setShowReceiptEmailCompose] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
   
@@ -274,7 +277,7 @@ export default function InvoiceDetailScreen() {
       'How would you like to send this invoice?',
       [
         {
-          text: 'Open Email App',
+          text: 'Share PDF',
           onPress: () => handleSendViaEmailApp(),
         },
         {
@@ -611,7 +614,186 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleSendReceipt = async () => {
-    if (!invoice || !client?.email || isSendingReceipt) return;
+    if (!invoice) return;
+    
+    const client = getClient(invoice.clientId);
+    
+    if (!client?.email) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address on file. Please add an email address to the client record first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    // Check saved email preference
+    const preference = await getEmailPreference();
+    
+    if (preference === 'tradietrack') {
+      // Auto-send via TradieTrack
+      await handleSendReceiptViaTradieTrack();
+      return;
+    } else if (preference === 'gmail' || preference === 'outlook' || preference === 'native_mail') {
+      // Auto-open email app
+      await handleSendReceiptViaEmailApp();
+      return;
+    }
+    
+    // Preference is 'ask' - Show options for sending
+    Alert.alert(
+      'Send Receipt',
+      'How would you like to send this receipt?',
+      [
+        {
+          text: 'TradieTrack (Edit Message)',
+          onPress: () => setShowReceiptEmailCompose(true),
+        },
+        {
+          text: 'TradieTrack (Send Now)',
+          onPress: async () => {
+            await handleSendReceiptViaTradieTrack();
+            // Save preference for next time
+            await setEmailPreference('tradietrack');
+          },
+        },
+        {
+          text: 'Share PDF',
+          onPress: async () => {
+            await handleSendReceiptViaEmailApp();
+            // Save preference for next time
+            await setEmailPreference('native_mail');
+          },
+        },
+        {
+          text: 'Always Ask',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+  
+  const downloadReceiptPdfToCache = useCallback(async (): Promise<string | null> => {
+    if (!linkedReceipt) return null;
+    
+    const PDF_TIMEOUT_MS = 60000;
+    
+    const authToken = await api.getToken();
+    if (!authToken) {
+      throw new Error('Not authenticated. Please log in again.');
+    }
+    
+    const receiptNumber = linkedReceipt.receiptNumber || linkedReceipt.id?.slice(0, 8);
+    const fileUri = `${FileSystem.cacheDirectory}Receipt-${receiptNumber}_${Date.now()}.pdf`;
+    const pdfUrl = `${API_URL}/api/receipts/${linkedReceipt.id}/pdf`;
+    
+    console.log('[PDF] Downloading receipt from:', pdfUrl);
+    
+    const downloadResumable = FileSystem.createDownloadResumable(
+      pdfUrl,
+      fileUri,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+    
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    
+    try {
+      const downloadPromise = downloadResumable.downloadAsync();
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(async () => {
+          try {
+            await downloadResumable.pauseAsync();
+          } catch (e) {}
+          reject(new Error('PDF generation timed out. Please try again.'));
+        }, PDF_TIMEOUT_MS);
+      });
+      
+      const downloadResult = await Promise.race([downloadPromise, timeoutPromise]);
+      
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      if (!downloadResult) {
+        throw new Error('Download failed. Please try again.');
+      }
+      
+      if (downloadResult.status !== 200) {
+        throw new Error(`Server error (${downloadResult.status}). Please try again.`);
+      }
+      
+      const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+      if (!fileInfo.exists || (fileInfo.size !== undefined && fileInfo.size < 100)) {
+        throw new Error('PDF file is empty or corrupted. Please try again.');
+      }
+
+      return downloadResult.uri;
+    } catch (error: any) {
+      if (timeoutId) clearTimeout(timeoutId);
+      console.log('[PDF] Receipt download error:', error);
+      throw error;
+    }
+  }, [linkedReceipt]);
+  
+  const handleSendReceiptViaEmailApp = async () => {
+    if (!invoice || isSendingReceipt) return;
+    
+    const client = getClient(invoice.clientId);
+    
+    if (!client?.email) {
+      Alert.alert('No Email', "This client doesn't have an email address on file.");
+      return;
+    }
+    
+    if (!linkedReceipt) {
+      Alert.alert('No Receipt', 'No receipt found for this invoice. Please generate a receipt first.');
+      return;
+    }
+    
+    setIsSendingReceipt(true);
+    try {
+      const uri = await downloadReceiptPdfToCache();
+      if (!uri) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        const receiptNumber = linkedReceipt.receiptNumber || linkedReceipt.id?.slice(0, 8);
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Share Receipt ${receiptNumber} to ${client.name}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Please use "TradieTrack" to send with PDF attached.');
+      }
+    } catch (error: any) {
+      console.log('Share receipt PDF error:', error);
+      const message = error?.message || 'Failed to share PDF. Please try again.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSendingReceipt(false);
+    }
+  };
+  
+  const handleSendReceiptViaTradieTrack = async () => {
+    if (!invoice || isSendingReceipt) return;
+    
+    const client = getClient(invoice.clientId);
+    const recipientEmail = client?.email;
+    
+    if (!recipientEmail) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address on file.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     
     setIsSendingReceipt(true);
     try {
@@ -622,11 +804,11 @@ export default function InvoiceDetailScreen() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ email: client.email }),
+        body: JSON.stringify({ email: recipientEmail }),
       });
 
       if (response.ok) {
-        Alert.alert('Receipt Sent', `Receipt emailed to ${client.email}`);
+        Alert.alert('Receipt Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
       } else {
         const error = await response.json();
         Alert.alert('Error', error.error || 'Failed to send receipt');
@@ -636,6 +818,49 @@ export default function InvoiceDetailScreen() {
       Alert.alert('Error', 'Failed to send receipt. Please try again.');
     } finally {
       setIsSendingReceipt(false);
+    }
+  };
+  
+  const handleSendReceiptWithCustomMessage = async (customSubject: string, customMessage: string) => {
+    if (!invoice) {
+      throw new Error('Missing invoice information.');
+    }
+    
+    const client = getClient(invoice.clientId);
+    
+    if (!client?.email) {
+      throw new Error('Missing client email information.');
+    }
+    
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/invoices/${id}/send-receipt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          email: client.email,
+          customSubject,
+          customMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send receipt');
+      }
+      
+      // Refresh data to show updated status
+      loadData();
+      setShowReceiptEmailCompose(false);
+      Alert.alert('Receipt Sent!', `Email sent to ${client.email} with PDF attached.`);
+    } catch (error: any) {
+      console.error('Error sending receipt email:', error);
+      const message = error?.message || 'Failed to send receipt email';
+      // Throw error so EmailComposeModal shows it and stays open for retry
+      throw new Error(message);
     }
   };
 
@@ -2120,7 +2345,7 @@ export default function InvoiceDetailScreen() {
         </View>
       </Modal>
 
-      {/* Email Compose Modal */}
+      {/* Email Compose Modal for Invoice */}
       <EmailComposeModal
         visible={showEmailCompose}
         onClose={() => setShowEmailCompose(false)}
@@ -2133,6 +2358,21 @@ export default function InvoiceDetailScreen() {
         total={formatCurrency(invoice?.total || 0)}
         businessName={user?.businessName}
         onSend={handleEmailSend}
+      />
+
+      {/* Email Compose Modal for Receipt */}
+      <EmailComposeModal
+        visible={showReceiptEmailCompose}
+        onClose={() => setShowReceiptEmailCompose(false)}
+        type="receipt"
+        documentId={id!}
+        clientName={client?.name || 'Client'}
+        clientEmail={client?.email || ''}
+        documentNumber={invoice?.invoiceNumber || ''}
+        documentTitle={`Payment Receipt for ${invoice?.invoiceNumber || 'Invoice'}`}
+        total={formatCurrency(invoice?.total || 0)}
+        businessName={user?.businessName}
+        onSend={handleSendReceiptWithCustomMessage}
       />
 
       {/* Template Selector Modal */}
