@@ -4734,13 +4734,41 @@ export default function JobDetailScreen() {
                     v.id === note.id ? { ...v, transcription: text } : v
                   ));
                 }}
-                onAddToNotes={(text) => {
+                onAddToNotes={async (text) => {
                   // Append transcription to job notes
                   const currentNotes = job?.notes || '';
                   const newNotes = currentNotes 
                     ? `${currentNotes}\n\n[Voice Note Transcription]\n${text}`
                     : `[Voice Note Transcription]\n${text}`;
-                  handleUpdateJobField('notes', newNotes);
+                  
+                  const { isOnline } = useOfflineStore.getState();
+                  const previousNotes = job?.notes;
+                  
+                  // Optimistic update
+                  if (job) {
+                    setJob({ ...job, notes: newNotes });
+                  }
+                  
+                  try {
+                    if (!isOnline) {
+                      await offlineStorage.updateJobOffline(job!.id, { notes: newNotes });
+                      Alert.alert('Saved Offline', 'Transcription added to notes - will sync when online');
+                    } else {
+                      await api.patch(`/api/jobs/${job?.id}`, { notes: newNotes });
+                      Alert.alert('Added', 'Transcription added to job notes');
+                    }
+                  } catch (error: any) {
+                    // Revert on error
+                    if (job) {
+                      setJob({ ...job, notes: previousNotes || '' });
+                    }
+                    if (error.message?.includes('Network')) {
+                      await offlineStorage.updateJobOffline(job!.id, { notes: newNotes });
+                      Alert.alert('Saved Offline', 'Will sync when connection is restored');
+                    } else {
+                      Alert.alert('Error', 'Failed to add transcription to notes');
+                    }
+                  }
                 }}
               />
             ))}
