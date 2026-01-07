@@ -13,21 +13,13 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
-import { useAuthStore } from '../lib/store';
+import { useNotificationsStore, UnifiedNotification } from '../lib/notifications-store';
+import { router } from 'expo-router';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  relatedId?: string;
-  relatedType?: string;
-  read: boolean;
-  dismissed: boolean;
-  createdAt: string;
-}
+// Re-export for backward compatibility
+interface Notification extends UnifiedNotification {}
 
 interface NotificationsPanelProps {
   visible: boolean;
@@ -39,11 +31,19 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Use the unified notifications store
+  const { 
+    notifications, 
+    isLoading, 
+    unreadCount,
+    fetchNotifications: storeFetchNotifications, 
+    markAsRead: storeMarkAsRead, 
+    markAllAsRead: storeMarkAllAsRead, 
+    dismissNotification: storeDismissNotification 
+  } = useNotificationsStore();
 
   useEffect(() => {
     if (visible) {
@@ -54,7 +54,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
         tension: 65,
         friction: 11,
       }).start();
-      fetchNotifications();
+      storeFetchNotifications();
     } else if (isModalVisible) {
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
@@ -66,101 +66,67 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
     }
   }, [visible]);
 
-  const fetchNotifications = async () => {
-    try {
-      const { token } = useAuthStore.getState();
-      if (!token) return;
-
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
-      const response = await fetch(`${baseUrl}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchNotifications();
+    await storeFetchNotifications();
+    setIsRefreshing(false);
   }, []);
-
-  const markAsRead = async (id: string) => {
-    try {
-      const { token } = useAuthStore.getState();
-      if (!token) return;
-
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
-      await fetch(`${baseUrl}/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, read: true } : n)
-      );
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      const { token } = useAuthStore.getState();
-      if (!token) return;
-
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
-      await fetch(`${baseUrl}/api/notifications/read-all`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
-    }
-  };
-
-  const dismissNotification = async (id: string) => {
-    try {
-      const { token } = useAuthStore.getState();
-      if (!token) return;
-
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
-      await fetch(`${baseUrl}/api/notifications/${id}/dismiss`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (error) {
-      console.error('Failed to dismiss notification:', error);
-    }
-  };
 
   const handleNotificationPress = (notification: Notification) => {
     if (!notification.read) {
-      markAsRead(notification.id);
+      storeMarkAsRead(notification.id, notification.notificationType);
     }
     
-    if (notification.relatedType && notification.relatedId && onNavigateToItem) {
-      onClose();
-      onNavigateToItem(notification.relatedType, notification.relatedId);
+    onClose();
+    
+    // Navigate based on notification type (matching web behavior)
+    if (notification.notificationType === 'sms') {
+      router.push(`/more/chat-hub?smsClientId=${notification.relatedId}`);
+      return;
+    }
+    
+    if (notification.notificationType === 'chat') {
+      router.push('/more/chat-hub');
+      return;
+    }
+    
+    // System notifications - navigate by related type
+    if (notification.relatedType && notification.relatedId) {
+      switch (notification.relatedType) {
+        case 'job':
+          router.push(`/job/${notification.relatedId}`);
+          break;
+        case 'quote':
+          router.push(`/more/quote/${notification.relatedId}`);
+          break;
+        case 'invoice':
+          router.push(`/more/invoice/${notification.relatedId}`);
+          break;
+        case 'client':
+          router.push(`/more/client/${notification.relatedId}`);
+          break;
+        case 'receipt':
+          router.push(`/more/receipt/${notification.relatedId}`);
+          break;
+        default:
+          if (onNavigateToItem) {
+            onNavigateToItem(notification.relatedType, notification.relatedId);
+          }
+          break;
+      }
     }
   };
 
-  const getNotificationIcon = (type: string): keyof typeof Feather.glyphMap => {
-    switch (type) {
+  const getNotificationIcon = (notification: Notification): keyof typeof Feather.glyphMap => {
+    // SMS and chat notifications have special icons
+    if (notification.notificationType === 'sms') return 'phone';
+    if (notification.notificationType === 'chat') return 'message-circle';
+    
+    switch (notification.type) {
       case 'job_reminder':
       case 'job_scheduled':
+      case 'job_assigned':
+      case 'job_update':
         return 'calendar';
       case 'overdue_invoice':
       case 'invoice_sent':
@@ -179,13 +145,23 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
       case 'subscription_created':
       case 'subscription_canceled':
         return 'briefcase';
+      case 'team_message':
+        return 'users';
       default:
         return 'bell';
     }
   };
 
-  const getNotificationColor = (type: string) => {
-    switch (type) {
+  const getNotificationColor = (notification: Notification) => {
+    // SMS and chat have their own colors
+    if (notification.notificationType === 'sms') {
+      return { bg: '#10b98115', icon: '#10b981' }; // Emerald
+    }
+    if (notification.notificationType === 'chat') {
+      return { bg: '#6366f115', icon: '#6366f1' }; // Indigo
+    }
+    
+    switch (notification.type) {
       case 'payment_received':
       case 'quote_accepted':
       case 'invoice_paid':
@@ -196,6 +172,8 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
         return { bg: colors.destructiveLight || `${colors.destructive}15`, icon: colors.destructive };
       case 'job_reminder':
       case 'job_scheduled':
+      case 'job_assigned':
+      case 'job_update':
         return { bg: colors.infoLight || `${colors.info}15`, icon: colors.info };
       case 'quote_sent':
       case 'quote_created':
@@ -204,6 +182,12 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
       default:
         return { bg: colors.muted, icon: colors.mutedForeground };
     }
+  };
+  
+  const getNotificationTypeBadge = (notification: Notification) => {
+    if (notification.notificationType === 'sms') return 'SMS';
+    if (notification.notificationType === 'chat') return 'Chat';
+    return null;
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -222,7 +206,6 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
   };
 
   const activeNotifications = notifications.filter(n => !n.dismissed);
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   if (!isModalVisible) return null;
 
@@ -265,7 +248,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
             <View style={styles.headerActions}>
               {unreadCount > 0 && (
                 <TouchableOpacity 
-                  onPress={markAllAsRead}
+                  onPress={storeMarkAllAsRead}
                   style={styles.markAllButton}
                 >
                   <Feather name="check-circle" size={16} color={colors.primary} />
@@ -306,8 +289,9 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
               </View>
             ) : (
               activeNotifications.map((notification) => {
-                const iconName = getNotificationIcon(notification.type);
-                const notificationColors = getNotificationColor(notification.type);
+                const iconName = getNotificationIcon(notification);
+                const notificationColors = getNotificationColor(notification);
+                const typeBadge = getNotificationTypeBadge(notification);
                 
                 return (
                   <TouchableOpacity
@@ -334,6 +318,19 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
                         >
                           {notification.title}
                         </Text>
+                        {typeBadge && (
+                          <View style={[
+                            styles.typeBadge,
+                            { backgroundColor: notification.notificationType === 'sms' ? '#10b98120' : '#6366f120' }
+                          ]}>
+                            <Text style={[
+                              styles.typeBadgeText,
+                              { color: notification.notificationType === 'sms' ? '#10b981' : '#6366f1' }
+                            ]}>
+                              {typeBadge}
+                            </Text>
+                          </View>
+                        )}
                         {!notification.read && <View style={styles.unreadDot} />}
                       </View>
                       <Text style={styles.notificationMessage} numberOfLines={2}>
@@ -343,30 +340,32 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
                         {formatTimeAgo(notification.createdAt)}
                       </Text>
                       
-                      <View style={styles.notificationActions}>
-                        {!notification.read && (
+                      {notification.notificationType === 'system' && (
+                        <View style={styles.notificationActions}>
+                          {!notification.read && (
+                            <TouchableOpacity 
+                              style={styles.actionButton}
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                storeMarkAsRead(notification.id, notification.notificationType);
+                              }}
+                            >
+                              <Feather name="check" size={14} color={colors.foreground} />
+                              <Text style={styles.actionButtonText}>Mark read</Text>
+                            </TouchableOpacity>
+                          )}
                           <TouchableOpacity 
-                            style={styles.actionButton}
+                            style={[styles.actionButton, styles.dismissButton]}
                             onPress={(e) => {
                               e.stopPropagation?.();
-                              markAsRead(notification.id);
+                              storeDismissNotification(notification.id);
                             }}
                           >
-                            <Feather name="check" size={14} color={colors.foreground} />
-                            <Text style={styles.actionButtonText}>Mark read</Text>
+                            <Feather name="trash-2" size={14} color={colors.mutedForeground} />
+                            <Text style={[styles.actionButtonText, styles.dismissText]}>Dismiss</Text>
                           </TouchableOpacity>
-                        )}
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.dismissButton]}
-                          onPress={(e) => {
-                            e.stopPropagation?.();
-                            dismissNotification(notification.id);
-                          }}
-                        >
-                          <Feather name="trash-2" size={14} color={colors.mutedForeground} />
-                          <Text style={[styles.actionButtonText, styles.dismissText]}>Dismiss</Text>
-                        </TouchableOpacity>
-                      </View>
+                        </View>
+                      )}
                     </View>
                     
                     {notification.relatedType && (
@@ -390,33 +389,15 @@ interface NotificationBellProps {
 export function NotificationBell({ onPress }: NotificationBellProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createBellStyles(colors), [colors]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Use the notifications store for consistent unread count
+  const { unreadCount, fetchNotifications, startPolling } = useNotificationsStore();
 
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+    // Start polling for new notifications
+    const stopPolling = startPolling();
+    return () => stopPolling();
   }, []);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const { token } = useAuthStore.getState();
-      if (!token) return;
-
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://tradietrack.com';
-      const response = await fetch(`${baseUrl}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const count = data.filter((n: Notification) => !n.read).length;
-        setUnreadCount(count);
-      }
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error);
-    }
-  };
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.button}>
@@ -595,6 +576,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.primary,
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   notificationMessage: {
     fontSize: 13,

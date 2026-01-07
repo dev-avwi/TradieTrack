@@ -152,8 +152,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
 });
 
-function getNotificationIcon(type: string, colors: any) {
-  switch (type) {
+function getNotificationIcon(notification: any, colors: any) {
+  // SMS and chat have special icons
+  if (notification.notificationType === 'sms') {
+    return { icon: 'phone', bg: '#10b98120', color: '#10b981' }; // Emerald for SMS
+  }
+  if (notification.notificationType === 'chat') {
+    return { icon: 'message-circle', bg: '#6366f120', color: '#6366f1' }; // Indigo for chat
+  }
+  
+  switch (notification.type) {
     case 'job_assigned':
       return { icon: 'briefcase', bg: colors.primaryLight, color: colors.primary };
     case 'job_update':
@@ -217,9 +225,43 @@ export default function NotificationsInboxScreen() {
 
   const handleNotificationPress = useCallback((notification: any) => {
     if (!notification.read) {
-      markAsRead(notification.id);
+      markAsRead(notification.id, notification.notificationType);
     }
     
+    // Handle SMS notifications - go to chat hub with SMS filter
+    if (notification.notificationType === 'sms') {
+      router.push(`/more/chat-hub?smsClientId=${notification.relatedId}` as any);
+      return;
+    }
+    
+    // Handle chat notifications - go to chat hub
+    if (notification.notificationType === 'chat') {
+      router.push('/more/chat-hub');
+      return;
+    }
+    
+    // Handle by related type (matching web behavior)
+    if (notification.relatedType && notification.relatedId) {
+      switch (notification.relatedType) {
+        case 'job':
+          router.push(`/job/${notification.relatedId}` as any);
+          return;
+        case 'quote':
+          router.push(`/more/quote/${notification.relatedId}` as any);
+          return;
+        case 'invoice':
+          router.push(`/more/invoice/${notification.relatedId}` as any);
+          return;
+        case 'client':
+          router.push(`/more/client/${notification.relatedId}` as any);
+          return;
+        case 'receipt':
+          router.push(`/more/receipt/${notification.relatedId}` as any);
+          return;
+      }
+    }
+    
+    // Fallback to legacy action type handling
     const action = getActionForType(notification.type);
     if (action) {
       const metadata = notification.metadata || {};
@@ -291,8 +333,10 @@ export default function NotificationsInboxScreen() {
             </View>
           ) : (
             activeNotifications.map((notification) => {
-              const iconConfig = getNotificationIcon(notification.type, colors);
-              const action = getActionForType(notification.type);
+              const iconConfig = getNotificationIcon(notification, colors);
+              const action = notification.notificationType === 'sms' || notification.notificationType === 'chat' 
+                ? { label: notification.notificationType === 'sms' ? 'View SMS' : 'View Chat', route: '/more/chat-hub' }
+                : getActionForType(notification.type);
               
               return (
                 <Pressable
