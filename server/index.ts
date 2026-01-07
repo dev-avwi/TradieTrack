@@ -3,7 +3,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers } from "./demoData";
+import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, startDemoDataRefreshScheduler } from "./demoData";
 import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
@@ -185,5 +185,10 @@ if (process.env.DATABASE_URL) {
     }).catch(error => {
       console.error('Failed to start schedulers:', error);
     });
+    
+    // Start demo data refresh scheduler to keep team members "alive"
+    if (enableDemoData) {
+      startDemoDataRefreshScheduler();
+    }
   });
 })();

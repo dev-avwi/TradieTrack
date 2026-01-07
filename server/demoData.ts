@@ -1161,3 +1161,81 @@ export async function createDemoTeamMembers() {
     console.error('Error creating demo team members:', error);
   }
 }
+
+// Keep demo team members "alive" by periodically updating their activity timestamps
+// This simulates real mobile app usage and keeps web/mobile data in sync
+export async function refreshDemoTeamActivity() {
+  try {
+    const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+    if (!demoUser) return;
+
+    const teamMembers = await storage.getTeamMembers(demoUser.id);
+    const activeMembers = teamMembers.filter(m => m.inviteStatus === 'accepted' && m.isActive);
+
+    // Cairns QLD area - simulate slight movement around job sites
+    const baseLocations = [
+      { lat: -16.9186, lng: 145.7781, status: 'working' },
+      { lat: -16.9246, lng: 145.7621, status: 'driving' },
+      { lat: -16.9073, lng: 145.7478, status: 'online' },
+      { lat: -16.9361, lng: 145.7514, status: 'working' },
+    ];
+
+    // Randomize which team members are "active" - 2-3 should be online
+    const activeCount = Math.floor(Math.random() * 2) + 2; // 2-3 active
+    const shuffledMembers = [...activeMembers].sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < shuffledMembers.length; i++) {
+      const member = shuffledMembers[i];
+      if (!member.memberId) continue;
+
+      const baseLocation = baseLocations[i % baseLocations.length];
+      const isOnline = i < activeCount;
+
+      // Add small random movement (within ~500m)
+      const latOffset = (Math.random() - 0.5) * 0.005;
+      const lngOffset = (Math.random() - 0.5) * 0.005;
+
+      const activityStatus = isOnline 
+        ? baseLocation.status
+        : 'offline';
+
+      const speed = activityStatus === 'driving' ? Math.floor(Math.random() * 40) + 20 : 0; // 20-60 km/h if driving
+
+      await storage.upsertTradieStatus({
+        userId: member.memberId,
+        businessOwnerId: demoUser.id,
+        currentLatitude: (baseLocation.lat + latOffset).toString(),
+        currentLongitude: (baseLocation.lng + lngOffset).toString(),
+        currentAddress: baseLocation.status === 'working' ? 'On job site' : undefined,
+        activityStatus,
+        speed: speed.toString(),
+        heading: activityStatus === 'driving' ? Math.floor(Math.random() * 360).toString() : undefined,
+        lastSeenAt: isOnline ? new Date() : new Date(Date.now() - 30 * 60 * 1000), // 30 min ago if offline
+        lastLocationUpdate: isOnline ? new Date() : undefined,
+        batteryLevel: Math.floor(Math.random() * 40) + 60,
+        isCharging: Math.random() > 0.7,
+      });
+    }
+
+    console.log(`[DemoRefresh] Updated ${activeCount} active team members`);
+  } catch (error) {
+    console.error('[DemoRefresh] Error refreshing demo team activity:', error);
+  }
+}
+
+// Start the demo data refresh scheduler (every 5 minutes)
+export function startDemoDataRefreshScheduler() {
+  const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  
+  console.log('[DemoScheduler] Starting demo data refresh scheduler...');
+  
+  // Initial refresh immediately
+  refreshDemoTeamActivity();
+  
+  // Then refresh every 5 minutes
+  setInterval(() => {
+    refreshDemoTeamActivity();
+  }, REFRESH_INTERVAL);
+  
+  console.log('[DemoScheduler] Demo data refresh scheduler running every 5 minutes');
+}
