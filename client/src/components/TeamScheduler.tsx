@@ -26,6 +26,7 @@ import {
   parseISO,
   isWithinInterval,
 } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Job {
   id: string;
@@ -135,6 +136,7 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: jobs = [] } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
@@ -179,19 +181,29 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     );
   }, [jobs]);
 
+  // Use actual user ID for owner - only include owner row when auth is loaded
+  const ownerId = user?.id;
+  
   const allMembers = useMemo(() => {
-    const ownerMember: TeamMember = {
-      id: 'owner',
-      memberId: 'owner',
-      firstName: 'Me',
-      lastName: '(Owner)',
-      email: '',
-      roleName: 'Owner',
-      profileImageUrl: undefined,
-      isActive: true,
-    };
-    return [ownerMember, ...teamMembers.filter(m => m.isActive)];
-  }, [teamMembers]);
+    const activeMembers = teamMembers.filter(m => m.isActive);
+    
+    // Only include owner row if we have a valid user ID
+    if (ownerId) {
+      const ownerMember: TeamMember = {
+        id: ownerId,
+        memberId: ownerId,
+        firstName: user?.firstName || 'Me',
+        lastName: user?.lastName || '(Owner)',
+        email: user?.email || '',
+        roleName: 'Owner',
+        profileImageUrl: user?.profileImageUrl,
+        isActive: true,
+      };
+      return [ownerMember, ...activeMembers];
+    }
+    
+    return activeMembers;
+  }, [teamMembers, user, ownerId]);
 
   const rescheduleJobMutation = useMutation({
     mutationFn: async ({ 
@@ -263,11 +275,12 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     const scheduledDate = new Date(date);
     scheduledDate.setHours(9, 0, 0, 0);
 
+    // All jobs get assigned - even owner jobs use the actual user ID
     rescheduleJobMutation.mutate({
       jobId: draggedJob.job.id,
       scheduledAt: scheduledDate.toISOString(),
       scheduledTime: '09:00',
-      assignedTo: memberId === 'owner' ? null : memberId,
+      assignedTo: memberId,
     });
 
     setDraggedJob(null);
@@ -282,8 +295,10 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     return weekJobs.filter(job => {
       const jobDate = parseISO(job.scheduledAt!);
       const matchesDate = isSameDay(jobDate, date);
-      const matchesMember = memberId === 'owner' 
-        ? (!job.assignedTo || job.assignedTo === 'owner')
+      // For owner row, match jobs assigned to owner's user ID or unassigned jobs
+      const isOwnerRow = memberId === ownerId;
+      const matchesMember = isOwnerRow 
+        ? (!job.assignedTo || job.assignedTo === ownerId)
         : job.assignedTo === memberId;
       return matchesDate && matchesMember;
     });

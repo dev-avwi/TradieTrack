@@ -508,7 +508,8 @@ export const SAFETY_FORM_TEMPLATES = {
     ],
     settings: {
       showLogo: true,
-      generatePdfReport: true
+      generatePdfReport: true,
+      notifyOwner: true
     }
   },
 
