@@ -5866,6 +5866,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to force reset demo data (deletes all and recreates with new IDs)
+  // Use when mobile/web IDs are out of sync or data is corrupted
+  app.post("/api/admin/reset-demo-data", requireAuth, async (req: any, res) => {
+    try {
+      const { forceResetDemoData, DEMO_USER } = await import('./demoData');
+      
+      // Only allow demo user to reset their own data
+      const user = await storage.getUser(req.userId);
+      if (!user || user.email !== DEMO_USER.email) {
+        return res.status(403).json({ error: 'Only the demo account can reset demo data' });
+      }
+      
+      const result = await forceResetDemoData();
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.message });
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+        warning: 'Mobile app may need to refresh data. Pull down to refresh on all list screens.'
+      });
+    } catch (error: any) {
+      console.error("Error resetting demo data:", error);
+      res.status(500).json({ error: error.message || "Failed to reset demo data" });
+    }
+  });
+
   // OAuth redirect URIs helper endpoint - shows required URIs for OAuth setup
   // This helps users configure their Google Cloud Console and Xero Developer Portal correctly
   app.get("/api/integrations/oauth-uris", async (req, res) => {

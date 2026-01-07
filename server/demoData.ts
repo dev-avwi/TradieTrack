@@ -126,6 +126,64 @@ export async function fixTestUserPasswords() {
 }
 
 // ============================================
+// HELPER: Ensure business settings and team exist without recreating data
+// ============================================
+async function ensureDemoBusinessAndTeam(demoUser: any) {
+  // Ensure business settings exist and have GST enabled
+  let businessSettings = await storage.getBusinessSettings(demoUser.id);
+  if (!businessSettings) {
+    businessSettings = await storage.createBusinessSettings({
+      userId: demoUser.id,
+      businessName: DEMO_USER.businessName,
+      businessAddress: '42 Grafton Street, Cairns QLD 4870',
+      businessPhone: DEMO_USER.phone,
+      businessEmail: 'info@demoplumbing.com.au',
+      abn: '12 345 678 901',
+      bankName: 'Commonwealth Bank',
+      bsb: '064-123',
+      accountNumber: '12345678',
+      accountName: 'Demo Plumbing & Gas Pty Ltd',
+      gstEnabled: true,
+      qbccLicense: 'QBCC 1234567',
+      insurancePolicy: 'QBE-PLB-987654',
+    });
+    console.log('✅ Business settings created');
+  } else if (!businessSettings.gstEnabled) {
+    await storage.updateBusinessSettings(demoUser.id, { gstEnabled: true });
+    console.log('✅ Business settings updated: GST enabled');
+  }
+
+  // Ensure demo worker exists
+  let workerUser = await storage.getUserByEmail(DEMO_WORKER.email);
+  if (!workerUser) {
+    const hashedWorkerPassword = await bcrypt.hash(DEMO_WORKER.password, 10);
+    workerUser = await storage.createUser({
+      email: DEMO_WORKER.email,
+      password: hashedWorkerPassword,
+      name: DEMO_WORKER.name,
+      phone: DEMO_WORKER.phone,
+      role: DEMO_WORKER.role,
+      emailVerified: true,
+    });
+    console.log('✅ Demo worker user created');
+  }
+
+  // Ensure team member relationship exists
+  const existingTeam = await storage.getTeamMembers(demoUser.id);
+  const workerTeamMember = existingTeam.find(m => m.memberId === workerUser?.id);
+  if (!workerTeamMember && workerUser) {
+    await storage.createTeamMember({
+      ownerId: demoUser.id,
+      memberId: workerUser.id,
+      role: 'worker',
+      inviteStatus: 'accepted',
+      isActive: true,
+    });
+    console.log('✅ Demo worker added to team');
+  }
+}
+
+// ============================================
 // MAIN DEMO DATA CREATION
 // ============================================
 
@@ -154,38 +212,16 @@ export async function createDemoUserAndData() {
       console.log('✅ Demo user password reset to default');
     }
 
-    // Check for existing demo data
+    // Check for existing demo data - PRESERVE it to maintain consistent IDs across web/mobile
     const existingClients = await storage.getClients(demoUser.id);
     if (existingClients.length > 0) {
-      console.log(`ℹ️ Demo data already exists for ${demoUser.email} - deleting and recreating`);
-
-      // Delete existing data in correct order (foreign key constraints)
-      // Receipts first (depend on invoices)
-      const existingReceipts = await storage.getReceipts(demoUser.id);
-      for (const receipt of existingReceipts) {
-        await storage.deleteReceipt(receipt.id, demoUser.id);
-      }
+      console.log(`✅ Demo data already exists for ${demoUser.email} - preserving existing data for consistent IDs`);
       
-      const existingJobs = await storage.getJobs(demoUser.id);
-      for (const job of existingJobs) {
-        await storage.deleteJob(job.id, demoUser.id);
-      }
-
-      const existingQuotes = await storage.getQuotes(demoUser.id);
-      for (const quote of existingQuotes) {
-        await storage.deleteQuote(quote.id, demoUser.id);
-      }
-
-      const existingInvoices = await storage.getInvoices(demoUser.id);
-      for (const invoice of existingInvoices) {
-        await storage.deleteInvoice(invoice.id, demoUser.id);
-      }
-
-      for (const client of existingClients) {
-        await storage.deleteClient(client.id, demoUser.id);
-      }
-
-      console.log('🗑️ Existing demo data deleted');
+      // Ensure business settings, team members exist but don't recreate clients/invoices/jobs/quotes
+      // This keeps IDs stable across server restarts for mobile app compatibility
+      await ensureDemoBusinessAndTeam(demoUser);
+      
+      return demoUser;
     }
 
     // ============================================
@@ -1308,4 +1344,54 @@ export function startDemoDataRefreshScheduler() {
   }, REFRESH_INTERVAL);
   
   console.log('[DemoScheduler] Demo data refresh scheduler running every 5 minutes');
+}
+
+// ============================================
+// FORCE RESET: Delete all demo data and recreate
+// ============================================
+export async function forceResetDemoData(): Promise<{ success: boolean; message: string }> {
+  try {
+    const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+    if (!demoUser) {
+      return { success: false, message: 'Demo user not found' };
+    }
+
+    console.log('[DemoReset] Force resetting all demo data...');
+
+    // Delete existing data in correct order (foreign key constraints)
+    const existingReceipts = await storage.getReceipts(demoUser.id);
+    for (const receipt of existingReceipts) {
+      await storage.deleteReceipt(receipt.id, demoUser.id);
+    }
+    
+    const existingJobs = await storage.getJobs(demoUser.id);
+    for (const job of existingJobs) {
+      await storage.deleteJob(job.id, demoUser.id);
+    }
+
+    const existingQuotes = await storage.getQuotes(demoUser.id);
+    for (const quote of existingQuotes) {
+      await storage.deleteQuote(quote.id, demoUser.id);
+    }
+
+    const existingInvoices = await storage.getInvoices(demoUser.id);
+    for (const invoice of existingInvoices) {
+      await storage.deleteInvoice(invoice.id, demoUser.id);
+    }
+
+    const existingClients = await storage.getClients(demoUser.id);
+    for (const client of existingClients) {
+      await storage.deleteClient(client.id, demoUser.id);
+    }
+
+    console.log('[DemoReset] Existing demo data deleted, recreating...');
+
+    // Now call the main function which will create fresh data since there are no clients
+    await createDemoUserAndData();
+
+    return { success: true, message: 'Demo data reset complete. All clients, jobs, quotes, invoices, and receipts have been recreated with new IDs.' };
+  } catch (error: any) {
+    console.error('[DemoReset] Error resetting demo data:', error);
+    return { success: false, message: error.message || 'Failed to reset demo data' };
+  }
 }

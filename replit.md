@@ -104,3 +104,11 @@ class NotificationService {
 - When `useCustomPermissions` is true for a team member, their custom permission toggles override role-based defaults via `mergeWithCustomPermissions()`
 - Known limitations: Job create/delete remain role-based (no WORKER_PERMISSIONS equivalents); EDIT_DOCUMENTS is shared across quotes/invoices
 - Mobile uses the same WORKER_PERMISSIONS via `hasPermission()` checks with offline SQLite caching
+
+**Demo Data Persistence (Web-Mobile Parity)**:
+- Demo data (clients, jobs, quotes, invoices, receipts) is now preserved across server restarts to maintain consistent IDs between web and mobile apps
+- Previously, demo data was deleted and recreated on every server restart, causing "Invoice not found" errors on mobile when cached IDs became stale
+- The 5-minute refresh scheduler only updates team member locations/activity status, not data entities
+- To force reset demo data when needed: `POST /api/admin/reset-demo-data` (requires demo user authentication)
+- After reset, mobile users must pull-to-refresh on list screens to get new IDs
+- This ensures a realistic tradie experience where invoices, quotes, and jobs persist like real business data
