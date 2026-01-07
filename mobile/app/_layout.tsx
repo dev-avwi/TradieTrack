@@ -473,13 +473,22 @@ function RootLayoutContent() {
   const isLoading = useAuthStore((state) => state.isLoading);
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const { colors, isDark } = useTheme();
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
 
   useEffect(() => {
     checkAuth();
+    
+    // Minimum loading screen display time (1.5 seconds)
+    // This gives the dashboard time to fully load before appearing
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
-  // Show loading screen while checking auth to prevent sign-in page flash
-  if (!isInitialized || isLoading) {
+  // Show loading screen until auth is ready AND minimum time has passed
+  if (!isInitialized || isLoading || !minLoadingComplete) {
     return <LoadingScreen colors={colors} />;
   }
 
