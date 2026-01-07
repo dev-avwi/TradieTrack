@@ -29,6 +29,21 @@ import { getBottomNavHeight } from '../../src/components/BottomNav';
 // Real-time polling interval for team locations (10 seconds)
 const LOCATION_POLL_INTERVAL = 10000;
 
+// Movement threshold in meters - only update marker if moved more than this
+const MOVEMENT_THRESHOLD_METERS = 5;
+
+// Haversine formula to calculate distance between two coordinates in meters
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 const DARK_MAP_STYLE: MapStyleElement[] = [
   { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
@@ -643,6 +658,9 @@ export default function MapScreen() {
   const userHasInteractedRef = useRef(false);
   const isInitialFitDoneRef = useRef(false);
   
+  // Track last known positions for movement threshold (prevents marker jitter)
+  const lastKnownPositionsRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
+  
   // Animation state for smooth marker transitions
   const markerScaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -731,6 +749,31 @@ export default function MapScreen() {
           const nameParts = (m.name || '').trim().split(' ');
           const firstName = nameParts[0] || '';
           const lastName = nameParts.slice(1).join(' ') || '';
+          
+          const newLat = Number(m.latitude);
+          const newLng = Number(m.longitude);
+          
+          // Apply movement threshold to prevent marker jitter
+          // Only use new coordinates if moved more than threshold distance
+          const lastKnown = lastKnownPositionsRef.current.get(m.id);
+          let useLat = newLat;
+          let useLng = newLng;
+          
+          if (lastKnown) {
+            const distance = calculateDistance(lastKnown.lat, lastKnown.lng, newLat, newLng);
+            if (distance < MOVEMENT_THRESHOLD_METERS) {
+              // Use last known position to prevent jitter
+              useLat = lastKnown.lat;
+              useLng = lastKnown.lng;
+            } else {
+              // Significant movement - update last known position
+              lastKnownPositionsRef.current.set(m.id, { lat: newLat, lng: newLng });
+            }
+          } else {
+            // First time seeing this member - save position
+            lastKnownPositionsRef.current.set(m.id, { lat: newLat, lng: newLng });
+          }
+          
           return {
             id: m.id,
             userId: m.id,
@@ -741,8 +784,8 @@ export default function MapScreen() {
               lastName,
             },
             lastLocation: {
-              latitude: Number(m.latitude),
-              longitude: Number(m.longitude),
+              latitude: useLat,
+              longitude: useLng,
               timestamp: m.lastUpdated || new Date().toISOString(),
               speed: m.speed != null ? Number(m.speed) : undefined,
               battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
