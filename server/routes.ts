@@ -2466,6 +2466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: action.data.emailType === 'invoice' ? 'invoice' : 
                 action.data.emailType === 'quote' ? 'quote' : 'reminder',
           fromName: businessSettings?.businessName,
+          replyTo: businessSettings?.businessEmail || undefined,
         });
 
         return res.json({ 
@@ -2570,6 +2571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relatedId: invoice.id.toString(),
           attachments: [{ filename: `Invoice-${invoice.number || invoice.id}.pdf`, content: pdfBuffer }],
           fromName: business?.businessName,
+          replyTo: business?.businessEmail || undefined,
         });
 
         if (result.success) {
@@ -2618,6 +2620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relatedId: quote.id.toString(),
           attachments: [{ filename: `Quote-${quote.number || quote.id}.pdf`, content: pdfBuffer }],
           fromName: business?.businessName,
+          replyTo: business?.businessEmail || undefined,
         });
 
         if (result.success) {
@@ -2832,6 +2835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'reminder',
             relatedId: invoice.id.toString(),
             fromName: business?.businessName,
+            replyTo: business?.businessEmail || undefined,
           });
           results.push(emailResult.success ? 'Email sent' : 'Email failed');
         }

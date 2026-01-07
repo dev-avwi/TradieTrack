@@ -120,6 +120,7 @@ function createRawMessage(options: {
   text?: string;
   fromEmail: string;
   fromName?: string;
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -127,7 +128,7 @@ function createRawMessage(options: {
   }>;
 }): string {
   const boundary = `boundary_${Date.now()}`;
-  const { to, subject, html, text, fromEmail, fromName, attachments } = options;
+  const { to, subject, html, text, fromEmail, fromName, replyTo, attachments } = options;
 
   const fromHeader = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
 
@@ -135,8 +136,14 @@ function createRawMessage(options: {
     `From: ${fromHeader}`,
     `To: ${to}`,
     `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
-    'MIME-Version: 1.0',
   ];
+  
+  // Add Reply-To header so client replies go to tradie's business email
+  if (replyTo) {
+    message.push(`Reply-To: ${replyTo}`);
+  }
+  
+  message.push('MIME-Version: 1.0');
 
   if (attachments && attachments.length > 0) {
     message.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
@@ -205,6 +212,7 @@ function createRawMessageWithoutFrom(options: {
   html: string;
   text?: string;
   fromName?: string;
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -212,7 +220,7 @@ function createRawMessageWithoutFrom(options: {
   }>;
 }): string {
   const boundary = `boundary_${Date.now()}`;
-  const { to, subject, html, text, fromName, attachments } = options;
+  const { to, subject, html, text, fromName, replyTo, attachments } = options;
 
   // Build message headers - include From with display name if provided
   // Gmail API will merge the email address when sending
@@ -225,6 +233,11 @@ function createRawMessageWithoutFrom(options: {
     const encodedName = `=?UTF-8?B?${Buffer.from(fromName).toString('base64')}?=`;
     // Use 'me' as placeholder - Gmail API will replace with actual authenticated email
     message.push(`From: ${encodedName} <me>`);
+  }
+  
+  // Add Reply-To header so client replies go to tradie's business email
+  if (replyTo) {
+    message.push(`Reply-To: ${replyTo}`);
   }
   
   message.push(`To: ${to}`);
@@ -298,6 +311,7 @@ export async function sendViaGmailAPI(options: {
   html: string;
   text?: string;
   fromName?: string;
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -331,7 +345,7 @@ export async function sendViaGmailAPI(options: {
     // 3. If we still don't have an email, we'll try sending anyway
     // Gmail API will use the authenticated user's email as the From address
     if (!fromEmail) {
-      console.log(`[Gmail] No from email available, attempting send with auto-from (fromName: ${options.fromName || 'none'})`);
+      console.log(`[Gmail] No from email available, attempting send with auto-from (fromName: ${options.fromName || 'none'}, replyTo: ${options.replyTo || 'none'})`);
       // Create a message with display name - Gmail will add the email address
       const raw = createRawMessageWithoutFrom({
         to: options.to,
@@ -339,6 +353,7 @@ export async function sendViaGmailAPI(options: {
         html: options.html,
         text: options.text,
         fromName: options.fromName,
+        replyTo: options.replyTo,
         attachments: options.attachments,
       });
 
@@ -364,6 +379,7 @@ export async function sendViaGmailAPI(options: {
       text: options.text,
       fromEmail,
       fromName: options.fromName,
+      replyTo: options.replyTo,
       attachments: options.attachments,
     });
 

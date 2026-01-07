@@ -28,6 +28,7 @@ interface SendEmailOptions {
   type: 'quote' | 'invoice' | 'receipt' | 'reminder' | 'payment_link';
   relatedId?: string;
   fromName?: string; // Custom sender name (e.g., business name)
+  replyTo?: string; // Business email for client replies
 }
 
 interface EmailResult {
@@ -165,9 +166,11 @@ export async function disconnectEmail(userId: string): Promise<{ success: boolea
 }
 
 // Send email through tradie's connected account or fallback to platform
-// Fallback cascade: User SMTP → Gmail Connector → SendGrid Platform
+// Cascade: User SMTP → Outlook → SendGrid (supports custom From name) → Gmail (fallback only)
+// Note: Gmail connector has OAuth limitations that prevent custom From name display,
+// so we prioritize SendGrid for proper business branding in emails
 export async function sendEmailViaIntegration(options: SendEmailOptions): Promise<EmailResult> {
-  const { to, subject, html, text, attachments, userId, type, relatedId, fromName } = options;
+  const { to, subject, html, text, attachments, userId, type, relatedId, fromName, replyTo } = options;
 
   // Get user's email integration from database (SMTP only for now)
   const integration = await getEmailIntegration(userId);
@@ -190,6 +193,7 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
   }).returning();
 
   // Helper to attempt sending with fallback cascade
+  // Priority: User SMTP → Outlook → SendGrid (supports custom From name) → Gmail (doesn't support custom From name)
   const attemptSendWithFallback = async (): Promise<EmailResult> => {
     // 1. Try user's SMTP integration first (if connected)
     if (integration && integration.status === 'connected' && integration.provider === 'smtp') {
@@ -210,19 +214,27 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
       console.warn(`Outlook sending failed, trying fallback: ${outlookResult.error}`);
     }
 
-    // 3. Try Gmail via Replit connector (if available)
+    // 3. Try SendGrid platform email FIRST (properly displays business name in From header)
+    // Gmail connector has OAuth limitations that prevent custom From name display
+    console.log('Using SendGrid platform email (supports custom From name)');
+    const sendgridResult = await sendViaPlatform({ to, subject, html, text, fromName });
+    if (sendgridResult.success) {
+      return sendgridResult;
+    }
+    console.warn(`SendGrid failed, trying Gmail fallback: ${sendgridResult.error}`);
+
+    // 4. Final fallback - Gmail via Replit connector
+    // Note: Gmail connector with send-only OAuth cannot display custom From names
     if (gmailConnected) {
-      console.log('Attempting Gmail via Replit connector');
-      const gmailResult = await sendViaGmailDirect({ to, subject, html, text, attachments, fromName });
+      console.log('Attempting Gmail via Replit connector (fallback - limited From name support)');
+      const gmailResult = await sendViaGmailDirect({ to, subject, html, text, attachments, fromName, replyTo });
       if (gmailResult.success) {
         return gmailResult;
       }
-      console.warn(`Gmail connector failed, falling back to SendGrid: ${gmailResult.error}`);
+      console.warn(`Gmail connector also failed: ${gmailResult.error}`);
     }
 
-    // 4. Final fallback - SendGrid platform email
-    console.log('Using SendGrid platform email as final fallback');
-    return await sendViaPlatform({ to, subject, html, text, fromName });
+    return { success: false, error: 'All email sending methods failed' };
   };
 
   try {
@@ -379,7 +391,7 @@ async function sendViaGmail(
 
 // Send email via Gmail directly (without integration record - uses Replit connector)
 async function sendViaGmailDirect(
-  options: { to: string; subject: string; html: string; text?: string; attachments?: any[]; fromName?: string }
+  options: { to: string; subject: string; html: string; text?: string; attachments?: any[]; fromName?: string; replyTo?: string }
 ): Promise<EmailResult> {
   try {
     const result = await sendViaGmailAPI({
@@ -389,6 +401,7 @@ async function sendViaGmailDirect(
       text: options.text,
       attachments: options.attachments,
       fromName: options.fromName,
+      replyTo: options.replyTo,
     });
 
     if (result.success) {

@@ -352,6 +352,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
           type: 'quote',
           relatedId: req.params.id,
           fromName: businessSettings.businessName,
+          replyTo: businessSettings.businessEmail || undefined,
         });
         
         if (result.success) {
