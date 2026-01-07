@@ -204,11 +204,15 @@ export async function createDemoUserAndData() {
         bsb: '064-123',
         accountNumber: '12345678',
         accountName: 'Demo Plumbing & Gas Pty Ltd',
-        gstRegistered: true,
+        gstEnabled: true,
         qbccLicense: 'QBCC 1234567',
         insurancePolicy: 'QBE-PLB-987654',
       });
       console.log('✅ Business settings created');
+    } else if (!businessSettings.gstEnabled) {
+      // Ensure GST is enabled for existing demo business settings
+      await storage.updateBusinessSettings(demoUser.id, { gstEnabled: true });
+      console.log('✅ Business settings updated: GST enabled');
     }
 
     // ============================================
