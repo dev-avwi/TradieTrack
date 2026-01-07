@@ -60,6 +60,45 @@ function getDaysAgo(days: number): Date {
   return date;
 }
 
+// Get a date X months ago, with an optional day offset within that month
+function getMonthsAgo(months: number, dayOfMonth: number = 15): Date {
+  const date = new Date();
+  date.setMonth(date.getMonth() - months);
+  date.setDate(Math.min(dayOfMonth, 28)); // Avoid issues with shorter months
+  return date;
+}
+
+// Realistic invoice data spread across 12 months for a busy tradie
+// Australian FY runs July-June, so we'll spread data across the current FY
+const MONTHLY_PAID_INVOICES = [
+  // Each month has 1-3 paid invoices representing typical tradie workload
+  // Month 0 = current month, Month 1 = last month, etc.
+  { month: 11, title: 'Commercial Kitchen Fit-Out', description: 'Full plumbing installation for cafe kitchen', subtotal: 4850, payDay: 18 },
+  { month: 11, title: 'Hot Water System Install', description: 'Replaced old electric HWS with gas continuous flow', subtotal: 2450, payDay: 25 },
+  { month: 10, title: 'Bathroom Renovation - Stage 1', description: 'Rough-in plumbing for master ensuite', subtotal: 3200, payDay: 12 },
+  { month: 10, title: 'Gas Cooktop Installation', description: 'Connected new 5-burner gas cooktop', subtotal: 380, payDay: 22 },
+  { month: 9, title: 'Blocked Sewer Main', description: 'High-pressure jetter service - tree roots removed', subtotal: 650, payDay: 8 },
+  { month: 9, title: 'Grease Trap Service', description: 'Annual grease trap pump-out and inspection', subtotal: 420, payDay: 15 },
+  { month: 9, title: 'Rainwater Tank Connection', description: 'Connected 5000L rainwater tank to toilet and laundry', subtotal: 1850, payDay: 28 },
+  { month: 8, title: 'Emergency After Hours - Burst Pipe', description: 'Weekend callout for burst copper pipe under house', subtotal: 680, payDay: 3 },
+  { month: 8, title: 'Kitchen Sink Replacement', description: 'Installed new undermount sink with mixer tap', subtotal: 520, payDay: 19 },
+  { month: 7, title: 'New Build - Final Fix', description: 'Final fix plumbing for 4-bed residence', subtotal: 5200, payDay: 10 },
+  { month: 7, title: 'Dishwasher Installation', description: 'Connected new Miele dishwasher', subtotal: 180, payDay: 24 },
+  { month: 6, title: 'TMV Compliance Testing', description: 'Thermostatic mixing valve testing and certification', subtotal: 320, payDay: 5 },
+  { month: 6, title: 'Laundry Renovation', description: 'Relocated taps, installed new trough and washing machine outlet', subtotal: 1450, payDay: 18 },
+  { month: 5, title: 'Gas Heater Service', description: 'Annual gas heater service and CO testing', subtotal: 195, payDay: 11 },
+  { month: 5, title: 'Toilet Suite Replacement', description: 'Removed old separate and installed new close-coupled suite', subtotal: 485, payDay: 22 },
+  { month: 4, title: 'Commercial Backflow Testing', description: 'Annual backflow prevention device testing - 3 devices', subtotal: 540, payDay: 7 },
+  { month: 4, title: 'Stormwater Drainage Repair', description: 'Repaired collapsed stormwater pipe - 6m section', subtotal: 2100, payDay: 20 },
+  { month: 3, title: 'Shower Regrouting & Waterproofing', description: 'Complete shower base waterproofing and tile regrout', subtotal: 890, payDay: 14 },
+  { month: 3, title: 'Gas Bayonet Installation', description: 'Installed outdoor gas bayonet for BBQ', subtotal: 280, payDay: 26 },
+  { month: 2, title: 'Hot Water System Service', description: 'Annual service on solar hot water system', subtotal: 245, payDay: 9 },
+  { month: 2, title: 'Outdoor Shower Installation', description: 'Installed poolside outdoor shower with hot/cold mixing', subtotal: 720, payDay: 21 },
+  { month: 1, title: 'Vanity Installation', description: 'Installed new bathroom vanity with tapware', subtotal: 680, payDay: 16 },
+  { month: 1, title: 'Emergency Pipe Repair', description: 'Repaired burst pipe under house - after hours callout', subtotal: 520, payDay: 8 },
+  { month: 0, title: 'Kitchen Tap Replacement', description: 'Replaced mixer tap with pull-out spray model', subtotal: 385, payDay: 3 },
+];
+
 function generateXeroId(prefix: string): string {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   return `${prefix}-${randomNum}`;
@@ -668,124 +707,78 @@ export async function createDemoUserAndData() {
     await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: 'Pressure Relief Valve', quantity: '1.00', unitPrice: '80.00', total: '80.00', sortOrder: 1 });
     await storage.createInvoiceLineItem({ invoiceId: overdueInvoice2.id, description: 'Labour (1 hour)', quantity: '1.00', unitPrice: '140.00', total: '140.00', sortOrder: 2 });
 
-    // PAID INVOICES (4)
-    const paidInv1Num = await storage.generateInvoiceNumber(demoUser.id);
-    const paidInvoice1 = await storage.createInvoice({
-      userId: demoUser.id,
-      clientId: createdClients[7].id,
-      title: 'Vanity Installation',
-      description: 'Installed new bathroom vanity with tapware',
-      status: 'paid' as const,
-      subtotal: '680.00',
-      gstAmount: '68.00',
-      total: '748.00',
-      dueDate: getDaysAgo(25),
-      sentAt: getDaysAgo(40),
-      paidAt: getDaysAgo(22),
-      number: paidInv1Num,
-    });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice1.id, description: 'Vanity Installation', quantity: '1.00', unitPrice: '680.00', total: '680.00', sortOrder: 1 });
+    // PAID INVOICES - Spread across 12 months for realistic reporting
+    const paymentMethods = ['bank_transfer', 'card', 'cash', 'eftpos'] as const;
+    const createdPaidInvoices: { invoice: any; invoiceData: typeof MONTHLY_PAID_INVOICES[0] }[] = [];
+    
+    for (let i = 0; i < MONTHLY_PAID_INVOICES.length; i++) {
+      const invoiceData = MONTHLY_PAID_INVOICES[i];
+      const gstAmount = invoiceData.subtotal * 0.1; // 10% GST
+      const total = invoiceData.subtotal + gstAmount;
+      const paidAt = getMonthsAgo(invoiceData.month, invoiceData.payDay);
+      const sentAt = new Date(paidAt);
+      sentAt.setDate(sentAt.getDate() - 14); // Sent 2 weeks before payment
+      const dueAt = new Date(paidAt);
+      dueAt.setDate(dueAt.getDate() + 7); // Due 1 week after payment (already paid)
+      
+      const invNum = await storage.generateInvoiceNumber(demoUser.id);
+      const clientIndex = i % createdClients.length;
+      
+      const invoice = await storage.createInvoice({
+        userId: demoUser.id,
+        clientId: createdClients[clientIndex].id,
+        title: invoiceData.title,
+        description: invoiceData.description,
+        status: 'paid' as const,
+        subtotal: invoiceData.subtotal.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        total: total.toFixed(2),
+        dueDate: dueAt,
+        sentAt: sentAt,
+        paidAt: paidAt,
+        number: invNum,
+      });
+      
+      await storage.createInvoiceLineItem({
+        invoiceId: invoice.id,
+        description: invoiceData.title,
+        quantity: '1.00',
+        unitPrice: invoiceData.subtotal.toFixed(2),
+        total: invoiceData.subtotal.toFixed(2),
+        sortOrder: 1
+      });
+      
+      createdPaidInvoices.push({ invoice, invoiceData });
+    }
 
-    const paidInv2Num = await storage.generateInvoiceNumber(demoUser.id);
-    const paidInvoice2 = await storage.createInvoice({
-      userId: demoUser.id,
-      clientId: createdClients[8].id,
-      title: 'Emergency Pipe Repair',
-      description: 'Repaired burst pipe under house - after hours callout',
-      status: 'paid' as const,
-      subtotal: '520.00',
-      gstAmount: '52.00',
-      total: '572.00',
-      dueDate: getDaysAgo(30),
-      sentAt: getDaysAgo(45),
-      paidAt: getDaysAgo(28),
-      number: paidInv2Num,
-    });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice2.id, description: 'After Hours Call-Out', quantity: '1.00', unitPrice: '150.00', total: '150.00', sortOrder: 1 });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice2.id, description: 'Pipe Repair Materials', quantity: '1.00', unitPrice: '120.00', total: '120.00', sortOrder: 2 });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice2.id, description: 'Labour (2 hours)', quantity: '2.00', unitPrice: '125.00', total: '250.00', sortOrder: 3 });
-
-    const paidInv3Num = await storage.generateInvoiceNumber(demoUser.id);
-    const paidInvoice3 = await storage.createInvoice({
-      userId: demoUser.id,
-      clientId: createdClients[9].id,
-      title: 'Hot Water Thermostat Replacement',
-      description: 'Replaced faulty thermostat on hot water system',
-      status: 'paid' as const,
-      subtotal: '195.00',
-      gstAmount: '19.50',
-      total: '214.50',
-      dueDate: getDaysAgo(35),
-      sentAt: getDaysAgo(50),
-      paidAt: getDaysAgo(33),
-      number: paidInv3Num,
-    });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice3.id, description: 'Thermostat', quantity: '1.00', unitPrice: '75.00', total: '75.00', sortOrder: 1 });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice3.id, description: 'Labour (1 hour)', quantity: '1.00', unitPrice: '120.00', total: '120.00', sortOrder: 2 });
-
-    const paidInv4Num = await storage.generateInvoiceNumber(demoUser.id);
-    const paidInvoice4 = await storage.createInvoice({
-      userId: demoUser.id,
-      clientId: createdClients[0].id,
-      title: 'Bathroom Fit-Out Complete',
-      description: 'Final fix plumbing for bathroom renovation',
-      status: 'paid' as const,
-      subtotal: '2400.00',
-      gstAmount: '240.00',
-      total: '2640.00',
-      dueDate: getDaysAgo(40),
-      sentAt: getDaysAgo(55),
-      paidAt: getDaysAgo(38),
-      number: paidInv4Num,
-    });
-    await storage.createInvoiceLineItem({ invoiceId: paidInvoice4.id, description: 'Final Fix Plumbing - Bathroom', quantity: '1.00', unitPrice: '2400.00', total: '2400.00', sortOrder: 1 });
-
-    console.log('✅ 11 Demo invoices created (2 draft, 3 sent, 2 overdue, 4 paid)');
+    console.log(`✅ ${7 + MONTHLY_PAID_INVOICES.length} Demo invoices created (2 draft, 3 sent, 2 overdue, ${MONTHLY_PAID_INVOICES.length} paid across 12 months)`);
 
     // ============================================
-    // CREATE RECEIPTS (3 for paid invoices)
+    // CREATE RECEIPTS (one for each paid invoice)
     // ============================================
 
-    await storage.createReceipt({
-      userId: demoUser.id,
-      invoiceId: paidInvoice1.id,
-      clientId: createdClients[7].id,
-      receiptNumber: `REC-${Date.now().toString().slice(-6)}-001`,
-      amount: '748.00',
-      gstAmount: '68.00',
-      subtotal: '680.00',
-      description: 'Payment for vanity installation',
-      paymentMethod: 'bank_transfer',
-      paidAt: getDaysAgo(22),
-    });
+    for (let i = 0; i < createdPaidInvoices.length; i++) {
+      const { invoice, invoiceData } = createdPaidInvoices[i];
+      const gstAmount = invoiceData.subtotal * 0.1;
+      const total = invoiceData.subtotal + gstAmount;
+      const paidAt = getMonthsAgo(invoiceData.month, invoiceData.payDay);
+      const clientIndex = i % createdClients.length;
+      
+      await storage.createReceipt({
+        userId: demoUser.id,
+        invoiceId: invoice.id,
+        clientId: createdClients[clientIndex].id,
+        receiptNumber: `REC-${Date.now().toString().slice(-6)}-${String(i + 1).padStart(3, '0')}`,
+        amount: total.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        subtotal: invoiceData.subtotal.toFixed(2),
+        description: `Payment for ${invoiceData.title.toLowerCase()}`,
+        paymentMethod: paymentMethods[i % paymentMethods.length],
+        paidAt: paidAt,
+      });
+    }
 
-    await storage.createReceipt({
-      userId: demoUser.id,
-      invoiceId: paidInvoice2.id,
-      clientId: createdClients[8].id,
-      receiptNumber: `REC-${Date.now().toString().slice(-6)}-002`,
-      amount: '572.00',
-      gstAmount: '52.00',
-      subtotal: '520.00',
-      description: 'Payment for emergency pipe repair',
-      paymentMethod: 'card',
-      paidAt: getDaysAgo(28),
-    });
-
-    await storage.createReceipt({
-      userId: demoUser.id,
-      invoiceId: paidInvoice4.id,
-      clientId: createdClients[0].id,
-      receiptNumber: `REC-${Date.now().toString().slice(-6)}-003`,
-      amount: '2640.00',
-      gstAmount: '240.00',
-      subtotal: '2400.00',
-      description: 'Payment for bathroom fit-out',
-      paymentMethod: 'bank_transfer',
-      paidAt: getDaysAgo(38),
-    });
-
-    console.log('✅ 3 Demo receipts created for paid invoices');
+    console.log(`✅ ${MONTHLY_PAID_INVOICES.length} Demo receipts created for paid invoices (spread across 12 months)`);
 
     // ============================================
     // CREATE SMS CONVERSATIONS (for demo)
