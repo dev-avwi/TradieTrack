@@ -1,14 +1,9 @@
-import { useEffect } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../src/lib/store';
 import { LoadingScreen } from '../src/components/ui/LoadingScreen';
 
 export default function Index() {
-  const { isAuthenticated, isLoading, isInitialized, checkAuth, user } = useAuthStore();
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const { isAuthenticated, isLoading, isInitialized, user } = useAuthStore();
 
   if (!isInitialized || isLoading) {
     return <LoadingScreen message="Loading TradieTrack..." />;

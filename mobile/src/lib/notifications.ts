@@ -56,16 +56,32 @@ class NotificationService {
   private responseListener: Notifications.Subscription | null = null;
   private onNotificationReceived?: (notification: NotificationPayload) => void;
   private onNotificationTapped?: (notification: NotificationPayload, action?: string) => void;
+  private isInitializing: boolean = false;
+  private isInitialized: boolean = false;
 
   /**
    * Initialize push notifications
    * Requests permissions and registers for push notifications
    */
   async initialize(): Promise<string | null> {
+    // Guard: prevent multiple initializations
+    if (this.isInitialized && this.pushToken) {
+      console.log('[Notifications] Already initialized, returning existing token');
+      return this.pushToken;
+    }
+    
+    if (this.isInitializing) {
+      console.log('[Notifications] Initialization already in progress, skipping');
+      return null;
+    }
+    
+    this.isInitializing = true;
+    
     try {
       // Check if we're on a physical device
       if (!Device.isDevice) {
         console.log('[Notifications] Push notifications require a physical device');
+        this.isInitializing = false;
         return null;
       }
 
@@ -80,6 +96,7 @@ class NotificationService {
       
       if (finalStatus !== 'granted') {
         console.log('[Notifications] Permission not granted');
+        this.isInitializing = false;
         return null;
       }
 
@@ -95,6 +112,7 @@ class NotificationService {
       if (!projectId || !uuidRegex.test(projectId)) {
         console.log('[Notifications] No valid projectId available - push notifications disabled in dev');
         console.log('[Notifications] To enable, add EAS projectId to app.config or run eas build');
+        this.isInitializing = false;
         return null;
       }
       
@@ -116,9 +134,12 @@ class NotificationService {
       // Register token with backend
       await this.registerTokenWithBackend();
 
+      this.isInitialized = true;
+      this.isInitializing = false;
       return this.pushToken;
     } catch (error) {
       console.error('[Notifications] Initialization failed:', error);
+      this.isInitializing = false;
       return null;
     }
   }

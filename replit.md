@@ -52,3 +52,38 @@ Key architectural and design decisions include:
 *   **Maps**: Leaflet with react-leaflet
 *   **Accounting Integration**: Xero, MYOB AccountRight
 *   **Calendar Integration**: Google Calendar
+
+### Mobile App Development Patterns
+
+**React Native/Expo Initialization Guards** (Critical):
+When async initialization functions are called in components that may remount (e.g., due to `isLoading` state toggling), always add guards to prevent infinite loops:
+
+```typescript
+// In Zustand stores - guard async functions like checkAuth
+checkAuth: async () => {
+  const state = get();
+  if (state.isLoading) return; // Guard: prevent simultaneous calls
+  if (state.isInitialized && state.isAuthenticated) return; // Guard: skip if done
+  set({ isLoading: true });
+  // ... auth logic
+}
+
+// In services - guard initialization with flags
+class NotificationService {
+  private isInitializing = false;
+  private isInitialized = false;
+  
+  async initialize() {
+    if (this.isInitialized) return this.pushToken;
+    if (this.isInitializing) return null;
+    this.isInitializing = true;
+    // ... init logic
+  }
+}
+```
+
+**Single Auth Check Entry Point**: Call `checkAuth()` only in `_layout.tsx` (RootLayoutContent), never duplicate in `index.tsx` or other screens - this prevents race conditions.
+
+**Team Member Colors**: 12-color palette auto-assigned and persisted to `users.themeColor` on first view for consistency across map and team views.
+
+**iOS Map Markers**: Use 100% static marker appearance to prevent markers flashing at (0,0) when view content changes. Life360-style live movement uses 10-second polling interval.

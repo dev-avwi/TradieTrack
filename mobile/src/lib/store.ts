@@ -298,6 +298,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
+    // Guard: prevent multiple simultaneous auth checks
+    const state = get();
+    if (state.isLoading) {
+      console.log('[Auth] checkAuth already in progress, skipping');
+      return;
+    }
+    
+    // Guard: if already initialized and authenticated, don't re-check
+    if (state.isInitialized && state.isAuthenticated && state.user) {
+      console.log('[Auth] Already authenticated, skipping checkAuth');
+      return;
+    }
+    
     set({ isLoading: true });
     
     await api.loadToken();
@@ -425,8 +438,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await get().fetchTeamState();
     
     // Update cached auth data
-    const state = get();
-    await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
+    const currentState = get();
+    await offlineStorage.cacheAuthData(currentState.user, currentState.businessSettings, currentState.roleInfo);
   },
 
   fetchRoleInfo: async () => {
@@ -1183,7 +1196,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
       
       // Fall back to offline creation
       try {
-        const offlineQuote = await offlineStorage.saveQuoteOffline(quote, 'create');
+        const offlineQuote = await offlineStorage.saveQuoteOffline(quote as Parameters<typeof offlineStorage.saveQuoteOffline>[0]);
         const { quotes } = get();
         set({ quotes: [...quotes, offlineQuote as Quote] });
         return offlineQuote as Quote;
@@ -1194,7 +1207,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     } else {
       // Create offline
       try {
-        const offlineQuote = await offlineStorage.saveQuoteOffline(quote, 'create');
+        const offlineQuote = await offlineStorage.saveQuoteOffline(quote as Parameters<typeof offlineStorage.saveQuoteOffline>[0]);
         const { quotes } = get();
         set({ quotes: [...quotes, offlineQuote as Quote] });
         return offlineQuote as Quote;
@@ -1426,7 +1439,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
       
       // Fall back to offline creation
       try {
-        const offlineInvoice = await offlineStorage.saveInvoiceOffline(invoice, 'create');
+        const offlineInvoice = await offlineStorage.saveInvoiceOffline(invoice as Parameters<typeof offlineStorage.saveInvoiceOffline>[0]);
         const { invoices } = get();
         set({ invoices: [...invoices, offlineInvoice as Invoice] });
         return offlineInvoice as Invoice;
@@ -1437,7 +1450,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     } else {
       // Create offline
       try {
-        const offlineInvoice = await offlineStorage.saveInvoiceOffline(invoice, 'create');
+        const offlineInvoice = await offlineStorage.saveInvoiceOffline(invoice as Parameters<typeof offlineStorage.saveInvoiceOffline>[0]);
         const { invoices } = get();
         set({ invoices: [...invoices, offlineInvoice as Invoice] });
         return offlineInvoice as Invoice;

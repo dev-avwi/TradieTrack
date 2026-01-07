@@ -1260,24 +1260,43 @@ export default function DashboardScreen() {
     }
   };
 
+  // Use refs to maintain stable function references and prevent re-render loops
+  const fetchTodaysJobsRef = useRef(fetchTodaysJobs);
+  const fetchStatsRef = useRef(fetchStats);
+  const fetchClientsRef = useRef(fetchClients);
+  const fetchActivitiesRef = useRef(fetchActivities);
+  const fetchTeamStateRef = useRef(fetchTeamState);
+  
+  // Keep refs updated
+  fetchTodaysJobsRef.current = fetchTodaysJobs;
+  fetchStatsRef.current = fetchStats;
+  fetchClientsRef.current = fetchClients;
+  fetchActivitiesRef.current = fetchActivities;
+  fetchTeamStateRef.current = fetchTeamState;
+
   const refreshData = useCallback(async () => {
     await Promise.all([
-      fetchTodaysJobs(),
-      fetchStats(),
-      fetchClients(),
-      fetchActivities(),
+      fetchTodaysJobsRef.current(),
+      fetchStatsRef.current(),
+      fetchClientsRef.current(),
+      fetchActivitiesRef.current(),
     ]);
-  }, [fetchTodaysJobs, fetchStats, fetchClients, fetchActivities]);
+  }, []); // Empty deps - uses refs
 
+  // Initial load only once on mount
+  const didMountRef = useRef(false);
   useEffect(() => {
-    refreshData();
-  }, []);
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      refreshData();
+    }
+  }, [refreshData]);
 
   // Refresh data when screen gains focus (syncs with web app)
   useFocusEffect(
     useCallback(() => {
       refreshData();
-    }, [refreshData])
+    }, []) // Empty dependency - refreshData uses refs internally
   );
 
   // Fetch team data for job scheduler (owners only)
@@ -1293,7 +1312,7 @@ export default function DashboardScreen() {
         api.get('/api/team/members'),
         api.get('/api/jobs'),
         api.get('/api/jobs?unassigned=true'),
-        fetchTeamState(), // Also update the store's team state
+        fetchTeamStateRef.current(), // Use ref for stable reference
       ]);
       if (teamRes.data) {
         setTeamMembers(teamRes.data.filter((m: any) => m.inviteStatus === 'accepted'));
@@ -1309,11 +1328,16 @@ export default function DashboardScreen() {
     } finally {
       setIsTeamDataLoading(false);
     }
-  }, [isOwnerUser, fetchTeamState]);
+  }, [isOwnerUser]); // Only depends on isOwnerUser
 
+  // Fetch team data once on mount and when owner status changes
+  const teamDataFetchedRef = useRef(false);
   useEffect(() => {
-    fetchTeamData();
-  }, [fetchTeamData]);
+    if (!teamDataFetchedRef.current || isOwnerUser) {
+      teamDataFetchedRef.current = true;
+      fetchTeamData();
+    }
+  }, [isOwnerUser]);
 
   const handleAssignJob = async (jobId: string, userId: string) => {
     setIsAssigning(true);
