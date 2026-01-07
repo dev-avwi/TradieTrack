@@ -1229,7 +1229,66 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 </div>
               </div>
 
-              {businessSettings?.paymentInstructions && (
+              {/* Bank Transfer Details - show when bank details are configured */}
+              {(businessSettings?.bankBsb || businessSettings?.bankAccountNumber || businessSettings?.bankAccountName) && (
+                <div 
+                  className="mb-8 p-5 rounded-lg"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${primaryColor}10, ${primaryColor}05)`,
+                    border: `1px solid ${primaryColor}30`
+                  }}
+                  data-testid="bank-transfer-details"
+                >
+                  <h3 
+                    className="font-semibold mb-3 text-sm"
+                    style={{ color: primaryColor }}
+                  >
+                    Bank Transfer Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {businessSettings.bankAccountName && (
+                      <div>
+                        <span className="text-gray-500 text-xs">Account Name</span>
+                        <div className="font-medium text-gray-900" data-testid="bank-account-name">
+                          {businessSettings.bankAccountName}
+                        </div>
+                      </div>
+                    )}
+                    {businessSettings.bankBsb && (
+                      <div>
+                        <span className="text-gray-500 text-xs">BSB</span>
+                        <div className="font-medium text-gray-900 font-mono" data-testid="bank-bsb">
+                          {businessSettings.bankBsb}
+                        </div>
+                      </div>
+                    )}
+                    {businessSettings.bankAccountNumber && (
+                      <div>
+                        <span className="text-gray-500 text-xs">Account Number</span>
+                        <div className="font-medium text-gray-900 font-mono" data-testid="bank-account-number">
+                          {businessSettings.bankAccountNumber}
+                        </div>
+                      </div>
+                    )}
+                    <div className="sm:col-span-2">
+                      <span className="text-gray-500 text-xs">Reference</span>
+                      <div className="font-medium text-gray-900" data-testid="bank-reference">
+                        {invoice.number || `INV-${invoice.id?.substring(0,8).toUpperCase()}`}
+                      </div>
+                    </div>
+                  </div>
+                  {businessSettings.paymentInstructions && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <p className="text-gray-600 text-xs whitespace-pre-wrap">
+                        {businessSettings.paymentInstructions}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Payment Instructions only - when no bank details but has instructions */}
+              {!businessSettings?.bankBsb && !businessSettings?.bankAccountNumber && !businessSettings?.bankAccountName && businessSettings?.paymentInstructions && (
                 <div 
                   className="mb-8 p-5 rounded-lg"
                   style={{ 

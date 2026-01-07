@@ -32,6 +32,10 @@ interface InvoiceData {
     name: string;
     logo?: string;
     abn?: string;
+    bankBsb?: string;
+    bankAccountNumber?: string;
+    bankAccountName?: string;
+    paymentInstructions?: string;
   };
   paid?: boolean;
   message?: string;
@@ -234,14 +238,111 @@ function InvoicePaymentView({
   }
 
   if (!invoiceData.allowOnlinePayment) {
+    const hasBankDetails = invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
-          <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Online Payment Not Available</h2>
-          <p className="text-slate-600">
-            Online payment has not been enabled for this invoice. Please contact {invoiceData.business.name} for payment options.
-          </p>
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          {/* Header */}
+          <div className="p-6 text-center border-b border-slate-100">
+            {invoiceData.business.logo ? (
+              <img 
+                src={invoiceData.business.logo} 
+                alt={invoiceData.business.name} 
+                className="h-12 max-w-[140px] object-contain mx-auto mb-3"
+              />
+            ) : null}
+            <h1 className="text-xl font-bold text-slate-900">{invoiceData.business.name}</h1>
+            <p className="text-sm text-slate-500 mt-1">Invoice #{invoiceData.number}</p>
+            <p className="text-2xl font-bold text-blue-600 mt-2">${parseFloat(invoiceData.total).toFixed(2)} AUD</p>
+          </div>
+          
+          {/* Bank details if available */}
+          {hasBankDetails ? (
+            <div className="p-6">
+              <div className="bg-green-50 rounded-xl p-4 border border-green-200" data-testid="bank-transfer-details">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-green-900 text-sm">Pay by Bank Transfer</h3>
+                    <p className="text-xs text-green-700">No fees - pay directly to the account below</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {invoiceData.business.bankAccountName && (
+                    <div className="col-span-2">
+                      <span className="text-green-700 text-xs">Account Name</span>
+                      <p className="font-medium text-green-900">{invoiceData.business.bankAccountName}</p>
+                    </div>
+                  )}
+                  {invoiceData.business.bankBsb && (
+                    <div>
+                      <span className="text-green-700 text-xs">BSB</span>
+                      <p className="font-medium text-green-900 font-mono">{invoiceData.business.bankBsb}</p>
+                    </div>
+                  )}
+                  {invoiceData.business.bankAccountNumber && (
+                    <div>
+                      <span className="text-green-700 text-xs">Account Number</span>
+                      <p className="font-medium text-green-900 font-mono">{invoiceData.business.bankAccountNumber}</p>
+                    </div>
+                  )}
+                  <div className="col-span-2">
+                    <span className="text-green-700 text-xs">Reference (use this when paying)</span>
+                    <p className="font-bold text-green-900">{invoiceData.number}</p>
+                  </div>
+                </div>
+                {invoiceData.business.paymentInstructions && (
+                  <p className="text-xs text-green-700 mt-3 pt-3 border-t border-green-200">
+                    {invoiceData.business.paymentInstructions}
+                  </p>
+                )}
+              </div>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                className="w-full mt-4 border-slate-300 text-slate-700"
+                onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
+                data-testid="button-download-invoice"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Download Invoice
+              </Button>
+            </div>
+          ) : invoiceData.business.paymentInstructions ? (
+            <div className="p-6">
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200" data-testid="payment-instructions">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                  <h3 className="font-semibold text-blue-900 text-sm">Payment Instructions</h3>
+                </div>
+                <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                  {invoiceData.business.paymentInstructions}
+                </p>
+              </div>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                className="w-full mt-4 border-slate-300 text-slate-700"
+                onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
+                data-testid="button-download-invoice"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Download Invoice
+              </Button>
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <p className="text-slate-600">
+                Please contact {invoiceData.business.name} for payment options.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -351,6 +452,63 @@ function InvoicePaymentView({
                   <span className="text-blue-600">${total.toFixed(2)} AUD</span>
                 </div>
               </div>
+
+              {/* Bank Transfer Details - show if available */}
+              {(invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName) && (
+                <div className="bg-green-50 rounded-xl p-4 border border-green-200" data-testid="bank-transfer-details">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-green-900 text-sm">Bank Transfer Details</h3>
+                      <p className="text-xs text-green-700">Pay by direct deposit - no fees</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {invoiceData.business.bankAccountName && (
+                      <div className="col-span-2">
+                        <span className="text-green-700 text-xs">Account Name</span>
+                        <p className="font-medium text-green-900">{invoiceData.business.bankAccountName}</p>
+                      </div>
+                    )}
+                    {invoiceData.business.bankBsb && (
+                      <div>
+                        <span className="text-green-700 text-xs">BSB</span>
+                        <p className="font-medium text-green-900 font-mono">{invoiceData.business.bankBsb}</p>
+                      </div>
+                    )}
+                    {invoiceData.business.bankAccountNumber && (
+                      <div>
+                        <span className="text-green-700 text-xs">Account Number</span>
+                        <p className="font-medium text-green-900 font-mono">{invoiceData.business.bankAccountNumber}</p>
+                      </div>
+                    )}
+                    <div className="col-span-2">
+                      <span className="text-green-700 text-xs">Reference (use this when paying)</span>
+                      <p className="font-bold text-green-900">{invoiceData.number}</p>
+                    </div>
+                  </div>
+                  {invoiceData.business.paymentInstructions && (
+                    <p className="text-xs text-green-700 mt-3 pt-3 border-t border-green-200">
+                      {invoiceData.business.paymentInstructions}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Payment Instructions only - when no bank details but has instructions */}
+              {!(invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName) && invoiceData.business.paymentInstructions && (
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200" data-testid="payment-instructions">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <h3 className="font-semibold text-blue-900 text-sm">Payment Instructions</h3>
+                  </div>
+                  <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                    {invoiceData.business.paymentInstructions}
+                  </p>
+                </div>
+              )}
               
               <Button 
                 variant="outline"

@@ -15516,7 +15516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await storage.getClientById(invoice.clientId);
       const settings = await storage.getBusinessSettingsByUserId(invoice.userId);
       
-      // Don't expose sensitive data
+      // Don't expose sensitive data - but include bank details for payment
       res.json({
         id: invoice.id,
         number: invoice.number,
@@ -15531,6 +15531,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: settings?.businessName,
           logo: settings?.logoUrl,
           abn: settings?.abn,
+          // Bank details for bank transfer payments
+          bankBsb: settings?.bankBsb,
+          bankAccountNumber: settings?.bankAccountNumber,
+          bankAccountName: settings?.bankAccountName,
+          paymentInstructions: settings?.paymentInstructions,
         },
         client: {
           name: client?.name,

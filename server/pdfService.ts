@@ -1211,9 +1211,16 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
       <div class="payment-section">
         <div class="payment-title">Payment Details</div>
         <div class="payment-details">
-${business.paymentInstructions || 'Please contact us for payment options.'}
-
-${(business as any).bankDetails ? `Bank Details:\n${(business as any).bankDetails}` : ''}
+${(business as any).bankBsb || (business as any).bankAccountNumber || (business as any).bankAccountName ? `
+<strong style="display: block; margin-bottom: 8px; color: #374151;">Bank Transfer Details</strong>
+<table style="margin-bottom: 12px; font-size: 11px;">
+${(business as any).bankAccountName ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Name:</td><td style="font-weight: 500;">${(business as any).bankAccountName}</td></tr>` : ''}
+${(business as any).bankBsb ? `<tr><td style="color: #6b7280; padding-right: 12px;">BSB:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankBsb}</td></tr>` : ''}
+${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-right: 12px;">Account Number:</td><td style="font-weight: 500; font-family: monospace;">${(business as any).bankAccountNumber}</td></tr>` : ''}
+<tr><td style="color: #6b7280; padding-right: 12px;">Reference:</td><td style="font-weight: 500;">${invoice.number || 'INV-' + invoice.id.substring(0,8).toUpperCase()}</td></tr>
+</table>
+` : ''}
+${business.paymentInstructions || (!((business as any).bankBsb || (business as any).bankAccountNumber) ? 'Please contact us for payment options.' : '')}
 
 ${invoice.dueDate ? `Payment is due by ${formatDate(invoice.dueDate)}.` : ''}
 ${business.lateFeeRate ? `Late payments may incur interest at ${business.lateFeeRate}.` : ''}
