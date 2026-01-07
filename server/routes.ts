@@ -13926,12 +13926,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== TEAM MANAGEMENT ROUTES =====
   
+  // Distinct color palette for team members - auto-assigned based on index
+  const TEAM_MEMBER_COLOR_PALETTE = [
+    '#3B82F6', // Blue
+    '#22C55E', // Green
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#14B8A6', // Teal
+    '#F97316', // Orange
+    '#6366F1', // Indigo
+    '#84CC16', // Lime
+    '#06B6D4', // Cyan
+    '#A855F7', // Violet
+  ];
+
   // Get all team members for the current user (business owner)
   app.get("/api/team/members", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       
-      // Fetch team members and all roles in parallel (avoid N+1 queries)
+      // Fetch team members, all roles, and member user data in parallel
       const [teamMembers, allRoles] = await Promise.all([
         storage.getTeamMembers(userId),
         storage.getUserRoles()
@@ -13940,22 +13956,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a lookup map for O(1) role access
       const roleMap = new Map(allRoles.map(role => [role.id, role]));
       
-      // Enrich team members with role name without additional queries
-      // Also add userId alias for mobile compatibility (mobile expects userId, DB has memberId)
-      const enrichedMembers = teamMembers.map(member => {
+      // Fetch user data for members that have accepted invites
+      // Auto-persist default colors if not already set
+      const memberUserPromises = teamMembers.map(async (member, index) => {
+        const defaultColor = TEAM_MEMBER_COLOR_PALETTE[index % TEAM_MEMBER_COLOR_PALETTE.length];
+        let themeColor = defaultColor;
+        
+        if (member.memberId) {
+          const memberUser = await storage.getUser(member.memberId);
+          if (memberUser?.themeColor) {
+            themeColor = memberUser.themeColor;
+          } else if (memberUser) {
+            // Auto-persist default color so it's consistent across all endpoints
+            await storage.updateUser(member.memberId, { themeColor: defaultColor });
+            console.log(`[TeamMembers] Auto-assigned color ${defaultColor} to ${memberUser.email}`);
+          }
+        }
+        
         const role = roleMap.get(member.roleId);
         return {
           ...member,
           userId: member.memberId, // Mobile app expects userId, database stores memberId
           roleName: role?.name || 'Team Member',
           roleDescription: role?.description || '',
+          themeColor,
         };
       });
+      
+      const enrichedMembers = await Promise.all(memberUserPromises);
       
       res.json(enrichedMembers);
     } catch (error) {
       console.error('Error fetching team members:', error);
       res.status(500).json({ error: 'Failed to fetch team members' });
+    }
+  });
+
+  // Update team member's theme color
+  app.patch("/api/team/members/:memberId/color", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { memberId } = req.params;
+      const { themeColor } = req.body;
+      
+      if (!themeColor || !/^#[0-9A-Fa-f]{6}$/.test(themeColor)) {
+        return res.status(400).json({ error: 'Invalid color format. Use hex format like #3B82F6' });
+      }
+      
+      // Get the team member to find their user ID
+      const teamMember = await storage.getTeamMember(memberId, userId);
+      if (!teamMember) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+      
+      if (!teamMember.memberId) {
+        return res.status(400).json({ error: 'Team member has not accepted invitation yet' });
+      }
+      
+      // Update the user's theme color
+      const updatedUser = await storage.updateUser(teamMember.memberId, { themeColor });
+      
+      res.json({ success: true, themeColor: updatedUser?.themeColor || themeColor });
+    } catch (error) {
+      console.error('Error updating team member color:', error);
+      res.status(500).json({ error: 'Failed to update color' });
     }
   });
 

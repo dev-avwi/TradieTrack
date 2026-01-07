@@ -73,7 +73,24 @@ interface TeamMemberData {
   profileImageUrl?: string;
   role?: string;
   roleName?: string;
+  themeColor?: string;
 }
+
+// Color palette for team member customization
+const TEAM_MEMBER_COLOR_PALETTE = [
+  '#3B82F6', // Blue
+  '#22C55E', // Green
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Purple
+  '#EC4899', // Pink
+  '#14B8A6', // Teal
+  '#F97316', // Orange
+  '#6366F1', // Indigo
+  '#84CC16', // Lime
+  '#06B6D4', // Cyan
+  '#A855F7', // Violet
+];
 
 interface ActivityFeedItem {
   id: string;
@@ -417,6 +434,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontWeight: '500',
   },
+  colorPickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  colorSwatch: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorSwatchSelected: {
+    borderColor: colors.foreground,
+    borderWidth: 3,
+  },
   sectionTitleModal: {
     ...typography.label,
     color: colors.mutedForeground,
@@ -742,11 +778,12 @@ export default function TeamHubScreen() {
       }
     >
       <Text style={styles.sectionTitle}>TEAM STATUS</Text>
-      {sortedMembers.map(member => {
+      {sortedMembers.map((member, index) => {
         const memberPresence = getMemberPresence(member.userId);
         const status = memberPresence?.status || 'offline';
         const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.offline;
         const fullName = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Team Member';
+        const avatarColor = member.themeColor || TEAM_MEMBER_COLOR_PALETTE[index % TEAM_MEMBER_COLOR_PALETTE.length];
 
         return (
           <TouchableOpacity
@@ -757,7 +794,7 @@ export default function TeamHubScreen() {
             data-testid={`team-member-${member.id}`}
           >
             <View style={styles.avatarContainer}>
-              <View style={[styles.avatar, { backgroundColor: getStatusColor(status) }]}>
+              <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
                 <Text style={styles.avatarText}>
                   {getInitials(member.firstName, member.lastName, member.email)}
                 </Text>
@@ -849,11 +886,40 @@ export default function TeamHubScreen() {
     </ScrollView>
   );
 
+  const [isUpdatingColor, setIsUpdatingColor] = useState(false);
+
+  const handleUpdateMemberColor = useCallback(async (memberId: string, newColor: string) => {
+    setIsUpdatingColor(true);
+    try {
+      const response = await api.patch<{ success: boolean; themeColor: string }>(
+        `/api/team/members/${memberId}/color`,
+        { themeColor: newColor }
+      );
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        // Update local state immediately
+        setTeamMembers(prev => prev.map(m => 
+          m.id === memberId ? { ...m, themeColor: newColor } : m
+        ));
+        if (selectedMember && selectedMember.id === memberId) {
+          setSelectedMember({ ...selectedMember, themeColor: newColor });
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update color');
+    } finally {
+      setIsUpdatingColor(false);
+    }
+  }, [selectedMember]);
+
   const renderMemberModal = () => {
     if (!selectedMember) return null;
     const status = selectedMember.presence?.status || 'offline';
     const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.offline;
     const fullName = `${selectedMember.firstName || ''} ${selectedMember.lastName || ''}`.trim() || selectedMember.email || 'Team Member';
+    const memberIndex = teamMembers.findIndex(m => m.id === selectedMember.id);
+    const memberColor = selectedMember.themeColor || TEAM_MEMBER_COLOR_PALETTE[memberIndex % TEAM_MEMBER_COLOR_PALETTE.length];
 
     return (
       <Modal
@@ -870,7 +936,7 @@ export default function TeamHubScreen() {
           <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalAvatarContainer}>
-                <View style={[styles.modalAvatar, { backgroundColor: getStatusColor(status) }]}>
+                <View style={[styles.modalAvatar, { backgroundColor: memberColor }]}>
                   <Text style={styles.modalAvatarText}>
                     {getInitials(selectedMember.firstName, selectedMember.lastName, selectedMember.email)}
                   </Text>
@@ -936,6 +1002,28 @@ export default function TeamHubScreen() {
                   </View>
                   <Text style={styles.quickActionLabel}>Message</Text>
                 </TouchableOpacity>
+              </View>
+
+              {/* Color Picker */}
+              <Text style={styles.sectionTitleModal}>MEMBER COLOR</Text>
+              <View style={styles.colorPickerContainer}>
+                {TEAM_MEMBER_COLOR_PALETTE.map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: color },
+                      memberColor === color && styles.colorSwatchSelected,
+                    ]}
+                    onPress={() => handleUpdateMemberColor(selectedMember.id, color)}
+                    disabled={isUpdatingColor}
+                    data-testid={`color-swatch-${color}`}
+                  >
+                    {memberColor === color && (
+                      <Feather name="check" size={16} color="#ffffff" />
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
 
               {selectedMember.presence?.currentJob && (
@@ -1068,7 +1156,7 @@ export default function TeamHubScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -1086,7 +1174,7 @@ export default function TeamHubScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
