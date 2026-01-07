@@ -771,24 +771,42 @@ export default function CollectScreen() {
       return;
     }
 
-    setShowTapToPayModal(true);
-    setPaymentStep('connecting');
+    // Only show custom modal in simulation mode (Expo Go)
+    // When using real SDK, Apple's native Tap to Pay UI appears automatically
+    const useNativeSDK = !terminal.isSimulation && terminal.isSDKAvailable;
+    
+    if (!useNativeSDK) {
+      // Simulation mode: show custom modal as fallback UI
+      setShowTapToPayModal(true);
+      setPaymentStep('connecting');
+    }
 
     try {
       if (!terminal.isAvailable) {
-        await terminal.initialize();
+        const initialized = await terminal.initialize();
+        if (!initialized && !useNativeSDK) {
+          setPaymentStep('error');
+          return;
+        }
       }
 
       if (!terminal.reader) {
-        await terminal.connectReader();
+        const connected = await terminal.connectReader();
+        if (!connected && !useNativeSDK) {
+          setPaymentStep('error');
+          return;
+        }
       }
 
-      setPaymentStep('waiting');
+      if (!useNativeSDK) {
+        setPaymentStep('waiting');
+      }
       
+      // When using real SDK, collectPaymentMethod will present Apple's native 
+      // "Hold Here to Pay" interface automatically - no custom UI needed
       const result = await terminal.collectPayment(amountCents, description || undefined);
       
       if (result) {
-        setPaymentStep('success');
         setLastPaymentAmount(amountCents);
         
         // If paying an invoice, update the invoice payment status
@@ -806,18 +824,33 @@ export default function CollectScreen() {
           }
         }
         
-        // Show receipt modal after brief success display
-        setTimeout(() => {
-          setShowTapToPayModal(false);
-          setPaymentStep('ready');
+        if (!useNativeSDK) {
+          // Simulation mode: show success in modal then switch to receipt
+          setPaymentStep('success');
+          setTimeout(() => {
+            setShowTapToPayModal(false);
+            setPaymentStep('ready');
+            setShowReceiptModal(true);
+          }, 1500);
+        } else {
+          // Native SDK: Payment succeeded, go directly to receipt
           setShowReceiptModal(true);
-        }, 1500);
+        }
       } else {
-        setPaymentStep('error');
+        if (!useNativeSDK) {
+          setPaymentStep('error');
+        } else {
+          // Native SDK: Payment was cancelled or failed
+          Alert.alert('Payment Cancelled', 'The payment was not completed.');
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Tap to Pay error:', error);
-      setPaymentStep('error');
+      if (!useNativeSDK) {
+        setPaymentStep('error');
+      } else {
+        Alert.alert('Payment Error', error?.message || 'The payment could not be processed. Please try again.');
+      }
     }
   };
 
