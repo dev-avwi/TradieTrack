@@ -326,12 +326,12 @@ export default function QuoteDetailScreen() {
       'How would you like to share this quote?',
       [
         {
-          text: 'PDF (Email attachment)',
+          text: 'PDF Attachment',
           onPress: () => handleShareAsPdf(),
         },
         {
-          text: 'Image (Messaging apps)',
-          onPress: () => handleShareAsImage(),
+          text: 'Composed Email with Link',
+          onPress: () => handleShareAsComposedEmail(),
         },
         {
           text: 'Cancel',
@@ -339,6 +339,85 @@ export default function QuoteDetailScreen() {
         },
       ]
     );
+  };
+  
+  const handleShareAsComposedEmail = async () => {
+    if (!quote) return;
+    const client = getClient(quote.clientId);
+    const quoteNumber = quote.quoteNumber || quote.number || quote.id?.slice(0, 8);
+    
+    setIsDownloadingPdf(true);
+    try {
+      // Generate share token if needed
+      const authToken = await api.getToken();
+      const tokenResponse = await fetch(`${API_URL}/api/quotes/${quote.id}/generate-share-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to generate quote link');
+      }
+      
+      const { acceptanceToken } = await tokenResponse.json();
+      
+      // Build the public URL
+      const baseUrl = API_URL.replace('/api', '').replace(':5000', '');
+      const publicUrl = `${baseUrl}/q/${acceptanceToken}`;
+      
+      // Compose email with link
+      const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
+      const total = formatCurrency(quote.total);
+      const subject = `Quote ${quoteNumber} from ${businessName}`;
+      const body = `Hi ${client?.name || 'there'},
+
+Please find your quote attached below.
+
+Quote Number: ${quoteNumber}
+Total: ${total}
+
+View and accept your quote online:
+${publicUrl}
+
+Thank you for your business!
+
+${businessName}`;
+      
+      const emailUrl = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+        
+        // Ask if they want to mark as sent
+        Alert.alert(
+          'Did you send the quote?',
+          'Would you like to mark this quote as sent?',
+          [
+            { text: 'Not Yet', style: 'cancel' },
+            { 
+              text: 'Mark as Sent', 
+              onPress: async () => {
+                await updateQuoteStatus(id!, 'sent');
+                await loadData();
+              }
+            },
+          ]
+        );
+      } else {
+        // Fallback: copy link to clipboard
+        await Clipboard.setStringAsync(publicUrl);
+        Alert.alert('Email Not Available', `Quote link copied to clipboard:\n${publicUrl}`);
+      }
+    } catch (error: any) {
+      console.log('Error composing email:', error);
+      Alert.alert('Error', 'Failed to compose email. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
   
   const handleShareAsImage = async () => {

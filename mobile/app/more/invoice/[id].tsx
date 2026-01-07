@@ -305,12 +305,12 @@ export default function InvoiceDetailScreen() {
       'How would you like to share this invoice?',
       [
         {
-          text: 'PDF (Email attachment)',
+          text: 'PDF Attachment',
           onPress: () => handleShareAsPdf(),
         },
         {
-          text: 'Image (Messaging apps)',
-          onPress: () => handleShareAsImage(),
+          text: 'Composed Email with Link',
+          onPress: () => handleShareAsComposedEmail(),
         },
         {
           text: 'Cancel',
@@ -318,6 +318,93 @@ export default function InvoiceDetailScreen() {
         },
       ]
     );
+  };
+  
+  const handleShareAsComposedEmail = async () => {
+    if (!invoice) return;
+    const client = getClient(invoice.clientId);
+    const invoiceNumber = invoice.invoiceNumber || invoice.number || invoice.id?.slice(0, 8);
+    
+    setIsDownloadingPdf(true);
+    try {
+      // Enable online payment and get payment token
+      const authToken = await api.getToken();
+      const tokenResponse = await fetch(`${API_URL}/api/invoices/${invoice.id}/toggle-online-payment`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ allowOnlinePayment: true }),
+      });
+      
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to generate payment link');
+      }
+      
+      const updatedInvoice = await tokenResponse.json();
+      const paymentToken = updatedInvoice.paymentToken;
+      
+      if (!paymentToken) {
+        throw new Error('No payment token generated');
+      }
+      
+      // Build the public URL
+      const baseUrl = API_URL.replace('/api', '').replace(':5000', '');
+      const publicUrl = `${baseUrl}/pay/${paymentToken}`;
+      
+      // Compose email with payment link
+      const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
+      const total = formatCurrency(invoice.total);
+      const dueDate = invoice.dueDate ? formatDate(new Date(invoice.dueDate)) : 'Upon receipt';
+      const subject = `Invoice ${invoiceNumber} from ${businessName}`;
+      const body = `Hi ${client?.name || 'there'},
+
+Please find your invoice details below.
+
+Invoice Number: ${invoiceNumber}
+Amount Due: ${total}
+Due Date: ${dueDate}
+
+View and pay your invoice online:
+${publicUrl}
+
+Thank you for your business!
+
+${businessName}`;
+      
+      const emailUrl = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+        
+        // Ask if they want to mark as sent
+        Alert.alert(
+          'Did you send the invoice?',
+          'Would you like to mark this invoice as sent?',
+          [
+            { text: 'Not Yet', style: 'cancel' },
+            { 
+              text: 'Mark as Sent', 
+              onPress: async () => {
+                await updateInvoiceStatus(id!, 'sent');
+                await loadData();
+              }
+            },
+          ]
+        );
+      } else {
+        // Fallback: copy link to clipboard
+        await Clipboard.setStringAsync(publicUrl);
+        Alert.alert('Email Not Available', `Payment link copied to clipboard:\n${publicUrl}`);
+      }
+    } catch (error: any) {
+      console.log('Error composing email:', error);
+      Alert.alert('Error', 'Failed to compose email. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
   
   const handleShareAsImage = async () => {
@@ -841,12 +928,12 @@ export default function InvoiceDetailScreen() {
       'How would you like to share this receipt?',
       [
         {
-          text: 'PDF (Email attachment)',
+          text: 'PDF Attachment',
           onPress: () => handleShareReceiptAsPdf(),
         },
         {
-          text: 'Image (Messaging apps)',
-          onPress: () => handleShareReceiptAsImage(),
+          text: 'Composed Email',
+          onPress: () => handleShareReceiptAsComposedEmail(),
         },
         {
           text: 'Cancel',
@@ -854,6 +941,48 @@ export default function InvoiceDetailScreen() {
         },
       ]
     );
+  };
+  
+  const handleShareReceiptAsComposedEmail = async () => {
+    if (!invoice || !linkedReceipt || isSendingReceipt) return;
+    const client = getClient(invoice.clientId);
+    const receiptNumber = linkedReceipt.receiptNumber || linkedReceipt.id?.slice(0, 8);
+    
+    setIsSendingReceipt(true);
+    try {
+      const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
+      const amount = formatCurrency(linkedReceipt.amount);
+      const paidDate = linkedReceipt.paidAt ? formatDate(new Date(linkedReceipt.paidAt)) : formatDate(new Date());
+      const invoiceNumber = invoice.invoiceNumber || invoice.number || invoice.id?.slice(0, 8);
+      
+      const subject = `Payment Receipt ${receiptNumber} from ${businessName}`;
+      const body = `Hi ${client?.name || 'there'},
+
+Thank you for your payment! Here are your receipt details:
+
+Receipt Number: ${receiptNumber}
+Invoice: ${invoiceNumber}
+Amount Paid: ${amount}
+Date: ${paidDate}
+
+Thank you for your business!
+
+${businessName}`;
+      
+      const emailUrl = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+      } else {
+        Alert.alert('Email Not Available', 'Unable to open email app. Please send manually.');
+      }
+    } catch (error: any) {
+      console.log('Error composing receipt email:', error);
+      Alert.alert('Error', 'Failed to compose email. Please try again.');
+    } finally {
+      setIsSendingReceipt(false);
+    }
   };
   
   const handleShareReceiptAsImage = async () => {

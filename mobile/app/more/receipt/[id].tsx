@@ -339,12 +339,12 @@ export default function ReceiptDetailScreen() {
       'How would you like to share this receipt?',
       [
         {
-          text: 'PDF (Email attachment)',
+          text: 'PDF Attachment',
           onPress: () => handleShareAsPdf(),
         },
         {
-          text: 'Image (Messaging apps)',
-          onPress: () => handleShareAsImage(),
+          text: 'Composed Email',
+          onPress: () => handleShareAsComposedEmail(),
         },
         {
           text: 'Cancel',
@@ -352,6 +352,45 @@ export default function ReceiptDetailScreen() {
         },
       ]
     );
+  };
+  
+  const handleShareAsComposedEmail = async () => {
+    if (!receipt || isDownloadingPdf) return;
+    
+    setIsDownloadingPdf(true);
+    try {
+      const receiptNumber = receipt.receiptNumber || receipt.id?.slice(0, 8);
+      const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
+      const amount = formatCurrency(receipt.amount);
+      const paidDate = receipt.paidAt ? formatDate(new Date(receipt.paidAt)) : formatDate(new Date());
+      
+      const subject = `Payment Receipt ${receiptNumber} from ${businessName}`;
+      const body = `Hi ${client?.name || 'there'},
+
+Thank you for your payment! Here are your receipt details:
+
+Receipt Number: ${receiptNumber}
+Amount Paid: ${amount}
+Date: ${paidDate}
+
+Thank you for your business!
+
+${businessName}`;
+      
+      const emailUrl = `mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+      } else {
+        Alert.alert('Email Not Available', 'Unable to open email app. Please send manually.');
+      }
+    } catch (error: any) {
+      console.log('Error composing receipt email:', error);
+      Alert.alert('Error', 'Failed to compose email. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
   
   const handleShareAsImage = async () => {
