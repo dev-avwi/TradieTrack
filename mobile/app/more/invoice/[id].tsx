@@ -272,21 +272,18 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleSend = () => {
+    const client = getClient(invoice?.clientId || '');
     Alert.alert(
       'Send Invoice',
-      'Choose how to send this invoice to your client:',
+      `Send to ${client?.email || 'client'}`,
       [
         {
-          text: 'Send Now (Recommended)',
+          text: 'Send with PDF Attached',
           onPress: () => handleSendViaTradieTrack(),
         },
         {
           text: 'Edit Message First',
           onPress: () => setShowEmailCompose(true),
-        },
-        {
-          text: 'Just Download PDF',
-          onPress: () => handleSendViaEmailApp(),
         },
         {
           text: 'Cancel',
@@ -673,41 +670,20 @@ export default function InvoiceDetailScreen() {
       return;
     }
     
-    // Check saved email preference
-    const preference = await getEmailPreference();
-    
-    if (preference === 'tradietrack') {
-      // Auto-send via TradieTrack
-      await handleSendReceiptViaTradieTrack();
-      return;
-    } else if (preference === 'gmail' || preference === 'outlook' || preference === 'native_mail') {
-      // Auto-open email app
-      await handleSendReceiptViaEmailApp();
-      return;
-    }
-    
-    // Preference is 'ask' - Show options for sending
+    // Show options for sending
     Alert.alert(
       'Send Receipt',
-      'Choose how to send this receipt to your client:',
+      `Send to ${client?.email || 'client'}`,
       [
         {
-          text: 'Send Now (Recommended)',
+          text: 'Send with PDF Attached',
           onPress: async () => {
             await handleSendReceiptViaTradieTrack();
-            // Save preference for next time
-            await setEmailPreference('tradietrack');
           },
         },
         {
           text: 'Edit Message First',
           onPress: () => setShowReceiptEmailCompose(true),
-        },
-        {
-          text: 'Just Download PDF',
-          onPress: async () => {
-            await handleSendReceiptViaEmailApp();
-          },
         },
         {
           text: 'Cancel',
