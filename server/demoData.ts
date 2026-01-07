@@ -144,12 +144,14 @@ export async function createDemoUserAndData() {
       });
       console.log('✅ Demo user created:', demoUser.email);
     } else {
-      // Ensure demo user has email verified set
-      if (!demoUser.emailVerified) {
-        await storage.updateUser(demoUser.id, { emailVerified: true });
-        console.log('✅ Demo user email verified updated');
-      }
+      // Ensure demo user has correct password and email verified set
+      const hashedPassword = await bcrypt.hash(DEMO_USER.password, 10);
+      await storage.updateUser(demoUser.id, { 
+        password: hashedPassword,
+        emailVerified: true 
+      });
       console.log('ℹ️ Demo user already exists:', demoUser.email);
+      console.log('✅ Demo user password reset to default');
     }
 
     // Check for existing demo data
