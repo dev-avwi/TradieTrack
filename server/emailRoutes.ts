@@ -166,12 +166,12 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
-      // For emails, use the public API endpoint that serves the object
+      // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
       const baseUrl = process.env.APP_BASE_URL 
         || (process.env.REPLIT_DOMAINS?.split(',')[0] 
           ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
           : 'http://localhost:5000');
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
     }
 
     // 6. Validate business email for sending
@@ -496,11 +496,12 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
+      // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
       const baseUrl = process.env.APP_BASE_URL 
         || (process.env.REPLIT_DOMAINS?.split(',')[0] 
           ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
           : 'http://localhost:5000');
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
     }
 
     // 6. Validate business email for sending
@@ -512,14 +513,11 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       });
     }
 
-    // 6.5. Determine payment URL for email - prioritize pre-generated Stripe payment link
+    // 6.5. Determine payment URL for email - always use custom payment page for tradie branding
     let paymentUrl: string | null = null;
     
-    // First, check if there's a pre-generated Stripe payment link
-    if (invoiceWithItems.stripePaymentLink) {
-      paymentUrl = invoiceWithItems.stripePaymentLink;
-    } else if (invoiceWithItems.allowOnlinePayment) {
-      // Fallback: Generate payment token if not already present (12 chars alphanumeric for shorter URLs)
+    if (invoiceWithItems.allowOnlinePayment) {
+      // Generate payment token if not already present (12 chars alphanumeric for shorter URLs)
       if (!invoiceWithItems.paymentToken) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         const bytes = crypto.randomBytes(12);
@@ -531,7 +529,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
         invoiceWithItems = { ...invoiceWithItems, paymentToken };
       }
       
-      // Generate payment URL with priority: APP_BASE_URL > REPLIT_DOMAINS > localhost
+      // Always use custom payment page for consistent tradie branding (not Stripe's checkout.stripe.com)
       const baseUrl = process.env.APP_BASE_URL 
         || (process.env.REPLIT_DOMAINS?.split(',')[0] 
           ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
@@ -1008,7 +1006,8 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
         : 'http://localhost:5000');
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
+      // Route is /objects/... not /api/objects/...
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1283,7 +1282,8 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
         : 'http://localhost:5000');
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
+      // Route is /objects/... not /api/objects/...
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
