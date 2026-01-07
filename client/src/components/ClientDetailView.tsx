@@ -28,8 +28,13 @@ import {
   File,
   Copy,
   CheckCircle,
-  MessageCircle
+  MessageCircle,
+  Pencil,
+  X
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import StatusBadge from "./StatusBadge";
 import KPIBox from "./KPIBox";
@@ -58,7 +63,61 @@ export default function ClientDetailView({
 }: ClientDetailViewProps) {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: ""
+  });
   const { toast } = useToast();
+
+  // Update client mutation
+  const updateClientMutation = useMutation({
+    mutationFn: async (data: { name: string; email: string; phone: string; address: string }) => {
+      await apiRequest('PATCH', `/api/clients/${clientId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      setIsEditDialogOpen(false);
+      toast({
+        title: "Client updated",
+        description: "Client details have been saved successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update failed",
+        description: "Could not update client details. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const openEditDialog = () => {
+    if (client) {
+      setEditForm({
+        name: client.name || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        address: client.address || ""
+      });
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleSaveClient = () => {
+    if (!editForm.name.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a client name",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateClientMutation.mutate(editForm);
+  };
 
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['/api/clients', clientId],
@@ -391,6 +450,14 @@ export default function ClientDetailView({
                 )}
               </div>
             </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={openEditDialog}
+              data-testid="button-edit-client"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x">
@@ -1123,6 +1190,70 @@ export default function ClientDetailView({
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Client</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Client name"
+                data-testid="input-edit-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="email@example.com"
+                data-testid="input-edit-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone</Label>
+              <Input
+                id="edit-phone"
+                type="tel"
+                value={editForm.phone}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="0400 000 000"
+                data-testid="input-edit-phone"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-address">Address</Label>
+              <Input
+                id="edit-address"
+                value={editForm.address}
+                onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="123 Main St, Sydney NSW 2000"
+                data-testid="input-edit-address"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveClient} 
+              disabled={updateClientMutation.isPending}
+              data-testid="button-save-client"
+            >
+              {updateClientMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

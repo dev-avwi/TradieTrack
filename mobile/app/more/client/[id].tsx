@@ -183,7 +183,7 @@ export default function ClientDetailScreen() {
   };
 
   const handleEdit = () => {
-    router.push(`/more/client/new?id=${id}`);
+    router.push(`/more/client/new?clientId=${id}`);
   };
 
   const handleDelete = () => {

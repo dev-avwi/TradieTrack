@@ -1146,25 +1146,27 @@ export default function TemplatesScreen() {
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.switchRow}
-        onPress={() => setNewTemplate({
-          ...newTemplate,
-          defaults: { ...newTemplate.defaults, gstEnabled: !newTemplate.defaults.gstEnabled }
-        })}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.switchLabel}>Include GST (10%)</Text>
-        <View style={[
-          styles.switchTrack,
-          newTemplate.defaults.gstEnabled && styles.switchTrackActive
-        ]}>
+      {newTemplate.type !== 'job' && (
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => setNewTemplate({
+            ...newTemplate,
+            defaults: { ...newTemplate.defaults, gstEnabled: !newTemplate.defaults.gstEnabled }
+          })}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.switchLabel}>Include GST (10%)</Text>
           <View style={[
-            styles.switchThumb,
-            newTemplate.defaults.gstEnabled && styles.switchThumbActive
-          ]} />
-        </View>
-      </TouchableOpacity>
+            styles.switchTrack,
+            newTemplate.defaults.gstEnabled && styles.switchTrackActive
+          ]}>
+            <View style={[
+              styles.switchThumb,
+              newTemplate.defaults.gstEnabled && styles.switchThumbActive
+            ]} />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <Text style={styles.sectionHeader}>Default Content</Text>
 
@@ -1199,83 +1201,106 @@ export default function TemplatesScreen() {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Default Terms</Text>
-        <TextInput
-          style={[styles.input, styles.inputMultiline]}
-          value={newTemplate.defaults.terms}
-          onChangeText={(text) => setNewTemplate({ 
-            ...newTemplate, 
-            defaults: { ...newTemplate.defaults, terms: text } 
-          })}
-          placeholder="Payment terms, conditions..."
-          placeholderTextColor={colors.mutedForeground}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-        />
-      </View>
+      {newTemplate.type !== 'job' && (
+        <>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Default Terms</Text>
+            <TextInput
+              style={[styles.input, styles.inputMultiline]}
+              value={newTemplate.defaults.terms}
+              onChangeText={(text) => setNewTemplate({ 
+                ...newTemplate, 
+                defaults: { ...newTemplate.defaults, terms: text } 
+              })}
+              placeholder="Payment terms, conditions..."
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Default Deposit (%)</Text>
-        <TextInput
-          style={[styles.input, { width: 100 }]}
-          value={String(newTemplate.defaults.depositPct || '')}
-          onChangeText={(text) => setNewTemplate({ 
-            ...newTemplate, 
-            defaults: { ...newTemplate.defaults, depositPct: parseInt(text) || 0 } 
-          })}
-          placeholder="0"
-          placeholderTextColor={colors.mutedForeground}
-          keyboardType="numeric"
-        />
-      </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Default Deposit (%)</Text>
+            <TextInput
+              style={[styles.input, { width: 100 }]}
+              value={String(newTemplate.defaults.depositPct || '')}
+              onChangeText={(text) => setNewTemplate({ 
+                ...newTemplate, 
+                defaults: { ...newTemplate.defaults, depositPct: parseInt(text) || 0 } 
+              })}
+              placeholder="0"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numeric"
+            />
+          </View>
 
-      <Text style={styles.sectionHeader}>Default Line Items</Text>
+          <Text style={styles.sectionHeader}>Default Line Items</Text>
 
-      {newTemplate.defaultLineItems.map((item, index) => (
-        <View key={index} style={styles.lineItemRow}>
-          <TextInput
-            style={styles.lineItemInput}
-            value={item.description}
-            onChangeText={(text) => updateLineItem(index, 'description', text)}
-            placeholder="Description"
-            placeholderTextColor={colors.mutedForeground}
-          />
-          <TextInput
-            style={[styles.lineItemInput, styles.lineItemQty]}
-            value={String(item.qty || '')}
-            onChangeText={(text) => updateLineItem(index, 'qty', parseInt(text) || 1)}
-            placeholder="Qty"
-            placeholderTextColor={colors.mutedForeground}
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={[styles.lineItemInput, styles.lineItemPrice]}
-            value={String(item.unitPrice || '')}
-            onChangeText={(text) => updateLineItem(index, 'unitPrice', parseFloat(text) || 0)}
-            placeholder="Price"
-            placeholderTextColor={colors.mutedForeground}
-            keyboardType="decimal-pad"
-          />
+          {newTemplate.defaultLineItems.map((item, index) => (
+            <View key={index} style={styles.lineItemRow}>
+              <TextInput
+                style={styles.lineItemInput}
+                value={item.description}
+                onChangeText={(text) => updateLineItem(index, 'description', text)}
+                placeholder="Description"
+                placeholderTextColor={colors.mutedForeground}
+              />
+              <TextInput
+                style={[styles.lineItemInput, styles.lineItemQty]}
+                value={String(item.qty || '')}
+                onChangeText={(text) => updateLineItem(index, 'qty', parseInt(text) || 1)}
+                placeholder="Qty"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={[styles.lineItemInput, styles.lineItemPrice]}
+                value={String(item.unitPrice || '')}
+                onChangeText={(text) => updateLineItem(index, 'unitPrice', parseFloat(text) || 0)}
+                placeholder="Price"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="decimal-pad"
+              />
+              <TouchableOpacity
+                style={styles.removeLineItemButton}
+                onPress={() => removeLineItem(index)}
+                activeOpacity={0.7}
+              >
+                <Feather name="x" size={20} color={colors.destructive} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
           <TouchableOpacity
-            style={styles.removeLineItemButton}
-            onPress={() => removeLineItem(index)}
+            style={styles.addLineItemButton}
+            onPress={addLineItem}
             activeOpacity={0.7}
           >
-            <Feather name="x" size={20} color={colors.destructive} />
+            <Feather name="plus" size={18} color={colors.primary} />
+            <Text style={styles.addLineItemText}>Add Line Item</Text>
           </TouchableOpacity>
-        </View>
-      ))}
+        </>
+      )}
 
-      <TouchableOpacity
-        style={styles.addLineItemButton}
-        onPress={addLineItem}
-        activeOpacity={0.7}
-      >
-        <Feather name="plus" size={18} color={colors.primary} />
-        <Text style={styles.addLineItemText}>Add Line Item</Text>
-      </TouchableOpacity>
+      {newTemplate.type === 'job' && (
+        <View style={styles.inputGroup}>
+          <View style={{ 
+            backgroundColor: colors.primaryLight, 
+            padding: spacing.md, 
+            borderRadius: radius.lg,
+            marginTop: spacing.md
+          }}>
+            <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '500', marginBottom: 4 }}>
+              Job Template
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+              Job templates save the default title and description for quick job creation. 
+              They don't include pricing as jobs get quoted separately.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <TouchableOpacity
         style={[styles.saveButton, isCreating && styles.saveButtonDisabled]}
@@ -1293,31 +1318,64 @@ export default function TemplatesScreen() {
     </ScrollView>
   );
 
-  const renderPreviewTab = () => (
-    <View style={styles.previewContainer}>
-      <LiveDocumentPreview
-        type={newTemplate.type === 'job' ? 'quote' : newTemplate.type}
-        documentNumber={newTemplate.type === 'quote' ? 'Q-PREVIEW' : 'INV-PREVIEW'}
-        title={newTemplate.defaults.title || `Sample ${newTemplate.type === 'quote' ? 'Quote' : 'Invoice'}`}
-        description={newTemplate.defaults.description || 'This is a preview of how your document will look with the selected template style and settings.'}
-        date={new Date().toISOString()}
-        validUntil={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
-        dueDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()}
-        lineItems={previewLineItems}
-        notes="Thank you for your business!"
-        terms={newTemplate.defaults.terms || 'Payment due within 14 days. Late payments may incur additional fees.'}
-        business={businessInfo}
-        client={sampleClient}
-        showDepositSection={newTemplate.defaults.depositPct > 0}
-        depositPercent={newTemplate.defaults.depositPct}
-        gstEnabled={newTemplate.defaults.gstEnabled}
-        templateId={newTemplate.styling.templateStyle}
-        templateCustomization={{
-          accentColor: newTemplate.styling.brandColor,
-        }}
-      />
-    </View>
-  );
+  const renderPreviewTab = () => {
+    if (newTemplate.type === 'job') {
+      return (
+        <View style={[styles.previewContainer, { justifyContent: 'center', alignItems: 'center', padding: spacing.xl }]}>
+          <Feather name="briefcase" size={48} color={colors.warning} style={{ marginBottom: spacing.lg }} />
+          <Text style={{ fontSize: 18, fontWeight: '600', color: colors.foreground, marginBottom: spacing.sm, textAlign: 'center' }}>
+            Job Template Preview
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.lg }}>
+            Job templates don't generate documents. They provide quick defaults for creating new jobs.
+          </Text>
+          <View style={{ 
+            backgroundColor: colors.card, 
+            borderRadius: radius.lg, 
+            padding: spacing.lg,
+            width: '100%',
+            borderWidth: 1,
+            borderColor: colors.border
+          }}>
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 4 }}>Title</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground, marginBottom: spacing.md }}>
+              {newTemplate.defaults.title || 'Untitled Job'}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 4 }}>Description</Text>
+            <Text style={{ fontSize: 14, color: colors.foreground }}>
+              {newTemplate.defaults.description || 'No description set'}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.previewContainer}>
+        <LiveDocumentPreview
+          type={newTemplate.type}
+          documentNumber={newTemplate.type === 'quote' ? 'Q-PREVIEW' : 'INV-PREVIEW'}
+          title={newTemplate.defaults.title || `Sample ${newTemplate.type === 'quote' ? 'Quote' : 'Invoice'}`}
+          description={newTemplate.defaults.description || 'This is a preview of how your document will look with the selected template style and settings.'}
+          date={new Date().toISOString()}
+          validUntil={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
+          dueDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()}
+          lineItems={previewLineItems}
+          notes="Thank you for your business!"
+          terms={newTemplate.defaults.terms || 'Payment due within 14 days. Late payments may incur additional fees.'}
+          business={businessInfo}
+          client={sampleClient}
+          showDepositSection={newTemplate.defaults.depositPct > 0}
+          depositPercent={newTemplate.defaults.depositPct}
+          gstEnabled={newTemplate.defaults.gstEnabled}
+          templateId={newTemplate.styling.templateStyle}
+          templateCustomization={{
+            accentColor: newTemplate.styling.brandColor,
+          }}
+        />
+      </View>
+    );
+  };
 
   return (
     <>
