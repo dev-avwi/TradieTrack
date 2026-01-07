@@ -662,8 +662,22 @@ export default function MapScreen() {
   // Track last known positions for movement threshold (prevents marker jitter)
   const lastKnownPositionsRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
   
+  // Track previously selected worker to enable view tracking during deselection
+  // This prevents the iOS bug where markers flash at (0,0) when selection changes
+  const prevSelectedWorkerIdRef = useRef<string | null>(null);
+  
   // Animation state for smooth marker transitions
   const markerScaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Update previous selected worker ref when selection changes
+  useEffect(() => {
+    // Store the current selection for next render cycle
+    const timeoutId = setTimeout(() => {
+      prevSelectedWorkerIdRef.current = selectedWorker?.id || null;
+    }, 300); // Clear after animation completes
+    
+    return () => clearTimeout(timeoutId);
+  }, [selectedWorker]);
 
   // Fetch jobs from /api/map/jobs which geocodes addresses on-the-fly
   const fetchMapJobs = useCallback(async () => {
@@ -1448,6 +1462,7 @@ export default function MapScreen() {
           const activityColor = getActivityColor(member.activityStatus);
           const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
           const isSelected = selectedWorker?.id === member.id;
+          const wasJustDeselected = prevSelectedWorkerIdRef.current === member.id && !isSelected;
           const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
           const shortName = member.user?.firstName || fullName.split(' ')[0] || 'Unknown';
           
@@ -1463,6 +1478,10 @@ export default function MapScreen() {
           // This prevents stale state issues that cause markers to appear at screen (0,0)
           const markerKey = `team-${member.id}-${coordLat.toFixed(4)}-${coordLng.toFixed(4)}`;
           
+          // Enable view tracking when marker is selected or was just deselected
+          // This prevents the iOS bug where markers flash at (0,0) during selection transitions
+          const needsViewTracking = isSelected || wasJustDeselected;
+          
           return (
             <Marker
               key={markerKey}
@@ -1472,7 +1491,7 @@ export default function MapScreen() {
               }}
               onPress={() => handleWorkerTap(member)}
               anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
+              tracksViewChanges={needsViewTracking}
             >
               <View 
                 style={{ 
