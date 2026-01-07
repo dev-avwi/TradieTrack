@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, InteractionManager, Dimensions } from 'react-native';
+import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -321,11 +321,22 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 function RootLayoutContent() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const { colors, isDark } = useTheme();
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Show loading screen while checking auth to prevent sign-in page flash
+  if (!isInitialized || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

@@ -1040,8 +1040,8 @@ export default function DashboardScreen() {
     }
   }, [scrollToTopTrigger]);
   
-  const { user, businessSettings, roleInfo, isOwner, isStaff } = useAuthStore();
-  const { todaysJobs, fetchTodaysJobs, isLoading: jobsLoading, updateJobStatus } = useJobsStore();
+  const { user, businessSettings, roleInfo, isOwner, isStaff, teamState, fetchTeamState, hasActiveTeam: storeHasActiveTeam } = useAuthStore();
+  const { todaysJobs, fetchTodaysJobs, fetchJobs, isLoading: jobsLoading, updateJobStatus } = useJobsStore();
   const { stats, fetchStats, isLoading: statsLoading } = useDashboardStore();
   const { clients, fetchClients } = useClientsStore();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -1049,6 +1049,7 @@ export default function DashboardScreen() {
   
   // Job Scheduler state for team owners
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [isTeamDataLoading, setIsTeamDataLoading] = useState(true);
   const [unassignedJobs, setUnassignedJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -1236,7 +1237,8 @@ export default function DashboardScreen() {
   // Match web's canViewMap logic: only owners and managers can see the map
   const isManager = roleInfo?.roleName?.toLowerCase() === 'manager';
   const canViewMap = isOwnerUser || isManager;
-  const hasActiveTeam = teamMembers.length > 0;
+  // Use store's hasActiveTeam OR local teamMembers for the check (store may be ready before local fetch)
+  const hasActiveTeam = storeHasActiveTeam() || teamMembers.length > 0 || teamState.hasActiveTeam;
   
   
   const handleNavigateToItem = (type: string, id: string) => {
@@ -1280,13 +1282,18 @@ export default function DashboardScreen() {
 
   // Fetch team data for job scheduler (owners only)
   const fetchTeamData = useCallback(async () => {
-    if (!isOwnerUser) return;
+    if (!isOwnerUser) {
+      setIsTeamDataLoading(false);
+      return;
+    }
+    setIsTeamDataLoading(true);
     try {
       const { default: api } = await import('../../src/lib/api');
       const [teamRes, jobsRes, unassignedRes] = await Promise.all([
         api.get('/api/team/members'),
         api.get('/api/jobs'),
         api.get('/api/jobs?unassigned=true'),
+        fetchTeamState(), // Also update the store's team state
       ]);
       if (teamRes.data) {
         setTeamMembers(teamRes.data.filter((m: any) => m.inviteStatus === 'accepted'));
@@ -1299,8 +1306,10 @@ export default function DashboardScreen() {
       }
     } catch (error) {
       console.log('Error fetching team data:', error);
+    } finally {
+      setIsTeamDataLoading(false);
     }
-  }, [isOwnerUser]);
+  }, [isOwnerUser, fetchTeamState]);
 
   useEffect(() => {
     fetchTeamData();
@@ -1318,6 +1327,7 @@ export default function DashboardScreen() {
         await Promise.all([
           fetchTeamData(),
           fetchTodaysJobs(),
+          fetchJobs(),
         ]);
         return;
       }
@@ -1326,9 +1336,11 @@ export default function DashboardScreen() {
       await api.post(`/api/jobs/${jobId}/assign`, { assignedTo: userId });
       Alert.alert('Success', 'Job assigned successfully');
       setSelectedJob(null);
+      // Refresh all job data across screens for proper sync
       await Promise.all([
         fetchTeamData(),
         fetchTodaysJobs(),
+        fetchJobs(), // Sync with Jobs tab
       ]);
     } catch (error: any) {
       if (error.message?.includes('Network')) {
@@ -1338,6 +1350,7 @@ export default function DashboardScreen() {
         await Promise.all([
           fetchTeamData(),
           fetchTodaysJobs(),
+          fetchJobs(),
         ]);
       } else {
         Alert.alert('Error', 'Failed to assign job');
@@ -1367,6 +1380,7 @@ export default function DashboardScreen() {
                 await Promise.all([
                   fetchTeamData(),
                   fetchTodaysJobs(),
+                  fetchJobs(),
                 ]);
                 return;
               }
@@ -1377,6 +1391,7 @@ export default function DashboardScreen() {
               await Promise.all([
                 fetchTeamData(),
                 fetchTodaysJobs(),
+                fetchJobs(),
               ]);
             } catch (error: any) {
               if (error.message?.includes('Network')) {
@@ -1385,6 +1400,7 @@ export default function DashboardScreen() {
                 await Promise.all([
                   fetchTeamData(),
                   fetchTodaysJobs(),
+                  fetchJobs(),
                 ]);
               } else {
                 Alert.alert('Error', 'Failed to unassign job');
@@ -1698,8 +1714,8 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* Job Scheduler - Team Owners Only */}
-      {isOwnerUser && hasActiveTeam && (
+      {/* Job Scheduler - Team Owners Only (show loading state or content) */}
+      {isOwnerUser && (hasActiveTeam || isTeamDataLoading) && (
         <View 
           style={styles.section}
           onLayout={(event) => setSchedulerY(event.nativeEvent.layout.y)}
