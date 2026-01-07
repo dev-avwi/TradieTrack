@@ -3413,23 +3413,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper to ensure logoUrl is browser-accessible
-  function resolveBrowserLogoUrl(logoUrl: string | null | undefined): string | null {
+  // Helper to ensure logoUrl is accessible from both web and mobile
+  function resolveBrowserLogoUrl(logoUrl: string | null | undefined, makeAbsolute: boolean = false): string | null {
     if (!logoUrl) return null;
     // Already a data URL or external URL - return as-is
     if (logoUrl.startsWith('data:') || logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
       return logoUrl;
     }
-    // Already has /objects/ prefix - return as-is
+    
+    let relativePath: string;
+    // Already has /objects/ prefix
     if (logoUrl.startsWith('/objects/')) {
-      return logoUrl;
+      relativePath = logoUrl;
+    } else if (logoUrl.startsWith('/')) {
+      // GCS path without /objects/ prefix - add it
+      relativePath = `/objects${logoUrl}`;
+    } else {
+      // Relative path - add /objects/ prefix
+      relativePath = `/objects/${logoUrl}`;
     }
-    // GCS path without /objects/ prefix - add it
-    if (logoUrl.startsWith('/')) {
-      return `/objects${logoUrl}`;
+    
+    // For mobile apps, convert to absolute URL
+    if (makeAbsolute) {
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : process.env.BASE_URL || 'http://localhost:5000';
+      return `${baseUrl}${relativePath}`;
     }
-    // Relative path - add /objects/ prefix
-    return `/objects/${logoUrl}`;
+    
+    return relativePath;
   }
 
   // Business Settings Routes
@@ -3441,10 +3453,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Include user's subscription tier in business settings response
       const user = await storage.getUser(req.userId);
+      
+      // Detect mobile app requests - they need absolute URLs for images
+      const userAgent = req.headers['user-agent'] || '';
+      const isMobileApp = userAgent.includes('Expo') || 
+                          userAgent.includes('ReactNative') || 
+                          req.headers['x-mobile-app'] === 'true';
+      
       res.json({
         ...settings,
-        // Ensure logoUrl is browser-accessible
-        logoUrl: resolveBrowserLogoUrl(settings.logoUrl),
+        // Ensure logoUrl is accessible - absolute URL for mobile, relative for web
+        logoUrl: resolveBrowserLogoUrl(settings.logoUrl, isMobileApp),
         subscriptionTier: user?.subscriptionTier || 'free',
       });
     } catch (error) {

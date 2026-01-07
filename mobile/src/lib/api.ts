@@ -104,6 +104,7 @@ class ApiClient {
   private async getHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'x-mobile-app': 'true',
     };
     
     const token = await this.getToken();
