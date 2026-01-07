@@ -21390,7 +21390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Prevent deleting the demo user
-      if (userToDelete.email === 'demo@tradietrack.app') {
+      if (userToDelete.email === 'demo@tradietrack.com.au') {
         return res.status(403).json({ error: 'Cannot delete the demo account' });
       }
       

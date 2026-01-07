@@ -6,15 +6,15 @@ import { storage } from './storage';
 // DEMO USER CREDENTIALS
 // ============================================
 export const DEMO_USER = {
-  email: 'demo@tradietrack.app',
+  email: 'demo@tradietrack.com.au',
   password: 'demo123',
-  name: 'Demo User',
-  businessName: 'Demo Plumbing & Gas',
+  name: 'Mike Thompson',
+  businessName: "Mike's Plumbing Services",
   phone: '+61407888123',
 };
 
 export const DEMO_WORKER = {
-  email: 'demo.worker@tradietrack.app',
+  email: 'demo.worker@tradietrack.com.au',
   password: 'worker123',
   name: 'Jake Morrison',
   phone: '+61412555888',

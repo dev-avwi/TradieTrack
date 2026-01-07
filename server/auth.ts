@@ -93,7 +93,7 @@ export class AuthService {
       }
 
       // Check if email is verified (allow demo users to bypass)
-      const isDemoUser = user.email === 'demo@tradietrack.app' || user.email === 'demo@tradietrack.com.au';
+      const isDemoUser = user.email === 'demo@tradietrack.com.au';
       if (!user.emailVerified && !isDemoUser) {
         return { success: false, error: 'Please verify your email address before logging in. Check your email for verification instructions.' };
       }
