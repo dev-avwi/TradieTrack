@@ -972,10 +972,16 @@ export default function MapScreen() {
       // Fit to all markers after a brief delay
       setTimeout(() => fitToMarkers(), 200);
     } else {
-      // First animate camera to the member's location for smooth transition
-      const animDuration = 500;
+      // Animate camera to the member's location with zoom
+      // Use longer duration for smoother feel when zooming from far away
+      const animDuration = 800; // Longer for smooth zoom from overview to street level
+      const targetZoom = 17; // Street-level zoom for close-up view
+      
       if (memberLat && memberLng) {
-        animateCameraToLocation(memberLat, memberLng, { zoom: 16, duration: animDuration });
+        animateCameraToLocation(memberLat, memberLng, { 
+          zoom: targetZoom, 
+          duration: animDuration 
+        });
       }
       
       // Set selected worker after camera has moved significantly
@@ -999,7 +1005,7 @@ export default function MapScreen() {
             useNativeDriver: true,
           }),
         ]).start();
-      }, animDuration * 0.6); // Wait for 60% of animation before state update
+      }, animDuration * 0.5); // Wait for 50% of animation before state update
     }
   }, [selectedWorker, animateCameraToLocation, fitToMarkers, markerScaleAnim]);
 
