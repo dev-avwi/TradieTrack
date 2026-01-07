@@ -50,12 +50,49 @@ interface SendNotificationOptions {
 }
 
 /**
+ * Check if user has enabled notifications for a specific type
+ */
+async function shouldSendNotification(userId: string, type: NotificationType): Promise<boolean> {
+  try {
+    const settings = await storage.getIntegrationSettings(userId);
+    if (!settings) return true; // Default to enabled if no settings
+
+    switch (type) {
+      case 'quote_accepted':
+      case 'quote_rejected':
+        return settings.notifyQuoteResponses !== false;
+      case 'payment_received':
+        return settings.notifyPaymentConfirmations !== false;
+      case 'invoice_overdue':
+        return settings.notifyOverdueInvoices !== false;
+      case 'job_assigned':
+      case 'job_update':
+      case 'job_reminder':
+      case 'team_message':
+      case 'general':
+      default:
+        return true; // Always send job and team notifications
+    }
+  } catch (error) {
+    console.error('[PushNotification] Error checking preferences:', error);
+    return true; // Default to sending on error
+  }
+}
+
+/**
  * Send push notification to a single user
  */
 export async function sendPushNotification(options: SendNotificationOptions): Promise<boolean> {
   const { userId, type, title, body, data } = options;
   
   try {
+    // Check if user has enabled this notification type
+    const shouldSend = await shouldSendNotification(userId, type);
+    if (!shouldSend) {
+      console.log(`[PushNotification] User ${userId} has disabled ${type} notifications`);
+      return false;
+    }
+
     // Get user's active push tokens
     const tokens = await storage.getPushTokens(userId);
     const activeTokens = tokens.filter(t => t.isActive);
