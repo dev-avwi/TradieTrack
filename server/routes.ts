@@ -3413,6 +3413,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper to ensure logoUrl is browser-accessible
+  function resolveBrowserLogoUrl(logoUrl: string | null | undefined): string | null {
+    if (!logoUrl) return null;
+    // Already a data URL or external URL - return as-is
+    if (logoUrl.startsWith('data:') || logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+      return logoUrl;
+    }
+    // Already has /objects/ prefix - return as-is
+    if (logoUrl.startsWith('/objects/')) {
+      return logoUrl;
+    }
+    // GCS path without /objects/ prefix - add it
+    if (logoUrl.startsWith('/')) {
+      return `/objects${logoUrl}`;
+    }
+    // Relative path - add /objects/ prefix
+    return `/objects/${logoUrl}`;
+  }
+
   // Business Settings Routes
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {
@@ -3424,6 +3443,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.userId);
       res.json({
         ...settings,
+        // Ensure logoUrl is browser-accessible
+        logoUrl: resolveBrowserLogoUrl(settings.logoUrl),
         subscriptionTier: user?.subscriptionTier || 'free',
       });
     } catch (error) {

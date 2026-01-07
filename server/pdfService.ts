@@ -23,30 +23,35 @@ export async function resolveLogoUrl(logoUrl: string | null | undefined): Promis
     return logoUrl;
   }
   
-  // Object storage path - fetch and convert to base64
-  if (logoUrl.startsWith('/objects/')) {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const file = await objectStorageService.getObjectEntityFile(logoUrl);
-      
-      // Download the file content
-      const [buffer] = await file.download();
-      
-      // Get the content type
-      const [metadata] = await file.getMetadata();
-      const contentType = metadata.contentType || 'image/png';
-      
-      // Convert to base64 data URL
-      const base64 = buffer.toString('base64');
-      return `data:${contentType};base64,${base64}`;
-    } catch (error) {
-      console.error('Failed to resolve logo from object storage:', error);
-      return null;
+  // Normalize the path to ensure it has /objects/ prefix
+  let objectPath = logoUrl;
+  if (!objectPath.startsWith('/objects/')) {
+    if (objectPath.startsWith('/')) {
+      objectPath = `/objects${objectPath}`;
+    } else {
+      objectPath = `/objects/${objectPath}`;
     }
   }
   
-  // Unknown format - return as is
-  return logoUrl;
+  // Object storage path - fetch and convert to base64
+  try {
+    const objectStorageService = new ObjectStorageService();
+    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    
+    // Download the file content
+    const [buffer] = await file.download();
+    
+    // Get the content type
+    const [metadata] = await file.getMetadata();
+    const contentType = metadata.contentType || 'image/png';
+    
+    // Convert to base64 data URL
+    const base64 = buffer.toString('base64');
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.error('Failed to resolve logo from object storage:', error);
+    return null;
+  }
 }
 
 /**
