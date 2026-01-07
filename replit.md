@@ -89,3 +89,5 @@ class NotificationService {
 **iOS Map Markers**: Use 100% static marker appearance to prevent markers flashing at (0,0) when view content changes. Life360-style live movement uses 10-second polling interval.
 
 **Team Member List Sorting**: Active/on-duty team members are always prioritized at the front of lists across the app. Priority order: on_job > working > driving > online > idle > offline. This applies to Maps page team chips, Team Operations status board, and similar team member lists.
+
+**Tap to Pay on iPhone**: When using the real Stripe Terminal SDK (native builds via EAS), the SDK's `collectPaymentMethod()` function automatically presents Apple's native dark "Hold Here to Pay" interface. The custom React Native modal is only shown in simulation mode (Expo Go) as a fallback. Check `terminal.isSimulation` and `terminal.isSDKAvailable` to determine which path to use. Requirements: iOS 16.4+, iPhone XS or later, Stripe Terminal enabled, Apple Tap to Pay entitlement.
