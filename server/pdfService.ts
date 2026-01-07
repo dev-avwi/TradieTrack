@@ -3359,6 +3359,7 @@ export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
+      displayHeaderFooter: false,
       margin: {
         top: '10mm',
         right: '10mm',
