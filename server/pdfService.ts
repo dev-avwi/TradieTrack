@@ -1408,11 +1408,13 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
     }
     
     .header-logo {
-      max-height: 48px;
-      max-width: 180px;
+      max-height: 56px;
+      max-width: 200px;
       object-fit: contain;
       margin-bottom: 12px;
-      filter: brightness(0) invert(1);
+      background: white;
+      padding: 8px 16px;
+      border-radius: 8px;
     }
     
     .header h1 {

@@ -8,18 +8,34 @@ import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
 
 // Helper function to wrap template content in professional HTML email layout
-function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string): string {
+function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string, actionUrl?: string | null, actionLabel?: string): string {
   return `
     <!DOCTYPE html>
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+        ${business.logoUrl ? `
+          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+            <img src="${business.logoUrl}" alt="${business.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+          </div>
+        ` : ''}
         <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName || 'Your Business'}</h1>
         ${business.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
       </div>
       <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
         <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
         <div style="white-space: pre-line; margin-bottom: 20px;">${content}</div>
+        
+        ${actionUrl ? `
+        <div style="text-align: center; margin: 24px 0; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #86efac;">
+          <a href="${actionUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+            ${actionLabel || 'View Online'}
+          </a>
+          <p style="margin-top: 12px; color: #374151; font-size: 12px;">Or copy this link into your browser:</p>
+          <p style="margin: 6px 0 0 0; word-break: break-all;"><a href="${actionUrl}" style="color: ${brandColor}; font-size: 11px;">${actionUrl}</a></p>
+        </div>
+        ` : ''}
+        
         <p style="margin: 20px 0 0 0;">Cheers,<br>${business.businessName}</p>
       </div>
       <div style="text-align: center; padding: 15px; color: #666; font-size: 12px;">
@@ -139,13 +155,23 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     }
 
     // 5. Get business settings
-    const businessSettings = await storage.getBusinessSettings(req.userId);
+    let businessSettings = await storage.getBusinessSettings(req.userId);
     if (!businessSettings) {
       return res.status(404).json({ 
         title: "Business Setup Incomplete",
         message: "Your business details haven't been set up yet.",
         fix: "Go to Settings and complete your business profile before sending quotes."
       });
+    }
+    
+    // Resolve logo URL for email (convert object storage path to public URL if needed)
+    if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
+      // For emails, use the public API endpoint that serves the object
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000');
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
     }
 
     // 6. Validate business email for sending
@@ -204,6 +230,11 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
             </head>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
               <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+                ${businessSettings.logoUrl ? `
+                  <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+                    <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+                  </div>
+                ` : ''}
                 <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
                 ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
                 <div style="margin-top: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 16px; border-radius: 20px;">
@@ -221,10 +252,11 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
                 </div>
                 
                 ${quoteAcceptanceUrl ? `
-                <div style="text-align: center; margin: 24px 0;">
-                  <a href="${quoteAcceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">View & Accept Quote</a>
+                <div style="text-align: center; margin: 24px 0; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #86efac;">
+                  <a href="${quoteAcceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">View & Accept Quote</a>
+                  <p style="margin-top: 12px; color: #374151; font-size: 12px;">Or copy this link into your browser:</p>
+                  <p style="margin: 6px 0 0 0; word-break: break-all;"><a href="${quoteAcceptanceUrl}" style="color: ${brandColor}; font-size: 11px;">${quoteAcceptanceUrl}</a></p>
                 </div>
-                <p style="text-align: center; color: #666; font-size: 13px; margin: 0;">Click the button above to view the full quote and accept it online.</p>
                 ` : ''}
               </div>
               
@@ -260,7 +292,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
               : `Quote ${mergeData.quote_number} from ${businessSettings.businessName}`;
             
             emailSubject = templateSubject;
-            emailHtml = wrapTemplateInHtml(templateContent, templateSubject, businessSettings, client, brandColor);
+            emailHtml = wrapTemplateInHtml(templateContent, templateSubject, businessSettings, client, brandColor, quoteAcceptanceUrl, 'View & Accept Quote');
           } else {
             // Use default email template
             const emailContent = createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl);
@@ -440,13 +472,22 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
     }
 
     // 5. Get business settings
-    const businessSettings = await storage.getBusinessSettings(req.userId);
+    let businessSettings = await storage.getBusinessSettings(req.userId);
     if (!businessSettings) {
       return res.status(404).json({ 
         title: "Business Setup Incomplete",
         message: "Your business details haven't been set up yet.",
         fix: "Go to Settings and complete your business profile before sending invoices."
       });
+    }
+    
+    // Resolve logo URL for email (convert object storage path to public URL if needed)
+    if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
+      const baseUrl = process.env.APP_BASE_URL 
+        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000');
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
     }
 
     // 6. Validate business email for sending
@@ -519,6 +560,11 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
             </head>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
               <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+                ${businessSettings.logoUrl ? `
+                  <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+                    <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+                  </div>
+                ` : ''}
                 <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
                 ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
                 <div style="margin-top: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 16px; border-radius: 20px;">
@@ -537,10 +583,11 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
                 </div>
                 
                 ${paymentUrl ? `
-                <div style="text-align: center; margin: 24px 0;">
-                  <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Pay Now</a>
+                <div style="text-align: center; margin: 24px 0; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #86efac;">
+                  <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">Pay Now</a>
+                  <p style="margin-top: 12px; color: #374151; font-size: 12px;">Or copy this link into your browser:</p>
+                  <p style="margin: 6px 0 0 0; word-break: break-all;"><a href="${paymentUrl}" style="color: ${brandColor}; font-size: 11px;">${paymentUrl}</a></p>
                 </div>
-                <p style="text-align: center; color: #666; font-size: 13px; margin: 0;">Secure online payment via Stripe.</p>
                 ` : ''}
               </div>
               
@@ -575,7 +622,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
               : `${documentType} ${mergeData.invoice_number} from ${businessSettings.businessName}`;
             
             emailSubject = templateSubject;
-            emailHtml = wrapTemplateInHtml(templateContent, templateSubject, businessSettings, client, brandColor);
+            emailHtml = wrapTemplateInHtml(templateContent, templateSubject, businessSettings, client, brandColor, paymentUrl, 'Pay Now');
           } else {
             // Use default email template
             const emailContent = createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl);
@@ -920,13 +967,22 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     const { customSubject, customMessage } = req.body || {};
     
     // 1. Get business settings to check email sending preference
-    const businessSettings = await storage.getBusinessSettings(req.userId);
+    let businessSettings = await storage.getBusinessSettings(req.userId);
     if (!businessSettings) {
       return res.status(404).json({
         title: "Business Setup Incomplete",
         message: "Your business details haven't been set up yet.",
         fix: "Go to Settings and complete your business profile."
       });
+    }
+    
+    // Resolve logo URL for email (convert object storage path to public URL if needed)
+    const baseUrl = process.env.APP_BASE_URL 
+      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+        : 'http://localhost:5000');
+    if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1049,6 +1105,11 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+            ${businessSettings.logoUrl ? `
+              <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+                <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+              </div>
+            ` : ''}
             <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
@@ -1060,11 +1121,13 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
               ${quoteWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST</p>` : ''}
             </div>
             ${quoteAcceptanceUrl ? `
-              <div style="text-align: center; margin: 25px 0;">
-                <a href="${quoteAcceptanceUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">View & Accept Quote</a>
+              <div style="text-align: center; margin: 24px 0; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #86efac;">
+                <a href="${quoteAcceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">View & Accept Quote</a>
+                <p style="margin-top: 12px; color: #374151; font-size: 12px;">Or copy this link into your browser:</p>
+                <p style="margin: 6px 0 0 0; word-break: break-all;"><a href="${quoteAcceptanceUrl}" style="color: ${brandColor}; font-size: 11px;">${quoteAcceptanceUrl}</a></p>
               </div>
             ` : ''}
-            <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 Quote PDF attached for your records.</p>
+            <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">Quote PDF attached for your records.</p>
             <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
           </div>
         </body>
@@ -1092,7 +1155,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
           subject = replaceMergeFields(businessTemplate.subject, mergeData);
         }
         
-        emailHtml = wrapTemplateInHtml(templateContent, subject, businessSettings, client, brandColor);
+        emailHtml = wrapTemplateInHtml(templateContent, subject, businessSettings, client, brandColor, quoteAcceptanceUrl, 'View & Accept Quote');
       } else {
         // Fall back to default template
         emailHtml = createQuoteEmailHtml(quoteWithItems, client, businessSettings, quoteAcceptanceUrl).html;
@@ -1183,13 +1246,22 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     const { customSubject, customMessage } = req.body || {};
     
     // 1. Get business settings to check email sending preference
-    const businessSettings = await storage.getBusinessSettings(req.userId);
+    let businessSettings = await storage.getBusinessSettings(req.userId);
     if (!businessSettings) {
       return res.status(404).json({
         title: "Business Setup Incomplete",
         message: "Your business details haven't been set up yet.",
         fix: "Go to Settings and complete your business profile."
       });
+    }
+    
+    // Resolve logo URL for email (convert object storage path to public URL if needed)
+    const baseUrl = process.env.APP_BASE_URL 
+      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+        : 'http://localhost:5000');
+    if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}/api${businessSettings.logoUrl}` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1323,6 +1395,11 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+            ${businessSettings.logoUrl ? `
+              <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+                <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+              </div>
+            ` : ''}
             <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
@@ -1334,11 +1411,13 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
               ${invoiceWithItems.gstIncluded ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Includes GST (10%)</p>` : ''}
             </div>
             ${paymentUrl ? `
-              <div style="text-align: center; margin: 25px 0;">
-                <a href="${paymentUrl}" style="background: ${brandColor}; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Pay Online Now</a>
+              <div style="text-align: center; margin: 24px 0; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #86efac;">
+                <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">Pay Now</a>
+                <p style="margin-top: 12px; color: #374151; font-size: 12px;">Or copy this link into your browser:</p>
+                <p style="margin: 6px 0 0 0; word-break: break-all;"><a href="${paymentUrl}" style="color: ${brandColor}; font-size: 11px;">${paymentUrl}</a></p>
               </div>
             ` : ''}
-            <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">📎 ${invoiceLabel} PDF attached for your records.</p>
+            <p style="margin: 20px 0 0 0; font-size: 13px; color: #666;">${invoiceLabel} PDF attached for your records.</p>
             <p style="margin: 15px 0 0 0;">Cheers,<br>${businessSettings.businessName}</p>
           </div>
         </body>
@@ -1365,7 +1444,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
           subject = replaceMergeFields(businessTemplate.subject, mergeData);
         }
         
-        emailHtml = wrapTemplateInHtml(templateContent, subject, businessSettings, client, brandColor);
+        emailHtml = wrapTemplateInHtml(templateContent, subject, businessSettings, client, brandColor, paymentUrl, 'Pay Now');
       } else {
         // Fall back to default template
         emailHtml = createInvoiceEmailHtml(invoiceWithItems, client, businessSettings, paymentUrl).html;

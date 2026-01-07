@@ -103,10 +103,15 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
         <title>Quote - ${quote.title}</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h1 style="color: ${brandColor}; margin: 0;">${business.businessName}</h1>
-          ${business.abn ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
-          <p style="margin: 5px 0; color: #666;">Quote #${quote.number || quote.id?.substring(0, 8).toUpperCase()}</p>
+        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+          ${business.logoUrl ? `
+            <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+              <img src="${business.logoUrl}" alt="${business.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+            </div>
+          ` : ''}
+          <h1 style="color: white; margin: 0; font-size: 22px;">${business.businessName}</h1>
+          ${business.abn ? `<p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+          <p style="margin: 6px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Quote #${quote.number || quote.id?.substring(0, 8).toUpperCase()}</p>
         </div>
 
         <div style="margin-bottom: 20px;">
@@ -115,11 +120,13 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
         </div>
         
         ${acceptanceUrl ? `
-        <div style="text-align: center; margin: 30px 0;">
+        <div style="text-align: center; margin: 30px 0; padding: 24px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #86efac;">
+          <p style="margin: 0 0 16px 0; color: #166534; font-weight: 600; font-size: 16px;">Ready to view your quote?</p>
           <a href="${acceptanceUrl}" style="background-color: ${brandColor}; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
             View & Accept Quote
           </a>
-          <p style="margin-top: 12px; color: #666; font-size: 14px;">Click above to view the full quote and accept online</p>
+          <p style="margin-top: 16px; color: #374151; font-size: 13px;">Or copy this link into your browser:</p>
+          <p style="margin: 8px 0 0 0; word-break: break-all;"><a href="${acceptanceUrl}" style="color: ${brandColor}; font-size: 12px;">${acceptanceUrl}</a></p>
         </div>
         ` : ''}
 
@@ -243,11 +250,16 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
         <title>Invoice - ${invoice.title}</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <p style="margin: 0 0 5px 0; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">TAX INVOICE</p>
-          <h1 style="color: ${brandColor}; margin: 0;">${business.businessName}</h1>
-          ${business.abn ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
-          <p style="margin: 5px 0; color: #666;">Invoice #${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}</p>
+        <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+          ${business.logoUrl ? `
+            <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+              <img src="${business.logoUrl}" alt="${business.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+            </div>
+          ` : ''}
+          <p style="margin: 0 0 4px 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">TAX INVOICE</p>
+          <h1 style="color: white; margin: 0; font-size: 22px;">${business.businessName}</h1>
+          ${business.abn ? `<p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
+          <p style="margin: 6px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Invoice #${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}</p>
         </div>
 
         <div style="margin-bottom: 20px;">
@@ -256,11 +268,14 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
         </div>
         
         ${paymentUrl ? `
-        <div style="text-align: center; margin: 30px 0;">
+        <div style="text-align: center; margin: 30px 0; padding: 24px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; border: 1px solid #f59e0b;">
+          <p style="margin: 0 0 16px 0; color: #92400e; font-weight: 600; font-size: 16px;">Ready to pay your invoice?</p>
           <a href="${paymentUrl}" style="background-color: ${brandColor}; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
             Pay Now - $${totalAmount.toFixed(2)}
           </a>
-          <p style="margin-top: 12px; color: #666; font-size: 14px;">Secure payment via card</p>
+          <p style="margin-top: 16px; color: #374151; font-size: 13px;">Secure payment via card</p>
+          <p style="margin: 8px 0 0 0; color: #666; font-size: 12px;">Or copy this link into your browser:</p>
+          <p style="margin: 8px 0 0 0; word-break: break-all;"><a href="${paymentUrl}" style="color: ${brandColor}; font-size: 12px;">${paymentUrl}</a></p>
         </div>
         ` : ''}
 
