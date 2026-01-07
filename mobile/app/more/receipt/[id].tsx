@@ -310,17 +310,17 @@ export default function ReceiptDetailScreen() {
       `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Send Now (PDF + Message)',
+          text: 'TradieTrack: Send Now',
           onPress: async () => {
             await handleSendViaTradieTrack();
           },
         },
         {
-          text: 'Edit Message First',
+          text: 'TradieTrack: Edit Message',
           onPress: () => setShowEmailCompose(true),
         },
         {
-          text: 'Share PDF Only',
+          text: 'Manual: Share PDF',
           onPress: async () => {
             await handleSendViaEmailApp();
           },

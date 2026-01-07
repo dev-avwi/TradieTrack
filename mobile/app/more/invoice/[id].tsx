@@ -278,15 +278,15 @@ export default function InvoiceDetailScreen() {
       `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Send Now (PDF + Message)',
+          text: 'TradieTrack: Send Now',
           onPress: () => handleSendViaTradieTrack(),
         },
         {
-          text: 'Edit Message First',
+          text: 'TradieTrack: Edit Message',
           onPress: () => setShowEmailCompose(true),
         },
         {
-          text: 'Share PDF Only',
+          text: 'Manual: Share PDF',
           onPress: () => handleSendViaEmailApp(),
         },
         {
@@ -683,17 +683,17 @@ export default function InvoiceDetailScreen() {
       `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'Send Now (PDF + Message)',
+          text: 'TradieTrack: Send Now',
           onPress: async () => {
             await handleSendReceiptViaTradieTrack();
           },
         },
         {
-          text: 'Edit Message First',
+          text: 'TradieTrack: Edit Message',
           onPress: () => setShowReceiptEmailCompose(true),
         },
         {
-          text: 'Share PDF Only',
+          text: 'Manual: Share PDF',
           onPress: async () => {
             await handleSendReceiptViaEmailApp();
           },
