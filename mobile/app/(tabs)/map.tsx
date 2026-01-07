@@ -631,6 +631,7 @@ export default function MapScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamMarkersReady, setTeamMarkersReady] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   
   // Tap-to-assign state
@@ -943,10 +944,20 @@ export default function MapScreen() {
       locationPollRef.current = null;
     }
     
+    // Reset markers ready state when turning off team view
+    if (!showTeamMembers || !canViewTeamMode) {
+      setTeamMarkersReady(false);
+    }
+    
     if (showTeamMembers && canViewTeamMode && isLive) {
-      // Initial fetch
+      // Initial fetch with delayed marker rendering to prevent top-left flash
       fetchTeamLocations().then(() => {
         setLastLocationUpdate(new Date());
+        // Delay setting markers ready to ensure coordinates are fully processed
+        // This prevents the iOS react-native-maps bug where markers flash at (0,0)
+        setTimeout(() => {
+          setTeamMarkersReady(true);
+        }, 150);
       }).catch(err => {
         console.log('[Map] Initial location fetch failed:', err);
       });
@@ -1422,7 +1433,8 @@ export default function MapScreen() {
 
         {/* Team Member Markers - Life360 Style */}
         {/* Note: Members are pre-filtered at transformation time - all members in state have valid coords */}
-        {showTeamMembers && canViewTeamMode && teamMembers.map((member) => {
+        {/* teamMarkersReady delays rendering until data is stable to prevent iOS top-left flash bug */}
+        {showTeamMembers && canViewTeamMode && teamMarkersReady && teamMembers.map((member) => {
           // Safety check - validate coordinates are within Australia bounds
           const lat = member.lastLocation?.latitude;
           const lng = member.lastLocation?.longitude;
@@ -1898,7 +1910,8 @@ export default function MapScreen() {
       </View>
 
       {/* Team Member Chips - Life360 Style compact horizontal scroll */}
-      {canViewTeamMode && showTeamMembers && teamMembers.length > 0 && !selectedWorker && routeJobs.length === 0 && (
+      {/* Only show when teamMarkersReady to sync with map markers and prevent flash */}
+      {canViewTeamMode && showTeamMembers && teamMarkersReady && teamMembers.length > 0 && !selectedWorker && routeJobs.length === 0 && (
         <View style={{
           position: 'absolute',
           bottom: bottomNavHeight + spacing.sm,
