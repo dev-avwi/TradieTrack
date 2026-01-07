@@ -25,7 +25,8 @@ import {
   Wand2,
   Copy,
   CheckCheck,
-  FileText
+  FileText,
+  ExternalLink
 } from "lucide-react";
 
 interface EmailComposeModalProps {
@@ -278,6 +279,38 @@ export default function EmailComposeModal({
     }
   };
 
+  // Open in user's mail app with composed message
+  const handleOpenMailApp = () => {
+    if (!subject.trim() || !message.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please enter both subject and message.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Build the email body with public URL if available
+    let fullBody = message;
+    if (publicUrl) {
+      fullBody += `\n\n---\nView ${type === 'quote' ? 'Quote' : 'Invoice'}: ${publicUrl}`;
+    }
+
+    const mailtoUrl = `mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(fullBody)}`;
+    
+    window.open(mailtoUrl, '_blank');
+    
+    toast({
+      title: "Email opened in your mail app",
+      description: "Your composed message is ready. The link to view the document online is included in the email body.",
+    });
+    
+    // Invalidate caches in case user wants to track this
+    const cacheKey = type === 'quote' ? '/api/quotes' : '/api/invoices';
+    queryClient.invalidateQueries({ queryKey: [cacheKey, documentId] });
+    queryClient.invalidateQueries({ queryKey: [cacheKey] });
+  };
+
   // Quick tone adjustments with Australian English
   const adjustTone = (tone: 'formal' | 'friendly' | 'brief') => {
     const tones = {
@@ -511,30 +544,45 @@ export default function EmailComposeModal({
           </Tabs>
         </div>
 
-        {/* Footer - Single Send Button */}
+        {/* Footer - Send Options */}
         <div className="space-y-3 pt-4 border-t flex-shrink-0">
-          {/* Primary Action - Send Email */}
-          <Button 
-            onClick={handleSendEmail}
-            disabled={!subject.trim() || !message.trim() || isSending}
-            className="w-full h-11"
-            data-testid="button-send-email"
-          >
-            {isSending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Send {type === 'quote' ? 'Quote' : 'Invoice'}
-              </>
-            )}
-          </Button>
+          {/* Two Send Options */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Primary Action - Use TradieTrack (backend send) */}
+            <Button 
+              onClick={handleSendEmail}
+              disabled={!subject.trim() || !message.trim() || isSending}
+              className="h-11"
+              data-testid="button-send-email"
+            >
+              {isSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Use TradieTrack
+                </>
+              )}
+            </Button>
+
+            {/* Secondary Action - Open in Mail App */}
+            <Button 
+              variant="outline"
+              onClick={handleOpenMailApp}
+              disabled={!subject.trim() || !message.trim() || isSending}
+              className="h-11"
+              data-testid="button-open-mail-app"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Email App
+            </Button>
+          </div>
           
           <p className="text-xs text-muted-foreground text-center">
-            PDF is attached automatically. Change how emails are sent on the Integrations page.
+            TradieTrack sends automatically with PDF attached. Email App opens your mail with the message and online viewing link.
           </p>
 
           {/* Copy Link Option for sharing */}

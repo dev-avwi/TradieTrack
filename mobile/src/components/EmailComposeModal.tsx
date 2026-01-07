@@ -11,11 +11,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Linking,
+  ActionSheetIOS,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, typography } from '../lib/design-tokens';
 import { api } from '../lib/api';
+
+// Email app options for the selector
+type EmailAppOption = 'gmail' | 'outlook' | 'apple' | 'default';
 
 interface AIEmailSuggestion {
   subject: string;
@@ -38,6 +43,7 @@ interface EmailComposeModalProps {
   businessName?: string;
   publicUrl?: string;
   onSend: (customSubject: string, customMessage: string) => Promise<void>;
+  onOpenWithEmailApp?: (subject: string, message: string, app: EmailAppOption) => Promise<void>;
 }
 
 type TabKey = 'compose' | 'ai' | 'preview';
@@ -55,6 +61,7 @@ export function EmailComposeModal({
   businessName,
   publicUrl,
   onSend,
+  onOpenWithEmailApp,
 }: EmailComposeModalProps) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
@@ -67,6 +74,8 @@ export function EmailComposeModal({
   const [aiSuggestion, setAiSuggestion] = useState<AIEmailSuggestion | null>(null);
   // Track the document ID and type to detect when we need to reinitialize
   const [initializedFor, setInitializedFor] = useState<string | null>(null);
+  const [showEmailAppSelector, setShowEmailAppSelector] = useState(false);
+  const [isOpeningEmailApp, setIsOpeningEmailApp] = useState(false);
 
   const clientFirstName = useMemo(() => clientName?.split(' ')[0] || 'there', [clientName]);
 
@@ -193,6 +202,135 @@ export function EmailComposeModal({
     }
   };
 
+  // Open email in external app with composed message
+  const openEmailInApp = async (app: EmailAppOption) => {
+    if (!subject.trim() || !message.trim()) {
+      Alert.alert('Missing Information', 'Please enter both subject and message.');
+      return;
+    }
+
+    setIsOpeningEmailApp(true);
+    setShowEmailAppSelector(false);
+
+    try {
+      // Build the email body with public URL if available
+      let fullBody = message;
+      if (publicUrl) {
+        fullBody += `\n\n---\nView ${type === 'quote' ? 'Quote' : type === 'invoice' ? 'Invoice' : 'Receipt'}: ${publicUrl}`;
+      }
+
+      const encodedSubject = encodeURIComponent(subject);
+      const encodedBody = encodeURIComponent(fullBody);
+      const encodedEmail = encodeURIComponent(clientEmail);
+
+      let url: string;
+
+      switch (app) {
+        case 'gmail':
+          // Gmail app URL scheme with compose
+          url = `googlegmail://co?to=${encodedEmail}&subject=${encodedSubject}&body=${encodedBody}`;
+          break;
+        case 'outlook':
+          // Outlook app URL scheme
+          url = `ms-outlook://compose?to=${encodedEmail}&subject=${encodedSubject}&body=${encodedBody}`;
+          break;
+        case 'apple':
+        case 'default':
+        default:
+          // Standard mailto for Apple Mail and default
+          url = `mailto:${clientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+          break;
+      }
+
+      const canOpen = await Linking.canOpenURL(url);
+      let emailOpened = false;
+      let usedFallback = false;
+      
+      if (canOpen) {
+        await Linking.openURL(url);
+        emailOpened = true;
+      } else if (app !== 'apple' && app !== 'default') {
+        // Specific app not installed, try mailto fallback
+        const mailtoUrl = `mailto:${clientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+        const canOpenMailto = await Linking.canOpenURL(mailtoUrl);
+        
+        if (canOpenMailto) {
+          await Linking.openURL(mailtoUrl);
+          emailOpened = true;
+          usedFallback = true;
+        }
+      }
+
+      if (emailOpened) {
+        // Always call callback when email was opened (even via fallback)
+        if (onOpenWithEmailApp) {
+          await onOpenWithEmailApp(subject, message, usedFallback ? 'default' : app);
+        }
+        
+        // Ask if they want to mark as sent
+        const appName = usedFallback ? 'your default email app' : 
+          (app === 'gmail' ? 'Gmail' : app === 'outlook' ? 'Outlook' : 'your email app');
+        
+        setTimeout(() => {
+          Alert.alert(
+            'Email Opened',
+            `Your ${type === 'quote' ? 'quote' : type === 'invoice' ? 'invoice' : 'receipt'} message is ready in ${appName}.\n\nNote: To attach the PDF, go back and use "Use TradieTrack" which sends it automatically.\n\nMark as sent?`,
+            [
+              { text: 'Not Yet', style: 'cancel' },
+              { 
+                text: 'Mark as Sent',
+                onPress: () => {
+                  onClose();
+                }
+              },
+            ]
+          );
+        }, 500);
+      } else {
+        Alert.alert(
+          'Email App Not Found',
+          `Couldn't open ${app === 'gmail' ? 'Gmail' : app === 'outlook' ? 'Outlook' : 'email app'}. Please make sure it's installed, or try "Use TradieTrack" to send with PDF attached.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Error opening email app:', error);
+      Alert.alert('Error', 'Failed to open email app. Please try again.');
+    } finally {
+      setIsOpeningEmailApp(false);
+    }
+  };
+
+  // Show email app selector
+  const showEmailAppOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Gmail', 'Outlook', 'Apple Mail'],
+          cancelButtonIndex: 0,
+          title: 'Choose Email App',
+          message: 'Select which app to compose your email in',
+        },
+        (buttonIndex) => {
+          switch (buttonIndex) {
+            case 1:
+              openEmailInApp('gmail');
+              break;
+            case 2:
+              openEmailInApp('outlook');
+              break;
+            case 3:
+              openEmailInApp('apple');
+              break;
+          }
+        }
+      );
+    } else {
+      // For Android, show a custom modal
+      setShowEmailAppSelector(true);
+    }
+  };
+
   const tabs: { key: TabKey; label: string; icon: keyof typeof Feather.glyphMap }[] = [
     { key: 'compose', label: 'Compose', icon: 'edit-3' },
     { key: 'ai', label: 'AI Assist', icon: 'zap' },
@@ -221,20 +359,7 @@ export function EmailComposeModal({
             </Text>
             <Text style={styles.headerSubtitle}>to {clientName}</Text>
           </View>
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={isSending}
-            style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color={colors.primaryForeground} />
-            ) : (
-              <>
-                <Feather name="send" size={16} color={colors.primaryForeground} />
-                <Text style={styles.sendButtonText}>Send</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Tabs */}
@@ -441,7 +566,115 @@ export function EmailComposeModal({
             </View>
           )}
         </ScrollView>
+
+        {/* Footer with Send Options */}
+        <View style={styles.footer}>
+          <View style={styles.footerButtons}>
+            {/* Primary: Use TradieTrack (backend send) */}
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()}
+              style={[
+                styles.footerButton,
+                styles.footerButtonPrimary,
+                (isSending || !subject.trim() || !message.trim()) && styles.footerButtonDisabled
+              ]}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <>
+                  <Feather name="send" size={18} color={colors.primaryForeground} />
+                  <Text style={styles.footerButtonPrimaryText}>Use TradieTrack</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Secondary: Open with Email App */}
+            <TouchableOpacity
+              onPress={showEmailAppOptions}
+              disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()}
+              style={[
+                styles.footerButton,
+                styles.footerButtonSecondary,
+                (isOpeningEmailApp || !subject.trim() || !message.trim()) && styles.footerButtonDisabled
+              ]}
+            >
+              {isOpeningEmailApp ? (
+                <ActivityIndicator size="small" color={colors.foreground} />
+              ) : (
+                <>
+                  <Feather name="external-link" size={18} color={colors.foreground} />
+                  <Text style={styles.footerButtonSecondaryText}>Open Email App</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.footerHint}>
+            TradieTrack sends automatically with PDF attached. Email App lets you review first.
+          </Text>
+        </View>
       </KeyboardAvoidingView>
+
+      {/* Android Email App Selector Modal */}
+      {Platform.OS === 'android' && (
+        <Modal
+          visible={showEmailAppSelector}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowEmailAppSelector(false)}
+        >
+          <TouchableOpacity
+            style={styles.emailAppOverlay}
+            activeOpacity={1}
+            onPress={() => setShowEmailAppSelector(false)}
+          >
+            <View style={styles.emailAppModal}>
+              <Text style={styles.emailAppTitle}>Choose Email App</Text>
+              <Text style={styles.emailAppSubtitle}>
+                Select which app to compose your email in
+              </Text>
+
+              <TouchableOpacity
+                style={styles.emailAppOption}
+                onPress={() => openEmailInApp('gmail')}
+              >
+                <View style={[styles.emailAppIcon, { backgroundColor: '#EA4335' }]}>
+                  <Feather name="mail" size={20} color="#ffffff" />
+                </View>
+                <Text style={styles.emailAppLabel}>Gmail</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emailAppOption}
+                onPress={() => openEmailInApp('outlook')}
+              >
+                <View style={[styles.emailAppIcon, { backgroundColor: '#0078D4' }]}>
+                  <Feather name="mail" size={20} color="#ffffff" />
+                </View>
+                <Text style={styles.emailAppLabel}>Outlook</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emailAppOption}
+                onPress={() => openEmailInApp('default')}
+              >
+                <View style={[styles.emailAppIcon, { backgroundColor: colors.muted }]}>
+                  <Feather name="mail" size={20} color={colors.foreground} />
+                </View>
+                <Text style={styles.emailAppLabel}>Default Email</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emailAppCancel}
+                onPress={() => setShowEmailAppSelector(false)}
+              >
+                <Text style={styles.emailAppCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -795,6 +1028,111 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     attachmentText: {
       fontSize: 13,
       color: colors.mutedForeground,
+    },
+    // Footer styles
+    footer: {
+      padding: spacing.md,
+      paddingBottom: spacing.xl,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    footerButtons: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    footerButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md,
+      borderRadius: radius.lg,
+      gap: spacing.sm,
+    },
+    footerButtonPrimary: {
+      backgroundColor: colors.primary,
+    },
+    footerButtonSecondary: {
+      backgroundColor: colors.muted,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    footerButtonDisabled: {
+      opacity: 0.5,
+    },
+    footerButtonPrimaryText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primaryForeground,
+    },
+    footerButtonSecondaryText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    footerHint: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginTop: spacing.sm,
+    },
+    // Email app selector styles (Android)
+    emailAppOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    emailAppModal: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      padding: spacing.lg,
+      paddingBottom: spacing['2xl'],
+    },
+    emailAppTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.foreground,
+      textAlign: 'center',
+      marginBottom: spacing.xs,
+    },
+    emailAppSubtitle: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginBottom: spacing.lg,
+    },
+    emailAppOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing.md,
+      backgroundColor: colors.muted,
+      borderRadius: radius.lg,
+      marginBottom: spacing.sm,
+      gap: spacing.md,
+    },
+    emailAppIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emailAppLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.foreground,
+    },
+    emailAppCancel: {
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+      marginTop: spacing.sm,
+    },
+    emailAppCancelText: {
+      fontSize: 16,
+      color: colors.mutedForeground,
+      fontWeight: '500',
     },
   });
 
