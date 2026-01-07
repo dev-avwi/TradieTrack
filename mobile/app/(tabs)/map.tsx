@@ -935,7 +935,16 @@ export default function MapScreen() {
     return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
+  // Convert zoom level to region deltas (iOS uses deltas, not zoom)
+  const zoomToDeltas = useCallback((zoom: number) => {
+    // Approximate conversion: delta = 360 / (2^zoom)
+    // zoom 15 ≈ 0.01, zoom 16 ≈ 0.005, zoom 17 ≈ 0.0025
+    const delta = 360 / Math.pow(2, zoom);
+    return { latitudeDelta: delta, longitudeDelta: delta };
+  }, []);
+
   // Animate camera to a specific location with smooth zoom - Life360 style
+  // Uses animateToRegion for iOS compatibility (zoom param is ignored on Apple Maps)
   const animateCameraToLocation = useCallback((
     latitude: number, 
     longitude: number, 
@@ -945,17 +954,20 @@ export default function MapScreen() {
     
     const { zoom = 15, duration = 600 } = options;
     
-    // Use animateCamera for smooth animation
-    mapRef.current.animateCamera(
+    // Use animateToRegion which works on both iOS and Android
+    // iOS ignores zoom param in animateCamera, so we must use deltas
+    const { latitudeDelta, longitudeDelta } = zoomToDeltas(zoom);
+    
+    mapRef.current.animateToRegion(
       {
-        center: { latitude, longitude },
-        zoom,
-        heading: 0,
-        pitch: 0,
+        latitude,
+        longitude,
+        latitudeDelta,
+        longitudeDelta,
       },
-      { duration }
+      duration
     );
-  }, []);
+  }, [zoomToDeltas]);
 
   // Handle worker selection for assignment - with smooth camera animation
   const handleWorkerTap = useCallback((member: TeamMember) => {
