@@ -8,17 +8,20 @@ import {
   Dimensions,
   LayoutChangeEvent,
   Alert,
+  Platform,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   runOnJS,
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, statusColors } from '../lib/design-tokens';
 
@@ -75,7 +78,7 @@ export function DragDropDispatchBoard({
   const scrollViewRef = useRef<ScrollView>(null);
   const [containerLayout, setContainerLayout] = useState({ width: 0, height: 0, x: 0, y: 0 });
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
-  const [highlightedSlot, setHighlightedSlot] = useState<{ hour: number; memberId?: string } | null>(null);
+  const [highlightedSlot, setHighlightedSlot] = useState<{ hour: number; time: string; memberId?: string } | null>(null);
   
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -130,19 +133,42 @@ export function DragDropDispatchBoard({
     return undefined;
   };
 
+  const triggerHaptic = useCallback((type: 'light' | 'medium' | 'success') => {
+    if (Platform.OS === 'ios') {
+      if (type === 'light') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } else if (type === 'medium') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    }
+  }, []);
+
   const handleDragStart = useCallback((job: Job) => {
     setDraggedJob(job);
     scale.value = withSpring(1.05);
     opacity.value = 0.9;
-  }, [scale, opacity]);
+    triggerHaptic('medium');
+  }, [scale, opacity, triggerHaptic]);
 
+  const lastHighlightedTime = useRef<string | null>(null);
+  
   const handleDragUpdate = useCallback((x: number, y: number) => {
     if (!draggedJob) return;
     
     const hour = getHourFromY(y);
+    const time = getTimeFromY(y);
     const memberId = getMemberFromX(x);
-    setHighlightedSlot({ hour, memberId });
-  }, [draggedJob, columnWidth, teamMembers]);
+    
+    // Trigger light haptic when crossing into a new time slot (includes half-hours)
+    if (time !== lastHighlightedTime.current) {
+      lastHighlightedTime.current = time;
+      triggerHaptic('light');
+    }
+    
+    setHighlightedSlot({ hour, time, memberId });
+  }, [draggedJob, columnWidth, teamMembers, triggerHaptic]);
 
   const handleDragEnd = useCallback(async (x: number, y: number) => {
     if (!draggedJob) return;
@@ -157,18 +183,27 @@ export function DragDropDispatchBoard({
 
     try {
       await onJobSchedule(draggedJob.id, time, memberId);
+      triggerHaptic('success');
     } catch (error) {
       Alert.alert('Error', 'Failed to schedule job');
     }
 
+    lastHighlightedTime.current = null;
     setDraggedJob(null);
     setHighlightedSlot(null);
-  }, [draggedJob, onJobSchedule, scale, opacity, translateX, translateY, columnWidth, teamMembers]);
+  }, [draggedJob, onJobSchedule, scale, opacity, translateX, translateY, columnWidth, teamMembers, triggerHaptic]);
 
-  const formatTime = (hour: number): string => {
+  const formatHour = (hour: number): string => {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const h = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
     return `${h}${ampm}`;
+  };
+
+  const formatTimeString = (time: string): string => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+    return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -363,7 +398,7 @@ export function DragDropDispatchBoard({
           <View style={[styles.timeColumn, { width: TIME_COLUMN_WIDTH }]}>
             {WORK_HOURS.map(hour => (
               <View key={hour} style={[styles.timeSlot, { height: HOUR_HEIGHT }]}>
-                <Text style={styles.timeLabel}>{formatTime(hour)}</Text>
+                <Text style={styles.timeLabel}>{formatHour(hour)}</Text>
               </View>
             ))}
           </View>
@@ -398,7 +433,9 @@ export function DragDropDispatchBoard({
         <View style={styles.dragIndicator}>
           <Feather name="move" size={16} color={colors.primaryForeground} />
           <Text style={styles.dragIndicatorText}>
-            Drop on timeline to schedule
+            {highlightedSlot 
+              ? `Drop to schedule at ${formatTimeString(highlightedSlot.time)}`
+              : 'Drag to timeline to schedule'}
           </Text>
         </View>
       )}
@@ -558,7 +595,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     position: 'relative',
   },
   highlightedRow: {
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: `${colors.primary}25`,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   halfHourLine: {
     position: 'absolute',
