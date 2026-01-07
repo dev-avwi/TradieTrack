@@ -11769,7 +11769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/receipts/:id/pdf", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
-      const { generatePaymentReceiptPDF, generatePDFBuffer } = await import('./pdfService');
+      const { generatePaymentReceiptPDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       const receipt = await storage.getReceipt(req.params.id, effectiveUserId);
       if (!receipt) {
@@ -11780,6 +11780,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!business) {
         return res.status(404).json({ error: "Business settings not found" });
       }
+      
+      // Resolve logo URL to base64 for PDF rendering
+      const businessWithLogo = await resolveBusinessLogoForPdf(business);
       
       // Get client, job, and invoice data if available
       let client = null;
@@ -11816,13 +11819,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: client.address,
         } : null,
         business: {
-          businessName: business.businessName,
-          abn: business.abn,
-          address: business.address,
-          phone: business.phone,
-          email: business.email,
-          logoUrl: business.logoUrl,
-          brandColor: business.brandColor || '#dc2626',
+          businessName: businessWithLogo.businessName,
+          abn: businessWithLogo.abn,
+          address: businessWithLogo.address,
+          phone: businessWithLogo.phone,
+          email: businessWithLogo.email,
+          logoUrl: businessWithLogo.logoUrl,
+          brandColor: businessWithLogo.brandColor || '#dc2626',
         },
         invoice: invoice ? {
           id: invoice.id,
@@ -11866,12 +11869,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const brandColor = business?.brandColor || '#dc2626';
       
       // Generate PDF for attachment
-      const { generatePaymentReceiptPDF, generatePDFBuffer } = await import('./pdfService');
+      const { generatePaymentReceiptPDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
       let client = null;
       if (receipt.clientId) {
         client = await storage.getClient(receipt.clientId, effectiveUserId);
       }
+      
+      // Resolve logo URL to base64 for PDF rendering
+      const businessWithLogo = business ? await resolveBusinessLogoForPdf(business) : null;
       
       const pdfHtml = generatePaymentReceiptPDF({
         payment: {
@@ -11892,12 +11898,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           address: client.address,
         } : null,
         business: {
-          businessName: business?.businessName || 'Business',
-          abn: business?.abn,
-          address: business?.address,
-          phone: business?.phone,
-          email: business?.email,
-          logoUrl: business?.logoUrl,
+          businessName: businessWithLogo?.businessName || 'Business',
+          abn: businessWithLogo?.abn,
+          address: businessWithLogo?.address,
+          phone: businessWithLogo?.phone,
+          email: businessWithLogo?.email,
+          logoUrl: businessWithLogo?.logoUrl,
           brandColor: brandColor,
         },
         invoice: null,
