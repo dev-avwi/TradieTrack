@@ -420,6 +420,294 @@ export const SAFETY_FORM_TEMPLATES = {
       notifyOwner: true,
       generatePdfReport: true
     }
+  },
+
+  electrical_test_tag: {
+    name: 'Electrical Test & Tag Certificate',
+    description: 'Portable appliance testing and tagging record for WHS compliance. Required under AS/NZS 3760:2022.',
+    formType: 'compliance',
+    requiresSignature: true,
+    fields: [
+      {
+        id: 'business_section',
+        type: 'section',
+        label: 'BUSINESS DETAILS'
+      },
+      { id: 'business_name', type: 'text', label: 'Business Name', required: true },
+      { id: 'technician_name', type: 'text', label: 'Technician Name', required: true },
+      { id: 'licence_number', type: 'text', label: 'Electrical Licence Number', required: true },
+      {
+        id: 'test_dates_section',
+        type: 'section',
+        label: 'TEST DATES'
+      },
+      { id: 'test_date', type: 'date', label: 'Test Date', required: true },
+      { id: 'next_test_due', type: 'date', label: 'Next Test Due', required: true },
+      {
+        id: 'appliance_section',
+        type: 'section',
+        label: 'APPLIANCE DETAILS'
+      },
+      { id: 'appliance_description', type: 'text', label: 'Appliance Description', required: true },
+      { id: 'make_model', type: 'text', label: 'Make/Model', required: true },
+      { id: 'serial_number', type: 'text', label: 'Serial Number', required: false },
+      { id: 'appliance_location', type: 'text', label: 'Location', required: true },
+      {
+        id: 'test_results_section',
+        type: 'section',
+        label: 'TEST RESULTS'
+      },
+      {
+        id: 'visual_inspection',
+        type: 'select',
+        label: 'Visual Inspection',
+        options: ['Pass', 'Fail'],
+        required: true
+      },
+      {
+        id: 'earth_continuity',
+        type: 'select',
+        label: 'Earth Continuity Test',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'insulation_resistance',
+        type: 'select',
+        label: 'Insulation Resistance Test',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'tag_section',
+        type: 'section',
+        label: 'TAG DETAILS'
+      },
+      {
+        id: 'tag_color',
+        type: 'select',
+        label: 'Tag Colour',
+        options: ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Violet', 'Grey', 'White'],
+        required: true
+      },
+      { id: 'tag_number', type: 'text', label: 'Tag Number', required: true },
+      {
+        id: 'result_section',
+        type: 'section',
+        label: 'OVERALL RESULT'
+      },
+      {
+        id: 'overall_result',
+        type: 'select',
+        label: 'Overall Result',
+        options: ['Pass', 'Fail'],
+        required: true
+      },
+      { id: 'notes', type: 'textarea', label: 'Notes', required: false },
+      { id: 'technician_acknowledgement', type: 'checkbox', label: 'I certify that this appliance has been tested in accordance with AS/NZS 3760:2022', required: true }
+    ],
+    settings: {
+      showLogo: true,
+      generatePdfReport: true
+    }
+  },
+
+  gas_compliance: {
+    name: 'Gas Compliance Certificate',
+    description: 'Gas installation compliance certificate for Australian regulations. Required after gas fitting work.',
+    formType: 'compliance',
+    requiresSignature: true,
+    fields: [
+      {
+        id: 'business_section',
+        type: 'section',
+        label: 'BUSINESS DETAILS'
+      },
+      { id: 'business_name', type: 'text', label: 'Business Name', required: true },
+      { id: 'gasfitter_name', type: 'text', label: 'Gasfitter Name', required: true },
+      { id: 'licence_number', type: 'text', label: 'Gasfitter Licence Number', required: true },
+      {
+        id: 'job_section',
+        type: 'section',
+        label: 'JOB DETAILS'
+      },
+      { id: 'job_address', type: 'text', label: 'Job Address', required: true },
+      { id: 'date_of_work', type: 'date', label: 'Date of Work', required: true },
+      {
+        id: 'work_type_section',
+        type: 'section',
+        label: 'TYPE OF WORK PERFORMED'
+      },
+      {
+        id: 'work_type',
+        type: 'checklist',
+        label: 'Work Performed',
+        options: [
+          'New installation',
+          'Repair',
+          'Modification',
+          'Replacement',
+          'Disconnection',
+          'Reconnection',
+          'Service/maintenance',
+          'Appliance commissioning'
+        ],
+        required: true
+      },
+      {
+        id: 'appliance_section',
+        type: 'section',
+        label: 'APPLIANCE DETAILS'
+      },
+      { id: 'appliance_type', type: 'text', label: 'Appliance Type', required: true },
+      { id: 'appliance_make', type: 'text', label: 'Make', required: true },
+      { id: 'appliance_model', type: 'text', label: 'Model', required: true },
+      { id: 'appliance_serial', type: 'text', label: 'Serial Number', required: false },
+      {
+        id: 'safety_checks_section',
+        type: 'section',
+        label: 'SAFETY CHECKS'
+      },
+      {
+        id: 'gas_leak_test',
+        type: 'select',
+        label: 'Gas Leak Test',
+        options: ['Pass', 'Fail'],
+        required: true
+      },
+      {
+        id: 'ventilation_check',
+        type: 'select',
+        label: 'Ventilation Check',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'flame_safeguards',
+        type: 'select',
+        label: 'Flame Safeguards Operational',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'pressure_test',
+        type: 'select',
+        label: 'Pressure Test',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'meter_section',
+        type: 'section',
+        label: 'METER DETAILS (IF APPLICABLE)'
+      },
+      { id: 'meter_number', type: 'text', label: 'Meter Number', required: false },
+      { id: 'meter_location', type: 'text', label: 'Meter Location', required: false },
+      {
+        id: 'compliance_section',
+        type: 'section',
+        label: 'COMPLIANCE STATEMENT'
+      },
+      { id: 'additional_notes', type: 'textarea', label: 'Additional Notes', required: false },
+      { id: 'compliance_declaration', type: 'checkbox', label: 'I certify that all gas work has been completed in accordance with AS/NZS 5601 and relevant state/territory regulations', required: true }
+    ],
+    settings: {
+      showLogo: true,
+      generatePdfReport: true,
+      notifyOwner: true
+    }
+  },
+
+  plumbing_compliance: {
+    name: 'Plumbing Compliance Certificate',
+    description: 'Plumbing work compliance certificate as required by Australian plumbing regulations.',
+    formType: 'compliance',
+    requiresSignature: true,
+    fields: [
+      {
+        id: 'business_section',
+        type: 'section',
+        label: 'BUSINESS DETAILS'
+      },
+      { id: 'business_name', type: 'text', label: 'Business Name', required: true },
+      { id: 'plumber_name', type: 'text', label: 'Plumber Name', required: true },
+      { id: 'licence_number', type: 'text', label: 'Plumbing Licence Number', required: true },
+      {
+        id: 'job_section',
+        type: 'section',
+        label: 'JOB DETAILS'
+      },
+      { id: 'site_address', type: 'text', label: 'Site Address', required: true },
+      { id: 'date_of_work', type: 'date', label: 'Date of Work', required: true },
+      {
+        id: 'work_type_section',
+        type: 'section',
+        label: 'WORK PERFORMED'
+      },
+      {
+        id: 'work_type',
+        type: 'checklist',
+        label: 'Type of Work',
+        options: [
+          'New installation',
+          'Repair',
+          'Drainage work',
+          'Hot water system',
+          'Cold water supply',
+          'Gas fitting',
+          'Sanitary fixtures',
+          'Stormwater drainage',
+          'Backflow prevention',
+          'Rainwater tank connection'
+        ],
+        required: true
+      },
+      {
+        id: 'test_results_section',
+        type: 'section',
+        label: 'TEST RESULTS'
+      },
+      {
+        id: 'pressure_test',
+        type: 'select',
+        label: 'Pressure Test',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'drainage_test',
+        type: 'select',
+        label: 'Drainage Test',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'water_supply_test',
+        type: 'select',
+        label: 'Water Supply Test',
+        options: ['Pass', 'Fail', 'N/A'],
+        required: true
+      },
+      {
+        id: 'materials_section',
+        type: 'section',
+        label: 'MATERIALS USED'
+      },
+      { id: 'materials_description', type: 'textarea', label: 'Materials Used', placeholder: 'List materials used (must be compliant with Australian Standards)', required: true },
+      { id: 'materials_compliant', type: 'checkbox', label: 'All materials used are compliant with relevant Australian Standards (AS/NZS)', required: true },
+      {
+        id: 'compliance_section',
+        type: 'section',
+        label: 'COMPLIANCE DECLARATION'
+      },
+      { id: 'additional_notes', type: 'textarea', label: 'Additional Notes', required: false },
+      { id: 'compliance_declaration', type: 'checkbox', label: 'I certify that all plumbing work has been completed in accordance with the Plumbing Code of Australia and relevant state/territory regulations', required: true }
+    ],
+    settings: {
+      showLogo: true,
+      generatePdfReport: true,
+      notifyOwner: true
+    }
   }
 };
 

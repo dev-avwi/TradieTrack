@@ -32,6 +32,7 @@ import {
   isSameDay,
   parseISO,
 } from "date-fns";
+import TeamScheduler from "@/components/TeamScheduler";
 
 interface Job {
   id: string;
@@ -262,7 +263,7 @@ function MonthView({
 
 export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePageProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'week' | 'month' | 'dispatch'>('week');
+  const [view, setView] = useState<'week' | 'month' | 'dispatch' | 'team'>('week');
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const { toast } = useToast();
@@ -643,6 +644,20 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                 >
                   <Users className="h-4 w-4 mr-1.5" />
                   Dispatch
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setView('team')}
+                  data-testid="button-team-view"
+                  className={`flex-1 sm:flex-none px-3 ${view === 'team' ? 'shadow-sm' : ''}`}
+                  style={view === 'team' ? {
+                    backgroundColor: 'hsl(var(--trade))',
+                    color: 'white'
+                  } : {}}
+                >
+                  <Users className="h-4 w-4 mr-1.5" />
+                  Team
                 </Button>
               </div>
               <Button
@@ -1126,6 +1141,15 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
               </CardContent>
             </Card>
           </div>
+        </div>
+      )}
+
+      {view === 'team' && (
+        <div className="mt-3">
+          <TeamScheduler 
+            onViewJob={onViewJob} 
+            onCreateJob={onCreateJob}
+          />
         </div>
       )}
     </PageShell>
