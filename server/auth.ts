@@ -326,6 +326,14 @@ export class AuthService {
       const updatedUser = await storage.getUserById(user.id);
       if (!updatedUser) throw new Error('Failed to fetch updated user');
 
+      // Seed default templates for new Google user (async, don't block)
+      storage.seedDefaultBusinessTemplates(updatedUser.id).catch(err => {
+        console.error('Failed to seed business templates for Google user:', err);
+      });
+      storage.ensureDefaultTemplates(updatedUser.id).catch(err => {
+        console.error('Failed to seed message templates for Google user:', err);
+      });
+
       // Send welcome email (async, don't block user creation)
       sendWelcomeEmail({
         email: updatedUser.email,
@@ -397,6 +405,14 @@ export class AuthService {
       // Fetch the updated user
       const updatedUser = await storage.getUserById(user.id);
       if (!updatedUser) throw new Error('Failed to fetch updated user');
+
+      // Seed default templates for new Apple user (async, don't block)
+      storage.seedDefaultBusinessTemplates(updatedUser.id).catch(err => {
+        console.error('Failed to seed business templates for Apple user:', err);
+      });
+      storage.ensureDefaultTemplates(updatedUser.id).catch(err => {
+        console.error('Failed to seed message templates for Apple user:', err);
+      });
 
       // Send welcome email (async, don't block user creation)
       sendWelcomeEmail({

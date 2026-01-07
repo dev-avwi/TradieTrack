@@ -23,7 +23,6 @@ function wrapTemplateInHtml(content: string, subject: string, business: any, cli
         ${business.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
       </div>
       <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
-        <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
         <div style="white-space: pre-line; margin-bottom: 20px;">${content}</div>
         
         ${actionUrl ? `

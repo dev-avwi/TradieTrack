@@ -913,6 +913,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.register(cleanUserData);
       
       if (result.success) {
+        // Seed default templates for new user (non-blocking)
+        try {
+          await storage.seedDefaultBusinessTemplates(result.user.id);
+          await storage.ensureDefaultTemplates(result.user.id);
+        } catch (templateError) {
+          console.error('Failed to seed default templates:', templateError);
+          // Don't fail registration if template seeding fails
+        }
+
         // Generate and send email verification token (non-blocking)
         // Welcome email will be sent after verification, not here
         try {
@@ -1028,6 +1037,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Invalid or expired code. Please request a new code." 
         });
       }
+      
+      // Seed default templates if new user (async, don't block login)
+      storage.seedDefaultBusinessTemplates(user.id).catch(err => {
+        console.error('Failed to seed business templates for passwordless user:', err);
+      });
+      storage.ensureDefaultTemplates(user.id).catch(err => {
+        console.error('Failed to seed message templates for passwordless user:', err);
+      });
       
       // Create session and explicitly save
       req.session.userId = user.id;
