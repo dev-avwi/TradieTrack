@@ -213,7 +213,7 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
     // 3. Try Gmail via Replit connector (if available)
     if (gmailConnected) {
       console.log('Attempting Gmail via Replit connector');
-      const gmailResult = await sendViaGmailDirect({ to, subject, html, text, attachments });
+      const gmailResult = await sendViaGmailDirect({ to, subject, html, text, attachments, fromName });
       if (gmailResult.success) {
         return gmailResult;
       }
@@ -379,7 +379,7 @@ async function sendViaGmail(
 
 // Send email via Gmail directly (without integration record - uses Replit connector)
 async function sendViaGmailDirect(
-  options: { to: string; subject: string; html: string; text?: string; attachments?: any[] }
+  options: { to: string; subject: string; html: string; text?: string; attachments?: any[]; fromName?: string }
 ): Promise<EmailResult> {
   try {
     const result = await sendViaGmailAPI({
@@ -388,6 +388,7 @@ async function sendViaGmailDirect(
       html: options.html,
       text: options.text,
       attachments: options.attachments,
+      fromName: options.fromName,
     });
 
     if (result.success) {
