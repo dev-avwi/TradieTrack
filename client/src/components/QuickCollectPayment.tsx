@@ -35,10 +35,10 @@ interface QuickCollectPaymentProps {
 type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'stripe_link';
 
 const paymentMethods = [
-  { id: 'cash' as PaymentMethod, label: 'Cash', icon: DollarSign, description: 'Customer paid in cash' },
-  { id: 'card' as PaymentMethod, label: 'Card (Manual)', icon: CreditCard, description: 'Card payment already processed' },
-  { id: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer', icon: Building2, description: 'Direct bank deposit' },
-  { id: 'stripe_link' as PaymentMethod, label: 'Send Payment Link', icon: Smartphone, description: 'Send link via SMS/email' },
+  { id: 'cash' as PaymentMethod, label: 'Cash', icon: DollarSign, description: 'Customer paid in cash', noFees: true },
+  { id: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer', icon: Building2, description: 'Direct bank deposit', noFees: true },
+  { id: 'card' as PaymentMethod, label: 'Card (EFTPOS)', icon: CreditCard, description: 'Card payment already processed', noFees: true },
+  { id: 'stripe_link' as PaymentMethod, label: 'Send Payment Link', icon: Smartphone, description: 'Send link via SMS/email (~1.95% + $0.30 fee)', noFees: false },
 ];
 
 export default function QuickCollectPayment({
@@ -182,7 +182,14 @@ export default function QuickCollectPayment({
                       <method.icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{method.label}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{method.label}</p>
+                        {method.noFees && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            No Fees
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">{method.description}</p>
                     </div>
                   </button>
@@ -243,10 +250,18 @@ export default function QuickCollectPayment({
             </Card>
 
             {selectedMethod !== 'stripe_link' && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  This will create an invoice marked as paid and generate a receipt automatically.
-                </p>
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-green-700 dark:text-green-300 font-medium">
+                      No processing fees - you keep 100%!
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                      This will create an invoice marked as paid and generate a receipt automatically.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

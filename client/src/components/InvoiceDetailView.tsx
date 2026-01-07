@@ -928,22 +928,35 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               </div>
 
               {!stripeConnected && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-md mt-4" data-testid="warning-stripe-not-connected">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-md mt-4" data-testid="info-manual-payments">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                    <DollarSign className="h-5 w-5 text-green-600 mt-0.5" />
                     <div className="flex-1 space-y-2">
-                      <p className="text-sm text-amber-800 dark:text-amber-200">
-                        Stripe is not connected. You need to set up payments to collect money online.
+                      <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                        Collect payment directly - no processing fees!
                       </p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-white hover:bg-amber-50 border-amber-200 text-amber-800 h-8"
-                        onClick={() => navigate("/integrations")}
-                        data-testid="button-setup-payments"
-                      >
-                        Set Up Payments
-                      </Button>
+                      <p className="text-xs text-green-700 dark:text-green-300">
+                        Accept cash, bank transfer, or EFTPOS and use "Record Payment" to mark this invoice as paid.
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Button 
+                          size="sm"
+                          onClick={() => setShowRecordPaymentDialog(true)}
+                          data-testid="button-quick-record-payment"
+                        >
+                          <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+                          Record Payment
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => navigate("/integrations")}
+                          data-testid="button-setup-stripe-optional"
+                        >
+                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                          Setup Online Payments (Optional)
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1383,9 +1396,12 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
         }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Record Payment</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                Record Payment
+              </DialogTitle>
               <DialogDescription>
-                Record a payment received in person for this invoice.
+                Record a payment received in person - no processing fees!
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
@@ -1394,8 +1410,13 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                   <div className="text-sm text-muted-foreground">Invoice {invoice.number}</div>
                   <div className="font-medium">{client?.name || 'Unknown'}</div>
                 </div>
-                <div className="text-xl font-bold text-primary">
-                  {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}
+                <div className="text-right">
+                  <div className="text-xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                    {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}
+                  </div>
+                  <Badge variant="secondary" className="text-xs mt-1">
+                    You keep 100%
+                  </Badge>
                 </div>
               </div>
               
