@@ -12141,6 +12141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         to: email,
         subject: emailSubject,
         html: emailHtml,
+        fromName: businessName || 'TradieTrack',
+        replyTo: business?.email,
         attachments: [{
           filename: `${receipt.receiptNumber}.pdf`,
           content: pdfBuffer,

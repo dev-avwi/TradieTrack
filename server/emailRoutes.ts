@@ -1191,6 +1191,8 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         to: client.email,
         subject,
         html: emailHtml,
+        fromName: businessSettings.businessName || 'TradieTrack',
+        replyTo: businessSettings.email,
         attachments: [{
           filename: pdfFilename,
           content: pdfBuffer,
@@ -1477,6 +1479,8 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         to: client.email,
         subject,
         html: emailHtml,
+        fromName: businessSettings.businessName || 'TradieTrack',
+        replyTo: businessSettings.email,
         attachments: [{
           filename: pdfFilename,
           content: pdfBuffer,

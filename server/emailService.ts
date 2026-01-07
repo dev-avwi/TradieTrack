@@ -1682,6 +1682,8 @@ interface EmailWithAttachmentParams {
   to: string;
   subject: string;
   html: string;
+  fromName?: string; // Business name to show as sender (defaults to TradieTrack)
+  replyTo?: string; // Reply-to email address (business email)
   attachments?: Array<{
     filename: string;
     content: Buffer;
@@ -1697,9 +1699,9 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
     to: params.to,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: PLATFORM_FROM_NAME
+      name: params.fromName || PLATFORM_FROM_NAME
     },
-    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    replyTo: params.replyTo || PLATFORM_REPLY_TO_EMAIL,
     subject: params.subject,
     html: params.html,
   };
