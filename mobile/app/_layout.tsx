@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus, Image } from 'react-native';
+import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus, Image, Animated, Easing } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -356,6 +356,117 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function LoadingScreen({ colors }: { colors: any }) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    // Gentle pulsing animation for the logo
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+    
+    // Smooth rotation for the loading ring
+    Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+  
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  
+  return (
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      backgroundColor: colors.background 
+    }}>
+      <View style={{ 
+        width: 140, 
+        height: 140, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        marginBottom: 24,
+      }}>
+        {/* Outer rotating ring */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            borderWidth: 3,
+            borderColor: 'transparent',
+            borderTopColor: colors.primary,
+            borderRightColor: colors.primary + '40',
+            transform: [{ rotate: spin }],
+          }}
+        />
+        
+        {/* Inner pulsing logo container */}
+        <Animated.View
+          style={{
+            width: 110,
+            height: 110,
+            borderRadius: 55,
+            backgroundColor: colors.card,
+            justifyContent: 'center',
+            alignItems: 'center',
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.15,
+            shadowRadius: 20,
+            elevation: 8,
+            transform: [{ scale: pulseAnim }],
+          }}
+        >
+          <Image 
+            source={require('../assets/tradietrack-logo.png')} 
+            style={{ 
+              width: 85, 
+              height: 85, 
+              resizeMode: 'contain',
+            }} 
+          />
+        </Animated.View>
+      </View>
+      
+      {/* Loading text with subtle fade */}
+      <Animated.Text
+        style={{
+          fontSize: 14,
+          color: colors.mutedForeground,
+          fontWeight: '500',
+          opacity: 0.8,
+        }}
+      >
+        Loading...
+      </Animated.Text>
+    </View>
+  );
+}
+
 function RootLayoutContent() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -369,25 +480,7 @@ function RootLayoutContent() {
 
   // Show loading screen while checking auth to prevent sign-in page flash
   if (!isInitialized || isLoading) {
-    return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: colors.background 
-      }}>
-        <Image 
-          source={require('../assets/tradietrack-logo.png')} 
-          style={{ 
-            width: 180, 
-            height: 60, 
-            resizeMode: 'contain',
-            marginBottom: 32 
-          }} 
-        />
-        <ActivityIndicator size="small" color={colors.primary} />
-      </View>
-    );
+    return <LoadingScreen colors={colors} />;
   }
 
   return (

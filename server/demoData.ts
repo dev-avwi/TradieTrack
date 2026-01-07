@@ -1305,7 +1305,10 @@ export async function refreshDemoTeamActivity() {
         ? baseLocation.status
         : 'offline';
 
-      const speed = activityStatus === 'driving' ? Math.floor(Math.random() * 40) + 20 : 0; // 20-60 km/h if driving
+      // Speed in m/s (frontend converts m/s to km/h by multiplying by 3.6)
+      // Generate realistic driving speeds: 30-60 km/h = 8.3-16.7 m/s
+      const speedMs = activityStatus === 'driving' ? Math.floor(Math.random() * 9) + 8 : 0; // 8-17 m/s = ~30-60 km/h
+      const speed = speedMs;
 
       await storage.upsertTradieStatus({
         userId: member.memberId,
