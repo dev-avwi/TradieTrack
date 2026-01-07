@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,7 +7,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import * as Linking from 'expo-linking';
 import { useAuthStore } from '../src/lib/store';
 import "../global.css";
-import { useNotifications, useOfflineStorage, useLocationTracking } from '../src/hooks/useServices';
+import { useNotifications, useOfflineStorage, useLocationTracking, useStripeTerminal } from '../src/hooks/useServices';
+import { isTapToPayAvailable } from '../src/lib/stripe-terminal';
 import notificationService from '../src/lib/notifications';
 import { router } from 'expo-router';
 import { ThemeProvider, useTheme } from '../src/lib/theme';
@@ -118,7 +119,10 @@ function ServicesInitializer() {
   const notifications = useNotifications();
   const offline = useOfflineStorage();
   const location = useLocationTracking();
+  const terminal = useStripeTerminal();
   const { fetchNotifications } = useNotificationsStore();
+  const appState = useRef<AppStateStatus>(AppState.currentState);
+  const terminalInitializedRef = useRef(false);
 
   useEffect(() => {
     async function initServices() {
@@ -199,9 +203,43 @@ function ServicesInitializer() {
       } catch (error) {
         console.log('[App] Location init failed:', error);
       }
+
+      // Apple Requirement 1.4: Initialize/warm Terminal at app launch for faster checkout
+      // Only initialize if Tap to Pay is available on this device
+      if (isTapToPayAvailable() && !terminalInitializedRef.current) {
+        try {
+          console.log('[App] Warming up Stripe Terminal for faster checkout...');
+          await terminal.initialize();
+          terminalInitializedRef.current = true;
+        } catch (error) {
+          console.log('[App] Terminal warm-up failed (non-critical):', error);
+        }
+      }
     }
 
     initServices();
+
+    // Apple Requirement 1.4: Re-initialize Terminal when app comes to foreground
+    // This ensures Terminal is ready for quick payment processing
+    const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active' &&
+        isTapToPayAvailable()
+      ) {
+        console.log('[App] App came to foreground - warming Terminal...');
+        try {
+          await terminal.initialize();
+        } catch (error) {
+          console.log('[App] Terminal foreground warm-up failed (non-critical):', error);
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return null;

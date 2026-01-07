@@ -1060,11 +1060,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, req.userId);
     }
     
-    // Generate public quote URL
-    const baseUrl = process.env.APP_BASE_URL 
-      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'http://localhost:5000');
+    // Generate public quote URL (reuse baseUrl from above)
     const quoteAcceptanceUrl = acceptanceToken ? `${baseUrl}/q/${acceptanceToken}` : null;
     
     // 6. Get linked job for site address
@@ -1339,11 +1335,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
     }
     
-    // Generate public payment URL
-    const baseUrl = process.env.APP_BASE_URL 
-      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'http://localhost:5000');
+    // Generate public payment URL (reuse baseUrl from above)
     const paymentUrl = paymentToken ? `${baseUrl}/pay/${paymentToken}` : null;
     
     // 6. Get linked job for site address and time entries

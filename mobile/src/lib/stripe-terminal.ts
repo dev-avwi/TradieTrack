@@ -78,13 +78,13 @@ export const isSDKAvailable = (): boolean => {
 
 /**
  * Check if Tap to Pay is available on this device
- * Requires: iOS 16+ or Android 8+ with NFC
+ * Requires: iOS 17.6+ (per Apple Tap to Pay requirements) or Android 8+ with NFC
  */
 export const isTapToPayAvailable = (): boolean => {
   if (Platform.OS === 'ios') {
-    const version = parseInt(Platform.Version as string, 10);
-    // iOS 16.4+ for Tap to Pay on iPhone
-    return version >= 16;
+    const version = parseFloat(Platform.Version as string);
+    // iOS 17.6+ required for Tap to Pay on iPhone (Apple Requirement 1.3)
+    return version >= 17.6;
   }
   if (Platform.OS === 'android') {
     // Android 8.0 (API 26) minimum for Tap to Pay
@@ -92,6 +92,24 @@ export const isTapToPayAvailable = (): boolean => {
   }
   return false;
 };
+
+/**
+ * Check if iOS version is too old for Tap to Pay
+ * Returns true if iOS but version is below 17.6
+ */
+export const isOsVersionNotSupported = (): boolean => {
+  if (Platform.OS === 'ios') {
+    const version = parseFloat(Platform.Version as string);
+    return version < 17.6;
+  }
+  return false;
+};
+
+/**
+ * Error message for unsupported OS version (Apple Requirement 1.3)
+ */
+export const OS_VERSION_NOT_SUPPORTED_MESSAGE = 
+  'Please update to the latest version of iOS to use Tap to Pay on iPhone';
 
 /**
  * Get the useStripeTerminal hook from SDK if available

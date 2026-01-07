@@ -1594,8 +1594,11 @@ export default function CollectScreen() {
 
           <Text style={styles.sectionLabel}>Payment Methods</Text>
 
+          {/* Apple Requirement 5.5: Use SF Symbol wave.3.right.circle for Tap to Pay
+              In native builds, replace Feather 'radio' with actual SF Symbol via react-native-sfsymbols
+              The 'radio' icon from Feather resembles the wave pattern as a fallback */}
           <PaymentMethodCard
-            icon={<Feather name="smartphone" size={24} color={colors.primary} />}
+            icon={<Feather name="radio" size={24} color={colors.primary} />}
             title="Tap to Pay"
             description="Customer taps card on your phone"
             badge={tapToPaySupported ? "Ready" : "Build Required"}

@@ -15,6 +15,8 @@ import {
   isSDKAvailable, 
   isTapToPayAvailable,
   isSimulationMode,
+  isOsVersionNotSupported,
+  OS_VERSION_NOT_SUPPORTED_MESSAGE,
   requestAndroidPermissions,
   TerminalStatus, 
   Reader, 
@@ -62,6 +64,13 @@ export function useStripeTerminal() {
       setError(null);
       setStatus('initializing');
 
+      // Check for iOS version compatibility (Apple Requirement 1.3)
+      if (isOsVersionNotSupported()) {
+        setError(OS_VERSION_NOT_SUPPORTED_MESSAGE);
+        setStatus('error');
+        return false;
+      }
+
       // Request Android permissions first
       if (Platform.OS === 'android') {
         const granted = await requestAndroidPermissions();
@@ -82,6 +91,13 @@ export function useStripeTerminal() {
         // Real SDK initialization
         const { error: initError } = await sdkHook.initialize() || {};
         if (initError) {
+          // Handle osVersionNotSupported error from SDK (Apple Requirement 1.3)
+          if (initError.code === 'osVersionNotSupported' || 
+              initError.message?.includes('osVersionNotSupported')) {
+            setError(OS_VERSION_NOT_SUPPORTED_MESSAGE);
+            setStatus('error');
+            return false;
+          }
           throw new Error(initError.message || 'SDK initialization failed');
         }
         setIsInitialized(true);
@@ -95,7 +111,13 @@ export function useStripeTerminal() {
       }
     } catch (err: any) {
       console.error('[useStripeTerminal] Initialize error:', err);
-      setError(err.message || 'Failed to initialize Stripe Terminal');
+      // Handle osVersionNotSupported error (Apple Requirement 1.3)
+      if (err.code === 'osVersionNotSupported' || 
+          err.message?.includes('osVersionNotSupported')) {
+        setError(OS_VERSION_NOT_SUPPORTED_MESSAGE);
+      } else {
+        setError(err.message || 'Failed to initialize Stripe Terminal');
+      }
       setStatus('error');
       return false;
     }
