@@ -684,7 +684,9 @@ ${businessName}`;
         );
       } else {
         setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
-        Alert.alert('Error', 'Failed to update payment settings');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || 'Failed to update payment settings';
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
       setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);

@@ -245,6 +245,22 @@ export const typography = {
   },
 } as const;
 
+// === TYPOGRAPHY SIZES (for direct fontSize access) ===
+// Some components use typography.sizes.lg pattern - this provides that API
+export const typographySizes = {
+  xs: 11,
+  sm: 13,
+  md: 15,
+  lg: 17,
+  xl: 20,
+  '2xl': 22,
+  '3xl': 28,
+  '4xl': 32,
+} as const;
+
+// Attach sizes to typography for backwards compatibility
+(typography as any).sizes = typographySizes;
+
 // === ICON SIZES (matches web lucide icons) ===
 export const iconSizes = {
   xs: 12,
