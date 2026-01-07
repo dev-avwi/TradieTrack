@@ -274,15 +274,19 @@ export default function InvoiceDetailScreen() {
   const handleSend = () => {
     Alert.alert(
       'Send Invoice',
-      'How would you like to send this invoice?',
+      'Choose how to send this invoice to your client:',
       [
         {
-          text: 'Share PDF',
-          onPress: () => handleSendViaEmailApp(),
+          text: 'Send Now (Recommended)',
+          onPress: () => handleSendViaTradieTrack(),
         },
         {
-          text: 'Use TradieTrack',
+          text: 'Edit Message First',
           onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Just Download PDF',
+          onPress: () => handleSendViaEmailApp(),
         },
         {
           text: 'Cancel',
@@ -371,6 +375,48 @@ export default function InvoiceDetailScreen() {
       Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use TradieTrack" option instead.');
     } finally {
       setIsDownloadingPdf(false);
+    }
+  };
+  
+  const handleSendViaTradieTrack = async () => {
+    if (!invoice || isSendingInvoice) return;
+    
+    const client = getClient(invoice.clientId);
+    const recipientEmail = client?.email;
+    
+    if (!recipientEmail) {
+      Alert.alert(
+        'No Email Address',
+        'This client does not have an email address on file.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setIsSendingInvoice(true);
+    try {
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/invoices/${id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ email: recipientEmail }),
+      });
+
+      if (response.ok) {
+        await loadData();
+        Alert.alert('Invoice Sent!', `Email sent to ${recipientEmail} with PDF attached.`);
+      } else {
+        const error = await response.json();
+        Alert.alert('Error', error.error || 'Failed to send invoice');
+      }
+    } catch (error) {
+      console.log('Error sending invoice:', error);
+      Alert.alert('Error', 'Failed to send invoice. Please try again.');
+    } finally {
+      setIsSendingInvoice(false);
     }
   };
 
@@ -643,14 +689,10 @@ export default function InvoiceDetailScreen() {
     // Preference is 'ask' - Show options for sending
     Alert.alert(
       'Send Receipt',
-      'How would you like to send this receipt?',
+      'Choose how to send this receipt to your client:',
       [
         {
-          text: 'TradieTrack (Edit Message)',
-          onPress: () => setShowReceiptEmailCompose(true),
-        },
-        {
-          text: 'TradieTrack (Send Now)',
+          text: 'Send Now (Recommended)',
           onPress: async () => {
             await handleSendReceiptViaTradieTrack();
             // Save preference for next time
@@ -658,15 +700,17 @@ export default function InvoiceDetailScreen() {
           },
         },
         {
-          text: 'Share PDF',
+          text: 'Edit Message First',
+          onPress: () => setShowReceiptEmailCompose(true),
+        },
+        {
+          text: 'Just Download PDF',
           onPress: async () => {
             await handleSendReceiptViaEmailApp();
-            // Save preference for next time
-            await setEmailPreference('native_mail');
           },
         },
         {
-          text: 'Always Ask',
+          text: 'Cancel',
           style: 'cancel',
         },
       ]

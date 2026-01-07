@@ -320,14 +320,10 @@ export default function ReceiptDetailScreen() {
     // Preference is 'ask' - Show options for sending
     Alert.alert(
       'Send Receipt',
-      'How would you like to send this receipt?',
+      'Choose how to send this receipt to your client:',
       [
         {
-          text: 'TradieTrack (Edit Message)',
-          onPress: () => setShowEmailCompose(true),
-        },
-        {
-          text: 'TradieTrack (Send Now)',
+          text: 'Send Now (Recommended)',
           onPress: async () => {
             await handleSendViaTradieTrack();
             // Save preference for next time
@@ -335,15 +331,17 @@ export default function ReceiptDetailScreen() {
           },
         },
         {
-          text: 'Share PDF',
+          text: 'Edit Message First',
+          onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Just Download PDF',
           onPress: async () => {
             await handleSendViaEmailApp();
-            // Save preference for next time
-            await setEmailPreference('native_mail');
           },
         },
         {
-          text: 'Always Ask',
+          text: 'Cancel',
           style: 'cancel',
         },
       ]
