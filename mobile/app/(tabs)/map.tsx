@@ -978,11 +978,10 @@ export default function MapScreen() {
     const memberLng = member.lastLocation?.longitude;
     
     if (selectedWorker?.id === member.id) {
-      // Deselect if tapping same worker - zoom out to show all
+      // Deselect if tapping same worker - stay at current zoom (don't zoom out)
       setSelectedWorker(null);
       markerScaleAnim.setValue(1); // Reset scale
-      // Fit to all markers after a brief delay
-      setTimeout(() => fitToMarkers(), 200);
+      // Don't zoom out - user wants to stay where they are
     } else {
       // Animate camera to the member's location with zoom
       // Use longer duration for smoother feel when zooming from far away
@@ -1265,6 +1264,8 @@ export default function MapScreen() {
               coordinate={{ latitude: job.latitude, longitude: job.longitude }}
               onPress={() => handleJobMarkerPress(job)}
               onCalloutPress={() => navigateToJob(job.id)}
+              calloutAnchor={{ x: 0.5, y: 0 }}
+              stopPropagation={!!selectedWorker}
             >
               <View style={{ alignItems: 'center' }}>
                 <View style={[
@@ -1301,28 +1302,27 @@ export default function MapScreen() {
                   </View>
                 )}
               </View>
-              <Callout tooltip onPress={() => navigateToJob(job.id)}>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>{job.title}</Text>
-                  {job.clientName && (
-                    <Text style={styles.calloutSubtitle}>{job.clientName}</Text>
-                  )}
-                  <View style={[styles.calloutBadge, { backgroundColor: getMarkerColor(job.status) }]}>
-                    <Text style={styles.calloutBadgeText}>{STATUS_LABELS[job.status]}</Text>
+              {/* Only show callout when no worker is selected - avoids messy popup behind assign modal */}
+              {!selectedWorker && (
+                <Callout tooltip onPress={() => navigateToJob(job.id)}>
+                  <View style={styles.callout}>
+                    <Text style={styles.calloutTitle}>{job.title}</Text>
+                    {job.clientName && (
+                      <Text style={styles.calloutSubtitle}>{job.clientName}</Text>
+                    )}
+                    <View style={[styles.calloutBadge, { backgroundColor: getMarkerColor(job.status) }]}>
+                      <Text style={styles.calloutBadgeText}>{STATUS_LABELS[job.status]}</Text>
+                    </View>
+                    {jobInRoute ? (
+                      <Text style={[styles.calloutHint, { color: colors.primary }]}>
+                        Stop #{routeJobs.findIndex(j => j.id === job.id) + 1} in route
+                      </Text>
+                    ) : (
+                      <Text style={styles.calloutHint}>Tap for options</Text>
+                    )}
                   </View>
-                  {selectedWorker ? (
-                    <Text style={[styles.calloutHint, { color: colors.primary }]}>
-                      Tap to assign to {selectedWorker.user?.firstName}
-                    </Text>
-                  ) : jobInRoute ? (
-                    <Text style={[styles.calloutHint, { color: colors.primary }]}>
-                      Stop #{routeJobs.findIndex(j => j.id === job.id) + 1} in route
-                    </Text>
-                  ) : (
-                    <Text style={styles.calloutHint}>Tap for options</Text>
-                  )}
-                </View>
-              </Callout>
+                </Callout>
+              )}
             </Marker>
           );
         })}
