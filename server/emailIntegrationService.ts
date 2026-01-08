@@ -2,7 +2,7 @@ import { db } from './storage';
 import { emailIntegrations, emailDeliveryLogs, type EmailIntegration, type InsertEmailIntegration } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
-import { sendEmail as sendPlatformEmail } from './emailService';
+import { sendEmail as sendPlatformEmail, sendEmailWithAttachment } from './emailService';
 import { encrypt, decrypt, isEncryptionEnabled } from './cryptoHelper';
 import { isGmailConnected, sendViaGmailAPI, getGmailProfile } from './gmailClient';
 import { isOutlookConnected, sendViaOutlookAPI, getOutlookProfile } from './outlookClient';
@@ -217,7 +217,7 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
     // 3. Try SendGrid platform email FIRST (properly displays business name in From header)
     // Gmail connector has OAuth limitations that prevent custom From name display
     console.log('Using SendGrid platform email (supports custom From name)');
-    const sendgridResult = await sendViaPlatform({ to, subject, html, text, fromName });
+    const sendgridResult = await sendViaPlatform({ to, subject, html, text, fromName, attachments });
     if (sendgridResult.success) {
       return sendgridResult;
     }
@@ -442,9 +442,35 @@ async function sendViaOutlook(
 
 // Send email via platform (SendGrid)
 async function sendViaPlatform(
-  options: { to: string; subject: string; html: string; text?: string; fromName?: string }
+  options: { to: string; subject: string; html: string; text?: string; fromName?: string; attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }> }
 ): Promise<EmailResult> {
   try {
+    // If attachments are provided, use sendEmailWithAttachment
+    if (options.attachments && options.attachments.length > 0) {
+      // Convert attachments to proper Buffer format
+      const formattedAttachments = options.attachments.map(att => ({
+        filename: att.filename,
+        content: Buffer.isBuffer(att.content) ? att.content : Buffer.from(att.content),
+        contentType: att.contentType || 'application/pdf',
+      }));
+      
+      await sendEmailWithAttachment({
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        fromName: options.fromName,
+        attachments: formattedAttachments,
+      });
+      
+      console.log(`✅ SendGrid email with ${formattedAttachments.length} attachment(s) sent to ${options.to}`);
+      
+      return {
+        success: true,
+        sentVia: 'sendgrid',
+      };
+    }
+    
+    // No attachments - use regular sendPlatformEmail
     const result = await sendPlatformEmail({
       to: options.to,
       subject: options.subject,
