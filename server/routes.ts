@@ -9898,7 +9898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return handleInvoiceMarkPaid(req, res, storage);
   });
 
-  // Send receipt email for paid invoice
+  // Send receipt email for paid invoice (with PDF attachment)
   app.post("/api/invoices/:id/send-receipt", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
@@ -9919,11 +9919,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const businessSettings = await storage.getBusinessSettings(req.userId);
       
-      // Import and use the receipt email function
-      const { sendReceiptEmail } = await import('./emailService');
-      await sendReceiptEmail(invoice, client, businessSettings);
+      // Use unified receipt email function that handles PDF generation internally
+      const { sendReceiptEmailWithPdf } = await import('./emailService');
+      const result = await sendReceiptEmailWithPdf(
+        storage,
+        invoice,
+        client,
+        businessSettings || {},
+        undefined, // Let it look up or create receipt internally
+        userContext.effectiveUserId
+      );
       
-      res.json({ success: true, message: `Receipt sent to ${client.email}` });
+      res.json(result);
     } catch (error: any) {
       console.error("Error sending receipt:", error);
       res.status(500).json({ error: error.message || "Failed to send receipt" });

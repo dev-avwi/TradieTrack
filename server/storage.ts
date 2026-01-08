@@ -388,6 +388,7 @@ export interface IStorage {
   getReceipt(id: string, userId: string): Promise<Receipt | undefined>;
   getReceiptsForJob(jobId: string, userId: string): Promise<Receipt[]>;
   getReceiptByNumber(receiptNumber: string, userId: string): Promise<Receipt | undefined>;
+  getReceiptByInvoiceId(invoiceId: string, userId: string): Promise<Receipt | undefined>;
   createReceipt(receipt: InsertReceipt & { userId: string }): Promise<Receipt>;
   updateReceipt(id: string, userId: string, receipt: Partial<InsertReceipt>): Promise<Receipt | undefined>;
   deleteReceipt(id: string, userId: string): Promise<boolean>;
@@ -1942,6 +1943,15 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(receipts)
       .where(eq(receipts.viewToken, token))
+      .limit(1);
+    return result[0];
+  }
+
+  async getReceiptByInvoiceId(invoiceId: string, userId: string): Promise<Receipt | undefined> {
+    const result = await db
+      .select()
+      .from(receipts)
+      .where(and(eq(receipts.invoiceId, invoiceId), eq(receipts.userId, userId)))
       .limit(1);
     return result[0];
   }

@@ -588,11 +588,13 @@ export const sendInvoiceEmail = async (invoice: any, client: any, business: any 
   }
 };
 
-// Send receipt email
-export const sendReceiptEmail = async (invoice: any, client: any, business: any = {}) => {
-  if (!initializeSendGrid()) {
-    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
-  }
+/**
+ * @deprecated Use `sendReceiptEmailWithPdf` instead for consistent PDF generation and attachment.
+ * This legacy function is kept for backwards compatibility but new code should use
+ * `sendReceiptEmailWithPdf` which handles PDF generation internally.
+ */
+export const sendReceiptEmail = async (invoice: any, client: any, business: any = {}, pdfBuffer?: Buffer, receiptNumber?: string) => {
+  const sendGridInitialized = initializeSendGrid();
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -600,7 +602,26 @@ export const sendReceiptEmail = async (invoice: any, client: any, business: any 
 
   try {
     const emailData = createReceiptEmail(invoice, client, business);
-    await sgMail.send(emailData);
+    
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      const filename = receiptNumber 
+        ? `Receipt-${receiptNumber}.pdf`
+        : `Receipt-${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}.pdf`;
+      (emailData as any).attachments = [{
+        content: pdfBuffer.toString('base64'),
+        filename,
+        type: 'application/pdf',
+        disposition: 'attachment'
+      }];
+    }
+    
+    if (sendGridInitialized) {
+      await sgMail.send(emailData);
+    } else {
+      await mockEmailService.send(emailData);
+    }
+    
     return { success: true, message: 'Receipt sent successfully' };
   } catch (error: any) {
     console.error('Error sending receipt email:', error);
@@ -611,6 +632,180 @@ export const sendReceiptEmail = async (invoice: any, client: any, business: any 
     throw new Error('Email sending failed. Please try again.');
   }
 };
+
+/**
+ * Unified function to send receipt emails with PDF attachment.
+ * This function:
+ * 1. Looks up or creates a receipt record if not provided
+ * 2. Always generates the receipt PDF internally
+ * 3. Always attaches the PDF to the email
+ * 4. Uses consistent email templating
+ * 
+ * @param storage - The storage interface for database operations
+ * @param invoice - The invoice that was paid
+ * @param client - The client receiving the receipt
+ * @param business - Business settings for branding
+ * @param receipt - Optional existing receipt record (will be looked up/created if not provided)
+ * @param userId - The user ID for storage operations
+ * @returns Promise with success status and message
+ */
+export async function sendReceiptEmailWithPdf(
+  storage: any,
+  invoice: any,
+  client: any,
+  business: any,
+  receipt?: any,
+  userId?: string
+): Promise<{ success: boolean; message: string }> {
+  // Check SendGrid is initialized before attempting to send
+  if (!initializeSendGrid()) {
+    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
+  }
+  
+  if (!client?.email) {
+    throw new Error('Client email address is required');
+  }
+  
+  // Determine the user ID for storage operations
+  const effectiveUserId = userId || invoice.userId;
+  if (!effectiveUserId) {
+    throw new Error('User ID is required for receipt operations');
+  }
+  
+  // Import PDF service functions (lazy import to avoid circular dependencies)
+  const { generatePaymentReceiptPDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
+  
+  // Helper function to safely parse amounts (handles both string and number inputs)
+  const safeParseAmount = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value.replace(/[^0-9.-]/g, ''));
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+  
+  // Look up or create receipt if not provided
+  let receiptRecord = receipt;
+  if (!receiptRecord) {
+    receiptRecord = await storage.getReceiptByInvoiceId(invoice.id, effectiveUserId);
+    
+    // Verify the receipt matches the invoice and client - if mismatch, create new receipt
+    if (receiptRecord && (receiptRecord.invoiceId !== invoice.id || receiptRecord.clientId !== invoice.clientId)) {
+      console.log(`⚠️ Receipt mismatch detected for invoice ${invoice.id}, creating new receipt`);
+      receiptRecord = null;
+    }
+  }
+  
+  // If no receipt exists, create one
+  if (!receiptRecord) {
+    const receiptNumber = await storage.generateReceiptNumber(effectiveUserId);
+    const invoiceTotal = safeParseAmount(invoice.total);
+    const gstAmount = safeParseAmount(invoice.gstAmount);
+    const subtotal = invoiceTotal - gstAmount;
+    
+    receiptRecord = await storage.createReceipt({
+      userId: effectiveUserId,
+      receiptNumber,
+      amount: invoiceTotal.toFixed(2),
+      gstAmount: gstAmount.toFixed(2),
+      subtotal: subtotal.toFixed(2),
+      paymentMethod: invoice.paymentMethod || 'manual',
+      invoiceId: invoice.id,
+      clientId: invoice.clientId,
+      jobId: invoice.jobId || undefined,
+      paidAt: invoice.paidAt ? new Date(invoice.paidAt) : new Date(),
+      paymentReference: invoice.stripePaymentIntentId || undefined,
+      description: `Payment for Invoice #${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}`,
+    });
+    console.log(`✅ Receipt ${receiptNumber} auto-created for invoice ${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}`);
+  }
+  
+  // Resolve logo URL to base64 for PDF rendering
+  const businessWithLogo = business ? await resolveBusinessLogoForPdf(business) : null;
+  
+  // Get job data if available
+  let job = null;
+  if (receiptRecord.jobId) {
+    try {
+      job = await storage.getJob(receiptRecord.jobId, effectiveUserId);
+    } catch (e) {
+      // Job lookup is optional, don't fail if not found
+    }
+  }
+  
+  // Generate receipt PDF with error handling
+  let pdfBuffer: Buffer;
+  try {
+    const pdfHtml = generatePaymentReceiptPDF({
+      payment: {
+        id: receiptRecord.id,
+        amount: safeParseAmount(receiptRecord.amount),
+        gstAmount: safeParseAmount(receiptRecord.gstAmount),
+        subtotal: safeParseAmount(receiptRecord.subtotal || receiptRecord.amount),
+        paymentMethod: receiptRecord.paymentMethod || 'card',
+        paymentReference: receiptRecord.paymentReference,
+        paidAt: receiptRecord.paidAt,
+        receiptNumber: receiptRecord.receiptNumber,
+        description: receiptRecord.description,
+      },
+      client: client ? {
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        address: client.address,
+      } : null,
+      business: {
+        businessName: businessWithLogo?.businessName || 'Business',
+        abn: businessWithLogo?.abn,
+        address: businessWithLogo?.address,
+        phone: businessWithLogo?.phone,
+        email: businessWithLogo?.email,
+        logoUrl: businessWithLogo?.logoUrl,
+        brandColor: businessWithLogo?.brandColor || '#dc2626',
+      },
+      invoice: invoice ? {
+        id: invoice.id,
+        number: invoice.number,
+      } : null,
+      job: job ? {
+        id: job.id,
+        title: job.title,
+      } : null,
+    });
+    
+    pdfBuffer = await generatePDFBuffer(pdfHtml);
+    
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('PDF generation returned empty buffer');
+    }
+  } catch (pdfError: any) {
+    console.error(`❌ Failed to generate receipt PDF for invoice ${invoice.id}:`, pdfError);
+    throw new Error(`Failed to generate receipt PDF: ${pdfError.message || 'Unknown error'}`);
+  }
+  
+  // Get email content using existing template
+  const emailContent = createReceiptEmailHtml(invoice, client, business);
+  
+  // Send email with PDF attachment
+  await sendEmailWithAttachment({
+    to: client.email,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    fromName: business?.businessName || 'TradieTrack',
+    replyTo: business?.email,
+    attachments: [{
+      filename: `Receipt-${receiptRecord.receiptNumber}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf',
+    }],
+  });
+  
+  console.log(`✅ Receipt email with PDF sent to ${client.email} for invoice ${invoice.number || invoice.id?.substring(0, 8).toUpperCase()}`);
+  
+  return { success: true, message: `Receipt sent to ${client.email}` };
+}
 
 // Email template for job confirmation/scheduling
 const createJobConfirmationEmail = (job: any, client: any, business: any) => {

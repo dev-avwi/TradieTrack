@@ -1,6 +1,6 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { createNotification } from './notifications';
-import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendReceiptEmail } from './emailService';
+import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendReceiptEmailWithPdf } from './emailService';
 import { processPaymentReceivedAutomation } from './automationService';
 import { markInvoicePaidInXero } from './xeroService';
 import { broadcastPaymentReceived } from './websocket';
@@ -151,12 +151,19 @@ async function handleStripeEvent(event: any, storage: any) {
                   };
                   
                   try {
-                    await sendReceiptEmail(paidInvoice, client, businessSettings || {});
+                    // Use unified receipt email function that handles PDF generation internally
+                    await sendReceiptEmailWithPdf(
+                      storage,
+                      paidInvoice,
+                      client,
+                      businessSettings || {},
+                      undefined, // Let it look up or create receipt internally
+                      userId
+                    );
                     // Mark receipt as sent to prevent duplicates
                     await storage.updateInvoice(invoiceId, userId, {
                       receiptSentAt: new Date().toISOString(),
                     });
-                    console.log(`✅ Payment receipt sent to ${client.email} for invoice ${invoice.number || invoiceId.substring(0, 8).toUpperCase()}`);
                   } catch (sendGridError: any) {
                     // If SendGrid is not configured, log but don't fail
                     if (sendGridError.message?.includes('SendGrid') || sendGridError.message?.includes('not configured')) {
@@ -452,14 +459,21 @@ async function handleStripeEvent(event: any, storage: any) {
               
               console.log(`✅ Invoice ${invoice.number} marked as paid via Stripe Connect`);
               
-              // Auto-send receipt email to customer
+              // Auto-send receipt email to customer with PDF attachment
               try {
                 const client = await storage.getClientById(invoice.clientId);
                 const settings = await storage.getBusinessSettingsByUserId(tradieUserId);
                 
                 if (client?.email && settings) {
-                  await sendReceiptEmail(invoice, client, settings);
-                  console.log(`📧 Receipt email sent to ${client.email} for Invoice #${invoice.number}`);
+                  // Use unified receipt email function that handles PDF generation internally
+                  await sendReceiptEmailWithPdf(
+                    storage,
+                    invoice,
+                    client,
+                    settings,
+                    undefined, // Let it look up or create receipt internally
+                    tradieUserId
+                  );
                 }
               } catch (emailError) {
                 // Don't fail the webhook if email fails
