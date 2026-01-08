@@ -164,9 +164,9 @@ export default function StripeSetupGuide({
         )}
 
         {/* FAQ Accordion */}
-        <Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection}>
+        <Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection} data-testid="accordion-stripe-faq">
           <AccordionItem value="what-is-stripe" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-stripe-what-is">
               What is Stripe?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -178,7 +178,7 @@ export default function StripeSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="how-much" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-stripe-cost">
               How much does it cost?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -204,7 +204,7 @@ export default function StripeSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="how-long" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-stripe-timing">
               How long until I receive payments?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -226,7 +226,7 @@ export default function StripeSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="what-need" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-stripe-requirements">
               What do I need to connect?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -252,7 +252,7 @@ export default function StripeSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="how-works" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-stripe-client-payments">
               How do my clients pay?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -276,6 +276,7 @@ export default function StripeSetupGuide({
               target="_blank" 
               rel="noopener noreferrer"
               className="text-primary hover:underline"
+              data-testid="link-stripe-connect-faq"
             >
               Stripe Connect FAQ
             </a>{" "}

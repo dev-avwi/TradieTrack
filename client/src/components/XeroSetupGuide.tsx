@@ -221,9 +221,9 @@ export default function XeroSetupGuide({
         )}
 
         {/* FAQ Accordion */}
-        <Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection}>
+        <Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection} data-testid="accordion-xero-faq">
           <AccordionItem value="what-is-xero" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-xero-what-is">
               What is Xero?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -235,7 +235,7 @@ export default function XeroSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="what-syncs" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-xero-syncs">
               What data is synced?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -261,7 +261,7 @@ export default function XeroSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="how-long" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-xero-setup-time">
               How long does setup take?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -283,7 +283,7 @@ export default function XeroSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="disconnect" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-xero-disconnect">
               Can I disconnect later?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -294,7 +294,7 @@ export default function XeroSetupGuide({
           </AccordionItem>
 
           <AccordionItem value="security" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline">
+            <AccordionTrigger className="text-sm py-2 hover:no-underline" data-testid="accordion-trigger-xero-security">
               Is my data secure?
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
@@ -330,6 +330,7 @@ export default function XeroSetupGuide({
               target="_blank" 
               rel="noopener noreferrer"
               className="text-primary hover:underline"
+              data-testid="link-xero-central"
             >
               Xero Central
             </a>{" "}
