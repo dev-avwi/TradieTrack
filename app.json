@@ -6,7 +6,10 @@
       }
     },
     "ios": {
-      "bundleIdentifier": "tradietr"
+      "bundleIdentifier": "tradietr",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }
