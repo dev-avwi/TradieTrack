@@ -99,19 +99,27 @@ const MONTHLY_PAID_INVOICES = [
   { month: 0, title: 'Kitchen Tap Replacement', description: 'Replaced mixer tap with pull-out spray model', subtotal: 385, payDay: 3 },
 ];
 
+// Counter for deterministic IDs - ensures same data in dev and production
+let xeroIdCounter = 100001;
+let tokenCounter = 1;
+
 function generateXeroId(prefix: string): string {
-  const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${randomNum}`;
+  // Use deterministic IDs so dev and production have identical data
+  return `${prefix}-${xeroIdCounter++}`;
 }
 
 function generatePaymentToken(): string {
+  // Use deterministic tokens so dev and production have identical data
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = crypto.randomBytes(32);
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars[bytes[i] % chars.length];
-  }
-  return token;
+  const baseToken = `DEMO_TOKEN_${String(tokenCounter++).padStart(4, '0')}`;
+  // Pad to 32 chars
+  return baseToken.padEnd(32, 'X');
+}
+
+// Reset counters for consistent seeding
+export function resetDemoCounters() {
+  xeroIdCounter = 100001;
+  tokenCounter = 1;
 }
 
 export async function fixTestUserPasswords() {
@@ -188,6 +196,9 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
 // ============================================
 
 export async function createDemoUserAndData() {
+  // Reset counters for deterministic IDs
+  resetDemoCounters();
+  
   try {
     let demoUser = await storage.getUserByEmail(DEMO_USER.email);
 
@@ -1246,6 +1257,10 @@ export async function createDemoTeamMembers() {
       }
 
       // Create or update tradieStatus with location data for map display
+      // Use deterministic battery levels based on index for consistency between dev and production
+      const batteryLevels = [85, 72, 91, 68, 78, 65, 82, 55, 88, 75];
+      const batteryLevel = batteryLevels[index % batteryLevels.length];
+      
       await storage.upsertTradieStatus({
         userId: memberUser.id,
         businessOwnerId: demoUser.id,
@@ -1255,8 +1270,8 @@ export async function createDemoTeamMembers() {
         activityStatus: location.status,
         lastSeenAt: new Date(),
         lastLocationUpdate: new Date(),
-        batteryLevel: Math.floor(Math.random() * 40) + 60, // 60-100%
-        isCharging: Math.random() > 0.7,
+        batteryLevel,
+        isCharging: batteryLevel > 80,
       });
       console.log(`📍 Set location for ${memberInfo.name}: ${location.address}`);
     }
@@ -1270,6 +1285,7 @@ export async function createDemoTeamMembers() {
 
 // Keep demo team members "alive" by periodically updating their activity timestamps
 // This simulates real mobile app usage and keeps web/mobile data in sync
+// Uses deterministic values so dev and production stay in sync
 export async function refreshDemoTeamActivity() {
   try {
     const demoUser = await storage.getUserByEmail(DEMO_USER.email);
@@ -1278,51 +1294,48 @@ export async function refreshDemoTeamActivity() {
     const teamMembers = await storage.getTeamMembers(demoUser.id);
     const activeMembers = teamMembers.filter(m => m.inviteStatus === 'accepted' && m.isActive);
 
-    // Cairns QLD area - simulate slight movement around job sites
-    const baseLocations = [
-      { lat: -16.9186, lng: 145.7781, status: 'working' },
-      { lat: -16.9246, lng: 145.7621, status: 'driving' },
-      { lat: -16.9073, lng: 145.7478, status: 'online' },
-      { lat: -16.9361, lng: 145.7514, status: 'working' },
+    // Cairns QLD area - deterministic locations for each team member slot
+    const memberLocations = [
+      { lat: -16.9186, lng: 145.7781, status: 'working', battery: 85, speed: 0 },
+      { lat: -16.9246, lng: 145.7621, status: 'driving', battery: 72, speed: 12 },
+      { lat: -16.9073, lng: 145.7478, status: 'online', battery: 91, speed: 0 },
+      { lat: -16.9361, lng: 145.7514, status: 'working', battery: 68, speed: 0 },
+      { lat: -16.9120, lng: 145.7680, status: 'working', battery: 78, speed: 0 },
+      { lat: -16.9200, lng: 145.7550, status: 'online', battery: 65, speed: 0 },
+      { lat: -16.9280, lng: 145.7700, status: 'driving', battery: 82, speed: 14 },
+      { lat: -16.9150, lng: 145.7600, status: 'idle', battery: 55, speed: 0 },
     ];
 
-    // Randomize which team members are "active" - 2-3 should be online
-    const activeCount = Math.floor(Math.random() * 2) + 2; // 2-3 active
-    const shuffledMembers = [...activeMembers].sort(() => Math.random() - 0.5);
+    // Fixed number of active members (8) for consistency between dev and production
+    const activeCount = Math.min(8, activeMembers.length);
 
-    for (let i = 0; i < shuffledMembers.length; i++) {
-      const member = shuffledMembers[i];
+    // Sort by member ID for deterministic ordering
+    const sortedMembers = [...activeMembers].sort((a, b) => 
+      (a.memberId || '').localeCompare(b.memberId || '')
+    );
+
+    for (let i = 0; i < sortedMembers.length; i++) {
+      const member = sortedMembers[i];
       if (!member.memberId) continue;
 
-      const baseLocation = baseLocations[i % baseLocations.length];
+      const location = memberLocations[i % memberLocations.length];
       const isOnline = i < activeCount;
 
-      // Add small random movement (within ~500m)
-      const latOffset = (Math.random() - 0.5) * 0.005;
-      const lngOffset = (Math.random() - 0.5) * 0.005;
-
-      const activityStatus = isOnline 
-        ? baseLocation.status
-        : 'offline';
-
-      // Speed in m/s (frontend converts m/s to km/h by multiplying by 3.6)
-      // Generate realistic driving speeds: 30-60 km/h = 8.3-16.7 m/s
-      const speedMs = activityStatus === 'driving' ? Math.floor(Math.random() * 9) + 8 : 0; // 8-17 m/s = ~30-60 km/h
-      const speed = speedMs;
+      const activityStatus = isOnline ? location.status : 'offline';
 
       await storage.upsertTradieStatus({
         userId: member.memberId,
         businessOwnerId: demoUser.id,
-        currentLatitude: (baseLocation.lat + latOffset).toString(),
-        currentLongitude: (baseLocation.lng + lngOffset).toString(),
-        currentAddress: baseLocation.status === 'working' ? 'On job site' : undefined,
+        currentLatitude: location.lat.toString(),
+        currentLongitude: location.lng.toString(),
+        currentAddress: location.status === 'working' ? 'On job site' : undefined,
         activityStatus,
-        speed: speed.toString(),
-        heading: activityStatus === 'driving' ? Math.floor(Math.random() * 360).toString() : undefined,
-        lastSeenAt: isOnline ? new Date() : new Date(Date.now() - 30 * 60 * 1000), // 30 min ago if offline
+        speed: location.speed.toString(),
+        heading: activityStatus === 'driving' ? '180' : undefined,
+        lastSeenAt: isOnline ? new Date() : new Date(Date.now() - 30 * 60 * 1000),
         lastLocationUpdate: isOnline ? new Date() : undefined,
-        batteryLevel: Math.floor(Math.random() * 40) + 60,
-        isCharging: Math.random() > 0.7,
+        batteryLevel: location.battery,
+        isCharging: location.battery > 80,
       });
     }
 
@@ -1389,6 +1402,9 @@ export async function forceResetDemoData(): Promise<{ success: boolean; message:
 
     console.log('[DemoReset] Existing demo data deleted, recreating...');
 
+    // Reset counters for deterministic IDs
+    resetDemoCounters();
+    
     // Now call the main function which will create fresh data since there are no clients
     await createDemoUserAndData();
 
