@@ -394,6 +394,8 @@ export const businessSettings = pgTable("business_settings", {
   twilioAuthToken: text("twilio_auth_token"), // User's own Twilio auth token (encrypted at rest)
   // Onboarding tracking
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  hasSeenWalkthrough: boolean("has_seen_walkthrough").default(false), // Track if user has seen the intro walkthrough
+  onboardingLevel: integer("onboarding_level").default(0), // Learning Roadmap progress (0-4 like ServiceM8)
   // AI Features Settings
   aiEnabled: boolean("ai_enabled").default(true), // Enable/disable all AI features
   aiPhotoAnalysisEnabled: boolean("ai_photo_analysis_enabled").default(true), // Enable AI photo analysis

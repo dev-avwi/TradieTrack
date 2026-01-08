@@ -36,7 +36,7 @@ Key architectural and design decisions include:
 *   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
 *   **Timesheet Approvals**: Workflow for crew timesheet approval.
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
-*   **First-Time User Walkthrough**: Interactive intro walkthrough for new users.
+*   **Immersive ServiceM8-Style Onboarding**: Full-screen onboarding experience with 3 phases - Welcome screen with "G'day" greeting, 7-step "Life of a Job" walkthrough, and 4-level Learning Roadmap with progress tracking. Server-side tracking via `hasSeenWalkthrough` and `onboardingLevel` fields in business_settings table prevents localStorage issues when accounts are re-created.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)

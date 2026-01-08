@@ -80,6 +80,7 @@ import DocumentsHub from "@/pages/DocumentsHub";
 import CommunicationsHub from "@/pages/CommunicationsHub";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
+import ImmersiveOnboarding from "@/components/ImmersiveOnboarding";
 
 // Types for job completion
 interface JobPhoto {
@@ -1124,8 +1125,15 @@ function AppLayout() {
         onComplete={completeTour}
       />
       
-      {/* First-Time User Walkthrough */}
-      <FirstTimeWalkthrough />
+      {/* Immersive ServiceM8-Style Onboarding - server-side tracking */}
+      {businessSettings && businessSettings.onboardingCompleted && !businessSettings.hasSeenWalkthrough && (
+        <ImmersiveOnboarding
+          businessSettings={businessSettings}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+          }}
+        />
+      )}
       
       {/* Keyboard Shortcuts */}
       <KeyboardShortcutsDialog />
