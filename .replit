@@ -66,3 +66,6 @@ externalPort = 3003
 
 [userenv.shared]
 VITE_APP_URL = "https://tradietrack.com"
+
+[userenv.production]
+ENABLE_DEMO_DATA = "true"
