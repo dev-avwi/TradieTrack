@@ -1,3 +1,12 @@
 {
-  "expo": {}
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "4a157b00-c548-452c-bf4d-72498e04f99f"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "tradietr"
+    }
+  }
 }
