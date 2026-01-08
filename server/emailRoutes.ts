@@ -6,6 +6,7 @@ import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer, resolveBusines
 import { notifyPaymentReceived } from './pushNotifications';
 import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
+import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 
 // Helper function to wrap template content in professional HTML email layout
 function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string, actionUrl?: string | null, actionLabel?: string): string {
@@ -166,10 +167,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     // Resolve logo URL for email (convert object storage path to public URL if needed)
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000');
+      const baseUrl = getProductionBaseUrl(req);
       businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
     }
 
@@ -191,11 +189,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     }
 
     // Generate public quote URL for client to view and accept
-    const baseUrl = process.env.APP_BASE_URL 
-      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'http://localhost:5000');
-    const quoteAcceptanceUrl = acceptanceToken ? `${baseUrl}/q/${acceptanceToken}` : null;
+    const quoteAcceptanceUrl = acceptanceToken ? getQuotePublicUrl(acceptanceToken, req) : null;
 
     // 7. Get linked job if quote is tied to one
     let linkedJob: any = null;
@@ -498,10 +492,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
     // Resolve logo URL for email (convert object storage path to public URL if needed)
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000');
+      const baseUrl = getProductionBaseUrl(req);
       businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
     }
 
@@ -531,11 +522,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       }
       
       // Always use custom payment page for consistent tradie branding (not Stripe's checkout.stripe.com)
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000');
-      paymentUrl = `${baseUrl}/pay/${invoiceWithItems.paymentToken}`;
+      paymentUrl = `${getProductionBaseUrl(req)}/pay/${invoiceWithItems.paymentToken}`;
     }
 
     // 7. Get linked job if invoice is tied to one
@@ -1004,13 +991,9 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     }
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
-    const baseUrl = process.env.APP_BASE_URL 
-      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'http://localhost:5000');
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // Route is /objects/... not /api/objects/...
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${getProductionBaseUrl(req)}${businessSettings.logoUrl}` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1282,13 +1265,9 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     }
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
-    const baseUrl = process.env.APP_BASE_URL 
-      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'http://localhost:5000');
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // Route is /objects/... not /api/objects/...
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${getProductionBaseUrl(req)}${businessSettings.logoUrl}` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1609,11 +1588,7 @@ export const handleSendPaymentLink = async (req: any, res: any, storage: any) =>
     }
     
     // 6. Generate payment URL
-    const baseUrl = process.env.APP_BASE_URL 
-      || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-        : 'http://localhost:5000');
-    const paymentUrl = `${baseUrl}/pay/${invoice.paymentToken}`;
+    const paymentUrl = `${getProductionBaseUrl(req)}/pay/${invoice.paymentToken}`;
     
     // 7. Build email content
     const brandColor = businessSettings.brandColor || '#16a34a';

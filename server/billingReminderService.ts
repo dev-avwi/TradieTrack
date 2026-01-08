@@ -5,19 +5,14 @@ import Stripe from 'stripe';
 import { PRICING } from '@shared/schema';
 import type { User, BusinessSettings } from '@shared/schema';
 import { sendPushNotification } from './pushNotifications';
+import { getProductionBaseUrl } from './urlHelper';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20',
 });
 
 const getBaseUrl = () => {
-  if (process.env.VITE_APP_URL) {
-    return process.env.VITE_APP_URL;
-  }
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  }
-  return 'http://localhost:5000';
+  return getProductionBaseUrl();
 };
 
 function calculateAmount(subscriptionTier: string, seatCount: number = 0): number {

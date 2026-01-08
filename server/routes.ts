@@ -110,6 +110,7 @@ import { geocodeAddress, haversineDistance } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
 import * as myobService from "./myobService";
+import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 
 // Environment check for development-only endpoints
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -881,10 +882,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Quote not found" });
       }
       
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
       res.json({ 
         token,
-        acceptanceUrl: `${baseUrl}/q/${token}`
+        acceptanceUrl: getQuotePublicUrl(token, req)
       });
     } catch (error) {
       console.error("Error generating quote link:", error);
@@ -3478,10 +3478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // For mobile apps, convert to absolute URL
     if (makeAbsolute) {
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : process.env.BASE_URL || 'http://localhost:5000';
-      return `${baseUrl}${relativePath}`;
+      return `${getProductionBaseUrl()}${relativePath}`;
     }
     
     return relativePath;
@@ -4930,19 +4927,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/integrations?xero=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
       }
       
-      // Construct the callback URL using the same logic as getRedirectUri() for consistency
-      // Priority: VITE_APP_URL > REPLIT_DEV_DOMAIN > REPLIT_DOMAINS > req.host
-      let baseUrl: string;
-      const appUrl = process.env.VITE_APP_URL;
-      if (appUrl) {
-        baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
-      } else if (process.env.REPLIT_DEV_DOMAIN) {
-        baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
-      } else if (process.env.REPLIT_DOMAINS) {
-        baseUrl = `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
-      } else {
-        baseUrl = `${req.protocol}://${req.get('host')}`;
-      }
+      // Construct the callback URL using centralized URL helper
+      const baseUrl = getProductionBaseUrl(req);
       const fullUrl = `${baseUrl}${req.originalUrl}`;
       console.log('[Xero] Callback full URL:', fullUrl);
       const connection = await xeroService.handleCallback(fullUrl, userId);
@@ -5941,11 +5927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OAuth redirect URIs helper endpoint - shows required URIs for OAuth setup
   // This helps users configure their Google Cloud Console and Xero Developer Portal correctly
   app.get("/api/integrations/oauth-uris", async (req, res) => {
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : process.env.REPLIT_DOMAINS
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'http://localhost:5000';
+    const baseUrl = getProductionBaseUrl(req);
     
     res.json({
       baseUrl,
@@ -8118,7 +8100,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Send email to owner when staff completes job
           try {
             const owner = await storage.getUser(effectiveUserId);
-            const baseUrl = `${req.protocol}://${req.get('host')}`;
             
             if (owner?.email && req.userId !== effectiveUserId) {
               // Only send email if staff (not owner) completed the job
@@ -8129,7 +8110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 job.title,
                 clientName,
                 new Date(),
-                baseUrl,
+                getProductionBaseUrl(req),
                 job.id
               );
             }
@@ -8252,7 +8233,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const assigneeUser = await storage.getUser(assigneeUserId);
         const assigner = await storage.getUser(req.userId);
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
         
         if (assigneeUser?.email) {
           await sendJobAssignmentEmail(
@@ -8263,7 +8243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             job.title,
             (job as any).address || null,
             (job as any).scheduledDate || null,
-            baseUrl,
+            getProductionBaseUrl(req),
             job.id
           );
         }
@@ -9136,8 +9116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Build public URL and message
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const publicUrl = `${baseUrl}/q/${acceptanceToken}`;
+      const publicUrl = getQuotePublicUrl(acceptanceToken, req);
       
       const message = `${smsTemplates.quoteReady(client.name, businessName, quote.number || quote.id.slice(0, 8))} View: ${publicUrl}`;
       
@@ -9845,8 +9824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Build public URL and message
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const publicUrl = `${baseUrl}/pay/${paymentToken}`;
+      const publicUrl = `${getProductionBaseUrl(req)}/pay/${paymentToken}`;
       const amount = `$${parseFloat(String(invoice.total || '0')).toFixed(2)}`;
       
       const message = `${smsTemplates.invoiceSent(client.name, businessName, invoice.number || invoice.id.slice(0, 8), amount)} Pay: ${publicUrl}`;
@@ -10438,14 +10416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Determine base URL
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : req.headers.origin || 'http://localhost:5000');
-      
       // Use custom tradie-branded payment page (NOT Stripe's checkout.stripe.com)
-      const paymentUrl = `${baseUrl}/pay/${paymentToken}`;
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${paymentToken}`;
       
       // Save the payment token and URL to the invoice
       await storage.updateInvoice(invoice.id, userContext.effectiveUserId, {
@@ -10522,14 +10494,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Determine base URL
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : req.headers.origin || 'http://localhost:5000');
-      
       // Use custom tradie-branded payment page (NOT Stripe's checkout.stripe.com)
-      const paymentUrl = `${baseUrl}/pay/${paymentToken}`;
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${paymentToken}`;
       
       // Save the payment token and URL to the invoice
       await storage.updateInvoice(invoice.id, req.userId, {
@@ -10580,10 +10546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Business settings not found" });
       }
 
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : req.headers.origin || 'http://localhost:5000');
+      const baseUrl = getProductionBaseUrl(req);
 
       const stripe = await getUncachableStripeClient();
 
@@ -10673,10 +10636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Business settings not found" });
       }
 
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : req.headers.origin || 'http://localhost:5000');
+      const baseUrl = getProductionBaseUrl(req);
 
       const stripe = await getUncachableStripeClient();
       let paymentUrl: string;
@@ -11236,13 +11196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Generate the payment URL using production-ready base URL detection
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : `${req.protocol}://${req.get('host')}`);
-      const paymentUrl = `${baseUrl}/pay/${token}`;
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${token}`;
       
       res.status(201).json({
         ...paymentRequest,
@@ -11342,13 +11296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const businessName = settings?.businessName || 'Your tradie';
       
       // Use production-ready base URL detection
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : `${req.protocol}://${req.get('host')}`);
-      const paymentUrl = `${baseUrl}/pay/${request.token}`;
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${request.token}`;
       
       // Import and use email service
       const { sendPaymentRequestEmail } = await import('./emailService');
@@ -11386,13 +11334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const QRCode = require('qrcode');
       // Use production-ready base URL detection
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : `${req.protocol}://${req.get('host')}`);
-      const paymentUrl = `${baseUrl}/pay/${request.token}`;
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${request.token}`;
       
       // Generate QR code as data URL (base64)
       const qrDataUrl = await QRCode.toDataURL(paymentUrl, {
@@ -12135,11 +12077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate receipt URL for SMS
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000');
-      const receiptUrl = `${baseUrl}/receipt/${viewToken}`;
+      const receiptUrl = getReceiptPublicUrl(viewToken, req);
       
       // Use paymentReceived template with receipt URL
       const message = smsTemplates.paymentReceived(clientName || 'Customer', amount, businessName, receiptUrl);
@@ -14272,7 +14210,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const owner = await AuthService.getUserById(userId);
         const businessSettings = await storage.getBusinessSettings(userId);
         const role = await storage.getUserRole(inviteData.roleId);
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
         
         const inviteeName = [inviteData.firstName, inviteData.lastName].filter(Boolean).join(' ') || null;
         await sendTeamInviteEmail(
@@ -14282,7 +14219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessSettings?.businessName || 'A TradieTrack business',
           role?.name || 'Team Member',
           inviteToken,
-          baseUrl
+          getProductionBaseUrl(req)
         );
       } catch (emailError) {
         console.error('Failed to send team invite email:', emailError);
@@ -14321,7 +14258,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const owner = await AuthService.getUserById(userId);
         const businessSettings = await storage.getBusinessSettings(userId);
         const role = await storage.getUserRole(member.roleId);
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
         
         await sendTeamInviteEmail(
           member.email,
@@ -14330,7 +14266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessSettings?.businessName || 'A TradieTrack business',
           role?.name || 'Team Member',
           member.inviteToken!,
-          baseUrl
+          getProductionBaseUrl(req)
         );
       } catch (emailError) {
         console.error('Failed to resend team invite email:', emailError);
@@ -15456,7 +15392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Connect account not created yet' });
       }
       
-      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}`;
+      const baseUrl = getProductionBaseUrl(req);
       
       const accountLink = await stripe.accountLinks.create({
         account: settings.stripeConnectAccountId,
@@ -15966,11 +15902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate payment URL using internal payment page (supports Stripe Connect)
-      const baseUrl = process.env.APP_BASE_URL 
-        || (process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000');
-      const paymentUrl = `${baseUrl}/pay/${paymentToken}`;
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${paymentToken}`;
       
       // Check if Connect is properly configured
       const connectEnabled = !!(settings?.stripeConnectAccountId && settings?.connectChargesEnabled);
@@ -16031,7 +15963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Business settings or email required' });
       }
       
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const baseUrl = getProductionBaseUrl(req);
       const returnUrl = `${baseUrl}/settings?connect=success`;
       const refreshUrl = `${baseUrl}/settings?connect=refresh`;
       
@@ -16094,7 +16026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!status.detailsSubmitted) {
         // Onboarding not complete - return onboarding link instead
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const baseUrl = getProductionBaseUrl(req);
         const returnUrl = `${baseUrl}/settings/integrations?stripe=success`;
         const refreshUrl = `${baseUrl}/settings/integrations?stripe=refresh`;
         

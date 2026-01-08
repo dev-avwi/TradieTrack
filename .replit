@@ -69,3 +69,7 @@ VITE_APP_URL = "https://tradietrack.com"
 
 [userenv.production]
 ENABLE_DEMO_DATA = "true"
+APP_DOMAIN = "tradietrack.com"
+
+[userenv.development]
+APP_DOMAIN = "tradietrack.com"

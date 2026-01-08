@@ -35,18 +35,28 @@ const PLATFORM_FROM_EMAIL = 'mail@avwebinnovation.com';
 const PLATFORM_REPLY_TO_EMAIL = 'admin@avwebinnovation.com';
 const PLATFORM_FROM_NAME = 'TradieTrack';
 
-// Get the correct base URL for emails
+// Get the correct base URL for emails - prioritizes custom domain for trust
 const getBaseUrl = () => {
   const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
+  
+  // Priority 1: Custom production domain (tradietrack.com)
+  if (process.env.APP_DOMAIN) {
+    return `https://${process.env.APP_DOMAIN}`;
+  }
+  
+  // Priority 2: Explicitly set app URL
+  if (process.env.VITE_APP_URL) {
+    return process.env.VITE_APP_URL;
+  }
   
   // In development mode, use Replit dev domain so verification links work
   if (!isProduction && process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
   
-  // In production, use the explicitly set app URL
-  if (process.env.VITE_APP_URL) {
-    return process.env.VITE_APP_URL;
+  // Fallback to Replit domains
+  if (process.env.REPLIT_DOMAINS) {
+    return `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
   }
   
   // Fallback to Replit dev domain if available
