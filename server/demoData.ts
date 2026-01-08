@@ -1259,7 +1259,7 @@ export async function createDemoTeamMembers() {
       // Create or update tradieStatus with location data for map display
       // Use deterministic battery levels based on index for consistency between dev and production
       const batteryLevels = [85, 72, 91, 68, 78, 65, 82, 55, 88, 75];
-      const batteryLevel = batteryLevels[index % batteryLevels.length];
+      const batteryLevel = batteryLevels[i % batteryLevels.length];
       
       await storage.upsertTradieStatus({
         userId: memberUser.id,
