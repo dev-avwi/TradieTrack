@@ -1,5 +1,41 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { addToOfflineQueue, isOnline as checkOnline } from "./offlineQueue";
+import { getAllItems, saveItem, addToSyncQueue, generateOfflineId, type SyncOperation } from "./offlineStorage";
+
+type OfflineStoreName = 'clients' | 'jobs' | 'quotes' | 'invoices';
+
+function getStoreNameFromUrl(url: string): OfflineStoreName | null {
+  if (url.includes('/api/clients')) return 'clients';
+  if (url.includes('/api/jobs')) return 'jobs';
+  if (url.includes('/api/quotes')) return 'quotes';
+  if (url.includes('/api/invoices')) return 'invoices';
+  return null;
+}
+
+async function getCachedDataForEndpoint<T>(url: string): Promise<T[] | null> {
+  const storeName = getStoreNameFromUrl(url);
+  if (!storeName) return null;
+  
+  try {
+    return await getAllItems<T>(storeName);
+  } catch {
+    return null;
+  }
+}
+
+async function cacheApiResponse<T extends { id: string | number }>(url: string, data: T | T[]): Promise<void> {
+  const storeName = getStoreNameFromUrl(url);
+  if (!storeName) return;
+  
+  try {
+    const items = Array.isArray(data) ? data : [data];
+    for (const item of items) {
+      await saveItem(storeName, item);
+    }
+  } catch (error) {
+    console.warn('Failed to cache API response:', error);
+  }
+}
 
 // Session token storage key for iOS/Safari fallback
 const SESSION_TOKEN_KEY = 'tradietrack_session_token';
@@ -160,17 +196,40 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = buildUrlFromQueryKey(queryKey);
-    const res = await fetch(url, {
-      credentials: "include",
-      headers: buildHeaders(false),
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    
+    if (!checkOnline()) {
+      const cachedData = await getCachedDataForEndpoint<T>(url);
+      if (cachedData !== null) {
+        return cachedData as T;
+      }
+      throw new Error('offline: No cached data available');
     }
 
-    await throwIfResNotOk(res);
-    return await res.json();
+    try {
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: buildHeaders(false),
+      });
+
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      const data = await res.json();
+      
+      await cacheApiResponse(url, data);
+      
+      return data;
+    } catch (error) {
+      if (!checkOnline() || (error instanceof Error && error.message.includes('Failed to fetch'))) {
+        const cachedData = await getCachedDataForEndpoint<T>(url);
+        if (cachedData !== null) {
+          return cachedData as T;
+        }
+      }
+      throw error;
+    }
   };
 
 export const queryClient = new QueryClient({
