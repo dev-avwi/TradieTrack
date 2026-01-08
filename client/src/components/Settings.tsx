@@ -2726,10 +2726,21 @@ function SupportTab() {
   );
 }
 
-// Reset Demo Data Section Component
+// Reset Demo Data Section Component - Only visible for demo account
 function ResetDemoDataSection() {
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
+  
+  // Check if this is the demo user
+  const { data: profile } = useQuery<ProfileData>({
+    queryKey: ['/api/profile'],
+  });
+  
+  // Only show for demo account
+  const isDemoUser = profile?.user?.email === 'demo@tradietrack.com.au';
+  if (!isDemoUser) {
+    return null;
+  }
 
   const handleResetDemoData = async () => {
     if (!confirm('This will delete all demo data and recreate it with fresh IDs. Continue?')) {
