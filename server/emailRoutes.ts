@@ -1121,7 +1121,6 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
           <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
-            <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
             <div style="white-space: pre-line;">${customMessage}</div>
             <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
               <p style="margin: 0; font-weight: bold;">Quote Total: ${formattedTotal}</p>
@@ -1406,7 +1405,6 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
           <div style="padding: 25px; background: #f9f9f9; border-radius: 0 0 8px 8px;">
-            <p style="margin: 0 0 15px 0;">G'day ${client.name},</p>
             <div style="white-space: pre-line;">${customMessage}</div>
             <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${brandColor};">
               <p style="margin: 0; font-weight: bold;">${invoiceLabel} Total: ${formattedTotal}</p>
