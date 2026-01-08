@@ -171,6 +171,14 @@ export async function disconnectEmail(userId: string): Promise<{ success: boolea
 // so we prioritize SendGrid for proper business branding in emails
 export async function sendEmailViaIntegration(options: SendEmailOptions): Promise<EmailResult> {
   const { to, subject, html, text, attachments, userId, type, relatedId, fromName, replyTo } = options;
+  
+  // Debug logging for attachments
+  console.log(`[Email] sendEmailViaIntegration called - type: ${type}, to: ${to}, attachments: ${attachments ? attachments.length : 0}`);
+  if (attachments && attachments.length > 0) {
+    attachments.forEach((att, i) => {
+      console.log(`[Email] Attachment ${i + 1}: ${att.filename}, size: ${att.content?.length || 0} bytes, type: ${att.contentType}`);
+    });
+  }
 
   // Get user's email integration from database (SMTP only for now)
   const integration = await getEmailIntegration(userId);
@@ -444,9 +452,12 @@ async function sendViaOutlook(
 async function sendViaPlatform(
   options: { to: string; subject: string; html: string; text?: string; fromName?: string; attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }> }
 ): Promise<EmailResult> {
+  console.log(`[SendGrid] sendViaPlatform called - attachments: ${options.attachments ? options.attachments.length : 0}`);
+  
   try {
     // If attachments are provided, use sendEmailWithAttachment
     if (options.attachments && options.attachments.length > 0) {
+      console.log(`[SendGrid] Using sendEmailWithAttachment for ${options.attachments.length} attachment(s)`);
       // Convert attachments to proper Buffer format
       const formattedAttachments = options.attachments.map(att => ({
         filename: att.filename,
