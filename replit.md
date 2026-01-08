@@ -119,3 +119,16 @@ class NotificationService {
 - Comprehensive data-testid coverage for mobile testing: `button-*-connect`, `accordion-*-faq`, `badge-*-status`, `list-*-features`
 - Each guide includes: styled header with progress badge, benefits banner, progress steps, FAQ accordion, security notes, support links
 - Integrations page (`/integrations`) renders setup guides inside existing integration Cards' CardContent
+
+**Web Offline Support (PWA)**:
+- **IndexedDB Storage** (`client/src/lib/offlineStorage.ts`): Local database with stores for clients, jobs, quotes, invoices, receipts, and sync queue
+- **Service Worker** (`public/service-worker.js`): Caches static assets and API responses; network-first strategy for API requests with offline fallback
+- **Sync Queue**: Offline mutations (create/update/delete) are queued in IndexedDB and synced when back online
+- **Network Context** (`client/src/contexts/NetworkContext.tsx`): Tracks online/offline state, manages sync, shows OfflineIndicator UI
+- **Offline-Aware Mutations**: Create hooks for clients, jobs, quotes, invoices use `offlineAwareApiRequest` which:
+  - Generates temporary offline IDs (prefixed with `offline_`)
+  - Saves to IndexedDB and adds to sync queue
+  - Updates React Query cache optimistically for immediate UI feedback
+- **ID Reconciliation**: After sync, offline IDs are mapped to server IDs via `syncService.ts` ID mapping system
+- **safeInvalidateQueries**: Wrapper that skips query invalidation while offline to preserve optimistic cache state
+- Key files: `offlineStorage.ts`, `syncService.ts`, `registerServiceWorker.ts`, `useOfflineData.ts`, `NetworkContext.tsx`, `OfflineIndicator.tsx`

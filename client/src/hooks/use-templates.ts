@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 
 // API types for templates
 export interface DocumentTemplate {
@@ -89,7 +89,7 @@ export function useCreateDocumentTemplate() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/templates'] });
     },
   });
 }
@@ -101,7 +101,7 @@ export function useUpdateDocumentTemplate() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/templates'] });
     },
   });
 }
@@ -113,7 +113,7 @@ export function useDeleteDocumentTemplate() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/templates'] });
     },
   });
 }
@@ -141,7 +141,7 @@ export function useCreateLineItemCatalog() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/catalog'] });
+      safeInvalidateQueries({ queryKey: ['/api/catalog'] });
     },
   });
 }
@@ -169,7 +169,7 @@ export function useCreateRateCard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rate-cards'] });
+      safeInvalidateQueries({ queryKey: ['/api/rate-cards'] });
     },
   });
 }

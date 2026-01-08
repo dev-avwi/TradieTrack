@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { safeInvalidateQueries } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface TimeEntry {
@@ -108,7 +108,7 @@ export function useTimeTracking(jobId: string): UseTimeTrackingReturn {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries', jobId] });
+      safeInvalidateQueries({ queryKey: ['/api/time-entries', jobId] });
       toast({
         title: "Timer started",
         description: "Time tracking has begun for this job",
@@ -161,7 +161,7 @@ export function useTimeTracking(jobId: string): UseTimeTrackingReturn {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries', jobId] });
+      safeInvalidateQueries({ queryKey: ['/api/time-entries', jobId] });
       toast({
         title: "Timer stopped",
         description: "Time has been recorded for this job",
@@ -174,7 +174,7 @@ export function useTimeTracking(jobId: string): UseTimeTrackingReturn {
           description: "Refreshing data...",
           variant: "destructive",
         });
-        queryClient.invalidateQueries({ queryKey: ['/api/time-entries', jobId] });
+        safeInvalidateQueries({ queryKey: ['/api/time-entries', jobId] });
       } else {
         toast({
           title: "Failed to stop timer",

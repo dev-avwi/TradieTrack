@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { safeInvalidateQueries } from '@/lib/queryClient';
 
 interface SmsNotification {
   conversationId: string;
@@ -30,7 +30,6 @@ export function useSmsSocket({
   const maxReconnectAttempts = 5;
   const isConnectingRef = useRef(false);
   const onSmsNotificationRef = useRef(onSmsNotification);
-  const queryClient = useQueryClient();
 
   onSmsNotificationRef.current = onSmsNotification;
 
@@ -72,8 +71,8 @@ export function useSmsSocket({
             setLastNotification(notification);
             onSmsNotificationRef.current?.(notification);
             
-            queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+            safeInvalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+            safeInvalidateQueries({ queryKey: ['/api/sms/conversations'] });
           }
         } catch (error) {
           console.error('[SmsSocket] Failed to parse message:', error);
@@ -99,7 +98,7 @@ export function useSmsSocket({
       console.error('[SmsSocket] Failed to connect:', error);
       isConnectingRef.current = false;
     }
-  }, [enabled, businessId, queryClient]);
+  }, [enabled, businessId]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export interface ChecklistItem {
@@ -14,7 +14,6 @@ export interface ChecklistItem {
 
 export function useChecklist(jobId: string) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const queryKey = ["/api/jobs", jobId, "checklist"];
 
   // Fetch checklist items
@@ -34,7 +33,7 @@ export function useChecklist(jobId: string) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+      safeInvalidateQueries({ queryKey });
     },
     onError: () => {
       toast({
@@ -51,7 +50,7 @@ export function useChecklist(jobId: string) {
       return apiRequest("PATCH", `/api/checklist/${id}`, { isCompleted });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+      safeInvalidateQueries({ queryKey });
     },
     onError: () => {
       toast({
@@ -68,7 +67,7 @@ export function useChecklist(jobId: string) {
       return apiRequest("DELETE", `/api/checklist/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+      safeInvalidateQueries({ queryKey });
     },
     onError: () => {
       toast({

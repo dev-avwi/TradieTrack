@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -33,8 +33,8 @@ export function useArchiveJob() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
     },
   });
 }
@@ -46,8 +46,8 @@ export function useUnarchiveJob() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
     },
   });
 }
@@ -89,6 +89,12 @@ export function useCreateJob() {
 
   return useMutation<any, Error, any>({
     mutationFn: async (jobData: any) => {
+      // Use offline-aware request when offline
+      if (!navigator.onLine) {
+        const response = await offlineAwareApiRequest("POST", "/api/jobs", jobData);
+        return response.json();
+      }
+      
       const response = await apiRequest("POST", "/api/jobs", jobData);
       
       // Handle subscription limit errors (402 status)
@@ -108,13 +114,13 @@ export function useCreateJob() {
     },
     onSuccess: () => {
       // Invalidate job-related queries
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
       
       // Invalidate subscription usage to update job counts
-      queryClient.invalidateQueries({ queryKey: ["/api/subscription/usage"] });
+      safeInvalidateQueries({ queryKey: ["/api/subscription/usage"] });
       
       toast({
         title: "Job Created",
@@ -145,12 +151,12 @@ export function useUpdateJob() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
       // Refresh next actions when job status changes
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
     },
   });
 }
@@ -166,11 +172,11 @@ export function useAssignJob() {
     },
     onSuccess: (_data, { assignedTo }) => {
       // Invalidate all job-related queries for proper sync
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
       
       toast({
         title: assignedTo ? "Job Assigned" : "Job Unassigned",

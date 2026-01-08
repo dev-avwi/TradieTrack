@@ -10,7 +10,7 @@ import {
   isOnline,
 } from '@/lib/offlineStorage';
 import { processSyncQueue, resolveId } from '@/lib/syncService';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, safeInvalidateQueries } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 type StoreName = 'clients' | 'jobs' | 'quotes' | 'invoices';
@@ -102,7 +102,7 @@ export function useOfflineData<T extends { id: string | number }>(
           title: 'Synced',
           description: `${result.synced} offline change${result.synced > 1 ? 's' : ''} synced.`,
         });
-        queryClientInstance.invalidateQueries({ queryKey });
+        safeInvalidateQueries({ queryKey });
       }
       
       if (result.failed > 0) {
@@ -121,9 +121,36 @@ export function useOfflineData<T extends { id: string | number }>(
     }
   };
 
+  const offlineAwareQueryFn = useCallback(async (): Promise<T[]> => {
+    if (!isOnline()) {
+      const cached = await getAllItems<T>(storeName);
+      if (cached.length > 0) {
+        return cached;
+      }
+      throw new Error('offline: No cached data available');
+    }
+    
+    try {
+      const response = await apiRequest('GET', apiEndpoint);
+      const data = await response.json();
+      
+      for (const item of data) {
+        await saveItem(storeName, item);
+      }
+      
+      return data;
+    } catch (error) {
+      const cached = await getAllItems<T>(storeName);
+      if (cached.length > 0) {
+        return cached;
+      }
+      throw error;
+    }
+  }, [storeName, apiEndpoint]);
+
   const query = useQuery<T[]>({
     queryKey,
-    enabled: !isOffline,
+    queryFn: offlineAwareQueryFn,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -163,7 +190,7 @@ export function useOfflineData<T extends { id: string | number }>(
           prev ? prev.map(item => item.id === offlineId ? serverItem : item) : [serverItem]
         );
         
-        queryClientInstance.invalidateQueries({ queryKey });
+        safeInvalidateQueries({ queryKey });
         return serverItem;
       } catch (error) {
         await addToSyncQueue({
@@ -228,7 +255,7 @@ export function useOfflineData<T extends { id: string | number }>(
           prev ? prev.map(item => item.id === id || item.id === resolvedId ? serverItem : item) : [serverItem]
         );
         
-        queryClientInstance.invalidateQueries({ queryKey });
+        safeInvalidateQueries({ queryKey });
         return serverItem;
       } catch (error) {
         await addToSyncQueue({
@@ -277,7 +304,7 @@ export function useOfflineData<T extends { id: string | number }>(
     if (isOnline()) {
       try {
         await apiRequest('DELETE', `${apiEndpoint}/${resolvedId}`);
-        queryClientInstance.invalidateQueries({ queryKey });
+        safeInvalidateQueries({ queryKey });
       } catch (error) {
         await addToSyncQueue({
           type: 'delete',
@@ -314,7 +341,7 @@ export function useOfflineData<T extends { id: string | number }>(
 
   const refetch = useCallback(() => {
     if (!isOffline) {
-      queryClientInstance.invalidateQueries({ queryKey });
+      safeInvalidateQueries({ queryKey });
     }
     loadCachedData();
   }, [queryKey, isOffline]);

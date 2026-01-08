@@ -221,24 +221,41 @@ export async function processSyncQueue(): Promise<SyncResult> {
             addIdMapping(offlineId, serverId);
             await updateRelatedReferences(operation.storeName, offlineId, serverId);
             
+            // Update IndexedDB: remove old offline ID, save with server ID
             await deleteItem(operation.storeName, offlineId);
             await saveItem(operation.storeName, serverResponse);
+            
+            // Update React Query cache: remove old offline ID from detail cache
+            queryClient.removeQueries({ queryKey: [`/api/${operation.storeName}`, offlineId] });
+            // Set new server ID in detail cache
+            queryClient.setQueryData([`/api/${operation.storeName}`, String(serverId)], serverResponse);
           } else {
             await saveItem(operation.storeName, serverResponse);
+            // Update detail cache with server response
+            if (serverId) {
+              queryClient.setQueryData([`/api/${operation.storeName}`, String(serverId)], serverResponse);
+            }
           }
         } else if (operation.type === 'update') {
           const serverResponse = await response.json();
           await saveItem(operation.storeName, serverResponse);
+          // Update detail cache with server response
+          if (serverResponse.id) {
+            queryClient.setQueryData([`/api/${operation.storeName}`, String(serverResponse.id)], serverResponse);
+          }
         } else if (operation.type === 'delete') {
           const itemId = operation.data?.id;
           if (itemId) {
             await deleteItem(operation.storeName, itemId);
+            // Remove from detail cache
+            queryClient.removeQueries({ queryKey: [`/api/${operation.storeName}`, String(itemId)] });
           }
         }
 
         await removeSyncItem(operation.id);
         result.synced++;
         
+        // Invalidate list cache to refresh the list view
         queryClient.invalidateQueries({ queryKey: [`/api/${operation.storeName}`] });
       } else {
         const errorText = await response.text().catch(() => response.statusText);

@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { safeInvalidateQueries } from "@/lib/queryClient";
 import { useUserRole, WORKER_PERMISSIONS } from "./use-user-role";
 import { useCallback } from "react";
 import { type UserRole, canAccessPath, getActionPermissions, type ActionPermissions } from "@/lib/permissions";
@@ -38,7 +39,6 @@ interface User {
 }
 
 export function useAppMode() {
-  const queryClient = useQueryClient();
   const { 
     role, 
     isOwner, 
@@ -132,11 +132,11 @@ export function useAppMode() {
   const dashboardType = getDashboardType();
 
   const refreshAppMode = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/team/my-role"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-  }, [queryClient]);
+    safeInvalidateQueries({ queryKey: ["/api/team/members"] });
+    safeInvalidateQueries({ queryKey: ["/api/business-settings"] });
+    safeInvalidateQueries({ queryKey: ["/api/team/my-role"] });
+    safeInvalidateQueries({ queryKey: ["/api/auth/me"] });
+  }, []);
 
   const getUserRoleType = (): UserRole => {
     if (isLoading) return "staff_tradie";

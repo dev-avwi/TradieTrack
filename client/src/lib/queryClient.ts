@@ -1,15 +1,18 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { addToOfflineQueue, isOnline as checkOnline } from "./offlineQueue";
-import { getAllItems, saveItem, addToSyncQueue, generateOfflineId, type SyncOperation } from "./offlineStorage";
+import { getAllItems, saveItem, getItem, deleteItem, addToSyncQueue, generateOfflineId, isOnline as checkOnline, type SyncOperation } from "./offlineStorage";
 
 type OfflineStoreName = 'clients' | 'jobs' | 'quotes' | 'invoices';
 
-function getStoreNameFromUrl(url: string): OfflineStoreName | null {
-  if (url.includes('/api/clients')) return 'clients';
-  if (url.includes('/api/jobs')) return 'jobs';
-  if (url.includes('/api/quotes')) return 'quotes';
-  if (url.includes('/api/invoices')) return 'invoices';
+export function getStoreNameFromEndpoint(endpoint: string): OfflineStoreName | null {
+  if (endpoint.includes('/api/clients')) return 'clients';
+  if (endpoint.includes('/api/jobs')) return 'jobs';
+  if (endpoint.includes('/api/quotes')) return 'quotes';
+  if (endpoint.includes('/api/invoices')) return 'invoices';
   return null;
+}
+
+function getStoreNameFromUrl(url: string): OfflineStoreName | null {
+  return getStoreNameFromEndpoint(url);
 }
 
 async function getCachedDataForEndpoint<T>(url: string): Promise<T[] | null> {
@@ -35,6 +38,15 @@ async function cacheApiResponse<T extends { id: string | number }>(url: string, 
   } catch (error) {
     console.warn('Failed to cache API response:', error);
   }
+}
+
+// Helper to get single item from offline storage for detail queries
+async function getItemFromEndpoint(endpoint: string, id: string): Promise<any> {
+  const storeName = getStoreNameFromEndpoint(endpoint);
+  if (storeName) {
+    return await getItem(storeName, id);
+  }
+  return null;
 }
 
 // Session token storage key for iOS/Safari fallback
@@ -115,53 +127,104 @@ export async function apiRequest(
   return res;
 }
 
-export interface OfflineQueueResult {
-  queued: true;
-  mutationId: string;
-  message: string;
-}
-
-export type OfflineAwareResult = Response | OfflineQueueResult;
-
-export function isOfflineQueueResult(result: OfflineAwareResult): result is OfflineQueueResult {
-  return 'queued' in result && result.queued === true;
+function getBaseUrlFromUrl(url: string): string {
+  // Extract base URL from /api/clients/123 -> /api/clients
+  const match = url.match(/^(\/api\/[^\/]+)/);
+  return match ? match[1] : url;
 }
 
 export async function offlineAwareApiRequest(
   method: string,
   url: string,
-  data?: unknown,
-  options?: { mutationType?: string }
-): Promise<OfflineAwareResult> {
+  data?: unknown
+): Promise<Response> {
   if (!checkOnline()) {
-    const mutationType = options?.mutationType || getMutationTypeFromUrl(url, method);
-    const mutation = addToOfflineQueue(mutationType, url, method, data);
-    return {
-      queued: true,
-      mutationId: mutation.id,
-      message: 'Your changes have been saved offline and will sync when you reconnect.',
-    };
+    const storeName = getStoreNameFromUrl(url);
+    
+    let responseData: unknown = { success: true, offline: true };
+    
+    if (method.toUpperCase() === 'POST' && storeName && data) {
+      const offlineId = generateOfflineId();
+      const offlineData = { ...data as object, id: offlineId };
+      
+      await saveItem(storeName, offlineData as any);
+      
+      await addToSyncQueue({
+        type: 'create',
+        storeName,
+        data: offlineData,
+        endpoint: url,
+        method: 'POST',
+      });
+      
+      // Update React Query list cache optimistically
+      updateQueryCacheOptimistically([url], 'create', offlineData);
+      // Also set detail cache for the new item
+      queryClient.setQueryData([url, offlineId], offlineData);
+      
+      responseData = offlineData;
+    } else if ((method.toUpperCase() === 'PATCH' || method.toUpperCase() === 'PUT') && storeName && data) {
+      const idMatch = url.match(/\/([^\/]+)$/);
+      const id = idMatch ? idMatch[1] : null;
+      
+      if (id) {
+        const existingItem = await getItem(storeName, id);
+        const updatedData = existingItem 
+          ? { ...existingItem, ...data as object, id }
+          : { ...data as object, id };
+        
+        await saveItem(storeName, updatedData as any);
+        
+        await addToSyncQueue({
+          type: 'update',
+          storeName,
+          data: updatedData,
+          endpoint: url,
+          method: method.toUpperCase() as 'PATCH',
+        });
+        
+        // Update React Query cache optimistically using base URL
+        const baseUrl = getBaseUrlFromUrl(url);
+        updateQueryCacheOptimistically([baseUrl], 'update', updatedData);
+        // Also set detail cache for the updated item
+        queryClient.setQueryData([baseUrl, id], updatedData);
+        
+        responseData = updatedData;
+      }
+    } else if (method.toUpperCase() === 'DELETE' && storeName) {
+      const idMatch = url.match(/\/([^\/]+)$/);
+      const id = idMatch ? idMatch[1] : null;
+      
+      if (id) {
+        await deleteItem(storeName, id);
+        
+        await addToSyncQueue({
+          type: 'delete',
+          storeName,
+          data: { id },
+          endpoint: url,
+          method: 'DELETE',
+        });
+        
+        // Update React Query cache optimistically using base URL
+        const baseUrl = getBaseUrlFromUrl(url);
+        updateQueryCacheOptimistically([baseUrl], 'delete', { id });
+        // Remove from detail cache
+        queryClient.removeQueries({ queryKey: [baseUrl, id] });
+        
+        responseData = { success: true, id };
+      }
+    }
+    
+    return new Response(JSON.stringify(responseData), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   return apiRequest(method, url, data);
 }
 
-function getMutationTypeFromUrl(url: string, method: string): string {
-  const segments = url.split('/').filter(Boolean);
-  const resource = segments[1] || 'unknown';
-  
-  switch (method.toUpperCase()) {
-    case 'POST':
-      return `create_${resource.replace(/s$/, '')}`;
-    case 'PUT':
-    case 'PATCH':
-      return `update_${resource.replace(/s$/, '')}`;
-    case 'DELETE':
-      return `delete_${resource.replace(/s$/, '')}`;
-    default:
-      return `${method.toLowerCase()}_${resource}`;
-  }
-}
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 
@@ -197,12 +260,26 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const url = buildUrlFromQueryKey(queryKey);
     
+    // Detect if this is a detail query (2+ element keys where second element is an ID string, not a path)
+    const isDetailQuery = queryKey.length >= 2 && 
+      typeof queryKey[1] === 'string' && 
+      !queryKey[1].startsWith('/');
+    
     if (!checkOnline()) {
-      const cachedData = await getCachedDataForEndpoint<T>(url);
-      if (cachedData !== null) {
-        return cachedData as T;
+      const storeName = getStoreNameFromEndpoint(queryKey[0] as string);
+      
+      if (isDetailQuery && storeName) {
+        // Detail query - try to get single item, return null if not found
+        const item = await getItemFromEndpoint(queryKey[0] as string, queryKey[1] as string);
+        return (item || null) as T;
       }
-      throw new Error('offline: No cached data available');
+      
+      // List query - return array
+      if (storeName) {
+        const cached = await getAllItems(storeName);
+        return (cached || []) as T;
+      }
+      return [] as T;
     }
 
     try {
@@ -223,10 +300,20 @@ export const getQueryFn: <T>(options: {
       return data;
     } catch (error) {
       if (!checkOnline() || (error instanceof Error && error.message.includes('Failed to fetch'))) {
-        const cachedData = await getCachedDataForEndpoint<T>(url);
-        if (cachedData !== null) {
-          return cachedData as T;
+        const storeName = getStoreNameFromEndpoint(queryKey[0] as string);
+        
+        if (isDetailQuery && storeName) {
+          // Detail query - try to get single item, return null if not found
+          const item = await getItemFromEndpoint(queryKey[0] as string, queryKey[1] as string);
+          return (item || null) as T;
         }
+        
+        // List query - return array
+        if (storeName) {
+          const cached = await getAllItems(storeName);
+          return (cached || []) as T;
+        }
+        return [] as T;
       }
       throw error;
     }
@@ -236,28 +323,57 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
+      networkMode: 'offlineFirst',
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
-      // Retry once on 403/network errors to handle server restarts gracefully
       retry: (failureCount, error) => {
-        // Don't retry if we've already tried once
+        if (!checkOnline()) return false;
         if (failureCount >= 1) return false;
-        // Retry on network errors or 5xx server errors
         const errorMsg = error?.message || '';
-        if (errorMsg.includes('session_expired')) return false; // Don't retry auth errors
+        if (errorMsg.includes('session_expired')) return false;
         if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) return true;
         if (errorMsg.includes('Failed to fetch') || errorMsg.includes('Network')) return true;
         return false;
       },
-      retryDelay: 1000, // 1 second delay before retry
-      // Make queries load instantly without showing loading states
+      retryDelay: 1000,
       placeholderData: (previousData: any) => previousData,
-      // Cache data aggressively 
-      gcTime: 30 * 60 * 1000, // 30 minutes
+      gcTime: 30 * 60 * 1000,
     },
     mutations: {
       retry: false,
+      networkMode: 'offlineFirst',
     },
   },
 });
+
+export function updateQueryCacheOptimistically(
+  queryKey: string[],
+  operation: 'create' | 'update' | 'delete',
+  data: any
+) {
+  if (operation === 'create') {
+    queryClient.setQueryData(queryKey, (old: any[] | undefined) => 
+      old ? [...old, data] : [data]
+    );
+  } else if (operation === 'update') {
+    queryClient.setQueryData(queryKey, (old: any[] | undefined) => 
+      old?.map(item => item.id === data.id ? { ...item, ...data } : item)
+    );
+  } else if (operation === 'delete') {
+    queryClient.setQueryData(queryKey, (old: any[] | undefined) => 
+      old?.filter(item => item.id !== data.id)
+    );
+  }
+}
+
+/**
+ * Safely invalidate queries only when online.
+ * Mutations shouldn't invalidate queries when offline as they'll fail.
+ * Use this wrapper instead of calling queryClient.invalidateQueries directly.
+ */
+export async function safeInvalidateQueries(options: Parameters<typeof queryClient.invalidateQueries>[0]) {
+  if (navigator.onLine) {
+    await queryClient.invalidateQueries(options);
+  }
+}

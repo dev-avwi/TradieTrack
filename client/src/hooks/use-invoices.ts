@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 
@@ -17,8 +17,8 @@ export function useArchiveInvoice() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", { archived: true }] });
     },
   });
 }
@@ -30,8 +30,8 @@ export function useUnarchiveInvoice() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", { archived: true }] });
     },
   });
 }
@@ -56,11 +56,17 @@ export function useRecentInvoices() {
 export function useCreateInvoice() {
   return useMutation({
     mutationFn: async (invoiceData: any) => {
+      // Use offline-aware request when offline
+      if (!navigator.onLine) {
+        const response = await offlineAwareApiRequest("POST", "/api/invoices", invoiceData);
+        return response.json();
+      }
+      
       const response = await apiRequest("POST", "/api/invoices", invoiceData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 }
@@ -82,7 +88,7 @@ export function useSendInvoice() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 }
@@ -94,7 +100,7 @@ export function useCreatePaymentLink() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 }
@@ -124,7 +130,7 @@ export function useMarkInvoicePaid() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 }
@@ -153,7 +159,7 @@ export function useRecordPayment() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 }

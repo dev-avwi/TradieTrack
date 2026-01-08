@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 
@@ -17,8 +17,8 @@ export function useArchiveQuote() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes", { archived: true }] });
     },
   });
 }
@@ -30,8 +30,8 @@ export function useUnarchiveQuote() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes", { archived: true }] });
     },
   });
 }
@@ -56,11 +56,17 @@ export function useRecentQuotes() {
 export function useCreateQuote() {
   return useMutation({
     mutationFn: async (quoteData: any) => {
+      // Use offline-aware request when offline
+      if (!navigator.onLine) {
+        const response = await offlineAwareApiRequest("POST", "/api/quotes", quoteData);
+        return response.json();
+      }
+      
       const response = await apiRequest("POST", "/api/quotes", quoteData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
     },
   });
 }
@@ -82,7 +88,7 @@ export function useSendQuote() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
     },
   });
 }
@@ -94,8 +100,8 @@ export function useGenerateQuoteFromJob() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
     },
   });
 }
@@ -121,8 +127,8 @@ export function useConvertQuoteToInvoice() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
     },
   });
 }

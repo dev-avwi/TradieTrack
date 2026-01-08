@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 
 export function useBusinessSettings() {
   return useQuery({
@@ -31,7 +31,7 @@ export function useUpdateBusinessSettings() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-settings'] });
     }
   });
 }

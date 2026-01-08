@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 
 export interface BusinessTemplate {
   id: string;
@@ -81,8 +81,6 @@ export interface PurposeOption {
 }
 
 export function useBusinessTemplates() {
-  const queryClient = useQueryClient();
-
   const templatesQuery = useQuery<BusinessTemplate[]>({
     queryKey: ['/api/business-templates'],
   });
@@ -97,8 +95,8 @@ export function useBusinessTemplates() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates/families'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates/families'] });
     },
   });
 
@@ -108,7 +106,7 @@ export function useBusinessTemplates() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
     },
   });
 
@@ -117,8 +115,8 @@ export function useBusinessTemplates() {
       await apiRequest("DELETE", `/api/business-templates/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates/families'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates/families'] });
     },
   });
 
@@ -127,8 +125,8 @@ export function useBusinessTemplates() {
       await apiRequest("POST", `/api/business-templates/${id}/activate`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates/families'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates/families'] });
     },
   });
 
@@ -137,8 +135,8 @@ export function useBusinessTemplates() {
       await apiRequest("POST", "/api/business-templates/seed");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-templates/families'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
+      safeInvalidateQueries({ queryKey: ['/api/business-templates/families'] });
     },
   });
 
