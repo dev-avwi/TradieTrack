@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient, clearSessionToken, getSessionToken } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { WifiOff } from "lucide-react";
+import { NetworkProvider } from "@/contexts/NetworkContext";
+import OfflineIndicator from "@/components/OfflineIndicator";
 import AuthFlow from "@/components/AuthFlow";
 import SimpleOnboarding from "@/components/SimpleOnboarding";
 import OnboardingWizard, { type OnboardingData } from "@/components/OnboardingWizard";
@@ -103,38 +104,6 @@ interface JobData {
 interface ClientData {
   id: string;
   name: string;
-}
-
-// Offline Indicator Component - shows when user loses internet connection
-function OfflineIndicator() {
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  if (!isOffline) return null;
-
-  return (
-    <div 
-      className="bg-orange-500 text-white px-4 py-2 text-center text-sm flex items-center justify-center gap-2"
-      role="alert"
-      data-testid="offline-indicator"
-    >
-      <WifiOff className="h-4 w-4" />
-      <span className="font-medium">You're offline</span>
-      <span className="hidden sm:inline">- Some features may be limited until you reconnect</span>
-    </div>
-  );
 }
 
 // Public Receipt Redirect - redirects to PDF download for SMS links
@@ -1147,21 +1116,23 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="tradietrack-ui-theme">
-        <TooltipProvider>
-          <Switch>
-            {/* Public routes - no auth required */}
-            <Route path="/pay/:token" component={PaymentPage} />
-            <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
-            <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
-            <Route path="/privacy" component={PrivacyPolicy} />
-            <Route path="/terms" component={TermsOfService} />
-            {/* All other routes go through AppLayout */}
-            <Route>
-              <AppLayout />
-            </Route>
-          </Switch>
-          <Toaster />
-        </TooltipProvider>
+        <NetworkProvider>
+          <TooltipProvider>
+            <Switch>
+              {/* Public routes - no auth required */}
+              <Route path="/pay/:token" component={PaymentPage} />
+              <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
+              <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
+              <Route path="/privacy" component={PrivacyPolicy} />
+              <Route path="/terms" component={TermsOfService} />
+              {/* All other routes go through AppLayout */}
+              <Route>
+                <AppLayout />
+              </Route>
+            </Switch>
+            <Toaster />
+          </TooltipProvider>
+        </NetworkProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
