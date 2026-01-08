@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-business-settings";
 import StripeSetupGuide from "@/components/StripeSetupGuide";
 import XeroSetupGuide from "@/components/XeroSetupGuide";
+import GoogleCalendarSetupGuide from "@/components/GoogleCalendarSetupGuide";
 // MYOB integration removed per user request - focusing on Xero
 // import MyobSetupGuide from "@/components/MyobSetupGuide";
 import { 
@@ -1717,34 +1718,13 @@ export default function Integrations() {
           <CardContent className="pt-0 space-y-4">
             {googleCalendarStatus?.connected ? (
               <>
-                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                      {googleCalendarStatus.email || 'Google Calendar'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-green-700 dark:text-green-300">
-                    Jobs can now be synced to your calendar
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-foreground">Features enabled:</p>
-                  <ul className="text-xs text-muted-foreground space-y-1.5">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      Sync scheduled jobs to calendar
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      Automatic event reminders
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      View upcoming events
-                    </li>
-                  </ul>
-                </div>
+                <GoogleCalendarSetupGuide
+                  isConnected={true}
+                  isConfigured={true}
+                  email={googleCalendarStatus.email}
+                  onConnect={() => connectGoogleCalendarMutation.mutate()}
+                  isConnecting={connectGoogleCalendarMutation.isPending}
+                />
                 <div className="flex gap-2">
                   <Button 
                     onClick={() => syncAllJobsMutation.mutate()}
@@ -1774,49 +1754,19 @@ export default function Integrations() {
                 </div>
               </>
             ) : googleCalendarStatus?.configured === false ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Google Calendar integration is not configured. Please contact support to enable this feature.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground">
-                      <p>GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET must be configured.</p>
-                    </div>
-                  </div>
-                </div>
-              </>
+              <GoogleCalendarSetupGuide
+                isConnected={false}
+                isConfigured={false}
+                onConnect={() => connectGoogleCalendarMutation.mutate()}
+                isConnecting={connectGoogleCalendarMutation.isPending}
+              />
             ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your Google Calendar to automatically sync scheduled jobs. Never miss an appointment again.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>One-way sync:</strong> Jobs sync from TradieTrack to Calendar</p>
-                      <p><strong>Event details:</strong> Job title, client, address, and notes</p>
-                      <p><strong>Reminders:</strong> Automatic 60min and 15min reminders</p>
-                    </div>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => connectGoogleCalendarMutation.mutate()}
-                  disabled={connectGoogleCalendarMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-google-calendar"
-                >
-                  {connectGoogleCalendarMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Calendar className="w-4 h-4 mr-2" />
-                  )}
-                  Connect Google Calendar
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </>
+              <GoogleCalendarSetupGuide
+                isConnected={false}
+                isConfigured={true}
+                onConnect={() => connectGoogleCalendarMutation.mutate()}
+                isConnecting={connectGoogleCalendarMutation.isPending}
+              />
             )}
           </CardContent>
         </Card>
