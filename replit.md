@@ -112,3 +112,10 @@ class NotificationService {
 - To force reset demo data when needed: `POST /api/admin/reset-demo-data` (requires demo user authentication)
 - After reset, mobile users must pull-to-refresh on list screens to get new IDs
 - This ensures a realistic tradie experience where invoices, quotes, and jobs persist like real business data
+
+**Integration Setup Guides (Web-Mobile Parity)**:
+- Three polished setup guide components: `XeroSetupGuide.tsx`, `StripeSetupGuide.tsx`, `GoogleCalendarSetupGuide.tsx`
+- All guides use identical flat structure (no Card wrappers) to prevent nested Card violations when placed inside parent CardContent
+- Comprehensive data-testid coverage for mobile testing: `button-*-connect`, `accordion-*-faq`, `badge-*-status`, `list-*-features`
+- Each guide includes: styled header with progress badge, benefits banner, progress steps, FAQ accordion, security notes, support links
+- Integrations page (`/integrations`) renders setup guides inside existing integration Cards' CardContent
