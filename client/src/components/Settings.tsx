@@ -2706,6 +2706,11 @@ function SupportTab() {
 
           <Separator />
 
+          {/* Reset Demo Data */}
+          <ResetDemoDataSection />
+
+          <Separator />
+
           {/* About TradieTrack */}
           <div className="text-center space-y-2 py-4">
             <p className="text-sm text-muted-foreground">
@@ -2718,6 +2723,100 @@ function SupportTab() {
         </CardContent>
       </Card>
     </TabsContent>
+  );
+}
+
+// Reset Demo Data Section Component
+function ResetDemoDataSection() {
+  const { toast } = useToast();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetDemoData = async () => {
+    if (!confirm('This will delete all demo data and recreate it with fresh IDs. Continue?')) {
+      return;
+    }
+    
+    setIsResetting(true);
+    try {
+      const response = await fetch('/api/admin/reset-demo-data', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Demo Data Reset",
+          description: result.message || "All demo data has been recreated",
+        });
+        // Invalidate all queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/team'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: result.message || "Could not reset demo data",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset demo data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold flex items-center gap-2">
+        <AlertCircle className="h-4 w-4" />
+        Demo Data Management
+      </h3>
+      <div className="p-4 rounded-lg border-2 border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
+        <div className="flex items-start gap-4">
+          <div className="p-3 rounded-lg bg-orange-100 dark:bg-orange-900/50">
+            <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div className="space-y-2 flex-1">
+            <h4 className="font-semibold">Reset Demo Data</h4>
+            <p className="text-sm text-muted-foreground">
+              If your demo data appears different between environments (dev vs production), 
+              use this button to reset all demo clients, jobs, quotes, invoices, and receipts 
+              to match across both environments.
+            </p>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={handleResetDemoData}
+              disabled={isResetting}
+              className="border-orange-300 dark:border-orange-800 text-orange-700 dark:text-orange-400"
+              data-testid="button-reset-demo-data"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Reset Demo Data
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
