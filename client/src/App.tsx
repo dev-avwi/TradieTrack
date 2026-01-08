@@ -1131,6 +1131,7 @@ function AppLayout() {
           businessSettings={businessSettings}
           onComplete={() => {
             queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+            startTour();
           }}
         />
       )}

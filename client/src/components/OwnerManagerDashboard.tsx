@@ -34,11 +34,8 @@ import {
   Sparkles,
   Timer,
   Receipt,
-  CreditCard,
-  Target,
-  Repeat
+  CreditCard
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 
 interface OwnerManagerDashboardProps {
   userName?: string;
@@ -66,34 +63,6 @@ export default function OwnerManagerDashboard({
   const updateJob = useUpdateJob();
   const { toast } = useToast();
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(true);
-
-  // Leads and Recurring Jobs queries for dashboard integration
-  const { data: leads = [], isLoading: leadsLoading } = useQuery<any[]>({
-    queryKey: ['/api/leads'],
-  });
-  const { data: recurringJobs = [], isLoading: recurringLoading } = useQuery<any[]>({
-    queryKey: ['/api/recurring-jobs'],
-  });
-  
-  const pipelineLoading = leadsLoading || recurringLoading;
-
-  // Calculate lead stats
-  const hotLeads = leads.filter((l: any) => l.status === 'contacted' || l.status === 'qualified');
-  const newLeads = leads.filter((l: any) => l.status === 'new');
-  
-  // Get upcoming recurring jobs (next 7 days)
-  const upcomingRecurring = recurringJobs.filter((rj: any) => {
-    if (!rj.nextRunDate || !rj.isActive) return false;
-    const nextRun = new Date(rj.nextRunDate);
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    return nextRun <= sevenDaysFromNow;
-  });
-  
-  // Always show pipeline section - it's a core feature users should be aware of
-  // Use filtered counts for empty state (same as the KPI display)
-  const activeLeadsCount = hotLeads.length + newLeads.length;
-  const activeRecurringCount = recurringJobs.filter((rj: any) => rj.isActive).length;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -371,84 +340,6 @@ export default function OwnerManagerDashboard({
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     ${kpis?.monthlyEarnings?.toFixed(0) || "0"} this month
                   </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Leads & Recurring - Business Pipeline - Always visible */}
-      <section className="animate-fade-up" style={{ animationDelay: '80ms' }}>
-        <h2 className="ios-label mb-3">Pipeline & Recurring</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {/* Leads Widget */}
-          <div 
-            className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/leads')}
-            data-testid="kpi-leads"
-          >
-            <div className="card-padding">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-11 h-11 rounded-xl flex items-center justify-center"
-                  style={{ backgroundColor: (hotLeads.length > 0) ? 'hsl(280 65% 60% / 0.1)' : 'hsl(var(--muted) / 0.5)' }}
-                >
-                  <Target className="h-5 w-5" style={{ color: (hotLeads.length > 0) ? 'hsl(280 65% 60%)' : 'hsl(var(--muted-foreground))' }} />
-                </div>
-                <div>
-                  {pipelineLoading ? (
-                    <div className="h-7 w-8 bg-muted animate-pulse rounded" />
-                  ) : (
-                    <p className="text-2xl font-bold">{hotLeads.length + newLeads.length}</p>
-                  )}
-                  <p className="ios-caption">Active Leads</p>
-                  {!pipelineLoading && activeLeadsCount > 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {hotLeads.length} hot, {newLeads.length} new
-                    </p>
-                  )}
-                  {!pipelineLoading && activeLeadsCount === 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Tap to add leads
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Recurring Jobs Widget */}
-          <div 
-            className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/recurring-jobs')}
-            data-testid="kpi-recurring"
-          >
-            <div className="card-padding">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-11 h-11 rounded-xl flex items-center justify-center"
-                  style={{ backgroundColor: (upcomingRecurring.length > 0) ? 'hsl(200 90% 50% / 0.1)' : 'hsl(var(--muted) / 0.5)' }}
-                >
-                  <Repeat className="h-5 w-5" style={{ color: (upcomingRecurring.length > 0) ? 'hsl(200 90% 50%)' : 'hsl(var(--muted-foreground))' }} />
-                </div>
-                <div>
-                  {pipelineLoading ? (
-                    <div className="h-7 w-8 bg-muted animate-pulse rounded" />
-                  ) : (
-                    <p className="text-2xl font-bold">{upcomingRecurring.length}</p>
-                  )}
-                  <p className="ios-caption">Due This Week</p>
-                  {!pipelineLoading && activeRecurringCount > 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {activeRecurringCount} active contracts
-                    </p>
-                  )}
-                  {!pipelineLoading && activeRecurringCount === 0 && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Tap to set up recurring
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

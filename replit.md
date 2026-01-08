@@ -36,7 +36,7 @@ Key architectural and design decisions include:
 *   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
 *   **Timesheet Approvals**: Workflow for crew timesheet approval.
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
-*   **Immersive ServiceM8-Style Onboarding**: Full-screen onboarding experience with 3 phases - Welcome screen with "G'day" greeting, 7-step "Life of a Job" walkthrough, and 4-level Learning Roadmap with progress tracking. Server-side tracking via `hasSeenWalkthrough` and `onboardingLevel` fields in business_settings table prevents localStorage issues when accounts are re-created.
+*   **Immersive ServiceM8-Style Onboarding**: Full-screen onboarding experience with 2 phases - Welcome screen with "G'day" greeting followed by 7-step "Life of a Job" walkthrough explaining the core workflow. After completion, a GuidedTour automatically starts with 18 step-by-step tooltips highlighting actual UI elements across the app (dashboard, clients, jobs, quotes, invoices, settings). Server-side tracking via `hasSeenWalkthrough` field in business_settings table prevents localStorage issues when accounts are re-created. Tour can be replayed from Settings.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
