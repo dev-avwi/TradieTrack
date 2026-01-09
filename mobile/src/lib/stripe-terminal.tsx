@@ -1,13 +1,26 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { Platform } from 'react-native';
-import {
-  StripeTerminalProvider as SDKProvider,
-  useStripeTerminal as useSDKTerminal,
-  type Reader,
-  type PaymentIntent,
-  type DiscoveryMethod,
-} from '@stripe/stripe-terminal-react-native';
-import { api } from './api';
+
+// Stub implementation - Stripe Terminal SDK temporarily disabled for App Store builds
+// Re-enable when Apple approves Tap to Pay production entitlement
+
+export type TerminalStatus = 'not_initialized' | 'initializing' | 'ready' | 'connecting' | 'connected' | 'processing' | 'error';
+
+export interface Reader {
+  id: string;
+  serialNumber: string;
+  label?: string;
+  locationId?: string;
+  status: string;
+  deviceType: string;
+}
+
+export interface PaymentIntent {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+}
 
 export interface StripeTerminalState {
   isInitialized: boolean;
@@ -32,6 +45,7 @@ interface StripeTerminalContextValue extends StripeTerminalState {
   cancelCollectPayment: () => Promise<boolean>;
   disconnectReader: () => Promise<boolean>;
   clearError: () => void;
+  isSDKAvailable: boolean;
 }
 
 const StripeTerminalContext = createContext<StripeTerminalContextValue | null>(null);
@@ -40,270 +54,93 @@ interface StripeTerminalProviderProps {
   children: ReactNode;
 }
 
-async function fetchConnectionToken(): Promise<string> {
-  const response = await api.post<{ secret: string }>('/api/stripe-terminal/connection-token');
-  
-  if (response.error) {
-    throw new Error(response.error);
-  }
-  
-  if (!response.data?.secret) {
-    throw new Error('No connection token received from server');
-  }
-  
-  return response.data.secret;
+// SDK availability check - always false since SDK is removed
+export const isSDKAvailable = false;
+
+// Tap to Pay availability - disabled pending Apple approval
+export function isTapToPayAvailable(): boolean {
+  return false;
 }
 
-function StripeTerminalContextProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<StripeTerminalState>({
+// Check if running in simulation mode
+export function isSimulationMode(): boolean {
+  return true; // Always simulation since SDK is removed
+}
+
+// OS version check for Tap to Pay (iOS 16.4+ required)
+export function isOsVersionNotSupported(): boolean {
+  if (Platform.OS === 'ios') {
+    const version = parseFloat(Platform.Version as string);
+    return version < 16.4;
+  }
+  return false;
+}
+
+export const OS_VERSION_NOT_SUPPORTED_MESSAGE = 'Tap to Pay requires iOS 16.4 or later. Please update your device.';
+
+// Android permissions (stub)
+export async function requestAndroidPermissions(): Promise<boolean> {
+  return true;
+}
+
+// Terminal simulator stub
+export const terminalSimulator = {
+  status: 'not_initialized' as TerminalStatus,
+  onStatusChange: (callback: (status: TerminalStatus) => void) => {
+    // No-op in stub
+  },
+  initialize: async (): Promise<boolean> => {
+    console.log('[StripeTerminal] Simulator not available - SDK removed pending Apple approval');
+    return false;
+  },
+  discoverReaders: async (): Promise<Reader[]> => {
+    return [];
+  },
+  connectReader: async (reader: Reader): Promise<boolean> => {
+    return false;
+  },
+  collectPayment: async (amount: number, currency: string): Promise<PaymentIntent | null> => {
+    return null;
+  },
+  cancelPayment: async (): Promise<boolean> => {
+    return false;
+  },
+  disconnect: async (): Promise<boolean> => {
+    return false;
+  },
+};
+
+export function StripeTerminalProvider({ children }: StripeTerminalProviderProps) {
+  const [state] = useState<StripeTerminalState>({
     isInitialized: false,
     isConnected: false,
     isCollecting: false,
-    error: null,
+    error: 'Tap to Pay is temporarily unavailable. Pending Apple production approval.',
     connectedReader: null,
     discoveredReaders: [],
   });
 
-  const cancelableRef = useRef<{ cancel: () => Promise<void> } | null>(null);
-
-  const {
-    initialize,
-    discoverReaders: sdkDiscoverReaders,
-    connectLocalMobileReader,
-    createPaymentIntent,
-    collectPaymentMethod,
-    confirmPaymentIntent,
-    cancelCollectPaymentMethod,
-    disconnectReader: sdkDisconnectReader,
-  } = useSDKTerminal();
-
-  const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
+  const notAvailable = useCallback(async () => {
+    console.log('[StripeTerminal] SDK not available - pending Apple production approval');
+    return false;
   }, []);
-
-  const initializeTerminal = useCallback(async (): Promise<boolean> => {
-    try {
-      setState(prev => ({ ...prev, error: null }));
-      
-      const { error } = await initialize();
-      
-      if (error) {
-        setState(prev => ({ 
-          ...prev, 
-          error: error.message || 'Failed to initialize terminal',
-          isInitialized: false 
-        }));
-        return false;
-      }
-
-      setState(prev => ({ ...prev, isInitialized: true }));
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize terminal';
-      setState(prev => ({ ...prev, error: errorMessage, isInitialized: false }));
-      return false;
-    }
-  }, [initialize]);
-
-  const discoverReaders = useCallback(async (): Promise<Reader[]> => {
-    try {
-      setState(prev => ({ ...prev, error: null, discoveredReaders: [] }));
-
-      const discoveryMethod: DiscoveryMethod = Platform.OS === 'ios' 
-        ? 'localMobile' 
-        : 'localMobile';
-
-      const { error, readers } = await sdkDiscoverReaders({
-        discoveryMethod,
-        simulated: __DEV__,
-      });
-
-      if (error) {
-        setState(prev => ({ 
-          ...prev, 
-          error: error.message || 'Failed to discover readers' 
-        }));
-        return [];
-      }
-
-      const discoveredReaders = readers || [];
-      setState(prev => ({ ...prev, discoveredReaders }));
-      return discoveredReaders;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to discover readers';
-      setState(prev => ({ ...prev, error: errorMessage }));
-      return [];
-    }
-  }, [sdkDiscoverReaders]);
-
-  const connectReader = useCallback(async (reader: Reader): Promise<boolean> => {
-    try {
-      setState(prev => ({ ...prev, error: null }));
-
-      const { error, reader: connectedReader } = await connectLocalMobileReader({
-        reader,
-        locationId: reader.locationId || undefined,
-      });
-
-      if (error) {
-        setState(prev => ({ 
-          ...prev, 
-          error: error.message || 'Failed to connect to reader',
-          isConnected: false 
-        }));
-        return false;
-      }
-
-      setState(prev => ({ 
-        ...prev, 
-        isConnected: true, 
-        connectedReader: connectedReader || reader 
-      }));
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to connect to reader';
-      setState(prev => ({ ...prev, error: errorMessage, isConnected: false }));
-      return false;
-    }
-  }, [connectLocalMobileReader]);
-
-  const collectPayment = useCallback(async ({
-    amount,
-    currency,
-    description,
-  }: CollectPaymentParams): Promise<PaymentIntent | null> => {
-    try {
-      setState(prev => ({ ...prev, error: null, isCollecting: true }));
-
-      const response = await api.post<{ clientSecret: string; paymentIntentId: string }>(
-        '/api/stripe-terminal/create-payment-intent',
-        { 
-          amount, 
-          currency, 
-          description,
-          captureMethod: 'automatic',
-        }
-      );
-
-      if (response.error || !response.data?.clientSecret) {
-        throw new Error(response.error || 'Failed to create payment intent');
-      }
-
-      const { clientSecret } = response.data;
-
-      const { paymentIntent: createdIntent, error: createError } = await createPaymentIntent({
-        amount,
-        currency,
-        captureMethod: 'automatic',
-      });
-
-      if (createError) {
-        throw new Error(createError.message || 'Failed to create payment intent on terminal');
-      }
-
-      const { paymentIntent: collectedIntent, error: collectError } = await collectPaymentMethod({
-        paymentIntent: createdIntent!,
-      });
-
-      if (collectError) {
-        if (collectError.code === 'Canceled') {
-          setState(prev => ({ ...prev, isCollecting: false }));
-          return null;
-        }
-        throw new Error(collectError.message || 'Failed to collect payment method');
-      }
-
-      const { paymentIntent: confirmedIntent, error: confirmError } = await confirmPaymentIntent({
-        paymentIntent: collectedIntent!,
-      });
-
-      if (confirmError) {
-        throw new Error(confirmError.message || 'Failed to confirm payment');
-      }
-
-      setState(prev => ({ ...prev, isCollecting: false }));
-      return confirmedIntent || null;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Payment failed';
-      setState(prev => ({ ...prev, error: errorMessage, isCollecting: false }));
-      return null;
-    }
-  }, [createPaymentIntent, collectPaymentMethod, confirmPaymentIntent]);
-
-  const cancelCollectPayment = useCallback(async (): Promise<boolean> => {
-    try {
-      const { error } = await cancelCollectPaymentMethod();
-      
-      if (error) {
-        setState(prev => ({ 
-          ...prev, 
-          error: error.message || 'Failed to cancel payment collection' 
-        }));
-        return false;
-      }
-
-      setState(prev => ({ ...prev, isCollecting: false }));
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to cancel payment collection';
-      setState(prev => ({ ...prev, error: errorMessage }));
-      return false;
-    }
-  }, [cancelCollectPaymentMethod]);
-
-  const disconnectReader = useCallback(async (): Promise<boolean> => {
-    try {
-      const { error } = await sdkDisconnectReader();
-      
-      if (error) {
-        setState(prev => ({ 
-          ...prev, 
-          error: error.message || 'Failed to disconnect reader' 
-        }));
-        return false;
-      }
-
-      setState(prev => ({ 
-        ...prev, 
-        isConnected: false, 
-        connectedReader: null 
-      }));
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect reader';
-      setState(prev => ({ ...prev, error: errorMessage }));
-      return false;
-    }
-  }, [sdkDisconnectReader]);
 
   const contextValue: StripeTerminalContextValue = {
     ...state,
-    initializeTerminal,
-    discoverReaders,
-    connectReader,
-    collectPayment,
-    cancelCollectPayment,
-    disconnectReader,
-    clearError,
+    isSDKAvailable: false,
+    initializeTerminal: notAvailable,
+    discoverReaders: useCallback(async () => [], []),
+    connectReader: notAvailable,
+    collectPayment: useCallback(async () => null, []),
+    cancelCollectPayment: notAvailable,
+    disconnectReader: notAvailable,
+    clearError: useCallback(() => {}, []),
   };
 
   return (
     <StripeTerminalContext.Provider value={contextValue}>
       {children}
     </StripeTerminalContext.Provider>
-  );
-}
-
-export function StripeTerminalProvider({ children }: StripeTerminalProviderProps) {
-  return (
-    <SDKProvider
-      logLevel="verbose"
-      tokenProvider={fetchConnectionToken}
-    >
-      <StripeTerminalContextProvider>
-        {children}
-      </StripeTerminalContextProvider>
-    </SDKProvider>
   );
 }
 
@@ -316,5 +153,3 @@ export function useStripeTerminal(): StripeTerminalContextValue {
   
   return context;
 }
-
-export type { Reader, PaymentIntent };
