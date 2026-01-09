@@ -32,12 +32,19 @@
         "NSLocationWhenInUseUsageDescription": "TradieTrack needs location access to track job sites",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "TradieTrack needs location access for team tracking",
         "NFCReaderUsageDescription": "TradieTrack uses NFC for Tap to Pay contactless payments",
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
+      },
+      "newArchEnabled": true,
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.tradietrack.app",
@@ -51,8 +58,37 @@
         "ACCESS_BACKGROUND_LOCATION",
         "NFC",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
-      ]
+        "RECEIVE_BOOT_COMPLETED",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "NFC",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "NFC",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "newArchEnabled": true
     },
     "web": {
       "bundler": "metro",
@@ -102,6 +138,9 @@
         "projectId": "78e88ca7-014e-438b-8170-1ccae4cd9386"
       },
       "apiUrl": "https://tradietrack.com"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/78e88ca7-014e-438b-8170-1ccae4cd9386"
     }
   }
 }
