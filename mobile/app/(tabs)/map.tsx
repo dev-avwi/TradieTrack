@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, Component, ErrorInfo, ReactNode } from 'react';
 import { 
   View, 
   Text, 
@@ -14,6 +14,39 @@ import {
   Animated,
 } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE, Region, MapStyleElement, Camera } from 'react-native-maps';
+
+// Error boundary to catch map-related crashes
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+class MapErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[MapScreen] Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || null;
+    }
+    return this.props.children;
+  }
+}
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
@@ -654,6 +687,9 @@ export default function MapScreen() {
   const [isLive, setIsLive] = useState(true);
   const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
   const locationPollRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Map ready state - prevents rendering markers until MapView is ready
+  const [isMapReady, setIsMapReady] = useState(false);
   
   // Track if user has manually interacted with map (to prevent auto-zoom)
   const userHasInteractedRef = useRef(false);
@@ -1374,30 +1410,72 @@ export default function MapScreen() {
 
   const activeTeamCount = teamMembers.filter(m => m.activityStatus !== 'offline').length;
 
+  // Map error fallback UI
+  const mapErrorFallback = (
+    <View style={[styles.container, { alignItems: 'center', justifyContent: 'center', padding: spacing.xl }]}>
+      <View style={{ 
+        width: 80, 
+        height: 80, 
+        borderRadius: 40, 
+        backgroundColor: colors.muted, 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        marginBottom: spacing.lg
+      }}>
+        <Feather name="map-pin" size={36} color={colors.mutedForeground} />
+      </View>
+      <Text style={{ fontSize: 18, fontWeight: '600', color: colors.foreground, textAlign: 'center', marginBottom: spacing.sm }}>
+        Map Unavailable
+      </Text>
+      <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20, marginBottom: spacing.lg }}>
+        The map couldn't load. You can still view your jobs from the Jobs screen.
+      </Text>
+      <TouchableOpacity
+        style={{ 
+          backgroundColor: colors.primary, 
+          paddingHorizontal: spacing.xl, 
+          paddingVertical: spacing.md, 
+          borderRadius: radius.md,
+        }}
+        onPress={() => router.push('/(tabs)/jobs')}
+        activeOpacity={0.8}
+      >
+        <Text style={{ color: '#fff', fontWeight: '600' }}>View Jobs</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-        initialRegion={DEFAULT_REGION}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass={false}
-        mapType="standard"
-        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
-        userInterfaceStyle={isDark ? 'dark' : 'light'}
-        onPanDrag={handleMapPanDrag}
-        onMapReady={() => {
-          // Only fit to markers on initial map ready if not already done
-          if (!isInitialFitDoneRef.current && (filteredJobs.length > 0 || teamMembers.length > 0)) {
-            fitToMarkers();
-            isInitialFitDoneRef.current = true;
-          }
-        }}
-      >
-        {/* Job Markers */}
-        {showJobs && filteredJobs.map((job) => {
+      <MapErrorBoundary fallback={mapErrorFallback}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+          initialRegion={DEFAULT_REGION}
+          showsUserLocation
+          showsMyLocationButton={false}
+          showsCompass={false}
+          mapType="standard"
+          customMapStyle={Platform.OS === 'android' && isDark ? DARK_MAP_STYLE : undefined}
+          userInterfaceStyle={isDark ? 'dark' : 'light'}
+          onPanDrag={handleMapPanDrag}
+          onMapReady={() => {
+            // Mark map as ready so markers can be rendered safely
+            setIsMapReady(true);
+            // Only fit to markers on initial map ready if not already done
+            if (!isInitialFitDoneRef.current && (filteredJobs.length > 0 || teamMembers.length > 0)) {
+              // Small delay to ensure map is fully initialized before fitting
+              setTimeout(() => {
+                fitToMarkers();
+                isInitialFitDoneRef.current = true;
+              }, 100);
+            }
+          }}
+        >
+        {/* Job Markers - only render when map is ready to prevent iPad crashes */}
+        {isMapReady && showJobs && filteredJobs.map((job) => {
           const jobInRoute = isJobInRoute(job.id);
           return job.latitude && job.longitude && (
             <Marker
@@ -1447,8 +1525,8 @@ export default function MapScreen() {
 
         {/* Team Member Markers - Life360 Style */}
         {/* Note: Members are pre-filtered at transformation time - all members in state have valid coords */}
-        {/* teamMarkersReady delays rendering until data is stable to prevent iOS top-left flash bug */}
-        {showTeamMembers && canViewTeamMode && teamMarkersReady && teamMembers.map((member) => {
+        {/* isMapReady + teamMarkersReady delays rendering until fully stable to prevent iPad crashes */}
+        {isMapReady && showTeamMembers && canViewTeamMode && teamMarkersReady && teamMembers.map((member) => {
           // Safety check - validate coordinates are within Australia bounds
           const lat = member.lastLocation?.latitude;
           const lng = member.lastLocation?.longitude;
@@ -1569,6 +1647,7 @@ export default function MapScreen() {
           );
         })}
       </MapView>
+      </MapErrorBoundary>
 
       {/* Floating Header Card */}
       <View style={[styles.headerCard, { top: insets.top + 8 }]}>
