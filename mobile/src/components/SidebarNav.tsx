@@ -193,7 +193,7 @@ export function SidebarNav() {
         <Pressable 
           style={({ pressed }) => [
             themedStyles.userCard, 
-            { backgroundColor: colors.muted, borderColor: '#FF0000' },
+            { backgroundColor: colors.muted, borderColor: colors.border },
             pressed && { opacity: 0.8 }
           ]}
           onPress={() => router.push('/profile' as any)}
@@ -341,9 +341,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingHorizontal: 12,
-    paddingTop: 16,
-    paddingBottom: 10,
-    backgroundColor: '#FFEB3B',
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   footer: {
     paddingHorizontal: 12,
