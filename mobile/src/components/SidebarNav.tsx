@@ -29,21 +29,22 @@ function SidebarNavItemButton({ item, active, onPress, colors }: SidebarNavItemB
       onPress={onPress}
       style={({ pressed }) => [
         styles.navItemPressable,
-        active && { backgroundColor: colors.primary },
-        pressed && !active && { backgroundColor: colors.muted, opacity: 0.8 },
+        active && { backgroundColor: colors.primaryLight },
+        pressed && !active && { backgroundColor: colors.muted },
       ]}
       data-testid={`sidebar-item-${item.id}`}
     >
+      {active && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
       <View style={styles.navItemRow}>
         <Feather 
           name={item.icon} 
-          size={18}
-          color={active ? '#FFFFFF' : colors.mutedForeground}
+          size={16}
+          color={active ? colors.primary : colors.mutedForeground}
           style={styles.navItemIcon}
         />
         <Text style={[
           styles.navItemLabel,
-          { color: active ? '#FFFFFF' : colors.foreground },
+          { color: active ? colors.primary : colors.foreground },
           active && { fontWeight: '600' },
         ]}>
           {item.title}
@@ -130,9 +131,9 @@ export function SidebarNav() {
           {isLoading ? (
             <>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <View key={i} style={[styles.navItemPressable, { marginBottom: 4 }]}>
-                  <View style={[styles.navItemRow, { opacity: 0.3 }]}>
-                    <View style={[styles.navItemIcon, { backgroundColor: colors.muted, borderRadius: 4 }]} />
+                <View key={i} style={[styles.navItemPressable, { marginBottom: 2 }]}>
+                  <View style={[styles.navItemRow, { opacity: 0.4 }]}>
+                    <View style={{ width: 16, height: 16, backgroundColor: colors.muted, borderRadius: 4, marginRight: 10 }} />
                     <View style={{ flex: 1, height: 14, backgroundColor: colors.muted, borderRadius: 4 }} />
                   </View>
                 </View>
@@ -232,19 +233,28 @@ const styles = StyleSheet.create({
   navItemPressable: {
     borderRadius: 6,
     marginBottom: 2,
+    position: 'relative',
     overflow: 'hidden',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 4,
+    bottom: 4,
+    width: 3,
+    borderRadius: 2,
   },
   navItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     width: '100%',
   },
   navItemIcon: {
-    marginRight: 12,
-    width: 18,
-    height: 18,
+    marginRight: 10,
+    width: 16,
+    height: 16,
   },
   navItemLabel: {
     fontSize: 14,
