@@ -202,7 +202,7 @@ export function SidebarNav() {
           <Pressable 
             style={({ pressed }) => [
               themedStyles.userCard, 
-              { backgroundColor: colors.muted, borderColor: colors.border },
+              { backgroundColor: colors.card, borderColor: colors.border },
               pressed && { opacity: 0.8 }
             ]}
             onPress={() => router.push('/profile' as any)}
@@ -224,8 +224,8 @@ export function SidebarNav() {
                 {businessName}
               </Text>
               <View style={[themedStyles.userNameRow, { marginTop: 4 }]}>
-                <View style={[themedStyles.roleBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <Text style={[themedStyles.roleBadgeText, { color: colors.mutedForeground }]}>
+                <View style={[themedStyles.roleBadge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Text style={[themedStyles.roleBadgeText, { color: colors.foreground }]}>
                     {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')}
                   </Text>
                 </View>
