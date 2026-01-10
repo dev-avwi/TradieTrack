@@ -573,6 +573,9 @@ export interface SidebarNavItem {
   path: string;
   matchPaths?: string[];
   section: 'main' | 'settings';
+  hideForStaff?: boolean;
+  requiresOwnerOrManager?: boolean;
+  allowedRoles?: UserRole[];
 }
 
 export const sidebarMainItems: SidebarNavItem[] = [
@@ -583,38 +586,16 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/',
     matchPaths: ['/', '/index'],
     section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
   { 
     id: 'work',
-    title: 'Jobs', 
+    title: 'Work', 
     icon: 'briefcase', 
     path: '/jobs',
     matchPaths: ['/jobs', '/job'],
     section: 'main',
-  },
-  { 
-    id: 'chat',
-    title: 'Chat', 
-    icon: 'message-circle', 
-    path: '/more/chat-hub',
-    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'],
-    section: 'main',
-  },
-  { 
-    id: 'map',
-    title: 'Map', 
-    icon: 'map-pin', 
-    path: '/map',
-    matchPaths: ['/map'],
-    section: 'main',
-  },
-  { 
-    id: 'money',
-    title: 'Money', 
-    icon: 'dollar-sign', 
-    path: '/money',
-    matchPaths: ['/money', '/more/invoices', '/more/quotes', '/more/money-hub'],
-    section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
   { 
     id: 'clients',
@@ -623,6 +604,28 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/clients',
     matchPaths: ['/more/clients', '/more/client'],
     section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'documents',
+    title: 'Documents', 
+    icon: 'folder', 
+    path: '/more/documents',
+    matchPaths: ['/more/documents'],
+    section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'payment-hub',
+    title: 'Payment Hub', 
+    icon: 'credit-card', 
+    path: '/more/payment-hub',
+    matchPaths: ['/more/payment-hub', '/money', '/more/invoices', '/more/quotes'],
+    section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   { 
     id: 'calendar',
@@ -631,6 +634,47 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/calendar',
     matchPaths: ['/more/calendar'],
     section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+  },
+  { 
+    id: 'time-tracking',
+    title: 'Time Tracking', 
+    icon: 'clock', 
+    path: '/more/time-tracking',
+    matchPaths: ['/more/time-tracking'],
+    section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+  },
+  { 
+    id: 'team-operations',
+    title: 'Team Operations', 
+    icon: 'activity', 
+    path: '/more/team-hub',
+    matchPaths: ['/more/team-hub', '/more/team-management'],
+    section: 'main',
+    hideForStaff: true,
+    requiresOwnerOrManager: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'chat',
+    title: 'Chat', 
+    icon: 'message-circle', 
+    path: '/more/chat-hub',
+    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'],
+    section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+  },
+  { 
+    id: 'map',
+    title: 'Map', 
+    icon: 'map-pin', 
+    path: '/map',
+    matchPaths: ['/map'],
+    section: 'main',
+    hideForStaff: true,
+    requiresOwnerOrManager: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   { 
     id: 'reports',
@@ -639,25 +683,53 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/reports',
     matchPaths: ['/more/reports'],
     section: 'main',
+    hideForStaff: true,
+    requiresOwnerOrManager: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'collect-payment',
+    title: 'Collect Payment', 
+    icon: 'smartphone', 
+    path: '/more/collect-payment',
+    matchPaths: ['/more/collect-payment'],
+    section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'templates',
+    title: 'Templates', 
+    icon: 'file-text', 
+    path: '/more/templates',
+    matchPaths: ['/more/templates'],
+    section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'communications',
+    title: 'Communications', 
+    icon: 'send', 
+    path: '/more/communications',
+    matchPaths: ['/more/communications'],
+    section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
 ];
 
 export const sidebarSettingsItems: SidebarNavItem[] = [
   { 
-    id: 'team',
-    title: 'Team', 
-    icon: 'user-plus', 
-    path: '/more/team-management',
-    matchPaths: ['/more/team-management', '/more/team'],
-    section: 'settings',
-  },
-  { 
     id: 'integrations',
     title: 'Integrations', 
-    icon: 'link', 
+    icon: 'zap', 
     path: '/more/integrations',
     matchPaths: ['/more/integrations'],
     section: 'settings',
+    hideForStaff: true,
+    requiresOwnerOrManager: true,
+    allowedRoles: ['owner', 'solo_owner'],
   },
   { 
     id: 'settings',
@@ -666,8 +738,41 @@ export const sidebarSettingsItems: SidebarNavItem[] = [
     path: '/more/settings',
     matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/branding'],
     section: 'settings',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
 ];
+
+export function filterSidebarItems(items: SidebarNavItem[], options: FilterOptions): SidebarNavItem[] {
+  const isOwnerOrManager = options.isOwner || options.isManager;
+  const isStaffTradie = options.isTradie && !isOwnerOrManager;
+  
+  return items.filter(item => {
+    if (item.allowedRoles && options.userRole) {
+      if (!item.allowedRoles.includes(options.userRole)) {
+        return false;
+      }
+    }
+    
+    if (item.hideForStaff && isStaffTradie) {
+      return false;
+    }
+    
+    if (item.requiresOwnerOrManager && !isOwnerOrManager) {
+      return false;
+    }
+    
+    return true;
+  });
+}
+
+export function getFilteredSidebarMainItems(options: FilterOptions): SidebarNavItem[] {
+  return filterSidebarItems(sidebarMainItems, options);
+}
+
+export function getFilteredSidebarSettingsItems(options: FilterOptions): SidebarNavItem[] {
+  return filterSidebarItems(sidebarSettingsItems, options);
+}
 
 export function isSidebarPathActive(pathname: string, item: SidebarNavItem): boolean {
   const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];

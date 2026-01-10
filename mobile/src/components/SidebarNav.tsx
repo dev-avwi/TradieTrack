@@ -5,7 +5,15 @@ import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useAuthStore } from '../lib/store';
-import { sidebarMainItems, sidebarSettingsItems, SidebarNavItem, isSidebarPathActive } from '../lib/navigation-config';
+import { 
+  getFilteredSidebarMainItems, 
+  getFilteredSidebarSettingsItems, 
+  sidebarMainItems,
+  SidebarNavItem, 
+  isSidebarPathActive,
+  FilterOptions,
+  UserRole
+} from '../lib/navigation-config';
 import { SIDEBAR_WIDTH } from '../lib/device';
 
 interface SidebarNavItemButtonProps {
@@ -21,21 +29,20 @@ function SidebarNavItemButton({ item, active, onPress, colors }: SidebarNavItemB
       onPress={onPress}
       style={({ pressed }) => [
         styles.navItem,
-        active && { backgroundColor: colors.primaryLight },
-        pressed && { opacity: 0.7 },
+        active && { backgroundColor: colors.primary },
+        pressed && !active && { backgroundColor: colors.muted, opacity: 0.8 },
       ]}
       data-testid={`sidebar-item-${item.id}`}
     >
-      <View style={[styles.navItemIcon, active && { backgroundColor: 'transparent' }]}>
-        <Feather 
-          name={item.icon} 
-          size={20}
-          color={active ? colors.primary : colors.mutedForeground}
-        />
-      </View>
+      <Feather 
+        name={item.icon} 
+        size={18}
+        color={active ? '#FFFFFF' : colors.mutedForeground}
+        style={styles.navItemIcon}
+      />
       <Text style={[
         styles.navItemLabel,
-        { color: active ? colors.primary : colors.foreground },
+        { color: active ? '#FFFFFF' : colors.foreground },
         active && { fontWeight: '600' },
       ]}>
         {item.title}
@@ -57,6 +64,44 @@ export function SidebarNav() {
 
   const businessName = businessSettings?.businessName || 'TradieTrack';
   const logoUrl = businessSettings?.logoUrl;
+  const initials = businessName
+    .split(' ')
+    .map((word: string) => word[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  const userRole = user?.role as UserRole | undefined;
+  const isOwner = userRole === 'owner' || userRole === 'solo_owner';
+  const isManager = userRole === 'manager';
+  const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff';
+  
+  const filterOptions: FilterOptions = useMemo(() => ({
+    isTeam: Boolean(businessSettings?.hasTeam),
+    isTradie: isStaffTradie,
+    isOwner: isOwner,
+    isManager: isManager,
+    isSolo: userRole === 'solo_owner',
+    userRole: userRole,
+  }), [userRole, isOwner, isManager, isStaffTradie, businessSettings?.hasTeam]);
+
+  const filteredMainItems = useMemo(() => {
+    if (!userRole) {
+      return sidebarMainItems.filter(item => 
+        !item.hideForStaff && 
+        !item.requiresOwnerOrManager &&
+        item.allowedRoles?.includes('staff_tradie')
+      );
+    }
+    return getFilteredSidebarMainItems(filterOptions);
+  }, [filterOptions, userRole]);
+  
+  const filteredSettingsItems = useMemo(() => {
+    if (!userRole) {
+      return [];
+    }
+    return getFilteredSidebarSettingsItems(filterOptions);
+  }, [filterOptions, userRole]);
 
   return (
     <View style={[themedStyles.container, { paddingTop: insets.top }]}>
@@ -68,13 +113,21 @@ export function SidebarNav() {
             <Text style={themedStyles.logoText}>{businessName.charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        <Text style={themedStyles.businessName} numberOfLines={1}>{businessName}</Text>
+        <Text style={[themedStyles.businessName, { color: colors.foreground }]} numberOfLines={1}>
+          {businessName}
+        </Text>
       </View>
 
-      <ScrollView style={themedStyles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={themedStyles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={themedStyles.scrollContent}
+      >
         <View style={themedStyles.section}>
-          <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>Main Menu</Text>
-          {sidebarMainItems.map((item) => (
+          <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>
+            Main Menu
+          </Text>
+          {filteredMainItems.map((item) => (
             <SidebarNavItemButton
               key={item.id}
               item={item}
@@ -85,57 +138,72 @@ export function SidebarNav() {
           ))}
         </View>
 
-        <View style={themedStyles.section}>
-          <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>Settings</Text>
-          {sidebarSettingsItems.map((item) => (
-            <SidebarNavItemButton
-              key={item.id}
-              item={item}
-              active={isSidebarPathActive(pathname, item)}
-              onPress={() => handlePress(item)}
-              colors={colors}
-            />
-          ))}
-        </View>
+        {filteredSettingsItems.length > 0 && (
+          <View style={themedStyles.section}>
+            <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>
+              Settings
+            </Text>
+            {filteredSettingsItems.map((item) => (
+              <SidebarNavItemButton
+                key={item.id}
+                item={item}
+                active={isSidebarPathActive(pathname, item)}
+                onPress={() => handlePress(item)}
+                colors={colors}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <View style={[themedStyles.footer, { borderTopColor: colors.border }]}>
         <Pressable 
-          style={themedStyles.userInfo}
+          style={[themedStyles.userCard, { backgroundColor: colors.primaryLight, borderColor: colors.border }]}
           onPress={() => router.push('/profile' as any)}
           data-testid="sidebar-user-profile"
         >
           <View style={[themedStyles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={themedStyles.avatarText}>
-              {user?.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-            </Text>
+            {businessSettings?.logoUrl ? (
+              <Image 
+                source={{ uri: businessSettings.logoUrl }} 
+                style={themedStyles.avatarImage} 
+                resizeMode="cover" 
+              />
+            ) : (
+              <Text style={themedStyles.avatarText}>{initials || 'U'}</Text>
+            )}
           </View>
           <View style={themedStyles.userDetails}>
             <View style={themedStyles.userNameRow}>
               <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
-                {user?.firstName || user?.email?.split('@')[0] || 'User'}
+                {businessName}
               </Text>
-              <View style={[themedStyles.roleBadge, { backgroundColor: colors.primaryLight }]}>
-                <Text style={[themedStyles.roleBadgeText, { color: colors.primary }]}>
-                  {user?.role === 'owner' ? 'Owner' : 'Team'}
+              <View style={[themedStyles.roleBadge, { borderColor: colors.border }]}>
+                <Text style={[themedStyles.roleBadgeText, { color: colors.mutedForeground }]}>
+                  {isOwner ? 'Owner' : user?.role || 'Team'}
                 </Text>
               </View>
             </View>
-            <Text style={[themedStyles.userEmail, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {user?.email || ''}
+            <Text style={[themedStyles.planText, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
+               (businessSettings as any)?.subscriptionTier === 'pro' ? 'Pro Plan' : 
+               (businessSettings as any)?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
             </Text>
           </View>
         </Pressable>
         
         <Pressable 
-          style={themedStyles.logoutButton}
+          style={({ pressed }) => [
+            themedStyles.logoutButton,
+            pressed && { opacity: 0.7 }
+          ]}
           onPress={() => {
             useAuthStore.getState().logout();
             router.replace('/');
           }}
           data-testid="sidebar-logout"
         >
-          <Feather name="log-out" size={18} color={colors.mutedForeground} />
+          <Feather name="log-out" size={16} color={colors.mutedForeground} />
           <Text style={[themedStyles.logoutText, { color: colors.mutedForeground }]}>Logout</Text>
         </Pressable>
       </View>
@@ -151,23 +219,17 @@ const styles = StyleSheet.create({
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginBottom: 2,
   },
   navItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   navItemLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
-    letterSpacing: 0.1,
   },
 });
 
@@ -177,122 +239,125 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRightWidth: 1,
     borderRightColor: colors.border,
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    marginRight: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    marginRight: 10,
   },
   logoPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 10,
   },
   logoText: {
-    color: '#fff',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '700',
   },
   businessName: {
     flex: 1,
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 16,
+  },
   section: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingTop: 8,
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    paddingHorizontal: 14,
-    paddingTop: 16,
+    letterSpacing: 0.5,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 8,
   },
-  divider: {
-    height: 1,
-    marginHorizontal: 20,
-    marginVertical: 12,
-  },
   footer: {
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     borderTopWidth: 1,
   },
-  userInfo: {
+  userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 10,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 32,
+    height: 32,
   },
   avatarText: {
-    color: '#fff',
-    fontSize: 17,
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '600',
   },
   userDetails: {
     flex: 1,
+    minWidth: 0,
   },
   userNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   userName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
   },
   roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
   },
   roleBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '500',
   },
-  userEmail: {
-    fontSize: 12,
-    marginTop: 3,
+  planText: {
+    fontSize: 11,
+    marginTop: 2,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginTop: 8,
-    gap: 12,
+    gap: 10,
   },
   logoutText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
 });
