@@ -28,25 +28,27 @@ function SidebarNavItemButton({ item, active, onPress, colors }: SidebarNavItemB
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.navItem,
+        styles.navItemPressable,
         active && { backgroundColor: colors.primary },
         pressed && !active && { backgroundColor: colors.muted, opacity: 0.8 },
       ]}
       data-testid={`sidebar-item-${item.id}`}
     >
-      <Feather 
-        name={item.icon} 
-        size={18}
-        color={active ? '#FFFFFF' : colors.mutedForeground}
-        style={styles.navItemIcon}
-      />
-      <Text style={[
-        styles.navItemLabel,
-        { color: active ? '#FFFFFF' : colors.foreground },
-        active && { fontWeight: '600' },
-      ]}>
-        {item.title}
-      </Text>
+      <View style={styles.navItemRow}>
+        <Feather 
+          name={item.icon} 
+          size={18}
+          color={active ? '#FFFFFF' : colors.mutedForeground}
+          style={styles.navItemIcon}
+        />
+        <Text style={[
+          styles.navItemLabel,
+          { color: active ? '#FFFFFF' : colors.foreground },
+          active && { fontWeight: '600' },
+        ]}>
+          {item.title}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -216,20 +218,27 @@ export function getSidebarWidth(): number {
 }
 
 const styles = StyleSheet.create({
-  navItem: {
+  navItemPressable: {
+    borderRadius: 6,
+    marginBottom: 2,
+    overflow: 'hidden',
+  },
+  navItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 6,
-    marginBottom: 2,
+    width: '100%',
   },
   navItemIcon: {
     marginRight: 12,
+    width: 18,
+    height: 18,
   },
   navItemLabel: {
     fontSize: 14,
     fontWeight: '500',
+    flex: 1,
   },
 });
 
