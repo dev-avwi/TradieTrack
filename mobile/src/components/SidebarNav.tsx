@@ -58,7 +58,7 @@ export function SidebarNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { user, businessSettings, isInitialized } = useAuthStore();
+  const { user, businessSettings, isInitialized, roleInfo } = useAuthStore();
   const themedStyles = useMemo(() => createStyles(colors), [colors]);
 
   const handlePress = (item: SidebarNavItem) => {
@@ -74,8 +74,22 @@ export function SidebarNav() {
     .join('')
     .toUpperCase();
 
-  const userRole = user?.role as UserRole | undefined;
-  const isOwner = userRole === 'owner' || userRole === 'solo_owner';
+  // Derive role from user.role OR roleInfo.roleId, normalizing values
+  const rawRole = user?.role || roleInfo?.roleId || '';
+  const normalizedRole = useMemo(() => {
+    const r = rawRole.toLowerCase();
+    if (r === 'team_member' || r === 'team') return 'team';
+    if (r === 'staff_tradie' || r === 'staff') return 'staff';
+    if (r === 'solo_owner') return 'solo_owner';
+    if (r === 'owner') return 'owner';
+    if (r === 'manager') return 'manager';
+    // Fallback based on roleInfo.isOwner
+    if (roleInfo?.isOwner) return 'owner';
+    return r as UserRole;
+  }, [rawRole, roleInfo?.isOwner]);
+  
+  const userRole = normalizedRole as UserRole | undefined;
+  const isOwner = userRole === 'owner' || userRole === 'solo_owner' || roleInfo?.isOwner;
   const isManager = userRole === 'manager';
   const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff' || userRole === 'team';
   
@@ -88,21 +102,23 @@ export function SidebarNav() {
     userRole: userRole,
   }), [userRole, isOwner, isManager, isStaffTradie, businessSettings?.hasTeam]);
 
+  const hasValidRole = Boolean(normalizedRole && normalizedRole !== '');
+  
   const filteredMainItems = useMemo(() => {
-    if (!isInitialized || !userRole) {
+    if (!isInitialized || !hasValidRole) {
       return [];
     }
     return getFilteredSidebarMainItems(filterOptions);
-  }, [filterOptions, userRole, isInitialized]);
+  }, [filterOptions, hasValidRole, isInitialized]);
   
   const filteredSettingsItems = useMemo(() => {
-    if (!isInitialized || !userRole) {
+    if (!isInitialized || !hasValidRole) {
       return [];
     }
     return getFilteredSidebarSettingsItems(filterOptions);
-  }, [filterOptions, userRole, isInitialized]);
+  }, [filterOptions, hasValidRole, isInitialized]);
   
-  const isLoading = !isInitialized || !userRole;
+  const isLoading = !isInitialized || !hasValidRole;
 
   return (
     <View style={[themedStyles.container, { paddingTop: insets.top }]}>
@@ -172,7 +188,11 @@ export function SidebarNav() {
 
       <View style={[themedStyles.footer, { borderTopColor: colors.border }]}>
         <Pressable 
-          style={[themedStyles.userCard, { backgroundColor: colors.primaryLight, borderColor: colors.border }]}
+          style={({ pressed }) => [
+            themedStyles.userCard, 
+            { backgroundColor: colors.muted, borderColor: colors.border },
+            pressed && { opacity: 0.8 }
+          ]}
           onPress={() => router.push('/profile' as any)}
           data-testid="sidebar-user-profile"
         >
@@ -188,18 +208,11 @@ export function SidebarNav() {
             )}
           </View>
           <View style={themedStyles.userDetails}>
-            <View style={themedStyles.userNameRow}>
-              <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
-                {businessName}
-              </Text>
-              <View style={[themedStyles.roleBadge, { borderColor: colors.border }]}>
-                <Text style={[themedStyles.roleBadgeText, { color: colors.mutedForeground }]}>
-                  {isOwner ? 'Owner' : user?.role || 'Team'}
-                </Text>
-              </View>
-            </View>
+            <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
+              {businessName}
+            </Text>
             <Text style={[themedStyles.planText, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
+              {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')} · {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
                (businessSettings as any)?.subscriptionTier === 'pro' ? 'Pro Plan' : 
                (businessSettings as any)?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
             </Text>
