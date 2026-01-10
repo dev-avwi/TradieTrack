@@ -190,44 +190,54 @@ export function SidebarNav() {
       </ScrollView>
 
       <View style={[themedStyles.footer, { borderTopColor: colors.border }]}>
-        <Pressable 
-          style={({ pressed }) => [
-            themedStyles.userCard, 
-            { backgroundColor: colors.muted, borderColor: colors.border },
-            pressed && { opacity: 0.8 }
-          ]}
-          onPress={() => router.push('/profile' as any)}
-          data-testid="sidebar-user-profile"
-        >
-          <View style={[themedStyles.avatar, { backgroundColor: colors.primary }]}>
-            {businessSettings?.logoUrl ? (
-              <Image 
-                source={{ uri: businessSettings.logoUrl }} 
-                style={themedStyles.avatarImage} 
-                resizeMode="cover" 
-              />
-            ) : (
-              <Text style={themedStyles.avatarText}>{initials || 'U'}</Text>
-            )}
+        {isLoading ? (
+          <View style={[themedStyles.userCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <View style={[themedStyles.avatar, { backgroundColor: colors.muted }]} />
+            <View style={themedStyles.userDetails}>
+              <View style={[{ width: 100, height: 14, backgroundColor: colors.muted, borderRadius: 4, marginBottom: 4 }]} />
+              <View style={[{ width: 60, height: 11, backgroundColor: colors.muted, borderRadius: 3 }]} />
+            </View>
           </View>
-          <View style={themedStyles.userDetails}>
-            <View style={themedStyles.userNameRow}>
+        ) : (
+          <Pressable 
+            style={({ pressed }) => [
+              themedStyles.userCard, 
+              { backgroundColor: colors.muted, borderColor: colors.border },
+              pressed && { opacity: 0.8 }
+            ]}
+            onPress={() => router.push('/profile' as any)}
+            data-testid="sidebar-user-profile"
+          >
+            <View style={[themedStyles.avatar, { backgroundColor: colors.primary }]}>
+              {businessSettings?.logoUrl ? (
+                <Image 
+                  source={{ uri: businessSettings.logoUrl }} 
+                  style={themedStyles.avatarImage} 
+                  resizeMode="cover" 
+                />
+              ) : (
+                <Text style={themedStyles.avatarText}>{initials || 'U'}</Text>
+              )}
+            </View>
+            <View style={themedStyles.userDetails}>
               <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
                 {businessName}
               </Text>
-              <View style={[themedStyles.roleBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[themedStyles.roleBadgeText, { color: colors.mutedForeground }]}>
-                  {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')}
+              <View style={[themedStyles.userNameRow, { marginTop: 4 }]}>
+                <View style={[themedStyles.roleBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Text style={[themedStyles.roleBadgeText, { color: colors.mutedForeground }]}>
+                    {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')}
+                  </Text>
+                </View>
+                <Text style={[themedStyles.planText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
+                   (businessSettings as any)?.subscriptionTier === 'pro' ? 'Pro Plan' : 
+                   (businessSettings as any)?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
                 </Text>
               </View>
             </View>
-            <Text style={[themedStyles.planText, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
-               (businessSettings as any)?.subscriptionTier === 'pro' ? 'Pro Plan' : 
-               (businessSettings as any)?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
-            </Text>
-          </View>
-        </Pressable>
+          </Pressable>
+        )}
         
         <Pressable 
           style={({ pressed }) => [
@@ -353,23 +363,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 10,
-    borderWidth: 2,
-    marginBottom: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+    minHeight: 56,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
     overflow: 'hidden',
+    flexShrink: 0,
   },
   avatarImage: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
   },
   avatarText: {
     color: '#FFFFFF',
@@ -384,17 +397,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
   },
   userName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    flexShrink: 1,
+    flexShrink: 0,
   },
   roleBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
+    flexShrink: 0,
   },
   roleBadgeText: {
     fontSize: 10,
