@@ -171,9 +171,11 @@ const DEFAULT_REGION: Region = {
 
 const createStyles = (colors: ThemeColors) => {
   const ACTIVITY_CONFIG: Record<string, { label: string; color: string; icon: keyof typeof Feather.glyphMap }> = {
-    online: { label: 'Online', color: colors.success, icon: 'check-circle' },
-    driving: { label: 'Driving', color: colors.info, icon: 'truck' },
+    on_job: { label: 'On Job', color: colors.success, icon: 'briefcase' },
     working: { label: 'Working', color: colors.primary, icon: 'tool' },
+    driving: { label: 'Driving', color: colors.info, icon: 'truck' },
+    online: { label: 'Online', color: colors.success, icon: 'check-circle' },
+    idle: { label: 'Idle', color: colors.warning, icon: 'clock' },
     offline: { label: 'Offline', color: colors.mutedForeground, icon: 'moon' },
   };
   
@@ -1610,12 +1612,12 @@ export default function MapScreen() {
                   </Text>
                   <View style={styles.activityRow}>
                     <Feather 
-                      name={activityConfig[member.activityStatus || 'offline'].icon} 
+                      name={activityConfig[member.activityStatus || 'offline']?.icon || 'circle'} 
                       size={12} 
                       color={getActivityColor(member.activityStatus)} 
                     />
                     <Text style={[styles.calloutSubtitle, { color: getActivityColor(member.activityStatus), marginBottom: 0 }]}>
-                      {activityConfig[member.activityStatus || 'offline'].label}
+                      {activityConfig[member.activityStatus || 'offline']?.label || 'Unknown'}
                     </Text>
                   </View>
                   {member.lastLocation.speed !== undefined && member.lastLocation.speed > 0 && (

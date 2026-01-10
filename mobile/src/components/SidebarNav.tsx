@@ -73,6 +73,7 @@ export function SidebarNav() {
 
       <ScrollView style={themedStyles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={themedStyles.section}>
+          <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>Main Menu</Text>
           {sidebarMainItems.map((item) => (
             <SidebarNavItemButton
               key={item.id}
@@ -83,8 +84,6 @@ export function SidebarNav() {
             />
           ))}
         </View>
-
-        <View style={[themedStyles.divider, { backgroundColor: colors.border }]} />
 
         <View style={themedStyles.section}>
           <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>Settings</Text>
@@ -112,13 +111,32 @@ export function SidebarNav() {
             </Text>
           </View>
           <View style={themedStyles.userDetails}>
-            <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
-              {user?.firstName || user?.email?.split('@')[0] || 'User'}
-            </Text>
+            <View style={themedStyles.userNameRow}>
+              <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
+                {user?.firstName || user?.email?.split('@')[0] || 'User'}
+              </Text>
+              <View style={[themedStyles.roleBadge, { backgroundColor: colors.primaryLight }]}>
+                <Text style={[themedStyles.roleBadgeText, { color: colors.primary }]}>
+                  {user?.role === 'owner' ? 'Owner' : 'Team'}
+                </Text>
+              </View>
+            </View>
             <Text style={[themedStyles.userEmail, { color: colors.mutedForeground }]} numberOfLines={1}>
               {user?.email || ''}
             </Text>
           </View>
+        </Pressable>
+        
+        <Pressable 
+          style={themedStyles.logoutButton}
+          onPress={() => {
+            useAuthStore.getState().logout();
+            router.replace('/');
+          }}
+          data-testid="sidebar-logout"
+        >
+          <Feather name="log-out" size={18} color={colors.mutedForeground} />
+          <Text style={[themedStyles.logoutText, { color: colors.mutedForeground }]}>Logout</Text>
         </Pressable>
       </View>
     </View>
@@ -242,12 +260,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   userDetails: {
     flex: 1,
   },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   userName: {
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  roleBadgeText: {
+    fontSize: 11,
     fontWeight: '600',
   },
   userEmail: {
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 3,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 8,
+    gap: 12,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
