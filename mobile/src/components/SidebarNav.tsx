@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   navItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     width: '100%',
   },
@@ -346,15 +346,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 12,
     borderTopWidth: 1,
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
+    marginBottom: 12,
   },
   avatar: {
     width: 32,
@@ -407,7 +409,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    marginTop: 8,
     gap: 10,
   },
   logoutText: {
