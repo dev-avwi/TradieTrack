@@ -270,8 +270,8 @@ const styles = StyleSheet.create({
   navItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     width: '100%',
   },
   navItemIcon: {
@@ -353,10 +353,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 2,
+    marginBottom: 16,
   },
   avatar: {
     width: 32,
