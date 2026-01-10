@@ -269,7 +269,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRightWidth: 1,
     borderRightColor: colors.border,
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   header: {
     flexDirection: 'row',
