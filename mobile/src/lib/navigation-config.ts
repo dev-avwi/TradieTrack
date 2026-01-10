@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 
-export type UserRole = 'owner' | 'solo_owner' | 'manager' | 'staff_tradie' | 'staff';
+export type UserRole = 'owner' | 'solo_owner' | 'manager' | 'staff_tradie' | 'staff' | 'team';
 
 export interface NavItem {
   title: string;
@@ -586,7 +586,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/',
     matchPaths: ['/', '/index'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'team'],
   },
   { 
     id: 'work',
@@ -595,7 +595,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/jobs',
     matchPaths: ['/jobs', '/job'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'team'],
   },
   { 
     id: 'clients',
@@ -634,7 +634,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/calendar',
     matchPaths: ['/more/calendar'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'team'],
   },
   { 
     id: 'time-tracking',
@@ -643,7 +643,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/time-tracking',
     matchPaths: ['/more/time-tracking'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'team'],
   },
   { 
     id: 'team-operations',
@@ -663,7 +663,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/chat-hub',
     matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'team'],
   },
   { 
     id: 'map',

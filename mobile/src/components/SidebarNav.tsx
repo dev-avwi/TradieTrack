@@ -77,7 +77,7 @@ export function SidebarNav() {
   const userRole = user?.role as UserRole | undefined;
   const isOwner = userRole === 'owner' || userRole === 'solo_owner';
   const isManager = userRole === 'manager';
-  const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff';
+  const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff' || userRole === 'team';
   
   const filterOptions: FilterOptions = useMemo(() => ({
     isTeam: Boolean(businessSettings?.hasTeam),
