@@ -300,7 +300,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: SIDEBAR_WIDTH,
     height: '100%',
-    backgroundColor: colors.card,
+    backgroundColor: colors.background,
     borderRightWidth: 1,
     borderRightColor: colors.border,
     flexGrow: 0,
