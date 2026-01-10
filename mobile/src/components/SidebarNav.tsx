@@ -189,7 +189,7 @@ export function SidebarNav() {
         )}
       </ScrollView>
 
-      <View style={[themedStyles.footer, { borderTopColor: colors.border }]}>
+      <View style={[themedStyles.footer, { borderTopColor: colors.border, paddingBottom: Math.max(12, insets.bottom) }]}>
         {isLoading ? (
           <View style={[themedStyles.userCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
             <View style={[themedStyles.avatar, { backgroundColor: colors.muted }]} />
@@ -299,6 +299,7 @@ const styles = StyleSheet.create({
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: SIDEBAR_WIDTH,
+    height: '100%',
     backgroundColor: colors.card,
     borderRightWidth: 1,
     borderRightColor: colors.border,
@@ -391,7 +392,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   userDetails: {
     flex: 1,
-    minWidth: 0,
+    flexShrink: 1,
+    overflow: 'hidden',
   },
   userNameRow: {
     flexDirection: 'row',
