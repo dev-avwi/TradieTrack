@@ -57,7 +57,7 @@ export function SidebarNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { user, businessSettings } = useAuthStore();
+  const { user, businessSettings, isInitialized } = useAuthStore();
   const themedStyles = useMemo(() => createStyles(colors), [colors]);
 
   const handlePress = (item: SidebarNavItem) => {
@@ -88,22 +88,20 @@ export function SidebarNav() {
   }), [userRole, isOwner, isManager, isStaffTradie, businessSettings?.hasTeam]);
 
   const filteredMainItems = useMemo(() => {
-    if (!userRole) {
-      return sidebarMainItems.filter(item => 
-        !item.hideForStaff && 
-        !item.requiresOwnerOrManager &&
-        item.allowedRoles?.includes('staff_tradie')
-      );
+    if (!isInitialized || !userRole) {
+      return [];
     }
     return getFilteredSidebarMainItems(filterOptions);
-  }, [filterOptions, userRole]);
+  }, [filterOptions, userRole, isInitialized]);
   
   const filteredSettingsItems = useMemo(() => {
-    if (!userRole) {
+    if (!isInitialized || !userRole) {
       return [];
     }
     return getFilteredSidebarSettingsItems(filterOptions);
-  }, [filterOptions, userRole]);
+  }, [filterOptions, userRole, isInitialized]);
+  
+  const isLoading = !isInitialized || !userRole;
 
   return (
     <View style={[themedStyles.container, { paddingTop: insets.top }]}>
@@ -129,18 +127,31 @@ export function SidebarNav() {
           <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>
             Main Menu
           </Text>
-          {filteredMainItems.map((item) => (
-            <SidebarNavItemButton
-              key={item.id}
-              item={item}
-              active={isSidebarPathActive(pathname, item)}
-              onPress={() => handlePress(item)}
-              colors={colors}
-            />
-          ))}
+          {isLoading ? (
+            <>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <View key={i} style={[styles.navItemPressable, { marginBottom: 4 }]}>
+                  <View style={[styles.navItemRow, { opacity: 0.3 }]}>
+                    <View style={[styles.navItemIcon, { backgroundColor: colors.muted, borderRadius: 4 }]} />
+                    <View style={{ flex: 1, height: 14, backgroundColor: colors.muted, borderRadius: 4 }} />
+                  </View>
+                </View>
+              ))}
+            </>
+          ) : (
+            filteredMainItems.map((item) => (
+              <SidebarNavItemButton
+                key={item.id}
+                item={item}
+                active={isSidebarPathActive(pathname, item)}
+                onPress={() => handlePress(item)}
+                colors={colors}
+              />
+            ))
+          )}
         </View>
 
-        {filteredSettingsItems.length > 0 && (
+        {!isLoading && filteredSettingsItems.length > 0 && (
           <View style={themedStyles.section}>
             <Text style={[themedStyles.sectionLabel, { color: colors.mutedForeground }]}>
               Settings
