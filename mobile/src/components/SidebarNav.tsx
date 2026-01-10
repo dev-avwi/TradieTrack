@@ -85,10 +85,12 @@ export function SidebarNav() {
     if (r === 'manager') return 'manager';
     // Fallback based on roleInfo.isOwner
     if (roleInfo?.isOwner) return 'owner';
+    // Ultimate fallback: if user is authenticated but no role, treat as owner
+    if (user?.id && !r) return 'owner';
     return r as UserRole;
-  }, [rawRole, roleInfo?.isOwner]);
+  }, [rawRole, roleInfo?.isOwner, user?.id]);
   
-  const userRole = normalizedRole as UserRole | undefined;
+  const userRole = (normalizedRole || 'owner') as UserRole;
   const isOwner = userRole === 'owner' || userRole === 'solo_owner' || roleInfo?.isOwner;
   const isManager = userRole === 'manager';
   const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff' || userRole === 'team';
@@ -102,23 +104,24 @@ export function SidebarNav() {
     userRole: userRole,
   }), [userRole, isOwner, isManager, isStaffTradie, businessSettings?.hasTeam]);
 
-  const hasValidRole = Boolean(normalizedRole && normalizedRole !== '');
+  // User is ready when initialized and has either role data or is authenticated
+  const isReady = isInitialized && (user?.id || roleInfo);
   
   const filteredMainItems = useMemo(() => {
-    if (!isInitialized || !hasValidRole) {
+    if (!isReady) {
       return [];
     }
     return getFilteredSidebarMainItems(filterOptions);
-  }, [filterOptions, hasValidRole, isInitialized]);
+  }, [filterOptions, isReady]);
   
   const filteredSettingsItems = useMemo(() => {
-    if (!isInitialized || !hasValidRole) {
+    if (!isReady) {
       return [];
     }
     return getFilteredSidebarSettingsItems(filterOptions);
-  }, [filterOptions, hasValidRole, isInitialized]);
+  }, [filterOptions, isReady]);
   
-  const isLoading = !isInitialized || !hasValidRole;
+  const isLoading = !isReady;
 
   return (
     <View style={[themedStyles.container, { paddingTop: insets.top }]}>
@@ -208,11 +211,18 @@ export function SidebarNav() {
             )}
           </View>
           <View style={themedStyles.userDetails}>
-            <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
-              {businessName}
-            </Text>
+            <View style={themedStyles.userNameRow}>
+              <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
+                {businessName}
+              </Text>
+              <View style={[themedStyles.roleBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[themedStyles.roleBadgeText, { color: colors.mutedForeground }]}>
+                  {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')}
+                </Text>
+              </View>
+            </View>
             <Text style={[themedStyles.planText, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')} · {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
+              {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
                (businessSettings as any)?.subscriptionTier === 'pro' ? 'Pro Plan' : 
                (businessSettings as any)?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
             </Text>
