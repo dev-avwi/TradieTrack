@@ -96,13 +96,13 @@ export function SidebarNav() {
   const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff' || userRole === 'team';
   
   const filterOptions: FilterOptions = useMemo(() => ({
-    isTeam: Boolean(businessSettings?.hasTeam),
+    isTeam: Boolean((businessSettings as any)?.hasTeam),
     isTradie: isStaffTradie,
-    isOwner: isOwner,
+    isOwner: Boolean(isOwner),
     isManager: isManager,
     isSolo: userRole === 'solo_owner',
     userRole: userRole,
-  }), [userRole, isOwner, isManager, isStaffTradie, businessSettings?.hasTeam]);
+  }), [userRole, isOwner, isManager, isStaffTradie, businessSettings]);
 
   // User is ready when initialized and has either role data or is authenticated
   const isReady = isInitialized && (user?.id || roleInfo);
@@ -125,7 +125,14 @@ export function SidebarNav() {
 
   return (
     <View style={[themedStyles.container, { paddingTop: insets.top }]}>
-      <View style={themedStyles.header}>
+      <Pressable 
+        style={({ pressed }) => [
+          themedStyles.header,
+          pressed && { opacity: 0.7 }
+        ]}
+        onPress={() => router.push('/more/settings' as any)}
+        data-testid="sidebar-header-settings"
+      >
         {logoUrl ? (
           <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="contain" />
         ) : (
@@ -136,7 +143,7 @@ export function SidebarNav() {
         <Text style={[themedStyles.businessName, { color: colors.foreground }]} numberOfLines={1}>
           {businessName}
         </Text>
-      </View>
+      </Pressable>
 
       <ScrollView 
         style={themedStyles.scrollView} 
@@ -190,55 +197,6 @@ export function SidebarNav() {
       </ScrollView>
 
       <View style={[themedStyles.footer, { borderTopColor: colors.border, paddingBottom: Math.max(12, insets.bottom) }]}>
-        {isLoading ? (
-          <View style={[themedStyles.userCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <View style={[themedStyles.avatar, { backgroundColor: colors.muted }]} />
-            <View style={themedStyles.userDetails}>
-              <View style={[{ width: 100, height: 14, backgroundColor: colors.muted, borderRadius: 4, marginBottom: 4 }]} />
-              <View style={[{ width: 60, height: 11, backgroundColor: colors.muted, borderRadius: 3 }]} />
-            </View>
-          </View>
-        ) : (
-          <Pressable 
-            style={({ pressed }) => [
-              themedStyles.userCard, 
-              { backgroundColor: colors.card, borderColor: colors.border },
-              pressed && { opacity: 0.8 }
-            ]}
-            onPress={() => router.push('/profile' as any)}
-            data-testid="sidebar-user-profile"
-          >
-            <View style={[themedStyles.avatar, { backgroundColor: colors.primary }]}>
-              {businessSettings?.logoUrl ? (
-                <Image 
-                  source={{ uri: businessSettings.logoUrl }} 
-                  style={themedStyles.avatarImage} 
-                  resizeMode="cover" 
-                />
-              ) : (
-                <Text style={themedStyles.avatarText}>{initials || 'U'}</Text>
-              )}
-            </View>
-            <View style={themedStyles.userDetails}>
-              <Text style={[themedStyles.userName, { color: colors.foreground }]} numberOfLines={1}>
-                {businessName}
-              </Text>
-              <View style={[themedStyles.userNameRow, { marginTop: 4 }]}>
-                <View style={[themedStyles.roleBadge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                  <Text style={[themedStyles.roleBadgeText, { color: colors.foreground }]}>
-                    {roleInfo?.roleName || (isOwner ? 'Owner' : 'Team')}
-                  </Text>
-                </View>
-                <Text style={[themedStyles.planText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {(businessSettings as any)?.subscriptionTier === 'team' ? 'Team Plan' : 
-                   (businessSettings as any)?.subscriptionTier === 'pro' ? 'Pro Plan' : 
-                   (businessSettings as any)?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
-        )}
-        
         <Pressable 
           style={({ pressed }) => [
             themedStyles.logoutButton,
