@@ -366,7 +366,7 @@ const createStyles = (colors: ThemeColors) => {
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: '#fff',
+        borderColor: colors.card,
         ...shadows.md,
       },
       teamMarker: {
@@ -387,8 +387,8 @@ const createStyles = (colors: ThemeColors) => {
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2.5,
-        borderColor: 'rgba(255,255,255,0.95)',
-        shadowColor: '#000',
+        borderColor: colors.card,
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.2,
         shadowRadius: 3,
@@ -399,7 +399,7 @@ const createStyles = (colors: ThemeColors) => {
         height: 42,
         borderRadius: 21,
         borderWidth: 3,
-        borderColor: 'rgba(255,255,255,1)',
+        borderColor: colors.card,
       },
       // Life360-style activity indicator - small dot at bottom right
       activityDot: {
@@ -410,8 +410,8 @@ const createStyles = (colors: ThemeColors) => {
         height: 11,
         borderRadius: 5.5,
         borderWidth: 2,
-        borderColor: '#fff',
-        shadowColor: '#000',
+        borderColor: colors.card,
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.15,
         shadowRadius: 1,
@@ -420,7 +420,7 @@ const createStyles = (colors: ThemeColors) => {
       teamMarkerText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#ffffff',
+        color: colors.white,
         textShadowColor: 'rgba(0,0,0,0.15)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 1,
@@ -614,13 +614,13 @@ const createStyles = (colors: ThemeColors) => {
         bottom: -18,
         left: '50%',
         transform: [{ translateX: -32 }],
-        backgroundColor: 'rgba(255,255,255,0.92)',
+        backgroundColor: colors.card,
         paddingHorizontal: spacing.sm,
         paddingVertical: 2,
         borderRadius: 8,
         minWidth: 64,
         alignItems: 'center',
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 1.5,
@@ -629,7 +629,7 @@ const createStyles = (colors: ThemeColors) => {
       nameLabelText: {
         fontSize: 10,
         fontWeight: '600',
-        color: '#444',
+        color: colors.foreground,
         textAlign: 'center',
       },
     }),
@@ -1582,10 +1582,7 @@ export default function MapScreen() {
                 {/* STATIC appearance - never changes based on selection to avoid iOS glitch */}
                 <View style={[
                   styles.teamMarkerOuter, 
-                  { 
-                    backgroundColor: memberColor,
-                    borderColor: 'rgba(255,255,255,0.95)',
-                  },
+                  { backgroundColor: memberColor },
                 ]}>
                   <Text style={styles.teamMarkerText}>{initials}</Text>
                   {/* Activity dot - always visible, positioned at bottom-right */}
@@ -1599,7 +1596,7 @@ export default function MapScreen() {
                 ]}>
                   <Text style={[
                     styles.nameLabelText,
-                    isSelected && { color: '#fff' }
+                    isSelected && { color: colors.primaryForeground }
                   ]} numberOfLines={1}>
                     {shortName}
                   </Text>
