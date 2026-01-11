@@ -2160,6 +2160,21 @@ export default function SettingsScreen() {
               <Text style={styles.sectionLabel}>SUPPORT</Text>
 
               <TouchableOpacity 
+                style={[styles.settingsCard, { borderColor: colors.destructive, borderWidth: 1 }]}
+                onPress={() => router.push('/more/report-bug')}
+                data-testid="button-report-bug"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <Feather name="alert-circle" size={20} color={colors.destructive} />
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Report a Bug</Text>
+                    <Text style={styles.settingsCardSubtitle}>Something not working? Let us know!</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com')}
                 data-testid="button-contact-support"

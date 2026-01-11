@@ -13,7 +13,6 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Device from 'expo-device';
-import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuthStore } from '../../src/lib/store';
@@ -257,7 +256,7 @@ export default function ReportBugScreen() {
     platform: Platform.OS,
     deviceName: Device.modelName || Device.deviceName || 'Unknown',
     osVersion: Platform.Version?.toString() || 'Unknown',
-    buildNumber: Application.nativeBuildVersion || Constants.expoConfig?.version || '1.0.0',
+    buildNumber: Constants.expoConfig?.version || '1.0.0',
   };
 
   const handleSubmit = async () => {
