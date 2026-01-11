@@ -736,7 +736,7 @@ export const sidebarSettingsItems: SidebarNavItem[] = [
     title: 'Settings', 
     icon: 'settings', 
     path: '/more/settings',
-    matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/branding', '/more/subscription', '/more/notifications', '/more/notification-preferences', '/more/ai-assistant', '/more/profile-edit', '/more/automations', '/more/expense-tracking', '/more/business-templates'],
+    matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/branding'],
     section: 'settings',
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],

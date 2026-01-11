@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Dimensions
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -101,109 +101,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     marginTop: 2,
-  },
-  heroBanner: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: `${colors.primary}30`,
-  },
-  heroBannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  heroBannerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBannerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  heroBannerSubtitle: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  heroBannerDescription: {
-    fontSize: 14,
-    color: colors.foreground,
-    lineHeight: 20,
-    marginBottom: spacing.md,
-  },
-  crossLinkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  crossLinkIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: '#fef3c7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  crossLinkContent: {
-    flex: 1,
-  },
-  crossLinkTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  crossLinkSubtitle: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  hubSection: {
-    gap: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  sectionCreateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  sectionCreateButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  sectionDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sectionDividerText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
   },
   createButton: {
     flexDirection: 'row',
@@ -797,7 +694,6 @@ function formatCurrency(amount: number): string {
 export default function TemplatesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const router = useRouter();
   const { token, businessSettings } = useAuthStore();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1500,67 +1396,8 @@ export default function TemplatesScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Templates</Text>
-              <Text style={styles.pageSubtitle}>Manage all your business templates</Text>
+              <Text style={styles.pageSubtitle}>Manage document templates for quotes, invoices, and jobs</Text>
             </View>
-          </View>
-
-          {/* Two-section hub */}
-          <View style={styles.hubSection}>
-            {/* Document Templates Section */}
-            <View style={styles.heroBanner}>
-              <View style={styles.heroBannerHeader}>
-                <View style={styles.heroBannerIconContainer}>
-                  <Feather name="file-text" size={24} color={colors.primaryForeground} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.heroBannerTitle}>Document Templates</Text>
-                  <Text style={styles.heroBannerSubtitle}>Quotes, Invoices & Jobs</Text>
-                </View>
-              </View>
-              <Text style={styles.heroBannerDescription}>
-                Create reusable templates with pre-filled line items, terms, and branding to generate professional documents quickly.
-              </Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.sectionCreateButton}
-                onPress={() => {
-                  resetForm();
-                  setShowCreateModal(true);
-                }}
-              >
-                <Feather name="plus" size={18} color={colors.primaryForeground} />
-                <Text style={styles.sectionCreateButtonText}>Create Document Template</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Safety Forms Section */}
-            <View style={[styles.heroBanner, { backgroundColor: '#fef3c7', borderColor: '#d9770630' }]}>
-              <View style={styles.heroBannerHeader}>
-                <View style={[styles.heroBannerIconContainer, { backgroundColor: '#d97706' }]}>
-                  <Feather name="shield" size={24} color="#ffffff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.heroBannerTitle, { color: '#d97706' }]}>Safety Forms & WHS</Text>
-                  <Text style={styles.heroBannerSubtitle}>Australian Compliance</Text>
-                </View>
-              </View>
-              <Text style={styles.heroBannerDescription}>
-                WHS compliance templates like JSAs, toolbox talks, SWMS, and site inductions required on Australian worksites.
-              </Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={[styles.sectionCreateButton, { backgroundColor: '#d97706' }]}
-                onPress={() => router.push('/more/business-templates?action=create')}
-              >
-                <Feather name="plus" size={18} color="#ffffff" />
-                <Text style={styles.sectionCreateButtonText}>Create Safety Form</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Document Templates List Section */}
-          <View style={styles.sectionDivider}>
-            <Text style={styles.sectionDividerText}>Your Document Templates</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.createButton}

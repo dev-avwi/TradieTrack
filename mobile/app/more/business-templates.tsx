@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
@@ -51,93 +51,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   pageSubtitle: {
     fontSize: 14,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  heroBanner: {
-    backgroundColor: '#fef3c7',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: '#fcd34d',
-  },
-  heroBannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  heroBannerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: '#d97706',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBannerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#92400e',
-  },
-  heroBannerSubtitle: {
-    fontSize: 13,
-    color: '#b45309',
-    marginTop: 2,
-  },
-  heroBannerDescription: {
-    fontSize: 14,
-    color: '#78350f',
-    lineHeight: 20,
-    marginBottom: spacing.md,
-  },
-  whsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: '#fcd34d',
-    alignSelf: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  whsBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#92400e',
-  },
-  crossLinkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  crossLinkIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  crossLinkContent: {
-    flex: 1,
-  },
-  crossLinkTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  crossLinkSubtitle: {
-    fontSize: 12,
     color: colors.mutedForeground,
     marginTop: 2,
   },
@@ -680,7 +593,6 @@ export default function BusinessTemplatesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const { action } = useLocalSearchParams<{ action?: string }>();
   
   const {
     templates,
@@ -718,26 +630,8 @@ export default function BusinessTemplatesScreen() {
   
   const [showEmailClientPicker, setShowEmailClientPicker] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<BusinessTemplate | null>(null);
-  const [actionHandled, setActionHandled] = useState(false);
   
   const availableEmailClients = useMemo(() => getAvailableEmailClients(), []);
-  
-  // Auto-open create modal when navigated with action=create param (runs once only)
-  useEffect(() => {
-    if (action === 'create' && purposesLoaded && !isLoading && !actionHandled && !showEditModal) {
-      // Mark action as handled to prevent retriggering
-      setActionHandled(true);
-      // Switch to the jobs_safety category and open safety_form create modal
-      setActiveCategory('jobs_safety');
-      setExpandedFamily('safety_form');
-      // Clear the URL param by replacing the route
-      router.replace('/more/business-templates');
-      // Open the create modal for safety forms after a brief delay
-      setTimeout(() => {
-        openCreateModal('safety_form');
-      }, 100);
-    }
-  }, [action, purposesLoaded, isLoading, actionHandled, showEditModal]);
   
   const handlePreviewInEmailApp = useCallback((template: BusinessTemplate) => {
     setPreviewTemplate(template);
@@ -1295,43 +1189,10 @@ export default function BusinessTemplatesScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.pageTitle}>Safety Forms</Text>
+          <Text style={styles.pageTitle}>Templates</Text>
           <Text style={styles.pageSubtitle}>
-            WHS compliance and business communications
+            Manage your email, SMS, and document templates
           </Text>
-        </View>
-
-        <View style={styles.heroBanner}>
-          <View style={styles.whsBadge}>
-            <Feather name="shield" size={12} color="#92400e" />
-            <Text style={styles.whsBadgeText}>WHS COMPLIANCE</Text>
-          </View>
-          <View style={styles.heroBannerHeader}>
-            <View style={styles.heroBannerIconContainer}>
-              <Feather name="clipboard" size={24} color="#fff" />
-            </View>
-            <View>
-              <Text style={styles.heroBannerTitle}>Safety & Compliance</Text>
-              <Text style={styles.heroBannerSubtitle}>Forms, Checklists & Permits</Text>
-            </View>
-          </View>
-          <Text style={styles.heroBannerDescription}>
-            Australian-standard WHS safety forms, job checklists, email templates and SMS notifications. Keep your team and clients safe with proper documentation.
-          </Text>
-          <TouchableOpacity
-            style={styles.crossLinkCard}
-            activeOpacity={0.7}
-            onPress={() => router.push('/more/templates')}
-          >
-            <View style={styles.crossLinkIconContainer}>
-              <Feather name="file-text" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.crossLinkContent}>
-              <Text style={styles.crossLinkTitle}>Looking for Document Templates?</Text>
-              <Text style={styles.crossLinkSubtitle}>Quote, invoice & job styling templates</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-          </TouchableOpacity>
         </View>
 
         {renderIntegrationStatus()}

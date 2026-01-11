@@ -37,6 +37,7 @@ const PLAN_FEATURES = [
 const SETTINGS_TABS = [
   { key: 'account', label: 'Account', icon: 'user' },
   { key: 'brand', label: 'Brand', icon: 'palette' },
+  { key: 'templates', label: 'Templates', icon: 'file-text' },
   { key: 'alerts', label: 'Alerts', icon: 'bell' },
   { key: 'plan', label: 'Plan', icon: 'award' },
   { key: 'help', label: 'Help', icon: 'help-circle' },
@@ -406,32 +407,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
-  },
-  quickActionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-  },
-  templateCountBadge: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginRight: spacing.sm,
-  },
-  templateCountText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primaryForeground,
   },
   settingsInfoCard: {
     backgroundColor: colors.muted,
@@ -1363,6 +1338,12 @@ export default function SettingsScreen() {
     refreshData();
   }, [refreshData]);
 
+  useEffect(() => {
+    if (activeTab === 'templates') {
+      loadTemplates();
+    }
+  }, [typeFilter, activeTab]);
+
   const currentPlan = (user?.subscriptionTier || 'free') as 'free' | 'pro' | 'team' | 'trial';
 
   return (
@@ -1619,59 +1600,155 @@ export default function SettingsScreen() {
                   Your brand color and logo will appear on quotes, invoices, and other documents sent to clients.
                 </Text>
               </View>
+            </View>
+          )}
 
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              
+          {activeTab === 'templates' && (
+            <View style={styles.tabContentSection}>
               <TouchableOpacity
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/templates')}
-                data-testid="button-document-templates"
+                style={styles.createTemplateButton}
+                onPress={() => {
+                  resetTemplateForm();
+                  setShowCreateModal(true);
+                }}
+                data-testid="button-create-template"
               >
-                <View style={styles.settingsCardHeader}>
-                  <View style={[styles.quickActionIcon, { backgroundColor: colors.primaryLight }]}>
-                    <Feather name="file-text" size={18} color={colors.primary} />
-                  </View>
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Document Templates</Text>
-                    <Text style={styles.settingsCardSubtitle}>Customise quote & invoice styling</Text>
-                  </View>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={styles.createTemplateButtonText}>Create New Template</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/ai-assistant')}
-                data-testid="button-ai-assistant"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <View style={[styles.quickActionIcon, { backgroundColor: '#EDE9FE' }]}>
-                    <Feather name="cpu" size={18} color="#8B5CF6" />
-                  </View>
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>AI Assistant</Text>
-                    <Text style={styles.settingsCardSubtitle}>Smart suggestions & automation</Text>
-                  </View>
+              <View style={styles.templateStatsRow}>
+                <View style={styles.templateStatCard}>
+                  <Text style={styles.templateStatValue}>{quoteTemplates}</Text>
+                  <Text style={styles.templateStatLabel}>Quotes</Text>
                 </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+                <View style={styles.templateStatCard}>
+                  <Text style={styles.templateStatValue}>{invoiceTemplates}</Text>
+                  <Text style={styles.templateStatLabel}>Invoices</Text>
+                </View>
+                <View style={styles.templateStatCard}>
+                  <Text style={styles.templateStatValue}>{jobTemplates}</Text>
+                  <Text style={styles.templateStatLabel}>Jobs</Text>
+                </View>
+              </View>
 
-              <TouchableOpacity
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/automations')}
-                data-testid="button-automations"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
-                    <Feather name="zap" size={18} color="#D97706" />
-                  </View>
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Automations</Text>
-                    <Text style={styles.settingsCardSubtitle}>Reminders, follow-ups & triggers</Text>
-                  </View>
+              <View style={styles.filtersRow}>
+                {(['all', 'quote', 'invoice', 'job'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.filterChip,
+                      typeFilter === type && styles.filterChipActive
+                    ]}
+                    onPress={() => setTypeFilter(type)}
+                    data-testid={`filter-${type}`}
+                  >
+                    <Text style={[
+                      styles.filterChipText,
+                      typeFilter === type && styles.filterChipTextActive
+                    ]}>
+                      {type === 'all' ? 'All Types' : type + 's'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {templatesLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
                 </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              ) : templates.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="file-text" size={48} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No templates yet</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Create templates to speed up creating quotes, invoices, and jobs
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={() => {
+                      resetTemplateForm();
+                      setShowCreateModal(true);
+                    }}
+                  >
+                    <Feather name="plus" size={18} color={colors.primary} />
+                    <Text style={styles.emptyButtonText}>Create First Template</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.templateList}>
+                  {templates.map(template => (
+                    <View key={template.id} style={styles.templateCard}>
+                      <View style={styles.templateHeader}>
+                        <View style={styles.templateInfo}>
+                          <Text style={styles.templateName}>{template.name}</Text>
+                          <View style={styles.templateMeta}>
+                            <Text style={[styles.templateType, { backgroundColor: getTypeColor(template.type) + '20', color: getTypeColor(template.type) }]}>
+                              {template.type}
+                            </Text>
+                            <Text style={styles.templateTrade}>{template.tradeType}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.templateActions}>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleEditTemplate(template)}
+                            data-testid={`button-edit-template-${template.id}`}
+                          >
+                            <Feather name="edit-2" size={18} color={colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleDuplicateTemplate(template)}
+                            data-testid={`button-duplicate-template-${template.id}`}
+                          >
+                            <Feather name="copy" size={18} color={colors.mutedForeground} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleDeleteTemplate(template)}
+                            data-testid={`button-delete-template-${template.id}`}
+                          >
+                            <Feather name="trash-2" size={18} color={colors.destructive} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.templateDetails}>
+                        {template.defaults?.title && (
+                          <Text style={styles.templateTitle} numberOfLines={1}>
+                            {template.defaults.title}
+                          </Text>
+                        )}
+                        
+                        <View style={styles.badgeRow}>
+                          {template.defaultLineItems?.length > 0 && (
+                            <Text style={styles.badge}>
+                              {template.defaultLineItems.length} line items
+                            </Text>
+                          )}
+                          {(template.defaults?.depositPct ?? 0) > 0 && (
+                            <Text style={styles.badge}>
+                              {template.defaults.depositPct}% deposit
+                            </Text>
+                          )}
+                          {template.defaults?.gstEnabled && (
+                            <Text style={styles.badge}>GST</Text>
+                          )}
+                        </View>
+
+                        {template.defaults?.terms && (
+                          <Text style={styles.templateTerms} numberOfLines={2}>
+                            {template.defaults.terms}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
