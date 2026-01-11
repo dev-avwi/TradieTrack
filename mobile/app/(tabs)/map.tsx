@@ -2041,9 +2041,9 @@ export default function MapScreen() {
                     gap: spacing.xs + 2,
                     paddingHorizontal: spacing.sm,
                     paddingVertical: spacing.xs + 2,
-                    backgroundColor: 'rgba(255,255,255,0.96)',
+                    backgroundColor: colors.card,
                     borderRadius: 20,
-                    shadowColor: '#000',
+                    shadowColor: colors.shadow,
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: 0.12,
                     shadowRadius: 3,
@@ -2060,11 +2060,11 @@ export default function MapScreen() {
                       borderRadius: 15,
                       backgroundColor: memberColor,
                       borderWidth: 2,
-                      borderColor: 'rgba(255,255,255,0.95)',
+                      borderColor: colors.card,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: colors.white }}>{initials}</Text>
                     </View>
                     {/* Activity indicator dot */}
                     <View style={{
@@ -2076,14 +2076,14 @@ export default function MapScreen() {
                       borderRadius: 5,
                       backgroundColor: activityColor,
                       borderWidth: 1.5,
-                      borderColor: '#fff',
+                      borderColor: colors.card,
                     }} />
                   </View>
                   <View>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#333' }} numberOfLines={1}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>
                       {firstName}
                     </Text>
-                    <Text style={{ fontSize: 10, color: '#666', fontWeight: '500' }}>
+                    <Text style={{ fontSize: 10, color: colors.mutedForeground, fontWeight: '500' }}>
                       {isDriving && speed && speed > 0
                         ? `${Math.round(speed * 3.6)} km/h`
                         : isWorking 
