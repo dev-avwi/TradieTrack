@@ -130,19 +130,24 @@ export function SidebarNav() {
           themedStyles.header,
           pressed && { opacity: 0.7 }
         ]}
-        onPress={() => router.push('/more/settings' as any)}
+        onPress={() => router.push('/more/branding' as any)}
         data-testid="sidebar-header-settings"
       >
         {logoUrl ? (
-          <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="contain" />
+          <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
         ) : (
           <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
             <Text style={themedStyles.logoText}>{businessName.charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        <Text style={[themedStyles.businessName, { color: colors.foreground }]} numberOfLines={1}>
-          {businessName}
-        </Text>
+        <View style={themedStyles.headerTextContainer}>
+          <Text style={[themedStyles.businessName, { color: colors.foreground }]} numberOfLines={1} ellipsizeMode="tail">
+            {businessName}
+          </Text>
+          <Text style={[themedStyles.businessTagline, { color: colors.mutedForeground }]}>
+            TradieTrack
+          </Text>
+        </View>
       </Pressable>
 
       <ScrollView 
@@ -268,31 +273,40 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   logo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    marginRight: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    marginRight: 12,
   },
   logoPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   logoText: {
     color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  businessName: {
     fontSize: 16,
     fontWeight: '700',
   },
-  businessName: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
+  businessTagline: {
+    fontSize: 11,
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,

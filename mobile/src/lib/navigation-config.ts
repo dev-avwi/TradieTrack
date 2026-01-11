@@ -737,13 +737,33 @@ export const sidebarMainItems: SidebarNavItem[] = [
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
+  { 
+    id: 'automations',
+    title: 'Automations', 
+    icon: 'zap', 
+    path: '/more/automations',
+    matchPaths: ['/more/automations'],
+    section: 'main',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
 ];
 
 export const sidebarSettingsItems: SidebarNavItem[] = [
   { 
+    id: 'branding',
+    title: 'Branding', 
+    icon: 'droplet', 
+    path: '/more/branding',
+    matchPaths: ['/more/branding'],
+    section: 'settings',
+    hideForStaff: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
     id: 'integrations',
     title: 'Integrations', 
-    icon: 'zap', 
+    icon: 'link', 
     path: '/more/integrations',
     matchPaths: ['/more/integrations'],
     section: 'settings',
@@ -756,7 +776,7 @@ export const sidebarSettingsItems: SidebarNavItem[] = [
     title: 'Settings', 
     icon: 'settings', 
     path: '/more/settings',
-    matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/branding', '/more/subscription', '/more/notifications', '/more/notification-preferences', '/more/ai-assistant', '/more/profile-edit'],
+    matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/subscription', '/more/notifications', '/more/notification-preferences', '/more/ai-assistant', '/more/profile-edit'],
     section: 'settings',
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
