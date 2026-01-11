@@ -2081,11 +2081,22 @@ export class PostgresStorage implements IStorage {
 
   // Document Templates implementation
   async getDocumentTemplates(userId: string, type?: string, tradeType?: string): Promise<DocumentTemplate[]> {
-    // Only return user-specific templates or shared templates - no cross-user data leakage
-    const baseCondition = or(
+    // Get owner ID if user is a team member (so they can access owner's templates)
+    const teamMembership = await this.getTeamMembershipByMemberId(userId);
+    const ownerId = teamMembership?.ownerId;
+    
+    // Include user's own templates, shared templates, and owner's templates (for team members)
+    const userConditions = [
       eq(documentTemplates.userId, userId),
       eq(documentTemplates.userId, 'shared')
-    );
+    ];
+    
+    // If user is a team member, also include the business owner's templates
+    if (ownerId && ownerId !== userId) {
+      userConditions.push(eq(documentTemplates.userId, ownerId));
+    }
+    
+    const baseCondition = or(...userConditions);
     
     if (type && tradeType) {
       const conditions = and(baseCondition, eq(documentTemplates.type, type), eq(documentTemplates.tradeType, tradeType));
