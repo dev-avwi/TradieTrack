@@ -408,6 +408,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 2,
   },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
+  },
   settingsInfoCard: {
     backgroundColor: colors.muted,
     borderRadius: radius.xl,
@@ -1600,11 +1614,100 @@ export default function SettingsScreen() {
                   Your brand color and logo will appear on quotes, invoices, and other documents sent to clients.
                 </Text>
               </View>
+
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              
+              <TouchableOpacity
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/templates')}
+                data-testid="button-document-templates"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <View style={[styles.quickActionIcon, { backgroundColor: colors.primaryLight }]}>
+                    <Feather name="file-text" size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Document Templates</Text>
+                    <Text style={styles.settingsCardSubtitle}>Customise quote & invoice styling</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/ai-assistant')}
+                data-testid="button-ai-assistant"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <View style={[styles.quickActionIcon, { backgroundColor: '#EDE9FE' }]}>
+                    <Feather name="cpu" size={18} color="#8B5CF6" />
+                  </View>
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>AI Assistant</Text>
+                    <Text style={styles.settingsCardSubtitle}>Smart suggestions & automation</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/automations')}
+                data-testid="button-automations"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                    <Feather name="zap" size={18} color="#D97706" />
+                  </View>
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Automations</Text>
+                    <Text style={styles.settingsCardSubtitle}>Reminders, follow-ups & triggers</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
             </View>
           )}
 
           {activeTab === 'templates' && (
             <View style={styles.tabContentSection}>
+              <TouchableOpacity
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/templates')}
+                data-testid="button-full-templates"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <View style={[styles.quickActionIcon, { backgroundColor: colors.primaryLight }]}>
+                    <Feather name="file-text" size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Document Templates</Text>
+                    <Text style={styles.settingsCardSubtitle}>Quote, invoice & job styling with live preview</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/business-templates')}
+                data-testid="button-safety-forms"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                    <Feather name="shield" size={18} color="#D97706" />
+                  </View>
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Safety Forms & WHS</Text>
+                    <Text style={styles.settingsCardSubtitle}>Compliance templates, checklists & permits</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <Text style={styles.sectionTitle}>Quick Templates</Text>
+
               <TouchableOpacity
                 style={styles.createTemplateButton}
                 onPress={() => {
