@@ -401,6 +401,7 @@ export interface IStorage {
   createDocumentTemplate(data: InsertDocumentTemplate & { userId: string }): Promise<DocumentTemplate>;
   updateDocumentTemplate(id: string, data: Partial<InsertDocumentTemplate>): Promise<DocumentTemplate>;
   deleteDocumentTemplate(id: string): Promise<void>;
+  seedDefaultDocumentTemplates(userId: string): Promise<DocumentTemplate[]>;
 
   // Line Item Catalog
   getLineItemCatalog(userId: string, tradeType?: string): Promise<LineItemCatalog[]>;
@@ -2121,6 +2122,819 @@ export class PostgresStorage implements IStorage {
 
   async deleteDocumentTemplate(id: string): Promise<void> {
     await db.delete(documentTemplates).where(eq(documentTemplates.id, id));
+  }
+
+  async seedDefaultDocumentTemplates(userId: string): Promise<DocumentTemplate[]> {
+    const existing = await this.getDocumentTemplates(userId);
+    if (existing.some(t => t.isDefault)) {
+      return existing.filter(t => t.isDefault);
+    }
+
+    const standardSections = {
+      showHeader: true,
+      showLineItems: true,
+      showTotals: true,
+      showTerms: true,
+      showSignature: true,
+    };
+
+    const standardStyling = {
+      brandColor: '#2563eb',
+      logoDisplay: 'left',
+      templateStyle: 'professional',
+    };
+
+    const templates: Array<{
+      type: 'job' | 'quote' | 'invoice';
+      familyKey: string;
+      name: string;
+      tradeType: string;
+      styling: object;
+      sections: object;
+      defaults: object;
+      defaultLineItems: Array<{ description: string; qty: number; unitPrice: number; unit: string }>;
+      isDefault: boolean;
+    }> = [
+      // ===== PLUMBING TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'plumbing-general',
+        name: 'Plumbing Quote - General',
+        tradeType: 'plumbing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Plumbing Services Quote',
+          description: 'Quote for plumbing works as discussed on site.',
+          terms: 'Quote valid for 30 days. 50% deposit required to commence work. Balance due on completion. All work guaranteed for 12 months.',
+          depositPct: 50,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Plumber', qty: 1, unitPrice: 120, unit: 'hour' },
+          { description: 'Call-out Fee', qty: 1, unitPrice: 95, unit: 'item' },
+          { description: 'Materials & Fittings', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'plumbing-general',
+        name: 'Plumbing Invoice - General',
+        tradeType: 'plumbing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Plumbing Services',
+          description: 'Invoice for plumbing works completed.',
+          terms: 'Payment due within 14 days. Bank transfer preferred. Late payments may incur interest at 2% per month.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Plumber', qty: 1, unitPrice: 120, unit: 'hour' },
+          { description: 'Call-out Fee', qty: 1, unitPrice: 95, unit: 'item' },
+          { description: 'Materials & Fittings', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'plumbing-general',
+        name: 'Plumbing Job - General',
+        tradeType: 'plumbing',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'Plumbing Job Card',
+          description: 'Standard plumbing service job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Plumber', qty: 1, unitPrice: 120, unit: 'hour' },
+          { description: 'Call-out Fee', qty: 1, unitPrice: 95, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'plumbing-bathroom',
+        name: 'Plumbing Quote - Bathroom Renovation',
+        tradeType: 'plumbing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Bathroom Plumbing Renovation Quote',
+          description: 'Quote for bathroom plumbing rough-in and fit-off works.',
+          terms: 'Quote valid for 30 days. 50% deposit required. Progress payment at rough-in stage. Final balance on completion.',
+          depositPct: 50,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Plumbing Rough-in (new waste & water)', qty: 1, unitPrice: 1800, unit: 'item' },
+          { description: 'Toilet Installation', qty: 1, unitPrice: 350, unit: 'item' },
+          { description: 'Vanity Basin Installation', qty: 1, unitPrice: 280, unit: 'item' },
+          { description: 'Shower Mixer Installation', qty: 1, unitPrice: 320, unit: 'item' },
+          { description: 'Floor Waste Installation', qty: 1, unitPrice: 180, unit: 'item' },
+          { description: 'Hot Water Connection', qty: 1, unitPrice: 220, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'plumbing-bathroom',
+        name: 'Plumbing Invoice - Bathroom Renovation',
+        tradeType: 'plumbing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Bathroom Plumbing',
+          description: 'Invoice for bathroom plumbing renovation works.',
+          terms: 'Payment due within 7 days of completion. Bank transfer preferred.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Plumbing Rough-in (new waste & water)', qty: 1, unitPrice: 1800, unit: 'item' },
+          { description: 'Toilet Installation', qty: 1, unitPrice: 350, unit: 'item' },
+          { description: 'Vanity Basin Installation', qty: 1, unitPrice: 280, unit: 'item' },
+          { description: 'Shower Mixer Installation', qty: 1, unitPrice: 320, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+
+      // ===== ELECTRICAL TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'electrical-general',
+        name: 'Electrical Quote - General',
+        tradeType: 'electrical',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Electrical Services Quote',
+          description: 'Quote for electrical works as inspected on site.',
+          terms: 'Quote valid for 30 days. 50% deposit required. All work compliant with AS/NZS 3000 Wiring Rules. Certificate of Compliance provided on completion.',
+          depositPct: 50,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Electrician', qty: 1, unitPrice: 110, unit: 'hour' },
+          { description: 'Call-out Fee', qty: 1, unitPrice: 85, unit: 'item' },
+          { description: 'Electrical Materials', qty: 1, unitPrice: 0, unit: 'item' },
+          { description: 'Certificate of Compliance', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'electrical-general',
+        name: 'Electrical Invoice - General',
+        tradeType: 'electrical',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Electrical Services',
+          description: 'Invoice for electrical works completed. Certificate of Compliance attached.',
+          terms: 'Payment due within 14 days. All work guaranteed for 12 months.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Electrician', qty: 1, unitPrice: 110, unit: 'hour' },
+          { description: 'Call-out Fee', qty: 1, unitPrice: 85, unit: 'item' },
+          { description: 'Electrical Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'electrical-general',
+        name: 'Electrical Job - General',
+        tradeType: 'electrical',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'Electrical Job Card',
+          description: 'Standard electrical service job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Electrician', qty: 1, unitPrice: 110, unit: 'hour' },
+          { description: 'Call-out Fee', qty: 1, unitPrice: 85, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'electrical-switchboard',
+        name: 'Electrical Quote - Switchboard Upgrade',
+        tradeType: 'electrical',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Switchboard Upgrade Quote',
+          description: 'Quote for switchboard upgrade to meet current safety standards.',
+          terms: 'Quote valid for 30 days. Full payment required on completion. Includes temporary disconnection notice to energy provider.',
+          depositPct: 50,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Switchboard Upgrade - Supply & Install', qty: 1, unitPrice: 1650, unit: 'item' },
+          { description: 'Safety Switches (RCDs) - 2 circuits', qty: 2, unitPrice: 180, unit: 'item' },
+          { description: 'Circuit Breakers', qty: 12, unitPrice: 35, unit: 'item' },
+          { description: 'Main Switch 63A', qty: 1, unitPrice: 120, unit: 'item' },
+          { description: 'Surge Protection Device', qty: 1, unitPrice: 280, unit: 'item' },
+          { description: 'Certificate of Compliance', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'electrical-switchboard',
+        name: 'Electrical Invoice - Switchboard Upgrade',
+        tradeType: 'electrical',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Switchboard Upgrade',
+          description: 'Invoice for switchboard upgrade works. Certificate of Compliance included.',
+          terms: 'Payment due within 7 days. Work guaranteed for 12 months.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Switchboard Upgrade - Supply & Install', qty: 1, unitPrice: 1650, unit: 'item' },
+          { description: 'Safety Switches (RCDs)', qty: 2, unitPrice: 180, unit: 'item' },
+          { description: 'Circuit Breakers', qty: 12, unitPrice: 35, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+
+      // ===== CARPENTRY TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'carpentry-general',
+        name: 'Carpentry Quote - General',
+        tradeType: 'carpentry',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Carpentry Services Quote',
+          description: 'Quote for carpentry works as discussed.',
+          terms: 'Quote valid for 30 days. 30% deposit required for material purchases. Balance due on completion.',
+          depositPct: 30,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Qualified Carpenter', qty: 1, unitPrice: 95, unit: 'hour' },
+          { description: 'Timber & Materials', qty: 1, unitPrice: 0, unit: 'item' },
+          { description: 'Hardware & Fixings', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'carpentry-general',
+        name: 'Carpentry Invoice - General',
+        tradeType: 'carpentry',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Carpentry Services',
+          description: 'Invoice for carpentry works completed.',
+          terms: 'Payment due within 14 days. Bank transfer preferred.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Qualified Carpenter', qty: 1, unitPrice: 95, unit: 'hour' },
+          { description: 'Timber & Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'carpentry-general',
+        name: 'Carpentry Job - General',
+        tradeType: 'carpentry',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'Carpentry Job Card',
+          description: 'Standard carpentry job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Qualified Carpenter', qty: 1, unitPrice: 95, unit: 'hour' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'carpentry-deck',
+        name: 'Carpentry Quote - Deck Construction',
+        tradeType: 'carpentry',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Timber Deck Construction Quote',
+          description: 'Quote for new timber deck construction including all materials and labour.',
+          terms: 'Quote valid for 30 days. 40% deposit required. Progress payment at frame stage (30%). Balance on completion (30%).',
+          depositPct: 40,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Deck Framing - Treated Pine', qty: 1, unitPrice: 0, unit: 'sqm' },
+          { description: 'Deck Boards - Merbau/Spotted Gum', qty: 1, unitPrice: 0, unit: 'sqm' },
+          { description: 'Posts & Bearers', qty: 1, unitPrice: 0, unit: 'item' },
+          { description: 'Stainless Steel Fixings', qty: 1, unitPrice: 0, unit: 'item' },
+          { description: 'Labour - Deck Construction', qty: 1, unitPrice: 0, unit: 'sqm' },
+          { description: 'Handrail & Balustrade (if required)', qty: 1, unitPrice: 0, unit: 'lm' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'carpentry-deck',
+        name: 'Carpentry Invoice - Deck Construction',
+        tradeType: 'carpentry',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Deck Construction',
+          description: 'Invoice for timber deck construction.',
+          terms: 'Final payment due within 7 days of completion.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Deck Construction - Labour & Materials', qty: 1, unitPrice: 0, unit: 'sqm' },
+        ],
+        isDefault: true,
+      },
+
+      // ===== HVAC TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'hvac-general',
+        name: 'HVAC Quote - General',
+        tradeType: 'hvac',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Air Conditioning & Heating Quote',
+          description: 'Quote for HVAC installation/service works.',
+          terms: 'Quote valid for 30 days. 50% deposit required. Balance due on completion. Manufacturer warranty applies.',
+          depositPct: 50,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed HVAC Technician', qty: 1, unitPrice: 115, unit: 'hour' },
+          { description: 'Service Call Fee', qty: 1, unitPrice: 120, unit: 'item' },
+          { description: 'Refrigerant Top-up (if required)', qty: 1, unitPrice: 0, unit: 'kg' },
+          { description: 'Parts & Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'hvac-general',
+        name: 'HVAC Invoice - General',
+        tradeType: 'hvac',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - HVAC Services',
+          description: 'Invoice for air conditioning/heating works completed.',
+          terms: 'Payment due within 14 days.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed HVAC Technician', qty: 1, unitPrice: 115, unit: 'hour' },
+          { description: 'Service Call Fee', qty: 1, unitPrice: 120, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'hvac-general',
+        name: 'HVAC Job - General',
+        tradeType: 'hvac',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'HVAC Job Card',
+          description: 'Standard HVAC service job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed HVAC Technician', qty: 1, unitPrice: 115, unit: 'hour' },
+          { description: 'Service Call Fee', qty: 1, unitPrice: 120, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'hvac-split-install',
+        name: 'HVAC Quote - Split System Installation',
+        tradeType: 'hvac',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Split System Air Conditioner Installation Quote',
+          description: 'Quote for supply and installation of split system air conditioning.',
+          terms: 'Quote valid for 30 days. 50% deposit to confirm booking. Balance due on completion. 5-year manufacturer warranty on unit.',
+          depositPct: 50,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Split System A/C Unit - 2.5kW', qty: 1, unitPrice: 1100, unit: 'item' },
+          { description: 'Standard Back-to-Back Installation', qty: 1, unitPrice: 550, unit: 'item' },
+          { description: 'Electrical Connection (dedicated circuit)', qty: 1, unitPrice: 280, unit: 'item' },
+          { description: 'Pipe Cover/Duct (3m)', qty: 1, unitPrice: 120, unit: 'item' },
+          { description: 'Outdoor Bracket', qty: 1, unitPrice: 85, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'hvac-split-install',
+        name: 'HVAC Invoice - Split System Installation',
+        tradeType: 'hvac',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Split System Installation',
+          description: 'Invoice for split system air conditioner installation.',
+          terms: 'Payment due within 7 days. Warranty documents attached.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Split System A/C Unit - Supply & Install', qty: 1, unitPrice: 1650, unit: 'item' },
+          { description: 'Electrical Connection', qty: 1, unitPrice: 280, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+
+      // ===== PAINTING TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'painting-general',
+        name: 'Painting Quote - General',
+        tradeType: 'painting',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Painting Services Quote',
+          description: 'Quote for painting works as discussed on site.',
+          terms: 'Quote valid for 30 days. 30% deposit required. Includes 2 coats of premium paint. Minor crack filling included.',
+          depositPct: 30,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Qualified Painter', qty: 1, unitPrice: 75, unit: 'hour' },
+          { description: 'Premium Paint - Walls', qty: 1, unitPrice: 0, unit: 'L' },
+          { description: 'Premium Paint - Trim', qty: 1, unitPrice: 0, unit: 'L' },
+          { description: 'Surface Preparation', qty: 1, unitPrice: 0, unit: 'sqm' },
+          { description: 'Masking & Protection', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'painting-general',
+        name: 'Painting Invoice - General',
+        tradeType: 'painting',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Painting Services',
+          description: 'Invoice for painting works completed.',
+          terms: 'Payment due within 14 days.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Qualified Painter', qty: 1, unitPrice: 75, unit: 'hour' },
+          { description: 'Paint & Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'painting-general',
+        name: 'Painting Job - General',
+        tradeType: 'painting',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'Painting Job Card',
+          description: 'Standard painting job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Qualified Painter', qty: 1, unitPrice: 75, unit: 'hour' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'painting-interior',
+        name: 'Painting Quote - Interior Repaint',
+        tradeType: 'painting',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Interior Painting Quote',
+          description: 'Quote for full interior repaint including walls, ceilings, and trim.',
+          terms: 'Quote valid for 30 days. 30% deposit required. Price based on standard ceiling height (2.7m). Furniture moving by owner.',
+          depositPct: 30,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Walls - 2 coats Dulux Wash & Wear', qty: 1, unitPrice: 18, unit: 'sqm' },
+          { description: 'Ceilings - 2 coats Dulux Ceiling White', qty: 1, unitPrice: 16, unit: 'sqm' },
+          { description: 'Doors - 2 coats semi-gloss', qty: 1, unitPrice: 85, unit: 'item' },
+          { description: 'Door Frames/Architraves', qty: 1, unitPrice: 45, unit: 'item' },
+          { description: 'Skirting Boards', qty: 1, unitPrice: 8, unit: 'lm' },
+          { description: 'Window Frames', qty: 1, unitPrice: 55, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'painting-interior',
+        name: 'Painting Invoice - Interior Repaint',
+        tradeType: 'painting',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Interior Painting',
+          description: 'Invoice for interior painting works completed.',
+          terms: 'Payment due within 7 days of completion.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Interior Painting - Labour & Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+
+      // ===== ROOFING TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'roofing-general',
+        name: 'Roofing Quote - General',
+        tradeType: 'roofing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Roofing Services Quote',
+          description: 'Quote for roofing works as inspected.',
+          terms: 'Quote valid for 30 days. 50% deposit required. Work subject to weather conditions. 10-year workmanship warranty.',
+          depositPct: 50,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Roofer', qty: 1, unitPrice: 95, unit: 'hour' },
+          { description: 'Roofing Materials', qty: 1, unitPrice: 0, unit: 'sqm' },
+          { description: 'Scaffolding/Safety Equipment', qty: 1, unitPrice: 0, unit: 'day' },
+          { description: 'Rubbish Removal', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'roofing-general',
+        name: 'Roofing Invoice - General',
+        tradeType: 'roofing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Roofing Services',
+          description: 'Invoice for roofing works completed.',
+          terms: 'Payment due within 14 days. 10-year workmanship warranty certificate attached.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Roofer', qty: 1, unitPrice: 95, unit: 'hour' },
+          { description: 'Roofing Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'roofing-general',
+        name: 'Roofing Job - General',
+        tradeType: 'roofing',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'Roofing Job Card',
+          description: 'Standard roofing job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Licensed Roofer', qty: 1, unitPrice: 95, unit: 'hour' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'roofing-gutter',
+        name: 'Roofing Quote - Gutter Replacement',
+        tradeType: 'roofing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Gutter & Fascia Replacement Quote',
+          description: 'Quote for gutter and fascia replacement including all materials and labour.',
+          terms: 'Quote valid for 30 days. 50% deposit required. Colorbond warranty applies to materials.',
+          depositPct: 50,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Colorbond Quad Gutter - Supply & Install', qty: 1, unitPrice: 45, unit: 'lm' },
+          { description: 'Colorbond Fascia Cover', qty: 1, unitPrice: 38, unit: 'lm' },
+          { description: 'Downpipes - 90mm Round', qty: 1, unitPrice: 55, unit: 'lm' },
+          { description: 'Leaf Guard/Gutter Mesh', qty: 1, unitPrice: 25, unit: 'lm' },
+          { description: 'Remove & Dispose Old Gutters', qty: 1, unitPrice: 15, unit: 'lm' },
+          { description: 'Scaffolding (if required)', qty: 1, unitPrice: 0, unit: 'day' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'roofing-gutter',
+        name: 'Roofing Invoice - Gutter Replacement',
+        tradeType: 'roofing',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Gutter Replacement',
+          description: 'Invoice for gutter and fascia replacement works.',
+          terms: 'Payment due within 7 days. Colorbond warranty documentation attached.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Gutter & Fascia Replacement - Labour & Materials', qty: 1, unitPrice: 0, unit: 'lm' },
+        ],
+        isDefault: true,
+      },
+
+      // ===== GENERAL/HANDYMAN TEMPLATES =====
+      {
+        type: 'quote',
+        familyKey: 'general-maintenance',
+        name: 'Quote - General Maintenance',
+        tradeType: 'general',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Property Maintenance Quote',
+          description: 'Quote for general maintenance and repair works.',
+          terms: 'Quote valid for 30 days. Payment due on completion for jobs under $500. 30% deposit for larger jobs.',
+          depositPct: 30,
+          dueTermDays: 30,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Handyman/Tradesperson', qty: 1, unitPrice: 75, unit: 'hour' },
+          { description: 'Materials & Supplies', qty: 1, unitPrice: 0, unit: 'item' },
+          { description: 'Travel/Call-out', qty: 1, unitPrice: 50, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'general-maintenance',
+        name: 'Invoice - General Maintenance',
+        tradeType: 'general',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Maintenance Services',
+          description: 'Invoice for maintenance works completed.',
+          terms: 'Payment due within 14 days. Bank transfer preferred.',
+          depositPct: null,
+          dueTermDays: 14,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Handyman/Tradesperson', qty: 1, unitPrice: 75, unit: 'hour' },
+          { description: 'Materials & Supplies', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'job',
+        familyKey: 'general-maintenance',
+        name: 'Job - General Maintenance',
+        tradeType: 'general',
+        styling: standardStyling,
+        sections: { ...standardSections, showTotals: false },
+        defaults: {
+          title: 'Maintenance Job Card',
+          description: 'General maintenance and repair job.',
+          terms: '',
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour - Handyman/Tradesperson', qty: 1, unitPrice: 75, unit: 'hour' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'quote',
+        familyKey: 'general-hourly',
+        name: 'Quote - Hourly Rate Work',
+        tradeType: 'general',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Hourly Rate Services Quote',
+          description: 'Quote for works charged at hourly rates. Final cost depends on time taken.',
+          terms: 'Quote is an estimate only. Actual costs may vary. You will be notified if works exceed estimate by more than 20%.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour (estimated hours)', qty: 2, unitPrice: 75, unit: 'hour' },
+          { description: 'Materials (estimated)', qty: 1, unitPrice: 0, unit: 'item' },
+          { description: 'Travel/Call-out', qty: 1, unitPrice: 50, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+      {
+        type: 'invoice',
+        familyKey: 'general-hourly',
+        name: 'Invoice - Hourly Rate Work',
+        tradeType: 'general',
+        styling: standardStyling,
+        sections: standardSections,
+        defaults: {
+          title: 'Tax Invoice - Hourly Rate Services',
+          description: 'Invoice for works charged at hourly rates.',
+          terms: 'Payment due within 7 days.',
+          depositPct: null,
+          dueTermDays: 7,
+          gstEnabled: true,
+        },
+        defaultLineItems: [
+          { description: 'Labour (actual hours)', qty: 1, unitPrice: 75, unit: 'hour' },
+          { description: 'Materials', qty: 1, unitPrice: 0, unit: 'item' },
+        ],
+        isDefault: true,
+      },
+    ];
+
+    const createdTemplates: DocumentTemplate[] = [];
+    for (const template of templates) {
+      const created = await this.createDocumentTemplate({
+        userId,
+        ...template,
+      });
+      createdTemplates.push(created);
+    }
+
+    return createdTemplates;
   }
 
   // Line Item Catalog implementation

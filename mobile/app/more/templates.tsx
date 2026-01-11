@@ -29,6 +29,7 @@ interface DocumentTemplate {
   name: string;
   tradeType: string;
   rateCardId: string | null;
+  isDefault?: boolean;
   styling: {
     brandColor?: string;
     logoDisplay?: boolean;
@@ -302,6 +303,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.sm,
+  },
+  createdByYouBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 11,
+    color: colors.primary,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  createdByYouBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.primary,
   },
   modalContainer: {
     flex: 1,
@@ -1522,6 +1539,12 @@ export default function TemplatesScreen() {
                   )}
                   
                   <View style={styles.badgeRow}>
+                    {!template.isDefault && (
+                      <View style={styles.createdByYouBadge}>
+                        <Feather name="user" size={10} color={colors.primary} />
+                        <Text style={styles.createdByYouBadgeText}>Created by you</Text>
+                      </View>
+                    )}
                     {template.defaultLineItems?.length > 0 && (
                       <Text style={styles.badge}>
                         {template.defaultLineItems.length} item{template.defaultLineItems.length !== 1 ? 's' : ''}

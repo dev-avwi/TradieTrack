@@ -1042,6 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           await storage.seedDefaultBusinessTemplates(result.user.id);
           await storage.ensureDefaultTemplates(result.user.id);
+          await storage.seedDefaultDocumentTemplates(result.user.id);
         } catch (templateError) {
           console.error('Failed to seed default templates:', templateError);
           // Don't fail registration if template seeding fails
@@ -1169,6 +1170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       storage.ensureDefaultTemplates(user.id).catch(err => {
         console.error('Failed to seed message templates for passwordless user:', err);
+      });
+      storage.seedDefaultDocumentTemplates(user.id).catch(err => {
+        console.error('Failed to seed document templates for passwordless user:', err);
       });
       
       // Create session and explicitly save

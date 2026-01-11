@@ -869,6 +869,7 @@ export const documentTemplates = pgTable("document_templates", {
   sections: json("sections").default({}), // { showHeader, showLineItems, showTotals, showTerms, showSignature }
   defaults: json("defaults").default({}), // { title, description, terms, depositPct?, dueTermDays?, gstEnabled? }
   defaultLineItems: json("default_line_items").default([]), // [{ catalogItemId? | inline { description, qty, unitPrice }}]
+  isDefault: boolean("is_default").default(false), // System-provided default template
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
