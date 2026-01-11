@@ -516,6 +516,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const activePresetId = useAdvancedThemeStore(state => state.activePresetId);
   const customPalette = useAdvancedThemeStore(state => state.customPalette);
   const getActivePalette = useAdvancedThemeStore(state => state.getActivePalette);
+  const setCustomPrimaryColor = useAdvancedThemeStore(state => state.setCustomPrimaryColor);
   
   useEffect(() => {
     SecureStore.getItemAsync('theme_mode').then(stored => {
@@ -524,6 +525,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     }).catch(() => {});
   }, []);
+
+  // Sync server-side brandColor to local advanced theme store
+  // This ensures all devices show the same brand color (server is single source of truth)
+  useEffect(() => {
+    if (brandColorFromSettings && /^#[0-9A-Fa-f]{6}$/i.test(brandColorFromSettings)) {
+      const serverColor = brandColorFromSettings.toUpperCase();
+      const localColor = customPalette?.primary?.toUpperCase();
+      
+      // Only sync if server color differs from local (avoids unnecessary updates)
+      if (serverColor !== localColor) {
+        setCustomPrimaryColor(brandColorFromSettings);
+      }
+    }
+  }, [brandColorFromSettings, customPalette?.primary, setCustomPrimaryColor]);
 
   const setThemeMode = async (mode: ThemeMode) => {
     setThemeModeState(mode);
@@ -541,21 +556,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const colors = useMemo(() => {
     const baseColors = isDark ? darkColors : lightColors;
     
-    // Get the active palette from advanced theme store (considers presets + custom overrides)
-    const activePalette = getActivePalette();
+    // Default blue colors for both light and dark modes (from preset defaults)
+    const DEFAULT_LIGHT_BLUE = '#3B82F6';
+    const DEFAULT_DARK_BLUE = '#60A5FA';
     
-    // Check if the active palette has a custom primary color (from preset or custom override)
-    // This works for both default preset with customizations and non-default presets
-    if (activePalette?.primary) {
-      const isDefaultBlue = activePalette.primary.toUpperCase() === '#3B82F6';
-      // Only apply brand palette if it's not the default blue (meaning user changed it)
-      if (!isDefaultBlue || customPalette?.primary || activePresetId !== 'default') {
+    // Helper to check if a color is a default preset blue (not a custom brand color)
+    const isDefaultPresetBlue = (color: string): boolean => {
+      const upper = color.toUpperCase();
+      return upper === DEFAULT_LIGHT_BLUE || upper === DEFAULT_DARK_BLUE;
+    };
+    
+    // Priority 1: Check if user has set a custom primary color in advanced theme store
+    // customPalette?.primary is the definitive indicator of user customization
+    if (customPalette?.primary && /^#[0-9A-Fa-f]{6}$/i.test(customPalette.primary)) {
+      if (!isDefaultPresetBlue(customPalette.primary)) {
+        const brandPalette = generateBrandPalette(customPalette.primary, isDark);
+        return { ...baseColors, ...brandPalette };
+      }
+    }
+    
+    // Priority 2: Check if using a non-default preset
+    if (activePresetId !== 'default') {
+      const activePalette = getActivePalette();
+      if (activePalette?.primary) {
         const brandPalette = generateBrandPalette(activePalette.primary, isDark);
         return { ...baseColors, ...brandPalette };
       }
     }
     
-    // Then fall back to business settings brand color
+    // Priority 3: Fall back to business settings brand color
     const brandColor = brandColorFromSettings;
     if (brandColor && /^#[0-9A-Fa-f]{6}$/i.test(brandColor)) {
       const isDefaultColor = brandColor.toUpperCase() === DEFAULT_BRAND_COLOR.toUpperCase();
