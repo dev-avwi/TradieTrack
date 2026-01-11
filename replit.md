@@ -132,3 +132,15 @@ class NotificationService {
 - **ID Reconciliation**: After sync, offline IDs are mapped to server IDs via `syncService.ts` ID mapping system
 - **safeInvalidateQueries**: Wrapper that skips query invalidation while offline to preserve optimistic cache state
 - Key files: `offlineStorage.ts`, `syncService.ts`, `registerServiceWorker.ts`, `useOfflineData.ts`, `NetworkContext.tsx`, `OfflineIndicator.tsx`
+
+**Document Template System**:
+- **35 Default Templates**: New users receive industry-standard templates seeded via `seedDefaultDocumentTemplates()` during registration:
+  - 14 Quote Templates: Plumbing (general, bathroom reno), Electrical (general, switchboard), Carpentry (general, deck), HVAC (general, split system), Painting (general, interior), Roofing (general, gutter), General (maintenance, hourly)
+  - 14 Invoice Templates: Matching invoices for each quote template with appropriate payment terms
+  - 7 Job Templates: One job card for each major trade category
+- **Australian Standards**: GST (10%) enabled, industry-specific hourly rates ($75-$120/hr), payment terms (7-30 days), deposits (30-50%)
+- **Schema**: `documentTemplates` table with `isDefault` boolean to distinguish system vs user-created templates
+- **Team Sync**: Team members automatically access owner's templates via `getDocumentTemplates()` which queries for user's own templates + business owner's templates
+- **"Created by you" Badge**: Mobile templates page shows badge for user-created templates (`isDefault: false`)
+- **Template Structure**: type (job/quote/invoice), familyKey (links related templates), tradeType, styling, sections, defaults, defaultLineItems
+- Key files: `server/storage.ts` (seedDefaultDocumentTemplates), `mobile/app/more/templates.tsx`
