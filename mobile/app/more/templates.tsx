@@ -1550,7 +1550,7 @@ export default function TemplatesScreen() {
               <TouchableOpacity
                 activeOpacity={0.7}
                 style={[styles.sectionCreateButton, { backgroundColor: '#d97706' }]}
-                onPress={() => router.push('/more/business-templates')}
+                onPress={() => router.push('/more/business-templates?action=create')}
               >
                 <Feather name="plus" size={18} color="#ffffff" />
                 <Text style={styles.sectionCreateButtonText}>Create Safety Form</Text>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
@@ -680,6 +680,7 @@ export default function BusinessTemplatesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
+  const { action } = useLocalSearchParams<{ action?: string }>();
   
   const {
     templates,
@@ -717,8 +718,26 @@ export default function BusinessTemplatesScreen() {
   
   const [showEmailClientPicker, setShowEmailClientPicker] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<BusinessTemplate | null>(null);
+  const [actionHandled, setActionHandled] = useState(false);
   
   const availableEmailClients = useMemo(() => getAvailableEmailClients(), []);
+  
+  // Auto-open create modal when navigated with action=create param (runs once only)
+  useEffect(() => {
+    if (action === 'create' && purposesLoaded && !isLoading && !actionHandled && !showEditModal) {
+      // Mark action as handled to prevent retriggering
+      setActionHandled(true);
+      // Switch to the jobs_safety category and open safety_form create modal
+      setActiveCategory('jobs_safety');
+      setExpandedFamily('safety_form');
+      // Clear the URL param by replacing the route
+      router.replace('/more/business-templates');
+      // Open the create modal for safety forms after a brief delay
+      setTimeout(() => {
+        openCreateModal('safety_form');
+      }, 100);
+    }
+  }, [action, purposesLoaded, isLoading, actionHandled, showEditModal]);
   
   const handlePreviewInEmailApp = useCallback((template: BusinessTemplate) => {
     setPreviewTemplate(template);
