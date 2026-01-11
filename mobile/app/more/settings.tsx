@@ -1533,71 +1533,25 @@ export default function SettingsScreen() {
 
           {activeTab === 'brand' && (
             <View style={styles.tabContentSection}>
-              <View style={styles.subscriptionCard}>
-                <View style={styles.subscriptionHeader}>
+              <TouchableOpacity 
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/branding')}
+                data-testid="button-theme-branding"
+              >
+                <View style={styles.settingsCardHeader}>
                   <Feather name="droplet" size={20} color={colors.primary} />
-                  <Text style={styles.subscriptionTitle}>App Color</Text>
-                </View>
-                <Text style={styles.planDescription}>
-                  Choose a brand color for your app theme
-                </Text>
-
-                <View style={styles.colorGrid}>
-                  {BRAND_COLORS.map((color) => (
-                    <TouchableOpacity
-                      key={color}
-                      style={[
-                        styles.colorSwatch,
-                        { backgroundColor: color },
-                        selectedColor === color && styles.colorSwatchSelected
-                      ]}
-                      onPress={() => handleColorSelect(color)}
-                      data-testid={`color-swatch-${color.replace('#', '')}`}
-                    >
-                      {selectedColor === color && (
-                        <Feather name="check" size={20} color="#FFFFFF" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.subscriptionCard}>
-                <View style={styles.subscriptionHeader}>
-                  <Feather name="image" size={20} color={colors.primary} />
-                  <Text style={styles.subscriptionTitle}>Business Logo</Text>
-                </View>
-                <Text style={styles.planDescription}>
-                  Upload your business logo to personalize documents
-                </Text>
-
-                <View style={styles.logoSection}>
-                  <View style={styles.logoPreview}>
-                    {logoUrl ? (
-                      <Image source={{ uri: logoUrl }} style={styles.logoImage} />
-                    ) : (
-                      <Feather name="image" size={32} color={colors.mutedForeground} />
-                    )}
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Theme & Branding</Text>
+                    <Text style={styles.settingsCardSubtitle}>Customize colors, logo, typography & appearance</Text>
                   </View>
-
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={handlePickLogo}
-                    disabled={isUploadingLogo}
-                    data-testid="button-upload-logo"
-                  >
-                    <Feather name="upload" size={18} color={colors.primary} />
-                    <Text style={styles.uploadButtonText}>
-                      {isUploadingLogo ? 'Uploading...' : (logoUrl ? 'Change Logo' : 'Upload Logo')}
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
 
               <View style={styles.settingsInfoCard}>
-                <Text style={styles.settingsInfoTitle}>Brand Customization</Text>
+                <Text style={styles.settingsInfoTitle}>Brand Synchronization</Text>
                 <Text style={styles.settingsInfoText}>
-                  Your brand color and logo will appear on quotes, invoices, and other documents sent to clients.
+                  Your brand settings sync across all your devices. Changes made here will appear on quotes, invoices, and documents sent to clients.
                 </Text>
               </View>
             </View>

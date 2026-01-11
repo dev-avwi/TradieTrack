@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -435,6 +435,23 @@ export default function BrandingScreen() {
   const activePalette = getActivePalette();
   const activeTypography = getActiveTypography();
   const activeAppearance = getActiveAppearance();
+
+  // Sync server brand color to local store on mount (for cross-device sync)
+  useEffect(() => {
+    const serverBrandColor = businessSettings?.brandColor;
+    if (serverBrandColor && /^#[0-9A-Fa-f]{6}$/i.test(serverBrandColor)) {
+      const serverColor = serverBrandColor.toUpperCase();
+      const localColor = activePalette?.primary?.toUpperCase();
+      // Only sync if different (avoids unnecessary updates)
+      if (serverColor !== localColor) {
+        setCustomPrimaryColor(serverBrandColor);
+      }
+    }
+    // Update logo URL from server if different
+    if (businessSettings?.logoUrl && businessSettings.logoUrl !== logoUrl) {
+      setLogoUrl(businessSettings.logoUrl);
+    }
+  }, [businessSettings?.brandColor, businessSettings?.logoUrl]);
 
   const isValidHex = (hex: string) => /^#[0-9A-Fa-f]{6}$/.test(hex);
 
