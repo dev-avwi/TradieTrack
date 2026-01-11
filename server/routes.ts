@@ -452,6 +452,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Public bug report endpoint - allows tradies to report issues even when having problems
+  app.post("/api/bug-reports", async (req: any, res) => {
+    try {
+      const { 
+        category, 
+        severity, 
+        description, 
+        reproductionSteps, 
+        errorMessage,
+        stackTrace,
+        deviceInfo,
+        appVersion,
+        userEmail,
+        userName,
+        userId,
+        screenName,
+        networkStatus
+      } = req.body;
+
+      if (!description) {
+        return res.status(400).json({ error: 'Description is required' });
+      }
+
+      // Format the bug report email
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Bug Report - TradieTrack</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px;">
+          <div style="background: #dc2626; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">Bug Report - TradieTrack</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">
+              Severity: <strong>${severity || 'Not specified'}</strong> | Category: <strong>${category || 'General'}</strong>
+            </p>
+          </div>
+
+          <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+            <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #374151;">User Information</h2>
+            <p style="margin: 4px 0;"><strong>Name:</strong> ${userName || 'Anonymous'}</p>
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${userEmail || 'Not provided'}</p>
+            <p style="margin: 4px 0;"><strong>User ID:</strong> ${userId || 'Not logged in'}</p>
+            <p style="margin: 4px 0;"><strong>Screen:</strong> ${screenName || 'Unknown'}</p>
+          </div>
+
+          <div style="background: #fef2f2; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #fee2e2;">
+            <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #991b1b;">Problem Description</h2>
+            <p style="margin: 0; white-space: pre-wrap;">${description}</p>
+          </div>
+
+          ${reproductionSteps ? `
+          <div style="background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+            <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #374151;">Steps to Reproduce</h2>
+            <p style="margin: 0; white-space: pre-wrap;">${reproductionSteps}</p>
+          </div>
+          ` : ''}
+
+          ${errorMessage ? `
+          <div style="background: #1f2937; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+            <h2 style="margin: 0 0 8px 0; font-size: 14px; color: #f87171;">Error Message</h2>
+            <pre style="margin: 0; color: #fca5a5; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">${errorMessage}</pre>
+          </div>
+          ` : ''}
+
+          ${stackTrace ? `
+          <div style="background: #1f2937; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+            <h2 style="margin: 0 0 8px 0; font-size: 14px; color: #9ca3af;">Stack Trace</h2>
+            <pre style="margin: 0; color: #d1d5db; font-size: 11px; white-space: pre-wrap; overflow-x: auto; max-height: 300px;">${stackTrace}</pre>
+          </div>
+          ` : ''}
+
+          <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+            <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #374151;">Device & Environment</h2>
+            <p style="margin: 4px 0;"><strong>App Version:</strong> ${appVersion || 'Unknown'}</p>
+            <p style="margin: 4px 0;"><strong>Network:</strong> ${networkStatus || 'Unknown'}</p>
+            ${deviceInfo ? `
+            <p style="margin: 4px 0;"><strong>Platform:</strong> ${deviceInfo.platform || 'Unknown'}</p>
+            <p style="margin: 4px 0;"><strong>Device:</strong> ${deviceInfo.deviceName || 'Unknown'}</p>
+            <p style="margin: 4px 0;"><strong>OS Version:</strong> ${deviceInfo.osVersion || 'Unknown'}</p>
+            <p style="margin: 4px 0;"><strong>App Build:</strong> ${deviceInfo.buildNumber || 'Unknown'}</p>
+            ` : ''}
+          </div>
+
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+            <p style="margin: 0;">Submitted: ${new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })} AEST</p>
+            <p style="margin: 4px 0 0 0;">TradieTrack Bug Reporting System</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Send email using SendGrid
+      const sgMail = await import('@sendgrid/mail');
+      if (process.env.SENDGRID_API_KEY) {
+        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+        await sgMail.default.send({
+          to: 'admin@avwebinnovation.com',
+          from: {
+            email: 'mail@avwebinnovation.com',
+            name: 'TradieTrack Bug Reports'
+          },
+          replyTo: userEmail || 'admin@avwebinnovation.com',
+          subject: `[Bug Report] ${category || 'General'} - ${severity || 'Normal'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`,
+          html: emailHtml,
+        });
+        console.log(`✅ Bug report sent to admin@avwebinnovation.com from ${userEmail || 'anonymous'}`);
+      } else {
+        console.log('⚠️ Bug report received but SendGrid not configured - logging to console');
+        console.log('Bug Report:', { category, severity, description, userEmail, userName });
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Bug report submitted successfully. Thank you for helping us improve TradieTrack!' 
+      });
+    } catch (error: any) {
+      console.error('Failed to submit bug report:', error);
+      res.status(500).json({ 
+        error: 'Failed to submit bug report. Please try again or email admin@avwebinnovation.com directly.' 
+      });
+    }
+  });
+
   // Short URL redirect for quotes: /q/:token -> /public/quote/:token
   app.get("/q/:token", (req: any, res) => {
     res.redirect(301, `/public/quote/${req.params.token}`);

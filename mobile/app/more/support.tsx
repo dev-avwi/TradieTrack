@@ -11,7 +11,7 @@ import {
   Platform,
   UIManager
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
@@ -592,7 +592,24 @@ export default function SupportScreen() {
           </View>
 
           <View style={styles.contactSection}>
-            <Text style={styles.sectionTitle}>CONTACT US</Text>
+            <Text style={styles.sectionTitle}>REPORT A PROBLEM</Text>
+            
+            <TouchableOpacity 
+              style={[styles.tourCard, { borderColor: colors.destructive }]}
+              onPress={() => router.push('/more/report-bug')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.tourIconContainer, { backgroundColor: colors.destructive + '20' }]}>
+                <Feather name="alert-circle" size={iconSizes.xl} color={colors.destructive} />
+              </View>
+              <View style={styles.tourContent}>
+                <Text style={styles.tourTitle}>Report a Bug</Text>
+                <Text style={styles.tourSubtitle}>Something not working? Let us know!</Text>
+              </View>
+              <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
+            <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>CONTACT US</Text>
             
             <View style={styles.contactCard}>
               <TouchableOpacity 
