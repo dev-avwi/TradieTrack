@@ -7805,12 +7805,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getReceiptsForJob(jobId, effectiveUserId)
       ]);
       
-      // Find linked quote (most recent if multiple)
-      const linkedQuotes = quotes.filter((q: any) => q.jobId === jobId);
+      // Find linked quote - check both directions:
+      // 1. Quotes that have jobId pointing to this job (quote created for job)
+      // 2. Quotes that match the job's quoteId (job created from quote)
+      let linkedQuotes = quotes.filter((q: any) => q.jobId === jobId);
+      
+      // Also check if job has a quoteId - always include the originating quote
+      // This handles "job created from quote" case and ensures both associations are captured
+      if (job.quoteId) {
+        const quoteFromJob = quotes.find((q: any) => q.id === job.quoteId);
+        if (quoteFromJob && !linkedQuotes.some((q: any) => q.id === quoteFromJob.id)) {
+          // Insert originating quote at the beginning (it's the primary one)
+          linkedQuotes.unshift(quoteFromJob);
+        }
+      }
+      
       const linkedQuote = linkedQuotes.length > 0 ? linkedQuotes[linkedQuotes.length - 1] : null;
       
-      // Find linked invoice (most recent if multiple)
-      const linkedInvoices = invoices.filter((i: any) => i.jobId === jobId);
+      // Find linked invoice - check both directions:
+      // 1. Invoices that have jobId pointing to this job (invoice created for job)
+      // 2. Invoices that match the job's invoiceId (job created from invoice, rare)
+      let linkedInvoices = invoices.filter((i: any) => i.jobId === jobId);
+      
+      // Also check if job has an invoiceId - always include the originating invoice
+      if ((job as any).invoiceId) {
+        const invoiceFromJob = invoices.find((i: any) => i.id === (job as any).invoiceId);
+        if (invoiceFromJob && !linkedInvoices.some((i: any) => i.id === invoiceFromJob.id)) {
+          linkedInvoices.unshift(invoiceFromJob);
+        }
+      }
+      
       const linkedInvoice = linkedInvoices.length > 0 ? linkedInvoices[linkedInvoices.length - 1] : null;
       
       res.json({
@@ -7959,6 +7983,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const job = await storage.createJob(jobData);
+      
+      // If job was created from a quote, update the quote's jobId to link back
+      if (data.quoteId) {
+        try {
+          await storage.updateQuote(data.quoteId, effectiveUserId, { jobId: job.id });
+          console.log(`[Job Creation] Linked quote ${data.quoteId} to new job ${job.id}`);
+        } catch (linkError) {
+          console.error(`[Job Creation] Failed to link quote to job:`, linkError);
+          // Don't fail job creation if quote linking fails
+        }
+      }
       
       // Increment job count after successful creation
       await FreemiumService.incrementJobCount(effectiveUserId);

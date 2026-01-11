@@ -56,3 +56,9 @@ Key architectural and design decisions include:
 *   **Maps**: Leaflet with react-leaflet
 *   **Accounting Integration**: Xero, MYOB AccountRight
 *   **Calendar Integration**: Google Calendar
+
+### Recent Changes (January 2026)
+*   **Fixed Email Sending Bug**: Resolved undefined `baseUrl` variable in quote/invoice email handlers that caused custom/tone-adjusted emails to fail. Both `handleQuoteEmailWithPDF` and `handleInvoiceEmailWithPDF` now properly call `getProductionBaseUrl(req)`.
+*   **Fixed Quote-to-Job Document Linking**: The `/api/jobs/:id/linked-documents` endpoint now checks both directions for document relationships - forward (quote.jobId → job) and reverse (job.quoteId → quote). This ensures jobs created from quotes properly show their linked quote in the Documents tab.
+*   **Automatic Bidirectional Linking**: When creating a job from a quote, the quote's `jobId` is now automatically updated to point back to the new job, ensuring complete bidirectional linking.
+*   **Subscription Flow Updates**: Added Pro→Team upgrade (7-day trial), Team→Pro downgrade, and team member suspension logic with proper grace periods for past_due status.
