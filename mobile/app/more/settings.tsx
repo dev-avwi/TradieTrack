@@ -2161,14 +2161,14 @@ export default function SettingsScreen() {
 
               <TouchableOpacity 
                 style={styles.settingsCard}
-                onPress={() => Linking.openURL('mailto:support@tradietrack.com.au')}
+                onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com')}
                 data-testid="button-contact-support"
               >
                 <View style={styles.settingsCardHeader}>
                   <Feather name="mail" size={20} color={colors.primary} />
                   <View style={styles.settingsCardInfo}>
                     <Text style={styles.settingsCardTitle}>Contact Support</Text>
-                    <Text style={styles.settingsCardSubtitle}>support@tradietrack.com.au</Text>
+                    <Text style={styles.settingsCardSubtitle}>admin@avwebinnovation.com</Text>
                   </View>
                 </View>
                 <Feather name="external-link" size={18} color={colors.mutedForeground} />

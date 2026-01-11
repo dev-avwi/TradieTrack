@@ -378,7 +378,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Step 1: Direct Resolution</Text>
           <Text style={styles.paragraph}>
-            Contact our support team at support@tradietrack.com.au. We aim to resolve most issues within 10 business days.
+            Contact our support team at admin@avwebinnovation.com. We aim to resolve most issues within 10 business days.
           </Text>
 
           <Text style={styles.subSectionTitle}>Step 2: Formal Complaint</Text>
@@ -402,7 +402,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Termination by You</Text>
           <Text style={styles.paragraph}>
-            You may cancel your account at any time through the app settings or by contacting support@tradietrack.com.au. Upon cancellation:
+            You may cancel your account at any time through the app settings or by contacting admin@avwebinnovation.com. Upon cancellation:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Your subscription will remain active until the end of the current billing period" colors={colors} styles={styles} />
@@ -479,7 +479,7 @@ export default function TermsOfServiceScreen() {
             If you have any questions about these Terms of Service, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="General enquiries: support@tradietrack.com.au" colors={colors} styles={styles} />
+            <BulletItem text="General enquiries: admin@avwebinnovation.com" colors={colors} styles={styles} />
             <BulletItem text="Legal matters: legal@tradietrack.com.au" colors={colors} styles={styles} />
             <BulletItem text="Billing enquiries: billing@tradietrack.com.au" colors={colors} styles={styles} />
             <BulletItem text="Website: www.tradietrack.com.au" colors={colors} styles={styles} />

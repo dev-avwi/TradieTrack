@@ -978,7 +978,7 @@ export default function SubscriptionScreen() {
                   Have questions?{' '}
                   <Text 
                     style={styles.supportLink}
-                    onPress={() => Linking.openURL('mailto:support@tradietrack.com.au')}
+                    onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com')}
                   >
                     Contact our support team
                   </Text>

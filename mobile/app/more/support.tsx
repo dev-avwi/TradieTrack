@@ -172,7 +172,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
       },
       {
         question: 'How do I request a new feature?',
-        answer: 'We love feedback! Email us at support@tradietrack.com.au with your feature request. We review all suggestions for future updates.',
+        answer: 'We love feedback! Email us at admin@avwebinnovation.com with your feature request. We review all suggestions for future updates.',
       },
     ],
   },
@@ -530,7 +530,7 @@ export default function SupportScreen() {
   };
 
   const handleEmailSupport = () => {
-    Linking.openURL('mailto:support@tradietrack.com.au');
+    Linking.openURL('mailto:admin@avwebinnovation.com');
   };
 
   const handleOpenDocs = () => {
@@ -605,7 +605,7 @@ export default function SupportScreen() {
                 </View>
                 <View style={styles.contactContent}>
                   <Text style={styles.contactTitle}>Email Support</Text>
-                  <Text style={styles.contactSubtitle}>support@tradietrack.com.au</Text>
+                  <Text style={styles.contactSubtitle}>admin@avwebinnovation.com</Text>
                 </View>
                 <Feather name="external-link" size={iconSizes.md} color={colors.mutedForeground} />
               </TouchableOpacity>

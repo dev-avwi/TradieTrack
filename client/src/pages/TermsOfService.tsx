@@ -227,7 +227,7 @@ export default function TermsOfService() {
                 </p>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   <strong>Dispute Resolution:</strong> If you have a complaint about our services, please 
-                  contact us first at support@tradietrack.com.au. We aim to resolve disputes within 14 days. 
+                  contact us first at admin@avwebinnovation.com. We aim to resolve disputes within 14 days. 
                   If we cannot resolve the matter, you may lodge a complaint with the Australian Competition 
                   and Consumer Commission (ACCC) or your state/territory consumer protection agency.
                 </p>
@@ -261,7 +261,7 @@ export default function TermsOfService() {
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     <strong>TradieTrack Support</strong><br />
-                    Email: support@tradietrack.com.au<br />
+                    Email: admin@avwebinnovation.com<br />
                     Phone: 1300 TRADIE (1300 872 343)
                   </p>
                 </div>

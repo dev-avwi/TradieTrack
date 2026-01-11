@@ -486,7 +486,7 @@ export default function SubscriptionPage() {
           <p className="text-muted-foreground">
             Have questions?{' '}
             <a 
-              href="mailto:support@tradietrack.com.au" 
+              href="mailto:admin@avwebinnovation.com" 
               className="text-primary hover:underline"
               data-testid="link-contact-support"
             >
