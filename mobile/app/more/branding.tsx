@@ -20,7 +20,6 @@ import { spacing, radius, shadows, typography } from '../../src/lib/design-token
 import { Slider } from '../../src/components/ui/Slider';
 import {
   useAdvancedThemeStore,
-  PRESET_THEMES,
   AppearanceSettings,
   TypographySettings,
 } from '../../src/lib/advanced-theme-store';
@@ -702,37 +701,6 @@ export default function BrandingScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-
-          {/* Theme Preset */}
-          <Text style={styles.sectionTitle}>Theme Preset</Text>
-          <View style={styles.card}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: spacing.sm }}
-            >
-              {PRESET_THEMES.map((preset) => (
-                <TouchableOpacity
-                  key={preset.id}
-                  style={[
-                    styles.themePresetRow,
-                    { width: 200 },
-                    activePresetId === preset.id && { borderWidth: 2, borderColor: colors.primary }
-                  ]}
-                  onPress={() => setActivePreset(preset.id)}
-                  data-testid={`preset-${preset.id}`}
-                >
-                  <View style={styles.themePresetInfo}>
-                    <View style={[styles.themePresetDot, { backgroundColor: colors.isDark ? preset.darkPalette.primary : preset.lightPalette.primary }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.themePresetName} numberOfLines={1}>{preset.name}</Text>
-                      <Text style={styles.themePresetDesc} numberOfLines={1}>{preset.description}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
           </View>
 
           {/* Primary Color */}

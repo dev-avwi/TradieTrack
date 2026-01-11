@@ -196,7 +196,7 @@ export const mainMenuItems: NavItem[] = [
     title: "Templates",
     url: "/more/templates",
     icon: "file",
-    description: "Manage email, SMS, and document templates",
+    description: "Quote, invoice, and job templates",
     color: "muted",
     bgColor: "muted",
     hideForStaff: true,
