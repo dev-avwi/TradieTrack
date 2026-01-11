@@ -2191,17 +2191,17 @@ export default function SettingsScreen() {
 
               <TouchableOpacity 
                 style={styles.settingsCard}
-                onPress={() => Linking.openURL('https://tradietrack.com/help')}
+                onPress={() => router.push('/more/support')}
                 data-testid="button-help-centre"
               >
                 <View style={styles.settingsCardHeader}>
                   <Feather name="help-circle" size={20} color={colors.primary} />
                   <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Help Centre</Text>
-                    <Text style={styles.settingsCardSubtitle}>Guides, FAQs, and tutorials</Text>
+                    <Text style={styles.settingsCardTitle}>Help & FAQs</Text>
+                    <Text style={styles.settingsCardSubtitle}>Browse support articles</Text>
                   </View>
                 </View>
-                <Feather name="external-link" size={18} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
 
               <View style={styles.settingsInfoCard}>
