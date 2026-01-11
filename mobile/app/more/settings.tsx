@@ -422,6 +422,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
+  templateCountBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginRight: spacing.sm,
+  },
+  templateCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
   settingsInfoCard: {
     backgroundColor: colors.muted,
     borderRadius: radius.xl,
@@ -1672,6 +1684,13 @@ export default function SettingsScreen() {
 
           {activeTab === 'templates' && (
             <View style={styles.tabContentSection}>
+              <View style={styles.settingsInfoCard}>
+                <Text style={styles.settingsInfoTitle}>Template Management</Text>
+                <Text style={styles.settingsInfoText}>
+                  Choose a template type below to create and manage your business templates.
+                </Text>
+              </View>
+
               <TouchableOpacity
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/templates')}
@@ -1683,8 +1702,11 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.settingsCardInfo}>
                     <Text style={styles.settingsCardTitle}>Document Templates</Text>
-                    <Text style={styles.settingsCardSubtitle}>Quote, invoice & job styling with live preview</Text>
+                    <Text style={styles.settingsCardSubtitle}>Create reusable quotes, invoices & job templates</Text>
                   </View>
+                </View>
+                <View style={styles.templateCountBadge}>
+                  <Text style={styles.templateCountText}>{quoteTemplates + invoiceTemplates + jobTemplates}</Text>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
@@ -1700,26 +1722,27 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.settingsCardInfo}>
                     <Text style={styles.settingsCardTitle}>Safety Forms & WHS</Text>
-                    <Text style={styles.settingsCardSubtitle}>Compliance templates, checklists & permits</Text>
+                    <Text style={styles.settingsCardSubtitle}>Australian compliance checklists & permits</Text>
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <Text style={styles.sectionTitle}>Quick Templates</Text>
+              <View style={[styles.settingsInfoCard, { marginTop: spacing.lg }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                  <Feather name="info" size={16} color={colors.primary} />
+                  <Text style={[styles.settingsInfoTitle, { marginBottom: 0 }]}>What's the difference?</Text>
+                </View>
+                <Text style={styles.settingsInfoText}>
+                  <Text style={{ fontWeight: '600' }}>Document Templates</Text> help you quickly create quotes, invoices and jobs with pre-filled details.{'\n\n'}
+                  <Text style={{ fontWeight: '600' }}>Safety Forms</Text> are WHS compliance templates like JSAs, toolbox talks, and site inductions required on Australian worksites.
+                </Text>
+              </View>
+            </View>
+          )}
 
-              <TouchableOpacity
-                style={styles.createTemplateButton}
-                onPress={() => {
-                  resetTemplateForm();
-                  setShowCreateModal(true);
-                }}
-                data-testid="button-create-template"
-              >
-                <Feather name="plus" size={18} color={colors.primaryForeground} />
-                <Text style={styles.createTemplateButtonText}>Create New Template</Text>
-              </TouchableOpacity>
-
+          {activeTab === 'templates-hidden' && (
+            <View style={styles.tabContentSection}>
               <View style={styles.templateStatsRow}>
                 <View style={styles.templateStatCard}>
                   <Text style={styles.templateStatValue}>{quoteTemplates}</Text>
@@ -1769,16 +1792,6 @@ export default function SettingsScreen() {
                   <Text style={styles.emptySubtitle}>
                     Create templates to speed up creating quotes, invoices, and jobs
                   </Text>
-                  <TouchableOpacity
-                    style={styles.emptyButton}
-                    onPress={() => {
-                      resetTemplateForm();
-                      setShowCreateModal(true);
-                    }}
-                  >
-                    <Feather name="plus" size={18} color={colors.primary} />
-                    <Text style={styles.emptyButtonText}>Create First Template</Text>
-                  </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.templateList}>
