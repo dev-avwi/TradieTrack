@@ -8,12 +8,11 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
   Alert
 } from 'react-native';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 import { router, useFocusEffect } from 'expo-router';
+import { useContentWidth, isTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
@@ -53,7 +52,8 @@ function JobListRow({
   onQuickAction?: (action: string, jobId: string) => void;
 }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const contentWidth = useContentWidth();
+  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
@@ -156,7 +156,8 @@ function JobCard({
   onQuickAction?: (action: string, jobId: string) => void;
 }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const contentWidth = useContentWidth();
+  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -306,7 +307,9 @@ function JobCard({
 
 export default function JobsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const contentWidth = useContentWidth();
+  const isTabletDevice = isTablet();
+  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
@@ -766,7 +769,7 @@ export default function JobsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1044,7 +1047,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.xs,
   },
   jobCard: {
-    width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
+    width: (contentWidth - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -1155,7 +1158,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: spacing.sm,
-    width: (SCREEN_WIDTH - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
+    width: (contentWidth - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,

@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   TextInput,
-  Dimensions,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -16,10 +15,9 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useContentWidth, isTablet } from '../../src/lib/device';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = spacing.sm;
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - CARD_GAP) / 2;
 
 interface Invoice {
   id: string;
@@ -124,7 +122,9 @@ const getPaymentMethodLabel = (method: string) => {
 
 export default function DocumentsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const contentWidth = useContentWidth();
+  const isTabletDevice = isTablet();
+  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   
   const params = useLocalSearchParams<{ tab?: string; filter?: string }>();
   const initialTab = (params.tab as TabType) || 'quotes';
@@ -1018,7 +1018,9 @@ export default function DocumentsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, contentWidth: number) => {
+  const GRID_CARD_WIDTH = (contentWidth - spacing.lg * 2 - CARD_GAP) / 2;
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1565,3 +1567,4 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
 });
+};

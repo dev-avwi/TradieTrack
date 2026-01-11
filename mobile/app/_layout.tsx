@@ -305,8 +305,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           
           {/* Main content area on the right */}
           <View style={styles.tabletContent}>
-            {/* Header at top of content area - hide branding and avatar (both in sidebar) */}
-            <Header showMenuButton={false} showAvatar={false} />
+            {/* Header at top of content area - show TradieTrack branding like web, hide avatar (in sidebar) */}
+            <Header showMenuButton={true} showAvatar={false} />
             
             {/* Content fills remaining space */}
             <View style={styles.content}>

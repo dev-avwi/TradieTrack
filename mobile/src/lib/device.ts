@@ -1,4 +1,5 @@
 import { Platform, Dimensions } from 'react-native';
+import { useState, useEffect } from 'react';
 
 const IPAD_WIDTH_THRESHOLD = 768;
 
@@ -19,3 +20,24 @@ export function useDeviceType(): 'phone' | 'tablet' {
 
 export const SIDEBAR_WIDTH = 280;
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
+
+export function getContentWidth(): number {
+  const { width } = Dimensions.get('window');
+  if (isTablet()) {
+    return width - SIDEBAR_WIDTH;
+  }
+  return width;
+}
+
+export function useContentWidth(): number {
+  const [contentWidth, setContentWidth] = useState(() => getContentWidth());
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', () => {
+      setContentWidth(getContentWidth());
+    });
+    return () => subscription.remove();
+  }, []);
+  
+  return contentWidth;
+}
