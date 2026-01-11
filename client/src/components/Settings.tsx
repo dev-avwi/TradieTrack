@@ -1917,7 +1917,7 @@ function BillingTabContent() {
   
   // Pricing in dollars (converted from cents in schema)
   const proMonthly = formatPrice(PRICING.pro.monthly); // $39
-  const teamBase = formatPrice(PRICING.team.baseMonthly); // $59
+  const teamBase = formatPrice(PRICING.team.baseMonthly); // $49
   const seatPrice = formatPrice(PRICING.team.seatMonthly); // $29
   
   // Calculate team price (base + additional seats)

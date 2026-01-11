@@ -71,7 +71,7 @@ export const PRICING = {
     description: 'Unlimited jobs, quotes, and invoices for solo tradies',
   },
   team: {
-    baseMonthly: 5900, // $59/month base
+    baseMonthly: 4900, // $49/month base
     seatMonthly: 2900, // $29/month per additional seat
     name: 'TradieTrack Team',
     baseName: 'TradieTrack Team (Base)',

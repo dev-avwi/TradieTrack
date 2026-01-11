@@ -47,7 +47,7 @@ Connect to Xero for seamless accounting. Sync contacts and push invoices automat
 **SUBSCRIPTION PLANS**
 Free: Up to 5 active jobs, basic features
 Pro ($39/month): Unlimited jobs, payments, reporting
-Team ($59/month + $29/seat): Everything in Pro plus team features
+Team ($49/month + $29/seat): Everything in Pro plus team features
 
 Try Pro free for 14 days. Cancel anytime.
 

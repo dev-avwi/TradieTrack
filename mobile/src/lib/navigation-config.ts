@@ -737,16 +737,6 @@ export const sidebarMainItems: SidebarNavItem[] = [
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
-  { 
-    id: 'automations',
-    title: 'Automations', 
-    icon: 'zap', 
-    path: '/more/automations',
-    matchPaths: ['/more/automations'],
-    section: 'main',
-    hideForStaff: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
 ];
 
 export const sidebarSettingsItems: SidebarNavItem[] = [

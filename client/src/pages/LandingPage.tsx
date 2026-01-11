@@ -785,7 +785,7 @@ export default function LandingPage() {
             <AnimatedSection delay={300}>
               <PricingCard
                 name="Team"
-                price="$59"
+                price="$49"
                 period="/month + $29/seat"
                 description="Full power for growing businesses"
                 features={[

@@ -1990,7 +1990,7 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.planPriceBadge}>
                     <Text style={styles.planPriceText}>
-                      {currentPlan === 'team' ? '$49/mo' : currentPlan === 'pro' ? '$29/mo' : currentPlan === 'trial' ? 'Trial' : 'Free'}
+                      {currentPlan === 'team' ? '$49/mo' : currentPlan === 'pro' ? '$39/mo' : currentPlan === 'trial' ? 'Trial' : 'Free'}
                     </Text>
                   </View>
                 </View>
