@@ -171,6 +171,40 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 2,
   },
+  hubSection: {
+    gap: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  sectionCreateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  sectionCreateButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  sectionDividerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1466,8 +1500,67 @@ export default function TemplatesScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Templates</Text>
-              <Text style={styles.pageSubtitle}>Document styling and pre-fill content</Text>
+              <Text style={styles.pageSubtitle}>Manage all your business templates</Text>
             </View>
+          </View>
+
+          {/* Two-section hub */}
+          <View style={styles.hubSection}>
+            {/* Document Templates Section */}
+            <View style={styles.heroBanner}>
+              <View style={styles.heroBannerHeader}>
+                <View style={styles.heroBannerIconContainer}>
+                  <Feather name="file-text" size={24} color={colors.primaryForeground} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.heroBannerTitle}>Document Templates</Text>
+                  <Text style={styles.heroBannerSubtitle}>Quotes, Invoices & Jobs</Text>
+                </View>
+              </View>
+              <Text style={styles.heroBannerDescription}>
+                Create reusable templates with pre-filled line items, terms, and branding to generate professional documents quickly.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.sectionCreateButton}
+                onPress={() => {
+                  resetForm();
+                  setShowCreateModal(true);
+                }}
+              >
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={styles.sectionCreateButtonText}>Create Document Template</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Safety Forms Section */}
+            <View style={[styles.heroBanner, { backgroundColor: '#fef3c7', borderColor: '#d9770630' }]}>
+              <View style={styles.heroBannerHeader}>
+                <View style={[styles.heroBannerIconContainer, { backgroundColor: '#d97706' }]}>
+                  <Feather name="shield" size={24} color="#ffffff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.heroBannerTitle, { color: '#d97706' }]}>Safety Forms & WHS</Text>
+                  <Text style={styles.heroBannerSubtitle}>Australian Compliance</Text>
+                </View>
+              </View>
+              <Text style={styles.heroBannerDescription}>
+                WHS compliance templates like JSAs, toolbox talks, SWMS, and site inductions required on Australian worksites.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={[styles.sectionCreateButton, { backgroundColor: '#d97706' }]}
+                onPress={() => router.push('/more/business-templates')}
+              >
+                <Feather name="plus" size={18} color="#ffffff" />
+                <Text style={styles.sectionCreateButtonText}>Create Safety Form</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Document Templates List Section */}
+          <View style={styles.sectionDivider}>
+            <Text style={styles.sectionDividerText}>Your Document Templates</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               style={styles.createButton}
@@ -1478,35 +1571,6 @@ export default function TemplatesScreen() {
             >
               <Feather name="plus" size={18} color={colors.primaryForeground} />
               <Text style={styles.createButtonText}>New</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.heroBanner}>
-            <View style={styles.heroBannerHeader}>
-              <View style={styles.heroBannerIconContainer}>
-                <Feather name="file-text" size={24} color={colors.primaryForeground} />
-              </View>
-              <View>
-                <Text style={styles.heroBannerTitle}>Document Templates</Text>
-                <Text style={styles.heroBannerSubtitle}>Quotes, Invoices & Jobs</Text>
-              </View>
-            </View>
-            <Text style={styles.heroBannerDescription}>
-              Create reusable templates for quotes, invoices, and jobs. Customise styling, pre-fill line items, terms, and branding to generate professional documents quickly.
-            </Text>
-            <TouchableOpacity
-              style={styles.crossLinkCard}
-              activeOpacity={0.7}
-              onPress={() => router.push('/more/business-templates')}
-            >
-              <View style={styles.crossLinkIconContainer}>
-                <Feather name="shield" size={20} color="#d97706" />
-              </View>
-              <View style={styles.crossLinkContent}>
-                <Text style={styles.crossLinkTitle}>Looking for Safety Forms?</Text>
-                <Text style={styles.crossLinkSubtitle}>WHS compliance templates, checklists & permits</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
 
