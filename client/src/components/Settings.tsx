@@ -62,7 +62,9 @@ import {
   Percent,
   AlertCircle,
   DollarSign,
-  PlayCircle
+  PlayCircle,
+  Clock,
+  ArrowLeft
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -2063,6 +2065,50 @@ function BillingTabContent() {
     }
   });
 
+  // Upgrade Pro to Team with trial mutation
+  const upgradeToTeamMutation = useMutation({
+    mutationFn: async (seats: number) => {
+      const res = await apiRequest("POST", "/api/subscription/upgrade-to-team", { seats });
+      return res.json();
+    },
+    onSuccess: (data: { success?: boolean; message?: string; trialEndsAt?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/status'] });
+      toast({
+        title: "Upgraded to Team!",
+        description: data.message || "Enjoy your 7-day free trial of Team features.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upgrade Failed",
+        description: error.message || "Could not upgrade to Team plan.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Downgrade Team to Pro mutation
+  const downgradeToProMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/downgrade-to-pro");
+      return res.json();
+    },
+    onSuccess: (data: { success?: boolean; message?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/status'] });
+      toast({
+        title: "Downgraded to Pro",
+        description: data.message || "Your subscription has been changed to Pro.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Downgrade Failed",
+        description: error.message || "Could not downgrade subscription.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const isPro = billingStatus?.tier === 'pro';
   const isTeam = billingStatus?.tier === 'team';
   const hasPaidPlan = isPro || isTeam;
@@ -2070,6 +2116,13 @@ function BillingTabContent() {
   const isCanceled = billingStatus?.cancelAtPeriodEnd === true;
   const periodEnd = billingStatus?.currentPeriodEnd ? new Date(billingStatus.currentPeriodEnd) : null;
   const currentSeatCount = billingStatus?.seatCount || 0;
+  
+  // For trials, use trialEndDate from business settings (more accurate than currentPeriodEnd)
+  const trialEndDate = businessSettings?.trialEndDate 
+    ? new Date(businessSettings.trialEndDate as string) 
+    : null;
+  // Use trial end date when trialing, otherwise use period end
+  const effectiveEndDate = isTrialing && trialEndDate ? trialEndDate : periodEnd;
 
   return (
     <TabsContent value="billing" className="space-y-6">
@@ -2122,9 +2175,9 @@ function BillingTabContent() {
                   ) : (
                     <Badge variant="secondary">Free</Badge>
                   )}
-                  {periodEnd && (
+                  {effectiveEndDate && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {isCanceled ? 'Ends' : 'Renews'}: {periodEnd.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {isTrialing ? 'Trial ends' : isCanceled ? 'Ends' : 'Renews'}: {effectiveEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   )}
                 </div>
@@ -2224,6 +2277,63 @@ function BillingTabContent() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Trial Countdown */}
+              {isTrialing && effectiveEndDate && (
+                <div className="p-3 rounded-lg bg-warning/10 border border-warning/30">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-warning" />
+                    <span className="font-medium text-warning">Free trial ends {effectiveEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your card will be charged when the trial ends. Cancel anytime before then.
+                  </p>
+                </div>
+              )}
+
+              {/* Upgrade/Downgrade Options for Existing Subscribers */}
+              {hasPaidPlan && !isCanceled && (
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Change Plan</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {isPro && (
+                      <Button
+                        variant="outline"
+                        onClick={() => upgradeToTeamMutation.mutate(seatCount)}
+                        disabled={upgradeToTeamMutation.isPending}
+                        data-testid="button-upgrade-to-team"
+                      >
+                        {upgradeToTeamMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Users className="h-4 w-4 mr-2" />
+                        )}
+                        Try Team Free for 7 Days
+                      </Button>
+                    )}
+                    {isTeam && (
+                      <Button
+                        variant="outline"
+                        onClick={() => downgradeToProMutation.mutate()}
+                        disabled={downgradeToProMutation.isPending}
+                        data-testid="button-downgrade-to-pro"
+                      >
+                        {downgradeToProMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                        )}
+                        Downgrade to Pro (${proMonthly}/mo)
+                      </Button>
+                    )}
+                  </div>
+                  {isTeam && (
+                    <p className="text-xs text-muted-foreground">
+                      Downgrading will remove team member access. They can still use the free tier.
+                    </p>
+                  )}
                 </div>
               )}
 

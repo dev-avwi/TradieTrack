@@ -122,6 +122,8 @@ export interface UserContext {
   businessOwnerId: string | null;
   permissions: Permission[];
   teamMemberId: string | null;
+  ownerSubscriptionValid?: boolean;
+  ownerSubscriptionError?: string;
 }
 
 export async function getUserContext(userId: string): Promise<UserContext> {
@@ -138,6 +140,31 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       permissions = (role?.permissions as Permission[]) || [];
     }
     
+    // Check owner's subscription status for team member access
+    const ownerBusinessSettings = await storage.getBusinessSettings(teamMembership.businessOwnerId);
+    let ownerSubscriptionValid = true;
+    let ownerSubscriptionError: string | undefined;
+    
+    if (ownerBusinessSettings) {
+      const subscriptionStatus = ownerBusinessSettings.subscriptionStatus;
+      const subscriptionTier = ownerBusinessSettings.subscriptionTier;
+      
+      // Check if owner's subscription is canceled or on free tier
+      if (subscriptionStatus === 'canceled') {
+        ownerSubscriptionValid = false;
+        ownerSubscriptionError = 'Business owner subscription is canceled';
+      } else if (subscriptionTier === 'free' || !subscriptionTier) {
+        ownerSubscriptionValid = false;
+        ownerSubscriptionError = 'Business owner does not have an active subscription';
+      } else if (subscriptionTier !== 'pro' && subscriptionTier !== 'team') {
+        ownerSubscriptionValid = false;
+        ownerSubscriptionError = 'Invalid subscription tier';
+      }
+    } else {
+      ownerSubscriptionValid = false;
+      ownerSubscriptionError = 'Business owner account not found';
+    }
+    
     return {
       userId,
       isOwner: false,
@@ -145,6 +172,8 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       businessOwnerId: teamMembership.businessOwnerId,
       permissions,
       teamMemberId: teamMembership.id,
+      ownerSubscriptionValid,
+      ownerSubscriptionError,
     };
   }
   
@@ -155,6 +184,7 @@ export async function getUserContext(userId: string): Promise<UserContext> {
     businessOwnerId: null,
     permissions: Object.values(PERMISSIONS),
     teamMemberId: null,
+    ownerSubscriptionValid: true,
   };
 }
 
@@ -652,6 +682,49 @@ export async function getWorkerPermissionContext(userId: string): Promise<{
     teamMemberId: null,
     businessOwnerId: null,
   };
+}
+
+/**
+ * Checks if a team member's business owner has a valid subscription for team member access.
+ * 
+ * @param businessOwnerId - The business owner's user ID
+ * @returns Object with hasAccess boolean and optional reason for denial
+ */
+export async function checkTeamMemberOwnerAccess(businessOwnerId: string): Promise<{
+  hasAccess: boolean;
+  reason?: string;
+}> {
+  try {
+    const ownerBusinessSettings = await storage.getBusinessSettings(businessOwnerId);
+    
+    if (!ownerBusinessSettings) {
+      return { hasAccess: false, reason: 'Business owner account not found' };
+    }
+
+    const subscriptionStatus = ownerBusinessSettings.subscriptionStatus;
+    const subscriptionTier = ownerBusinessSettings.subscriptionTier;
+
+    // Deny access if owner's subscription is canceled
+    if (subscriptionStatus === 'canceled') {
+      return { hasAccess: false, reason: 'Business owner subscription is canceled' };
+    }
+
+    // Deny access if owner is on free tier
+    if (subscriptionTier === 'free' || !subscriptionTier) {
+      return { hasAccess: false, reason: 'Business owner does not have an active subscription' };
+    }
+
+    // Allow access if owner has pro or team subscription
+    if (subscriptionTier === 'pro' || subscriptionTier === 'team') {
+      return { hasAccess: true };
+    }
+
+    // Default to no access for unknown tiers
+    return { hasAccess: false, reason: 'Invalid subscription tier' };
+  } catch (error) {
+    console.error('[checkTeamMemberOwnerAccess] Error checking owner subscription:', error);
+    return { hasAccess: false, reason: 'Failed to verify owner subscription status' };
+  }
 }
 
 // Re-export worker permission constants for convenience

@@ -874,3 +874,205 @@ export async function initializeStripeProducts(): Promise<{
     return { success: false, products: {}, error: error.message };
   }
 }
+
+export interface UpgradeToTeamResult {
+  success: boolean;
+  subscriptionId?: string;
+  trialEndsAt?: Date;
+  error?: string;
+}
+
+export interface DowngradeToProResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function downgradeTeamToPro(userId: string): Promise<DowngradeToProResult> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  try {
+    const businessSettings = await storage.getBusinessSettings(userId);
+    
+    if (!businessSettings?.stripeSubscriptionId) {
+      return { success: false, error: 'No active subscription found' };
+    }
+
+    const currentSubscription = await stripe.subscriptions.retrieve(businessSettings.stripeSubscriptionId);
+    
+    if (currentSubscription.status !== 'active' && currentSubscription.status !== 'trialing') {
+      return { success: false, error: 'Current subscription is not active' };
+    }
+
+    const currentTier = currentSubscription.metadata?.tier || businessSettings.subscriptionTier;
+    if (currentTier !== 'team') {
+      return { success: false, error: 'Current subscription is not a Team plan' };
+    }
+
+    const proPriceId = await getOrCreateProPrice(stripe);
+
+    const items = currentSubscription.items.data;
+    
+    // Build update: Delete ALL existing items (base + seats) and add only Pro price
+    // This properly handles multi-seat subscriptions by clearing everything
+    const itemUpdates: Stripe.SubscriptionUpdateParams.Item[] = [];
+    
+    // Mark ALL existing items for deletion
+    for (const item of items) {
+      itemUpdates.push({
+        id: item.id,
+        deleted: true,
+      });
+    }
+    
+    // Add the Pro price as a new item
+    itemUpdates.push({
+      price: proPriceId,
+      quantity: 1,
+    });
+
+    const updatedSubscription = await stripe.subscriptions.update(
+      businessSettings.stripeSubscriptionId,
+      {
+        items: itemUpdates,
+        proration_behavior: 'none',
+        metadata: {
+          ...currentSubscription.metadata,
+          tier: 'pro',
+          seatCount: '0',
+          downgradedFromTeam: 'true',
+          downgradeDate: new Date().toISOString(),
+        },
+      }
+    );
+
+    await storage.updateUser(userId, {
+      subscriptionTier: 'pro',
+    });
+
+    await storage.updateBusinessSettings(userId, {
+      subscriptionTier: 'pro',
+      seatCount: 0,
+      subscriptionStatus: updatedSubscription.status,
+    });
+
+    const suspendedCount = await storage.suspendTeamMembersByOwner(userId);
+    console.log(`[downgradeTeamToPro] Suspended ${suspendedCount} team members for user ${userId}`);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error downgrading to Pro:', error);
+    return { success: false, error: error.message || 'Failed to downgrade subscription' };
+  }
+}
+
+/**
+ * Upgrades a Pro subscription to Team with a trial period.
+ * 
+ * Seat count semantics:
+ * - seats = 0: Just the owner (Team base price includes 1 user, no additional seat line items)
+ * - seats = 1: Owner + 1 additional team member (adds 1 seat line item)
+ * - seats = N: Owner + N additional team members (adds N seat line items)
+ * 
+ * The Team base price ($59/mo) always includes the owner seat.
+ * Additional seats are $29/mo each.
+ */
+export async function upgradeProToTeamTrial(
+  userId: string,
+  seats: number = 0, // Default to 0 = just owner, no additional seats
+  trialDays: number = 7
+): Promise<UpgradeToTeamResult> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  try {
+    const businessSettings = await storage.getBusinessSettings(userId);
+    
+    if (!businessSettings?.stripeSubscriptionId) {
+      return { success: false, error: 'No active subscription found to upgrade' };
+    }
+
+    if (!businessSettings?.stripeCustomerId) {
+      return { success: false, error: 'No billing account found' };
+    }
+
+    const currentSubscription = await stripe.subscriptions.retrieve(businessSettings.stripeSubscriptionId);
+    
+    if (currentSubscription.status !== 'active' && currentSubscription.status !== 'trialing') {
+      return { success: false, error: 'Current subscription is not active' };
+    }
+
+    const currentTier = currentSubscription.metadata?.tier || 'pro';
+    if (currentTier === 'team') {
+      return { success: false, error: 'Already on Team plan' };
+    }
+
+    const { basePriceId, seatPriceId } = await getOrCreateTeamPrices(stripe);
+
+    const trialEndTimestamp = Math.floor(Date.now() / 1000) + (trialDays * 24 * 60 * 60);
+
+    // Build subscription items:
+    // - Replace current Pro item with Team base (includes owner)
+    // - Only add seat line items if additional seats > 0
+    const subscriptionItems: Stripe.SubscriptionUpdateParams.Item[] = [
+      {
+        id: currentSubscription.items.data[0].id,
+        price: basePriceId,
+      },
+    ];
+
+    // Add additional seat line items only if seats > 0
+    // seats represents ADDITIONAL members beyond the owner
+    if (seats > 0) {
+      subscriptionItems.push({
+        price: seatPriceId,
+        quantity: seats,
+      });
+    }
+
+    const updatedSubscription = await stripe.subscriptions.update(
+      businessSettings.stripeSubscriptionId,
+      {
+        items: subscriptionItems,
+        trial_end: trialEndTimestamp,
+        proration_behavior: 'none',
+        metadata: {
+          ...currentSubscription.metadata,
+          tier: 'team',
+          seatCount: String(seats), // Additional seats beyond owner
+          upgradedFromPro: 'true',
+          upgradeTrialStart: new Date().toISOString(),
+        },
+      }
+    );
+
+    const trialEndsAt = new Date(trialEndTimestamp * 1000);
+
+    await storage.updateUser(userId, {
+      subscriptionTier: 'team',
+      trialStatus: 'active',
+      trialStartedAt: new Date(),
+      trialEndsAt: trialEndsAt,
+    });
+
+    await storage.updateBusinessSettings(userId, {
+      subscriptionTier: 'team',
+      subscriptionStatus: updatedSubscription.status,
+      trialStartDate: new Date(),
+      trialEndDate: trialEndsAt,
+    });
+
+    return {
+      success: true,
+      subscriptionId: updatedSubscription.id,
+      trialEndsAt,
+    };
+  } catch (error: any) {
+    console.error('Error upgrading to team trial:', error);
+    return { success: false, error: error.message || 'Failed to upgrade subscription' };
+  }
+}

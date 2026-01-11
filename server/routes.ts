@@ -1899,6 +1899,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/subscription/upgrade-to-team - Upgrades Pro subscription to Team with trial
+  app.post("/api/subscription/upgrade-to-team", requireAuth, async (req: any, res) => {
+    try {
+      const { upgradeProToTeamTrial } = await import('./billingService');
+      const userId = req.userId!;
+      const { seats = 1 } = req.body;
+
+      if (typeof seats !== 'number' || seats < 0 || seats > 50) {
+        return res.status(400).json({ success: false, message: 'Invalid seat count (0-50)' });
+      }
+
+      const result = await upgradeProToTeamTrial(userId, seats);
+
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: 'Your subscription has been upgraded to Team with a 7-day trial. Invite team members to get started!',
+        trialEndsAt: result.trialEndsAt,
+        subscriptionId: result.subscriptionId,
+      });
+    } catch (error: any) {
+      console.error('Error upgrading to team:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to upgrade subscription' });
+    }
+  });
+
+  // POST /api/subscription/downgrade-to-pro - Downgrades Team subscription to Pro
+  app.post("/api/subscription/downgrade-to-pro", requireAuth, async (req: any, res) => {
+    try {
+      const { downgradeTeamToPro } = await import('./billingService');
+      const userId = req.userId!;
+
+      const result = await downgradeTeamToPro(userId);
+
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: 'Your subscription has been downgraded to Pro. Team members have been suspended.',
+      });
+    } catch (error: any) {
+      console.error('Error downgrading to pro:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to downgrade subscription' });
+    }
+  });
+
   // Route optimization endpoint - Uses Google Maps Directions API with waypoint optimization
   app.post("/api/routes/optimize", requireAuth, async (req: any, res) => {
     try {

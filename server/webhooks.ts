@@ -127,17 +127,18 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
           const businessSettings = await storage.getBusinessSettingsByStripeCustomer(customerId);
           
           if (businessSettings) {
-            // Update subscription status
-            await storage.updateBusinessSettings(businessSettings.userId, {
-              subscriptionStatus: 'past_due',
-            });
+            // IMPORTANT: Do NOT suspend team members on payment_failed
+            // Payment retries are transient - Stripe will retry automatically
+            // Only suspend when subscription is definitively 'canceled' (handled in subscription.deleted)
+            // Log the failure for monitoring but rely on subscription status webhooks for actual state changes
+            console.log(`⚠️ Payment failed for user ${businessSettings.userId} - awaiting Stripe retry (no suspension)`);
 
-            // Create notification
+            // Create notification to prompt user action
             await createNotification(storage, {
               userId: businessSettings.userId,
               type: 'payment_failed',
               title: 'Payment Failed',
-              message: 'Your subscription payment failed. Please update your payment method to continue using Pro features.',
+              message: 'Your subscription payment failed. Please update your payment method to avoid service interruption.',
               relatedType: 'subscription',
               relatedId: invoice.subscription,
             });
@@ -163,10 +164,31 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
           const businessSettings = await storage.getBusinessSettingsByStripeCustomer(customerId);
           
           if (businessSettings) {
+            const previousStatus = businessSettings.subscriptionStatus;
+            
             // Update subscription status
             await storage.updateBusinessSettings(businessSettings.userId, {
               subscriptionStatus: subscription.status,
             });
+
+            // Handle status transitions for team member access
+            if (subscription.status === 'past_due') {
+              // Grace period - log warning but don't suspend yet
+              console.log(`⚠️ Subscription ${subscription.id} is past_due for user ${businessSettings.userId} - grace period active`);
+            } else if (subscription.status === 'active' && previousStatus === 'past_due') {
+              // Subscription reactivated after being past_due - reactivate team members
+              const reactivatedCount = await storage.reactivateTeamMembersByOwner(businessSettings.userId);
+              console.log(`✅ Reactivated ${reactivatedCount} team members for user ${businessSettings.userId}`);
+              
+              await createNotification(storage, {
+                userId: businessSettings.userId,
+                type: 'subscription_changed',
+                title: 'Subscription Restored',
+                message: 'Your subscription is now active and team member access has been restored.',
+                relatedType: 'subscription',
+                relatedId: subscription.id,
+              });
+            }
 
             // Create notification if subscription was canceled or paused
             if (subscription.status === 'canceled' || subscription.status === 'paused') {
@@ -191,6 +213,10 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
           const businessSettings = await storage.getBusinessSettingsByStripeCustomer(customerId);
           
           if (businessSettings) {
+            // Suspend all team members for this owner
+            const suspendedCount = await storage.suspendTeamMembersByOwner(businessSettings.userId);
+            console.log(`🔒 Suspended ${suspendedCount} team members for user ${businessSettings.userId}`);
+
             // Downgrade to free tier
             await storage.updateBusinessSettings(businessSettings.userId, {
               subscriptionTier: 'free',
@@ -202,7 +228,9 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
               userId: businessSettings.userId,
               type: 'subscription_canceled',
               title: 'Subscription Canceled',
-              message: 'Your subscription has been canceled. You can reactivate anytime from Settings.',
+              message: suspendedCount > 0 
+                ? `Your subscription has been canceled and ${suspendedCount} team member(s) have been deactivated. You can reactivate anytime from Settings.`
+                : 'Your subscription has been canceled. You can reactivate anytime from Settings.',
               relatedType: 'subscription',
               relatedId: subscription.id,
             });

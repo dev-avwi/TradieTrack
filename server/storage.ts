@@ -487,6 +487,8 @@ export interface IStorage {
   updateTeamMemberPermissions(id: string, permissions: { customPermissions: string[], useCustomPermissions: boolean }): Promise<TeamMember | undefined>;
   updateTeamMemberLocationSettings(id: string, settings: { locationEnabledByOwner: boolean }): Promise<TeamMember | undefined>;
   deleteTeamMember(id: string, businessOwnerId: string): Promise<boolean>;
+  suspendTeamMembersByOwner(ownerId: string): Promise<number>;
+  reactivateTeamMembersByOwner(ownerId: string): Promise<number>;
   
   getStaffSchedules(userId: string, jobId?: string): Promise<StaffSchedule[]>;
   createStaffSchedule(schedule: InsertStaffSchedule): Promise<StaffSchedule>;
@@ -3447,6 +3449,22 @@ export class PostgresStorage implements IStorage {
     const result = await db.delete(teamMembers)
       .where(and(eq(teamMembers.id, id), eq(teamMembers.businessOwnerId, businessOwnerId)));
     return result.rowCount > 0;
+  }
+
+  async suspendTeamMembersByOwner(ownerId: string): Promise<number> {
+    const result = await db.update(teamMembers)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(teamMembers.businessOwnerId, ownerId))
+      .returning();
+    return result.length;
+  }
+
+  async reactivateTeamMembersByOwner(ownerId: string): Promise<number> {
+    const result = await db.update(teamMembers)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(teamMembers.businessOwnerId, ownerId))
+      .returning();
+    return result.length;
   }
 
   async getStaffSchedules(userId: string, filters?: {
