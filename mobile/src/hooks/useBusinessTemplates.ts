@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from '../lib/store';
-import { API_URL } from '../lib/api';
+import { api } from '../lib/api';
 
 export interface BusinessTemplate {
   id: string;
@@ -100,12 +100,9 @@ export function useBusinessTemplates() {
     if (!isAuthenticated) return null;
     
     try {
-      const res = await fetch(`${API_URL}/api/business-templates/purposes/${family}`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.purposes || [];
+      const response = await api.get<{ purposes: PurposeOption[] }>(`/api/business-templates/purposes/${family}`);
+      if (response.data?.purposes) {
+        return response.data.purposes;
       }
       return null;
     } catch (err) {
@@ -125,41 +122,27 @@ export function useBusinessTemplates() {
     setError(null);
     setLoadingTimedOut(false);
     
-    // Create AbortController for fetch timeout
-    const controller = new AbortController();
-    const fetchTimeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-    
     try {
       const [templatesRes, familiesRes] = await Promise.all([
-        fetch(`${API_URL}/api/business-templates`, {
-          credentials: 'include',
-          signal: controller.signal,
-        }),
-        fetch(`${API_URL}/api/business-templates/families`, {
-          credentials: 'include',
-          signal: controller.signal,
-        }),
+        api.get<BusinessTemplate[]>('/api/business-templates'),
+        api.get<TemplateFamilyMeta[]>('/api/business-templates/families'),
       ]);
-      
-      clearTimeout(fetchTimeout);
 
-      // Check for non-OK responses
-      if (!templatesRes.ok && !familiesRes.ok) {
-        throw new Error(`Failed to load templates: ${templatesRes.status}`);
+      // Check for errors
+      if (templatesRes.error && familiesRes.error) {
+        throw new Error(`Failed to load templates: ${templatesRes.error}`);
       }
 
-      if (templatesRes.ok) {
-        const data = await templatesRes.json();
-        setTemplates(data || []);
-      } else {
-        console.warn('Templates fetch returned non-OK status:', templatesRes.status);
+      if (templatesRes.data) {
+        setTemplates(templatesRes.data || []);
+      } else if (templatesRes.error) {
+        console.warn('Templates fetch returned error:', templatesRes.error);
       }
 
-      if (familiesRes.ok) {
-        const data = await familiesRes.json();
-        setFamiliesMeta(data || []);
-      } else {
-        console.warn('Families fetch returned non-OK status:', familiesRes.status);
+      if (familiesRes.data) {
+        setFamiliesMeta(familiesRes.data || []);
+      } else if (familiesRes.error) {
+        console.warn('Families fetch returned error:', familiesRes.error);
       }
 
       // Prefetch purposes for all families - use fallback if API fails
@@ -192,15 +175,8 @@ export function useBusinessTemplates() {
         console.warn('Some purposes loaded from fallback - API fetch failed for some families');
       }
     } catch (err: any) {
-      clearTimeout(fetchTimeout);
-      
-      // Check if it was an abort (timeout)
-      if (err?.name === 'AbortError') {
-        setError('Request timed out. Please check your connection and try again.');
-        setLoadingTimedOut(true);
-      } else {
-        setError('Failed to load templates. Please try again.');
-      }
+      // Handle errors
+      setError('Failed to load templates. Please try again.');
       console.error('Failed to fetch business templates:', err);
       
       // Still try to set fallback purposes so page can render
@@ -220,10 +196,7 @@ export function useBusinessTemplates() {
     if (!isAuthenticated) return;
     
     try {
-      await fetch(`${API_URL}/api/business-templates/seed`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await api.post('/api/business-templates/seed');
       await fetchTemplates();
     } catch (err) {
       console.error('Failed to seed templates:', err);
@@ -240,22 +213,14 @@ export function useBusinessTemplates() {
   }) => {
     if (!isAuthenticated) throw new Error('Not authenticated');
     
-    const response = await fetch(`${API_URL}/api/business-templates`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await api.post<BusinessTemplate>('/api/business-templates', data);
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Failed to create template');
+    if (response.error) {
+      throw new Error(response.error || 'Failed to create template');
     }
 
     await fetchTemplates();
-    return response.json();
+    return response.data;
   }, [isAuthenticated, fetchTemplates]);
 
   const updateTemplate = useCallback(async (id: string, data: {
@@ -267,33 +232,22 @@ export function useBusinessTemplates() {
   }) => {
     if (!isAuthenticated) throw new Error('Not authenticated');
     
-    const response = await fetch(`${API_URL}/api/business-templates/${id}`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await api.patch<BusinessTemplate>(`/api/business-templates/${id}`, data);
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Failed to update template');
+    if (response.error) {
+      throw new Error(response.error || 'Failed to update template');
     }
 
     await fetchTemplates();
-    return response.json();
+    return response.data;
   }, [isAuthenticated, fetchTemplates]);
 
   const deleteTemplate = useCallback(async (id: string) => {
     if (!isAuthenticated) throw new Error('Not authenticated');
     
-    const response = await fetch(`${API_URL}/api/business-templates/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
+    const response = await api.delete(`/api/business-templates/${id}`);
 
-    if (!response.ok) {
+    if (response.error) {
       throw new Error('Failed to delete template');
     }
 
@@ -303,12 +257,9 @@ export function useBusinessTemplates() {
   const activateTemplate = useCallback(async (id: string) => {
     if (!isAuthenticated) throw new Error('Not authenticated');
     
-    const response = await fetch(`${API_URL}/api/business-templates/${id}/activate`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    const response = await api.post(`/api/business-templates/${id}/activate`);
 
-    if (!response.ok) {
+    if (response.error) {
       throw new Error('Failed to activate template');
     }
 
