@@ -34,9 +34,24 @@ interface Job {
   client?: Client;
 }
 
+interface SmsConversation {
+  id: string;
+  clientId: string | null;
+  clientPhone: string;
+  clientName: string | null;
+  jobId: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+}
+
+interface TwilioStatus {
+  enabled: boolean;
+  phoneNumber: string | null;
+}
+
 interface ConversationItem {
   id: string;
-  type: 'job' | 'team' | 'client';
+  type: 'job' | 'team' | 'client' | 'sms';
   title: string;
   subtitle?: string;
   avatarFallback: string;
@@ -49,7 +64,7 @@ interface ConversationItem {
   data: any;
 }
 
-type FilterType = 'all' | 'jobs' | 'team';
+type FilterType = 'all' | 'jobs' | 'customers' | 'team';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -338,6 +353,66 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing['3xl'],
   },
+  twilioSetupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.warningLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.warning,
+    gap: spacing.sm,
+  },
+  twilioSetupIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  twilioSetupContent: {
+    flex: 1,
+  },
+  twilioSetupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  twilioSetupDescription: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  twilioSetupButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.warning,
+    borderRadius: radius.md,
+  },
+  twilioSetupButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  twilioConnectedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.successLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.success,
+    gap: spacing.sm,
+  },
+  twilioConnectedText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.success,
+  },
+  smsConversationAvatar: {
+    backgroundColor: colors.successLight,
+  },
 });
 
 export default function ChatHubScreen() {
@@ -351,6 +426,8 @@ export default function ChatHubScreen() {
   
   const [jobs, setJobs] = useState<Job[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [smsConversations, setSmsConversations] = useState<SmsConversation[]>([]);
+  const [twilioStatus, setTwilioStatus] = useState<TwilioStatus | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -361,12 +438,16 @@ export default function ChatHubScreen() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [jobsRes, clientsRes] = await Promise.all([
+      const [jobsRes, clientsRes, smsRes, twilioRes] = await Promise.all([
         api.get<Job[]>('/api/jobs'),
         api.get<Client[]>('/api/clients'),
+        api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] })),
+        api.get<TwilioStatus>('/api/sms/status').catch(() => ({ data: null })),
       ]);
       setJobs(jobsRes.data || []);
       setClients(clientsRes.data || []);
+      setSmsConversations(smsRes.data || []);
+      setTwilioStatus(twilioRes.data || null);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -403,6 +484,8 @@ export default function ChatHubScreen() {
     }
   };
 
+  const twilioConnected = twilioStatus?.enabled === true && !!twilioStatus?.phoneNumber;
+
   const conversations: ConversationItem[] = useMemo(() => {
     const items: ConversationItem[] = [];
     
@@ -419,6 +502,24 @@ export default function ChatHubScreen() {
           unreadCount: 0,
           status: job.status,
           data: job,
+        });
+      });
+    }
+    
+    if (activeFilter === 'all' || activeFilter === 'customers') {
+      smsConversations.forEach(sms => {
+        const displayName = sms.clientName || sms.clientPhone;
+        items.push({
+          id: `sms-${sms.id}`,
+          type: 'sms',
+          title: displayName,
+          subtitle: sms.jobId ? 'Linked to job' : 'SMS conversation',
+          avatarFallback: displayName.substring(0, 2).toUpperCase(),
+          lastMessage: 'Tap to view SMS history',
+          lastMessageTime: sms.lastMessageAt || undefined,
+          unreadCount: sms.unreadCount || 0,
+          phone: sms.clientPhone,
+          data: sms,
         });
       });
     }
@@ -445,14 +546,28 @@ export default function ChatHubScreen() {
     }
     
     return items;
-  }, [jobs, clients, activeFilter, searchQuery]);
+  }, [jobs, clients, smsConversations, activeFilter, searchQuery]);
 
   const handleConversationPress = (item: ConversationItem) => {
     if (item.type === 'team') {
       router.push('/more/team-chat');
     } else if (item.type === 'job') {
       router.push(`/job/chat?jobId=${item.data.id}` as any);
+    } else if (item.type === 'sms') {
+      Alert.alert(
+        'SMS Conversations',
+        'View this conversation on the web app for full SMS messaging features.',
+        [{ text: 'OK' }]
+      );
     }
+  };
+
+  const handleTwilioSetup = () => {
+    Alert.alert(
+      'Set Up SMS Messaging',
+      'To send and receive SMS messages with your clients, you need to connect Twilio.\n\n1. Go to Settings > Integrations on the web app\n2. Click "Connect Twilio"\n3. Follow the setup wizard\n\nTwilio allows you to send text message updates to clients about their jobs.',
+      [{ text: 'Got it' }]
+    );
   };
 
   const handleContactClient = (client: Client) => {
@@ -508,11 +623,14 @@ export default function ChatHubScreen() {
           item.type === 'job' && styles.conversationAvatarJob,
           item.type === 'team' && styles.conversationAvatarTeam,
           item.type === 'client' && styles.conversationAvatarClient,
+          item.type === 'sms' && styles.smsConversationAvatar,
         ]}>
           {item.type === 'job' ? (
             <Feather name="briefcase" size={20} color={colors.primary} />
           ) : item.type === 'team' ? (
             <Feather name="users" size={20} color={colors.info} />
+          ) : item.type === 'sms' ? (
+            <Feather name="smartphone" size={20} color={colors.success} />
           ) : (
             <Text style={[styles.conversationAvatarText, { color: colors.success }]}>
               {item.avatarFallback}
@@ -602,10 +720,41 @@ export default function ChatHubScreen() {
             <Feather name="message-circle" size={22} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Messages</Text>
-            <Text style={styles.headerSubtitle}>Job discussions & team chat</Text>
+            <Text style={styles.headerTitle}>Job Communications</Text>
+            <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
           </View>
         </View>
+        
+        {!twilioConnected && activeFilter === 'customers' && (
+          <TouchableOpacity 
+            style={styles.twilioSetupBanner}
+            onPress={handleTwilioSetup}
+            activeOpacity={0.8}
+            data-testid="banner-twilio-setup"
+          >
+            <View style={styles.twilioSetupIcon}>
+              <Feather name="smartphone" size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.twilioSetupContent}>
+              <Text style={styles.twilioSetupTitle}>Set Up SMS Messaging</Text>
+              <Text style={styles.twilioSetupDescription}>
+                Connect Twilio to send job updates via text
+              </Text>
+            </View>
+            <View style={styles.twilioSetupButton}>
+              <Text style={styles.twilioSetupButtonText}>Learn How</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        
+        {twilioConnected && activeFilter === 'customers' && (
+          <View style={styles.twilioConnectedBanner}>
+            <Feather name="check-circle" size={16} color={colors.success} />
+            <Text style={styles.twilioConnectedText}>
+              SMS connected - Send texts directly to clients
+            </Text>
+          </View>
+        )}
         
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
@@ -641,7 +790,7 @@ export default function ChatHubScreen() {
         </View>
         
         <View style={styles.filterContainer}>
-          {(['all', 'jobs', 'team'] as FilterType[]).map((filter) => (
+          {(['all', 'jobs', 'customers', 'team'] as FilterType[]).map((filter) => (
             <TouchableOpacity
               key={filter}
               style={[styles.filterButton, activeFilter === filter && styles.filterButtonActive]}
@@ -652,7 +801,7 @@ export default function ChatHubScreen() {
                 styles.filterButtonText,
                 activeFilter === filter && styles.filterButtonTextActive
               ]}>
-                {filter === 'all' ? 'All' : filter === 'jobs' ? 'Jobs' : 'Team'}
+                {filter === 'all' ? 'All' : filter === 'jobs' ? 'Jobs' : filter === 'customers' ? 'Customers' : 'Team'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -674,10 +823,16 @@ export default function ChatHubScreen() {
               <View style={styles.emptyStateIcon}>
                 <Feather name="message-circle" size={28} color={colors.mutedForeground} />
               </View>
-              <Text style={styles.emptyStateTitle}>No conversations yet</Text>
+              <Text style={styles.emptyStateTitle}>
+                {activeFilter === 'customers' ? 'No customer conversations' : 'No conversations yet'}
+              </Text>
               <Text style={styles.emptyStateText}>
-                When you create jobs, you'll see job discussions here. 
-                Use the Team Chat button above to chat with your team.
+                {activeFilter === 'customers' 
+                  ? twilioConnected 
+                    ? 'Start messaging clients by sending them job updates via SMS.'
+                    : 'Set up Twilio to send SMS messages to your clients about their jobs.'
+                  : 'Create jobs to start job discussions, or use Team Chat to coordinate with your crew.'
+                }
               </Text>
             </View>
           ) : (
@@ -685,7 +840,8 @@ export default function ChatHubScreen() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>
                   {activeFilter === 'all' ? 'All Conversations' : 
-                   activeFilter === 'jobs' ? 'Job Discussions' : 'Team'}
+                   activeFilter === 'jobs' ? 'Job Discussions' : 
+                   activeFilter === 'customers' ? 'Customer SMS' : 'Team'}
                 </Text>
               </View>
               {conversations.map(renderConversation)}

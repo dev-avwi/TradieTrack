@@ -1080,7 +1080,10 @@ export default function ChatHub() {
     <div className="flex flex-col h-full border-r bg-background" data-testid="conversation-list">
       <div className="shrink-0 p-4 pb-3 border-b">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <h1 className="text-lg font-bold">Messages</h1>
+          <div>
+            <h1 className="text-lg font-bold">Job Communications</h1>
+            <p className="text-xs text-muted-foreground">SMS, team & job discussions</p>
+          </div>
           <Button
             onClick={() => setNewSmsDialogOpen(true)}
             size="sm"
@@ -1088,7 +1091,7 @@ export default function ChatHub() {
             data-testid="button-new-sms"
           >
             <Plus className="h-4 w-4" />
-            New
+            New SMS
           </Button>
         </div>
 
