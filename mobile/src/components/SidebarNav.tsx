@@ -280,16 +280,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logo: {
     width: 40,
     height: 40,
+    minWidth: 40,
+    maxWidth: 40,
+    minHeight: 40,
+    maxHeight: 40,
     borderRadius: 10,
     marginRight: 12,
+    flexShrink: 0,
   },
   logoPlaceholder: {
     width: 40,
     height: 40,
+    minWidth: 40,
+    maxWidth: 40,
+    minHeight: 40,
+    maxHeight: 40,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    flexShrink: 0,
   },
   logoText: {
     color: '#FFFFFF',
@@ -299,6 +309,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerTextContainer: {
     flex: 1,
     justifyContent: 'center',
+    minWidth: 0,
+    overflow: 'hidden',
   },
   businessName: {
     fontSize: 16,
