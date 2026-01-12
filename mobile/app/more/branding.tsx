@@ -22,6 +22,7 @@ import {
   useAdvancedThemeStore,
   AppearanceSettings,
   TypographySettings,
+  PRESET_THEMES,
 } from '../../src/lib/advanced-theme-store';
 import api from '../../src/lib/api';
 

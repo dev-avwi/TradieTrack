@@ -133,13 +133,15 @@ export function SidebarNav() {
         onPress={() => router.push('/more/branding' as any)}
         data-testid="sidebar-header-settings"
       >
-        {logoUrl ? (
-          <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
-        ) : (
-          <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
-            <Text style={themedStyles.logoText}>{businessName.charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
+        <View style={themedStyles.logoContainer}>
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
+          ) : (
+            <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
+              <Text style={themedStyles.logoText}>{businessName.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+        </View>
         <View style={themedStyles.headerTextContainer}>
           <Text style={[themedStyles.businessName, { color: colors.foreground }]} numberOfLines={1} ellipsizeMode="tail">
             {businessName}
@@ -277,29 +279,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  logo: {
+  logoContainer: {
     width: 40,
     height: 40,
-    minWidth: 40,
-    maxWidth: 40,
-    minHeight: 40,
-    maxHeight: 40,
-    borderRadius: 10,
     marginRight: 12,
     flexShrink: 0,
   },
+  logo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
   logoPlaceholder: {
-    width: 40,
-    height: 40,
-    minWidth: 40,
-    maxWidth: 40,
-    minHeight: 40,
-    maxHeight: 40,
+    width: '100%',
+    height: '100%',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-    flexShrink: 0,
   },
   logoText: {
     color: '#FFFFFF',
