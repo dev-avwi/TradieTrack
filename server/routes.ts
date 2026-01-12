@@ -7985,10 +7985,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const job = await storage.createJob(jobData);
       
       // If job was created from a quote, update the quote's jobId to link back
-      if (data.quoteId) {
+      // Use req.body.quoteId since insertJobSchema strips non-schema fields
+      const quoteIdFromRequest = req.body.quoteId;
+      if (quoteIdFromRequest) {
         try {
-          await storage.updateQuote(data.quoteId, effectiveUserId, { jobId: job.id });
-          console.log(`[Job Creation] Linked quote ${data.quoteId} to new job ${job.id}`);
+          await storage.updateQuote(quoteIdFromRequest, effectiveUserId, { jobId: job.id });
+          console.log(`[Job Creation] Linked quote ${quoteIdFromRequest} to new job ${job.id}`);
         } catch (linkError) {
           console.error(`[Job Creation] Failed to link quote to job:`, linkError);
           // Don't fail job creation if quote linking fails
