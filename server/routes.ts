@@ -85,6 +85,8 @@ import {
   teamMemberAvailability,
   teamMemberTimeOff,
   teamMemberMetrics,
+  // Job assignment requests
+  jobAssignmentRequests,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, and } from "drizzle-orm";
@@ -7267,6 +7269,268 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching my jobs:", error);
       res.status(500).json({ error: "Failed to fetch my jobs" });
+    }
+  });
+
+  // Available jobs for team members to request assignment (minimal info for privacy)
+  // Only shows unassigned, active jobs with restricted data
+  app.get("/api/jobs/available", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      
+      // Check if user has REQUEST_JOB_ASSIGNMENT permission
+      const hasPermission = userContext.permissions.includes('request_job_assignment') || userContext.isOwner;
+      if (!hasPermission) {
+        return res.status(403).json({ error: "You don't have permission to view available jobs" });
+      }
+      
+      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      
+      // Filter to only unassigned, active jobs
+      const availableJobs = jobs
+        .filter(job => 
+          !job.assignedTo && 
+          job.status !== 'done' && 
+          job.status !== 'invoiced' &&
+          job.status !== 'cancelled' &&
+          !job.isArchived
+        )
+        .map(job => ({
+          // Return minimal info only - privacy protected
+          id: job.id,
+          title: job.title,
+          description: job.description ? job.description.substring(0, 100) + (job.description.length > 100 ? '...' : '') : null,
+          status: job.status,
+          scheduledAt: job.scheduledAt,
+          scheduledEndAt: job.scheduledEndAt,
+          estimatedDuration: job.estimatedDuration,
+          priority: job.priority,
+          // Location info - only suburb/city, not full address
+          suburb: job.address ? job.address.split(',').slice(-2, -1)[0]?.trim() : null,
+          // NO client name, phone, email, full address for privacy
+          createdAt: job.createdAt,
+        }))
+        .sort((a, b) => {
+          // Sort by scheduled date
+          if (a.scheduledAt && b.scheduledAt) {
+            return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+          }
+          if (a.scheduledAt) return -1;
+          if (b.scheduledAt) return 1;
+          return 0;
+        });
+      
+      res.json(availableJobs);
+    } catch (error) {
+      console.error("Error fetching available jobs:", error);
+      res.status(500).json({ error: "Failed to fetch available jobs" });
+    }
+  });
+
+  // Request assignment to a job (for team members)
+  app.post("/api/jobs/:id/request-assignment", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      
+      // Check if user has REQUEST_JOB_ASSIGNMENT permission
+      const hasPermission = userContext.permissions.includes('request_job_assignment');
+      if (!hasPermission) {
+        return res.status(403).json({ error: "You don't have permission to request job assignments" });
+      }
+      
+      // Must be a team member (not owner)
+      if (userContext.isOwner || !userContext.teamMemberId) {
+        return res.status(400).json({ error: "Only team members can request job assignments" });
+      }
+      
+      const { reason } = req.body;
+      const jobId = req.params.id;
+      
+      // Verify job exists and is available
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      if (job.assignedTo) {
+        return res.status(400).json({ error: "This job is already assigned" });
+      }
+      
+      if (job.status === 'done' || job.status === 'invoiced' || job.status === 'cancelled') {
+        return res.status(400).json({ error: "Cannot request assignment to a completed or cancelled job" });
+      }
+      
+      // Check for existing pending request
+      const existingRequest = await db.select()
+        .from(jobAssignmentRequests)
+        .where(
+          and(
+            eq(jobAssignmentRequests.jobId, jobId),
+            eq(jobAssignmentRequests.requesterId, req.userId),
+            eq(jobAssignmentRequests.status, 'pending')
+          )
+        )
+        .limit(1);
+      
+      if (existingRequest.length > 0) {
+        return res.status(400).json({ error: "You already have a pending request for this job" });
+      }
+      
+      // Create the assignment request
+      const [request] = await db.insert(jobAssignmentRequests)
+        .values({
+          jobId,
+          teamMemberId: userContext.teamMemberId,
+          requesterId: req.userId,
+          businessOwnerId: userContext.effectiveUserId,
+          reason: reason || null,
+          status: 'pending',
+        })
+        .returning();
+      
+      // Create notification for owner
+      const requester = await storage.getUser(req.userId);
+      await storage.createNotification({
+        userId: userContext.effectiveUserId,
+        type: 'job_assignment_request',
+        title: 'Job Assignment Request',
+        message: `${requester?.firstName || 'A team member'} has requested to be assigned to: ${job.title}`,
+        data: { requestId: request.id, jobId, requesterId: req.userId },
+      });
+      
+      res.json({ 
+        success: true, 
+        request,
+        message: 'Your assignment request has been submitted' 
+      });
+    } catch (error) {
+      console.error("Error requesting job assignment:", error);
+      res.status(500).json({ error: "Failed to request job assignment" });
+    }
+  });
+
+  // Get job assignment requests (for owner)
+  app.get("/api/job-assignment-requests", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      
+      // Only owner can view all requests
+      if (!userContext.isOwner) {
+        // Team members can see their own requests
+        const myRequests = await db.select()
+          .from(jobAssignmentRequests)
+          .where(eq(jobAssignmentRequests.requesterId, req.userId))
+          .orderBy(desc(jobAssignmentRequests.createdAt));
+        return res.json(myRequests);
+      }
+      
+      // Get all pending requests for this business
+      const status = req.query.status || 'pending';
+      const requests = await db.select()
+        .from(jobAssignmentRequests)
+        .where(
+          and(
+            eq(jobAssignmentRequests.businessOwnerId, req.userId),
+            status !== 'all' ? eq(jobAssignmentRequests.status, status) : undefined
+          )
+        )
+        .orderBy(desc(jobAssignmentRequests.createdAt));
+      
+      // Enrich with job and requester details
+      const enrichedRequests = await Promise.all(requests.map(async (request) => {
+        const job = await storage.getJob(request.jobId, req.userId);
+        const requester = await storage.getUser(request.requesterId);
+        return {
+          ...request,
+          jobTitle: job?.title || 'Unknown Job',
+          jobScheduledAt: job?.scheduledAt,
+          requesterName: requester ? `${requester.firstName || ''} ${requester.lastName || ''}`.trim() : 'Unknown',
+          requesterEmail: requester?.email,
+        };
+      }));
+      
+      res.json(enrichedRequests);
+    } catch (error) {
+      console.error("Error fetching job assignment requests:", error);
+      res.status(500).json({ error: "Failed to fetch requests" });
+    }
+  });
+
+  // Respond to job assignment request (approve/reject)
+  app.post("/api/job-assignment-requests/:id/respond", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      
+      // Only owner can respond to requests
+      if (!userContext.isOwner) {
+        return res.status(403).json({ error: "Only the business owner can respond to assignment requests" });
+      }
+      
+      const { status, responseNote } = req.body;
+      const requestId = req.params.id;
+      
+      if (!status || !['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'rejected'" });
+      }
+      
+      // Get the request
+      const [request] = await db.select()
+        .from(jobAssignmentRequests)
+        .where(
+          and(
+            eq(jobAssignmentRequests.id, requestId),
+            eq(jobAssignmentRequests.businessOwnerId, req.userId)
+          )
+        )
+        .limit(1);
+      
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+      
+      if (request.status !== 'pending') {
+        return res.status(400).json({ error: "This request has already been processed" });
+      }
+      
+      // Update the request
+      const [updatedRequest] = await db.update(jobAssignmentRequests)
+        .set({
+          status,
+          respondedBy: req.userId,
+          respondedAt: new Date(),
+          responseNote: responseNote || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(jobAssignmentRequests.id, requestId))
+        .returning();
+      
+      // If approved, assign the job to the team member
+      if (status === 'approved') {
+        await storage.updateJob(request.jobId, req.userId, {
+          assignedTo: request.requesterId,
+        });
+      }
+      
+      // Notify the requester
+      const job = await storage.getJob(request.jobId, req.userId);
+      await storage.createNotification({
+        userId: request.requesterId,
+        type: 'job_assignment_response',
+        title: status === 'approved' ? 'Job Assignment Approved!' : 'Job Assignment Request Declined',
+        message: status === 'approved' 
+          ? `You've been assigned to: ${job?.title || 'the job'}` 
+          : `Your request for ${job?.title || 'the job'} was declined${responseNote ? `: ${responseNote}` : ''}`,
+        data: { requestId, jobId: request.jobId, status },
+      });
+      
+      res.json({ 
+        success: true, 
+        request: updatedRequest,
+        message: status === 'approved' ? 'Request approved and job assigned' : 'Request declined'
+      });
+    } catch (error) {
+      console.error("Error responding to job assignment request:", error);
+      res.status(500).json({ error: "Failed to process request" });
     }
   });
 
