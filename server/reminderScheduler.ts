@@ -4,8 +4,9 @@ import { processRecurringForUser } from './recurringService';
 import { checkAndExpireTrials } from './subscriptionService';
 import { processTimeBasedAutomations } from './automationService';
 import { runDailyBillingReminders } from './billingReminderService';
-import { jobs, quotes, invoices, smsAutomationRules } from '@shared/schema';
-import { and, or, eq, lt, isNull, gte, lte } from 'drizzle-orm';
+import { notifyInstallmentDue } from './notifications';
+import { jobs, quotes, invoices, smsAutomationRules, paymentSchedules, paymentInstallments } from '@shared/schema';
+import { and, or, eq, lt, isNull, gte, lte, not } from 'drizzle-orm';
 
 let reminderInterval: NodeJS.Timeout | null = null;
 let recurringInterval: NodeJS.Timeout | null = null;
@@ -14,6 +15,7 @@ let automationInterval: NodeJS.Timeout | null = null;
 let archiveInterval: NodeJS.Timeout | null = null;
 let smsAutomationInterval: NodeJS.Timeout | null = null;
 let billingReminderInterval: NodeJS.Timeout | null = null;
+let installmentReminderInterval: NodeJS.Timeout | null = null;
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const RECURRING_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -22,6 +24,7 @@ const AUTOMATION_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const ARCHIVE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 const SMS_AUTOMATION_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const BILLING_REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
+const INSTALLMENT_REMINDER_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours (twice daily)
 
 async function processAllUserReminders(): Promise<void> {
   console.log('[Scheduler] Processing automatic reminders...');
@@ -514,6 +517,80 @@ export function startBillingReminderScheduler(): void {
   console.log(`[Scheduler] Billing reminder scheduler running every ${BILLING_REMINDER_INTERVAL_MS / 3600000} hours`);
 }
 
+async function processInstallmentReminders(): Promise<void> {
+  console.log('[Scheduler] Processing installment reminders...');
+  
+  try {
+    const now = new Date();
+    const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    
+    // Get all active payment schedules
+    const allSchedules = await db.select().from(paymentSchedules)
+      .where(eq(paymentSchedules.isActive, true));
+    
+    let remindersCreated = 0;
+    
+    for (const schedule of allSchedules) {
+      // Get pending installments for this schedule
+      const pendingInstallments = await db.select().from(paymentInstallments)
+        .where(and(
+          eq(paymentInstallments.scheduleId, schedule.id),
+          eq(paymentInstallments.status, 'pending'),
+          lte(paymentInstallments.dueDate, threeDaysFromNow),
+          gte(paymentInstallments.dueDate, now)
+        ));
+      
+      for (const installment of pendingInstallments) {
+        // Check if we already sent a reminder today
+        const existingNotifications = await storage.getNotifications(schedule.userId);
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        
+        const alreadyNotified = existingNotifications.some(n => 
+          n.type === 'installment_due' && 
+          n.relatedId === schedule.invoiceId &&
+          new Date(n.createdAt) >= todayStart &&
+          n.message.includes(`Installment ${installment.installmentNumber}`)
+        );
+        
+        if (!alreadyNotified) {
+          const daysUntilDue = Math.ceil((new Date(installment.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const client = await storage.getClient(schedule.clientId, schedule.userId);
+          
+          await notifyInstallmentDue(
+            storage,
+            schedule.userId,
+            installment,
+            schedule,
+            client?.name || 'Customer',
+            daysUntilDue
+          );
+          remindersCreated++;
+        }
+      }
+    }
+    
+    console.log(`[Scheduler] Installment reminders: ${remindersCreated} created`);
+  } catch (error) {
+    console.error('[Scheduler] Error processing installment reminders:', error);
+  }
+}
+
+export function startInstallmentReminderScheduler(): void {
+  console.log('[Scheduler] Starting installment reminder scheduler...');
+  
+  if (installmentReminderInterval) {
+    clearInterval(installmentReminderInterval);
+  }
+  
+  // Run first time after a delay
+  setTimeout(processInstallmentReminders, 20000);
+  
+  installmentReminderInterval = setInterval(processInstallmentReminders, INSTALLMENT_REMINDER_INTERVAL_MS);
+  
+  console.log(`[Scheduler] Installment reminder scheduler running every ${INSTALLMENT_REMINDER_INTERVAL_MS / 3600000} hours`);
+}
+
 export function startAllSchedulers(): void {
   startReminderScheduler();
   startRecurringScheduler();
@@ -522,6 +599,7 @@ export function startAllSchedulers(): void {
   startArchiveScheduler();
   startSmsAutomationScheduler();
   startBillingReminderScheduler();
+  startInstallmentReminderScheduler();
 }
 
 export function stopAllSchedulers(): void {
@@ -558,6 +636,11 @@ export function stopAllSchedulers(): void {
   if (billingReminderInterval) {
     clearInterval(billingReminderInterval);
     billingReminderInterval = null;
+  }
+  
+  if (installmentReminderInterval) {
+    clearInterval(installmentReminderInterval);
+    installmentReminderInterval = null;
   }
   
   console.log('[Scheduler] All schedulers stopped');
