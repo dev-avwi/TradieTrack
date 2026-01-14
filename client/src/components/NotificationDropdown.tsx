@@ -22,6 +22,9 @@ interface UnifiedNotification {
   message: string;
   relatedId?: string;
   relatedType?: string;
+  priority?: 'urgent' | 'important' | 'info';
+  actionUrl?: string;
+  actionLabel?: string;
   read: boolean;
   dismissed: boolean;
   createdAt: string;
@@ -222,6 +225,24 @@ export default function NotificationDropdown() {
     return null;
   };
 
+  const getPriorityBadge = (notification: UnifiedNotification) => {
+    if (notification.priority === 'urgent') {
+      return (
+        <Badge className="text-[10px] px-1.5 py-0 h-4 bg-green-500 text-white border-0">
+          Money
+        </Badge>
+      );
+    }
+    if (notification.priority === 'important') {
+      return (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+          Action
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -298,6 +319,9 @@ export default function NotificationDropdown() {
                 const Icon = getNotificationIcon(notification);
                 const colors = getNotificationColor(notification);
                 const typeBadge = getNotificationTypeBadge(notification);
+                const priorityBadge = getPriorityBadge(notification);
+                const urgentBorder = notification.priority === 'urgent' ? 'border-l-4 border-l-green-500' : '';
+                const importantBorder = notification.priority === 'important' ? 'border-l-4 border-l-amber-500' : '';
                 
                 return (
                   <div 
@@ -306,7 +330,7 @@ export default function NotificationDropdown() {
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <div
-                      className={`px-4 py-4 cursor-pointer transition-all duration-200 hover:bg-muted/50 active:bg-muted border-b border-border/50 ${
+                      className={`px-4 py-4 cursor-pointer transition-all duration-200 hover:bg-muted/50 active:bg-muted border-b border-border/50 ${urgentBorder} ${importantBorder} ${
                         !notification.read ? 'bg-primary/5' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification)}
@@ -327,6 +351,7 @@ export default function NotificationDropdown() {
                                 >
                                   {notification.title}
                                 </p>
+                                {priorityBadge}
                                 {typeBadge}
                                 {!notification.read && (
                                   <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" data-testid={`indicator-unread-${notification.id}`} />

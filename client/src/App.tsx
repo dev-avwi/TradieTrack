@@ -82,6 +82,7 @@ import CommunicationsHub from "@/pages/CommunicationsHub";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
 import ImmersiveOnboarding from "@/components/ImmersiveOnboarding";
+import WhatYouMissedModal from "@/components/WhatYouMissedModal";
 
 // Types for job completion
 interface JobPhoto {
@@ -1067,6 +1068,9 @@ function AppLayout() {
       
       {/* Payment Toast Provider - shows celebratory "Cha-ching!" when payments come in */}
       <PaymentToastProvider />
+      
+      {/* What You Missed popup - shows on app open */}
+      <WhatYouMissedModal />
       
       {/* AI Assistant - floating above all pages */}
       <FloatingAIChat onNavigate={handleNavigation} />
