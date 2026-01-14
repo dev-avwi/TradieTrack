@@ -218,6 +218,12 @@ import {
   leads,
   type Lead,
   type InsertLead,
+  paymentSchedules,
+  paymentInstallments,
+  type PaymentSchedule,
+  type InsertPaymentSchedule,
+  type PaymentInstallment,
+  type InsertPaymentInstallment,
   permissionRequests,
   type PermissionRequest,
   type InsertPermissionRequest,
@@ -684,6 +690,23 @@ export interface IStorage {
   createLead(lead: InsertLead & { userId: string }): Promise<Lead>;
   updateLead(id: string, userId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string, userId: string): Promise<boolean>;
+
+  // Payment Schedules (Installment Plans)
+  getPaymentSchedules(userId: string): Promise<PaymentSchedule[]>;
+  getPaymentSchedule(id: string, userId: string): Promise<PaymentSchedule | undefined>;
+  getPaymentScheduleByInvoice(invoiceId: string, userId: string): Promise<PaymentSchedule | undefined>;
+  createPaymentSchedule(schedule: InsertPaymentSchedule): Promise<PaymentSchedule>;
+  updatePaymentSchedule(id: string, userId: string, updates: Partial<InsertPaymentSchedule>): Promise<PaymentSchedule | undefined>;
+  deletePaymentSchedule(id: string, userId: string): Promise<boolean>;
+  
+  // Payment Installments
+  getPaymentInstallments(scheduleId: string): Promise<PaymentInstallment[]>;
+  getPaymentInstallment(id: string): Promise<PaymentInstallment | undefined>;
+  getDueInstallments(): Promise<PaymentInstallment[]>;
+  getOverdueInstallments(): Promise<PaymentInstallment[]>;
+  createPaymentInstallment(installment: InsertPaymentInstallment): Promise<PaymentInstallment>;
+  updatePaymentInstallment(id: string, updates: Partial<InsertPaymentInstallment>): Promise<PaymentInstallment | undefined>;
+  markInstallmentPaid(id: string, paidAmount: string, paymentMethod: string): Promise<PaymentInstallment | undefined>;
 
   // Tap to Pay Terms & Conditions (Apple Requirement)
   getTapToPayTermsAcceptance(userId: string): Promise<TapToPayTermsAcceptance | undefined>;
@@ -6076,6 +6099,146 @@ Thank you for your prompt attention to this matter.`,
       .where(eq(teamMembers.memberId, userId))
       .limit(1);
     return result[0];
+  }
+
+  // Payment Schedules (Installment Plans)
+  async getPaymentSchedules(userId: string): Promise<PaymentSchedule[]> {
+    return await db
+      .select()
+      .from(paymentSchedules)
+      .where(eq(paymentSchedules.userId, userId))
+      .orderBy(desc(paymentSchedules.createdAt));
+  }
+
+  async getPaymentSchedule(id: string, userId: string): Promise<PaymentSchedule | undefined> {
+    const result = await db
+      .select()
+      .from(paymentSchedules)
+      .where(and(eq(paymentSchedules.id, id), eq(paymentSchedules.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getPaymentScheduleByInvoice(invoiceId: string, userId: string): Promise<PaymentSchedule | undefined> {
+    const result = await db
+      .select()
+      .from(paymentSchedules)
+      .where(and(eq(paymentSchedules.invoiceId, invoiceId), eq(paymentSchedules.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createPaymentSchedule(schedule: InsertPaymentSchedule): Promise<PaymentSchedule> {
+    const [created] = await db
+      .insert(paymentSchedules)
+      .values({
+        id: randomUUID(),
+        ...schedule,
+      })
+      .returning();
+    return created;
+  }
+
+  async updatePaymentSchedule(id: string, userId: string, updates: Partial<InsertPaymentSchedule>): Promise<PaymentSchedule | undefined> {
+    const [updated] = await db
+      .update(paymentSchedules)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(paymentSchedules.id, id), eq(paymentSchedules.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deletePaymentSchedule(id: string, userId: string): Promise<boolean> {
+    await db
+      .delete(paymentSchedules)
+      .where(and(eq(paymentSchedules.id, id), eq(paymentSchedules.userId, userId)));
+    return true;
+  }
+
+  // Payment Installments
+  async getPaymentInstallments(scheduleId: string): Promise<PaymentInstallment[]> {
+    return await db
+      .select()
+      .from(paymentInstallments)
+      .where(eq(paymentInstallments.scheduleId, scheduleId))
+      .orderBy(asc(paymentInstallments.installmentNumber));
+  }
+
+  async getPaymentInstallment(id: string): Promise<PaymentInstallment | undefined> {
+    const result = await db
+      .select()
+      .from(paymentInstallments)
+      .where(eq(paymentInstallments.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getDueInstallments(): Promise<PaymentInstallment[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 3); // Due in next 3 days
+    
+    return await db
+      .select()
+      .from(paymentInstallments)
+      .where(and(
+        eq(paymentInstallments.status, 'pending'),
+        gte(paymentInstallments.dueDate, today),
+        lte(paymentInstallments.dueDate, tomorrow)
+      ))
+      .orderBy(asc(paymentInstallments.dueDate));
+  }
+
+  async getOverdueInstallments(): Promise<PaymentInstallment[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return await db
+      .select()
+      .from(paymentInstallments)
+      .where(and(
+        eq(paymentInstallments.status, 'pending'),
+        lt(paymentInstallments.dueDate, today)
+      ))
+      .orderBy(asc(paymentInstallments.dueDate));
+  }
+
+  async createPaymentInstallment(installment: InsertPaymentInstallment): Promise<PaymentInstallment> {
+    const [created] = await db
+      .insert(paymentInstallments)
+      .values({
+        id: randomUUID(),
+        ...installment,
+      })
+      .returning();
+    return created;
+  }
+
+  async updatePaymentInstallment(id: string, updates: Partial<InsertPaymentInstallment>): Promise<PaymentInstallment | undefined> {
+    const [updated] = await db
+      .update(paymentInstallments)
+      .set(updates)
+      .where(eq(paymentInstallments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markInstallmentPaid(id: string, paidAmount: string, paymentMethod: string): Promise<PaymentInstallment | undefined> {
+    const [updated] = await db
+      .update(paymentInstallments)
+      .set({
+        status: 'paid',
+        paidAt: new Date(),
+        paidAmount,
+        paymentMethod,
+      })
+      .where(eq(paymentInstallments.id, id))
+      .returning();
+    return updated;
   }
 }
 
