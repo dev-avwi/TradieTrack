@@ -620,6 +620,8 @@ export const jobs = pgTable("jobs", {
   xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
   xeroQuoteId: varchar("xero_quote_id"), // Xero quote ID if associated
   xeroSyncedAt: timestamp("xero_synced_at"), // When job was last synced with Xero
+  // Trade-specific custom fields (stored as JSON object keyed by field ID)
+  customFields: jsonb("custom_fields").default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -695,6 +697,8 @@ export const quotes = pgTable("quotes", {
   xeroQuoteId: varchar("xero_quote_id"), // Xero quote ID
   xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
   xeroSyncedAt: timestamp("xero_synced_at"), // When quote was last synced with Xero
+  // Trade-specific custom fields (stored as JSON object keyed by field ID)
+  customFields: jsonb("custom_fields").default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -774,6 +778,8 @@ export const invoices = pgTable("invoices", {
   xeroInvoiceId: varchar("xero_invoice_id"), // Xero invoice ID to prevent duplicate pushes
   xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
   xeroSyncedAt: timestamp("xero_synced_at"), // When invoice was last synced to Xero
+  // Trade-specific custom fields (stored as JSON object keyed by field ID)
+  customFields: jsonb("custom_fields").default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
