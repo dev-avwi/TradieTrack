@@ -23792,6 +23792,343 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== PAYMENT SCHEDULES (INSTALLMENT PLANS) =====
+
+  // Get all payment schedules for user
+  app.get("/api/payment-schedules", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const schedules = await storage.getPaymentSchedules(userId);
+      
+      // Enrich with installments and invoice info
+      const enrichedSchedules = await Promise.all(schedules.map(async (schedule) => {
+        const installments = await storage.getPaymentInstallments(schedule.id);
+        const invoice = await storage.getInvoice(schedule.invoiceId, userId);
+        const client = await storage.getClient(schedule.clientId, userId);
+        return {
+          ...schedule,
+          installments,
+          invoice,
+          client,
+          paidCount: installments.filter(i => i.status === 'paid').length,
+          totalPaid: installments.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.paidAmount || i.amount), 0),
+        };
+      }));
+      
+      res.json(enrichedSchedules);
+    } catch (error: any) {
+      console.error('Error getting payment schedules:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get payment schedule by invoice
+  app.get("/api/payment-schedules/invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { invoiceId } = req.params;
+      
+      const schedule = await storage.getPaymentScheduleByInvoice(invoiceId, userId);
+      if (!schedule) {
+        return res.status(404).json({ error: 'No payment schedule found for this invoice' });
+      }
+      
+      const installments = await storage.getPaymentInstallments(schedule.id);
+      res.json({ ...schedule, installments });
+    } catch (error: any) {
+      console.error('Error getting payment schedule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a payment schedule with installments
+  app.post("/api/payment-schedules", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { invoiceId, numberOfInstallments, frequency, startDate, notes } = req.body;
+      
+      // Get the invoice
+      const invoice = await storage.getInvoice(invoiceId, userId);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      
+      // Check if schedule already exists
+      const existingSchedule = await storage.getPaymentScheduleByInvoice(invoiceId, userId);
+      if (existingSchedule) {
+        return res.status(400).json({ error: 'Payment schedule already exists for this invoice' });
+      }
+      
+      const totalAmount = Number(invoice.total || 0);
+      const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
+      
+      // Create the schedule
+      const schedule = await storage.createPaymentSchedule({
+        userId,
+        invoiceId,
+        clientId: invoice.clientId,
+        totalAmount: totalAmount.toString(),
+        numberOfInstallments,
+        frequency: frequency || 'monthly',
+        startDate: new Date(startDate),
+        notes,
+        isActive: true,
+      });
+      
+      // Calculate due dates and create installments
+      const installments = [];
+      let dueDate = new Date(startDate);
+      
+      for (let i = 1; i <= numberOfInstallments; i++) {
+        // Last installment gets any rounding difference
+        const amount = i === numberOfInstallments 
+          ? (totalAmount - (installmentAmount * (numberOfInstallments - 1))).toFixed(2)
+          : installmentAmount.toFixed(2);
+        
+        const installment = await storage.createPaymentInstallment({
+          scheduleId: schedule.id,
+          installmentNumber: i,
+          amount,
+          dueDate: new Date(dueDate),
+          status: 'pending',
+        });
+        installments.push(installment);
+        
+        // Calculate next due date based on frequency
+        if (frequency === 'weekly') {
+          dueDate.setDate(dueDate.getDate() + 7);
+        } else if (frequency === 'fortnightly') {
+          dueDate.setDate(dueDate.getDate() + 14);
+        } else {
+          dueDate.setMonth(dueDate.getMonth() + 1);
+        }
+      }
+      
+      // Create notification for the user
+      await storage.createNotification({
+        userId,
+        type: 'payment_schedule_created',
+        title: 'Payment Plan Created',
+        message: `${numberOfInstallments}-installment plan for $${totalAmount.toFixed(2)} set up`,
+        relatedType: 'invoice',
+        relatedId: invoiceId,
+        priority: 'info',
+        actionUrl: `/invoices/${invoiceId}`,
+        actionLabel: 'View Invoice',
+      });
+      
+      res.json({ ...schedule, installments });
+    } catch (error: any) {
+      console.error('Error creating payment schedule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Mark an installment as paid
+  app.post("/api/payment-installments/:id/pay", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { amount, paymentMethod } = req.body;
+      
+      const installment = await storage.getPaymentInstallment(id);
+      if (!installment) {
+        return res.status(404).json({ error: 'Installment not found' });
+      }
+      
+      // Verify user owns this schedule
+      const schedule = await storage.getPaymentSchedule(installment.scheduleId, userId);
+      if (!schedule) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const updated = await storage.markInstallmentPaid(id, amount || installment.amount, paymentMethod || 'manual');
+      
+      // Check if all installments are paid
+      const allInstallments = await storage.getPaymentInstallments(schedule.id);
+      const allPaid = allInstallments.every(i => i.id === id || i.status === 'paid');
+      
+      if (allPaid) {
+        // Mark invoice as paid
+        await storage.updateInvoice(schedule.invoiceId, userId, { 
+          status: 'paid', 
+          paidAt: new Date() 
+        });
+        
+        // Create notification
+        await storage.createNotification({
+          userId,
+          type: 'payment_plan_completed',
+          title: 'Payment Plan Complete!',
+          message: `All installments received for $${Number(schedule.totalAmount).toFixed(2)}`,
+          relatedType: 'invoice',
+          relatedId: schedule.invoiceId,
+          priority: 'urgent',
+          actionUrl: `/invoices/${schedule.invoiceId}`,
+          actionLabel: 'View Invoice',
+        });
+      } else {
+        // Notification for installment received
+        const client = await storage.getClient(schedule.clientId, userId);
+        await storage.createNotification({
+          userId,
+          type: 'installment_received',
+          title: 'Installment Received',
+          message: `${client?.name || 'Client'} paid installment ${installment.installmentNumber} of ${schedule.numberOfInstallments}`,
+          relatedType: 'invoice',
+          relatedId: schedule.invoiceId,
+          priority: 'urgent',
+          actionUrl: `/invoices/${schedule.invoiceId}`,
+          actionLabel: 'View Invoice',
+        });
+      }
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error marking installment paid:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a payment schedule
+  app.delete("/api/payment-schedules/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      await storage.deletePaymentSchedule(id, userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting payment schedule:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== TECHNICIAN UTILIZATION METRICS =====
+
+  // Get team utilization metrics
+  app.get("/api/reports/utilization", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { startDate, endDate } = req.query;
+      
+      // Default to last 30 days
+      const end = endDate ? new Date(endDate as string) : new Date();
+      const start = startDate ? new Date(startDate as string) : new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // Get team members
+      const teamMembers = await storage.getTeamMembers(userId);
+      
+      // Get all jobs in date range
+      const jobs = await storage.getJobs(userId);
+      const jobsInRange = jobs.filter(j => {
+        const jobDate = j.scheduledAt || j.createdAt;
+        return jobDate && new Date(jobDate) >= start && new Date(jobDate) <= end;
+      });
+      
+      // Calculate days and work hours for the period
+      const daysInRange = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      const workDays = Math.ceil(daysInRange * 5 / 7);
+      const availableMinutes = workDays * 8 * 60;
+      
+      // Calculate metrics per team member
+      const utilizationMetrics = await Promise.all([
+        // Owner metrics
+        (async () => {
+          const owner = await storage.getUser(userId);
+          const ownerJobs = jobsInRange.filter(j => !j.assignedTo || j.assignedTo === userId);
+          const ownerTimeEntries = await storage.getTimeEntriesInRange(userId, start, end);
+          const billableMinutes = ownerTimeEntries.reduce((sum, t) => sum + (t.duration || 0), 0);
+          const completedJobs = ownerJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length;
+          
+          return {
+            memberId: userId,
+            name: owner?.firstName ? `${owner.firstName} ${owner.lastName || ''}`.trim() : owner?.username || 'Owner',
+            role: 'Owner',
+            billableHours: Math.round(billableMinutes / 60 * 10) / 10,
+            availableHours: Math.round(availableMinutes / 60),
+            utilizationPercent: availableMinutes > 0 ? Math.round((billableMinutes / availableMinutes) * 100) : 0,
+            jobsCompleted: completedJobs,
+            jobsAssigned: ownerJobs.length,
+            averageJobDurationMinutes: completedJobs > 0 ? Math.round(billableMinutes / completedJobs) : 0,
+          };
+        })(),
+        // Team member metrics
+        ...teamMembers.map(async (member) => {
+          const memberJobs = jobsInRange.filter(j => j.assignedTo === member.memberId);
+          // Get time entries for this specific team member
+          const memberTimeEntries = member.memberId 
+            ? await storage.getTimeEntriesInRange(member.memberId, start, end) 
+            : [];
+          const billableMinutes = memberTimeEntries.reduce((sum, t) => sum + (t.duration || 0), 0);
+          const completedJobs = memberJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length;
+          
+          const user = await storage.getUser(member.memberId!);
+          
+          return {
+            memberId: member.memberId,
+            name: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || member.email,
+            role: member.role || 'Team Member',
+            billableHours: Math.round(billableMinutes / 60 * 10) / 10,
+            availableHours: Math.round(availableMinutes / 60),
+            utilizationPercent: availableMinutes > 0 ? Math.round((billableMinutes / availableMinutes) * 100) : 0,
+            jobsCompleted: completedJobs,
+            jobsAssigned: memberJobs.length,
+            averageJobDurationMinutes: completedJobs > 0 ? Math.round(billableMinutes / completedJobs) : 0,
+          };
+        }),
+      ]);
+      
+      // Overall stats
+      const totalBillableHours = utilizationMetrics.reduce((sum, m) => sum + m.billableHours, 0);
+      const totalAvailableHours = utilizationMetrics.reduce((sum, m) => sum + m.availableHours, 0);
+      const totalJobsCompleted = utilizationMetrics.reduce((sum, m) => sum + m.jobsCompleted, 0);
+      
+      res.json({
+        dateRange: { start, end },
+        summary: {
+          totalBillableHours: Math.round(totalBillableHours * 10) / 10,
+          totalAvailableHours,
+          overallUtilization: totalAvailableHours > 0 ? Math.round((totalBillableHours / totalAvailableHours) * 100) : 0,
+          totalJobsCompleted,
+          teamSize: utilizationMetrics.length,
+        },
+        members: utilizationMetrics,
+      });
+    } catch (error: any) {
+      console.error('Error getting utilization metrics:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== ENHANCED NOTIFICATIONS (WHAT YOU MISSED) =====
+
+  // Get unread important notifications for "What You Missed" popup
+  app.get("/api/notifications/missed", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const notifications = await storage.getNotifications(userId);
+      
+      // Filter for unread, important notifications (urgent and important priority)
+      const missedNotifications = notifications.filter(n => 
+        !n.read && 
+        !n.dismissed && 
+        (n.priority === 'urgent' || n.priority === 'important' ||
+         // Include money and job events even without explicit priority
+         ['payment_received', 'quote_accepted', 'quote_rejected', 'invoice_paid', 'job_completed', 'job_assigned', 'installment_received', 'payment_plan_completed'].includes(n.type))
+      ).slice(0, 10); // Max 10 items
+      
+      res.json({
+        notifications: missedNotifications,
+        count: missedNotifications.length,
+        hasUrgent: missedNotifications.some(n => n.priority === 'urgent' || ['payment_received', 'quote_accepted', 'invoice_paid', 'installment_received'].includes(n.type)),
+      });
+    } catch (error: any) {
+      console.error('Error getting missed notifications:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
