@@ -73,9 +73,9 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
     <Sidebar data-testid="sidebar-main">
       <SidebarHeader className="p-4">
         <button
-          onClick={() => onNavigate?.('/branding')}
+          onClick={() => onNavigate?.('/settings')}
           className="flex items-center gap-3 w-full text-left hover-elevate rounded-lg p-2 -m-2 transition-colors"
-          data-testid="button-sidebar-branding"
+          data-testid="button-sidebar-settings"
         >
           {businessSettings?.logoUrl ? (
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm flex-shrink-0">
@@ -100,7 +100,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
             <h1 className="font-bold text-base truncate" data-testid="text-business-name">
               {businessName}
             </h1>
-            <p className="text-xs text-muted-foreground truncate">Tap to edit branding</p>
+            <p className="text-xs text-muted-foreground truncate">My Account</p>
           </div>
         </button>
       </SidebarHeader>
