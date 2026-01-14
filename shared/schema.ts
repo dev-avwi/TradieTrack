@@ -472,6 +472,10 @@ export const integrationSettings = pgTable("integration_settings", {
 });
 
 // Notifications
+// Notification priority levels for Smart Notifications Hub
+export const NOTIFICATION_PRIORITIES = ['urgent', 'important', 'info'] as const;
+export type NotificationPriority = typeof NOTIFICATION_PRIORITIES[number];
+
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -482,6 +486,9 @@ export const notifications = pgTable("notifications", {
   relatedType: text("related_type"), // 'job', 'invoice', 'quote', etc.
   read: boolean("read").default(false),
   dismissed: boolean("dismissed").default(false),
+  priority: text("priority").default('info'), // urgent (money events), important (job events), info (other)
+  actionUrl: text("action_url"), // Deep link to relevant page
+  actionLabel: text("action_label"), // e.g. "View Quote", "Create Invoice"
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3225,3 +3232,51 @@ export const leads = pgTable("leads", {
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
+
+// ========================
+// Payment Scheduling (Installment Plans)
+// ========================
+
+export const INSTALLMENT_STATUSES = ['pending', 'due', 'paid', 'overdue', 'cancelled'] as const;
+export type InstallmentStatus = typeof INSTALLMENT_STATUSES[number];
+
+// Payment Schedule - Links an invoice to an installment plan
+export const paymentSchedules = pgTable("payment_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  numberOfInstallments: integer("number_of_installments").notNull(),
+  frequency: text("frequency").default('monthly'), // weekly, fortnightly, monthly
+  startDate: timestamp("start_date").notNull(),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPaymentScheduleSchema = createInsertSchema(paymentSchedules).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPaymentSchedule = z.infer<typeof insertPaymentScheduleSchema>;
+export type PaymentSchedule = typeof paymentSchedules.$inferSelect;
+
+// Payment Installments - Individual installments within a schedule
+export const paymentInstallments = pgTable("payment_installments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scheduleId: varchar("schedule_id").notNull().references(() => paymentSchedules.id, { onDelete: 'cascade' }),
+  installmentNumber: integer("installment_number").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").default('pending'), // pending, due, paid, overdue, cancelled
+  paidAt: timestamp("paid_at"),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  paymentMethod: text("payment_method"), // stripe, cash, bank_transfer
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPaymentInstallmentSchema = createInsertSchema(paymentInstallments).omit({ id: true, createdAt: true });
+export type InsertPaymentInstallment = z.infer<typeof insertPaymentInstallmentSchema>;
+export type PaymentInstallment = typeof paymentInstallments.$inferSelect;
