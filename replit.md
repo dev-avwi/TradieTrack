@@ -75,3 +75,10 @@ Key architectural and design decisions include:
 *   **Subscription Flow Updates**: Added Pro→Team upgrade (7-day trial), Team→Pro downgrade, and team member suspension logic with proper grace periods for past_due status.
 *   **Chat Hub Redesign**: Redesigned Chat Hub to be job-focused with "Job Communications" header. Added SMS conversation support with Twilio integration status checking (`/api/sms/status` returns `{ enabled, phoneNumber }`). Added clear Twilio setup guidance banners when not connected. Filter options: All, Team, Customers (SMS), Jobs.
 *   **Job Assignment Request System**: Team members with `REQUEST_JOB_ASSIGNMENT` permission can view available unassigned jobs and request to be assigned. Privacy-protected: only minimal info shown (title, suburb, scheduled date, duration - no client name, phone, email, or full address). Owner receives requests and can approve/reject. Database table: `job_assignment_requests`. API: GET `/api/jobs/available`, POST `/api/jobs/:id/request-assignment`, GET `/api/job-assignment-requests`, POST `/api/job-assignment-requests/:id/respond`. UI in StaffTradieDashboard "Available Jobs" section.
+*   **Enhanced Sidebar Header**: Made sidebar logo/business name clickable to navigate to `/branding` settings page. Improved visual appearance with larger logo (10x10), border, shadow, and "Tap to edit branding" helper text. Uses `data-testid="button-sidebar-branding"` for testing.
+*   **QuickCreateFAB Component**: Replaced full-width bottom sheet with a centered floating widget popup. Features:
+    - Star icon FAB button positioned at bottom-right (above FloatingAIChat)
+    - Centered popup with 4 quick action icons: New Job, New Quote, New Invoice, New Client
+    - 2 secondary action buttons: AI Assistant (triggers FloatingAIChat), Collect Payment
+    - Trade-colored styling, smooth animations, click-outside-to-dismiss
+    - Positioned at `bottom: 168px` to avoid overlap with AI Chat FAB at `bottom: 96px`

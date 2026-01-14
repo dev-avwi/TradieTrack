@@ -72,32 +72,37 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   return (
     <Sidebar data-testid="sidebar-main">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
+        <button
+          onClick={() => onNavigate?.('/branding')}
+          className="flex items-center gap-3 w-full text-left hover-elevate rounded-lg p-2 -m-2 transition-colors"
+          data-testid="button-sidebar-branding"
+        >
           {businessSettings?.logoUrl ? (
-            <div className="w-8 h-8 rounded-lg overflow-hidden">
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm flex-shrink-0">
               <img 
                 src={businessSettings.logoUrl} 
                 alt="Business logo" 
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain p-1"
                 data-testid="img-business-logo"
               />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg overflow-hidden relative bg-background">
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm flex-shrink-0 flex items-center justify-center">
               <img 
                 src={tradietrackLogo} 
                 alt="TradieTrack" 
-                className="w-full h-full object-contain"
+                className="w-8 h-8 object-contain"
                 data-testid="img-tradietrack-icon"
               />
             </div>
           )}
-          <div>
-            <h1 className="font-bold text-lg" data-testid="text-business-name">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-bold text-base truncate" data-testid="text-business-name">
               {businessName}
             </h1>
+            <p className="text-xs text-muted-foreground truncate">Tap to edit branding</p>
           </div>
-        </div>
+        </button>
       </SidebarHeader>
       
       <SidebarContent>
