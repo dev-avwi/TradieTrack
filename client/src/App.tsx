@@ -914,6 +914,14 @@ function AppLayout() {
     if (location === '/terms' || location === '/terms-of-service') {
       return <TermsOfService />;
     }
+    // Show accept-invite page without authentication (team members accepting invitations)
+    if (location.startsWith('/accept-invite/')) {
+      return <AcceptInvite />;
+    }
+    // Show password reset page without authentication
+    if (location.startsWith('/reset-password')) {
+      return <ResetPassword />;
+    }
     // Show landing page for all other routes when not authenticated
     return <LandingPage />;
   }
