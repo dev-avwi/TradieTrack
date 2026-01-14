@@ -218,6 +218,9 @@ import {
   leads,
   type Lead,
   type InsertLead,
+  permissionRequests,
+  type PermissionRequest,
+  type InsertPermissionRequest,
   type RecurringContract,
   type InsertRecurringContract,
   recurringSchedules,
@@ -489,6 +492,12 @@ export interface IStorage {
   deleteTeamMember(id: string, businessOwnerId: string): Promise<boolean>;
   suspendTeamMembersByOwner(ownerId: string): Promise<number>;
   reactivateTeamMembersByOwner(ownerId: string): Promise<number>;
+  
+  // Permission Requests
+  getPermissionRequests(businessOwnerId: string): Promise<PermissionRequest[]>;
+  getPermissionRequestsByMember(teamMemberId: string): Promise<PermissionRequest[]>;
+  createPermissionRequest(request: InsertPermissionRequest): Promise<PermissionRequest>;
+  updatePermissionRequest(id: string, businessOwnerId: string, data: Partial<InsertPermissionRequest>): Promise<PermissionRequest | undefined>;
   
   getStaffSchedules(userId: string, jobId?: string): Promise<StaffSchedule[]>;
   createStaffSchedule(schedule: InsertStaffSchedule): Promise<StaffSchedule>;
@@ -3465,6 +3474,35 @@ export class PostgresStorage implements IStorage {
       .where(eq(teamMembers.businessOwnerId, ownerId))
       .returning();
     return result.length;
+  }
+
+  // Permission Request Methods
+  async getPermissionRequests(businessOwnerId: string): Promise<PermissionRequest[]> {
+    return await db.select().from(permissionRequests)
+      .where(eq(permissionRequests.businessOwnerId, businessOwnerId))
+      .orderBy(desc(permissionRequests.createdAt));
+  }
+
+  async getPermissionRequestsByMember(teamMemberId: string): Promise<PermissionRequest[]> {
+    return await db.select().from(permissionRequests)
+      .where(eq(permissionRequests.teamMemberId, teamMemberId))
+      .orderBy(desc(permissionRequests.createdAt));
+  }
+
+  async createPermissionRequest(request: InsertPermissionRequest): Promise<PermissionRequest> {
+    const result = await db.insert(permissionRequests).values(request).returning();
+    return result[0];
+  }
+
+  async updatePermissionRequest(id: string, businessOwnerId: string, data: Partial<InsertPermissionRequest>): Promise<PermissionRequest | undefined> {
+    const result = await db.update(permissionRequests)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(
+        eq(permissionRequests.id, id),
+        eq(permissionRequests.businessOwnerId, businessOwnerId)
+      ))
+      .returning();
+    return result[0];
   }
 
   async getStaffSchedules(userId: string, filters?: {

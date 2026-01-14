@@ -14571,15 +14571,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         AuthService.getUserById(teamMember.businessOwnerId)
       ]);
       
+      // Get all available permissions for the "request more" feature
+      const { PERMISSION_LABELS, PERMISSION_CATEGORIES, ALL_WORKER_PERMISSIONS } = await import('@shared/schema');
+      
+      // Get the permissions assigned to this role
+      const rolePermissions = (role?.permissions as string[]) || [];
+      
+      // Organize permissions by category for display
+      const permissionsByCategory = Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => ({
+        key,
+        label: category.label,
+        description: category.description,
+        permissions: category.permissions.map(perm => ({
+          id: perm,
+          label: PERMISSION_LABELS[perm as keyof typeof PERMISSION_LABELS] || perm,
+          granted: rolePermissions.includes(perm),
+        })),
+      }));
+      
+      // Get list of permissions not granted (for "request more" feature)
+      const availableToRequest = ALL_WORKER_PERMISSIONS
+        .filter(perm => !rolePermissions.includes(perm))
+        .map(perm => ({
+          id: perm,
+          label: PERMISSION_LABELS[perm as keyof typeof PERMISSION_LABELS] || perm,
+        }));
+      
       res.json({
         valid: true,
         invite: {
           businessName: businessSettings?.businessName || 'A TradieTrack business',
           roleName: role?.name || 'Team Member',
+          roleDescription: role?.description || null,
           email: teamMember.email,
           inviterName: owner?.firstName ? `${owner.firstName}${owner.lastName ? ' ' + owner.lastName : ''}` : 'The business owner',
           firstName: teamMember.firstName,
           lastName: teamMember.lastName,
+          ownerId: teamMember.businessOwnerId,
+          permissions: rolePermissions,
+          permissionsByCategory,
+          availableToRequest,
         }
       });
     } catch (error) {
@@ -14695,6 +14726,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error accepting team invitation:', error);
       res.status(500).json({ success: false, error: 'Failed to accept invitation' });
+    }
+  });
+
+  // Create a permission request (from invited team member or team member)
+  app.post("/api/team/permission-requests", async (req: any, res) => {
+    try {
+      const { teamMemberId, businessOwnerId, requestedPermissions, reason } = req.body;
+      
+      if (!teamMemberId || !businessOwnerId || !requestedPermissions || !Array.isArray(requestedPermissions)) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      if (requestedPermissions.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one permission to request' });
+      }
+      
+      // Verify the team member exists
+      const teamMember = await storage.getTeamMember(teamMemberId, businessOwnerId);
+      if (!teamMember) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+      
+      // Create the permission request
+      const request = await storage.createPermissionRequest({
+        teamMemberId,
+        businessOwnerId,
+        requestedPermissions,
+        reason: reason || null,
+        status: 'pending',
+      });
+      
+      // Create a notification for the business owner
+      await storage.createNotification({
+        userId: businessOwnerId,
+        type: 'permission_request',
+        title: 'Permission Request',
+        message: `${teamMember.firstName || 'A team member'} has requested additional permissions`,
+        data: { requestId: request.id, teamMemberId },
+        priority: 'normal',
+      });
+      
+      res.json({ success: true, request });
+    } catch (error) {
+      console.error('Error creating permission request:', error);
+      res.status(500).json({ error: 'Failed to create permission request' });
+    }
+  });
+
+  // Get permission requests for a business owner
+  app.get("/api/team/permission-requests", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId!;
+      const requests = await storage.getPermissionRequests(effectiveUserId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching permission requests:', error);
+      res.status(500).json({ error: 'Failed to fetch permission requests' });
+    }
+  });
+
+  // Respond to a permission request (approve/reject)
+  app.post("/api/team/permission-requests/:id/respond", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId!;
+      const requestId = req.params.id;
+      const { action, responseNote } = req.body;
+      
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid action. Must be "approve" or "reject"' });
+      }
+      
+      // Get the request
+      const requests = await storage.getPermissionRequests(effectiveUserId);
+      const request = requests.find(r => r.id === requestId);
+      
+      if (!request) {
+        return res.status(404).json({ error: 'Permission request not found' });
+      }
+      
+      if (request.status !== 'pending') {
+        return res.status(400).json({ error: 'This request has already been processed' });
+      }
+      
+      // Update the request status
+      const updatedRequest = await storage.updatePermissionRequest(requestId, effectiveUserId, {
+        status: action === 'approve' ? 'approved' : 'rejected',
+        respondedBy: req.userId,
+        respondedAt: new Date(),
+        responseNote: responseNote || null,
+      });
+      
+      // If approved, grant the permissions to the team member
+      if (action === 'approve') {
+        const teamMember = await storage.getTeamMember(request.teamMemberId, effectiveUserId);
+        if (teamMember) {
+          const currentPermissions = (teamMember.customPermissions as string[]) || [];
+          const newPermissions = [...new Set([...currentPermissions, ...request.requestedPermissions])];
+          
+          await storage.updateTeamMemberPermissions(teamMember.id, {
+            customPermissions: newPermissions,
+            useCustomPermissions: true,
+          });
+        }
+      }
+      
+      // Create a notification for the team member (if they have a user account)
+      const teamMember = await storage.getTeamMember(request.teamMemberId, effectiveUserId);
+      if (teamMember?.memberId) {
+        await storage.createNotification({
+          userId: teamMember.memberId,
+          type: 'permission_response',
+          title: action === 'approve' ? 'Permissions Granted' : 'Permission Request Declined',
+          message: action === 'approve' 
+            ? 'Your permission request has been approved'
+            : 'Your permission request has been declined',
+          data: { requestId: request.id },
+          priority: 'normal',
+        });
+      }
+      
+      res.json({ success: true, request: updatedRequest });
+    } catch (error) {
+      console.error('Error responding to permission request:', error);
+      res.status(500).json({ error: 'Failed to respond to permission request' });
     }
   });
 

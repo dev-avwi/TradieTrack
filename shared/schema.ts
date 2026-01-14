@@ -1343,6 +1343,21 @@ export const teamMemberTimeOff = pgTable("team_member_time_off", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Permission Requests - team members can request additional permissions from owner/manager
+export const permissionRequests = pgTable("permission_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  requestedPermissions: json("requested_permissions").notNull().$type<string[]>(), // Array of permission IDs
+  reason: text("reason"), // Optional reason for the request
+  status: text("status").notNull().default('pending'), // 'pending', 'approved', 'rejected'
+  respondedBy: varchar("responded_by").references(() => users.id),
+  respondedAt: timestamp("responded_at"),
+  responseNote: text("response_note"), // Optional note from owner/manager
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Team Member Performance Metrics - track productivity and ratings
 export const teamMemberMetrics = pgTable("team_member_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1899,6 +1914,12 @@ export const insertTeamMemberMetricsSchema = createInsertSchema(teamMemberMetric
   updatedAt: true,
 });
 
+export const insertPermissionRequestSchema = createInsertSchema(permissionRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // GPS Tracking Schemas
 export const insertLocationTrackingSchema = createInsertSchema(locationTracking).omit({
   id: true,
@@ -2084,6 +2105,9 @@ export type TeamMemberTimeOff = typeof teamMemberTimeOff.$inferSelect;
 
 export type InsertTeamMemberMetrics = z.infer<typeof insertTeamMemberMetricsSchema>;
 export type TeamMemberMetrics = typeof teamMemberMetrics.$inferSelect;
+
+export type InsertPermissionRequest = z.infer<typeof insertPermissionRequestSchema>;
+export type PermissionRequest = typeof permissionRequests.$inferSelect;
 
 // GPS Tracking Types
 export type InsertLocationTracking = z.infer<typeof insertLocationTrackingSchema>;
