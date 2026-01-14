@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, ArrowRight, Building2 } from "lucide-react";
-import { getTradeInfo, tradeTypes } from "@/data/tradeTypes";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2 } from "lucide-react";
+import { tradeCatalog, getTradeDefinition } from "@shared/tradeCatalog";
 
 const businessProfileSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -72,7 +72,7 @@ export default function BusinessProfileStep({
   };
 
   const selectedTrade = form.watch("tradeType");
-  const tradeInfo = getTradeInfo(selectedTrade);
+  const tradeInfo = getTradeDefinition(selectedTrade);
 
   return (
     <Card>
@@ -118,7 +118,7 @@ export default function BusinessProfileStep({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(tradeTypes).map(([key, trade]: [string, any]) => (
+                      {Object.entries(tradeCatalog).map(([key, trade]) => (
                         <SelectItem key={key} value={key}>
                           <div className="flex items-center gap-2">
                             <div 
@@ -315,21 +315,48 @@ export default function BusinessProfileStep({
               </div>
             </div>
 
-            {/* Trade Color Preview */}
-            {selectedTrade && (
-              <div className="p-4 rounded-lg border bg-muted">
+            {/* Trade Preview - What you get */}
+            {selectedTrade && tradeInfo && (
+              <div className="p-4 rounded-lg border bg-muted space-y-4">
                 <div className="flex items-center gap-3">
                   <div 
-                    className="w-8 h-8 rounded-full border-2 border-white shadow-sm" 
+                    className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center" 
                     style={{ backgroundColor: tradeInfo.color }}
-                  />
+                  >
+                    <span className="text-white text-sm font-bold">
+                      {tradeInfo.shortName.charAt(0)}
+                    </span>
+                  </div>
                   <div>
                     <h4 className="font-medium">{tradeInfo.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Your app will use this color scheme to match your trade
-                    </p>
+                    <p className="text-sm text-muted-foreground">{tradeInfo.description}</p>
                   </div>
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span>{tradeInfo.customFields.length} custom fields tailored for {tradeInfo.shortName.toLowerCase()}s</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span>{tradeInfo.defaultMaterials.length} pre-loaded materials & pricing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span>Industry-standard rate card (${tradeInfo.defaultRateCard.hourlyRate}/hr)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <span>{tradeInfo.safetyChecklists.length} safety checklist{tradeInfo.safetyChecklists.length !== 1 ? 's' : ''} included</span>
+                  </div>
+                </div>
+
+                {tradeInfo.terminology.job !== 'Job' && (
+                  <p className="text-xs text-muted-foreground border-t pt-3">
+                    Your app will use "{tradeInfo.terminology.job}" instead of "Job" and "{tradeInfo.terminology.worksite}" instead of "Site"
+                  </p>
+                )}
               </div>
             )}
 
