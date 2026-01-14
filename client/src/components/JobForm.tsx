@@ -19,6 +19,8 @@ import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
+import TradeCustomFieldsForm, { getCustomFieldsDefaultValues } from "@/components/TradeCustomFieldsForm";
+import { useTradeContext } from "@/hooks/useTradeContext";
 import { useSearch } from "wouter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,7 @@ const jobFormSchema = z.object({
   scheduledAt: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   estimatedHours: z.string().optional(),
+  customFields: z.record(z.any()).optional(),
 });
 
 type JobFormData = z.infer<typeof jobFormSchema>;
@@ -97,6 +100,9 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     staleTime: 30000,
   });
 
+  // Get trade-specific custom fields for the current user
+  const { customFields: tradeCustomFields } = useTradeContext();
+
   const form = useForm<JobFormData>({
     resolver: zodResolver(jobFormSchema),
     defaultValues: {
@@ -107,6 +113,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       scheduledAt: "",
       priority: "medium",
       estimatedHours: "",
+      customFields: getCustomFieldsDefaultValues(tradeCustomFields),
     },
   });
 
@@ -663,6 +670,9 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                   )}
                 />
               </div>
+
+              {/* Trade-Specific Custom Fields */}
+              <TradeCustomFieldsForm form={form} />
 
               <div className="flex gap-4">
                 <Button type="submit" disabled={createJobMutation.isPending} data-testid="button-submit-job">
