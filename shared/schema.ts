@@ -105,6 +105,7 @@ export const WORKER_PERMISSIONS = {
   UPDATE_JOB_STATUS: 'update_job_status',    // Change job status (start, complete)
   EDIT_JOBS: 'edit_jobs',                    // Edit job details, notes
   VIEW_ALL_JOBS: 'view_all_jobs',            // View all team jobs (not just assigned)
+  REQUEST_JOB_ASSIGNMENT: 'request_job_assignment', // Request to be assigned to available jobs (minimal info, privacy-protected)
   
   // Time & Tracking
   TIME_TRACKING: 'time_tracking',            // Log time entries
@@ -173,6 +174,7 @@ export const PERMISSION_CATEGORIES = {
       WORKER_PERMISSIONS.UPDATE_JOB_STATUS,
       WORKER_PERMISSIONS.EDIT_JOBS,
       WORKER_PERMISSIONS.VIEW_ALL_JOBS,
+      WORKER_PERMISSIONS.REQUEST_JOB_ASSIGNMENT,
     ],
   },
   tracking: {
@@ -209,6 +211,7 @@ export const PERMISSION_LABELS: Record<WorkerPermission, string> = {
   [WORKER_PERMISSIONS.UPDATE_JOB_STATUS]: 'Update Job Status',
   [WORKER_PERMISSIONS.EDIT_JOBS]: 'Edit Job Details',
   [WORKER_PERMISSIONS.VIEW_ALL_JOBS]: 'View All Team Jobs',
+  [WORKER_PERMISSIONS.REQUEST_JOB_ASSIGNMENT]: 'Request Job Assignment',
   [WORKER_PERMISSIONS.TIME_TRACKING]: 'Time Tracking',
   [WORKER_PERMISSIONS.GPS_CHECKIN]: 'GPS Check-in',
   [WORKER_PERMISSIONS.TEAM_CHAT]: 'Team Chat',
@@ -1358,6 +1361,22 @@ export const permissionRequests = pgTable("permission_requests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Job Assignment Requests - team members can request to be assigned to available jobs
+export const jobAssignmentRequests = pgTable("job_assignment_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // The user who made the request
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reason: text("reason"), // Optional reason/note for the request
+  status: text("status").notNull().default('pending'), // 'pending', 'approved', 'rejected'
+  respondedBy: varchar("responded_by").references(() => users.id),
+  respondedAt: timestamp("responded_at"),
+  responseNote: text("response_note"), // Optional note from owner/manager
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Team Member Performance Metrics - track productivity and ratings
 export const teamMemberMetrics = pgTable("team_member_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1920,6 +1939,12 @@ export const insertPermissionRequestSchema = createInsertSchema(permissionReques
   updatedAt: true,
 });
 
+export const insertJobAssignmentRequestSchema = createInsertSchema(jobAssignmentRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // GPS Tracking Schemas
 export const insertLocationTrackingSchema = createInsertSchema(locationTracking).omit({
   id: true,
@@ -2108,6 +2133,9 @@ export type TeamMemberMetrics = typeof teamMemberMetrics.$inferSelect;
 
 export type InsertPermissionRequest = z.infer<typeof insertPermissionRequestSchema>;
 export type PermissionRequest = typeof permissionRequests.$inferSelect;
+
+export type InsertJobAssignmentRequest = z.infer<typeof insertJobAssignmentRequestSchema>;
+export type JobAssignmentRequest = typeof jobAssignmentRequests.$inferSelect;
 
 // GPS Tracking Types
 export type InsertLocationTracking = z.infer<typeof insertLocationTrackingSchema>;
