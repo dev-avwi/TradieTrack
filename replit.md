@@ -41,6 +41,15 @@ Key architectural and design decisions include:
 *   **Unified Notifications**: Both web and mobile use the `/api/notifications/unified` endpoint, combining system, SMS, and chat notifications into a single feed.
 *   **Permission System**: Two parallel permission systems (`WORKER_PERMISSIONS` and `ActionPermissions`) with a translation layer for web and mobile parity, including offline SQLite caching for mobile.
 *   **Document Template System**: 35 default templates (quote, invoice, job) seeded for new users, adhering to Australian standards (GST, industry rates, payment terms). Templates are categorized by type, familyKey, and tradeType. Team members access owner's templates.
+*   **Trade-Specific Customization System**: Comprehensive trade catalog (`shared/tradeCatalog.ts`) with 13 priority trades, each featuring:
+    - Trade-specific terminology (e.g., "Work Order" and "Zone" for grounds maintenance, "Project" for builders)
+    - Custom job stages per trade (e.g., "Design Phase" → "Installation" for landscaping)
+    - Trade-specific custom fields (e.g., circuit types for electricians, pipe sizes for plumbers, area in hectares for grounds crew)
+    - Default materials catalog with industry-standard pricing
+    - Trade-specific rate cards (hourly rates, callout fees, after-hours multipliers)
+    - Safety checklists tailored to each trade's requirements
+    - Quote categories specific to each industry
+    - The `useTradeContext` hook provides frontend access to all trade-specific configuration
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
