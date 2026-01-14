@@ -87,6 +87,56 @@ export default function StaffTradieDashboard({
     staleTime: 60000,
   });
 
+  // Fetch available jobs for assignment (if user has permission)
+  const { data: availableJobs = [], isLoading: availableJobsLoading } = useQuery<Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    scheduledAt: string | null;
+    scheduledEndAt: string | null;
+    estimatedDuration: number | null;
+    priority: string | null;
+    suburb: string | null;
+    createdAt: string;
+  }>>({
+    queryKey: ["/api/jobs/available"],
+    staleTime: 60000,
+    enabled: hasPermission('request_job_assignment'),
+  });
+
+  // Request job assignment mutation
+  const requestAssignment = useMutation({
+    mutationFn: async ({ jobId, reason }: { jobId: string; reason?: string }) => {
+      const response = await fetch(`/api/jobs/${jobId}/request-assignment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to request assignment');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Request Submitted",
+        description: "Your job assignment request has been sent to the business owner.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-assignment-requests"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Fetch active time entry
   const { data: activeTimeEntry } = useQuery<any>({
     queryKey: ["/api/time-entries/active/current"],
@@ -865,6 +915,81 @@ export default function StaffTradieDashboard({
               </Card>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Available Jobs Section - For team members with request_job_assignment permission */}
+      {hasPermission('request_job_assignment') && availableJobs.length > 0 && (
+        <section className="space-y-3" data-testid="available-jobs-section">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Available Jobs
+            </h2>
+            <Badge variant="outline">{availableJobs.length} available</Badge>
+          </div>
+          
+          <Card className="border-dashed border-primary/30 bg-primary/5">
+            <CardContent className="py-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Request to be assigned to these jobs. Limited info shown for privacy.
+              </p>
+              <div className="space-y-2">
+                {availableJobs.slice(0, 5).map((job) => (
+                  <div 
+                    key={job.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-background border"
+                    data-testid={`available-job-${job.id}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate text-sm">{job.title}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {job.scheduledAt && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(job.scheduledAt).toLocaleDateString()}
+                          </span>
+                        )}
+                        {job.suburb && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {job.suburb}
+                          </span>
+                        )}
+                        {job.estimatedDuration && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {job.estimatedDuration}min
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => requestAssignment.mutate({ jobId: job.id })}
+                      disabled={requestAssignment.isPending}
+                      data-testid={`request-job-${job.id}`}
+                    >
+                      {requestAssignment.isPending ? (
+                        <Clock className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Zap className="h-3 w-3 mr-1" />
+                          Request
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ))}
+                {availableJobs.length > 5 && (
+                  <p className="text-xs text-center text-muted-foreground pt-2">
+                    And {availableJobs.length - 5} more available...
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </section>
       )}
 
