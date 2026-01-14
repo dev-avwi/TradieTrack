@@ -739,6 +739,46 @@ export const tradeCatalog: Record<string, TradeDefinition> = {
     invoicePaymentTerms: 7,
   },
 
+  general: {
+    id: 'general',
+    name: 'General Trade Services',
+    shortName: 'Tradie',
+    icon: 'Wrench',
+    color: '#6b7280',
+    description: 'General trade and contractor services',
+    typicalJobs: ['General repairs', 'Maintenance', 'Installations', 'Consultations', 'Custom work', 'Assessments'],
+    terminology: { ...defaultTerminology },
+    jobStages: defaultJobStages,
+    customFields: [
+      { id: 'serviceType', name: 'Service Type', type: 'text', placeholder: 'Type of service provided' },
+      { id: 'estimatedDuration', name: 'Estimated Duration', type: 'number', unit: 'hours' },
+    ],
+    defaultMaterials: [
+      { name: 'General Materials', unit: 'lot', defaultPrice: 100, category: 'Materials' },
+      { name: 'Hardware Supplies', unit: 'set', defaultPrice: 50, category: 'Hardware' },
+    ],
+    defaultRateCard: {
+      hourlyRate: 75,
+      calloutFee: 50,
+      afterHoursMultiplier: 1.5,
+      weekendMultiplier: 1.5,
+      materialMarkupPct: 15,
+    },
+    safetyChecklists: [
+      {
+        name: 'General Safety Checklist',
+        items: [
+          'PPE appropriate for task',
+          'Work area inspected',
+          'Tools and equipment checked',
+          'Emergency procedures known',
+        ],
+      },
+    ],
+    quoteCategories: ['Labour', 'Materials', 'Equipment', 'Travel', 'Other'],
+    invoicePaymentTerms: 14,
+  },
+
   grounds_maintenance: {
     id: 'grounds_maintenance',
     name: 'Grounds & Vegetation Management',

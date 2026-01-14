@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { 
   Wrench, 
   Zap, 
@@ -25,26 +26,52 @@ import {
   Mail,
   MapPin,
   Gift,
-  Loader2
+  Loader2,
+  MessageSquarePlus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import tradietrackLogo from "/tradietrack-logo.png";
+import { tradeCatalog } from "@shared/tradeCatalog";
 
 interface SimpleOnboardingProps {
   onComplete: () => void;
   onSkip?: () => void;
 }
 
-const TRADE_TYPES = [
-  { id: 'electrical', label: 'Electrician', icon: Zap, color: 'bg-yellow-500' },
-  { id: 'plumbing', label: 'Plumber', icon: Droplets, color: 'bg-blue-500' },
-  { id: 'carpentry', label: 'Carpenter', icon: Hammer, color: 'bg-amber-600' },
-  { id: 'painting', label: 'Painter', icon: Paintbrush, color: 'bg-purple-500' },
-  { id: 'building', label: 'Builder', icon: Building2, color: 'bg-gray-600' },
-  { id: 'hvac', label: 'HVAC', icon: Wind, color: 'bg-cyan-500' },
-  { id: 'roofing', label: 'Roofer', icon: Home, color: 'bg-red-500' },
-  { id: 'general', label: 'General Trade', icon: Wrench, color: 'bg-green-500' },
+// Build trade options from the centralized catalog
+const TRADE_OPTIONS = Object.entries(tradeCatalog).map(([id, trade]) => ({
+  id,
+  name: trade.name,
+  description: trade.description,
+}));
+
+// Group trades into categories for better organization
+const TRADE_CATEGORIES = [
+  {
+    label: "Electrical & Mechanical",
+    trades: ['electrical', 'hvac'],
+  },
+  {
+    label: "Plumbing & Water",
+    trades: ['plumbing'],
+  },
+  {
+    label: "Building & Construction",
+    trades: ['building', 'concreting', 'roofing', 'fencing'],
+  },
+  {
+    label: "Interior & Finishing",
+    trades: ['painting', 'tiling'],
+  },
+  {
+    label: "Outdoor & Landscaping",
+    trades: ['landscaping', 'grounds_maintenance'],
+  },
+  {
+    label: "Specialty Services",
+    trades: ['cleaning', 'handyman'],
+  },
 ];
 
 const getStepsForPlan = (plan: string) => {
@@ -215,60 +242,174 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     }
   };
 
-  const renderTradeStep = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          What's your trade?
-        </h2>
-        <p className="text-muted-foreground">
-          This helps us customize TradieTrack for your business
-        </p>
-      </div>
+  const [showTradeRequest, setShowTradeRequest] = useState(false);
+  const [requestedTrade, setRequestedTrade] = useState('');
+
+  const handleRequestTrade = async () => {
+    if (!requestedTrade.trim()) {
+      toast({ variant: "destructive", title: "Please enter your trade type" });
+      return;
+    }
+    
+    try {
+      // Submit the trade request (we'll use general for now)
+      await apiRequest('POST', '/api/trade-requests', {
+        tradeName: requestedTrade.trim(),
+      });
       
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {TRADE_TYPES.map((trade) => {
-          const Icon = trade.icon;
-          const isSelected = formData.tradeType === trade.id;
-          
-          return (
-            <button
-              key={trade.id}
-              onClick={() => handleTradeSelect(trade.id)}
-              data-testid={`trade-${trade.id}`}
-              className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 hover-elevate ${
-                isSelected 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50'
-              }`}
+      toast({
+        title: "Trade request submitted",
+        description: "We'll add your trade soon! For now, you'll use the General category.",
+      });
+      
+      // Set to general and continue
+      handleTradeSelect('general');
+      setShowTradeRequest(false);
+    } catch (error) {
+      // If API doesn't exist yet, just continue with general
+      handleTradeSelect('general');
+      setShowTradeRequest(false);
+      toast({
+        title: "Request noted",
+        description: "Using General category for now. We'll add your trade soon!",
+      });
+    }
+  };
+
+  const renderTradeStep = () => {
+    const selectedTrade = formData.tradeType ? tradeCatalog[formData.tradeType] : null;
+    
+    return (
+      <div className="space-y-6">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            What's your trade?
+          </h2>
+          <p className="text-muted-foreground">
+            Select your trade category to customize TradieTrack for your business
+          </p>
+        </div>
+        
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="trade-select" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" />
+              Trade Category
+            </Label>
+            <Select
+              value={formData.tradeType}
+              onValueChange={handleTradeSelect}
             >
-              <div className={`w-12 h-12 rounded-xl ${trade.color} text-white flex items-center justify-center`}>
-                <Icon className="h-6 w-6" />
+              <SelectTrigger id="trade-select" className="w-full h-12" data-testid="select-trade">
+                <SelectValue placeholder="Select your trade..." />
+              </SelectTrigger>
+              <SelectContent>
+                {TRADE_CATEGORIES.map((category) => (
+                  <SelectGroup key={category.label}>
+                    <SelectLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      {category.label}
+                    </SelectLabel>
+                    {category.trades.map((tradeId) => {
+                      const trade = tradeCatalog[tradeId];
+                      if (!trade) return null;
+                      return (
+                        <SelectItem key={tradeId} value={tradeId} data-testid={`trade-${tradeId}`}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: trade.color }}
+                            />
+                            <span>{trade.name}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                ))}
+                <SelectGroup>
+                  <SelectLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Other
+                  </SelectLabel>
+                  <SelectItem value="general" data-testid="trade-general">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-gray-500" />
+                      <span>General Trade Services</span>
+                    </div>
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedTrade && (
+            <div className="p-4 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div 
+                  className="w-4 h-4 rounded-full" 
+                  style={{ backgroundColor: selectedTrade.color }}
+                />
+                <span className="font-medium">{selectedTrade.name}</span>
               </div>
-              <span className={`text-sm font-medium ${isSelected ? 'text-primary' : ''}`}>
-                {trade.label}
-              </span>
-              {isSelected && (
-                <CheckCircle className="h-4 w-4 text-primary" />
+              <p className="text-sm text-muted-foreground">{selectedTrade.description}</p>
+              {selectedTrade.typicalJobs && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {selectedTrade.typicalJobs.slice(0, 4).map((job) => (
+                    <span key={job} className="text-xs bg-background px-2 py-0.5 rounded-full border">
+                      {job}
+                    </span>
+                  ))}
+                </div>
               )}
+            </div>
+          )}
+
+          {!showTradeRequest ? (
+            <button
+              type="button"
+              onClick={() => setShowTradeRequest(true)}
+              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              Can't find your trade? Request it
             </button>
-          );
-        })}
+          ) : (
+            <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+              <Label htmlFor="request-trade">Request a new trade category</Label>
+              <Input
+                id="request-trade"
+                placeholder="e.g. Glazier, Pool Technician..."
+                value={requestedTrade}
+                onChange={(e) => setRequestedTrade(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowTradeRequest(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleRequestTrade}>
+                  Submit & Continue with General
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                We'll notify you when your trade category is added. For now, you'll use the General category.
+              </p>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-end pt-4">
+          <Button 
+            onClick={handleNext} 
+            disabled={!formData.tradeType}
+            size="lg"
+            data-testid="button-next"
+          >
+            Continue
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
-      
-      <div className="flex justify-end pt-4">
-        <Button 
-          onClick={handleNext} 
-          disabled={!formData.tradeType}
-          size="lg"
-          data-testid="button-next"
-        >
-          Continue
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderBusinessStep = () => (
     <div className="space-y-6">

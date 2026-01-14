@@ -71,36 +71,36 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
 
   return (
     <Sidebar data-testid="sidebar-main">
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-3 border-b border-sidebar-border">
         <button
           onClick={() => onNavigate?.('/settings')}
-          className="flex items-center gap-3 w-full text-left hover-elevate rounded-lg p-2 -m-2 transition-colors"
+          className="flex items-center gap-3 w-full text-left hover:bg-sidebar-accent rounded-lg p-2 transition-colors"
           data-testid="button-sidebar-settings"
         >
           {businessSettings?.logoUrl ? (
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0">
               <img 
                 src={businessSettings.logoUrl} 
                 alt="Business logo" 
-                className="w-full h-full object-contain p-1"
+                className="w-full h-full object-cover"
                 data-testid="img-business-logo"
               />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm flex-shrink-0 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 flex items-center justify-center p-1">
               <img 
                 src={tradietrackLogo} 
                 alt="TradieTrack" 
-                className="w-8 h-8 object-contain"
+                className="w-full h-full object-contain"
                 data-testid="img-tradietrack-icon"
               />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-base truncate" data-testid="text-business-name">
+            <h1 className="font-semibold text-sm text-sidebar-foreground truncate" data-testid="text-business-name">
               {businessName}
             </h1>
-            <p className="text-xs text-muted-foreground truncate">My Account</p>
+            <p className="text-xs text-sidebar-foreground/60 truncate">My Account</p>
           </div>
         </button>
       </SidebarHeader>
