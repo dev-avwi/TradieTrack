@@ -24006,8 +24006,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== TECHNICIAN UTILIZATION METRICS =====
 
-  // Get team utilization metrics
-  app.get("/api/reports/utilization", requireAuth, async (req: any, res) => {
+  // Get team utilization metrics (both paths for compatibility)
+  app.get(["/api/team/utilization", "/api/reports/utilization"], requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { startDate, endDate } = req.query;
