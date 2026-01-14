@@ -14600,6 +14600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         valid: true,
         invite: {
+          teamMemberId: teamMember.id,
           businessName: businessSettings?.businessName || 'A TradieTrack business',
           roleName: role?.name || 'Team Member',
           roleDescription: role?.description || null,

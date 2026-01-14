@@ -6,10 +6,32 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CheckCircle2, Users, AlertCircle, Loader2, Building2, UserPlus, Shield, LogIn, ArrowRight } from "lucide-react";
+import { CheckCircle2, Users, AlertCircle, Loader2, Building2, UserPlus, Shield, LogIn, ArrowRight, Lock, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+
+interface PermissionItem {
+  id: string;
+  label: string;
+  granted: boolean;
+}
+
+interface PermissionCategory {
+  key: string;
+  label: string;
+  description: string;
+  permissions: PermissionItem[];
+}
+
+interface AvailablePermission {
+  id: string;
+  label: string;
+}
 
 interface InviteDetails {
   valid: boolean;
@@ -17,10 +39,16 @@ interface InviteDetails {
   invite?: {
     businessName: string;
     roleName: string;
+    roleDescription?: string;
     email: string;
     inviterName: string;
     firstName?: string;
     lastName?: string;
+    ownerId: string;
+    teamMemberId: string;
+    permissions: string[];
+    permissionsByCategory: PermissionCategory[];
+    availableToRequest: AvailablePermission[];
   };
 }
 
@@ -33,6 +61,11 @@ export default function AcceptInvite() {
   const [acceptStatus, setAcceptStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [countdown, setCountdown] = useState(3);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [requestAccessOpen, setRequestAccessOpen] = useState(false);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [requestReason, setRequestReason] = useState('');
+  const [requestingPermissions, setRequestingPermissions] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -76,6 +109,53 @@ export default function AcceptInvite() {
       return () => clearInterval(timer);
     }
   }, [acceptStatus, setLocation]);
+
+  const handlePermissionToggle = (permissionId: string) => {
+    setSelectedPermissions(prev => 
+      prev.includes(permissionId)
+        ? prev.filter(id => id !== permissionId)
+        : [...prev, permissionId]
+    );
+  };
+
+  const handleRequestPermissions = async () => {
+    if (selectedPermissions.length === 0 || !inviteData?.invite) return;
+    
+    setRequestingPermissions(true);
+    try {
+      const response = await apiRequest("POST", `/api/team/permission-requests`, {
+        teamMemberId: inviteData.invite.teamMemberId,
+        businessOwnerId: inviteData.invite.ownerId,
+        requestedPermissions: selectedPermissions,
+        reason: requestReason || undefined,
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Request Sent",
+          description: "Your permission request has been sent to the team owner for review.",
+        });
+        setSelectedPermissions([]);
+        setRequestReason('');
+        setRequestAccessOpen(false);
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Request Failed",
+          description: data.error || "Failed to send permission request.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Request Failed",
+        description: "Failed to send permission request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingPermissions(false);
+    }
+  };
 
   const handleAcceptAsExistingUser = async () => {
     setAcceptStatus('loading');
@@ -268,6 +348,8 @@ export default function AcceptInvite() {
 
   const invite = inviteData.invite!;
   const isLoggedIn = !!currentUser;
+  const hasPermissions = invite.permissionsByCategory && invite.permissionsByCategory.length > 0;
+  const hasAvailableToRequest = invite.availableToRequest && invite.availableToRequest.length > 0;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -303,9 +385,157 @@ export default function AcceptInvite() {
               <div>
                 <p className="text-xs text-muted-foreground">Your Role</p>
                 <p className="font-semibold">{invite.roleName}</p>
+                {invite.roleDescription && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{invite.roleDescription}</p>
+                )}
               </div>
             </div>
           </div>
+
+          {hasPermissions && (
+            <Collapsible open={permissionsOpen} onOpenChange={setPermissionsOpen}>
+              <Card className="border">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full p-4 flex items-center justify-between text-left hover-elevate rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium">Your Permissions</p>
+                        <p className="text-xs text-muted-foreground">
+                          {invite.permissions?.length || 0} permissions included with this role
+                        </p>
+                      </div>
+                    </div>
+                    {permissionsOpen ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <Separator />
+                    {invite.permissionsByCategory.map((category) => (
+                      <div key={category.key} className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium">{category.label}</p>
+                          <p className="text-xs text-muted-foreground">{category.description}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {category.permissions.map((permission) => (
+                            <Badge 
+                              key={permission.id}
+                              variant={permission.granted ? "default" : "secondary"}
+                              className={`flex items-center gap-1.5 ${
+                                permission.granted 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800' 
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {permission.granted ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : (
+                                <Lock className="h-3 w-3" />
+                              )}
+                              {permission.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
+          {hasAvailableToRequest && (
+            <Collapsible open={requestAccessOpen} onOpenChange={setRequestAccessOpen}>
+              <Card className="border">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full p-4 flex items-center justify-between text-left hover-elevate rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Send className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium">Request Additional Access</p>
+                        <p className="text-xs text-muted-foreground">
+                          Ask for more permissions if needed
+                        </p>
+                      </div>
+                    </div>
+                    {requestAccessOpen ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <Separator />
+                    <p className="text-sm text-muted-foreground">
+                      Select permissions you'd like to request. The team owner will review your request.
+                    </p>
+                    <div className="space-y-3">
+                      {invite.availableToRequest.map((permission) => (
+                        <div 
+                          key={permission.id} 
+                          className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50"
+                        >
+                          <Checkbox
+                            id={`request-${permission.id}`}
+                            checked={selectedPermissions.includes(permission.id)}
+                            onCheckedChange={() => handlePermissionToggle(permission.id)}
+                          />
+                          <Label 
+                            htmlFor={`request-${permission.id}`}
+                            className="flex-1 cursor-pointer text-sm"
+                          >
+                            {permission.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="request-reason" className="text-sm">
+                        Reason (optional)
+                      </Label>
+                      <Textarea
+                        id="request-reason"
+                        placeholder="Explain why you need these permissions..."
+                        value={requestReason}
+                        onChange={(e) => setRequestReason(e.target.value)}
+                        className="resize-none"
+                        rows={3}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleRequestPermissions}
+                      disabled={selectedPermissions.length === 0 || requestingPermissions}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {requestingPermissions ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending Request...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Send Request
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      You can still accept the invitation with your current permissions
+                    </p>
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
 
           {errorMessage && (
             <Alert variant="destructive">
