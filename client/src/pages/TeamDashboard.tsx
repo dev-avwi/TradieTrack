@@ -50,7 +50,9 @@ import {
   UserCheck,
   Plus,
   Settings,
+  BarChart,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import {
   Sheet,
   SheetContent,
@@ -123,6 +125,22 @@ interface MemberWithJobs extends TeamMemberData {
   assignedJobs: JobData[];
   presence?: TeamPresenceData;
   recentActivity: ActivityFeedItem[];
+}
+
+interface UtilizationMember {
+  userId: string;
+  name: string;
+  billableHours: number;
+  totalHours: number;
+  utilizationPercent: number;
+  jobsCompleted: number;
+  jobsAssigned: number;
+}
+
+interface TeamUtilizationData {
+  period: { start: string; end: string };
+  teamAverage: { utilizationPercent: number };
+  members: UtilizationMember[];
 }
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: typeof Circle }> = {
@@ -454,6 +472,130 @@ function ActivityTimeline({
                   Important
                 </Badge>
               )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getUtilizationColor(percent: number): string {
+  if (percent > 70) return "hsl(145 65% 45%)";
+  if (percent >= 50) return "hsl(35 90% 55%)";
+  return "hsl(5 85% 55%)";
+}
+
+function TeamUtilization({
+  utilization,
+  members,
+  isLoading,
+}: {
+  utilization: TeamUtilizationData | undefined;
+  members: TeamMemberData[];
+  isLoading: boolean;
+}) {
+  const sortedMembers = useMemo(() => {
+    if (!utilization?.members) return [];
+    return [...utilization.members].sort((a, b) => b.utilizationPercent - a.utilizationPercent);
+  }, [utilization?.members]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-3 p-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-2 w-full" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!utilization || sortedMembers.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <BarChart className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+        <p className="text-muted-foreground text-sm">No utilization data yet</p>
+      </div>
+    );
+  }
+
+  const teamAvgColor = getUtilizationColor(utilization.teamAverage.utilizationPercent);
+
+  return (
+    <div className="space-y-4" data-testid="team-utilization">
+      <div className="p-3 rounded-lg bg-muted/30">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">Team Average</span>
+          <span 
+            className="text-sm font-semibold"
+            style={{ color: teamAvgColor }}
+          >
+            {utilization.teamAverage.utilizationPercent}%
+          </span>
+        </div>
+        <Progress 
+          value={utilization.teamAverage.utilizationPercent} 
+          className="h-2"
+          style={{ 
+            ['--progress-background' as string]: teamAvgColor 
+          }}
+        />
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-[10px] text-muted-foreground">Target: 80%</span>
+          <span className="text-[10px] text-muted-foreground">
+            {utilization.teamAverage.utilizationPercent >= 80 ? "On target" : 
+             utilization.teamAverage.utilizationPercent >= 70 ? "Near target" : "Below target"}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {sortedMembers.map((member) => {
+          const teamMember = members.find(m => m.userId === member.userId);
+          const utilizationColor = getUtilizationColor(member.utilizationPercent);
+          
+          return (
+            <div
+              key={member.userId}
+              className="flex items-start gap-3 p-3 rounded-lg hover-elevate"
+              data-testid={`utilization-member-${member.userId}`}
+            >
+              <Avatar className="h-10 w-10 shrink-0">
+                <AvatarImage src={teamMember?.profileImageUrl || undefined} alt={member.name} />
+                <AvatarFallback className="text-sm">
+                  {member.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-medium text-sm truncate">{member.name}</span>
+                  <span 
+                    className="text-sm font-semibold shrink-0"
+                    style={{ color: utilizationColor }}
+                  >
+                    {member.utilizationPercent}%
+                  </span>
+                </div>
+                <Progress 
+                  value={member.utilizationPercent} 
+                  className="h-1.5 mb-2"
+                  style={{ 
+                    ['--progress-background' as string]: utilizationColor 
+                  }}
+                />
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{member.billableHours}h / {member.totalHours}h</span>
+                  <span>•</span>
+                  <span>{member.jobsCompleted} jobs done</span>
+                </div>
+              </div>
             </div>
           );
         })}
@@ -951,6 +1093,7 @@ export default function TeamDashboard() {
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
   const [mapOpen, setMapOpen] = useState(true);
+  const [utilizationOpen, setUtilizationOpen] = useState(true);
   const [selectedMember, setSelectedMember] = useState<MemberWithJobs | null>(null);
   const [selectedMemberIdForMap, setSelectedMemberIdForMap] = useState<string | null>(null);
 
@@ -977,6 +1120,11 @@ export default function TeamDashboard() {
 
   const { data: allJobs = [] } = useQuery<JobData[]>({
     queryKey: ["/api/jobs"],
+  });
+
+  const { data: utilization, isLoading: utilizationLoading } = useQuery<TeamUtilizationData>({
+    queryKey: ["/api/team/utilization"],
+    refetchInterval: 30000,
   });
 
   // Derive filtered views from allJobs
@@ -1172,7 +1320,7 @@ export default function TeamDashboard() {
       </header>
 
       <div className="flex-1 overflow-hidden">
-        <div className="hidden lg:grid lg:grid-cols-3 h-full gap-0">
+        <div className="hidden lg:grid lg:grid-cols-4 h-full gap-0">
           <Card className="rounded-none border-0 border-r h-full overflow-hidden flex flex-col">
             <CardHeader className="shrink-0 pb-3 border-b">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1203,7 +1351,7 @@ export default function TeamDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-none border-0 h-full overflow-hidden flex flex-col">
+          <Card className="rounded-none border-0 border-r h-full overflow-hidden flex flex-col">
             <CardHeader className="shrink-0 pb-3 border-b">
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -1224,6 +1372,22 @@ export default function TeamDashboard() {
                 onMemberClick={handleMemberClickFromMap}
                 selectedMemberId={selectedMemberIdForMap}
                 onAssignJob={handleAssignJob}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-none border-0 h-full overflow-hidden flex flex-col">
+            <CardHeader className="shrink-0 pb-3 border-b">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart className="h-4 w-4" />
+                Team Utilization
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-0">
+              <TeamUtilization
+                utilization={utilization}
+                members={members}
+                isLoading={utilizationLoading}
               />
             </CardContent>
           </Card>
@@ -1324,6 +1488,44 @@ export default function TeamDashboard() {
                       onAssignJob={handleAssignJob}
                     />
                   </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          <Collapsible open={utilizationOpen} onOpenChange={setUtilizationOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover-elevate">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <BarChart className="h-4 w-4" />
+                      Team Utilization
+                      {utilization?.teamAverage && (
+                        <Badge 
+                          variant="secondary" 
+                          className="ml-2"
+                          style={{ color: getUtilizationColor(utilization.teamAverage.utilizationPercent) }}
+                        >
+                          {utilization.teamAverage.utilizationPercent}%
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    {utilizationOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <TeamUtilization
+                    utilization={utilization}
+                    members={members}
+                    isLoading={utilizationLoading}
+                  />
                 </CardContent>
               </CollapsibleContent>
             </Card>

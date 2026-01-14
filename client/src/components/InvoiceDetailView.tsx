@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -53,6 +53,9 @@ export default function InvoiceDetailView({
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [showPaymentPlanDialog, setShowPaymentPlanDialog] = useState(false);
+  const [paymentPlanInstallments, setPaymentPlanInstallments] = useState<number>(3);
+  const [paymentPlanFrequency, setPaymentPlanFrequency] = useState<'weekly' | 'fortnightly' | 'monthly'>('fortnightly');
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const markPaidMutation = useMarkInvoicePaid();
@@ -166,6 +169,49 @@ export default function InvoiceDetailView({
       return response.json();
     },
     enabled: invoice?.status === 'paid'
+  });
+
+  // Get existing payment schedule for this invoice
+  const { data: paymentSchedule, refetch: refetchPaymentSchedule } = useQuery({
+    queryKey: ['/api/payment-schedules', 'invoice', invoiceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/payment-schedules/invoice/${invoiceId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error('Failed to fetch payment schedule');
+      return response.json();
+    },
+    enabled: !!invoice && invoice.status !== 'paid'
+  });
+
+  const createPaymentPlanMutation = useMutation({
+    mutationFn: async (data: { numberOfInstallments: number; frequency: string }) => {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 7);
+      return apiRequest('POST', '/api/payment-schedules', {
+        invoiceId,
+        numberOfInstallments: data.numberOfInstallments,
+        frequency: data.frequency,
+        startDate: startDate.toISOString(),
+      });
+    },
+    onSuccess: () => {
+      refetchPaymentSchedule();
+      setShowPaymentPlanDialog(false);
+      toast({
+        title: "Payment plan created",
+        description: `${paymentPlanInstallments} installment payment plan set up successfully.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error creating payment plan",
+        description: error.message || "Failed to create payment plan",
+        variant: "destructive",
+      });
+    }
   });
 
   const toggleOnlinePaymentMutation = useMutation({
@@ -1036,6 +1082,202 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
             </div>
           </Card>
         )}
+
+        {invoice.status !== 'paid' && (
+          <Card className="mb-6 no-print">
+            <div className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <CalendarClock className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-semibold">Payment Plan</h3>
+                  {paymentSchedule ? (
+                    <p className="text-sm text-muted-foreground">
+                      {paymentSchedule.numberOfInstallments}-installment plan ({paymentSchedule.frequency})
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Offer flexible payment options to your customer
+                    </p>
+                  )}
+                </div>
+                {!paymentSchedule && (
+                  <Button
+                    onClick={() => setShowPaymentPlanDialog(true)}
+                    data-testid="button-setup-payment-plan"
+                  >
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    Set Up Payment Plan
+                  </Button>
+                )}
+              </div>
+
+              {paymentSchedule && paymentSchedule.installments && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="space-y-2">
+                    {paymentSchedule.installments.map((installment: any) => (
+                      <div 
+                        key={installment.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium">
+                            #{installment.installmentNumber}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(installment.dueDate).toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold">
+                            ${Number(installment.amount).toFixed(2)}
+                          </span>
+                          <Badge 
+                            variant={
+                              installment.status === 'paid' ? 'default' :
+                              installment.status === 'overdue' ? 'destructive' :
+                              installment.status === 'due' ? 'secondary' :
+                              'outline'
+                            }
+                            className="text-xs"
+                          >
+                            {installment.status === 'paid' ? 'Paid' :
+                             installment.status === 'overdue' ? 'Overdue' :
+                             installment.status === 'due' ? 'Due' :
+                             'Pending'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">
+                      {paymentSchedule.installments.filter((i: any) => i.status === 'paid').length} of {paymentSchedule.numberOfInstallments} paid
+                    </span>
+                    <span className="font-semibold">
+                      Total: ${Number(paymentSchedule.totalAmount).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        <Dialog open={showPaymentPlanDialog} onOpenChange={setShowPaymentPlanDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Set Up Payment Plan</DialogTitle>
+              <DialogDescription>
+                Create an installment plan for invoice {invoice?.number}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Number of Installments</Label>
+                <Select
+                  value={paymentPlanInstallments.toString()}
+                  onValueChange={(val) => setPaymentPlanInstallments(Number(val))}
+                >
+                  <SelectTrigger data-testid="select-installments">
+                    <SelectValue placeholder="Select installments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">2 installments</SelectItem>
+                    <SelectItem value="3">3 installments</SelectItem>
+                    <SelectItem value="4">4 installments</SelectItem>
+                    <SelectItem value="6">6 installments</SelectItem>
+                    <SelectItem value="12">12 installments</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Payment Frequency</Label>
+                <Select
+                  value={paymentPlanFrequency}
+                  onValueChange={(val: 'weekly' | 'fortnightly' | 'monthly') => setPaymentPlanFrequency(val)}
+                >
+                  <SelectTrigger data-testid="select-frequency">
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {invoice?.total && (
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <h4 className="text-sm font-semibold mb-3">Payment Preview</h4>
+                  <div className="space-y-2">
+                    {Array.from({ length: paymentPlanInstallments }).map((_, index) => {
+                      const installmentAmount = Number(invoice.total) / paymentPlanInstallments;
+                      const isLast = index === paymentPlanInstallments - 1;
+                      const amount = isLast 
+                        ? Number(invoice.total) - (Math.floor(installmentAmount * 100) / 100 * (paymentPlanInstallments - 1))
+                        : Math.floor(installmentAmount * 100) / 100;
+                      
+                      const startDate = new Date();
+                      startDate.setDate(startDate.getDate() + 7);
+                      const dueDate = new Date(startDate);
+                      if (paymentPlanFrequency === 'weekly') {
+                        dueDate.setDate(dueDate.getDate() + (7 * index));
+                      } else if (paymentPlanFrequency === 'fortnightly') {
+                        dueDate.setDate(dueDate.getDate() + (14 * index));
+                      } else {
+                        dueDate.setMonth(dueDate.getMonth() + index);
+                      }
+
+                      return (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            #{index + 1} - {dueDate.toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          <span className="font-medium">${amount.toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-border flex justify-between">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-semibold">${Number(invoice.total).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowPaymentPlanDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createPaymentPlanMutation.mutate({
+                  numberOfInstallments: paymentPlanInstallments,
+                  frequency: paymentPlanFrequency
+                })}
+                disabled={createPaymentPlanMutation.isPending}
+                data-testid="button-create-payment-plan"
+              >
+                {createPaymentPlanMutation.isPending && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
+                Create Payment Plan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         {isDemoUser && (
           <DemoPaymentSimulator
