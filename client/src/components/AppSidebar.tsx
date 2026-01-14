@@ -74,11 +74,11 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
       <SidebarHeader className="p-3 border-b border-sidebar-border">
         <button
           onClick={() => onNavigate?.('/settings')}
-          className="flex items-center gap-3 w-full text-left hover:bg-sidebar-accent rounded-lg p-2 transition-colors"
+          className="flex items-center gap-3 w-full text-left hover:bg-sidebar-accent rounded-lg p-2 transition-colors group"
           data-testid="button-sidebar-settings"
         >
           {businessSettings?.logoUrl ? (
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 shadow-sm">
               <img 
                 src={businessSettings.logoUrl} 
                 alt="Business logo" 
@@ -87,7 +87,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 flex items-center justify-center p-1">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 flex items-center justify-center p-1 shadow-sm">
               <img 
                 src={tradietrackLogo} 
                 alt="TradieTrack" 
@@ -97,10 +97,10 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h1 className="font-semibold text-sm text-sidebar-foreground truncate" data-testid="text-business-name">
+            <h1 className="font-semibold text-sm truncate" style={{ color: 'hsl(var(--sidebar-foreground))' }} data-testid="text-business-name">
               {businessName}
             </h1>
-            <p className="text-xs text-sidebar-foreground/60 truncate">My Account</p>
+            <p className="text-xs truncate" style={{ color: 'hsl(var(--sidebar-foreground) / 0.7)' }}>My Account</p>
           </div>
         </button>
       </SidebarHeader>

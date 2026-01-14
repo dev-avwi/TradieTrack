@@ -96,8 +96,12 @@ export default function Header({
           {/* SidebarTrigger - shown on both mobile and desktop */}
           <SidebarTrigger data-testid="button-sidebar-toggle" />
           
-          {/* TradieTrack branding */}
-          <div className="flex items-center gap-2">
+          {/* TradieTrack branding - clickable to go to settings/My Account */}
+          <button
+            onClick={() => setLocation('/settings')}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            data-testid="button-header-settings"
+          >
             <img 
               src={appIconUrl} 
               alt="TradieTrack" 
@@ -111,7 +115,7 @@ export default function Header({
             >
               TradieTrack
             </span>
-          </div>
+          </button>
           
           {title && (
             <h1 className="text-xl font-semibold hidden md:block" data-testid="header-title">
