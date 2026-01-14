@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -44,10 +45,12 @@ interface MissedNotificationsResponse {
 }
 
 const AUTO_DISMISS_DELAY = 10000;
+const COUNTDOWN_INTERVAL = 100;
 
 export default function WhatYouMissedModal() {
   const [open, setOpen] = useState(false);
   const [hasShownOnce, setHasShownOnce] = useState(false);
+  const [countdown, setCountdown] = useState(AUTO_DISMISS_DELAY);
   const [, setLocation] = useLocation();
 
   const { data } = useQuery<MissedNotificationsResponse>({
@@ -59,14 +62,29 @@ export default function WhatYouMissedModal() {
     if (data && data.count > 0 && !hasShownOnce) {
       setOpen(true);
       setHasShownOnce(true);
+      setCountdown(AUTO_DISMISS_DELAY);
 
-      const timer = setTimeout(() => {
-        setOpen(false);
-      }, AUTO_DISMISS_DELAY);
+      const countdownInterval = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= COUNTDOWN_INTERVAL) {
+            clearInterval(countdownInterval);
+            setOpen(false);
+            return 0;
+          }
+          return prev - COUNTDOWN_INTERVAL;
+        });
+      }, COUNTDOWN_INTERVAL);
 
-      return () => clearTimeout(timer);
+      return () => clearInterval(countdownInterval);
     }
   }, [data, hasShownOnce]);
+
+  const handleClose = () => {
+    setCountdown(0);
+    setOpen(false);
+  };
+
+  const countdownPercent = (countdown / AUTO_DISMISS_DELAY) * 100;
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => 
@@ -197,20 +215,29 @@ export default function WhatYouMissedModal() {
               </div>
               <div>
                 <DialogTitle className="text-lg">What You Missed</DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <DialogDescription className="text-sm text-muted-foreground">
                   {data.count} update{data.count !== 1 ? 's' : ''} since you were away
-                </p>
+                </DialogDescription>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setOpen(false)}
+              onClick={handleClose}
               className="h-8 w-8"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
+          <div className="h-1 w-full bg-muted mt-3 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-100 ease-linear"
+              style={{ width: `${countdownPercent}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1 text-center">
+            Auto-closing in {Math.ceil(countdown / 1000)}s
+          </p>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh]">
