@@ -28,6 +28,8 @@ export default function TradeCustomFieldsForm({
 
   const renderField = (field: typeof customFields[0]) => {
     const fieldName = `${fieldPrefix}.${field.id}`;
+    // Use 'name' property from catalog (not 'label')
+    const fieldLabel = field.name;
     
     switch (field.type) {
       case 'select':
@@ -39,7 +41,7 @@ export default function TradeCustomFieldsForm({
             render={({ field: formField }) => (
               <FormItem>
                 <FormLabel>
-                  {field.label}
+                  {fieldLabel}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <Select 
@@ -48,7 +50,7 @@ export default function TradeCustomFieldsForm({
                 >
                   <FormControl>
                     <SelectTrigger data-testid={`select-${field.id}`}>
-                      <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
+                      <SelectValue placeholder={field.placeholder || `Select ${fieldLabel.toLowerCase()}`} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -74,14 +76,14 @@ export default function TradeCustomFieldsForm({
             render={({ field: formField }) => (
               <FormItem>
                 <FormLabel>
-                  {field.label}
+                  {fieldLabel}
                   {field.unit && <span className="text-muted-foreground ml-1">({field.unit})</span>}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                    placeholder={field.placeholder || `Enter ${fieldLabel.toLowerCase()}`}
                     {...formField}
                     onChange={(e) => formField.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                     value={formField.value ?? ""}
@@ -94,7 +96,8 @@ export default function TradeCustomFieldsForm({
           />
         );
       
-      case 'boolean':
+      case 'checkbox':
+        // Catalog uses 'checkbox' type for boolean/toggle fields
         return (
           <Controller
             key={field.id}
@@ -103,7 +106,7 @@ export default function TradeCustomFieldsForm({
             render={({ field: formField }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                 <div className="space-y-0.5">
-                  <FormLabel>{field.label}</FormLabel>
+                  <FormLabel>{fieldLabel}</FormLabel>
                   {field.placeholder && (
                     <FormDescription className="text-xs">{field.placeholder}</FormDescription>
                   )}
@@ -119,25 +122,26 @@ export default function TradeCustomFieldsForm({
             )}
           />
         );
-      
-      case 'textarea':
+
+      case 'date':
         return (
           <Controller
             key={field.id}
             control={form.control}
             name={fieldName}
             render={({ field: formField }) => (
-              <FormItem className="col-span-2">
+              <FormItem>
                 <FormLabel>
-                  {field.label}
+                  {fieldLabel}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                  <Input
+                    type="date"
+                    placeholder={field.placeholder || `Select ${fieldLabel.toLowerCase()}`}
                     {...formField}
                     value={formField.value ?? ""}
-                    data-testid={`textarea-${field.id}`}
+                    data-testid={`input-${field.id}`}
                   />
                 </FormControl>
                 <FormMessage />
@@ -156,13 +160,13 @@ export default function TradeCustomFieldsForm({
             render={({ field: formField }) => (
               <FormItem>
                 <FormLabel>
-                  {field.label}
+                  {fieldLabel}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
-                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                    placeholder={field.placeholder || `Enter ${fieldLabel.toLowerCase()}`}
                     {...formField}
                     value={formField.value ?? ""}
                     data-testid={`input-${field.id}`}
@@ -214,7 +218,7 @@ export function getCustomFieldsDefaultValues(customFields: { id: string; type: s
       defaults[field.id] = field.defaultValue;
     } else {
       switch (field.type) {
-        case 'boolean':
+        case 'checkbox':
           defaults[field.id] = false;
           break;
         case 'number':

@@ -328,35 +328,99 @@ export default function BusinessProfileStep({
                     </span>
                   </div>
                   <div>
-                    <h4 className="font-medium">{tradeInfo.name}</h4>
+                    <h4 className="font-medium">{tradeInfo.name} Package</h4>
                     <p className="text-sm text-muted-foreground">{tradeInfo.description}</p>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                    <span>{tradeInfo.customFields.length} custom fields tailored for {tradeInfo.shortName.toLowerCase()}s</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                    <span>{tradeInfo.defaultMaterials.length} pre-loaded materials & pricing</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                    <span>Industry-standard rate card (${tradeInfo.defaultRateCard.hourlyRate}/hr)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                    <span>{tradeInfo.safetyChecklists.length} safety checklist{tradeInfo.safetyChecklists.length !== 1 ? 's' : ''} included</span>
+
+                {/* What's Included Section */}
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">What's Included</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-medium">{tradeInfo.customFields.length} Custom Fields</span>
+                        <p className="text-xs text-muted-foreground">
+                          {tradeInfo.customFields.slice(0, 2).map(f => f.name).join(', ')}
+                          {tradeInfo.customFields.length > 2 && ` +${tradeInfo.customFields.length - 2} more`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-medium">{tradeInfo.defaultMaterials.length} Materials Catalog</span>
+                        <p className="text-xs text-muted-foreground">Pre-loaded with industry pricing</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-medium">Rate Card Ready</span>
+                        <p className="text-xs text-muted-foreground">
+                          ${tradeInfo.defaultRateCard.hourlyRate}/hr • ${tradeInfo.defaultRateCard.calloutFee} callout
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-medium">{tradeInfo.safetyChecklists.length} Safety Checklist{tradeInfo.safetyChecklists.length !== 1 ? 's' : ''}</span>
+                        <p className="text-xs text-muted-foreground">Australian WHS compliant</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-medium">{tradeInfo.quoteCategories.length} Quote Categories</span>
+                        <p className="text-xs text-muted-foreground">
+                          {tradeInfo.quoteCategories.slice(0, 2).join(', ')}
+                          {tradeInfo.quoteCategories.length > 2 && ` +${tradeInfo.quoteCategories.length - 2} more`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-medium">Trade Templates</span>
+                        <p className="text-xs text-muted-foreground">Quotes, invoices & job templates</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {tradeInfo.terminology.job !== 'Job' && (
-                  <p className="text-xs text-muted-foreground border-t pt-3">
-                    Your app will use "{tradeInfo.terminology.job}" instead of "Job" and "{tradeInfo.terminology.worksite}" instead of "Site"
-                  </p>
+                {/* Typical Jobs Preview */}
+                {tradeInfo.typicalJobs.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Common Job Types</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tradeInfo.typicalJobs.slice(0, 6).map((job) => (
+                        <span 
+                          key={job} 
+                          className="text-xs px-2 py-1 rounded-md bg-background border"
+                        >
+                          {job}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
+
+                {/* Terminology & License Info */}
+                <div className="pt-2 border-t space-y-2">
+                  {tradeInfo.terminology.job !== 'Job' && (
+                    <p className="text-xs text-muted-foreground">
+                      Your app uses "{tradeInfo.terminology.job}" instead of "Job" and "{tradeInfo.terminology.worksite}" instead of "Site"
+                    </p>
+                  )}
+                  {tradeInfo.licenseRequired && (
+                    <p className="text-xs text-amber-600">
+                      License: {tradeInfo.licenseRequired}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
