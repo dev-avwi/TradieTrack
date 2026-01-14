@@ -52,7 +52,7 @@ const defaultRateCard: TradeRateCard = {
 
 export function useTradeContext(): TradeContext {
   const { data: user, isLoading } = useQuery<any>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/me"],
   });
 
   const tradeId = user?.tradeType || null;
