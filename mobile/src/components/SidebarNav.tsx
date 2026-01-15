@@ -138,16 +138,20 @@ export function SidebarNav() {
             <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
           ) : (
             <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
-              <Text style={themedStyles.logoText}>{businessName.charAt(0).toUpperCase()}</Text>
+              <Text style={themedStyles.logoText}>{initials || businessName.charAt(0).toUpperCase()}</Text>
             </View>
           )}
         </View>
         <View style={themedStyles.headerTextContainer}>
-          <Text style={[themedStyles.businessName, { color: colors.foreground }]} numberOfLines={1} ellipsizeMode="tail">
-            {businessName}
+          <Text 
+            style={[themedStyles.businessName, { color: colors.foreground }]} 
+            numberOfLines={1} 
+            ellipsizeMode="tail"
+          >
+            {businessName || 'TradieTrack'}
           </Text>
           <Text style={[themedStyles.businessTagline, { color: colors.mutedForeground }]}>
-            TradieTrack
+            My Account
           </Text>
         </View>
       </Pressable>
@@ -275,46 +279,52 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 12,
   },
   logoContainer: {
-    width: 40,
-    height: 40,
-    marginRight: 12,
-    flexShrink: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
-    width: '100%',
-    height: '100%',
+    width: 44,
+    height: 44,
     borderRadius: 10,
   },
   logoPlaceholder: {
-    width: '100%',
-    height: '100%',
+    width: 44,
+    height: 44,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
   },
   headerTextContainer: {
     flex: 1,
     justifyContent: 'center',
-    minWidth: 0,
-    overflow: 'hidden',
   },
   businessName: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
+    lineHeight: 22,
   },
   businessTagline: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
+    lineHeight: 16,
   },
   scrollView: {
     flex: 1,
