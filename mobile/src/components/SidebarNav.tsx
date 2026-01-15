@@ -125,11 +125,13 @@ export function SidebarNav() {
 
   return (
     <View style={themedStyles.container}>
+      {/* Safe area spacer */}
+      <View style={{ height: insets.top + 8, backgroundColor: colors.background }} />
+      
       {/* Sidebar Header with Logo + Business Name */}
       <Pressable 
         style={({ pressed }) => [
           themedStyles.headerSection,
-          { paddingTop: insets.top + 12 },
           pressed && { opacity: 0.8 }
         ]}
         onPress={() => router.push('/more/settings' as any)}
@@ -282,11 +284,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexShrink: 0,
   },
   headerSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    marginHorizontal: 12,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   headerRow: {
     flexDirection: 'row',

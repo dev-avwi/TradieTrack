@@ -299,35 +299,33 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   // iPad: Sidebar layout with header in content area
   if (isTabletDevice) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.tabletLayout}>
-          {/* Sidebar on the left */}
-          <SidebarNav />
-          
-          {/* Main content area on the right */}
-          <View style={styles.tabletContent}>
-            {/* Header at top of content area - show TradieTrack branding like web, hide avatar (in sidebar) */}
-            <Header showMenuButton={true} showAvatar={false} />
+      <>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={styles.tabletLayout}>
+            {/* Sidebar on the left */}
+            <SidebarNav />
             
-            {/* Content fills remaining space */}
-            <View style={styles.content}>
-              {children}
+            {/* Main content area on the right */}
+            <View style={styles.tabletContent}>
+              {/* Header at top of content area - show TradieTrack branding like web, hide avatar (in sidebar) */}
+              <Header showMenuButton={true} showAvatar={false} />
+              
+              {/* Content fills remaining space */}
+              <View style={styles.content}>
+                {children}
+              </View>
             </View>
           </View>
+          
+          {/* Overlays */}
+          <OfflineBanner />
+          <ConflictResolutionPanel />
+          <OfflineIndicator />
         </View>
         
-        {/* FAB wrapper positioned in content area (right of sidebar) */}
-        {showFab && (
-          <View style={styles.tabletFabWrapper}>
-            <FloatingActionButton isTeamOwner={isTeamOwner} fabStyle="tablet" />
-          </View>
-        )}
-        
-        {/* Overlays */}
-        <OfflineBanner />
-        <ConflictResolutionPanel />
-        <OfflineIndicator />
-      </View>
+        {/* FAB rendered at root level with absolute positioning - outside all containers */}
+        {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} fabStyle="tablet" />}
+      </>
     );
   }
 
