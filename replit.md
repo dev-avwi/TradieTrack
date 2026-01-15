@@ -98,3 +98,11 @@ Key architectural and design decisions include:
     - Live location tracking: POST /api/team-locations updates, GET /api/team/locations for owners/managers
     - Mobile map polls team locations every 10 seconds for real-time updates
 *   **Production Readiness Status**: All features verified except Tap to Pay (requires EAS native build)
+*   **FloatingActionButton Tablet Improvements**: Redesigned the FAB component for better tablet UX:
+    - FAB button visible on all devices (removed mobile-only restriction)
+    - Star icon with trade-colored styling
+    - Responsive popup positioning: centered on tablets (md: 768-1023px), anchored bottom-right on mobile and desktop (lg: 1024px+)
+    - Quick actions: New Job, New Quote, New Invoice, New Client
+    - Secondary action: Collect Payment
+    - Click-outside-to-dismiss functionality
+*   **Sidebar Header Fixes**: Cleaned up AppSidebar header by removing unnecessary `group-data-[collapsible=icon]` classes. The sidebar uses "offcanvas" mode by default, ensuring header content (logo + business name) is always visible when the sidebar is open.
