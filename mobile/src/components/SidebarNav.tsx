@@ -124,7 +124,10 @@ export function SidebarNav() {
   const isLoading = !isReady;
 
   return (
-    <View style={[themedStyles.container, { paddingTop: insets.top }]}>
+    <View style={themedStyles.container}>
+      {/* Safe area spacer at top */}
+      <View style={{ height: insets.top, backgroundColor: colors.card }} />
+      
       {/* Sidebar Header - Logo and Business Name */}
       <View style={themedStyles.headerSection}>
         <Pressable 
@@ -271,10 +274,12 @@ const styles = StyleSheet.create({
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: SIDEBAR_WIDTH,
-    flex: 1,
+    height: '100%',
     backgroundColor: colors.background,
     borderRightWidth: 1,
     borderRightColor: colors.border,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   headerSection: {
     height: 80,
