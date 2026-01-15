@@ -61,15 +61,15 @@ export default function FloatingActionButton({
     <>
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[58]"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[58] xl:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Closed FAB button - only visible on mobile and tablet, hidden on desktop */}
+      {/* Closed FAB button - visible on mobile and tablet only (< 1280px), hidden on desktop */}
       {!isOpen && (
         <div 
-          className="fixed z-[59] bottom-24 right-6 lg:hidden"
+          className="fixed z-[59] bottom-24 right-6 xl:hidden"
           data-testid="fab-container"
         >
           <button
@@ -86,11 +86,11 @@ export default function FloatingActionButton({
         </div>
       )}
 
-      {/* Open popup - centered on tablets, hidden on desktop */}
+      {/* Open popup - centered on screen for mobile/tablet, hidden on desktop */}
       {isOpen && (
         <div 
           ref={popupRef}
-          className="fixed z-[59] bottom-32 right-6 md:bottom-auto md:right-auto md:top-1/2 md:-translate-y-1/2 md:left-1/2 md:-translate-x-1/2 lg:hidden"
+          className="fixed z-[59] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 xl:hidden"
           data-testid="fab-container-open"
         >
           <div 
