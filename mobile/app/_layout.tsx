@@ -24,7 +24,7 @@ import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
-import { isTablet, SIDEBAR_WIDTH } from '../src/lib/device';
+import { isTablet } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   },
   tabletFabWrapper: {
     position: 'absolute',
-    left: SIDEBAR_WIDTH,
+    left: 280, // SIDEBAR_WIDTH constant
     right: 0,
     bottom: 0,
     top: 0,
