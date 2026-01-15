@@ -1,26 +1,56 @@
-import { Plus, X, Briefcase, FileText, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { X, Briefcase, FileText, DollarSign, Star, Users, CreditCard } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 interface FloatingActionButtonProps {
   onCreateJob?: () => void;
   onCreateQuote?: () => void;
   onCreateInvoice?: () => void;
+  onCreateClient?: () => void;
+  onOpenAIAssistant?: () => void;
+  onCollectPayment?: () => void;
 }
 
 export default function FloatingActionButton({ 
   onCreateJob,
   onCreateQuote,
-  onCreateInvoice
+  onCreateInvoice,
+  onCreateClient,
+  onCollectPayment,
 }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
 
-  const actions = [
-    { label: "New Job", icon: Briefcase, onClick: onCreateJob, color: 'hsl(var(--trade))', bgColor: 'hsl(var(--trade) / 0.15)' },
-    { label: "New Quote", icon: FileText, onClick: onCreateQuote, color: 'hsl(217, 91%, 60%)', bgColor: 'hsl(217, 91%, 60% / 0.15)' },
-    { label: "New Invoice", icon: DollarSign, onClick: onCreateInvoice, color: 'hsl(142, 76%, 36%)', bgColor: 'hsl(142, 76%, 36% / 0.15)' },
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside as any);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside as any);
+    };
+  }, [isOpen]);
+
+  const quickActions = [
+    { label: "New Job", icon: Briefcase, onClick: onCreateJob, color: 'hsl(var(--trade))', bgColor: 'hsl(var(--trade) / 0.12)' },
+    { label: "New Quote", icon: FileText, onClick: onCreateQuote, color: 'hsl(217, 91%, 60%)', bgColor: 'hsl(217, 91%, 60% / 0.12)' },
+    { label: "New Invoice", icon: DollarSign, onClick: onCreateInvoice, color: 'hsl(142, 76%, 36%)', bgColor: 'hsl(142, 76%, 36% / 0.12)' },
+    { label: "New Client", icon: Users, onClick: onCreateClient, color: 'hsl(262, 83%, 58%)', bgColor: 'hsl(262, 83%, 58% / 0.12)' },
   ].filter(a => a.onClick);
 
-  const handleActionClick = (action: () => void | undefined) => {
+  const secondaryActions = [
+    { label: "Collect Payment", icon: CreditCard, onClick: onCollectPayment, color: 'hsl(142, 76%, 36%)' },
+  ].filter(a => a.onClick);
+
+  const handleAction = (action: (() => void) | undefined) => {
     if (action) {
       action();
       setIsOpen(false);
@@ -28,60 +58,109 @@ export default function FloatingActionButton({
   };
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 md:hidden" data-testid="fab-container">
+    <>
       {isOpen && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40" 
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute bottom-16 right-0 flex flex-col-reverse gap-3 z-50">
-            {actions.map((action, index) => (
-              <div 
-                key={action.label}
-                className="flex items-center gap-3 animate-fade-up"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <span className="text-xs font-medium bg-background/95 backdrop-blur px-2.5 py-1 rounded-full shadow-md border">
-                  {action.label}
-                </span>
-                <button
-                  onClick={() => handleActionClick(action.onClick!)}
-                  className="h-10 w-10 rounded-full shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center border"
-                  style={{ 
-                    backgroundColor: action.bgColor, 
-                    borderColor: action.color,
-                    color: action.color
-                  }}
-                  data-testid={`fab-action-${action.label.toLowerCase().replace(' ', '-')}`}
-                  aria-label={action.label}
-                  type="button"
-                >
-                  <action.icon className="h-4 w-4" style={{ color: action.color }} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[58]"
+          onClick={() => setIsOpen(false)}
+        />
       )}
-      
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 z-50 flex items-center justify-center ${
-          isOpen 
-            ? 'bg-muted-foreground rotate-45' 
-            : 'bg-primary border border-primary-border'
-        }`}
-        data-testid="fab-main"
-        aria-label={isOpen ? "Close menu" : "Quick add"}
-        type="button"
-      >
-        {isOpen ? (
-          <X className="h-5 w-5 text-white -rotate-45" />
-        ) : (
-          <Plus className="h-5 w-5 text-primary-foreground" />
-        )}
-      </button>
-    </div>
+
+      {/* Closed FAB button - always bottom-right */}
+      {!isOpen && (
+        <div 
+          className="fixed z-[59] bottom-24 right-6"
+          data-testid="fab-container"
+        >
+          <button
+            onClick={() => setIsOpen(true)}
+            className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:shadow-xl active:scale-95"
+            style={{ 
+              backgroundColor: 'hsl(var(--trade))',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+            data-testid="fab-main"
+          >
+            <Star className="h-6 w-6" />
+          </button>
+        </div>
+      )}
+
+      {/* Open popup - centered on tablets, anchored on mobile/desktop */}
+      {isOpen && (
+        <div 
+          ref={popupRef}
+          className="fixed z-[59] bottom-32 right-6 md:bottom-auto md:right-auto md:top-1/2 md:-translate-y-1/2 md:left-1/2 md:-translate-x-1/2 lg:bottom-auto lg:right-8 lg:top-auto lg:translate-y-0 lg:left-auto lg:translate-x-0"
+          data-testid="fab-container-open"
+        >
+          <div 
+            className="bg-card border rounded-2xl shadow-2xl p-5 w-80 animate-in fade-in-0 zoom-in-95 duration-200"
+            style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+            data-testid="quick-create-popup"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: 'hsl(var(--trade) / 0.12)' }}
+                >
+                  <Star className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                </div>
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                  Quick Create
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 mb-4">
+              {quickActions.map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => handleAction(action.onClick)}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover-elevate transition-all"
+                  style={{ backgroundColor: action.bgColor }}
+                  data-testid={`fab-action-${action.label.toLowerCase().replace(' ', '-')}`}
+                >
+                  <div 
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: action.bgColor }}
+                  >
+                    <action.icon className="h-5 w-5" style={{ color: action.color }} />
+                  </div>
+                  <span className="text-[10px] font-medium text-center leading-tight">
+                    {action.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {secondaryActions.length > 0 && (
+              <div className="flex gap-2 pt-3 border-t">
+                {secondaryActions.map((action) => (
+                  <Button
+                    key={action.label}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(action.onClick)}
+                    className="flex-1 gap-2"
+                    style={{ borderColor: `${action.color}40`, color: action.color }}
+                    data-testid={`fab-action-${action.label.toLowerCase().replace(' ', '-')}`}
+                  >
+                    <action.icon className="h-4 w-4" />
+                    <span className="text-xs">{action.label}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

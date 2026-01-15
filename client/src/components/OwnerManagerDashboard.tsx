@@ -635,6 +635,8 @@ export default function OwnerManagerDashboard({
         onCreateJob={onCreateJob}
         onCreateQuote={onCreateQuote}
         onCreateInvoice={onCreateInvoice}
+        onCreateClient={() => onNavigate?.('/clients/new')}
+        onCollectPayment={() => onNavigate?.('/collect-payment')}
       />
     </div>
   );

@@ -957,6 +957,8 @@ export default function TeamOwnerDashboard({
         onCreateJob={onCreateJob}
         onCreateQuote={onCreateQuote}
         onCreateInvoice={onCreateInvoice}
+        onCreateClient={() => onNavigate?.('/clients/new')}
+        onCollectPayment={() => onNavigate?.('/collect-payment')}
       />
     </div>
   );
