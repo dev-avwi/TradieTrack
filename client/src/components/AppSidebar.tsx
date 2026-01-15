@@ -72,10 +72,9 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   return (
     <Sidebar data-testid="sidebar-main">
       <SidebarHeader className="p-3 border-b border-sidebar-border">
-        <button
-          onClick={() => onNavigate?.('/settings')}
-          className="flex items-center gap-3 w-full text-left hover:bg-sidebar-accent rounded-lg p-2 transition-colors group"
-          data-testid="button-sidebar-settings"
+        <div
+          className="flex items-center gap-3 w-full p-2"
+          data-testid="sidebar-header-info"
         >
           {businessSettings?.logoUrl ? (
             <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 shadow-sm">
@@ -100,9 +99,9 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
             <h1 className="font-semibold text-sm truncate" style={{ color: 'hsl(var(--sidebar-foreground))' }} data-testid="text-business-name">
               {businessName}
             </h1>
-            <p className="text-xs truncate" style={{ color: 'hsl(var(--sidebar-foreground) / 0.7)' }}>My Account</p>
+            <p className="text-xs truncate" style={{ color: 'hsl(var(--sidebar-foreground) / 0.7)' }}>Business</p>
           </div>
-        </button>
+        </div>
       </SidebarHeader>
       
       <SidebarContent>

@@ -19,7 +19,6 @@ import AppSidebar from "@/components/AppSidebar";
 import BottomNav from "@/components/BottomNav";
 import Header from "@/components/Header";
 import FloatingAIChat from "@/components/FloatingAIChat";
-import QuickCreateFAB from "@/components/QuickCreateFAB";
 import PaymentToastProvider from "@/components/PaymentToastProvider";
 import RouteGuard from "@/components/RouteGuard";
 import Dashboard from "@/components/Dashboard";
@@ -1075,16 +1074,6 @@ function AppLayout() {
       
       {/* AI Assistant - floating above all pages */}
       <FloatingAIChat onNavigate={handleNavigation} />
-      
-      {/* Quick Create FAB - floating widget popup */}
-      <QuickCreateFAB
-        onCreateJob={() => handleNavigation('/jobs/new')}
-        onCreateQuote={() => handleNavigation('/quotes/new')}
-        onCreateInvoice={() => handleNavigation('/invoices/new')}
-        onCreateClient={() => handleNavigation('/clients/new')}
-        onOpenAIAssistant={() => window.dispatchEvent(new Event('openAIChat'))}
-        onCollectPayment={() => handleNavigation('/collect-payment')}
-      />
       
       {quoteModal.quoteId && (
         <QuoteModal

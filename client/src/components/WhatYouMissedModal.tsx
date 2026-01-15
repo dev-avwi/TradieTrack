@@ -9,7 +9,6 @@ import {
   Calendar, 
   Users, 
   AlertCircle,
-  X,
   ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -208,26 +207,16 @@ export default function WhatYouMissedModal() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md p-0 gap-0">
         <DialogHeader className="p-4 pb-2 border-b bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${data.hasUrgent ? 'bg-green-100 dark:bg-green-900/40' : 'bg-primary/10'}`}>
-                <Bell className={`h-5 w-5 ${data.hasUrgent ? 'text-green-600 dark:text-green-400' : 'text-primary'}`} />
-              </div>
-              <div>
-                <DialogTitle className="text-lg">What You Missed</DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground">
-                  {data.count} update{data.count !== 1 ? 's' : ''} since you were away
-                </DialogDescription>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${data.hasUrgent ? 'bg-green-100 dark:bg-green-900/40' : 'bg-primary/10'}`}>
+              <Bell className={`h-5 w-5 ${data.hasUrgent ? 'text-green-600 dark:text-green-400' : 'text-primary'}`} />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div>
+              <DialogTitle className="text-lg">What You Missed</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {data.count} update{data.count !== 1 ? 's' : ''} since you were away
+              </DialogDescription>
+            </div>
           </div>
           <div className="h-1 w-full bg-muted mt-3 rounded-full overflow-hidden">
             <div 
