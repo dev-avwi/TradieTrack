@@ -192,6 +192,70 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
 }
 
 // ============================================
+// REFRESH DEMO DATES: Update scheduled jobs to be current with today's date
+// ============================================
+export async function refreshDemoDates(demoUserId: string) {
+  try {
+    console.log('[DemoRefresh] Refreshing demo dates to keep data current...');
+    
+    const jobs = await storage.getJobs(demoUserId);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let scheduledCount = 0;
+    let inProgressCount = 0;
+    
+    for (const job of jobs) {
+      // Update scheduled jobs to be in the near future (today + 0-5 days)
+      if (job.status === 'scheduled' && job.scheduledAt) {
+        const scheduledDate = new Date(job.scheduledAt);
+        // Only update if the scheduled date is in the past
+        if (scheduledDate < today) {
+          // Spread scheduled jobs across today and the next few days
+          const daysOffset = scheduledCount % 6; // 0-5 days from now
+          const newScheduledAt = new Date();
+          newScheduledAt.setDate(newScheduledAt.getDate() + daysOffset);
+          // Keep original time of day
+          newScheduledAt.setHours(
+            scheduledDate.getHours() || 9,
+            scheduledDate.getMinutes() || 0,
+            0, 0
+          );
+          
+          await storage.updateJob(job.id, demoUserId, {
+            scheduledAt: newScheduledAt,
+          });
+          scheduledCount++;
+        }
+      }
+      
+      // Update in_progress jobs to have started today or yesterday
+      if (job.status === 'in_progress') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(8, 0, 0, 0);
+        
+        // Set startedAt to yesterday for some, today for others
+        const startOffset = inProgressCount % 2; // 0 or 1 days ago
+        const newStartedAt = new Date();
+        newStartedAt.setDate(newStartedAt.getDate() - startOffset);
+        newStartedAt.setHours(8 + (inProgressCount % 3), 0, 0, 0);
+        
+        await storage.updateJob(job.id, demoUserId, {
+          startedAt: newStartedAt,
+          scheduledAt: newStartedAt,
+        });
+        inProgressCount++;
+      }
+    }
+    
+    console.log(`[DemoRefresh] Updated ${scheduledCount} scheduled jobs and ${inProgressCount} in-progress jobs`);
+  } catch (error) {
+    console.error('[DemoRefresh] Error refreshing demo dates:', error);
+  }
+}
+
+// ============================================
 // MAIN DEMO DATA CREATION
 // ============================================
 
@@ -231,6 +295,9 @@ export async function createDemoUserAndData() {
       // Ensure business settings, team members exist but don't recreate clients/invoices/jobs/quotes
       // This keeps IDs stable across server restarts for mobile app compatibility
       await ensureDemoBusinessAndTeam(demoUser);
+      
+      // Refresh demo dates to keep scheduled jobs current with today's date
+      await refreshDemoDates(demoUser.id);
       
       return demoUser;
     }
