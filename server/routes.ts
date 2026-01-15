@@ -11784,6 +11784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await sendPaymentRequestEmail({
         to: email,
         businessName,
+        businessEmail: settings?.email, // Use tradie's email for reply-to
         amount: parseFloat(request.amount),
         description: request.description,
         paymentUrl,

@@ -1342,6 +1342,7 @@ export async function sendPaymentFailedEmail(user: any, businessSettings: any): 
 interface PaymentRequestEmailParams {
   to: string;
   businessName: string;
+  businessEmail?: string; // Tradie's business email for reply-to
   amount: number;
   description: string;
   paymentUrl: string;
@@ -1349,7 +1350,7 @@ interface PaymentRequestEmailParams {
 }
 
 export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams): Promise<void> {
-  const { to, businessName, amount, description, paymentUrl, reference } = params;
+  const { to, businessName, businessEmail, amount, description, paymentUrl, reference } = params;
   const emailService = isSendGridConfigured ? sgMail : mockEmailService;
 
   const emailData = {
@@ -1358,7 +1359,7 @@ export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams)
       email: PLATFORM_FROM_EMAIL,
       name: businessName || PLATFORM_FROM_NAME
     },
-    replyTo: PLATFORM_REPLY_TO_EMAIL,
+    replyTo: businessEmail || PLATFORM_REPLY_TO_EMAIL,
     subject: `Payment Request from ${businessName} - $${amount.toFixed(2)}`,
     html: `
       <!DOCTYPE html>
