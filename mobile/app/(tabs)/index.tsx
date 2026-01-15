@@ -26,6 +26,8 @@ import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } fro
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import { FloatingActionButton } from '../../src/components/FloatingActionButton';
+import { isTablet } from '../../src/lib/device';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ 
@@ -2048,6 +2050,12 @@ export default function DashboardScreen() {
       {/* Bottom Spacing */}
       <View style={{ height: spacing['4xl'] + 80 }} />
     </ScrollView>
+    
+    {/* Floating Action Button - always show with proper tablet styling */}
+    <FloatingActionButton 
+      isTeamOwner={!isStaffUser} 
+      fabStyle={isTablet() ? 'tablet' : 'phone'} 
+    />
   </>
   );
 }

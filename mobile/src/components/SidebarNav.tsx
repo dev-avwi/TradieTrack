@@ -125,36 +125,39 @@ export function SidebarNav() {
 
   return (
     <View style={[themedStyles.container, { paddingTop: insets.top }]}>
-      <Pressable 
-        style={({ pressed }) => [
-          themedStyles.header,
-          pressed && { opacity: 0.7 }
-        ]}
-        onPress={() => router.push('/more/settings' as any)}
-        data-testid="sidebar-header-settings"
-      >
-        <View style={themedStyles.logoContainer}>
-          {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
-          ) : (
-            <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
-              <Text style={themedStyles.logoText}>{initials || businessName.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-        </View>
-        <View style={themedStyles.headerTextContainer}>
-          <Text 
-            style={[themedStyles.businessName, { color: colors.foreground }]} 
-            numberOfLines={1} 
-            ellipsizeMode="tail"
-          >
-            {businessName || 'TradieTrack'}
-          </Text>
-          <Text style={[themedStyles.businessTagline, { color: colors.mutedForeground }]}>
-            My Account
-          </Text>
-        </View>
-      </Pressable>
+      {/* Sidebar Header - Logo and Business Name */}
+      <View style={themedStyles.headerSection}>
+        <Pressable 
+          style={({ pressed }) => [
+            themedStyles.header,
+            pressed && { opacity: 0.7 }
+          ]}
+          onPress={() => router.push('/more/settings' as any)}
+          data-testid="sidebar-header-settings"
+        >
+          <View style={themedStyles.logoContainer}>
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
+            ) : (
+              <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
+                <Text style={themedStyles.logoText}>{initials || businessName.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+          </View>
+          <View style={themedStyles.headerTextContainer}>
+            <Text 
+              style={[themedStyles.businessName, { color: colors.foreground }]} 
+              numberOfLines={1} 
+              ellipsizeMode="tail"
+            >
+              {businessName || 'TradieTrack'}
+            </Text>
+            <Text style={[themedStyles.businessTagline, { color: colors.mutedForeground }]}>
+              My Account
+            </Text>
+          </View>
+        </Pressable>
+      </View>
 
       <ScrollView 
         style={themedStyles.scrollView} 
@@ -275,6 +278,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
   },
+  headerSection: {
+    flexShrink: 0,
+    zIndex: 100,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -284,7 +291,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 12,
     minHeight: 76,
-    zIndex: 10,
     backgroundColor: colors.background,
   },
   logoContainer: {
