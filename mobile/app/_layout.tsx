@@ -24,7 +24,7 @@ import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
-import { isTablet } from '../src/lib/device';
+import { isTablet, SIDEBAR_WIDTH } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 
@@ -313,11 +313,15 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
             <View style={styles.content}>
               {children}
             </View>
-            
-            {/* FAB positioned in content area */}
-            {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} fabStyle="tablet" />}
           </View>
         </View>
+        
+        {/* FAB wrapper positioned in content area (right of sidebar) */}
+        {showFab && (
+          <View style={styles.tabletFabWrapper}>
+            <FloatingActionButton isTeamOwner={isTeamOwner} fabStyle="tablet" />
+          </View>
+        )}
         
         {/* Overlays */}
         <OfflineBanner />
@@ -555,5 +559,13 @@ const styles = StyleSheet.create({
   },
   tabletContent: {
     flex: 1,
+  },
+  tabletFabWrapper: {
+    position: 'absolute',
+    left: SIDEBAR_WIDTH,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    pointerEvents: 'box-none',
   },
 });

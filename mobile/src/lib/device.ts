@@ -4,14 +4,26 @@ import { useState, useEffect } from 'react';
 const IPAD_WIDTH_THRESHOLD = 768;
 
 export function isTablet(): boolean {
-  if (Platform.OS === 'ios' && Platform.isPad) {
+  // Check Platform.isPad first (most reliable for iOS)
+  const isPad = Platform.OS === 'ios' && Platform.isPad;
+  if (isPad) {
     return true;
   }
   
-  const { width, height } = Dimensions.get('window');
-  const screenWidth = Math.min(width, height);
+  // Use screen dimensions (more reliable than window for split view/zoom)
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
+  const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
   
-  return screenWidth >= IPAD_WIDTH_THRESHOLD;
+  // Use the larger of screen or window width (min of w/h for portrait mode check)
+  const effectiveWidth = Math.max(
+    Math.min(screenWidth, screenHeight),
+    Math.min(windowWidth, windowHeight)
+  );
+  
+  // Lower threshold to 744 to catch iPad mini
+  const isLargeScreen = effectiveWidth >= 744;
+  
+  return isLargeScreen;
 }
 
 export function useDeviceType(): 'phone' | 'tablet' {

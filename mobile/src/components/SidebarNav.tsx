@@ -283,6 +283,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 12,
+    minHeight: 76,
+    zIndex: 10,
+    backgroundColor: colors.background,
   },
   logoContainer: {
     width: 44,
