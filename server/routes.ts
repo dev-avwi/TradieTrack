@@ -12092,11 +12092,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== RECEIPT ENDPOINTS ==========
   
-  // Get all receipts for user
+  // Get all receipts for user (with optional filtering by invoiceId, jobId, or clientId)
   app.get("/api/receipts", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
-      const allReceipts = await storage.getReceipts(effectiveUserId);
+      const { invoiceId, jobId, clientId } = req.query;
+      
+      let allReceipts = await storage.getReceipts(effectiveUserId);
+      
+      // Filter by invoiceId if provided
+      if (invoiceId) {
+        allReceipts = allReceipts.filter((r: any) => r.invoiceId === invoiceId);
+      }
+      
+      // Filter by jobId if provided
+      if (jobId) {
+        allReceipts = allReceipts.filter((r: any) => r.jobId === jobId);
+      }
+      
+      // Filter by clientId if provided
+      if (clientId) {
+        allReceipts = allReceipts.filter((r: any) => r.clientId === clientId);
+      }
+      
       res.json(allReceipts);
     } catch (error) {
       console.error("Error fetching receipts:", error);
