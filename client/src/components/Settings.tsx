@@ -1911,6 +1911,7 @@ export default function Settings({
 // Billing Tab Content Component
 function BillingTabContent() {
   const { toast } = useToast();
+  const { data: businessSettings } = useBusinessSettings();
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'team'>('pro');
   const [seatCount, setSeatCount] = useState(1);
   
