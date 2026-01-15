@@ -2884,9 +2884,9 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
   // Use the SAME template extraction as quotes/invoices for consistency
   const { template, accentColor } = getTemplateFromBusinessSettings(business);
   
-  // Convert cents to dollars for display
-  const amountDollars = payment.amount / 100;
-  const gstAmountDollars = payment.gstAmount ? payment.gstAmount / 100 : 0;
+  // Amounts are already in dollars (not cents) - no conversion needed
+  const amountDollars = payment.amount;
+  const gstAmountDollars = payment.gstAmount || 0;
   const subtotalDollars = gstAmountDollars > 0 ? amountDollars - gstAmountDollars : amountDollars;
   
   // Get payment method display name
