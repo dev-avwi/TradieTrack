@@ -283,8 +283,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isOnline, offlineInitialized]);
   
-  // Compute FAB visibility - show for owners and non-staff users
-  const showFab = isOwner() || !isStaff();
+  // Compute FAB visibility - always show on tablet, otherwise show for owners/non-staff
+  const showFab = isTabletDevice ? true : (isOwner() || !isStaff());
   const isTeamOwner = isOwner() && hasActiveTeam();
 
   // Unauthenticated: render children with safe area padding (no header/nav)
@@ -567,5 +567,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     top: 0,
     pointerEvents: 'box-none',
+    zIndex: 9999,
+    elevation: 9999,
   },
 });

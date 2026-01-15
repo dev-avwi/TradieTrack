@@ -125,26 +125,41 @@ export function SidebarNav() {
 
   return (
     <View style={themedStyles.container}>
-      {/* Safe area spacer + Sidebar Header */}
+      {/* Sidebar Header with Logo + Business Name */}
       <Pressable 
         style={({ pressed }) => [
           themedStyles.headerSection,
-          { paddingTop: insets.top },
+          { paddingTop: insets.top + 12 },
           pressed && { opacity: 0.8 }
         ]}
         onPress={() => router.push('/more/settings' as any)}
         data-testid="sidebar-header-settings"
       >
-        <Text 
-          style={themedStyles.businessName} 
-          numberOfLines={1} 
-          ellipsizeMode="tail"
-        >
-          {businessName || 'TradieTrack'}
-        </Text>
-        <Text style={themedStyles.businessTagline}>
-          Tap to view settings
-        </Text>
+        <View style={themedStyles.headerRow}>
+          {/* Logo or Initials */}
+          <View style={themedStyles.logoContainer}>
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
+            ) : (
+              <Text style={themedStyles.logoText}>
+                {initials || businessName.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          {/* Business Name */}
+          <View style={themedStyles.headerTextContainer}>
+            <Text 
+              style={themedStyles.businessName} 
+              numberOfLines={1} 
+              ellipsizeMode="tail"
+            >
+              {businessName || 'TradieTrack'}
+            </Text>
+            <Text style={themedStyles.businessTagline}>
+              My Account
+            </Text>
+          </View>
+        </View>
       </Pressable>
 
       <ScrollView 
@@ -269,20 +284,47 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerSection: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logoContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: colors.primary,
-    borderBottomWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  logo: {
+    width: 44,
+    height: 44,
+  },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   businessName: {
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 26,
-    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    lineHeight: 22,
+    color: colors.foreground,
   },
   businessTagline: {
-    fontSize: 13,
-    marginTop: 2,
-    lineHeight: 18,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginTop: 1,
+    lineHeight: 16,
+    color: colors.mutedForeground,
   },
   scrollView: {
     flex: 1,
