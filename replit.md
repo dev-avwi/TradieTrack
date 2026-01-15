@@ -83,3 +83,18 @@ Key architectural and design decisions include:
     - 2 secondary action buttons: AI Assistant (triggers FloatingAIChat), Collect Payment
     - Trade-colored styling, smooth animations, click-outside-to-dismiss
     - Positioned at `bottom: 168px` to avoid overlap with AI Chat FAB at `bottom: 96px`
+*   **Mobile Collect Payment Redesign (Production Ready)**: Complete overhaul of the mobile payment collection flow:
+    - Added "Record Payment" option for quick manual cash/EFTPOS/bank transfer payments with receipt generation
+    - Payment methods: Cash, Card/EFTPOS, Bank Transfer (all no fees)
+    - Optional linking to clients and invoices (can link later)
+    - Creates receipt immediately with GST calculated (amount/11 for Australian GST)
+    - Tap to Pay marked as "Coming Soon" with disabled state until native SDK build
+    - QR code generation creates Stripe payment requests with shareable links
+    - Receipt sending via email or SMS
+*   **Stripe Production Keys Configured**: STRIPE_SECRET_KEY and VITE_STRIPE_PUBLIC_KEY are configured for production payments
+*   **Team Features Verified Production Ready**:
+    - Team invite flow: Creates pending member with inviteToken, sends email, user accepts and links to team owner
+    - Free trial system: POST /api/subscription/trial starts trial, Pro→Team upgrade includes 7-day trial
+    - Live location tracking: POST /api/team-locations updates, GET /api/team/locations for owners/managers
+    - Mobile map polls team locations every 10 seconds for real-time updates
+*   **Production Readiness Status**: All features verified except Tap to Pay (requires EAS native build)
