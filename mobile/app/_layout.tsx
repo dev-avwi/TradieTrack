@@ -283,8 +283,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isOnline, offlineInitialized]);
   
-  // Compute FAB visibility from centralized store
-  const showFab = !isStaff();
+  // Compute FAB visibility - show for owners and non-staff users
+  const showFab = isOwner() || !isStaff();
   const isTeamOwner = isOwner() && hasActiveTeam();
 
   // Unauthenticated: render children with safe area padding (no header/nav)

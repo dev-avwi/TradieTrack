@@ -125,42 +125,27 @@ export function SidebarNav() {
 
   return (
     <View style={themedStyles.container}>
-      {/* Safe area spacer at top */}
-      <View style={{ height: insets.top, backgroundColor: colors.card }} />
-      
-      {/* Sidebar Header - Logo and Business Name */}
-      <View style={themedStyles.headerSection}>
-        <Pressable 
-          style={({ pressed }) => [
-            themedStyles.header,
-            pressed && { opacity: 0.7 }
-          ]}
-          onPress={() => router.push('/more/settings' as any)}
-          data-testid="sidebar-header-settings"
+      {/* Safe area spacer + Sidebar Header */}
+      <Pressable 
+        style={({ pressed }) => [
+          themedStyles.headerSection,
+          { paddingTop: insets.top },
+          pressed && { opacity: 0.8 }
+        ]}
+        onPress={() => router.push('/more/settings' as any)}
+        data-testid="sidebar-header-settings"
+      >
+        <Text 
+          style={themedStyles.businessName} 
+          numberOfLines={1} 
+          ellipsizeMode="tail"
         >
-          <View style={themedStyles.logoContainer}>
-            {logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={themedStyles.logo} resizeMode="cover" />
-            ) : (
-              <View style={[themedStyles.logoPlaceholder, { backgroundColor: colors.primary }]}>
-                <Text style={themedStyles.logoText}>{initials || businessName.charAt(0).toUpperCase()}</Text>
-              </View>
-            )}
-          </View>
-          <View style={themedStyles.headerTextContainer}>
-            <Text 
-              style={[themedStyles.businessName, { color: colors.foreground }]} 
-              numberOfLines={1} 
-              ellipsizeMode="tail"
-            >
-              {businessName || 'TradieTrack'}
-            </Text>
-            <Text style={[themedStyles.businessTagline, { color: colors.mutedForeground }]}>
-              My Account
-            </Text>
-          </View>
-        </Pressable>
-      </View>
+          {businessName || 'TradieTrack'}
+        </Text>
+        <Text style={themedStyles.businessTagline}>
+          Tap to view settings
+        </Text>
+      </Pressable>
 
       <ScrollView 
         style={themedStyles.scrollView} 
@@ -282,63 +267,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexShrink: 0,
   },
   headerSection: {
-    height: 80,
-    minHeight: 80,
-    flexShrink: 0,
-    flexGrow: 0,
-    zIndex: 100,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  header: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    gap: 12,
-  },
-  logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-  },
-  logoPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  headerTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingBottom: 16,
+    backgroundColor: colors.primary,
+    borderBottomWidth: 0,
   },
   businessName: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 22,
+    lineHeight: 26,
+    color: '#FFFFFF',
   },
   businessTagline: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 2,
-    lineHeight: 16,
+    lineHeight: 18,
+    color: 'rgba(255,255,255,0.8)',
   },
   scrollView: {
     flex: 1,
