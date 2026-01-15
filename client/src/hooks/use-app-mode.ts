@@ -54,16 +54,20 @@ export function useAppMode() {
     queryKey: ["/api/auth/me"] 
   });
   
-  const { data: businessSettings, isLoading: settingsLoading } = useQuery<BusinessSettings>({ 
+  const { data: businessSettings, isLoading: settingsLoading, isFetched: settingsFetched } = useQuery<BusinessSettings>({ 
     queryKey: ["/api/business-settings"] 
   });
   
-  const { data: teamMembers = [], isLoading: teamLoading } = useQuery<TeamMember[]>({
+  const { data: teamMembers = [], isLoading: teamLoading, isFetched: teamFetched } = useQuery<TeamMember[]>({
     queryKey: ["/api/team/members"],
     enabled: isOwner || isManager,
   });
 
-  const isLoading = roleLoading || settingsLoading || ((isOwner || isManager) && teamLoading);
+  // Only show loading on initial fetch, not on refetches when we have cached data
+  // This prevents the "flash" when navigating between pages
+  const hasSettingsData = businessSettings !== undefined || settingsFetched;
+  const hasTeamData = teamMembers.length > 0 || teamFetched || !(isOwner || isManager);
+  const isLoading = roleLoading || (!hasSettingsData && settingsLoading) || ((isOwner || isManager) && !hasTeamData && teamLoading);
 
   const acceptedMembers = teamMembers.filter(m => m.inviteStatus === "accepted");
   const hasActiveTeam = acceptedMembers.length > 0;
