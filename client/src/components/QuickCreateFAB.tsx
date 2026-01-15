@@ -106,23 +106,41 @@ export default function QuickCreateFAB({
 
   return (
     <>
+      {/* Backdrop overlay - visible on mobile/tablet only */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[58]"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[58] xl:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      <div 
-        ref={popupRef}
-        className="fixed z-[59]"
-        style={{
-          bottom: isOpen ? 'calc(50% - 140px)' : '168px',
-          right: isOpen ? 'calc(50% - 160px)' : '16px',
-          transition: 'all 0.2s ease-out',
-        }}
-      >
-        {isOpen && (
+      {/* Closed FAB button - visible on mobile and tablet only (< 1280px), hidden on desktop */}
+      {!isOpen && (
+        <div 
+          className="fixed z-[59] bottom-[168px] right-4 xl:hidden"
+          data-testid="fab-container"
+        >
+          <button
+            onClick={() => setIsOpen(true)}
+            className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:shadow-xl active:scale-95"
+            style={{ 
+              backgroundColor: 'hsl(var(--trade))',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+            data-testid="fab-quick-create"
+          >
+            <Star className="h-6 w-6" />
+          </button>
+        </div>
+      )}
+
+      {/* Open popup - centered on screen for mobile/tablet, hidden on desktop */}
+      {isOpen && (
+        <div 
+          ref={popupRef}
+          className="fixed z-[59] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 xl:hidden"
+          data-testid="fab-container-open"
+        >
           <div 
             className="bg-card border rounded-2xl shadow-2xl p-5 w-80 animate-in fade-in-0 zoom-in-95 duration-200"
             style={{ 
@@ -194,22 +212,8 @@ export default function QuickCreateFAB({
               </div>
             )}
           </div>
-        )}
-
-        {!isOpen && (
-          <button
-            onClick={() => setIsOpen(true)}
-            className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:shadow-xl active:scale-95"
-            style={{ 
-              backgroundColor: 'hsl(var(--trade))',
-              WebkitTapHighlightColor: 'transparent'
-            }}
-            data-testid="fab-quick-create"
-          >
-            <Star className="h-6 w-6" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }

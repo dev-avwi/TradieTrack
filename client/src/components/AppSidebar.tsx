@@ -96,11 +96,11 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               />
             </div>
           )}
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <h1 className="font-semibold text-sm truncate text-sidebar-foreground" data-testid="text-business-name">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-semibold text-sm truncate text-foreground" data-testid="text-business-name">
               {businessName}
             </h1>
-            <p className="text-xs truncate text-sidebar-foreground/70">My Account</p>
+            <p className="text-xs truncate text-muted-foreground">My Account</p>
           </div>
         </div>
       </SidebarHeader>
