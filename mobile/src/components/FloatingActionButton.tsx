@@ -15,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme, ThemeColors, colorWithOpacity } from '../lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../lib/design-tokens';
+import { SIDEBAR_WIDTH } from '../lib/device';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const isIOS = Platform.OS === 'ios';
@@ -69,12 +70,14 @@ const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet
   fabButtonActive: {
     backgroundColor: colors.foreground,
   },
-  // Phone: bottom sheet style
+  // Phone: bottom sheet style | Tablet: offset by sidebar width to center in content area
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: isTabletStyle ? 'center' : 'flex-end',
     alignItems: isTabletStyle ? 'center' : 'stretch',
+    // On tablet, add left padding equal to sidebar width so popup centers in content area
+    paddingLeft: isTabletStyle ? SIDEBAR_WIDTH : 0,
   },
   // Phone: bottom sheet | Tablet: centered popup
   menuContainer: {
