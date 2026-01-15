@@ -14457,6 +14457,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return entryDate >= startOfDay && entryDate < endOfDay;
       });
       
+      // Fetch job titles for today's entries
+      const jobIds = [...new Set(todayEntries.filter(e => e.jobId).map(e => e.jobId))];
+      const jobsMap: Record<string, string> = {};
+      for (const jobId of jobIds) {
+        if (jobId) {
+          const job = await storage.getJob(jobId);
+          if (job) {
+            jobsMap[jobId] = job.title;
+          }
+        }
+      }
+      
+      // Add job title to entries
+      const entriesWithJobTitle = todayEntries.map(entry => ({
+        ...entry,
+        jobTitle: entry.jobId ? jobsMap[entry.jobId] || null : null
+      }));
+      
       // Calculate today's totals
       const todayTotals = todayEntries.reduce((acc, entry) => {
         const duration = (entry.duration || 0) / 60;
@@ -14486,12 +14504,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return acc;
       }, { totalHours: 0, billableHours: 0 });
       
+      // Get job title for active timer if it exists
+      let activeTimerJobTitle = null;
+      if (activeTimer?.jobId) {
+        const activeJob = await storage.getJob(activeTimer.jobId);
+        activeTimerJobTitle = activeJob?.title || null;
+      }
+      
       res.json({
         activeTimer: activeTimer ? {
           id: activeTimer.id,
           description: activeTimer.description,
           startTime: activeTimer.startTime,
           jobId: activeTimer.jobId,
+          jobTitle: activeTimerJobTitle,
+          isPaused: activeTimer.isPaused,
+          pausedDuration: activeTimer.pausedDuration,
           elapsedMinutes: activeTimer.startTime ? 
             Math.floor((new Date().getTime() - new Date(activeTimer.startTime).getTime()) / (1000 * 60)) : 0
         } : null,
@@ -14505,7 +14533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           billableHours: parseFloat(weekTotals.billableHours.toFixed(2)),
           entriesCount: weekEntries.length
         },
-        recentEntries: todayEntries.slice(0, 5)
+        recentEntries: entriesWithJobTitle.slice(0, 5)
       });
     } catch (error) {
       console.error('Error fetching time tracking dashboard:', error);

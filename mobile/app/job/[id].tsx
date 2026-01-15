@@ -2403,6 +2403,7 @@ export default function JobDetailScreen() {
   };
   
   // Calculate total hours from completed time entries (startTime and endTime)
+  // Also includes the active timer if it's running for this job
   const calculateTotalTrackedHours = (): number => {
     let totalMinutes = 0;
     timeEntries.forEach(entry => {
@@ -2422,6 +2423,12 @@ export default function JobDetailScreen() {
         }
       }
     });
+    
+    // Add active timer elapsed time if it's for this job
+    if (isTimerForThisJob && elapsedTime > 0) {
+      totalMinutes += elapsedTime;
+    }
+    
     return totalMinutes / 60;
   };
   
@@ -2665,6 +2672,19 @@ export default function JobDetailScreen() {
       return `${hours}h ${mins}m`;
     }
     return `${mins}m`;
+  };
+  
+  // Format tracked hours with hours and minutes precision
+  const formatTrackedHours = (hours: number): string => {
+    const totalMins = Math.round(hours * 60);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    if (h > 0 && m > 0) {
+      return `${h}h ${m}m`;
+    } else if (h > 0) {
+      return `${h}h`;
+    }
+    return `${m}m`;
   };
 
   const handleCall = () => {
@@ -3724,7 +3744,7 @@ export default function JobDetailScreen() {
             ) : activeTimer ? (
               <Text style={styles.timerValue}>Timer on another job</Text>
             ) : totalTrackedHours > 0 ? (
-              <Text style={styles.timerValue}>Total: {totalTrackedHours.toFixed(1)}h tracked</Text>
+              <Text style={styles.timerValue}>Total: {formatTrackedHours(totalTrackedHours)} tracked</Text>
             ) : (
               <Text style={styles.timerValue}>Not started</Text>
             )}
@@ -3912,7 +3932,7 @@ export default function JobDetailScreen() {
                   styles.costingValue,
                   hoursVariance > 0 && { color: colors.destructive },
                   hoursVariance < 0 && { color: colors.success }
-                ]}>{actualHours.toFixed(1)}h</Text>
+                ]}>{formatTrackedHours(actualHours)}</Text>
               </View>
             )}
             {estimatedCost > 0 && (
