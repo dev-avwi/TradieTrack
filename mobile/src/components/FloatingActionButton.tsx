@@ -46,7 +46,7 @@ const ACTION_BG_COLORS = {
   assign: 'rgba(0, 122, 255, 0.12)',   // Light blue
 };
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet.create({
   fabButton: {
     position: 'absolute',
     bottom: 24,
@@ -69,18 +69,61 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   fabButtonActive: {
     backgroundColor: colors.foreground,
   },
+  // Phone: bottom sheet style
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: isTabletStyle ? 'center' : 'flex-end',
+    alignItems: isTabletStyle ? 'center' : 'stretch',
   },
+  // Phone: bottom sheet | Tablet: centered popup
   menuContainer: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: radius['xl'],
-    borderTopRightRadius: radius['xl'],
+    ...(isTabletStyle ? {
+      borderRadius: radius['xl'],
+      width: 320,
+      maxWidth: '90%',
+    } : {
+      borderTopLeftRadius: radius['xl'],
+      borderTopRightRadius: radius['xl'],
+    }),
     paddingTop: spacing.md,
     paddingBottom: 24,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...(isTabletStyle ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 25 },
+      shadowOpacity: 0.25,
+      shadowRadius: 50,
+      elevation: 24,
+    } : {}),
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  menuHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  menuHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${colors.primary}20`,
+  },
+  menuCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted,
   },
   menuHandle: {
     width: 36,
@@ -94,8 +137,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -107,12 +148,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   menuItem: {
     alignItems: 'center',
-    width: 76,
+    width: isTabletStyle ? 68 : 76,
     paddingVertical: spacing.xs,
   },
   menuItemIcon: {
-    width: 48,
-    height: 48,
+    width: isTabletStyle ? 52 : 48,
+    height: isTabletStyle ? 52 : 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -137,16 +178,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: radius.full,
     backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   quickActionText: {
-    fontSize: 11,
-    fontWeight: '400',
-    color: colors.mutedForeground,
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 
@@ -159,10 +201,11 @@ interface FloatingActionButtonProps {
 export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabStyle = 'phone' }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const isTabletStyle = fabStyle === 'tablet';
+  const styles = useMemo(() => createStyles(colors, isTabletStyle), [colors, isTabletStyle]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
-  const fabPositionStyle = fabStyle === 'tablet' ? { bottom: 24, right: 24 } : {};
+  const fabPositionStyle = isTabletStyle ? { bottom: 24, right: 24 } : {};
 
   const handlePressIn = () => {
     Animated.timing(scaleAnim, {
@@ -249,16 +292,37 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       <Modal
         visible={isOpen}
         transparent
-        animationType="slide"
+        animationType={isTabletStyle ? 'fade' : 'slide'}
         onRequestClose={() => setIsOpen(false)}
       >
         <Pressable 
           style={styles.modalOverlay}
           onPress={() => setIsOpen(false)}
         >
-          <View style={styles.menuContainer}>
-            <View style={styles.menuHandle} />
-            <Text style={styles.menuTitle}>Quick Create</Text>
+          <Pressable style={styles.menuContainer} onPress={(e) => e.stopPropagation()}>
+            {/* Tablet: Header with icon and close button | Phone: Handle bar */}
+            {isTabletStyle ? (
+              <View style={styles.menuHeader}>
+                <View style={styles.menuHeaderLeft}>
+                  <View style={styles.menuHeaderIcon}>
+                    <Feather name="star" size={16} color={colors.primary} />
+                  </View>
+                  <Text style={styles.menuTitle}>Quick Create</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.menuCloseButton}
+                  onPress={() => setIsOpen(false)}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.menuHandle} />
+                <Text style={[styles.menuTitle, { textAlign: 'center', marginBottom: spacing.md }]}>Quick Create</Text>
+              </>
+            )}
             
             {/* Main grid with subtle color-coded icons */}
             <View style={styles.menuGrid}>
@@ -275,7 +339,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                     <View style={[styles.menuItemIcon, { backgroundColor: bgColor }]}>
                       <Feather 
                         name={action.icon} 
-                        size={20} 
+                        size={isTabletStyle ? 24 : 20} 
                         color={iconColor} 
                       />
                     </View>
@@ -285,34 +349,34 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               })}
             </View>
 
-            {/* Bottom bar: AI Assistant, Collect Payment - larger buttons */}
+            {/* Bottom bar: AI Assistant, Collect Payment */}
             <View style={styles.quickActionsBar}>
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: 'rgba(255, 59, 48, 0.1)', paddingVertical: 10, paddingHorizontal: 16 }]}
+                style={[styles.quickActionButton, { borderColor: '#FF3B3040' }]}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/ai-assistant');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="zap" size={16} color="#FF3B30" />
-                <Text style={[styles.quickActionText, { fontSize: 13, fontWeight: '500', color: '#FF3B30' }]}>AI Assistant</Text>
+                <Feather name="zap" size={14} color="#FF3B30" />
+                <Text style={[styles.quickActionText, { color: '#FF3B30' }]}>AI Assistant</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.quickActionButton, { backgroundColor: 'rgba(255, 204, 0, 0.15)', paddingVertical: 10, paddingHorizontal: 16 }]}
+                style={[styles.quickActionButton, { borderColor: '#34C75940' }]}
                 onPress={() => {
                   setIsOpen(false);
                   router.push('/more/collect-payment');
                 }}
                 activeOpacity={0.7}
               >
-                <Feather name="credit-card" size={16} color="#CC9900" />
-                <Text style={[styles.quickActionText, { fontSize: 13, fontWeight: '500', color: '#CC9900' }]}>Collect Payment</Text>
+                <Feather name="credit-card" size={14} color="#34C759" />
+                <Text style={[styles.quickActionText, { color: '#34C759' }]}>Collect Payment</Text>
               </TouchableOpacity>
             </View>
 
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </>

@@ -26,6 +26,7 @@ import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { isTablet } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
+import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -498,6 +499,7 @@ function RootLayoutContent() {
       <ServicesInitializer />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <MapPreferenceModal />
+      <WhatYouMissedPopup />
       <AuthenticatedLayout>
         <Stack
           screenOptions={{
