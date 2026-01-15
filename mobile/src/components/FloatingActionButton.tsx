@@ -79,20 +79,20 @@ const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet
     // On tablet, add left padding equal to sidebar width so popup centers in content area
     paddingLeft: isTabletStyle ? SIDEBAR_WIDTH : 0,
   },
-  // Phone: bottom sheet | Tablet: centered popup
+  // Phone: bottom sheet | Tablet: centered popup (25% larger for tablet)
   menuContainer: {
     backgroundColor: colors.card,
     ...(isTabletStyle ? {
       borderRadius: radius['xl'],
-      width: 320,
+      width: 400, // 25% larger (was 320)
       maxWidth: '90%',
     } : {
       borderTopLeftRadius: radius['xl'],
       borderTopRightRadius: radius['xl'],
     }),
-    paddingTop: spacing.md,
-    paddingBottom: 24,
-    paddingHorizontal: spacing.lg,
+    paddingTop: isTabletStyle ? spacing.lg : spacing.md,
+    paddingBottom: isTabletStyle ? 32 : 24,
+    paddingHorizontal: isTabletStyle ? spacing.xl : spacing.lg,
     ...(isTabletStyle ? {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 25 },
@@ -151,19 +151,19 @@ const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet
   },
   menuItem: {
     alignItems: 'center',
-    width: isTabletStyle ? 68 : 76,
-    paddingVertical: spacing.xs,
+    width: isTabletStyle ? 85 : 76, // 25% larger for tablet (was 68)
+    paddingVertical: isTabletStyle ? spacing.sm : spacing.xs,
   },
   menuItemIcon: {
-    width: isTabletStyle ? 52 : 48,
-    height: isTabletStyle ? 52 : 48,
-    borderRadius: 12,
+    width: isTabletStyle ? 65 : 48, // 25% larger for tablet (was 52)
+    height: isTabletStyle ? 65 : 48, // 25% larger for tablet (was 52)
+    borderRadius: isTabletStyle ? 16 : 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: isTabletStyle ? 8 : 6,
   },
   menuItemLabel: {
-    fontSize: 11,
+    fontSize: isTabletStyle ? 13 : 11, // slightly larger for tablet
     color: colors.foreground,
     textAlign: 'center',
     fontWeight: '500',

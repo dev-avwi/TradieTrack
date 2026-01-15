@@ -280,17 +280,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   headerSection: {
     flexShrink: 0,
+    flexGrow: 0,
     zIndex: 100,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 12,
-    minHeight: 76,
+    minHeight: 80,
+    height: 80,
     backgroundColor: colors.background,
   },
   logoContainer: {
@@ -337,6 +340,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    flexGrow: 1,
   },
   scrollContent: {
     paddingBottom: 16,
