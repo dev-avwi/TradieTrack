@@ -1054,6 +1054,7 @@ export default function DashboardScreen() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [myAllJobs, setMyAllJobs] = useState<any[]>([]); // All jobs assigned to staff (for My Stats)
   const [schedulerY, setSchedulerY] = useState(0);
   
   // Scroll to job scheduler section
@@ -1260,12 +1261,27 @@ export default function DashboardScreen() {
     }
   };
 
+  // Fetch all assigned jobs for staff users (for My Stats)
+  const fetchMyAllJobs = useCallback(async () => {
+    if (!isStaffUser) return;
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      const response = await api.get('/api/jobs/my-jobs');
+      if (response.data) {
+        setMyAllJobs(response.data);
+      }
+    } catch (error) {
+      console.log('Error fetching my jobs:', error);
+    }
+  }, [isStaffUser]);
+
   // Use refs to maintain stable function references and prevent re-render loops
   const fetchTodaysJobsRef = useRef(fetchTodaysJobs);
   const fetchStatsRef = useRef(fetchStats);
   const fetchClientsRef = useRef(fetchClients);
   const fetchActivitiesRef = useRef(fetchActivities);
   const fetchTeamStateRef = useRef(fetchTeamState);
+  const fetchMyAllJobsRef = useRef(fetchMyAllJobs);
   
   // Keep refs updated
   fetchTodaysJobsRef.current = fetchTodaysJobs;
@@ -1273,6 +1289,7 @@ export default function DashboardScreen() {
   fetchClientsRef.current = fetchClients;
   fetchActivitiesRef.current = fetchActivities;
   fetchTeamStateRef.current = fetchTeamState;
+  fetchMyAllJobsRef.current = fetchMyAllJobs;
 
   const refreshData = useCallback(async () => {
     await Promise.all([
@@ -1280,6 +1297,7 @@ export default function DashboardScreen() {
       fetchStatsRef.current(),
       fetchClientsRef.current(),
       fetchActivitiesRef.current(),
+      fetchMyAllJobsRef.current(), // Also refresh staff's all jobs for My Stats
     ]);
   }, []); // Empty deps - uses refs
 
@@ -1673,7 +1691,7 @@ export default function DashboardScreen() {
             <>
               <KPICard
                 title="Assigned"
-                value={todaysJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
                 icon="clipboard"
                 iconBg={colors.muted}
                 iconColor={colors.mutedForeground}
@@ -1681,7 +1699,7 @@ export default function DashboardScreen() {
               />
               <KPICard
                 title="In Progress"
-                value={todaysJobs.filter(j => j.status === 'in_progress').length}
+                value={myAllJobs.filter(j => j.status === 'in_progress').length}
                 icon="clock"
                 iconBg={colors.warningLight}
                 iconColor={colors.warning}
@@ -1689,7 +1707,7 @@ export default function DashboardScreen() {
               />
               <KPICard
                 title="Completed"
-                value={todaysJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
+                value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
                 icon="check-circle"
                 iconBg={colors.successLight}
                 iconColor={colors.success}
