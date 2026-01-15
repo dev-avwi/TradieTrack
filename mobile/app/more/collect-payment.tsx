@@ -641,6 +641,16 @@ export default function CollectScreen() {
   const [qrPaymentRequest, setQrPaymentRequest] = useState<any>(null);
   const [qrLoading, setQrLoading] = useState(false);
   
+  // Record Payment Modal state
+  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
+  const [recordPaymentMethod, setRecordPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
+  const [recordAmount, setRecordAmount] = useState('');
+  const [recordDescription, setRecordDescription] = useState('');
+  const [recordClientId, setRecordClientId] = useState<string | null>(null);
+  const [recordInvoiceId, setRecordInvoiceId] = useState<string | null>(null);
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const [recordPaymentSuccess, setRecordPaymentSuccess] = useState<{ receiptNumber: string; receiptId: string } | null>(null);
+  
   // Payment Link Modal state
   const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
   const [paymentLinkRequest, setPaymentLinkRequest] = useState<any>(null);
@@ -1139,6 +1149,121 @@ export default function CollectScreen() {
     setSelectedInvoice(null);
   };
 
+  // Record Payment handlers
+  const handleOpenRecordPayment = () => {
+    // Pre-fill from selected invoice if available
+    if (selectedInvoice) {
+      setRecordAmount(selectedInvoice.amountDue.toFixed(2));
+      setRecordDescription(`Payment for ${selectedInvoice.invoiceNumber}`);
+      setRecordClientId(selectedInvoice.clientId);
+      setRecordInvoiceId(selectedInvoice.id);
+    } else if (amount) {
+      setRecordAmount(amount);
+      setRecordDescription(description);
+    }
+    setShowRecordPaymentModal(true);
+  };
+
+  const handleCloseRecordPaymentModal = () => {
+    setShowRecordPaymentModal(false);
+    setRecordPaymentSuccess(null);
+    setRecordAmount('');
+    setRecordDescription('');
+    setRecordClientId(null);
+    setRecordInvoiceId(null);
+    setRecordPaymentMethod('cash');
+    setRecordingPayment(false);
+  };
+
+  const handleSubmitRecordPayment = async () => {
+    const amountNum = parseFloat(recordAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
+      return;
+    }
+
+    setRecordingPayment(true);
+    try {
+      const gstAmount = amountNum / 11; // Calculate GST (10% of GST-inclusive amount)
+      const subtotal = amountNum - gstAmount;
+      
+      const response = await api.post<{
+        id: string;
+        receiptNumber: string;
+        amount: string;
+      }>('/api/receipts', {
+        amount: amountNum.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        subtotal: subtotal.toFixed(2),
+        paymentMethod: recordPaymentMethod,
+        notes: recordDescription || undefined,
+        description: recordDescription || undefined,
+        clientId: recordClientId || undefined,
+        invoiceId: recordInvoiceId || undefined,
+      });
+
+      if (response.data) {
+        setRecordPaymentSuccess({
+          receiptNumber: response.data.receiptNumber,
+          receiptId: response.data.id,
+        });
+        
+        // Refresh invoices if we linked to one
+        if (recordInvoiceId) {
+          fetchInvoices();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to record payment:', error);
+      Alert.alert('Error', 'Failed to record payment. Please try again.');
+    } finally {
+      setRecordingPayment(false);
+    }
+  };
+
+  const handleSendRecordedReceipt = async (method: 'email' | 'sms') => {
+    if (!recordPaymentSuccess) return;
+    
+    const client = recordClientId ? clients.find(c => c.id === recordClientId) : null;
+    
+    if (method === 'email') {
+      const email = client?.email;
+      if (!email) {
+        Alert.alert('No Email', 'No email address found for this client');
+        return;
+      }
+      
+      try {
+        await api.post(`/api/receipts/${recordPaymentSuccess.receiptId}/send-email`, { email });
+        Alert.alert('Success', `Receipt sent to ${email}`);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to send receipt email');
+      }
+    } else {
+      const phone = client?.phone;
+      if (!phone) {
+        Alert.alert('No Phone', 'No phone number found for this client');
+        return;
+      }
+      
+      try {
+        await api.post(`/api/receipts/${recordPaymentSuccess.receiptId}/send-sms`, { phone });
+        Alert.alert('Success', `Receipt sent to ${phone}`);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to send receipt SMS');
+      }
+    }
+  };
+
+  // Get unpaid invoices, optionally filtered by client
+  const getFilteredInvoices = () => {
+    let filtered = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
+    if (recordClientId) {
+      filtered = filtered.filter(i => i.clientId === recordClientId);
+    }
+    return filtered;
+  };
+
   const renderTapToPayModal = () => (
     <Modal
       visible={showTapToPayModal}
@@ -1466,6 +1591,313 @@ export default function CollectScreen() {
     </Modal>
   );
 
+  const renderRecordPaymentModal = () => {
+    const paymentMethods: Array<{ id: 'cash' | 'card' | 'bank_transfer'; label: string; icon: string }> = [
+      { id: 'cash', label: 'Cash', icon: 'dollar-sign' },
+      { id: 'card', label: 'Card/EFTPOS', icon: 'credit-card' },
+      { id: 'bank_transfer', label: 'Bank Transfer', icon: 'home' },
+    ];
+
+    const filteredInvoices = getFilteredInvoices();
+
+    return (
+      <Modal
+        visible={showRecordPaymentModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseRecordPaymentModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {recordPaymentSuccess ? 'Payment Recorded' : 'Record Payment'}
+            </Text>
+            <TouchableOpacity onPress={handleCloseRecordPaymentModal} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          {recordPaymentSuccess ? (
+            <View style={styles.modalContent}>
+              <View style={styles.successIcon}>
+                <Feather name="check-circle" size={48} color={colors.success} />
+              </View>
+              <Text style={styles.successTitle}>Receipt Created!</Text>
+              <Text style={styles.successAmount}>{recordPaymentSuccess.receiptNumber}</Text>
+              <Text style={[styles.modalStepSubtitle, { marginTop: spacing.sm }]}>
+                ${parseFloat(recordAmount).toFixed(2)} recorded as {recordPaymentMethod === 'bank_transfer' ? 'bank transfer' : recordPaymentMethod}
+              </Text>
+              
+              {recordClientId && (
+                <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.md }}>
+                  <Text style={styles.sectionLabel}>Send Receipt</Text>
+                  <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                    <Button 
+                      variant="outline" 
+                      onPress={() => handleSendRecordedReceipt('email')}
+                      style={{ flex: 1 }}
+                    >
+                      <Feather name="mail" size={18} color={colors.foreground} />
+                      <Text style={{ marginLeft: spacing.xs }}>Email</Text>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onPress={() => handleSendRecordedReceipt('sms')}
+                      style={{ flex: 1 }}
+                    >
+                      <Feather name="message-circle" size={18} color={colors.foreground} />
+                      <Text style={{ marginLeft: spacing.xs }}>SMS</Text>
+                    </Button>
+                  </View>
+                </View>
+              )}
+            </View>
+          ) : (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+              <View style={{ gap: spacing.lg }}>
+                <View>
+                  <Text style={styles.paymentLinkLabel}>Amount *</Text>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.currencySymbol}>$</Text>
+                    <TextInput
+                      style={styles.amountInput}
+                      placeholder="0.00"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={recordAmount}
+                      onChangeText={setRecordAmount}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                <View>
+                  <Text style={styles.paymentLinkLabel}>Payment Method</Text>
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    {paymentMethods.map((method) => (
+                      <TouchableOpacity
+                        key={method.id}
+                        onPress={() => setRecordPaymentMethod(method.id)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: spacing.md,
+                          paddingHorizontal: spacing.sm,
+                          borderRadius: radius.lg,
+                          borderWidth: 2,
+                          borderColor: recordPaymentMethod === method.id ? colors.primary : colors.border,
+                          backgroundColor: recordPaymentMethod === method.id ? colors.primaryLight : colors.card,
+                          alignItems: 'center',
+                          gap: spacing.xs,
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather 
+                          name={method.icon as any} 
+                          size={20} 
+                          color={recordPaymentMethod === method.id ? colors.primary : colors.mutedForeground} 
+                        />
+                        <Text style={{ 
+                          fontSize: 12, 
+                          fontWeight: '500',
+                          color: recordPaymentMethod === method.id ? colors.primary : colors.foreground,
+                        }}>
+                          {method.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View>
+                  <Text style={styles.paymentLinkLabel}>Description (optional)</Text>
+                  <TextInput
+                    style={[styles.descriptionInput, { marginTop: 0 }]}
+                    placeholder="e.g., Cash payment for kitchen renovation"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={recordDescription}
+                    onChangeText={setRecordDescription}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.paymentLinkLabel}>Link to Client (optional)</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginTop: spacing.sm }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => {
+                        setRecordClientId(null);
+                        setRecordInvoiceId(null);
+                      }}
+                      style={{
+                        paddingVertical: spacing.sm,
+                        paddingHorizontal: spacing.md,
+                        borderRadius: radius.lg,
+                        borderWidth: 1,
+                        borderColor: !recordClientId ? colors.primary : colors.border,
+                        backgroundColor: !recordClientId ? colors.primaryLight : colors.card,
+                        marginRight: spacing.sm,
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ 
+                        fontSize: 13, 
+                        color: !recordClientId ? colors.primary : colors.foreground,
+                      }}>
+                        No Client
+                      </Text>
+                    </TouchableOpacity>
+                    {clients.slice(0, 10).map((client) => (
+                      <TouchableOpacity
+                        key={client.id}
+                        onPress={() => {
+                          setRecordClientId(client.id);
+                          setRecordInvoiceId(null); // Reset invoice when client changes
+                        }}
+                        style={{
+                          paddingVertical: spacing.sm,
+                          paddingHorizontal: spacing.md,
+                          borderRadius: radius.lg,
+                          borderWidth: 1,
+                          borderColor: recordClientId === client.id ? colors.primary : colors.border,
+                          backgroundColor: recordClientId === client.id ? colors.primaryLight : colors.card,
+                          marginRight: spacing.sm,
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ 
+                          fontSize: 13, 
+                          color: recordClientId === client.id ? colors.primary : colors.foreground,
+                        }}>
+                          {client.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                {recordClientId && filteredInvoices.length > 0 && (
+                  <View>
+                    <Text style={styles.paymentLinkLabel}>Link to Invoice (optional)</Text>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginTop: spacing.sm }}
+                    >
+                      <TouchableOpacity
+                        onPress={() => setRecordInvoiceId(null)}
+                        style={{
+                          paddingVertical: spacing.sm,
+                          paddingHorizontal: spacing.md,
+                          borderRadius: radius.lg,
+                          borderWidth: 1,
+                          borderColor: !recordInvoiceId ? colors.primary : colors.border,
+                          backgroundColor: !recordInvoiceId ? colors.primaryLight : colors.card,
+                          marginRight: spacing.sm,
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ 
+                          fontSize: 13, 
+                          color: !recordInvoiceId ? colors.primary : colors.foreground,
+                        }}>
+                          No Invoice
+                        </Text>
+                      </TouchableOpacity>
+                      {filteredInvoices.map((invoice) => {
+                        const amountDue = (typeof invoice.total === 'string' ? parseFloat(invoice.total) : invoice.total || 0) - 
+                                         (typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : invoice.amountPaid || 0);
+                        return (
+                          <TouchableOpacity
+                            key={invoice.id}
+                            onPress={() => {
+                              setRecordInvoiceId(invoice.id);
+                              setRecordAmount(amountDue.toFixed(2));
+                              setRecordDescription(`Payment for ${invoice.invoiceNumber}`);
+                            }}
+                            style={{
+                              paddingVertical: spacing.sm,
+                              paddingHorizontal: spacing.md,
+                              borderRadius: radius.lg,
+                              borderWidth: 1,
+                              borderColor: recordInvoiceId === invoice.id ? colors.primary : colors.border,
+                              backgroundColor: recordInvoiceId === invoice.id ? colors.primaryLight : colors.card,
+                              marginRight: spacing.sm,
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={{ 
+                              fontSize: 13, 
+                              fontWeight: '500',
+                              color: recordInvoiceId === invoice.id ? colors.primary : colors.foreground,
+                            }}>
+                              {invoice.invoiceNumber}
+                            </Text>
+                            <Text style={{ 
+                              fontSize: 11, 
+                              color: colors.mutedForeground,
+                            }}>
+                              ${amountDue.toFixed(2)} due
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <View style={{
+                  backgroundColor: colors.successLight,
+                  borderRadius: radius.lg,
+                  padding: spacing.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                }}>
+                  <Feather name="check-circle" size={20} color={colors.success} />
+                  <Text style={{ color: colors.success, fontSize: 13, flex: 1 }}>
+                    No processing fees - great for cash & EFTPOS payments
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+          )}
+
+          {!recordPaymentSuccess && (
+            <View style={styles.modalFooter}>
+              <Button 
+                variant="default" 
+                onPress={handleSubmitRecordPayment} 
+                fullWidth
+                disabled={recordingPayment || !recordAmount || parseFloat(recordAmount) <= 0}
+              >
+                {recordingPayment ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="file-text" size={18} color={colors.primaryForeground} />
+                    <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground, fontWeight: '600' }}>
+                      Create Receipt
+                    </Text>
+                  </>
+                )}
+              </Button>
+            </View>
+          )}
+
+          {recordPaymentSuccess && (
+            <View style={styles.modalFooter}>
+              <Button variant="outline" onPress={handleCloseRecordPaymentModal} fullWidth>
+                Done
+              </Button>
+            </View>
+          )}
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -1594,17 +2026,27 @@ export default function CollectScreen() {
 
           <Text style={styles.sectionLabel}>Payment Methods</Text>
 
+          <PaymentMethodCard
+            icon={<Feather name="dollar-sign" size={24} color={colors.success} />}
+            title="Record Payment"
+            description="Cash, EFTPOS, or bank transfer already received"
+            badge="No Fees"
+            badgeVariant="success"
+            onPress={handleOpenRecordPayment}
+            colors={colors}
+          />
+
           {/* Apple Requirement 5.5: Use SF Symbol wave.3.right.circle for Tap to Pay
               In native builds, replace Feather 'radio' with actual SF Symbol via react-native-sfsymbols
               The 'radio' icon from Feather resembles the wave pattern as a fallback */}
           <PaymentMethodCard
-            icon={<Feather name="radio" size={24} color={colors.primary} />}
+            icon={<Feather name="radio" size={24} color={colors.mutedForeground} />}
             title="Tap to Pay"
-            description="Customer taps card on your phone"
-            badge={tapToPaySupported ? "Ready" : "Build Required"}
-            badgeVariant={tapToPaySupported ? 'success' : 'warning'}
-            onPress={handleTapToPay}
-            disabled={!tapToPaySupported}
+            description="Contactless payments - Coming Soon"
+            badge="Coming Soon"
+            badgeVariant="warning"
+            onPress={() => {}}
+            disabled={true}
             colors={colors}
           />
 
@@ -1714,6 +2156,7 @@ export default function CollectScreen() {
         {renderReceiptModal()}
         {renderQRModal()}
         {renderPaymentLinkModal()}
+        {renderRecordPaymentModal()}
       </View>
     </>
   );
