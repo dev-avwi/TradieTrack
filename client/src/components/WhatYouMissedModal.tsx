@@ -57,26 +57,32 @@ export default function WhatYouMissedModal() {
     refetchInterval: 60000,
   });
 
+  // Show modal once when data is available
   useEffect(() => {
     if (data && data.count > 0 && !hasShownOnce) {
       setOpen(true);
       setHasShownOnce(true);
       setCountdown(AUTO_DISMISS_DELAY);
-
-      const countdownInterval = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= COUNTDOWN_INTERVAL) {
-            clearInterval(countdownInterval);
-            setOpen(false);
-            return 0;
-          }
-          return prev - COUNTDOWN_INTERVAL;
-        });
-      }, COUNTDOWN_INTERVAL);
-
-      return () => clearInterval(countdownInterval);
     }
   }, [data, hasShownOnce]);
+
+  // Handle countdown timer separately when modal is open
+  useEffect(() => {
+    if (!open) return;
+
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= COUNTDOWN_INTERVAL) {
+          clearInterval(countdownInterval);
+          setOpen(false);
+          return 0;
+        }
+        return prev - COUNTDOWN_INTERVAL;
+      });
+    }, COUNTDOWN_INTERVAL);
+
+    return () => clearInterval(countdownInterval);
+  }, [open]);
 
   const handleClose = () => {
     setCountdown(0);
