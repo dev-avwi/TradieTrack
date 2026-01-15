@@ -130,7 +130,7 @@ export function SidebarNav() {
           themedStyles.header,
           pressed && { opacity: 0.7 }
         ]}
-        onPress={() => router.push('/more/branding' as any)}
+        onPress={() => router.push('/more/settings' as any)}
         data-testid="sidebar-header-settings"
       >
         <View style={themedStyles.logoContainer}>
