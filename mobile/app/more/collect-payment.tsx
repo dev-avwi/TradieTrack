@@ -816,13 +816,21 @@ export default function CollectScreen() {
     try {
       const [receiptsResponse, requestsResponse] = await Promise.all([
         api.get<any[]>('/api/receipts?limit=10'),
-        api.get<any[]>('/api/payment-requests')
+        api.get<any[]>('/api/payment-requests?limit=15')
       ]);
       if (receiptsResponse.data) {
         setRecentReceipts(receiptsResponse.data);
       }
       if (requestsResponse.data) {
-        setPaymentRequests(requestsResponse.data);
+        // Sort payment requests by createdAt desc and limit to 15 for performance
+        const sortedRequests = [...requestsResponse.data]
+          .sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          })
+          .slice(0, 15);
+        setPaymentRequests(sortedRequests);
       }
     } catch (error) {
       console.error('Failed to fetch payments data:', error);
@@ -2493,7 +2501,48 @@ export default function CollectScreen() {
                     );
                   })}
                 
-                {/* Completed Payments (Receipts) */}
+                {/* Paid Payment Requests (QR/Link payments completed) */}
+                {paymentRequests
+                  .filter(req => req.status === 'paid')
+                  .slice(0, 5)
+                  .map((request, index) => {
+                    const requestAmount = typeof request.amount === 'string' ? parseFloat(request.amount) : (request.amount || 0);
+                    const requestDate = request.paidAt ? format(parseISO(request.paidAt), 'MMM d') : (request.createdAt ? format(parseISO(request.createdAt), 'MMM d') : '');
+                    const client = request.clientId ? clients.find(c => c.id === request.clientId) : null;
+                    const clientName = client?.name || 'Customer';
+                    const isQR = !!request.qrCodeUrl;
+                    
+                    return (
+                      <View
+                        key={`paid-${request.id || index}`}
+                        style={styles.recentPaymentItem}
+                      >
+                        <View style={styles.recentPaymentLeft}>
+                          <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.successLight }]}>
+                            <Feather 
+                              name={isQR ? 'grid' : 'link'} 
+                              size={18} 
+                              color={colors.success} 
+                            />
+                          </View>
+                          <View style={styles.recentPaymentContent}>
+                            <Text style={styles.recentPaymentClient}>{clientName}</Text>
+                            <Text style={styles.recentPaymentMeta}>
+                              {isQR ? 'QR Code' : 'Payment Link'} • {requestDate}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={styles.recentPaymentAmount}>
+                            +{formatCurrency(requestAmount)}
+                          </Text>
+                          <Badge variant="success" style={{ marginTop: 4 }}>Paid</Badge>
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                {/* Completed Payments (Receipts from manual payments) */}
                 {recentReceipts.slice(0, 5).map((receipt, index) => {
                   const receiptAmount = typeof receipt.amount === 'string' ? parseFloat(receipt.amount) : (receipt.amount || 0);
                   const receiptDate = receipt.createdAt ? format(parseISO(receipt.createdAt), 'MMM d') : '';
