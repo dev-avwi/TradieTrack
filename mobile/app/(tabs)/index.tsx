@@ -1635,6 +1635,7 @@ export default function DashboardScreen() {
       showsVerticalScrollIndicator={false}
       hasTabBar={true}
       hasHeader={true}
+      showBackground={true}
     >
       {/* iOS-Style Header with Notification Bell */}
       <View style={styles.header}>

@@ -540,6 +540,7 @@ export default function JobsScreen() {
         showsVerticalScrollIndicator={false}
         hasTabBar={true}
         hasHeader={true}
+        showBackground={true}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -780,7 +781,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
   return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isIOS ? iosColors.systemGroupedBackground : colors.background,
+    backgroundColor: isIOS ? 'transparent' : colors.background,
   },
   scrollView: {
     flex: 1,

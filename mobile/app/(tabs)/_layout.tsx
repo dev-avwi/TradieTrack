@@ -105,7 +105,8 @@ export default function TabLayout() {
         animation: 'shift',
       }}
       sceneContainerStyle={{
-        backgroundColor: isIOS ? iosColors.systemGroupedBackground : colors.background,
+        // Transparent on iOS so content/background shows through glass controls
+        backgroundColor: isIOS ? 'transparent' : colors.background,
       }}
       screenListeners={{
         tabPress: () => {

@@ -269,7 +269,7 @@ export default function MoreScreen() {
   const { scrollToTopTrigger } = useScrollToTop();
   
   const containerStyle = isIOS 
-    ? { backgroundColor: iosStyles.colors.systemGroupedBackground }
+    ? { backgroundColor: 'transparent' }
     : { backgroundColor: colors.background };
   
   const sectionStyle = isIOS 
@@ -391,6 +391,7 @@ export default function MoreScreen() {
       showsVerticalScrollIndicator={false}
       hasTabBar={true}
       hasHeader={true}
+      showBackground={true}
     >
       {/* Profile Header */}
       <TouchableOpacity 

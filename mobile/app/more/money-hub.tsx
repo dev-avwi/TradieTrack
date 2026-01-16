@@ -108,7 +108,7 @@ export default function MoneyHubScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const containerStyle = isIOS 
-    ? { backgroundColor: iosStyles.colors.systemGroupedBackground }
+    ? { backgroundColor: 'transparent' }
     : { backgroundColor: colors.background };
   
   const cardStyle = isIOS 
@@ -1031,6 +1031,7 @@ export default function MoneyHubScreen() {
         contentContainerStyle={styles.scrollContent}
         hasTabBar={true}
         hasHeader={true}
+        showBackground={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
