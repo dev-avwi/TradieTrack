@@ -911,12 +911,12 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
   },
 
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing['2xl'],
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   sectionTitle: {

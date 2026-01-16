@@ -2187,20 +2187,20 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
     marginTop: spacing.sm,
   },
 
-  // Sections - consistent 24px section gaps to match web space-y-6
+  // Sections - consistent 24px section gaps to match ServiceM8 grouped list style
   section: {
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing['2xl'],
   },
   sectionLabel: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   sectionTitleRow: {
     flexDirection: 'row',
