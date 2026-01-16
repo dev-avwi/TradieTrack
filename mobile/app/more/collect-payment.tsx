@@ -16,6 +16,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { format, isThisWeek, parseISO } from 'date-fns';
 import { useStripeTerminal } from '../../src/hooks/useServices';
 import { isTapToPayAvailable } from '../../src/lib/stripe-terminal';
 import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
@@ -529,6 +530,74 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     marginBottom: spacing.xs,
   },
+  recentPaymentsSection: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  recentPaymentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  recentPaymentLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.md,
+  },
+  recentPaymentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: colors.successLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentPaymentContent: {
+    flex: 1,
+  },
+  recentPaymentClient: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  recentPaymentMeta: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  recentPaymentAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  compactQuickLinksRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  compactQuickLink: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+  },
+  compactQuickLinkText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
 });
 
 interface PaymentMethodCardProps {
@@ -586,21 +655,25 @@ function StatCard({
   title, 
   value, 
   icon,
+  iconBackground,
+  valueColor,
   colors
 }: { 
   title: string; 
   value: string | number; 
   icon: React.ReactNode;
+  iconBackground?: string;
+  valueColor?: string;
   colors: ThemeColors;
 }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   return (
     <View style={styles.statCard}>
-      <View style={styles.statIconContainer}>
+      <View style={[styles.statIconContainer, iconBackground ? { backgroundColor: iconBackground } : undefined]}>
         {icon}
       </View>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={[styles.statValue, valueColor ? { color: valueColor } : undefined]}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
     </View>
   );
@@ -658,16 +731,34 @@ export default function CollectScreen() {
   const [linkRecipientPhone, setLinkRecipientPhone] = useState('');
   const [sendingLink, setSendingLink] = useState(false);
   
+  // Recent Payments state
+  const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
   const terminal = useStripeTerminal();
   const tapToPaySupported = isTapToPayAvailable();
 
+  const fetchReceipts = useCallback(async () => {
+    setReceiptsLoading(true);
+    try {
+      const response = await api.get<any[]>('/api/receipts?limit=5');
+      if (response.data) {
+        setRecentReceipts(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch receipts:', error);
+    } finally {
+      setReceiptsLoading(false);
+    }
+  }, []);
+
   const refreshData = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([fetchInvoices(), fetchClients()]);
+    await Promise.all([fetchInvoices(), fetchClients(), fetchReceipts()]);
     setIsLoading(false);
-  }, [fetchInvoices, fetchClients]);
+  }, [fetchInvoices, fetchClients, fetchReceipts]);
 
   useEffect(() => {
     refreshData();
@@ -762,12 +853,60 @@ export default function CollectScreen() {
   };
 
   const pendingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
+  const overdueInvoices = invoices.filter(i => i.status === 'overdue');
   const totalPending = pendingInvoices.reduce((sum, i) => {
     const total = typeof i.total === 'string' ? parseFloat(i.total) : (i.total || 0);
     const paid = typeof i.amountPaid === 'string' ? parseFloat(i.amountPaid) : (i.amountPaid || 0);
     return sum + (total - paid);
   }, 0);
+  const overdueAmount = overdueInvoices.reduce((sum, i) => {
+    const total = typeof i.total === 'string' ? parseFloat(i.total) : (i.total || 0);
+    const paid = typeof i.amountPaid === 'string' ? parseFloat(i.amountPaid) : (i.amountPaid || 0);
+    return sum + (total - paid);
+  }, 0);
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
+  const pendingInvoiceCount = pendingInvoices.length;
+  
+  // Calculate collected this week from recent receipts
+  const collectedThisWeek = useMemo(() => {
+    return recentReceipts
+      .filter(r => {
+        try {
+          const receiptDate = r.createdAt ? parseISO(r.createdAt) : null;
+          return receiptDate && isThisWeek(receiptDate, { weekStartsOn: 1 });
+        } catch {
+          return false;
+        }
+      })
+      .reduce((sum, r) => {
+        const amount = typeof r.amount === 'string' ? parseFloat(r.amount) : (r.amount || 0);
+        return sum + amount;
+      }, 0);
+  }, [recentReceipts]);
+
+  const getPaymentMethodLabel = (method: string): string => {
+    const labels: Record<string, string> = {
+      cash: 'Cash',
+      card: 'Card',
+      bank_transfer: 'Bank Transfer',
+      eftpos: 'EFTPOS',
+      cheque: 'Cheque',
+      other: 'Other',
+    };
+    return labels[method] || method;
+  };
+
+  const getPaymentMethodIcon = (method: string): string => {
+    const icons: Record<string, string> = {
+      cash: 'dollar-sign',
+      card: 'credit-card',
+      bank_transfer: 'home',
+      eftpos: 'credit-card',
+      cheque: 'file-text',
+      other: 'circle',
+    };
+    return icons[method] || 'circle';
+  };
 
   const getAmountInCents = (): number => {
     const parsed = parseFloat(amount);
@@ -1919,6 +2058,70 @@ export default function CollectScreen() {
             <Text style={styles.pageSubtitle}>Get paid instantly with multiple options</Text>
           </View>
 
+          {/* Payment Summary Dashboard - 2x2 Grid */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statsRow}>
+              <StatCard
+                title="TOTAL OUTSTANDING"
+                value={formatCurrency(totalPending)}
+                icon={<Feather name="trending-up" size={22} color={colors.primary} />}
+                colors={colors}
+              />
+              <StatCard
+                title="OVERDUE"
+                value={formatCurrency(overdueAmount)}
+                icon={<Feather name="alert-triangle" size={22} color={colors.destructive} />}
+                iconBackground={colors.destructiveLight}
+                valueColor={overdueAmount > 0 ? colors.destructive : undefined}
+                colors={colors}
+              />
+            </View>
+            <View style={styles.statsRow}>
+              <StatCard
+                title="COLLECTED THIS WEEK"
+                value={formatCurrency(collectedThisWeek)}
+                icon={<Feather name="check-circle" size={22} color={colors.success} />}
+                iconBackground={colors.successLight}
+                colors={colors}
+              />
+              <StatCard
+                title="PENDING INVOICES"
+                value={pendingInvoiceCount}
+                icon={<Feather name="file-text" size={22} color={colors.warning} />}
+                iconBackground={colors.warningLight}
+                colors={colors}
+              />
+            </View>
+          </View>
+
+          {/* Compact Quick Links */}
+          <View style={styles.compactQuickLinksRow}>
+            <TouchableOpacity 
+              style={styles.compactQuickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/invoices')}
+            >
+              <Feather name="file-text" size={14} color={colors.foreground} />
+              <Text style={styles.compactQuickLinkText}>Invoices</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.compactQuickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/payments')}
+            >
+              <Feather name="clock" size={14} color={colors.foreground} />
+              <Text style={styles.compactQuickLinkText}>History</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.compactQuickLink} 
+              activeOpacity={0.7}
+              onPress={() => router.push('/more/receipts')}
+            >
+              <Feather name="receipt" size={14} color={colors.foreground} />
+              <Text style={styles.compactQuickLinkText}>Receipts</Text>
+            </TouchableOpacity>
+          </View>
+
           {terminal.isSimulation && (
             <View style={styles.demoModeBanner}>
               <Feather name="smartphone" size={24} color={colors.info} />
@@ -1930,39 +2133,6 @@ export default function CollectScreen() {
               </View>
             </View>
           )}
-
-          <View style={styles.headerBanner}>
-            <View style={styles.headerBannerRow}>
-              <Feather name="wifi" size={24} color={colors.primary} />
-              <Text style={styles.headerBannerTitle}>Accept Payments On-Site</Text>
-            </View>
-            <Text style={styles.headerBannerSubtitle}>
-              Get paid instantly with Tap to Pay, QR codes, or send a payment link
-            </Text>
-          </View>
-
-          <View style={styles.quickLinksRow}>
-            <TouchableOpacity 
-              style={styles.quickLink} 
-              activeOpacity={0.7}
-              onPress={() => router.push('/more/invoices')}
-            >
-              <View style={styles.quickLinkIconContainer}>
-                <Feather name="file-text" size={18} color={colors.info} />
-              </View>
-              <Text style={styles.quickLinkText}>View Invoices</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.quickLink} 
-              activeOpacity={0.7}
-              onPress={() => router.push('/more/payments')}
-            >
-              <View style={styles.quickLinkIconContainer}>
-                <Feather name="clock" size={18} color={colors.warning} />
-              </View>
-              <Text style={styles.quickLinkText}>Payment History</Text>
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.amountSection}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
@@ -2123,6 +2293,62 @@ export default function CollectScreen() {
                         </Text>
                       </View>
                     </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+
+          {/* Recent Payments Section */}
+          <View style={styles.recentPaymentsSection}>
+            <View style={styles.pendingSectionHeader}>
+              <Feather name="check-circle" size={18} color={colors.success} />
+              <Text style={styles.pendingSectionTitle}>Recent Payments</Text>
+            </View>
+            
+            {receiptsLoading ? (
+              <View style={styles.emptyPending}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.emptyPendingText}>Loading...</Text>
+              </View>
+            ) : recentReceipts.length === 0 ? (
+              <View style={styles.emptyPending}>
+                <Feather name="inbox" size={32} color={colors.mutedForeground} />
+                <Text style={styles.emptyPendingText}>No recent payments</Text>
+              </View>
+            ) : (
+              recentReceipts.slice(0, 5).map((receipt, index) => {
+                const receiptAmount = typeof receipt.amount === 'string' ? parseFloat(receipt.amount) : (receipt.amount || 0);
+                const receiptDate = receipt.createdAt ? format(parseISO(receipt.createdAt), 'MMM d, yyyy') : 'Unknown date';
+                const client = receipt.clientId ? clients.find(c => c.id === receipt.clientId) : null;
+                const clientName = client?.name || 'Walk-in Customer';
+                const paymentMethod = getPaymentMethodLabel(receipt.paymentMethod || 'other');
+                
+                return (
+                  <TouchableOpacity
+                    key={receipt.id || index}
+                    style={styles.recentPaymentItem}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+                  >
+                    <View style={styles.recentPaymentLeft}>
+                      <View style={styles.recentPaymentIconContainer}>
+                        <Feather 
+                          name={getPaymentMethodIcon(receipt.paymentMethod || 'other') as any} 
+                          size={18} 
+                          color={colors.success} 
+                        />
+                      </View>
+                      <View style={styles.recentPaymentContent}>
+                        <Text style={styles.recentPaymentClient}>{clientName}</Text>
+                        <Text style={styles.recentPaymentMeta}>
+                          {paymentMethod} • {receiptDate}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.recentPaymentAmount}>
+                      +{formatCurrency(receiptAmount)}
+                    </Text>
                   </TouchableOpacity>
                 );
               })
