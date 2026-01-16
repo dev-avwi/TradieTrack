@@ -598,6 +598,72 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.foreground,
   },
+  invoicePickerScrollView: {
+    flex: 1,
+  },
+  invoicePickerContent: {
+    padding: spacing.lg,
+    paddingBottom: 100,
+  },
+  invoicePickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  invoicePickerItemContent: {
+    flex: 1,
+  },
+  invoicePickerItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  invoicePickerItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  invoicePickerItemClient: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  invoicePickerItemAmount: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  customAmountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  customAmountButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  invoicePickerEmpty: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+  },
+  invoicePickerEmptyText: {
+    fontSize: 16,
+    color: colors.mutedForeground,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
 });
 
 interface PaymentMethodCardProps {
@@ -734,6 +800,10 @@ export default function CollectScreen() {
   // Recent Payments state
   const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
+  
+  // Invoice Picker Modal state
+  const [showInvoicePickerModal, setShowInvoicePickerModal] = useState(false);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<'record' | 'qr' | 'link' | null>(null);
   
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -1086,7 +1156,11 @@ export default function CollectScreen() {
     setPaymentStep('ready');
   };
 
-  const handleQRCode = async () => {
+  const handleQRCode = () => {
+    handleShowInvoicePicker('qr');
+  };
+
+  const handleQRCodeDirect = async () => {
     const amountCents = getAmountInCents();
     if (amountCents < 500) {
       Alert.alert('Minimum Amount', 'Payments require a minimum of $5.00');
@@ -1158,7 +1232,11 @@ export default function CollectScreen() {
     setSelectedInvoice(null);
   };
 
-  const handlePaymentLink = async () => {
+  const handlePaymentLink = () => {
+    handleShowInvoicePicker('link');
+  };
+
+  const handlePaymentLinkDirect = async () => {
     const amountCents = getAmountInCents();
     if (amountCents < 500) {
       Alert.alert('Minimum Amount', 'Payments require a minimum of $5.00');
@@ -1290,6 +1368,10 @@ export default function CollectScreen() {
 
   // Record Payment handlers
   const handleOpenRecordPayment = () => {
+    handleShowInvoicePicker('record');
+  };
+
+  const handleOpenRecordPaymentDirect = () => {
     // Pre-fill from selected invoice if available
     if (selectedInvoice) {
       setRecordAmount(selectedInvoice.amountDue.toFixed(2));
@@ -1401,6 +1483,84 @@ export default function CollectScreen() {
       filtered = filtered.filter(i => i.clientId === recordClientId);
     }
     return filtered;
+  };
+
+  // Invoice Picker handlers
+  const handleShowInvoicePicker = (method: 'record' | 'qr' | 'link') => {
+    // If amount is already entered or invoice selected, skip the picker
+    if (amount && parseFloat(amount) > 0) {
+      proceedToPaymentMethod(method);
+      return;
+    }
+    
+    // If no pending invoices, skip the picker
+    if (pendingInvoices.length === 0) {
+      proceedToPaymentMethod(method);
+      return;
+    }
+    
+    // Show the invoice picker modal
+    setPendingPaymentMethod(method);
+    setShowInvoicePickerModal(true);
+  };
+
+  const handleSelectInvoiceFromPicker = (invoice: any) => {
+    const client = getClient(invoice.clientId);
+    const invoiceTotal = typeof invoice.total === 'string' ? parseFloat(invoice.total) : (invoice.total || 0);
+    const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
+    const amountDue = invoiceTotal - invoicePaid;
+    
+    setSelectedInvoice({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: invoice.clientId,
+      clientName: client?.name || 'Unknown Client',
+      clientEmail: client?.email,
+      clientPhone: client?.phone,
+      total: invoiceTotal,
+      amountPaid: invoicePaid,
+      amountDue,
+    });
+    
+    setAmount(amountDue.toFixed(2));
+    setDescription(`Payment for ${invoice.invoiceNumber}`);
+    
+    setShowInvoicePickerModal(false);
+    
+    // Proceed to the selected payment method
+    if (pendingPaymentMethod) {
+      proceedToPaymentMethod(pendingPaymentMethod);
+    }
+    setPendingPaymentMethod(null);
+  };
+
+  const handleCustomAmountFromPicker = () => {
+    setShowInvoicePickerModal(false);
+    
+    // Proceed without an invoice
+    if (pendingPaymentMethod) {
+      proceedToPaymentMethod(pendingPaymentMethod);
+    }
+    setPendingPaymentMethod(null);
+  };
+
+  const proceedToPaymentMethod = (method: 'record' | 'qr' | 'link') => {
+    switch (method) {
+      case 'record':
+        handleOpenRecordPaymentDirect();
+        break;
+      case 'qr':
+        handleQRCodeDirect();
+        break;
+      case 'link':
+        handlePaymentLinkDirect();
+        break;
+    }
+  };
+
+  const handleCloseInvoicePickerModal = () => {
+    setShowInvoicePickerModal(false);
+    setPendingPaymentMethod(null);
   };
 
   const renderTapToPayModal = () => (
@@ -2037,6 +2197,80 @@ export default function CollectScreen() {
     );
   };
 
+  const renderInvoicePickerModal = () => (
+    <Modal
+      visible={showInvoicePickerModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleCloseInvoicePickerModal}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Select Invoice</Text>
+          <TouchableOpacity onPress={handleCloseInvoicePickerModal} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView 
+          style={styles.invoicePickerScrollView}
+          contentContainerStyle={styles.invoicePickerContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {pendingInvoices.length === 0 ? (
+            <View style={styles.invoicePickerEmpty}>
+              <Feather name="check-circle" size={48} color={colors.success} />
+              <Text style={styles.invoicePickerEmptyText}>
+                No pending invoices.{'\n'}Enter a custom amount below.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.sectionLabel, { marginBottom: spacing.md }]}>
+                {pendingInvoices.length} Pending Invoice{pendingInvoices.length !== 1 ? 's' : ''}
+              </Text>
+              {pendingInvoices.map(invoice => {
+                const invoiceTotal = typeof invoice.total === 'string' ? parseFloat(invoice.total) : (invoice.total || 0);
+                const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
+                const amountDue = invoiceTotal - invoicePaid;
+                const isOverdue = invoice.status === 'overdue';
+                
+                return (
+                  <TouchableOpacity 
+                    key={invoice.id}
+                    style={styles.invoicePickerItem}
+                    onPress={() => handleSelectInvoiceFromPicker(invoice)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.invoicePickerItemContent}>
+                      <View style={styles.invoicePickerItemHeader}>
+                        <Text style={styles.invoicePickerItemTitle}>{invoice.invoiceNumber}</Text>
+                        {isOverdue && (
+                          <Badge variant="destructive">Overdue</Badge>
+                        )}
+                      </View>
+                      <Text style={styles.invoicePickerItemClient}>{getClientName(invoice.clientId)}</Text>
+                    </View>
+                    <Text style={styles.invoicePickerItemAmount}>{formatCurrency(amountDue)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          )}
+
+          <TouchableOpacity 
+            style={styles.customAmountButton}
+            onPress={handleCustomAmountFromPicker}
+            activeOpacity={0.7}
+          >
+            <Feather name="edit-3" size={20} color={colors.foreground} />
+            <Text style={styles.customAmountButtonText}>Custom Amount (No Invoice)</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -2056,42 +2290,6 @@ export default function CollectScreen() {
           <View style={styles.header}>
             <Text style={styles.pageTitle}>Collect Payment</Text>
             <Text style={styles.pageSubtitle}>Get paid instantly with multiple options</Text>
-          </View>
-
-          {/* Payment Summary Dashboard - 2x2 Grid */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="TOTAL OUTSTANDING"
-                value={formatCurrency(totalPending)}
-                icon={<Feather name="trending-up" size={22} color={colors.primary} />}
-                colors={colors}
-              />
-              <StatCard
-                title="OVERDUE"
-                value={formatCurrency(overdueAmount)}
-                icon={<Feather name="alert-triangle" size={22} color={colors.destructive} />}
-                iconBackground={colors.destructiveLight}
-                valueColor={overdueAmount > 0 ? colors.destructive : undefined}
-                colors={colors}
-              />
-            </View>
-            <View style={styles.statsRow}>
-              <StatCard
-                title="COLLECTED THIS WEEK"
-                value={formatCurrency(collectedThisWeek)}
-                icon={<Feather name="check-circle" size={22} color={colors.success} />}
-                iconBackground={colors.successLight}
-                colors={colors}
-              />
-              <StatCard
-                title="PENDING INVOICES"
-                value={pendingInvoiceCount}
-                icon={<Feather name="file-text" size={22} color={colors.warning} />}
-                iconBackground={colors.warningLight}
-                colors={colors}
-              />
-            </View>
           </View>
 
           {/* Compact Quick Links */}
@@ -2240,65 +2438,6 @@ export default function CollectScreen() {
             colors={colors}
           />
 
-          <View style={styles.pendingSection}>
-            <View style={styles.pendingSectionHeader}>
-              <Feather name="clock" size={18} color={colors.foreground} />
-              <Text style={styles.pendingSectionTitle}>Pending Payments</Text>
-            </View>
-            
-            {pendingInvoices.length === 0 ? (
-              <View style={styles.emptyPending}>
-                <Feather name="check-circle" size={32} color={colors.success} />
-                <Text style={styles.emptyPendingText}>All caught up!</Text>
-              </View>
-            ) : (
-              pendingInvoices.slice(0, 5).map(invoice => {
-                const isSelected = selectedInvoice?.id === invoice.id;
-                const amountDue = (invoice.total || 0) - (invoice.amountPaid || 0);
-                return (
-                  <TouchableOpacity 
-                    key={invoice.id} 
-                    style={[
-                      styles.pendingItem,
-                      isSelected && { borderColor: colors.primary, borderWidth: 2 }
-                    ]}
-                    onPress={() => handleCollectForInvoice(invoice)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.pendingItemContent}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.pendingItemTitle}>{invoice.invoiceNumber}</Text>
-                        {isSelected && (
-                          <Badge variant="success">Selected</Badge>
-                        )}
-                        {invoice.status === 'overdue' && !isSelected && (
-                          <Badge variant="destructive">Overdue</Badge>
-                        )}
-                      </View>
-                      <Text style={styles.pendingItemClient}>{getClientName(invoice.clientId)}</Text>
-                    </View>
-                    <View style={styles.pendingItemRight}>
-                      <Text style={styles.pendingItemAmount}>{formatCurrency(amountDue)}</Text>
-                      <View style={[
-                        styles.collectButton,
-                        isSelected && { backgroundColor: colors.success }
-                      ]}>
-                        <Feather 
-                          name={isSelected ? "check" : "credit-card"} 
-                          size={14} 
-                          color={colors.primaryForeground} 
-                        />
-                        <Text style={styles.collectButtonText}>
-                          {isSelected ? 'Ready' : 'Collect'}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </View>
-
           {/* Recent Payments Section */}
           <View style={styles.recentPaymentsSection}>
             <View style={styles.pendingSectionHeader}>
@@ -2383,6 +2522,7 @@ export default function CollectScreen() {
         {renderQRModal()}
         {renderPaymentLinkModal()}
         {renderRecordPaymentModal()}
+        {renderInvoicePickerModal()}
       </View>
     </>
   );
