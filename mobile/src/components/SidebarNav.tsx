@@ -152,7 +152,7 @@ export function SidebarNav() {
           <View style={themedStyles.headerTextContainer}>
             <Text 
               style={themedStyles.businessName} 
-              numberOfLines={2} 
+              numberOfLines={1} 
               ellipsizeMode="tail"
             >
               {businessName || 'TradieTrack'}
@@ -284,10 +284,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexShrink: 0,
   },
   headerSection: {
-    marginHorizontal: 14,
+    marginHorizontal: 16,
     marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
@@ -296,7 +296,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   logoContainer: {
     width: 40,

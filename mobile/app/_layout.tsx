@@ -352,6 +352,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <OfflineBanner />
       <ConflictResolutionPanel />
       <OfflineIndicator />
+      <WhatYouMissedPopup />
       
       {/* FAB positioned above bottom nav */}
       {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
