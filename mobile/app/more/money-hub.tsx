@@ -18,8 +18,12 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSCorners, IOSShadows } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
+import { GlassSection } from '../../src/components/ui/GlassSection';
+import { GlassStatsCard } from '../../src/components/ui/GlassStatsCard';
+import { GlassCard } from '../../src/components/ui/GlassCard';
+import { GlassListItem } from '../../src/components/ui/GlassListItem';
 import { api } from '../../src/lib/api';
 import { format, isAfter, isBefore, subDays, differenceInDays } from 'date-fns';
 import { XeroRibbon } from '../../src/components/XeroRibbon';
@@ -367,45 +371,79 @@ export default function MoneyHubScreen() {
     };
   }, [invoices, quotes]);
 
-  const renderQuickActions = () => (
-    <View style={styles.quickActionsContainer}>
-      <Text style={[styles.quickActionsTitle, isIOS && iosSectionTitleStyle]}>Quick Actions</Text>
-      <View style={styles.quickActionsGrid}>
-        <TouchableOpacity 
-          style={[styles.quickActionCard, isIOS && cardStyle]}
-          onPress={() => router.push('/more/invoice/new')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}15` }]}>
-            <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
+  const renderQuickActions = () => {
+    const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+    
+    if (isIOS) {
+      return (
+        <View style={styles.quickActionsContainer}>
+          <Text style={[styles.quickActionsTitle, { color: iosColors.secondaryLabel, textTransform: 'uppercase' }]}>Quick Actions</Text>
+          <View style={styles.quickActionsGrid}>
+            <GlassCard onPress={() => router.push('/more/invoice/new')} style={styles.quickActionCardGlass}>
+              <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
+              </View>
+              <Text style={[styles.quickActionLabel, { color: iosColors.label }]}>Create Invoice</Text>
+            </GlassCard>
+            
+            <GlassCard onPress={() => router.push('/more/quote/new')} style={styles.quickActionCardGlass}>
+              <View style={[styles.quickActionIcon, { backgroundColor: `${colors.scheduled}15` }]}>
+                <Feather name="file-text" size={iconSizes.lg} color={colors.scheduled} />
+              </View>
+              <Text style={[styles.quickActionLabel, { color: iosColors.label }]}>Create Quote</Text>
+            </GlassCard>
+            
+            <GlassCard onPress={() => router.push('/more/collect-payment')} style={styles.quickActionCardGlass}>
+              <View style={[styles.quickActionIcon, { backgroundColor: `${colors.success}15` }]}>
+                <Feather name="credit-card" size={iconSizes.lg} color={colors.success} />
+              </View>
+              <Text style={[styles.quickActionLabel, { color: iosColors.label }]}>Collect Payment</Text>
+            </GlassCard>
           </View>
-          <Text style={styles.quickActionLabel}>Create Invoice</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.quickActionCard, isIOS && cardStyle]}
-          onPress={() => router.push('/more/quote/new')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.quickActionIcon, { backgroundColor: `${colors.scheduled}15` }]}>
-            <Feather name="file-text" size={iconSizes.lg} color={colors.scheduled} />
-          </View>
-          <Text style={styles.quickActionLabel}>Create Quote</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.quickActionCard, isIOS && cardStyle]}
-          onPress={() => router.push('/more/collect-payment')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.quickActionIcon, { backgroundColor: `${colors.success}15` }]}>
-            <Feather name="credit-card" size={iconSizes.lg} color={colors.success} />
-          </View>
-          <Text style={styles.quickActionLabel}>Collect Payment</Text>
-        </TouchableOpacity>
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.quickActionsContainer}>
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsGrid}>
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => router.push('/more/invoice/new')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.quickActionLabel}>Create Invoice</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => router.push('/more/quote/new')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: `${colors.scheduled}15` }]}>
+              <Feather name="file-text" size={iconSizes.lg} color={colors.scheduled} />
+            </View>
+            <Text style={styles.quickActionLabel}>Create Quote</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => router.push('/more/collect-payment')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: `${colors.success}15` }]}>
+              <Feather name="credit-card" size={iconSizes.lg} color={colors.success} />
+            </View>
+            <Text style={styles.quickActionLabel}>Collect Payment</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderKPICard = (
     title: string, 
@@ -447,9 +485,25 @@ export default function MoneyHubScreen() {
   };
 
   const renderStripeConnectCard = () => {
+    const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+    
     if (stripeLoading) {
+      if (isIOS) {
+        return (
+          <GlassCard style={{ marginBottom: spacing.lg }}>
+            <View style={styles.stripeCardHeader}>
+              <View style={[styles.stripeLoadingIcon, { backgroundColor: iosColors.systemFill }]} />
+              <View style={{ flex: 1, gap: spacing.xs }}>
+                <View style={{ width: 80, height: 14, backgroundColor: iosColors.systemFill, borderRadius: radius.sm }} />
+                <View style={{ width: 120, height: 18, backgroundColor: iosColors.systemFill, borderRadius: radius.sm }} />
+              </View>
+            </View>
+          </GlassCard>
+        );
+      }
+      
       return (
-        <View style={[styles.stripeCard, isIOS && cardStyle]}>
+        <View style={styles.stripeCard}>
           <View style={styles.stripeCardHeader}>
             <View style={[styles.stripeLoadingIcon, { backgroundColor: colors.muted }]} />
             <View style={{ flex: 1, gap: spacing.xs }}>
@@ -466,34 +520,29 @@ export default function MoneyHubScreen() {
     const availableBalance = stripeBalance?.available || 0;
     const pendingBalance = stripeBalance?.pending || 0;
 
-    return (
-      <View style={[
-        styles.stripeCard,
-        isIOS && cardStyle,
-        isConnected && styles.stripeCardConnected,
-        needsSetup && styles.stripeCardWarning,
-      ]}>
+    const stripeCardContent = (
+      <>
         <View style={styles.stripeCardHeader}>
           <View style={[
             styles.stripeIconWrapper,
-            { backgroundColor: isConnected ? `${colors.success}15` : needsSetup ? `${colors.warning}15` : colors.muted }
+            { backgroundColor: isConnected ? `${colors.success}15` : needsSetup ? `${colors.warning}15` : isIOS ? iosColors.systemFill : colors.muted }
           ]}>
             <Feather 
               name={isConnected ? 'credit-card' : needsSetup ? 'alert-circle' : 'link-2'} 
               size={iconSizes.lg} 
-              color={isConnected ? colors.success : needsSetup ? colors.warning : colors.mutedForeground} 
+              color={isConnected ? colors.success : needsSetup ? colors.warning : isIOS ? iosColors.secondaryLabel : colors.mutedForeground} 
             />
           </View>
           <View style={styles.stripeCardContent}>
             <View style={styles.stripeCardTitleRow}>
-              <Text style={styles.stripeCardTitle}>Stripe Connect</Text>
+              <Text style={[styles.stripeCardTitle, isIOS && { color: iosColors.label }]}>Stripe Connect</Text>
               <View style={[
                 styles.stripeCardBadge,
-                { backgroundColor: isConnected ? `${colors.success}20` : needsSetup ? `${colors.warning}20` : `${colors.mutedForeground}20` }
+                { backgroundColor: isConnected ? `${colors.success}20` : needsSetup ? `${colors.warning}20` : `${isIOS ? iosColors.secondaryLabel : colors.mutedForeground}20` }
               ]}>
                 <Text style={[
                   styles.stripeCardBadgeText,
-                  { color: isConnected ? colors.success : needsSetup ? colors.warning : colors.mutedForeground }
+                  { color: isConnected ? colors.success : needsSetup ? colors.warning : isIOS ? iosColors.secondaryLabel : colors.mutedForeground }
                 ]}>
                   {isConnected ? 'Connected' : needsSetup ? 'Setup Required' : 'Not Connected'}
                 </Text>
@@ -502,24 +551,24 @@ export default function MoneyHubScreen() {
             {isConnected ? (
               <View style={styles.balanceRow}>
                 <View style={styles.balanceItem}>
-                  <Text style={styles.balanceLabel}>Available</Text>
+                  <Text style={[styles.balanceLabel, isIOS && { color: iosColors.secondaryLabel }]}>Available</Text>
                   <Text style={[styles.balanceValue, { color: colors.success }]}>
                     ${availableBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
                 <View style={styles.balanceItem}>
-                  <Text style={styles.balanceLabel}>Pending</Text>
-                  <Text style={styles.balanceValueMuted}>
+                  <Text style={[styles.balanceLabel, isIOS && { color: iosColors.secondaryLabel }]}>Pending</Text>
+                  <Text style={[styles.balanceValueMuted, isIOS && { color: iosColors.tertiaryLabel }]}>
                     ${pendingBalance.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
               </View>
             ) : needsSetup ? (
-              <Text style={styles.stripeCardDescription}>
+              <Text style={[styles.stripeCardDescription, isIOS && { color: iosColors.secondaryLabel }]}>
                 Complete your Stripe account setup to start accepting payments
               </Text>
             ) : (
-              <Text style={styles.stripeCardDescription}>
+              <Text style={[styles.stripeCardDescription, isIOS && { color: iosColors.secondaryLabel }]}>
                 Connect your Stripe account to accept online payments
               </Text>
             )}
@@ -555,6 +604,24 @@ export default function MoneyHubScreen() {
             </TouchableOpacity>
           )}
         </View>
+      </>
+    );
+
+    if (isIOS) {
+      return (
+        <GlassCard style={{ marginBottom: spacing.lg }}>
+          {stripeCardContent}
+        </GlassCard>
+      );
+    }
+
+    return (
+      <View style={[
+        styles.stripeCard,
+        isConnected && styles.stripeCardConnected,
+        needsSetup && styles.stripeCardWarning,
+      ]}>
+        {stripeCardContent}
       </View>
     );
   };
@@ -685,89 +752,193 @@ export default function MoneyHubScreen() {
     );
   };
 
-  const renderOverview = () => (
-    <View style={styles.overviewContainer}>
-      <View style={styles.sectionHeader}>
-        <Feather name="alert-triangle" size={iconSizes.md} color={colors.destructive} />
-        <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.label }]}>Needs Attention</Text>
-      </View>
-      <View style={[styles.sectionContent, isIOS && cardStyle]}>
-        {invoices
-          .filter(inv => inv.status !== 'paid' && inv.status !== 'draft')
-          .slice(0, 5)
-          .map(renderInvoiceRow)}
-        {invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'draft').length === 0 && (
-          <View style={styles.emptyState}>
-            <Feather name="check-circle" size={32} color={colors.success} />
-            <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>All caught up!</Text>
-            <Text style={[styles.emptySubtext, isIOS && { color: iosStyles.colors.secondaryLabel }]}>No outstanding invoices</Text>
-          </View>
-        )}
-      </View>
+  const renderOverview = () => {
+    const outstandingInvoices = invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'draft');
+    const pendingQuotesList = quotes.filter(q => q.status === 'sent' || q.status === 'viewed');
+    const paidInvoices = invoices.filter(inv => inv.status === 'paid')
+      .sort((a, b) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
+    const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
 
-      <View style={styles.sectionHeader}>
-        <Feather name="file" size={iconSizes.md} color={colors.scheduled} />
-        <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.label }]}>Pending Quotes</Text>
-      </View>
-      <View style={[styles.sectionContent, isIOS && cardStyle]}>
-        {quotes
-          .filter(q => q.status === 'sent' || q.status === 'viewed')
-          .slice(0, 5)
-          .map(renderQuoteRow)}
-        {quotes.filter(q => q.status === 'sent' || q.status === 'viewed').length === 0 && (
-          <View style={styles.emptyState}>
-            <Feather name="file-text" size={32} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-            <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>No pending quotes</Text>
-          </View>
-        )}
-      </View>
+    if (isIOS) {
+      return (
+        <View style={styles.overviewContainer}>
+          <GlassSection title="Needs Attention" padding="none">
+            {outstandingInvoices.slice(0, 5).map((invoice, index) => {
+              const client = clientMap.get(invoice.clientId);
+              const isOverdue = invoice.dueDate && isBefore(new Date(invoice.dueDate), new Date()) && invoice.status !== 'paid';
+              return (
+                <GlassListItem
+                  key={invoice.id}
+                  title={`#${invoice.number || invoice.id.slice(0, 8)}`}
+                  subtitle={client?.name || 'Unknown Client'}
+                  value={formatCurrency(invoice.total)}
+                  leftIcon={
+                    <Feather name="file-text" size={18} color={colors.primary} />
+                  }
+                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                  isFirst={index === 0}
+                  isLast={index === Math.min(outstandingInvoices.length - 1, 4)}
+                />
+              );
+            })}
+            {outstandingInvoices.length === 0 && (
+              <View style={styles.emptyState}>
+                <Feather name="check-circle" size={32} color={colors.success} />
+                <Text style={[styles.emptyText, { color: iosColors.label }]}>All caught up!</Text>
+                <Text style={[styles.emptySubtext, { color: iosColors.secondaryLabel }]}>No outstanding invoices</Text>
+              </View>
+            )}
+          </GlassSection>
 
-      <View style={styles.sectionHeader}>
-        <Feather name="trending-up" size={iconSizes.md} color={colors.success} />
-        <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.label }]}>Recent Payments</Text>
-      </View>
-      <View style={[styles.sectionContent, isIOS && cardStyle]}>
-        {invoices
-          .filter(inv => inv.status === 'paid')
-          .sort((a, b) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime())
-          .slice(0, 5)
-          .map(renderInvoiceRow)}
-        {invoices.filter(inv => inv.status === 'paid').length === 0 && (
-          <View style={styles.emptyState}>
-            <Feather name="dollar-sign" size={32} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-            <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>No payments yet</Text>
-          </View>
-        )}
-      </View>
+          <GlassSection title="Pending Quotes" padding="none">
+            {pendingQuotesList.slice(0, 5).map((quote, index) => {
+              const client = clientMap.get(quote.clientId);
+              return (
+                <GlassListItem
+                  key={quote.id}
+                  title={`#${quote.number || quote.id.slice(0, 8)}`}
+                  subtitle={client?.name || 'Unknown Client'}
+                  value={formatCurrency(quote.total)}
+                  leftIcon={
+                    <Feather name="file" size={18} color={colors.scheduled} />
+                  }
+                  onPress={() => router.push(`/more/quote/${quote.id}`)}
+                  isFirst={index === 0}
+                  isLast={index === Math.min(pendingQuotesList.length - 1, 4)}
+                />
+              );
+            })}
+            {pendingQuotesList.length === 0 && (
+              <View style={styles.emptyState}>
+                <Feather name="file-text" size={32} color={iosColors.tertiaryLabel} />
+                <Text style={[styles.emptyText, { color: iosColors.label }]}>No pending quotes</Text>
+              </View>
+            )}
+          </GlassSection>
 
-      <View style={styles.sectionHeader}>
-        <Feather name="credit-card" size={iconSizes.md} color={colors.destructive} />
-        <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.label }]}>Expenses Summary</Text>
-      </View>
-      <View style={[styles.sectionContent, isIOS && cardStyle]}>
-        <TouchableOpacity 
-          style={[styles.expenseSummaryCard, isIOS && { borderWidth: 0, backgroundColor: 'transparent' }]}
-          onPress={() => router.push('/more/expense-tracking')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.expenseSummaryRow}>
-            <View>
-              <Text style={[styles.expenseSummaryLabel, isIOS && { color: iosStyles.colors.secondaryLabel }]}>This Month</Text>
-              <Text style={[styles.expenseSummaryValue, isIOS && { color: iosStyles.colors.label }]}>{formatCurrency(expenseSummary.thisMonthExpenses)}</Text>
+          <GlassSection title="Recent Payments" padding="none">
+            {paidInvoices.slice(0, 5).map((invoice, index) => {
+              const client = clientMap.get(invoice.clientId);
+              return (
+                <GlassListItem
+                  key={invoice.id}
+                  title={`#${invoice.number || invoice.id.slice(0, 8)}`}
+                  subtitle={client?.name || 'Unknown Client'}
+                  value={formatCurrency(invoice.total)}
+                  leftIcon={
+                    <Feather name="check-circle" size={18} color={colors.success} />
+                  }
+                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                  isFirst={index === 0}
+                  isLast={index === Math.min(paidInvoices.length - 1, 4)}
+                />
+              );
+            })}
+            {paidInvoices.length === 0 && (
+              <View style={styles.emptyState}>
+                <Feather name="dollar-sign" size={32} color={iosColors.tertiaryLabel} />
+                <Text style={[styles.emptyText, { color: iosColors.label }]}>No payments yet</Text>
+              </View>
+            )}
+          </GlassSection>
+
+          <GlassSection title="Expenses Summary" padding="none">
+            <GlassListItem
+              title="This Month"
+              value={formatCurrency(expenseSummary.thisMonthExpenses)}
+              leftIcon={<Feather name="calendar" size={18} color={colors.destructive} />}
+              onPress={() => router.push('/more/expense-tracking')}
+              isFirst={true}
+              isLast={false}
+            />
+            <GlassListItem
+              title="All Time"
+              subtitle={`${expenseSummary.expenseCount} expenses recorded`}
+              value={formatCurrency(expenseSummary.totalExpenses)}
+              leftIcon={<Feather name="credit-card" size={18} color={colors.destructive} />}
+              onPress={() => router.push('/more/expense-tracking')}
+              isFirst={false}
+              isLast={true}
+            />
+          </GlassSection>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.overviewContainer}>
+        <View style={styles.sectionHeader}>
+          <Feather name="alert-triangle" size={iconSizes.md} color={colors.destructive} />
+          <Text style={styles.sectionTitle}>Needs Attention</Text>
+        </View>
+        <View style={styles.sectionContent}>
+          {outstandingInvoices.slice(0, 5).map(renderInvoiceRow)}
+          {outstandingInvoices.length === 0 && (
+            <View style={styles.emptyState}>
+              <Feather name="check-circle" size={32} color={colors.success} />
+              <Text style={styles.emptyText}>All caught up!</Text>
+              <Text style={styles.emptySubtext}>No outstanding invoices</Text>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.expenseSummaryLabel, isIOS && { color: iosStyles.colors.secondaryLabel }]}>All Time</Text>
-              <Text style={[styles.expenseSummaryValue, isIOS && { color: iosStyles.colors.label }]}>{formatCurrency(expenseSummary.totalExpenses)}</Text>
+          )}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Feather name="file" size={iconSizes.md} color={colors.scheduled} />
+          <Text style={styles.sectionTitle}>Pending Quotes</Text>
+        </View>
+        <View style={styles.sectionContent}>
+          {pendingQuotesList.slice(0, 5).map(renderQuoteRow)}
+          {pendingQuotesList.length === 0 && (
+            <View style={styles.emptyState}>
+              <Feather name="file-text" size={32} color={colors.mutedForeground} />
+              <Text style={styles.emptyText}>No pending quotes</Text>
             </View>
-          </View>
-          <View style={[styles.expenseSummaryFooter, isIOS && { borderTopColor: iosStyles.colors.separator }]}>
-            <Text style={[styles.expenseSummaryCount, isIOS && { color: iosStyles.colors.secondaryLabel }]}>{expenseSummary.expenseCount} expenses recorded</Text>
-            <Feather name="chevron-right" size={16} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-          </View>
-        </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Feather name="trending-up" size={iconSizes.md} color={colors.success} />
+          <Text style={styles.sectionTitle}>Recent Payments</Text>
+        </View>
+        <View style={styles.sectionContent}>
+          {paidInvoices.slice(0, 5).map(renderInvoiceRow)}
+          {paidInvoices.length === 0 && (
+            <View style={styles.emptyState}>
+              <Feather name="dollar-sign" size={32} color={colors.mutedForeground} />
+              <Text style={styles.emptyText}>No payments yet</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Feather name="credit-card" size={iconSizes.md} color={colors.destructive} />
+          <Text style={styles.sectionTitle}>Expenses Summary</Text>
+        </View>
+        <View style={styles.sectionContent}>
+          <TouchableOpacity 
+            style={styles.expenseSummaryCard}
+            onPress={() => router.push('/more/expense-tracking')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.expenseSummaryRow}>
+              <View>
+                <Text style={styles.expenseSummaryLabel}>This Month</Text>
+                <Text style={styles.expenseSummaryValue}>{formatCurrency(expenseSummary.thisMonthExpenses)}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.expenseSummaryLabel}>All Time</Text>
+                <Text style={styles.expenseSummaryValue}>{formatCurrency(expenseSummary.totalExpenses)}</Text>
+              </View>
+            </View>
+            <View style={styles.expenseSummaryFooter}>
+              <Text style={styles.expenseSummaryCount}>{expenseSummary.expenseCount} expenses recorded</Text>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const filteredInvoices = useMemo(() => {
     let filtered = [...invoices];
@@ -901,102 +1072,304 @@ export default function MoneyHubScreen() {
     );
   };
 
-  const renderInvoices = () => (
-    <View style={[styles.listContainer, isIOS && cardStyle]}>
-      <View style={[styles.filterRow, isIOS && { borderBottomColor: iosStyles.colors.separator }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Overdue', 'overdue', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Paid', 'paid', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Drafts', 'draft', invoiceFilter, setInvoiceFilter)}
-        </ScrollView>
-      </View>
-      <View style={styles.sectionContent}>
-        {filteredInvoices.map(renderInvoiceRow)}
-        {filteredInvoices.length === 0 && (
-          <View style={styles.emptyState}>
-            <Feather name="file-text" size={48} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-            <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>No invoices found</Text>
-            {invoiceFilter === 'all' && (
-              <TouchableOpacity 
-                style={[styles.createButton, isIOS && { borderRadius: IOSCorners.button }]}
-                onPress={() => router.push('/more/invoice/new')}
-              >
-                <Text style={styles.createButtonText}>Create Invoice</Text>
-              </TouchableOpacity>
-            )}
+  const renderInvoices = () => {
+    const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+    
+    if (isIOS) {
+      return (
+        <View>
+          <View style={[styles.filterRow, { borderBottomColor: iosColors.separator, marginBottom: spacing.md }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
+              {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
+              {renderFilterChip('Overdue', 'overdue', invoiceFilter, setInvoiceFilter)}
+              {renderFilterChip('Paid', 'paid', invoiceFilter, setInvoiceFilter)}
+              {renderFilterChip('Drafts', 'draft', invoiceFilter, setInvoiceFilter)}
+            </ScrollView>
           </View>
-        )}
-      </View>
-    </View>
-  );
-
-  const renderQuotes = () => (
-    <View style={[styles.listContainer, isIOS && cardStyle]}>
-      {quotes
-        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-        .map(renderQuoteRow)}
-      {quotes.length === 0 && (
-        <View style={styles.emptyState}>
-          <Feather name="file" size={48} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-          <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>No quotes yet</Text>
-          <TouchableOpacity 
-            style={[styles.createButton, isIOS && { borderRadius: IOSCorners.button }]}
-            onPress={() => router.push('/more/quote/new')}
-          >
-            <Text style={styles.createButtonText}>Create Quote</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderPayments = () => (
-    <View style={[styles.listContainer, isIOS && { borderWidth: 0, backgroundColor: 'transparent' }]}>
-      <View style={[styles.filterRow, isIOS && { borderBottomColor: iosStyles.colors.separator }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
-          {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
-          {renderFilterChip('90d', '90d', timeRange, setTimeRange)}
-          {renderFilterChip('All', 'all', timeRange, setTimeRange)}
-        </ScrollView>
-      </View>
-
-      {stripeStatus?.connected && stripeStatus?.chargesEnabled && (
-        <View style={styles.payoutsSection}>
-          <View style={styles.sectionHeader}>
-            <Feather name="dollar-sign" size={iconSizes.md} color={colors.success} />
-            <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.label }]}>Bank Payouts</Text>
-          </View>
-          <View style={[styles.sectionContent, isIOS && cardStyle]}>
-            {filteredPayouts.length > 0 ? (
-              filteredPayouts.map(renderPayoutRow)
-            ) : (
+          <GlassSection padding="none">
+            {filteredInvoices.map((invoice, index) => {
+              const client = clientMap.get(invoice.clientId);
+              const isOverdue = invoice.dueDate && isBefore(new Date(invoice.dueDate), new Date()) && invoice.status !== 'paid';
+              const statusColors: Record<string, string> = {
+                draft: colors.warning,
+                sent: colors.info,
+                viewed: colors.info,
+                partial: colors.warning,
+                paid: colors.success,
+                overdue: colors.destructive,
+              };
+              const status = isOverdue ? 'overdue' : invoice.status;
+              const statusColor = statusColors[status] || colors.mutedForeground;
+              
+              return (
+                <GlassListItem
+                  key={invoice.id}
+                  title={`#${invoice.number || invoice.id.slice(0, 8)}`}
+                  subtitle={client?.name || 'Unknown Client'}
+                  value={formatCurrency(invoice.total)}
+                  leftIcon={
+                    <Feather name="file-text" size={18} color={colors.primary} />
+                  }
+                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                  isFirst={index === 0}
+                  isLast={index === filteredInvoices.length - 1}
+                />
+              );
+            })}
+            {filteredInvoices.length === 0 && (
               <View style={styles.emptyState}>
-                <Feather name="inbox" size={32} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-                <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>No payouts in this period</Text>
+                <Feather name="file-text" size={48} color={iosColors.tertiaryLabel} />
+                <Text style={[styles.emptyText, { color: iosColors.label }]}>No invoices found</Text>
+                {invoiceFilter === 'all' && (
+                  <TouchableOpacity 
+                    style={[styles.createButton, { borderRadius: IOSCorners.button }]}
+                    onPress={() => router.push('/more/invoice/new')}
+                  >
+                    <Text style={styles.createButtonText}>Create Invoice</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
-          </View>
+          </GlassSection>
         </View>
-      )}
-
-      <View style={styles.sectionHeader}>
-        <Feather name="check-circle" size={iconSizes.md} color={colors.success} />
-        <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.label }]}>Paid Invoices</Text>
+      );
+    }
+    
+    return (
+      <View style={styles.listContainer}>
+        <View style={styles.filterRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
+            {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
+            {renderFilterChip('Overdue', 'overdue', invoiceFilter, setInvoiceFilter)}
+            {renderFilterChip('Paid', 'paid', invoiceFilter, setInvoiceFilter)}
+            {renderFilterChip('Drafts', 'draft', invoiceFilter, setInvoiceFilter)}
+          </ScrollView>
+        </View>
+        <View style={styles.sectionContent}>
+          {filteredInvoices.map(renderInvoiceRow)}
+          {filteredInvoices.length === 0 && (
+            <View style={styles.emptyState}>
+              <Feather name="file-text" size={48} color={colors.mutedForeground} />
+              <Text style={styles.emptyText}>No invoices found</Text>
+              {invoiceFilter === 'all' && (
+                <TouchableOpacity 
+                  style={styles.createButton}
+                  onPress={() => router.push('/more/invoice/new')}
+                >
+                  <Text style={styles.createButtonText}>Create Invoice</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
       </View>
-      <View style={[styles.sectionContent, isIOS && cardStyle]}>
-        {filteredPaidInvoices.map(renderInvoiceRow)}
-        {filteredPaidInvoices.length === 0 && (
+    );
+  };
+
+  const renderQuotes = () => {
+    const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+    const sortedQuotes = quotes.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    
+    if (isIOS) {
+      return (
+        <GlassSection padding="none">
+          {sortedQuotes.map((quote, index) => {
+            const client = clientMap.get(quote.clientId);
+            const statusColors: Record<string, string> = {
+              draft: colors.warning,
+              sent: colors.info,
+              viewed: colors.info,
+              accepted: colors.success,
+              declined: colors.destructive,
+              expired: colors.mutedForeground,
+            };
+            const statusColor = statusColors[quote.status] || colors.mutedForeground;
+            
+            return (
+              <GlassListItem
+                key={quote.id}
+                title={`#${quote.number || quote.id.slice(0, 8)}`}
+                subtitle={client?.name || 'Unknown Client'}
+                value={formatCurrency(quote.total)}
+                leftIcon={
+                  <Feather name="file" size={18} color={colors.scheduled} />
+                }
+                onPress={() => router.push(`/more/quote/${quote.id}`)}
+                isFirst={index === 0}
+                isLast={index === sortedQuotes.length - 1}
+              />
+            );
+          })}
+          {sortedQuotes.length === 0 && (
+            <View style={styles.emptyState}>
+              <Feather name="file" size={48} color={iosColors.tertiaryLabel} />
+              <Text style={[styles.emptyText, { color: iosColors.label }]}>No quotes yet</Text>
+              <TouchableOpacity 
+                style={[styles.createButton, { borderRadius: IOSCorners.button }]}
+                onPress={() => router.push('/more/quote/new')}
+              >
+                <Text style={styles.createButtonText}>Create Quote</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </GlassSection>
+      );
+    }
+    
+    return (
+      <View style={styles.listContainer}>
+        {sortedQuotes.map(renderQuoteRow)}
+        {sortedQuotes.length === 0 && (
           <View style={styles.emptyState}>
-            <Feather name="credit-card" size={48} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-            <Text style={[styles.emptyText, isIOS && { color: iosStyles.colors.label }]}>No payments in this period</Text>
+            <Feather name="file" size={48} color={colors.mutedForeground} />
+            <Text style={styles.emptyText}>No quotes yet</Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => router.push('/more/quote/new')}
+            >
+              <Text style={styles.createButtonText}>Create Quote</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
-    </View>
-  );
+    );
+  };
+
+  const renderPayments = () => {
+    const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+    
+    if (isIOS) {
+      return (
+        <View>
+          <View style={[styles.filterRow, { borderBottomColor: iosColors.separator, marginBottom: spacing.md }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
+              {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
+              {renderFilterChip('90d', '90d', timeRange, setTimeRange)}
+              {renderFilterChip('All', 'all', timeRange, setTimeRange)}
+            </ScrollView>
+          </View>
+
+          {stripeStatus?.connected && stripeStatus?.chargesEnabled && (
+            <GlassSection title="Bank Payouts" padding="none" style={{ marginBottom: spacing.lg }}>
+              {filteredPayouts.length > 0 ? (
+                filteredPayouts.map((payout, index) => {
+                  const statusLabels: Record<string, string> = {
+                    paid: 'Completed',
+                    pending: 'Pending',
+                    in_transit: 'In Transit',
+                    canceled: 'Cancelled',
+                    failed: 'Failed',
+                  };
+                  const formatPayoutDate = (dateStr: string | null) => {
+                    if (!dateStr) return 'Unknown date';
+                    try {
+                      return format(new Date(dateStr), 'dd MMM');
+                    } catch {
+                      return 'Unknown date';
+                    }
+                  };
+                  
+                  return (
+                    <GlassListItem
+                      key={payout.id}
+                      title="Bank Transfer"
+                      subtitle={statusLabels[payout.status] || payout.status}
+                      value={`+$${payout.amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      leftIcon={
+                        <Feather name="dollar-sign" size={18} color={colors.success} />
+                      }
+                      isFirst={index === 0}
+                      isLast={index === filteredPayouts.length - 1}
+                    />
+                  );
+                })
+              ) : (
+                <View style={styles.emptyState}>
+                  <Feather name="inbox" size={32} color={iosColors.tertiaryLabel} />
+                  <Text style={[styles.emptyText, { color: iosColors.label }]}>No payouts in this period</Text>
+                </View>
+              )}
+            </GlassSection>
+          )}
+
+          <GlassSection title="Paid Invoices" padding="none">
+            {filteredPaidInvoices.map((invoice, index) => {
+              const client = clientMap.get(invoice.clientId);
+              return (
+                <GlassListItem
+                  key={invoice.id}
+                  title={`#${invoice.number || invoice.id.slice(0, 8)}`}
+                  subtitle={client?.name || 'Unknown Client'}
+                  value={formatCurrency(invoice.total)}
+                  leftIcon={
+                    <Feather name="check-circle" size={18} color={colors.success} />
+                  }
+                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                  isFirst={index === 0}
+                  isLast={index === filteredPaidInvoices.length - 1}
+                />
+              );
+            })}
+            {filteredPaidInvoices.length === 0 && (
+              <View style={styles.emptyState}>
+                <Feather name="credit-card" size={48} color={iosColors.tertiaryLabel} />
+                <Text style={[styles.emptyText, { color: iosColors.label }]}>No payments in this period</Text>
+              </View>
+            )}
+          </GlassSection>
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.listContainer}>
+        <View style={styles.filterRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
+            {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
+            {renderFilterChip('90d', '90d', timeRange, setTimeRange)}
+            {renderFilterChip('All', 'all', timeRange, setTimeRange)}
+          </ScrollView>
+        </View>
+
+        {stripeStatus?.connected && stripeStatus?.chargesEnabled && (
+          <View style={styles.payoutsSection}>
+            <View style={styles.sectionHeader}>
+              <Feather name="dollar-sign" size={iconSizes.md} color={colors.success} />
+              <Text style={styles.sectionTitle}>Bank Payouts</Text>
+            </View>
+            <View style={styles.sectionContent}>
+              {filteredPayouts.length > 0 ? (
+                filteredPayouts.map(renderPayoutRow)
+              ) : (
+                <View style={styles.emptyState}>
+                  <Feather name="inbox" size={32} color={colors.mutedForeground} />
+                  <Text style={styles.emptyText}>No payouts in this period</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.sectionHeader}>
+          <Feather name="check-circle" size={iconSizes.md} color={colors.success} />
+          <Text style={styles.sectionTitle}>Paid Invoices</Text>
+        </View>
+        <View style={styles.sectionContent}>
+          {filteredPaidInvoices.map(renderInvoiceRow)}
+          {filteredPaidInvoices.length === 0 && (
+            <View style={styles.emptyState}>
+              <Feather name="credit-card" size={48} color={colors.mutedForeground} />
+              <Text style={styles.emptyText}>No payments in this period</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -1047,37 +1420,72 @@ export default function MoneyHubScreen() {
         {renderQuickActions()}
         
         <View style={styles.kpiGrid}>
-          {renderKPICard(
-            'Outstanding',
-            formatCurrency(stats.outstandingTotal),
-            `${stats.outstandingCount} invoices`,
-            'clock',
-            colors.warning,
-            stats.outstandingCount > 0 ? 'warning' : 'default'
-          )}
-          {renderKPICard(
-            'Overdue',
-            formatCurrency(stats.overdueTotal),
-            `${stats.overdueCount} invoices`,
-            'alert-triangle',
-            colors.destructive,
-            stats.overdueCount > 0 ? 'danger' : 'default'
-          )}
-          {renderKPICard(
-            'Paid (30d)',
-            formatCurrency(stats.recentPaidTotal),
-            `${stats.recentPaidCount} invoices`,
-            'check-circle',
-            colors.success,
-            'success'
-          )}
-          {renderKPICard(
-            'Pending Quotes',
-            formatCurrency(stats.pendingQuotesTotal),
-            `${stats.pendingQuotesCount} awaiting`,
-            'file',
-            colors.scheduled,
-            'default'
+          {isIOS ? (
+            <>
+              <GlassStatsCard
+                title="Outstanding"
+                value={formatCurrency(stats.outstandingTotal)}
+                subtitle={`${stats.outstandingCount} invoices`}
+                icon="clock"
+                color={colors.warning}
+              />
+              <GlassStatsCard
+                title="Overdue"
+                value={formatCurrency(stats.overdueTotal)}
+                subtitle={`${stats.overdueCount} invoices`}
+                icon="alert-triangle"
+                color={colors.destructive}
+              />
+              <GlassStatsCard
+                title="Paid (30d)"
+                value={formatCurrency(stats.recentPaidTotal)}
+                subtitle={`${stats.recentPaidCount} invoices`}
+                icon="check-circle"
+                color={colors.success}
+              />
+              <GlassStatsCard
+                title="Pending Quotes"
+                value={formatCurrency(stats.pendingQuotesTotal)}
+                subtitle={`${stats.pendingQuotesCount} awaiting`}
+                icon="file"
+                color={colors.scheduled}
+              />
+            </>
+          ) : (
+            <>
+              {renderKPICard(
+                'Outstanding',
+                formatCurrency(stats.outstandingTotal),
+                `${stats.outstandingCount} invoices`,
+                'clock',
+                colors.warning,
+                stats.outstandingCount > 0 ? 'warning' : 'default'
+              )}
+              {renderKPICard(
+                'Overdue',
+                formatCurrency(stats.overdueTotal),
+                `${stats.overdueCount} invoices`,
+                'alert-triangle',
+                colors.destructive,
+                stats.overdueCount > 0 ? 'danger' : 'default'
+              )}
+              {renderKPICard(
+                'Paid (30d)',
+                formatCurrency(stats.recentPaidTotal),
+                `${stats.recentPaidCount} invoices`,
+                'check-circle',
+                colors.success,
+                'success'
+              )}
+              {renderKPICard(
+                'Pending Quotes',
+                formatCurrency(stats.pendingQuotesTotal),
+                `${stats.pendingQuotesCount} awaiting`,
+                'file',
+                colors.scheduled,
+                'default'
+              )}
+            </>
           )}
         </View>
 
@@ -1171,6 +1579,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
+  },
+  quickActionCardGlass: {
+    flex: 1,
+    alignItems: 'center',
   },
   quickActionIcon: {
     width: 44,
