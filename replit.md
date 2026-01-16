@@ -50,12 +50,13 @@ Key architectural and design decisions include:
     *   Safety checklists
     *   Quote categories
     *   A `useTradeContext` hook provides frontend access to all trade-specific configuration.
-*   **iOS 26 "Liquid Glass" Design System**: Authentic Apple Liquid Glass aesthetic - light translucent materials that let content peek through. Navigation floats as a distinct functional layer above content.
-    - **Glass tokens** (`GLASS_NAV`, `GLASS_CARD`, `GLASS_BUTTON`) with light overlays (8-18% opacity), subtle gradient sheens, and minimal borders
-    - **Layered effects**: BlurView (moderate intensity 30-50) + light tint overlay + top highlight gradient for glass reflection
-    - **Key principle**: Let the blur material do the work - minimal custom backgrounds per Apple guidance
+*   **iOS Native Navigation**: Uses expo-router's native iOS navigation components (UINavigationBar and UITabBar) for authentic Apple experience on iOS, while Android uses custom Header/BottomNav components.
+    - **Native tab bar**: iOS uses native BlurView tab bar with haptic feedback on tab press
+    - **Native headers**: iOS uses native navigation headers with `headerBlurEffect` (systemChromeMaterial), `headerTransparent: true`, and `headerLargeTitle` for scrolling collapse
+    - **Platform detection**: `isIOS` from `mobile/src/lib/device.ts` controls conditional rendering in AuthenticatedLayout
+    - **Navigation config**: `getNavigationConfig()` in `mobile/src/lib/platform.ts` returns iOS-specific blur headers or solid Android headers
     - **Haptic feedback** (`expo-haptics`) on tab presses, FAB, and quick actions
-    - Android unchanged with solid backgrounds - all iOS styling gated behind `useGlassEffects()`
+    - Android unchanged with custom solid Header/BottomNav components
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
