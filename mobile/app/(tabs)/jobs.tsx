@@ -25,12 +25,52 @@ import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
+import { GlassSection } from '../../src/components/ui/GlassSection';
+import { GlassChip } from '../../src/components/ui/GlassChip';
+import { GlassJobCard } from '../../src/components/ui/GlassJobCard';
+import { GlassFAB } from '../../src/components/ui/GlassFAB';
+import { GlassSearchBar } from '../../src/components/ui/GlassSearchBar';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
 };
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
+type GlassJobStatus = 'pending' | 'confirmed' | 'in-progress' | 'done' | 'invoiced';
+
+const mapToGlassStatus = (status: JobStatus): GlassJobStatus => {
+  switch (status) {
+    case 'scheduled': return 'confirmed';
+    case 'in_progress': return 'in-progress';
+    default: return status as GlassJobStatus;
+  }
+};
+
+const formatScheduledTime = (dateStr?: string): string | undefined => {
+  if (!dateStr) return undefined;
+  const date = new Date(dateStr);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const timeStr = date.toLocaleTimeString('en-AU', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  }).toUpperCase();
+  
+  if (date.toDateString() === today.toDateString()) {
+    return `Today, ${timeStr}`;
+  }
+  if (date.toDateString() === tomorrow.toDateString()) {
+    return `Tomorrow, ${timeStr}`;
+  }
+  return date.toLocaleDateString('en-AU', { 
+    weekday: 'short', 
+    day: 'numeric', 
+    month: 'short',
+  }) + ', ' + timeStr;
+};
 
 const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'briefcase' },
@@ -583,16 +623,27 @@ export default function JobsScreen() {
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search jobs, clients, addresses..."
-            placeholderTextColor={colors.mutedForeground}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+        {isIOS ? (
+          <View style={styles.glassSearchContainer}>
+            <GlassSearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search jobs, clients, addresses..."
+              showCancel={false}
+            />
+          </View>
+        ) : (
+          <View style={styles.searchBar}>
+            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search jobs, clients, addresses..."
+              placeholderTextColor={colors.mutedForeground}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        )}
 
         {/* Filter Pills with Counts */}
         <ScrollView 
@@ -601,40 +652,57 @@ export default function JobsScreen() {
           style={styles.filtersScroll}
           contentContainerStyle={styles.filtersContent}
         >
-          {STATUS_FILTERS.map((filter) => {
-            const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
-            const isActive = activeFilter === filter.key;
-            
-            return (
-              <TouchableOpacity
-                key={filter.key}
-                onPress={() => setActiveFilter(filter.key)}
-                activeOpacity={0.7}
-                style={[
-                  styles.filterPill,
-                  isActive && styles.filterPillActive
-                ]}
-              >
-                <Text style={[
-                  styles.filterPillText,
-                  isActive && styles.filterPillTextActive
-                ]}>
-                  {filter.label}
-                </Text>
-                <View style={[
-                  styles.filterCount,
-                  isActive && styles.filterCountActive
-                ]}>
+          {isIOS ? (
+            STATUS_FILTERS.map((filter) => {
+              const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
+              return (
+                <GlassChip
+                  key={filter.key}
+                  label={filter.label}
+                  selected={activeFilter === filter.key}
+                  onPress={() => setActiveFilter(filter.key)}
+                  icon={filter.icon}
+                  count={count}
+                  size="medium"
+                />
+              );
+            })
+          ) : (
+            STATUS_FILTERS.map((filter) => {
+              const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
+              const isActive = activeFilter === filter.key;
+              
+              return (
+                <TouchableOpacity
+                  key={filter.key}
+                  onPress={() => setActiveFilter(filter.key)}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.filterPill,
+                    isActive && styles.filterPillActive
+                  ]}
+                >
                   <Text style={[
-                    styles.filterCountText,
-                    isActive && styles.filterCountTextActive
+                    styles.filterPillText,
+                    isActive && styles.filterPillTextActive
                   ]}>
-                    {count}
+                    {filter.label}
                   </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                  <View style={[
+                    styles.filterCount,
+                    isActive && styles.filterCountActive
+                  ]}>
+                    <Text style={[
+                      styles.filterCountText,
+                      isActive && styles.filterCountTextActive
+                    ]}>
+                      {count}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </ScrollView>
 
         {/* KPI Stats Grid */}
@@ -720,16 +788,36 @@ export default function JobsScreen() {
               </Text>
             </View>
           ) : viewMode === 'grid' ? (
-            <View style={styles.jobsGrid}>
-              {sortedJobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
-                  onPress={() => router.push(`/job/${job.id}`)}
-                  onQuickAction={handleQuickAction}
-                />
-              ))}
-            </View>
+            isIOS ? (
+              <GlassSection title="Jobs" subtitle={`${sortedJobs.length} found`} padding="small">
+                <View style={styles.glassJobsGrid}>
+                  {sortedJobs.map((job, index) => (
+                    <GlassJobCard
+                      key={job.id}
+                      title={job.title || 'Untitled Job'}
+                      client={job.clientName || getClientName(job.clientId) || 'No client'}
+                      status={mapToGlassStatus(job.status)}
+                      scheduledTime={formatScheduledTime(job.scheduledAt)}
+                      address={job.address?.split(',')[0]}
+                      onPress={() => router.push(`/job/${job.id}`)}
+                      isFirst={index === 0}
+                      isLast={index === sortedJobs.length - 1}
+                    />
+                  ))}
+                </View>
+              </GlassSection>
+            ) : (
+              <View style={styles.jobsGrid}>
+                {sortedJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
+                    onPress={() => router.push(`/job/${job.id}`)}
+                    onQuickAction={handleQuickAction}
+                  />
+                ))}
+              </View>
+            )
           ) : (
             <View style={styles.jobsList}>
               <View style={styles.listHeader}>
@@ -771,6 +859,16 @@ export default function JobsScreen() {
           )}
         </View>
       </LiquidGlassScrollView>
+      
+      {/* Floating Action Button for iOS */}
+      {isIOS && (
+        <GlassFAB
+          onPress={navigateToCreateJob}
+          icon="plus"
+          variant="primary"
+          position="bottom-right"
+        />
+      )}
     </View>
   );
 }
@@ -861,6 +959,10 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     flex: 1,
     ...typography.body,
     color: colors.foreground,
+  },
+  glassSearchContainer: {
+    marginHorizontal: -pageShell.paddingHorizontal,
+    marginBottom: spacing.sm,
   },
 
   filtersScroll: {
@@ -960,6 +1062,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  glassJobsGrid: {
+    gap: spacing.xs,
   },
   jobsList: {
     gap: spacing.sm,

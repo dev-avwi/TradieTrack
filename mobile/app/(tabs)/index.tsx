@@ -22,6 +22,9 @@ import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
+import { GlassSection } from '../../src/components/ui/GlassSection';
+import { GlassStatsCard } from '../../src/components/ui/GlassStatsCard';
+import { GlassCard } from '../../src/components/ui/GlassCard';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
@@ -1680,87 +1683,163 @@ export default function DashboardScreen() {
 
 
       {/* Quick Stats - Different for staff vs owner */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>
-          {isStaffUser ? 'My Stats' : 'Quick Stats'}
-        </Text>
-        <View style={styles.kpiGrid}>
-          <KPICard
-            title={isStaffUser ? "My Jobs Today" : "Jobs Today"}
-            value={jobsToday}
-            icon="briefcase"
-            iconBg={colors.primaryLight}
-            iconColor={colors.primary}
-            onPress={() => router.push('/(tabs)/jobs')}
-          />
-          {isStaffUser ? (
-            <>
-              <KPICard
-                title="Assigned"
-                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
-                icon="clipboard"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push('/(tabs)/jobs')}
-              />
-              <KPICard
-                title="In Progress"
-                value={myAllJobs.filter(j => j.status === 'in_progress').length}
-                icon="clock"
-                iconBg={colors.warningLight}
-                iconColor={colors.warning}
-                onPress={() => router.push('/(tabs)/jobs')}
-              />
-              <KPICard
-                title="Completed"
-                value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
-                icon="check-circle"
-                iconBg={colors.successLight}
-                iconColor={colors.success}
-                onPress={() => router.push('/(tabs)/jobs')}
-              />
-            </>
-          ) : (
-            <>
-              <KPICard
-                title="Overdue"
-                value={overdueCount}
-                icon="alert-circle"
-                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-                onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
-              />
-              {hasActiveTeam ? (
-                <KPICard
-                  title="Team Members"
-                  value={teamMembers.length}
-                  icon="users"
-                  iconBg={colors.infoLight}
-                  iconColor={colors.info}
-                  onPress={() => router.push('/more/team-operations')}
+      {isIOS ? (
+        <GlassSection 
+          title={isStaffUser ? 'My Stats' : 'Quick Stats'}
+          padding="small"
+        >
+          <View style={styles.kpiGrid}>
+            <GlassStatsCard
+              title={isStaffUser ? "My Jobs Today" : "Jobs Today"}
+              value={jobsToday}
+              icon="briefcase"
+              color={colors.primary}
+              onPress={() => router.push('/(tabs)/jobs')}
+            />
+            {isStaffUser ? (
+              <>
+                <GlassStatsCard
+                  title="Assigned"
+                  value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                  icon="clipboard"
+                  color={colors.mutedForeground}
+                  onPress={() => router.push('/(tabs)/jobs')}
                 />
-              ) : (
-                <KPICard
-                  title="Quotes Pending"
-                  value={quotesCount}
-                  icon="file-text"
-                  iconBg={colors.infoLight}
-                  iconColor={colors.info}
-                  onPress={() => router.push('/more/quotes')}
+                <GlassStatsCard
+                  title="In Progress"
+                  value={myAllJobs.filter(j => j.status === 'in_progress').length}
+                  icon="clock"
+                  color={colors.warning}
+                  onPress={() => router.push('/(tabs)/jobs')}
                 />
-              )}
-              <KPICard
-                title="Revenue"
-                value={monthRevenue}
-                icon="dollar-sign"
-                iconBg={colors.successLight}
-                iconColor={colors.success}
-                onPress={() => router.push('/more/money-hub')}
-              />
-            </>
-          )}
+                <GlassStatsCard
+                  title="Completed"
+                  value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
+                  icon="check-circle"
+                  color={colors.success}
+                  onPress={() => router.push('/(tabs)/jobs')}
+                />
+              </>
+            ) : (
+              <>
+                <GlassStatsCard
+                  title="Overdue"
+                  value={overdueCount}
+                  icon="alert-circle"
+                  color={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                  onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
+                />
+                {hasActiveTeam ? (
+                  <GlassStatsCard
+                    title="Team Members"
+                    value={teamMembers.length}
+                    icon="users"
+                    color={colors.info}
+                    onPress={() => router.push('/more/team-operations')}
+                  />
+                ) : (
+                  <GlassStatsCard
+                    title="Quotes Pending"
+                    value={quotesCount}
+                    icon="file-text"
+                    color={colors.info}
+                    onPress={() => router.push('/more/quotes')}
+                  />
+                )}
+                <GlassStatsCard
+                  title="Revenue"
+                  value={monthRevenue}
+                  icon="dollar-sign"
+                  color={colors.success}
+                  onPress={() => router.push('/more/money-hub')}
+                />
+              </>
+            )}
+          </View>
+        </GlassSection>
+      ) : (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>
+            {isStaffUser ? 'My Stats' : 'Quick Stats'}
+          </Text>
+          <View style={styles.kpiGrid}>
+            <KPICard
+              title={isStaffUser ? "My Jobs Today" : "Jobs Today"}
+              value={jobsToday}
+              icon="briefcase"
+              iconBg={colors.primaryLight}
+              iconColor={colors.primary}
+              onPress={() => router.push('/(tabs)/jobs')}
+            />
+            {isStaffUser ? (
+              <>
+                <KPICard
+                  title="Assigned"
+                  value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                  icon="clipboard"
+                  iconBg={colors.muted}
+                  iconColor={colors.mutedForeground}
+                  onPress={() => router.push('/(tabs)/jobs')}
+                />
+                <KPICard
+                  title="In Progress"
+                  value={myAllJobs.filter(j => j.status === 'in_progress').length}
+                  icon="clock"
+                  iconBg={colors.warningLight}
+                  iconColor={colors.warning}
+                  onPress={() => router.push('/(tabs)/jobs')}
+                />
+                <KPICard
+                  title="Completed"
+                  value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
+                  icon="check-circle"
+                  iconBg={colors.successLight}
+                  iconColor={colors.success}
+                  onPress={() => router.push('/(tabs)/jobs')}
+                />
+              </>
+            ) : (
+              <>
+                <KPICard
+                  title="Overdue"
+                  value={overdueCount}
+                  icon="alert-circle"
+                  iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+                  iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                  onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
+                />
+                {hasActiveTeam ? (
+                  <KPICard
+                    title="Team Members"
+                    value={teamMembers.length}
+                    icon="users"
+                    iconBg={colors.infoLight}
+                    iconColor={colors.info}
+                    onPress={() => router.push('/more/team-operations')}
+                  />
+                ) : (
+                  <KPICard
+                    title="Quotes Pending"
+                    value={quotesCount}
+                    icon="file-text"
+                    iconBg={colors.infoLight}
+                    iconColor={colors.info}
+                    onPress={() => router.push('/more/quotes')}
+                  />
+                )}
+                <KPICard
+                  title="Revenue"
+                  value={monthRevenue}
+                  icon="dollar-sign"
+                  iconBg={colors.successLight}
+                  iconColor={colors.success}
+                  onPress={() => router.push('/more/money-hub')}
+                />
+              </>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Job Scheduler - Team Owners Only (show loading state or content) */}
       {isOwnerUser && (hasActiveTeam || isTeamDataLoading) && (
@@ -1924,21 +2003,26 @@ export default function DashboardScreen() {
       )}
 
       {/* Today's Schedule */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionTitleIcon}>
-              <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
-            </View>
-            <Text style={styles.sectionTitle}>Today</Text>
-            {isRouteOptimized && (
-              <View style={styles.optimizedBadge}>
-                <Feather name="check" size={12} color={colors.success} />
-                <Text style={styles.optimizedBadgeText}>Optimized</Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.headerActions}>
+      {isIOS ? (
+        <GlassSection
+          title="Today's Jobs"
+          subtitle={isRouteOptimized ? "Route optimized" : undefined}
+          accessory={
+            todaysJobs.length > 0 ? (
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => router.push('/(tabs)/jobs')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewAllText}>View All</Text>
+                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : undefined
+          }
+          padding="small"
+        >
+          {/* Route Actions */}
+          <View style={styles.glassRouteActions}>
             {jobsWithCoords.length >= 2 && (
               <TouchableOpacity 
                 style={[
@@ -1969,59 +2053,146 @@ export default function DashboardScreen() {
                 )}
               </TouchableOpacity>
             )}
-            {todaysJobs.length > 0 && (
+            {jobsWithCoords.length >= 1 && (
               <TouchableOpacity 
-                style={styles.viewAllButton}
-                onPress={() => router.push('/(tabs)/jobs')}
-                activeOpacity={0.7}
+                style={styles.startRouteButton}
+                onPress={startRoute}
+                activeOpacity={0.8}
+                data-testid="button-start-route"
               >
-                <Text style={styles.viewAllText}>View All</Text>
-                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+                <View style={styles.startRouteIcon}>
+                  <Feather name="map" size={18} color={colors.white} />
+                </View>
+                <Text style={styles.startRouteText}>
+                  Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
+                </Text>
+                <Feather name="chevron-right" size={18} color={colors.white} />
               </TouchableOpacity>
             )}
           </View>
-        </View>
 
-        {/* Start Route Button - shown when jobs exist */}
-        {jobsWithCoords.length >= 1 && (
-          <TouchableOpacity 
-            style={styles.startRouteButton}
-            onPress={startRoute}
-            activeOpacity={0.8}
-            data-testid="button-start-route"
-          >
-            <View style={styles.startRouteIcon}>
-              <Feather name="map" size={18} color={colors.white} />
+          {todaysJobs.length === 0 ? (
+            <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
+          ) : (
+            <View style={styles.jobsList}>
+              {displayJobs.map((job: any, index: number) => (
+                <TodayJobCard
+                  key={job.id}
+                  job={job}
+                  clients={clients}
+                  isFirst={index === 0}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                  onStartJob={handleStartJob}
+                  onCompleteJob={handleCompleteJob}
+                  onOnMyWay={handleOnMyWay}
+                  isUpdating={isUpdating}
+                  onGetDirections={openDirections}
+                  orderNumber={isRouteOptimized ? index + 1 : undefined}
+                />
+              ))}
             </View>
-            <Text style={styles.startRouteText}>
-              Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
-            </Text>
-            <Feather name="chevron-right" size={18} color={colors.white} />
-          </TouchableOpacity>
-        )}
-
-        {todaysJobs.length === 0 ? (
-          <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
-        ) : (
-          <View style={styles.jobsList}>
-            {displayJobs.map((job: any, index: number) => (
-              <TodayJobCard
-                key={job.id}
-                job={job}
-                clients={clients}
-                isFirst={index === 0}
-                onPress={() => router.push(`/job/${job.id}`)}
-                onStartJob={handleStartJob}
-                onCompleteJob={handleCompleteJob}
-                onOnMyWay={handleOnMyWay}
-                isUpdating={isUpdating}
-                onGetDirections={openDirections}
-                orderNumber={isRouteOptimized ? index + 1 : undefined}
-              />
-            ))}
+          )}
+        </GlassSection>
+      ) : (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleIcon}>
+                <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>Today</Text>
+              {isRouteOptimized && (
+                <View style={styles.optimizedBadge}>
+                  <Feather name="check" size={12} color={colors.success} />
+                  <Text style={styles.optimizedBadgeText}>Optimized</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.headerActions}>
+              {jobsWithCoords.length >= 2 && (
+                <TouchableOpacity 
+                  style={[
+                    styles.optimizeButton,
+                    isRouteOptimized && styles.optimizeButtonActive
+                  ]}
+                  onPress={isRouteOptimized ? resetRouteOrder : optimizeRoute}
+                  activeOpacity={0.7}
+                  disabled={isOptimizing}
+                  data-testid="button-optimize-route"
+                >
+                  {isOptimizing ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <>
+                      <Feather 
+                        name={isRouteOptimized ? "x" : "navigation"} 
+                        size={iconSizes.sm} 
+                        color={isRouteOptimized ? colors.mutedForeground : colors.primary} 
+                      />
+                      <Text style={[
+                        styles.optimizeButtonText,
+                        isRouteOptimized && styles.optimizeButtonTextActive
+                      ]}>
+                        {isRouteOptimized ? 'Reset' : 'Optimize'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+              {todaysJobs.length > 0 && (
+                <TouchableOpacity 
+                  style={styles.viewAllButton}
+                  onPress={() => router.push('/(tabs)/jobs')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                  <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        )}
-      </View>
+
+          {/* Start Route Button - shown when jobs exist */}
+          {jobsWithCoords.length >= 1 && (
+            <TouchableOpacity 
+              style={styles.startRouteButton}
+              onPress={startRoute}
+              activeOpacity={0.8}
+              data-testid="button-start-route"
+            >
+              <View style={styles.startRouteIcon}>
+                <Feather name="map" size={18} color={colors.white} />
+              </View>
+              <Text style={styles.startRouteText}>
+                Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
+              </Text>
+              <Feather name="chevron-right" size={18} color={colors.white} />
+            </TouchableOpacity>
+          )}
+
+          {todaysJobs.length === 0 ? (
+            <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
+          ) : (
+            <View style={styles.jobsList}>
+              {displayJobs.map((job: any, index: number) => (
+                <TodayJobCard
+                  key={job.id}
+                  job={job}
+                  clients={clients}
+                  isFirst={index === 0}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                  onStartJob={handleStartJob}
+                  onCompleteJob={handleCompleteJob}
+                  onOnMyWay={handleOnMyWay}
+                  isUpdating={isUpdating}
+                  onGetDirections={openDirections}
+                  orderNumber={isRouteOptimized ? index + 1 : undefined}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       {/* This Week Section - Staff Only */}
       {isStaffUser && thisWeeksJobs.length > 0 && (
@@ -2032,25 +2203,42 @@ export default function DashboardScreen() {
       )}
 
       {/* Recent Activity */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionTitleIcon}>
-              <Feather name="activity" size={iconSizes.md} color={colors.primary} />
+      {isIOS ? (
+        <GlassSection
+          title="Recent Activity"
+          padding="small"
+        >
+          <ActivityFeed 
+            activities={activities}
+            isLoading={activitiesLoading}
+            onActivityPress={(activity) => {
+              if (activity.entityType && activity.entityId) {
+                handleNavigateToItem(activity.entityType, activity.entityId);
+              }
+            }}
+          />
+        </GlassSection>
+      ) : (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleIcon}>
+                <Feather name="activity" size={iconSizes.md} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
             </View>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
           </View>
+          <ActivityFeed 
+            activities={activities}
+            isLoading={activitiesLoading}
+            onActivityPress={(activity) => {
+              if (activity.entityType && activity.entityId) {
+                handleNavigateToItem(activity.entityType, activity.entityId);
+              }
+            }}
+          />
         </View>
-        <ActivityFeed 
-          activities={activities}
-          isLoading={activitiesLoading}
-          onActivityPress={(activity) => {
-            if (activity.entityType && activity.entityId) {
-              handleNavigateToItem(activity.entityType, activity.entityId);
-            }
-          }}
-        />
-      </View>
+      )}
 
       {/* Bottom Spacing - LiquidGlassScrollView handles tab bar inset automatically */}
       <View style={{ height: spacing.xl }} />
@@ -2600,6 +2788,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  glassRouteActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   optimizeButton: {
     flexDirection: 'row',

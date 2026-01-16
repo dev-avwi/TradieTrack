@@ -25,6 +25,8 @@ import {
 } from '../../src/lib/navigation-config';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
+import { GlassSection } from '../../src/components/ui/GlassSection';
+import { GlassListItem } from '../../src/components/ui/GlassListItem';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -45,6 +47,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     minHeight: 80,
     ...shadows.sm,
+  },
+  profileHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    minHeight: 80,
   },
   avatar: {
     width: sizes.avatarLg,
@@ -159,6 +167,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
   },
+  iconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
 interface MenuItemProps {
@@ -235,6 +250,23 @@ function MenuItem({
   );
 }
 
+interface IconWrapperProps {
+  icon: keyof typeof Feather.glyphMap;
+  bgColor: string;
+  iconColor: string;
+}
+
+function IconWrapper({ icon, bgColor, iconColor }: IconWrapperProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  return (
+    <View style={[styles.iconWrapper, { backgroundColor: bgColor }]}>
+      <Feather name={icon} size={18} color={iconColor} />
+    </View>
+  );
+}
+
 function getColorValues(colorKey: string | undefined, colors: ThemeColors): { bg: string; fg: string } {
   switch (colorKey) {
     case 'primary':
@@ -286,10 +318,6 @@ export default function MoreScreen() {
         borderColor: colors.cardBorder,
         ...shadows.sm,
       };
-  
-  const separatorStyle = isIOS
-    ? { borderBottomColor: iosStyles.colors.separator }
-    : { borderBottomColor: colors.border };
   
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
@@ -350,15 +378,55 @@ export default function MoreScreen() {
     router.push(item.url as any);
   };
 
+  const renderGlassSection = (categoryKey: string, items: NavItem[]) => {
+    if (items.length === 0) return null;
+    
+    const label = categoryLabels[categoryKey];
+    
+    return (
+      <GlassSection key={categoryKey} title={label} padding="none">
+        {items.map((item, index) => {
+          const colorValues = getColorValues(item.color, colors);
+          const isFirst = index === 0;
+          const isLast = index === items.length - 1;
+          const badgeNumber = item.badge ? parseInt(item.badge, 10) : undefined;
+          
+          return (
+            <GlassListItem
+              key={item.url}
+              title={item.title}
+              subtitle={item.description}
+              leftIcon={
+                <IconWrapper 
+                  icon={item.icon} 
+                  bgColor={colorValues.bg} 
+                  iconColor={colorValues.fg} 
+                />
+              }
+              onPress={() => handleNavItemPress(item)}
+              isFirst={isFirst}
+              isLast={isLast}
+              badge={badgeNumber}
+            />
+          );
+        })}
+      </GlassSection>
+    );
+  };
+
   const renderSection = (categoryKey: string, items: NavItem[]) => {
     if (items.length === 0) return null;
+    
+    if (isIOS) {
+      return renderGlassSection(categoryKey, items);
+    }
     
     const label = categoryLabels[categoryKey];
     const isFeatured = categoryKey === 'featured';
     
     return (
       <View key={categoryKey}>
-        {label && <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>{label}</Text>}
+        {label && <Text style={styles.sectionTitle}>{label}</Text>}
         <View style={[styles.section, sectionStyle, isFeatured && styles.featuredSection]}>
           {items.map((item, index) => {
             const colorValues = getColorValues(item.color, colors);
@@ -383,6 +451,144 @@ export default function MoreScreen() {
     );
   };
 
+  const renderAccountSection = () => {
+    const accountItems = categorizedItems.account || [];
+    const totalItems = accountItems.length + 1;
+    
+    if (isIOS) {
+      return (
+        <GlassSection title="Account" padding="none">
+          {accountItems.map((item, index) => {
+            const colorValues = getColorValues(item.color, colors);
+            const isFirst = index === 0;
+            const badgeNumber = item.badge ? parseInt(item.badge, 10) : undefined;
+            
+            return (
+              <GlassListItem
+                key={item.url}
+                title={item.title}
+                subtitle={item.description}
+                leftIcon={
+                  <IconWrapper 
+                    icon={item.icon} 
+                    bgColor={colorValues.bg} 
+                    iconColor={colorValues.fg} 
+                  />
+                }
+                onPress={() => handleNavItemPress(item)}
+                isFirst={isFirst}
+                isLast={false}
+                badge={badgeNumber}
+              />
+            );
+          })}
+          <GlassListItem
+            title="Sign Out"
+            leftIcon={
+              <IconWrapper 
+                icon="log-out" 
+                bgColor={colors.destructiveLight} 
+                iconColor={colors.destructive} 
+              />
+            }
+            onPress={handleLogout}
+            destructive
+            isFirst={accountItems.length === 0}
+            isLast={true}
+          />
+        </GlassSection>
+      );
+    }
+    
+    return (
+      <>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={[styles.section, sectionStyle]}>
+          {accountItems.map((item, index) => {
+            const colorValues = getColorValues(item.color, colors);
+            return (
+              <MenuItem
+                key={item.url}
+                icon={item.icon}
+                iconBg={colorValues.bg}
+                iconColor={colorValues.fg}
+                title={item.title}
+                subtitle={item.description}
+                badge={item.badge}
+                onPress={() => handleNavItemPress(item)}
+              />
+            );
+          })}
+          <MenuItem
+            icon="log-out"
+            iconBg={colors.destructiveLight}
+            iconColor={colors.destructive}
+            title="Sign Out"
+            onPress={handleLogout}
+            destructive
+            isLast
+          />
+        </View>
+      </>
+    );
+  };
+
+  const renderProfileHeader = () => {
+    if (isIOS) {
+      return (
+        <GlassSection padding="none" style={{ marginBottom: spacing.lg }}>
+          <TouchableOpacity 
+            style={styles.profileHeaderContent}
+            activeOpacity={0.8}
+            onPress={() => router.push('/more/profile-edit')}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.userName, { color: iosStyles.colors.label }]}>
+                {user?.firstName} {user?.lastName}
+              </Text>
+              <Text style={[styles.userEmail, { color: iosStyles.colors.secondaryLabel }]}>{user?.email}</Text>
+              {businessSettings?.businessName && (
+                <View style={styles.businessRow}>
+                  <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
+                  <Text style={styles.businessName}>{businessSettings.businessName}</Text>
+                </View>
+              )}
+            </View>
+            <Feather name="chevron-right" size={iconSizes.xl} color={iosStyles.colors.tertiaryLabel} />
+          </TouchableOpacity>
+        </GlassSection>
+      );
+    }
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.profileHeader, sectionStyle]}
+        activeOpacity={0.8}
+        onPress={() => router.push('/more/profile-edit')}
+      >
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{getInitials()}</Text>
+        </View>
+        <View style={styles.profileInfo}>
+          <Text style={styles.userName}>
+            {user?.firstName} {user?.lastName}
+          </Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+          {businessSettings?.businessName && (
+            <View style={styles.businessRow}>
+              <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
+              <Text style={styles.businessName}>{businessSettings.businessName}</Text>
+            </View>
+          )}
+        </View>
+        <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <LiquidGlassScrollView 
       ref={scrollRef}
@@ -393,65 +599,14 @@ export default function MoreScreen() {
       hasHeader={true}
       showBackground={true}
     >
-      {/* Profile Header */}
-      <TouchableOpacity 
-        style={[styles.profileHeader, isIOS && sectionStyle]}
-        activeOpacity={0.8}
-        onPress={() => router.push('/more/profile-edit')}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials()}</Text>
-        </View>
-        <View style={styles.profileInfo}>
-          <Text style={[styles.userName, isIOS && { color: iosStyles.colors.label }]}>
-            {user?.firstName} {user?.lastName}
-          </Text>
-          <Text style={[styles.userEmail, isIOS && { color: iosStyles.colors.secondaryLabel }]}>{user?.email}</Text>
-          {businessSettings?.businessName && (
-            <View style={styles.businessRow}>
-              <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
-              <Text style={styles.businessName}>{businessSettings.businessName}</Text>
-            </View>
-          )}
-        </View>
-        <Feather name="chevron-right" size={iconSizes.xl} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
-      </TouchableOpacity>
+      {renderProfileHeader()}
 
-      {/* Render all categories in order (except account which has special handling) */}
       {categoryOrder.filter(k => k !== 'account').map(categoryKey => 
         renderSection(categoryKey, categorizedItems[categoryKey] || [])
       )}
 
-      {/* Account Section - special handling for sign out */}
-      <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>Account</Text>
-      <View style={[styles.section, sectionStyle]}>
-        {(categorizedItems.account || []).map((item, index) => {
-          const colorValues = getColorValues(item.color, colors);
-          return (
-            <MenuItem
-              key={item.url}
-              icon={item.icon}
-              iconBg={colorValues.bg}
-              iconColor={colorValues.fg}
-              title={item.title}
-              subtitle={item.description}
-              badge={item.badge}
-              onPress={() => handleNavItemPress(item)}
-            />
-          );
-        })}
-        <MenuItem
-          icon="log-out"
-          iconBg={colors.destructiveLight}
-          iconColor={colors.destructive}
-          title="Sign Out"
-          onPress={handleLogout}
-          destructive
-          isLast
-        />
-      </View>
+      {renderAccountSection()}
 
-      {/* App Version */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>TradieTrack Mobile</Text>
         <Text style={styles.versionText}>Version 1.0.0 (Beta)</Text>
