@@ -228,7 +228,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     }).start();
   };
 
-  // Main grid actions - 4 core create actions
+  // Main grid actions - 4 core create actions + 2 extra for tablet
   type ColorKey = keyof typeof ACTION_COLORS;
   const gridActions: (FABAction & { colorKey: ColorKey })[] = [
     {
@@ -267,6 +267,27 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
         router.push('/more/client/new');
       },
     },
+    // iPad only: extra actions to fill space
+    ...(isTabletStyle ? [
+      {
+        icon: 'users' as keyof typeof Feather.glyphMap,
+        label: 'Check Team',
+        colorKey: 'assign' as ColorKey,
+        onPress: () => {
+          setIsOpen(false);
+          router.push('/more/team-operations' as any);
+        },
+      },
+      {
+        icon: 'calendar' as keyof typeof Feather.glyphMap,
+        label: 'Schedule',
+        colorKey: 'job' as ColorKey,
+        onPress: () => {
+          setIsOpen(false);
+          router.push('/more/schedule' as any);
+        },
+      },
+    ] : []),
   ];
 
   return (
