@@ -161,8 +161,6 @@ export function SidebarNav() {
               Profile Settings
             </Text>
           </View>
-          {/* Chevron indicator */}
-          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </View>
       </Pressable>
 
@@ -286,9 +284,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexShrink: 0,
   },
   headerSection: {
-    marginHorizontal: 10,
+    marginHorizontal: 14,
     marginBottom: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: colors.card,
     borderRadius: 10,
