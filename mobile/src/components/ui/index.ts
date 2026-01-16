@@ -15,3 +15,7 @@ export { useIOSActionSheet, useConfirmActionSheet } from './IOSActionSheet';
 export { IOSContextMenu } from './IOSContextMenu';
 export { IOSGroupedList, IOSListItem, IOSListSeparator } from './IOSGroupedList';
 export { IOSTextField, IOSToggleRow } from './IOSFormInput';
+
+// iOS 26 Liquid Glass Components
+// Translucent, floating surfaces with blur effects
+export { GlassSurface } from './GlassSurface';

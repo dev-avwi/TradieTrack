@@ -1,0 +1,195 @@
+Discover how apps are using the new design and Liquid Glass
+Explore a new visual gallery to find how teams of all sizes are taking advantage of the new design and Liquid Glass to create natural, responsive experiences across Apple platforms.
+
+
+Crumbl
+Crumbl
+View on the App Store 
+The Crumbl app takes advantage of the new design and Liquid Glass to put the focus squarely on its sweet brand photography. The app’s familiar pink branding also moves from the top toolbar into the content layer, letting content shine through the controls.
+
+iOS 18
+
+Crumbl app interface before redesign
+iOS 26
+
+Play
+
+Tide Guide
+Condor Digital
+View on the App Store 
+This Apple Design Award finalist sees a beautiful implementation of the new design across platforms. The new design complements the app’s rich blue color palette, while redesigned submenus and popovers move off the top toolbar. Check out the Liquid Glass effects as you interact with tide charts and graphs.
+
+iOS 18
+
+Tide Guide app interface before redesign
+iOS 26
+
+Play
+
+GrowPal
+Hangzhou Floating Island Technology Co
+View on the App Store 
+Native architecture, a sense of playfulness, and the new design combine to make this workout tracker feel cleaner and crisper. By making smart use of the toolbar and scroll-edge effects, GrowPal now offers much more space for data, while maintaining its sharp-yet-minimal identity.
+
+watchOS 11
+
+GrowPal app on Apple Watch before redesign
+watchOS 26
+
+GrowPal app on Apple Watch with Liquid Glass
+
+Lumy
+Raja V
+View on the App Store 
+A shining example of thoughtful minimalism, this sun-tracking app uses the new design to keep all actions within easy reach, and focus on the data people care most about. Lumy also offers a Quick Access Menu, floating Peek Panel, and fluid sliders that make navigating feel easier.
+
+iOS 18
+
+Lumy app interface before redesign
+iOS 26
+
+Play
+
+Sky Guide
+Fifth Star Labs
+View on the App Store 
+Controls shift from the top to the bottom toolbar in this long-running stargazing app that changed its formerly modal submenus into popovers — a subtle change that helps stargazers.
+
+iOS 18
+
+Sky Guide app interface before redesign
+iOS 26
+
+Play
+
+Linearity Curve Graphic Design
+Linearity
+View on the App Store 
+This vector-graphics design app — now unified across iPhone, iPad, and Mac — boasts a stronger iPad experience that makes complex designs easier to understand. On iPad, the new two-column Inspector lets people browse and edit side-by-side, adapting dynamically to window size. And on iPhone, touch targets, spacing, and gestures have been refined for smoother and more comfortable interaction — even with one hand.
+
+iPadOS 18
+
+Linearity Curve app interface before redesign
+iPadOS 26
+
+Linearity Curve app with Liquid Glass design
+
+LTK
+rewardStyle
+View on the App Store 
+In this popular video shopping app, both the tab and nav bars move to allow for more edge-to-edge content — a win for everyone involved. “It’s a crowd-pleaser with our creators, brands, and consumers,” says LTK lead engineer David Okun.
+
+iOS 18
+
+LTK app interface before redesign
+iOS 26
+
+Play
+
+CardPointers
+CardPointers
+View on the App Store 
+Subtle changes to color and branding in this credit card-tracking app make for a big impact. A purple gradient at the top of the view anchors the Liquid Glass controls, so people can focus on the data-packed interface.
+
+macOS 15
+
+CardPointers interface before redesign
+macOS 26
+
+CardPointers interface on Mac showing card rewards
+
+American Airlines
+American Airlines
+View on the App Store 
+A scroll edge effect in the header allows people to see more results and options; the tab bar is updated; the seat map utilizes Liquid Glass buttons; and the interface leverages a more concentric design language, making that experience softer and friendlier.
+
+iOS 18
+
+American Airlines app interface before redesign
+iOS 26
+
+Play
+
+Lowe’s
+Lowe’s Companies, Inc.
+View on the App Store 
+A great example of how the new design system allows apps to merchandise more products. The search experience moves to the tab bar and becomes more globally available. And Liquid Glass controls let the brand’s familiar color scheme shine through. And the blue headers on the Shop tab scroll away, affording more real estate in the content view.
+
+iOS 18
+
+Lowe’s app interface before redesign
+iOS 26
+
+Play
+
+Photoroom
+Photoroom
+View on the App Store 
+A comprehensive redesign in which every action leverages the new design and Liquid Glass. Photoroom now offers more comfortable tap targets, increased UI size and spacing, and a bottom tab bar that makes it easy to see content behind.
+
+iOS 18
+
+Photoroom app interface before redesign
+iOS 26
+
+Play
+
+OmniFocus 4
+The Omni Group
+View on the App Store 
+Controls are at home in the top toolbar of this iPad productivity app; the design makes clear what’s interactive at all times. Plus, OmniFocus leverages native frameworks to deliver simultaneous updates across Apple platforms.
+
+iPadOS 18
+
+OmniFocus 4 interface before redesign
+iPadOS 26
+
+OmniFocus 4 interface on iPad
+
+CNN
+CNN Interactive Group
+View on the App Store 
+The native CNN app features more edge-to-edge content that blends seamlessly with the UI. The updates are subtle, but its design tweaks and updated navigation combine to offer a more modern feel — and put the focus on CNN’s all-important scrolling feed.
+
+iOS 18
+
+CNN app interface before redesign
+iOS 26
+
+Play
+
+Essayist
+Essayist Software
+View on the App Store 
+In this minimalist app for writers and academics, controls are compact, but float above the canvas to remain in reach at all times. Plus, actions are simplified across the app, with an emphasis on minimizing the number of tools that are exposed at any given time.
+
+macOS 15
+
+Essayist writing app interface before redesign
+macOS 26
+
+Essayist writing app interface on Mac
+
+Lucid Motors
+Lucid USA
+View on the App Store 
+The Lucid app integrates the new design in an organic, seamless way that makes it feel like Liquid Glass was always there. A redesigned tab bar focuses on the basics: unlocking the car, changing climate, and the like.
+
+iOS 18
+
+Lucid Motors app interface before redesign
+iOS 26
+
+Play
+
+Slack
+Slack
+View on the App Store 
+A new Compose field introduces a rounded design that fits nicely with the keyboard and makes it easier to write a message, add an emoji, or upload an image. Plus, a breakout search tab makes it easier to dig through your messages.
+
+iOS 18
+
+Slack app interface before redesign
+iOS 26
+
+Play

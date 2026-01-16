@@ -1,21 +1,22 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../src/lib/theme';
 import { isIOS } from '../../src/lib/device';
-import { IOSSystemColors } from '../../src/lib/ios-design';
+import { IOSSystemColors, LiquidGlass, getLiquidGlassColors } from '../../src/lib/ios-design';
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
   
-  // iOS: Use native tab bar with blur effect
+  // iOS: Use native tab bar with Liquid Glass effect
   // Android: Hide native tab bar (use custom BottomNav)
   const useNativeTabBar = isIOS;
   
   // iOS semantic colors for proper native appearance
   const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+  const glassColors = getLiquidGlassColors(isDark);
   
   return (
     <Tabs
@@ -36,27 +37,61 @@ export default function TabLayout() {
         headerTintColor: isIOS ? IOSSystemColors.systemBlue : undefined,
         headerShadowVisible: false,
         
-        // iOS: Show native tab bar, Android: hide (custom BottomNav)
+        // iOS: Floating Liquid Glass tab bar
         tabBarStyle: useNativeTabBar ? {
           position: 'absolute',
+          bottom: LiquidGlass.tabBar.marginBottom,
+          left: LiquidGlass.tabBar.marginHorizontal,
+          right: LiquidGlass.tabBar.marginHorizontal,
+          height: LiquidGlass.tabBar.height,
+          borderRadius: LiquidGlass.tabBar.borderRadius,
           backgroundColor: 'transparent',
           borderTopWidth: 0,
           elevation: 0,
+          // Add shadow for floating effect
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.15,
+          shadowRadius: 24,
         } : { display: 'none' },
         
-        // iOS native tab bar styling
+        // iOS Liquid Glass tab bar background
         tabBarBackground: useNativeTabBar ? () => (
-          <BlurView
-            intensity={60}
-            tint={isDark ? 'dark' : 'light'}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-            }}
-          />
+          <View style={StyleSheet.absoluteFill}>
+            {/* Blur layer */}
+            <BlurView
+              intensity={LiquidGlass.tabBar.blurIntensity}
+              tint={isDark ? 'dark' : 'light'}
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: LiquidGlass.tabBar.borderRadius,
+                  overflow: 'hidden',
+                },
+              ]}
+            />
+            {/* Glass tint overlay */}
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: glassColors.background,
+                  borderRadius: LiquidGlass.tabBar.borderRadius,
+                },
+              ]}
+            />
+            {/* Subtle border */}
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: LiquidGlass.tabBar.borderRadius,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: glassColors.border,
+                },
+              ]}
+            />
+          </View>
         ) : undefined,
         
         // iOS native tab bar colors

@@ -201,7 +201,89 @@ export const IOSShadows = {
     shadowRadius: 12,
     elevation: 4,
   },
+  // iOS 26 Liquid Glass shadow - very subtle glow
+  glass: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+  },
 };
+
+// ============================================================================
+// iOS 26 LIQUID GLASS DESIGN SYSTEM
+// Translucent floating controls with blur effects
+// ============================================================================
+
+export const LiquidGlass = {
+  // Corner radii for glass surfaces - more rounded than standard
+  corners: {
+    small: 12,
+    medium: 20,
+    large: 26,
+    pill: 9999,
+  },
+  
+  // Blur intensities
+  blur: {
+    light: 40,
+    medium: 60,
+    heavy: 80,
+    ultraHeavy: 100,
+  },
+  
+  // Glass surface colors (semi-transparent)
+  surface: {
+    light: {
+      // Primary glass background
+      background: 'rgba(255, 255, 255, 0.72)',
+      // Subtle border for glass edges  
+      border: 'rgba(255, 255, 255, 0.5)',
+      // Inner highlight
+      highlight: 'rgba(255, 255, 255, 0.9)',
+    },
+    dark: {
+      background: 'rgba(38, 38, 40, 0.72)',
+      border: 'rgba(255, 255, 255, 0.12)',
+      highlight: 'rgba(255, 255, 255, 0.08)',
+    },
+  },
+  
+  // Tab bar specific styling
+  tabBar: {
+    // Horizontal margins from screen edges
+    marginHorizontal: 12,
+    // Bottom margin from safe area
+    marginBottom: 8,
+    // Height of the floating tab bar
+    height: 64,
+    // Border radius
+    borderRadius: 22,
+    // Blur intensity
+    blurIntensity: 80,
+  },
+  
+  // Header specific styling
+  header: {
+    // Blur intensity when scrolled
+    blurIntensity: 60,
+    // Height
+    height: 44,
+  },
+  
+  // Floating action button
+  fab: {
+    size: 56,
+    borderRadius: 28,
+    blurIntensity: 80,
+  },
+};
+
+// Get Liquid Glass colors based on theme
+export function getLiquidGlassColors(isDark: boolean) {
+  return isDark ? LiquidGlass.surface.dark : LiquidGlass.surface.light;
+}
 
 // ============================================================================
 // iOS GROUPED LIST STYLING
