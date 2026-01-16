@@ -94,6 +94,11 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
   const gstAmount = Number(quote.gstAmount);
   const totalAmount = Number(quote.total);
   const brandColor = business.brandColor || '#2563eb';
+  
+  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  const baseUrl = getBaseUrl();
+  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = business.logoUrl || defaultLogoUrl;
 
   // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
   return {
@@ -114,11 +119,9 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
-          ${business.logoUrl ? `
-            <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-              <img src="${business.logoUrl}" alt="${business.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
-            </div>
-          ` : ''}
+          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+          </div>
           <h1 style="color: white; margin: 0; font-size: 22px;">${business.businessName}</h1>
           ${business.abn ? `<p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
           <p style="margin: 6px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Quote #${quote.number || quote.id?.substring(0, 8).toUpperCase()}</p>
@@ -241,6 +244,11 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
   const totalAmount = Number(invoice.total);
   const brandColor = business.brandColor || '#16a34a';
   const dueDateStr = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU') : null;
+  
+  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  const baseUrl = getBaseUrl();
+  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = business.logoUrl || defaultLogoUrl;
 
   // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
   return {
@@ -261,11 +269,9 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
-          ${business.logoUrl ? `
-            <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-              <img src="${business.logoUrl}" alt="${business.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
-            </div>
-          ` : ''}
+          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+          </div>
           <p style="margin: 0 0 4px 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">TAX INVOICE</p>
           <h1 style="color: white; margin: 0; font-size: 22px;">${business.businessName}</h1>
           ${business.abn ? `<p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
@@ -398,6 +404,11 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
   const subtotal = Number(invoice.subtotal);
   const gstAmount = Number(invoice.gstAmount);
   const totalAmount = Number(invoice.total);
+  
+  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  const baseUrl = getBaseUrl();
+  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = business.logoUrl || defaultLogoUrl;
 
   // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
   return {
@@ -418,6 +429,9 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+          </div>
           <h1 style="margin: 0;">Payment Received</h1>
           <h2 style="margin: 10px 0 0 0;">${business.businessName}</h2>
           <p style="margin: 5px 0; opacity: 0.9;">Receipt #${invoice.id?.substring(0, 8).toUpperCase()}</p>
@@ -832,6 +846,11 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
     minute: '2-digit'
   }) : '';
 
+  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  const baseUrl = getBaseUrl();
+  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = business.logoUrl || defaultLogoUrl;
+
   return {
     to: client.email,
     from: {
@@ -850,6 +869,9 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: ${brandColor}; padding: 25px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+          </div>
           <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName}</h1>
           ${business.abn ? `<p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
         </div>

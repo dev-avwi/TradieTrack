@@ -392,10 +392,17 @@ export function generateInvoiceEmailTemplate(data: InvoiceEmailData): { subject:
 export function generateReceiptEmailTemplate(data: ReceiptEmailData): { subject: string; html: string } {
   const brandColor = SUCCESS_GREEN;
   const clientFirstName = data.clientName.split(' ')[0];
+  // Logo is provided via data.businessLogo (business logo or TradieTrack fallback)
+  const logoUrl = data.businessLogo;
   
   const content = `
     <tr>
       <td style="background-color: ${SUCCESS_GREEN}; padding: 32px; text-align: center;">
+        ${logoUrl ? `
+          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px;">
+            <img src="${logoUrl}" alt="${data.businessName}" style="max-height: 48px; max-width: 150px; display: block;" />
+          </div>
+        ` : ''}
         <div style="width: 64px; height: 64px; background-color: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 16px auto; display: flex; align-items: center; justify-content: center;">
           <span style="font-size: 32px;">&#10003;</span>
         </div>
