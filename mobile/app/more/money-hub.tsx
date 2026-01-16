@@ -17,6 +17,8 @@ import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
+import { isIOS } from '../../src/lib/device';
+import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows } from '../../src/lib/ios-design';
 import { api } from '../../src/lib/api';
 import { format, isAfter, isBefore, subDays, differenceInDays } from 'date-fns';
 import { XeroRibbon } from '../../src/components/XeroRibbon';
@@ -100,8 +102,40 @@ const formatCurrency = (amount: number | string) => {
 };
 
 export default function MoneyHubScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const iosStyles = useIOSStyles(isDark);
   const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const containerStyle = isIOS 
+    ? { backgroundColor: iosStyles.colors.systemGroupedBackground }
+    : { backgroundColor: colors.background };
+  
+  const cardStyle = isIOS 
+    ? {
+        backgroundColor: iosStyles.colors.secondarySystemGroupedBackground,
+        borderRadius: IOSCorners.card,
+        borderWidth: 0,
+        ...IOSShadows.card,
+      }
+    : {
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+        ...shadows.sm,
+      };
+  
+  const iosHeaderStyle = isIOS 
+    ? { ...IOSTypography.title2, color: iosStyles.colors.label }
+    : {};
+  
+  const iosSectionTitleStyle = isIOS
+    ? { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' as const }
+    : {};
+  
+  const iosAmountStyle = isIOS
+    ? { ...IOSTypography.title1, color: iosStyles.colors.label }
+    : {};
   
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -334,39 +368,39 @@ export default function MoneyHubScreen() {
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+      <Text style={[styles.quickActionsTitle, isIOS && iosSectionTitleStyle]}>Quick Actions</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity 
-          style={styles.quickActionCard}
+          style={[styles.quickActionCard, isIOS && cardStyle]}
           onPress={() => router.push('/more/invoice/new')}
           activeOpacity={0.7}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}15` }]}>
             <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
           </View>
-          <Text style={styles.quickActionLabel}>Create Invoice</Text>
+          <Text style={[styles.quickActionLabel, isIOS && { ...IOSTypography.caption1 }]}>Create Invoice</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.quickActionCard}
+          style={[styles.quickActionCard, isIOS && cardStyle]}
           onPress={() => router.push('/more/quote/new')}
           activeOpacity={0.7}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: `${colors.scheduled}15` }]}>
             <Feather name="file-text" size={iconSizes.lg} color={colors.scheduled} />
           </View>
-          <Text style={styles.quickActionLabel}>Create Quote</Text>
+          <Text style={[styles.quickActionLabel, isIOS && { ...IOSTypography.caption1 }]}>Create Quote</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={styles.quickActionCard}
+          style={[styles.quickActionCard, isIOS && cardStyle]}
           onPress={() => router.push('/more/collect-payment')}
           activeOpacity={0.7}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: `${colors.success}15` }]}>
             <Feather name="credit-card" size={iconSizes.lg} color={colors.success} />
           </View>
-          <Text style={styles.quickActionLabel}>Collect Payment</Text>
+          <Text style={[styles.quickActionLabel, isIOS && { ...IOSTypography.caption1 }]}>Collect Payment</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -387,17 +421,26 @@ export default function MoneyHubScreen() {
       danger: { bg: `${colors.destructive}15`, border: `${colors.destructive}30` },
     };
     const style = variantStyles[variant];
+    
+    const kpiCardStyle = isIOS 
+      ? {
+          ...cardStyle,
+          backgroundColor: variant === 'default' 
+            ? iosStyles.colors.secondarySystemGroupedBackground 
+            : style.bg,
+        }
+      : { backgroundColor: style.bg, borderColor: style.border };
 
     return (
-      <View style={[styles.kpiCard, { backgroundColor: style.bg, borderColor: style.border }]}>
+      <View style={[styles.kpiCard, kpiCardStyle]}>
         <View style={styles.kpiHeader}>
-          <Text style={styles.kpiTitle}>{title}</Text>
+          <Text style={[styles.kpiTitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel }]}>{title}</Text>
           <View style={[styles.kpiIcon, { backgroundColor: `${iconColor}15` }]}>
             <Feather name={iconName} size={iconSizes.md} color={iconColor} />
           </View>
         </View>
-        <Text style={styles.kpiValue}>{value}</Text>
-        <Text style={styles.kpiSubtitle}>{subtitle}</Text>
+        <Text style={[styles.kpiValue, isIOS && { ...IOSTypography.title2, color: iosStyles.colors.label }]}>{value}</Text>
+        <Text style={[styles.kpiSubtitle, isIOS && { ...IOSTypography.caption2, color: iosStyles.colors.secondaryLabel }]}>{subtitle}</Text>
       </View>
     );
   };
@@ -405,7 +448,7 @@ export default function MoneyHubScreen() {
   const renderStripeConnectCard = () => {
     if (stripeLoading) {
       return (
-        <View style={styles.stripeCard}>
+        <View style={[styles.stripeCard, isIOS && cardStyle]}>
           <View style={styles.stripeCardHeader}>
             <View style={[styles.stripeLoadingIcon, { backgroundColor: colors.muted }]} />
             <View style={{ flex: 1, gap: spacing.xs }}>
@@ -425,6 +468,7 @@ export default function MoneyHubScreen() {
     return (
       <View style={[
         styles.stripeCard,
+        isIOS && cardStyle,
         isConnected && styles.stripeCardConnected,
         needsSetup && styles.stripeCardWarning,
       ]}>
@@ -644,9 +688,9 @@ export default function MoneyHubScreen() {
     <View style={styles.overviewContainer}>
       <View style={styles.sectionHeader}>
         <Feather name="alert-triangle" size={iconSizes.md} color={colors.destructive} />
-        <Text style={styles.sectionTitle}>Needs Attention</Text>
+        <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>Needs Attention</Text>
       </View>
-      <View style={styles.sectionContent}>
+      <View style={[styles.sectionContent, isIOS && cardStyle]}>
         {invoices
           .filter(inv => inv.status !== 'paid' && inv.status !== 'draft')
           .slice(0, 5)
@@ -654,34 +698,34 @@ export default function MoneyHubScreen() {
         {invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'draft').length === 0 && (
           <View style={styles.emptyState}>
             <Feather name="check-circle" size={32} color={colors.success} />
-            <Text style={styles.emptyText}>All caught up!</Text>
-            <Text style={styles.emptySubtext}>No outstanding invoices</Text>
+            <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>All caught up!</Text>
+            <Text style={[styles.emptySubtext, isIOS && { ...IOSTypography.subhead, color: iosStyles.colors.secondaryLabel }]}>No outstanding invoices</Text>
           </View>
         )}
       </View>
 
       <View style={styles.sectionHeader}>
         <Feather name="file" size={iconSizes.md} color={colors.scheduled} />
-        <Text style={styles.sectionTitle}>Pending Quotes</Text>
+        <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>Pending Quotes</Text>
       </View>
-      <View style={styles.sectionContent}>
+      <View style={[styles.sectionContent, isIOS && cardStyle]}>
         {quotes
           .filter(q => q.status === 'sent' || q.status === 'viewed')
           .slice(0, 5)
           .map(renderQuoteRow)}
         {quotes.filter(q => q.status === 'sent' || q.status === 'viewed').length === 0 && (
           <View style={styles.emptyState}>
-            <Feather name="file-text" size={32} color={colors.mutedForeground} />
-            <Text style={styles.emptyText}>No pending quotes</Text>
+            <Feather name="file-text" size={32} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
+            <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>No pending quotes</Text>
           </View>
         )}
       </View>
 
       <View style={styles.sectionHeader}>
         <Feather name="trending-up" size={iconSizes.md} color={colors.success} />
-        <Text style={styles.sectionTitle}>Recent Payments</Text>
+        <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>Recent Payments</Text>
       </View>
-      <View style={styles.sectionContent}>
+      <View style={[styles.sectionContent, isIOS && cardStyle]}>
         {invoices
           .filter(inv => inv.status === 'paid')
           .sort((a, b) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime())
@@ -689,35 +733,35 @@ export default function MoneyHubScreen() {
           .map(renderInvoiceRow)}
         {invoices.filter(inv => inv.status === 'paid').length === 0 && (
           <View style={styles.emptyState}>
-            <Feather name="dollar-sign" size={32} color={colors.mutedForeground} />
-            <Text style={styles.emptyText}>No payments yet</Text>
+            <Feather name="dollar-sign" size={32} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
+            <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>No payments yet</Text>
           </View>
         )}
       </View>
 
       <View style={styles.sectionHeader}>
         <Feather name="credit-card" size={iconSizes.md} color={colors.destructive} />
-        <Text style={styles.sectionTitle}>Expenses Summary</Text>
+        <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>Expenses Summary</Text>
       </View>
-      <View style={styles.sectionContent}>
+      <View style={[styles.sectionContent, isIOS && cardStyle]}>
         <TouchableOpacity 
-          style={styles.expenseSummaryCard}
+          style={[styles.expenseSummaryCard, isIOS && { borderWidth: 0, backgroundColor: 'transparent' }]}
           onPress={() => router.push('/more/expense-tracking')}
           activeOpacity={0.7}
         >
           <View style={styles.expenseSummaryRow}>
             <View>
-              <Text style={styles.expenseSummaryLabel}>This Month</Text>
-              <Text style={styles.expenseSummaryValue}>{formatCurrency(expenseSummary.thisMonthExpenses)}</Text>
+              <Text style={[styles.expenseSummaryLabel, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel }]}>This Month</Text>
+              <Text style={[styles.expenseSummaryValue, isIOS && { ...IOSTypography.title2, color: iosStyles.colors.label }]}>{formatCurrency(expenseSummary.thisMonthExpenses)}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.expenseSummaryLabel}>All Time</Text>
-              <Text style={styles.expenseSummaryValue}>{formatCurrency(expenseSummary.totalExpenses)}</Text>
+              <Text style={[styles.expenseSummaryLabel, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel }]}>All Time</Text>
+              <Text style={[styles.expenseSummaryValue, isIOS && { ...IOSTypography.title2, color: iosStyles.colors.label }]}>{formatCurrency(expenseSummary.totalExpenses)}</Text>
             </View>
           </View>
-          <View style={styles.expenseSummaryFooter}>
-            <Text style={styles.expenseSummaryCount}>{expenseSummary.expenseCount} expenses recorded</Text>
-            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          <View style={[styles.expenseSummaryFooter, isIOS && { borderTopColor: iosStyles.colors.separator }]}>
+            <Text style={[styles.expenseSummaryCount, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel }]}>{expenseSummary.expenseCount} expenses recorded</Text>
+            <Feather name="chevron-right" size={16} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
           </View>
         </TouchableOpacity>
       </View>
@@ -857,8 +901,8 @@ export default function MoneyHubScreen() {
   };
 
   const renderInvoices = () => (
-    <View style={styles.listContainer}>
-      <View style={styles.filterRow}>
+    <View style={[styles.listContainer, isIOS && cardStyle]}>
+      <View style={[styles.filterRow, isIOS && { borderBottomColor: iosStyles.colors.separator }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
           {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
@@ -871,11 +915,11 @@ export default function MoneyHubScreen() {
         {filteredInvoices.map(renderInvoiceRow)}
         {filteredInvoices.length === 0 && (
           <View style={styles.emptyState}>
-            <Feather name="file-text" size={48} color={colors.mutedForeground} />
-            <Text style={styles.emptyText}>No invoices found</Text>
+            <Feather name="file-text" size={48} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
+            <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>No invoices found</Text>
             {invoiceFilter === 'all' && (
               <TouchableOpacity 
-                style={styles.createButton}
+                style={[styles.createButton, isIOS && { borderRadius: IOSCorners.button }]}
                 onPress={() => router.push('/more/invoice/new')}
               >
                 <Text style={styles.createButtonText}>Create Invoice</Text>
@@ -888,16 +932,16 @@ export default function MoneyHubScreen() {
   );
 
   const renderQuotes = () => (
-    <View style={styles.listContainer}>
+    <View style={[styles.listContainer, isIOS && cardStyle]}>
       {quotes
         .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
         .map(renderQuoteRow)}
       {quotes.length === 0 && (
         <View style={styles.emptyState}>
-          <Feather name="file" size={48} color={colors.mutedForeground} />
-          <Text style={styles.emptyText}>No quotes yet</Text>
+          <Feather name="file" size={48} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
+          <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>No quotes yet</Text>
           <TouchableOpacity 
-            style={styles.createButton}
+            style={[styles.createButton, isIOS && { borderRadius: IOSCorners.button }]}
             onPress={() => router.push('/more/quote/new')}
           >
             <Text style={styles.createButtonText}>Create Quote</Text>
@@ -908,8 +952,8 @@ export default function MoneyHubScreen() {
   );
 
   const renderPayments = () => (
-    <View style={styles.listContainer}>
-      <View style={styles.filterRow}>
+    <View style={[styles.listContainer, isIOS && { borderWidth: 0, backgroundColor: 'transparent' }]}>
+      <View style={[styles.filterRow, isIOS && { borderBottomColor: iosStyles.colors.separator }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
           {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
@@ -922,15 +966,15 @@ export default function MoneyHubScreen() {
         <View style={styles.payoutsSection}>
           <View style={styles.sectionHeader}>
             <Feather name="dollar-sign" size={iconSizes.md} color={colors.success} />
-            <Text style={styles.sectionTitle}>Bank Payouts</Text>
+            <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>Bank Payouts</Text>
           </View>
-          <View style={styles.sectionContent}>
+          <View style={[styles.sectionContent, isIOS && cardStyle]}>
             {filteredPayouts.length > 0 ? (
               filteredPayouts.map(renderPayoutRow)
             ) : (
               <View style={styles.emptyState}>
-                <Feather name="inbox" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptyText}>No payouts in this period</Text>
+                <Feather name="inbox" size={32} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
+                <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>No payouts in this period</Text>
               </View>
             )}
           </View>
@@ -939,14 +983,14 @@ export default function MoneyHubScreen() {
 
       <View style={styles.sectionHeader}>
         <Feather name="check-circle" size={iconSizes.md} color={colors.success} />
-        <Text style={styles.sectionTitle}>Paid Invoices</Text>
+        <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>Paid Invoices</Text>
       </View>
-      <View style={styles.sectionContent}>
+      <View style={[styles.sectionContent, isIOS && cardStyle]}>
         {filteredPaidInvoices.map(renderInvoiceRow)}
         {filteredPaidInvoices.length === 0 && (
           <View style={styles.emptyState}>
-            <Feather name="credit-card" size={48} color={colors.mutedForeground} />
-            <Text style={styles.emptyText}>No payments in this period</Text>
+            <Feather name="credit-card" size={48} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
+            <Text style={[styles.emptyText, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>No payments in this period</Text>
           </View>
         )}
       </View>
@@ -964,25 +1008,25 @@ export default function MoneyHubScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isIOS && containerStyle]}>
       <Stack.Screen options={{ headerShown: false }} />
       
-      <View style={styles.header}>
+      <View style={[styles.header, isIOS && { backgroundColor: iosStyles.colors.secondarySystemGroupedBackground, borderBottomColor: iosStyles.colors.separator }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={24} color={colors.foreground} />
+          <Feather name="arrow-left" size={24} color={isIOS ? iosStyles.colors.label : colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Money Hub</Text>
-          <Text style={styles.headerSubtitle}>Invoices, quotes & payments</Text>
+          <Text style={[styles.headerTitle, isIOS && { ...IOSTypography.title2, color: iosStyles.colors.label }]}>Money Hub</Text>
+          <Text style={[styles.headerSubtitle, isIOS && { ...IOSTypography.caption1, color: iosStyles.colors.secondaryLabel }]}>Invoices, quotes & payments</Text>
         </View>
       </View>
 
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, isIOS && containerStyle]}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl

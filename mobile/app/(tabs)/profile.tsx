@@ -13,6 +13,8 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useUserRole, type UserRoleType } from '../../src/hooks/use-user-role';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { isIOS } from '../../src/lib/device';
+import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 import { 
   getMorePageItemsByCategory, 
   categoryLabels, 
@@ -180,10 +182,15 @@ function MenuItem({
   isLast = false, 
   badge 
 }: MenuItemProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const iosStyles = useIOSStyles(isDark);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const effectiveIconBg = iconBg || colors.primaryLight;
   const effectiveIconColor = iconColor || colors.primary;
+  
+  const separatorStyle = isIOS
+    ? { borderBottomColor: iosStyles.colors.separator }
+    : { borderBottomColor: colors.border };
   
   return (
     <TouchableOpacity
@@ -191,7 +198,8 @@ function MenuItem({
       activeOpacity={0.7}
       style={[
         styles.menuItem,
-        !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }
+        isIOS && { minHeight: 44, paddingVertical: 11 },
+        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, ...separatorStyle }
       ]}
     >
       <View style={[styles.menuItemIcon, { backgroundColor: effectiveIconBg }]}>
@@ -201,24 +209,25 @@ function MenuItem({
         <View style={styles.menuItemTitleRow}>
           <Text style={[
             styles.menuItemTitle, 
-            destructive && { color: colors.destructive }
+            isIOS && { ...IOSTypography.body, color: iosStyles.colors.label },
+            destructive && { color: isIOS ? IOSSystemColors.systemRed : colors.destructive }
           ]}>
             {title}
           </Text>
           {badge && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, isIOS && { borderRadius: IOSCorners.pill }]}>
               <Text style={styles.badgeText}>{badge}</Text>
             </View>
           )}
         </View>
         {subtitle && (
-          <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
+          <Text style={[styles.menuItemSubtitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel }]}>{subtitle}</Text>
         )}
       </View>
       <Feather 
         name="chevron-right" 
         size={iconSizes.xl} 
-        color={destructive ? colors.destructive : colors.mutedForeground} 
+        color={destructive ? (isIOS ? IOSSystemColors.systemRed : colors.destructive) : (isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground)} 
       />
     </TouchableOpacity>
   );
@@ -251,10 +260,34 @@ function mapRoleToFilterRole(role: UserRoleType): UserRole {
 
 export default function MoreScreen() {
   const { user, businessSettings, logout } = useAuthStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const iosStyles = useIOSStyles(isDark);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
+  
+  const containerStyle = isIOS 
+    ? { backgroundColor: iosStyles.colors.systemGroupedBackground }
+    : { backgroundColor: colors.background };
+  
+  const sectionStyle = isIOS 
+    ? {
+        backgroundColor: iosStyles.colors.secondarySystemGroupedBackground,
+        borderRadius: IOSCorners.card,
+        borderWidth: 0,
+        ...IOSShadows.card,
+      }
+    : {
+        backgroundColor: colors.card,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+        ...shadows.sm,
+      };
+  
+  const separatorStyle = isIOS
+    ? { borderBottomColor: iosStyles.colors.separator }
+    : { borderBottomColor: colors.border };
   
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
@@ -323,8 +356,8 @@ export default function MoreScreen() {
     
     return (
       <View key={categoryKey}>
-        {label && <Text style={styles.sectionTitle}>{label}</Text>}
-        <View style={[styles.section, isFeatured && styles.featuredSection]}>
+        {label && <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>{label}</Text>}
+        <View style={[styles.section, sectionStyle, isFeatured && styles.featuredSection]}>
           {items.map((item, index) => {
             const colorValues = getColorValues(item.color, colors);
             const isLast = index === items.length - 1;
@@ -351,13 +384,13 @@ export default function MoreScreen() {
   return (
     <ScrollView 
       ref={scrollRef}
-      style={styles.container}
+      style={[styles.container, isIOS && containerStyle]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
       {/* Profile Header */}
       <TouchableOpacity 
-        style={styles.profileHeader}
+        style={[styles.profileHeader, isIOS && sectionStyle]}
         activeOpacity={0.8}
         onPress={() => router.push('/more/profile-edit')}
       >
@@ -365,10 +398,10 @@ export default function MoreScreen() {
           <Text style={styles.avatarText}>{getInitials()}</Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.userName}>
+          <Text style={[styles.userName, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>
             {user?.firstName} {user?.lastName}
           </Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
+          <Text style={[styles.userEmail, isIOS && { ...IOSTypography.subhead, color: iosStyles.colors.secondaryLabel }]}>{user?.email}</Text>
           {businessSettings?.businessName && (
             <View style={styles.businessRow}>
               <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
@@ -376,7 +409,7 @@ export default function MoreScreen() {
             </View>
           )}
         </View>
-        <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={iconSizes.xl} color={isIOS ? iosStyles.colors.tertiaryLabel : colors.mutedForeground} />
       </TouchableOpacity>
 
       {/* Render all categories in order (except account which has special handling) */}
@@ -385,8 +418,8 @@ export default function MoreScreen() {
       )}
 
       {/* Account Section - special handling for sign out */}
-      <Text style={styles.sectionTitle}>Account</Text>
-      <View style={styles.section}>
+      <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>Account</Text>
+      <View style={[styles.section, sectionStyle]}>
         {(categorizedItems.account || []).map((item, index) => {
           const colorValues = getColorValues(item.color, colors);
           return (
