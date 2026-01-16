@@ -26,6 +26,8 @@ import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } fro
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import { isIOS } from '../../src/lib/device';
+import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ 
@@ -1028,8 +1030,9 @@ function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
 }
 
 export default function DashboardScreen() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const iosStyles = useIOSStyles(isDark);
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
@@ -2052,10 +2055,13 @@ export default function DashboardScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
+  const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+  
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: isIOS ? iosColors.systemGroupedBackground : colors.background,
   },
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
@@ -2128,11 +2134,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // Activity Feed - compact
   activityList: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : 12,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   activityItem: {
     flexDirection: 'row',
@@ -2210,7 +2216,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   sectionTitle: {
-    ...typography.subtitle,
+    ...(isIOS ? { fontSize: IOSTypography.headline.fontSize, fontWeight: IOSTypography.headline.fontWeight as any, letterSpacing: IOSTypography.headline.letterSpacing } : typography.subtitle),
     color: colors.foreground,
   },
   viewAllButton: {
@@ -2236,11 +2242,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiCard: {
     flex: 1,
     minWidth: '46%',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   kpiCardContent: {
     flexDirection: 'row',
@@ -3071,4 +3077,4 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
   },
-});
+});};

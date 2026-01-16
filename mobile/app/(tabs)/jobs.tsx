@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { router, useFocusEffect } from 'expo-router';
-import { useContentWidth, isTablet } from '../../src/lib/device';
+import { useContentWidth, isTablet, isIOS } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
@@ -23,6 +23,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
+import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -306,10 +307,11 @@ function JobCard({
 }
 
 export default function JobsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const contentWidth = useContentWidth();
   const isTabletDevice = isTablet();
-  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
+  const iosStyles = useIOSStyles(isDark);
+  const styles = useMemo(() => createStyles(colors, contentWidth, isDark), [colors, contentWidth, isDark]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
@@ -769,10 +771,13 @@ export default function JobsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean = false) => {
+  const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+  
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: isIOS ? iosColors.systemGroupedBackground : colors.background,
   },
   scrollView: {
     flex: 1,
@@ -812,7 +817,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     backgroundColor: colors.card,
   },
   pageTitle: {
-    ...typography.pageTitle,
+    ...(isIOS ? { fontSize: IOSTypography.largeTitle.fontSize, fontWeight: IOSTypography.largeTitle.fontWeight as any, letterSpacing: IOSTypography.largeTitle.letterSpacing } : typography.pageTitle),
     color: colors.foreground,
   },
   pageSubtitle: {
@@ -839,13 +844,13 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     paddingHorizontal: spacing.lg,
     height: sizes.searchBarHeight,
     marginBottom: spacing.lg,
     gap: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
   },
   searchInput: {
@@ -915,9 +920,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     gap: spacing.sm,
   },
   sectionTitle: {
-    ...typography.label,
+    ...(isIOS ? { fontSize: IOSTypography.headline.fontSize, fontWeight: IOSTypography.headline.fontWeight as any, letterSpacing: IOSTypography.headline.letterSpacing } : { ...typography.label, letterSpacing: 0.5 }),
     color: colors.foreground,
-    letterSpacing: 0.5,
   },
 
   loadingContainer: {
@@ -927,9 +931,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
   },
   emptyStateIcon: {
@@ -1006,9 +1010,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     justifyContent: 'flex-end',
   },
   jobListRow: {
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.lg,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
   },
   jobListRowContent: {
@@ -1048,11 +1052,11 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
   },
   jobCard: {
     width: (contentWidth - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   jobCardAccent: {
     display: 'none',
@@ -1179,4 +1183,4 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     fontSize: 11,
     color: colors.mutedForeground,
   },
-});
+});};

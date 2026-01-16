@@ -37,6 +37,8 @@ import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
+import { isIOS } from '../../src/lib/device';
+import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
@@ -182,10 +184,13 @@ const STATUS_ACTIONS = {
   invoiced: null,
 };
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
+  const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
+  
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: isIOS ? iosColors.systemGroupedBackground : colors.background,
   },
   scrollContent: {
     paddingHorizontal: pageShell.paddingHorizontal,
@@ -248,10 +253,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: isIOS ? IOSTypography.largeTitle.fontSize : 26,
+    fontWeight: isIOS ? IOSTypography.largeTitle.fontWeight as any : '700',
+    letterSpacing: isIOS ? IOSTypography.largeTitle.letterSpacing : -0.5,
     color: colors.foreground,
-    letterSpacing: -0.5,
     marginBottom: spacing.xs,
   },
   description: {
@@ -260,15 +265,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 22,
   },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.xl,
     marginBottom: spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   cardPressable: {
     backgroundColor: colors.card,
@@ -302,13 +307,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: spacing.sm,
   },
   clientCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   clientHeader: {
     flexDirection: 'row',
@@ -363,15 +368,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   timerCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   timerActiveCard: {
     borderColor: colors.success,
@@ -460,13 +465,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   notesCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   notesHeader: {
     flexDirection: 'row',
@@ -504,13 +509,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontStyle: 'italic',
   },
   geofenceCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   geofenceHeader: {
     flexDirection: 'row',
@@ -605,13 +610,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   photosCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   photosHeader: {
     flexDirection: 'row',
@@ -775,13 +780,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   documentCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   documentHeader: {
     flexDirection: 'row',
@@ -846,13 +851,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
   costingCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   costingHeader: {
     flexDirection: 'row',
@@ -893,13 +898,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   paymentReceivedCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   paymentReceivedHeader: {
     flexDirection: 'row',
@@ -944,12 +949,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   // Quick Collect Payment Styles
   quickCollectCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    ...shadows.sm,
+    borderWidth: isIOS ? 0 : 1,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   quickCollectHeader: {
     flexDirection: 'row',
@@ -1026,13 +1031,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
   activityCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? IOSCorners.card : radius.xl,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? IOSShadows.card : shadows.sm),
   },
   activityHeader: {
     flexDirection: 'row',
@@ -1389,27 +1394,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    backgroundColor: isIOS ? iosColors.tertiarySystemGroupedBackground : colors.card,
+    borderRadius: isIOS ? 9 : radius.xl,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    padding: spacing.xs,
-    borderWidth: 1,
+    padding: isIOS ? 2 : spacing.xs,
+    borderWidth: isIOS ? 0 : 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...(isIOS ? {} : shadows.sm),
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
+    paddingVertical: isIOS ? 8 : spacing.md,
+    borderRadius: isIOS ? 7 : radius.lg,
     gap: spacing.xs,
-    minHeight: 44,
+    minHeight: isIOS ? 32 : 44,
   },
   tabActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.primary,
+    ...(isIOS ? IOSShadows.subtle : {}),
   },
   tabIcon: {
     color: colors.mutedForeground,
@@ -1418,12 +1424,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   tabLabel: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: isIOS ? 13 : 12,
+    fontWeight: isIOS ? '600' : '500',
     color: colors.mutedForeground,
   },
   tabLabelActive: {
-    color: colors.primaryForeground,
+    color: isIOS ? colors.foreground : colors.primaryForeground,
     fontWeight: '600',
   },
   fixedHeader: {
@@ -1651,12 +1657,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
   },
-});
+});};
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const iosStyles = useIOSStyles(isDark);
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   
   const [job, setJob] = useState<Job | null>(null);
   const [client, setClient] = useState<Client | null>(null);
