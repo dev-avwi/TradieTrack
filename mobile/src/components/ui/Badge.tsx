@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { ReactNode, useMemo } from 'react';
 import { useTheme, ThemeColors } from '../../lib/theme';
+import { isIOS, getIOSBadgeStyle, IOSCorners } from '../../lib/ios-design';
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
 
@@ -11,7 +12,24 @@ interface BadgeProps {
   textStyle?: TextStyle;
 }
 
-function getVariantStyles(variant: BadgeVariant, colors: ThemeColors) {
+function getVariantStyles(variant: BadgeVariant, colors: ThemeColors, isDark: boolean) {
+  if (isIOS) {
+    const iosVariant = variant === 'outline' ? 'secondary' 
+      : variant === 'info' ? 'default'
+      : variant as 'default' | 'success' | 'warning' | 'destructive' | 'secondary';
+    
+    const iosStyles = getIOSBadgeStyle(iosVariant, isDark);
+    return {
+      backgroundColor: iosStyles.container.backgroundColor,
+      borderColor: 'transparent',
+      textColor: iosStyles.text.color,
+      borderRadius: IOSCorners.pill,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderWidth: 0,
+    };
+  }
+  
   switch (variant) {
     case 'default':
       return {
@@ -65,23 +83,36 @@ function getVariantStyles(variant: BadgeVariant, colors: ThemeColors) {
 }
 
 export function Badge({ children, variant = 'default', style, textStyle }: BadgeProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   
-  const variantStyles = useMemo(() => getVariantStyles(variant, colors), [variant, colors]);
+  const variantStyles = useMemo(() => getVariantStyles(variant, colors, isDark), [variant, colors, isDark]);
+
+  const badgeStyle: ViewStyle = isIOS ? {
+    borderRadius: variantStyles.borderRadius || IOSCorners.pill,
+    paddingHorizontal: variantStyles.paddingHorizontal || 8,
+    paddingVertical: variantStyles.paddingVertical || 3,
+    borderWidth: variantStyles.borderWidth || 0,
+  } : styles.badge;
 
   return (
     <View
       style={[
-        styles.badge,
+        badgeStyle,
         {
           backgroundColor: variantStyles.backgroundColor,
           borderColor: variantStyles.borderColor,
+          flexDirection: 'row',
+          alignItems: 'center',
         },
         style,
       ]}
     >
       {typeof children === 'string' ? (
-        <Text style={[styles.text, { color: variantStyles.textColor }, textStyle]}>
+        <Text style={[
+          isIOS ? styles.iosText : styles.text, 
+          { color: variantStyles.textColor }, 
+          textStyle
+        ]}>
           {children}
         </Text>
       ) : (
@@ -104,6 +135,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  iosText: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
   },
 });
 

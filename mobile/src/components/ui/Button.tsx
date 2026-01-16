@@ -1,6 +1,7 @@
 import { Pressable, Text, ActivityIndicator, View, StyleSheet, ViewStyle } from 'react-native';
 import { ReactNode } from 'react';
 import { useTheme, getVisibleButtonColors } from '../../lib/theme';
+import { isIOS, IOSSystemColors, IOSCorners, getIOSButtonStyle } from '../../lib/ios-design';
 
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'brand';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'xl' | 'icon';
@@ -34,6 +35,81 @@ export function Button({
     const elevateColor = pressed 
       ? (isDark ? colors.elevate2 : colors.elevate2)
       : 'transparent';
+    
+    if (isIOS) {
+      const iosButtonStyle = getIOSButtonStyle(isDark);
+      
+      switch (variant) {
+        case 'default':
+          return {
+            backgroundColor: pressed 
+              ? 'rgba(0, 122, 255, 0.8)' 
+              : IOSSystemColors.systemBlue,
+            borderColor: 'transparent',
+            textColor: '#FFFFFF',
+            overlayColor: 'transparent',
+            borderWidth: 0,
+          };
+        case 'destructive':
+          return {
+            backgroundColor: pressed 
+              ? 'rgba(255, 59, 48, 0.8)' 
+              : IOSSystemColors.systemRed,
+            borderColor: 'transparent',
+            textColor: '#FFFFFF',
+            overlayColor: 'transparent',
+            borderWidth: 0,
+          };
+        case 'outline':
+          return {
+            backgroundColor: pressed 
+              ? (isDark ? 'rgba(0, 122, 255, 0.15)' : 'rgba(0, 122, 255, 0.1)')
+              : 'transparent',
+            borderColor: IOSSystemColors.systemBlue,
+            textColor: IOSSystemColors.systemBlue,
+            overlayColor: 'transparent',
+            borderWidth: 1,
+          };
+        case 'secondary':
+          return {
+            ...iosButtonStyle.gray,
+            backgroundColor: pressed
+              ? (isDark ? 'rgba(120, 120, 128, 0.4)' : 'rgba(120, 120, 128, 0.25)')
+              : iosButtonStyle.gray.backgroundColor,
+            overlayColor: 'transparent',
+            borderWidth: 0,
+            borderColor: 'transparent',
+          };
+        case 'ghost':
+          return {
+            backgroundColor: pressed 
+              ? (isDark ? 'rgba(120, 120, 128, 0.2)' : 'rgba(120, 120, 128, 0.15)')
+              : 'transparent',
+            borderColor: 'transparent',
+            textColor: IOSSystemColors.systemBlue,
+            overlayColor: 'transparent',
+            borderWidth: 0,
+          };
+        case 'brand':
+          return {
+            backgroundColor: pressed ? '#1D4ED8' : '#2563EB',
+            borderColor: 'transparent',
+            textColor: '#FFFFFF',
+            overlayColor: 'transparent',
+            borderWidth: 0,
+          };
+        default:
+          return {
+            backgroundColor: pressed 
+              ? 'rgba(0, 122, 255, 0.8)' 
+              : IOSSystemColors.systemBlue,
+            borderColor: 'transparent',
+            textColor: '#FFFFFF',
+            overlayColor: 'transparent',
+            borderWidth: 0,
+          };
+      }
+    }
     
     switch (variant) {
       case 'default':
@@ -76,7 +152,6 @@ export function Button({
           overlayColor: 'transparent',
         };
       case 'brand':
-        // HARDCODED blue for guaranteed visibility - bypassing helper
         return {
           backgroundColor: pressed ? '#1D4ED8' : '#2563EB',
           borderColor: '#1D4ED8',
@@ -94,6 +169,10 @@ export function Button({
   };
 
   const getSizeStyles = () => {
+    const iosRadius = IOSCorners.button;
+    const androidRadius = 6;
+    const radius = isIOS ? iosRadius : androidRadius;
+    
     switch (size) {
       case 'sm':
         return { 
@@ -101,7 +180,7 @@ export function Button({
           paddingHorizontal: 12, 
           paddingVertical: 0, 
           fontSize: 12, 
-          borderRadius: 6 
+          borderRadius: radius
         };
       case 'lg':
         return { 
@@ -109,7 +188,7 @@ export function Button({
           paddingHorizontal: 32, 
           paddingVertical: 0, 
           fontSize: 14, 
-          borderRadius: 6 
+          borderRadius: radius
         };
       case 'xl':
         return { 
@@ -117,7 +196,7 @@ export function Button({
           paddingHorizontal: 24, 
           paddingVertical: 14, 
           fontSize: 17, 
-          borderRadius: 12 
+          borderRadius: isIOS ? 12 : 12
         };
       case 'icon':
         return { 
@@ -126,7 +205,7 @@ export function Button({
           paddingHorizontal: 0, 
           paddingVertical: 0, 
           fontSize: 14, 
-          borderRadius: 6 
+          borderRadius: radius
         };
       default:
         return { 
@@ -134,7 +213,7 @@ export function Button({
           paddingHorizontal: 16, 
           paddingVertical: 8, 
           fontSize: 14, 
-          borderRadius: 6 
+          borderRadius: radius
         };
     }
   };
@@ -147,10 +226,14 @@ export function Button({
       disabled={disabled || loading}
       style={({ pressed }) => {
         const variantStyles = getVariantStyles(pressed);
+        const borderWidth = isIOS 
+          ? ('borderWidth' in variantStyles ? variantStyles.borderWidth : 0)
+          : 1;
+        
         const baseStyles: ViewStyle = {
           backgroundColor: variantStyles.backgroundColor,
           borderColor: variantStyles.borderColor,
-          borderWidth: 1,
+          borderWidth,
           minHeight: sizeStyles.minHeight,
           paddingHorizontal: sizeStyles.paddingHorizontal,
           paddingVertical: sizeStyles.paddingVertical,
@@ -158,13 +241,12 @@ export function Button({
           opacity: disabled ? 0.5 : 1,
         };
         
-        // Apply shadow properties if they exist (for brand variant)
-        if (variantStyles.shadowColor) {
-          baseStyles.shadowColor = variantStyles.shadowColor;
-          baseStyles.shadowOffset = variantStyles.shadowOffset;
-          baseStyles.shadowOpacity = variantStyles.shadowOpacity;
-          baseStyles.shadowRadius = variantStyles.shadowRadius;
-          baseStyles.elevation = variantStyles.elevation;
+        if ('shadowColor' in variantStyles && variantStyles.shadowColor) {
+          baseStyles.shadowColor = variantStyles.shadowColor as string;
+          baseStyles.shadowOffset = (variantStyles as any).shadowOffset;
+          baseStyles.shadowOpacity = (variantStyles as any).shadowOpacity;
+          baseStyles.shadowRadius = (variantStyles as any).shadowRadius;
+          baseStyles.elevation = (variantStyles as any).elevation;
         }
         
         return [

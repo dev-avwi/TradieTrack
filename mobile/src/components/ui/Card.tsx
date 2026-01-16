@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ViewStyle, TextStyle, Platform } from 'react-native';
 import { ReactNode, useMemo } from 'react';
 import { useTheme, ThemeColors, ThemeShadows } from '../../lib/theme';
+import { isIOS, getIOSCardStyle, IOSCorners } from '../../lib/ios-design';
 
 interface CardProps {
   children: ReactNode;
@@ -36,17 +37,33 @@ interface CardFooterProps {
 function getVariantStyle(
   variant: string, 
   colors: ThemeColors, 
-  shadows: ThemeShadows
+  shadows: ThemeShadows,
+  isDark: boolean
 ): ViewStyle {
+  if (isIOS) {
+    const iosStyles = getIOSCardStyle(isDark);
+    
+    switch (variant) {
+      case 'elevated':
+        return iosStyles.elevated;
+      case 'outlined':
+        return iosStyles.outlined;
+      case 'ghost':
+        return iosStyles.ghost;
+      default:
+        return iosStyles.container;
+    }
+  }
+  
   switch (variant) {
     case 'elevated':
       return {
         backgroundColor: colors.card,
         borderWidth: 0,
-        ...Platform.select({
-          ios: shadows.md,
-          android: { elevation: shadows.md.elevation },
-        }),
+        ...(Platform.OS === 'android' 
+          ? { elevation: shadows.md.elevation }
+          : shadows.md
+        ),
       };
     case 'outlined':
       return {
@@ -64,24 +81,26 @@ function getVariantStyle(
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.cardBorder,
-        ...Platform.select({
-          ios: shadows.sm,
-          android: { elevation: shadows.sm.elevation },
-        }),
+        ...(Platform.OS === 'android' 
+          ? { elevation: shadows.sm.elevation }
+          : shadows.sm
+        ),
       };
   }
 }
 
 export function Card({ children, style, variant = 'default' }: CardProps) {
-  const { colors, shadows } = useTheme();
+  const { colors, shadows, isDark } = useTheme();
   
   const variantStyle = useMemo(
-    () => getVariantStyle(variant, colors, shadows), 
-    [variant, colors, shadows]
+    () => getVariantStyle(variant, colors, shadows, isDark), 
+    [variant, colors, shadows, isDark]
   );
 
+  const borderRadius = isIOS ? IOSCorners.card : 14;
+
   return (
-    <View style={[styles.card, variantStyle, style]}>
+    <View style={[styles.card, { borderRadius }, variantStyle, style]}>
       {children}
     </View>
   );
@@ -131,8 +150,6 @@ export function CardFooter({ children, style }: CardFooterProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    // Removed overflow: 'hidden' - can cause touch event issues on iOS
   },
   cardHeader: {
     padding: 20,
