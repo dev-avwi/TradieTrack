@@ -806,6 +806,11 @@ export default function CollectScreen() {
   const [showInvoicePickerModal, setShowInvoicePickerModal] = useState(false);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<'record' | 'qr' | 'link' | null>(null);
   
+  // Custom Amount Modal state (for entering amount when no invoice selected)
+  const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
+  const [customAmountValue, setCustomAmountValue] = useState('');
+  const [customAmountDescription, setCustomAmountDescription] = useState('');
+  
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
   const terminal = useStripeTerminal();
@@ -1552,10 +1557,108 @@ export default function CollectScreen() {
   const handleCustomAmountFromPicker = () => {
     setShowInvoicePickerModal(false);
     
-    // Proceed without an invoice
-    if (pendingPaymentMethod) {
-      proceedToPaymentMethod(pendingPaymentMethod);
+    // Show custom amount modal to enter amount first
+    setCustomAmountValue('');
+    setCustomAmountDescription('');
+    setShowCustomAmountModal(true);
+  };
+  
+  const handleSubmitCustomAmount = () => {
+    const amountNum = parseFloat(customAmountValue);
+    if (isNaN(amountNum) || amountNum < 5) {
+      Alert.alert('Minimum Amount', 'Please enter an amount of at least $5.00');
+      return;
     }
+    
+    // Set the amount and description
+    setAmount(customAmountValue);
+    setDescription(customAmountDescription || 'Payment');
+    setShowCustomAmountModal(false);
+    
+    // Proceed to the selected payment method
+    if (pendingPaymentMethod) {
+      // Small delay to allow state to update
+      setTimeout(() => {
+        switch (pendingPaymentMethod) {
+          case 'record':
+            setRecordAmount(customAmountValue);
+            setRecordDescription(customAmountDescription || 'Payment');
+            setShowRecordPaymentModal(true);
+            break;
+          case 'qr':
+            handleQRCodeDirectWithAmount(amountNum);
+            break;
+          case 'link':
+            handlePaymentLinkDirectWithAmount(amountNum);
+            break;
+        }
+        setPendingPaymentMethod(null);
+      }, 100);
+    }
+  };
+  
+  const handleQRCodeDirectWithAmount = async (amountDollars: number) => {
+    const amountCents = Math.round(amountDollars * 100);
+    
+    setQrLoading(true);
+    setShowQRModal(true);
+
+    try {
+      const response = await api.post<{ 
+        id: string; 
+        token: string; 
+        paymentUrl: string; 
+        amount: string;
+        status: string;
+      }>('/api/payment-requests', {
+        amount: amountDollars,
+        description: customAmountDescription || 'Payment',
+      });
+
+      if (response.data) {
+        setQrPaymentUrl(response.data.paymentUrl);
+        setQrPaymentRequest(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      Alert.alert('Error', 'Failed to generate QR code');
+      setShowQRModal(false);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+  
+  const handlePaymentLinkDirectWithAmount = async (amountDollars: number) => {
+    setSendingLink(true);
+    
+    try {
+      const response = await api.post<{ 
+        id: string; 
+        token: string; 
+        paymentUrl: string; 
+        amount: string;
+        status: string;
+      }>('/api/payment-requests', {
+        amount: amountDollars,
+        description: customAmountDescription || 'Payment',
+      });
+
+      if (response.data) {
+        setPaymentLinkRequest(response.data);
+        setShowPaymentLinkModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to create payment request:', error);
+      Alert.alert('Error', 'Failed to create payment link');
+    } finally {
+      setSendingLink(false);
+    }
+  };
+  
+  const handleCloseCustomAmountModal = () => {
+    setShowCustomAmountModal(false);
+    setCustomAmountValue('');
+    setCustomAmountDescription('');
     setPendingPaymentMethod(null);
   };
 
@@ -2285,6 +2388,66 @@ export default function CollectScreen() {
       </View>
     </Modal>
   );
+  
+  const renderCustomAmountModal = () => (
+    <Modal
+      visible={showCustomAmountModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleCloseCustomAmountModal}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Enter Amount</Text>
+          <TouchableOpacity onPress={handleCloseCustomAmountModal} activeOpacity={0.7}>
+            <Feather name="x" size={24} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ flex: 1, padding: spacing.lg }}>
+          <Text style={styles.sectionLabel}>Payment Amount</Text>
+          <View style={styles.amountInputContainer}>
+            <Text style={styles.currencySymbol}>$</Text>
+            <TextInput
+              style={styles.amountInput}
+              value={customAmountValue}
+              onChangeText={setCustomAmountValue}
+              placeholder="0.00"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="decimal-pad"
+              autoFocus
+            />
+          </View>
+          <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: spacing.xs }}>
+            Minimum amount: $5.00
+          </Text>
+          
+          <Text style={[styles.sectionLabel, { marginTop: spacing.xl }]}>Description (Optional)</Text>
+          <TextInput
+            style={styles.descriptionInput}
+            value={customAmountDescription}
+            onChangeText={setCustomAmountDescription}
+            placeholder="What's this payment for?"
+            placeholderTextColor={colors.mutedForeground}
+          />
+        </View>
+
+        <View style={styles.modalFooter}>
+          <Button 
+            variant="default" 
+            onPress={handleSubmitCustomAmount} 
+            fullWidth
+            disabled={!customAmountValue || parseFloat(customAmountValue) < 5}
+          >
+            <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
+            <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground, fontWeight: '600' }}>
+              Continue
+            </Text>
+          </Button>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <>
@@ -2418,13 +2581,38 @@ export default function CollectScreen() {
                         activeOpacity={0.7}
                         onPress={() => {
                           const paymentUrl = request.paymentUrl || request.qrCodeUrl;
+                          // Build notification status info
+                          const notifications = request.notificationsSent || [];
+                          let deliveryStatus = '';
+                          if (notifications.length > 0) {
+                            const emailSent = notifications.find((n: any) => n.type === 'email');
+                            const smsSent = notifications.find((n: any) => n.type === 'sms');
+                            const statusParts: string[] = [];
+                            if (emailSent) {
+                              const emailDate = emailSent.sentAt ? format(parseISO(emailSent.sentAt), 'MMM d, h:mm a') : '';
+                              statusParts.push(`Email: Sent${emailDate ? ` on ${emailDate}` : ''}`);
+                            }
+                            if (smsSent) {
+                              const smsDate = smsSent.sentAt ? format(parseISO(smsSent.sentAt), 'MMM d, h:mm a') : '';
+                              statusParts.push(`SMS: Sent${smsDate ? ` on ${smsDate}` : ''}`);
+                            }
+                            if (statusParts.length > 0) {
+                              deliveryStatus = '\n\nDelivery:\n' + statusParts.join('\n');
+                            }
+                          } else {
+                            deliveryStatus = '\n\nDelivery: Not yet sent to client';
+                          }
+                          
+                          const createdDate = request.createdAt ? format(parseISO(request.createdAt), 'MMM d, h:mm a') : '';
+                          const expiresDate = request.expiresAt ? format(parseISO(request.expiresAt), 'MMM d') : '';
+                          
                           Alert.alert(
                             isQR ? 'QR Code Payment' : 'Payment Link',
-                            `${clientName}\n${formatCurrency(requestAmount)}\n\nStatus: Pending`,
+                            `${clientName}\n${formatCurrency(requestAmount)}\n\nStatus: Awaiting Payment${createdDate ? `\nCreated: ${createdDate}` : ''}${expiresDate ? `\nExpires: ${expiresDate}` : ''}${deliveryStatus}`,
                             [
-                              { text: 'Cancel', style: 'cancel' },
-                              paymentUrl ? { text: 'Share Link', onPress: () => Share.share({ message: paymentUrl }) } : null,
-                              paymentUrl ? { text: 'Copy Link', onPress: () => Clipboard.setStringAsync(paymentUrl) } : null,
+                              { text: 'Close', style: 'cancel' },
+                              paymentUrl ? { text: 'Share', onPress: () => Share.share({ message: `Please pay ${formatCurrency(requestAmount)} using this link: ${paymentUrl}` }) } : null,
+                              paymentUrl ? { text: 'Copy Link', onPress: () => Clipboard.setStringAsync(paymentUrl).then(() => Alert.alert('Copied!', 'Payment link copied to clipboard')) } : null,
                             ].filter(Boolean) as any
                           );
                         }}
@@ -2617,6 +2805,7 @@ export default function CollectScreen() {
         {renderPaymentLinkModal()}
         {renderRecordPaymentModal()}
         {renderInvoicePickerModal()}
+        {renderCustomAmountModal()}
       </View>
     </>
   );
