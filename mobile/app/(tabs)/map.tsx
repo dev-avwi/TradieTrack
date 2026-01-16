@@ -58,8 +58,6 @@ import { useUserRole } from '../../src/hooks/use-user-role';
 import { api } from '../../src/lib/api';
 import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
-import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 
 // Real-time polling interval for team locations (10 seconds)
 const LOCATION_POLL_INTERVAL = 10000;
@@ -171,9 +169,7 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.5,
 };
 
-const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
-  const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
-  
+const createStyles = (colors: ThemeColors) => {
   const ACTIVITY_CONFIG: Record<string, { label: string; color: string; icon: keyof typeof Feather.glyphMap }> = {
     on_job: { label: 'On Job', color: colors.success, icon: 'briefcase' },
     working: { label: 'Working', color: colors.primary, icon: 'tool' },
@@ -197,12 +193,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
         position: 'absolute',
         left: spacing.md,
         right: spacing.md,
-        backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
-        borderRadius: isIOS ? IOSCorners.card : radius['2xl'],
+        backgroundColor: colors.card,
+        borderRadius: radius['2xl'],
         padding: spacing.md,
-        borderWidth: isIOS ? 0 : 1,
+        borderWidth: 1,
         borderColor: colors.border,
-        ...(isIOS ? IOSShadows.card : shadows.lg),
+        ...shadows.lg,
         zIndex: 30,
       },
       headerRow: {
@@ -224,7 +220,6 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
       headerTitle: {
         fontSize: 17,
         fontWeight: '600',
-        letterSpacing: 0,
         color: colors.foreground,
       },
       headerSubtitle: {
@@ -643,8 +638,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
 
 export default function MapScreen() {
   const { colors, isDark } = useTheme();
-  const iosStyles = useIOSStyles(isDark);
-  const { styles, activityConfig } = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const { styles, activityConfig } = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const bottomNavHeight = getBottomNavHeight(insets.bottom);

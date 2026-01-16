@@ -22,13 +22,11 @@ import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPan
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
-import { TabBarProvider } from '../src/contexts/TabBarContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
-import { isTablet, isIOS, isAndroid } from '../src/lib/device';
+import { isTablet } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
-import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -331,29 +329,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // iPhone: 
-  // iOS: Use native navigation (header/tab bar handled by expo-router)
-  // Android: Use custom Header + BottomNav
-  if (isIOS) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Main content - native nav handles header/tabs */}
-        <View style={styles.content}>
-          {children}
-        </View>
-        
-        {/* Overlays */}
-        <OfflineBanner />
-        <ConflictResolutionPanel />
-        <OfflineIndicator />
-        
-        {/* FAB */}
-        {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
-      </View>
-    );
-  }
-  
-  // Android: Bottom nav layout with custom components
+  // iPhone: Bottom nav layout (default)
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header at top in normal flow */}
@@ -556,17 +532,13 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <ActionSheetProvider>
-          <ThemeProvider>
-            <TabBarProvider>
-              <ScrollProvider>
-                <TerminalProvider>
-                  <RootLayoutContent />
-                </TerminalProvider>
-              </ScrollProvider>
-            </TabBarProvider>
-          </ThemeProvider>
-        </ActionSheetProvider>
+        <ThemeProvider>
+          <ScrollProvider>
+            <TerminalProvider>
+              <RootLayoutContent />
+            </TerminalProvider>
+          </ScrollProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

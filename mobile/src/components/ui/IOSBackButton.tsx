@@ -1,19 +1,15 @@
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../lib/theme';
-import { IOSSystemColors, IOSCorners, IOSShadows, getIOSButtonStyle } from '../../lib/ios-design';
 
 interface IOSBackButtonProps {
   onPress?: () => void;
   label?: string;
-  /** Use soft card-like background (matches grouped list items) */
-  variant?: 'plain' | 'soft';
 }
 
-export function IOSBackButton({ onPress, label = 'Back', variant = 'soft' }: IOSBackButtonProps) {
-  const { colors, isDark } = useTheme();
-  const iosButtonStyle = getIOSButtonStyle(isDark);
+export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
+  const { colors } = useTheme();
   
   const handlePress = () => {
     if (onPress) {
@@ -23,31 +19,15 @@ export function IOSBackButton({ onPress, label = 'Back', variant = 'soft' }: IOS
     }
   };
   
-  const isSoft = variant === 'soft';
-  
   return (
     <TouchableOpacity 
       onPress={handlePress}
       activeOpacity={0.7}
-      style={[
-        styles.backButton,
-        isSoft && {
-          backgroundColor: iosButtonStyle.soft.backgroundColor,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          borderRadius: IOSCorners.button,
-          marginLeft: 0,
-          ...IOSShadows.subtle,
-        },
-      ]}
+      style={styles.backButton}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Feather 
-        name="chevron-left" 
-        size={isSoft ? 20 : 24} 
-        color={IOSSystemColors.systemBlue} 
-      />
-      <Text style={[styles.backText, { color: IOSSystemColors.systemBlue }]}>{label}</Text>
+      <Feather name="chevron-left" size={24} color={colors.primary} />
+      <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
     </TouchableOpacity>
   );
 }

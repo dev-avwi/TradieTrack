@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { router, useFocusEffect } from 'expo-router';
-import { useContentWidth, isTablet, isIOS } from '../../src/lib/device';
+import { useContentWidth, isTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
@@ -23,54 +23,12 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
-import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
-import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
-import { GlassSection } from '../../src/components/ui/GlassSection';
-import { GlassChip } from '../../src/components/ui/GlassChip';
-import { GlassJobCard } from '../../src/components/ui/GlassJobCard';
-import { GlassFAB } from '../../src/components/ui/GlassFAB';
-import { GlassSearchBar } from '../../src/components/ui/GlassSearchBar';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
 };
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
-type GlassJobStatus = 'pending' | 'confirmed' | 'in-progress' | 'done' | 'invoiced';
-
-const mapToGlassStatus = (status: JobStatus): GlassJobStatus => {
-  switch (status) {
-    case 'scheduled': return 'confirmed';
-    case 'in_progress': return 'in-progress';
-    default: return status as GlassJobStatus;
-  }
-};
-
-const formatScheduledTime = (dateStr?: string): string | undefined => {
-  if (!dateStr) return undefined;
-  const date = new Date(dateStr);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  const timeStr = date.toLocaleTimeString('en-AU', { 
-    hour: 'numeric', 
-    minute: '2-digit', 
-    hour12: true 
-  }).toUpperCase();
-  
-  if (date.toDateString() === today.toDateString()) {
-    return `Today, ${timeStr}`;
-  }
-  if (date.toDateString() === tomorrow.toDateString()) {
-    return `Tomorrow, ${timeStr}`;
-  }
-  return date.toLocaleDateString('en-AU', { 
-    weekday: 'short', 
-    day: 'numeric', 
-    month: 'short',
-  }) + ', ' + timeStr;
-};
 
 const STATUS_FILTERS: { key: string; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'briefcase' },
@@ -348,11 +306,10 @@ function JobCard({
 }
 
 export default function JobsScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const contentWidth = useContentWidth();
   const isTabletDevice = isTablet();
-  const iosStyles = useIOSStyles(isDark);
-  const styles = useMemo(() => createStyles(colors, contentWidth, isDark), [colors, contentWidth, isDark]);
+  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
@@ -573,14 +530,11 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <LiquidGlassScrollView 
+      <ScrollView 
         ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        hasTabBar={true}
-        hasHeader={true}
-        showBackground={true}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -623,27 +577,16 @@ export default function JobsScreen() {
         </View>
 
         {/* Search Bar */}
-        {isIOS ? (
-          <View style={styles.glassSearchContainer}>
-            <GlassSearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search jobs, clients, addresses..."
-              showCancel={false}
-            />
-          </View>
-        ) : (
-          <View style={styles.searchBar}>
-            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search jobs, clients, addresses..."
-              placeholderTextColor={colors.mutedForeground}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-        )}
+        <View style={styles.searchBar}>
+          <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search jobs, clients, addresses..."
+            placeholderTextColor={colors.mutedForeground}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
 
         {/* Filter Pills with Counts */}
         <ScrollView 
@@ -652,57 +595,40 @@ export default function JobsScreen() {
           style={styles.filtersScroll}
           contentContainerStyle={styles.filtersContent}
         >
-          {isIOS ? (
-            STATUS_FILTERS.map((filter) => {
-              const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
-              return (
-                <GlassChip
-                  key={filter.key}
-                  label={filter.label}
-                  selected={activeFilter === filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  icon={filter.icon}
-                  count={count}
-                  size="medium"
-                />
-              );
-            })
-          ) : (
-            STATUS_FILTERS.map((filter) => {
-              const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
-              const isActive = activeFilter === filter.key;
-              
-              return (
-                <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive
-                  ]}
-                >
+          {STATUS_FILTERS.map((filter) => {
+            const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
+            const isActive = activeFilter === filter.key;
+            
+            return (
+              <TouchableOpacity
+                key={filter.key}
+                onPress={() => setActiveFilter(filter.key)}
+                activeOpacity={0.7}
+                style={[
+                  styles.filterPill,
+                  isActive && styles.filterPillActive
+                ]}
+              >
+                <Text style={[
+                  styles.filterPillText,
+                  isActive && styles.filterPillTextActive
+                ]}>
+                  {filter.label}
+                </Text>
+                <View style={[
+                  styles.filterCount,
+                  isActive && styles.filterCountActive
+                ]}>
                   <Text style={[
-                    styles.filterPillText,
-                    isActive && styles.filterPillTextActive
+                    styles.filterCountText,
+                    isActive && styles.filterCountTextActive
                   ]}>
-                    {filter.label}
+                    {count}
                   </Text>
-                  <View style={[
-                    styles.filterCount,
-                    isActive && styles.filterCountActive
-                  ]}>
-                    <Text style={[
-                      styles.filterCountText,
-                      isActive && styles.filterCountTextActive
-                    ]}>
-                      {count}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* KPI Stats Grid */}
@@ -788,36 +714,16 @@ export default function JobsScreen() {
               </Text>
             </View>
           ) : viewMode === 'grid' ? (
-            isIOS ? (
-              <GlassSection title="Jobs" subtitle={`${sortedJobs.length} found`} padding="small">
-                <View style={styles.glassJobsGrid}>
-                  {sortedJobs.map((job, index) => (
-                    <GlassJobCard
-                      key={job.id}
-                      title={job.title || 'Untitled Job'}
-                      client={job.clientName || getClientName(job.clientId) || 'No client'}
-                      status={mapToGlassStatus(job.status)}
-                      scheduledTime={formatScheduledTime(job.scheduledAt)}
-                      address={job.address?.split(',')[0]}
-                      onPress={() => router.push(`/job/${job.id}`)}
-                      isFirst={index === 0}
-                      isLast={index === sortedJobs.length - 1}
-                    />
-                  ))}
-                </View>
-              </GlassSection>
-            ) : (
-              <View style={styles.jobsGrid}>
-                {sortedJobs.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
-                    onPress={() => router.push(`/job/${job.id}`)}
-                    onQuickAction={handleQuickAction}
-                  />
-                ))}
-              </View>
-            )
+            <View style={styles.jobsGrid}>
+              {sortedJobs.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
+                  onPress={() => router.push(`/job/${job.id}`)}
+                  onQuickAction={handleQuickAction}
+                />
+              ))}
+            </View>
           ) : (
             <View style={styles.jobsList}>
               <View style={styles.listHeader}>
@@ -858,28 +764,15 @@ export default function JobsScreen() {
             </View>
           )}
         </View>
-      </LiquidGlassScrollView>
-      
-      {/* Floating Action Button for iOS */}
-      {isIOS && (
-        <GlassFAB
-          onPress={navigateToCreateJob}
-          icon="plus"
-          variant="primary"
-          position="bottom-right"
-        />
-      )}
+      </ScrollView>
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean = false) => {
-  const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
-  
-  return StyleSheet.create({
+const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isIOS ? 'transparent' : colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -946,23 +839,19 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
-    borderRadius: isIOS ? IOSCorners.card : radius.xl,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     height: sizes.searchBarHeight,
     marginBottom: spacing.lg,
     gap: spacing.md,
-    borderWidth: isIOS ? 0 : 1,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
   },
   searchInput: {
     flex: 1,
     ...typography.body,
     color: colors.foreground,
-  },
-  glassSearchContainer: {
-    marginHorizontal: -pageShell.paddingHorizontal,
-    marginBottom: spacing.sm,
   },
 
   filtersScroll: {
@@ -1017,18 +906,18 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
   },
 
   section: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
     gap: spacing.sm,
   },
   sectionTitle: {
     ...typography.label,
-    letterSpacing: 0.5,
     color: colors.foreground,
+    letterSpacing: 0.5,
   },
 
   loadingContainer: {
@@ -1038,9 +927,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
-    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
-    borderRadius: isIOS ? IOSCorners.card : radius.xl,
-    borderWidth: isIOS ? 0 : 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
   },
   emptyStateIcon: {
@@ -1062,9 +951,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-  },
-  glassJobsGrid: {
-    gap: spacing.xs,
   },
   jobsList: {
     gap: spacing.sm,
@@ -1120,9 +1006,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     justifyContent: 'flex-end',
   },
   jobListRow: {
-    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
-    borderRadius: isIOS ? IOSCorners.card : radius.lg,
-    borderWidth: isIOS ? 0 : 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
   },
   jobListRowContent: {
@@ -1162,11 +1048,11 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
   },
   jobCard: {
     width: (contentWidth - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
-    backgroundColor: isIOS ? iosColors.secondarySystemGroupedBackground : colors.card,
-    borderRadius: isIOS ? IOSCorners.card : radius.xl,
-    borderWidth: isIOS ? 0 : 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...(isIOS ? IOSShadows.card : shadows.sm),
+    ...shadows.sm,
   },
   jobCardAccent: {
     display: 'none',
@@ -1293,4 +1179,4 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     fontSize: 11,
     color: colors.mutedForeground,
   },
-});};
+});

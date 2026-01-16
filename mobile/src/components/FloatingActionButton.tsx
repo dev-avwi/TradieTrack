@@ -9,16 +9,16 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Platform
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme, ThemeColors, colorWithOpacity } from '../lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../lib/design-tokens';
-import { SIDEBAR_WIDTH, isIOS, useGlassEffects, getGlassStyle } from '../lib/device';
+import { SIDEBAR_WIDTH } from '../lib/device';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isIOS = Platform.OS === 'ios';
 
 interface FABAction {
   icon: keyof typeof Feather.glyphMap;
@@ -203,22 +203,14 @@ interface FloatingActionButtonProps {
 
 export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabStyle = 'phone' }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const isTabletStyle = fabStyle === 'tablet';
   const styles = useMemo(() => createStyles(colors, isTabletStyle), [colors, isTabletStyle]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
-  // iOS: Liquid Glass effect for buttons
-  const useGlass = useGlassEffects();
-  const glassStyle = getGlassStyle('button', isDark);
-  
   const fabPositionStyle = isTabletStyle ? { bottom: 24, right: 24 } : {};
 
   const handlePressIn = () => {
-    // iOS: Add haptic feedback
-    if (isIOS) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
     Animated.timing(scaleAnim, {
       toValue: 0.92,
       duration: 100,
@@ -234,14 +226,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
       tension: 400,
       useNativeDriver: true,
     }).start();
-  };
-  
-  // Handle action press with haptics
-  const handleActionPress = (action: FABAction) => {
-    if (isIOS) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    action.onPress();
   };
 
   // Main grid actions - 4 core create actions
@@ -352,7 +336,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                   <TouchableOpacity
                     key={index}
                     style={styles.menuItem}
-                    onPress={() => handleActionPress(action)}
+                    onPress={action.onPress}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.menuItemIcon, { backgroundColor: bgColor }]}>
@@ -373,7 +357,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               <TouchableOpacity
                 style={[styles.quickActionButton, { borderColor: '#FF3B3040' }]}
                 onPress={() => {
-                  if (isIOS) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setIsOpen(false);
                   router.push('/more/ai-assistant');
                 }}
@@ -386,7 +369,6 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
               <TouchableOpacity
                 style={[styles.quickActionButton, { borderColor: '#34C75940' }]}
                 onPress={() => {
-                  if (isIOS) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setIsOpen(false);
                   router.push('/more/collect-payment');
                 }}

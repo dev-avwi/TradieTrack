@@ -11,7 +11,6 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@expo/react-native-action-sheet": "^4.1.1",
     "@google-cloud/storage": "^7.17.1",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
@@ -73,8 +72,6 @@
     "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.6.0",
     "expo": "^54.0.31",
-    "expo-blur": "^15.0.8",
-    "expo-haptics": "^15.0.8",
     "express": "^4.21.2",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.1",
@@ -117,7 +114,6 @@
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "xero-node": "^13.3.0",
-    "zeego": "^3.0.6",
     "zod": "^3.24.2",
     "zod-validation-error": "^3.4.0"
   },

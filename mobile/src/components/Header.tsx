@@ -1,7 +1,5 @@
 import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +10,8 @@ import { useNotificationsStore } from '../lib/notifications-store';
 import { useUserRole } from '../hooks/use-user-role';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
-import { isIOS, isAndroid, useGlassEffects, getGlassStyle } from '../lib/device';
+
+const isIOS = Platform.OS === 'ios';
 
 interface HeaderProps {
   title?: string;
@@ -239,12 +238,8 @@ export function Header({
     }).start();
   };
 
-  // iOS: Liquid Glass effect
-  const useGlass = useGlassEffects();
-  const glassStyle = getGlassStyle('nav', isDark);
-
-  const headerContent = (
-    <>
+  return (
+    <View style={styles.header}>
       <View style={styles.headerContent}>
         <View style={styles.leftSection}>
           {showBackButton ? (
@@ -326,47 +321,7 @@ export function Header({
           )}
         </View>
       </View>
-    </>
-  );
-
-  // iOS: Use BlurView for authentic "Liquid Glass" header
-  if (useGlass) {
-    return (
-      <View style={[styles.header, styles.headerGlassContainer]}>
-        {/* Base blur layer - let the material do the work */}
-        <BlurView 
-          intensity={glassStyle.blurIntensity} 
-          tint={glassStyle.blurTint}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Very light overlay for separation */}
-        <View 
-          style={[
-            StyleSheet.absoluteFill, 
-            { backgroundColor: glassStyle.overlay }
-          ]} 
-        />
-        {/* Subtle top highlight gradient - glass reflection effect */}
-        <LinearGradient
-          colors={[glassStyle.highlight, 'transparent']}
-          style={styles.glassHighlight}
-        />
-        {/* Bottom edge separator */}
-        <View 
-          style={[
-            styles.glassBottomBorder, 
-            { backgroundColor: glassStyle.border }
-          ]} 
-        />
-        {headerContent}
-      </View>
-    );
-  }
-
-  // Android: Use solid background
-  return (
-    <View style={styles.header}>
-      {headerContent}
+      
       <View style={styles.headerBorder} />
     </View>
   );
@@ -376,26 +331,6 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
   header: {
     backgroundColor: colors.background,
     paddingTop: isIOS ? topInset : 0,
-  },
-  headerGlassContainer: {
-    // iOS Liquid Glass container - transparent to show blur
-    backgroundColor: 'transparent',
-    overflow: 'hidden',
-  },
-  glassHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 24,
-    opacity: 0.6,
-  },
-  glassBottomBorder: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
   },
   headerContent: {
     flexDirection: 'row',
