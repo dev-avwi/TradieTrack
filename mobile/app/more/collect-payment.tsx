@@ -797,8 +797,9 @@ export default function CollectScreen() {
   const [linkRecipientPhone, setLinkRecipientPhone] = useState('');
   const [sendingLink, setSendingLink] = useState(false);
   
-  // Recent Payments state
+  // Ongoing Payments state (includes pending payment requests + recent receipts)
   const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
   
   // Invoice Picker Modal state
@@ -813,12 +814,18 @@ export default function CollectScreen() {
   const fetchReceipts = useCallback(async () => {
     setReceiptsLoading(true);
     try {
-      const response = await api.get<any[]>('/api/receipts?limit=5');
-      if (response.data) {
-        setRecentReceipts(response.data);
+      const [receiptsResponse, requestsResponse] = await Promise.all([
+        api.get<any[]>('/api/receipts?limit=10'),
+        api.get<any[]>('/api/payment-requests')
+      ]);
+      if (receiptsResponse.data) {
+        setRecentReceipts(receiptsResponse.data);
+      }
+      if (requestsResponse.data) {
+        setPaymentRequests(requestsResponse.data);
       }
     } catch (error) {
-      console.error('Failed to fetch receipts:', error);
+      console.error('Failed to fetch payments data:', error);
     } finally {
       setReceiptsLoading(false);
     }
@@ -2426,11 +2433,11 @@ export default function CollectScreen() {
             colors={colors}
           />
 
-          {/* Recent Payments Section */}
+          {/* Ongoing Payments Section - Shows pending requests + completed payments */}
           <View style={styles.recentPaymentsSection}>
             <View style={styles.pendingSectionHeader}>
-              <Feather name="check-circle" size={18} color={colors.success} />
-              <Text style={styles.pendingSectionTitle}>Recent Payments</Text>
+              <Feather name="clock" size={18} color={colors.primary} />
+              <Text style={styles.pendingSectionTitle}>Ongoing Payments</Text>
             </View>
             
             {receiptsLoading ? (
@@ -2438,47 +2445,137 @@ export default function CollectScreen() {
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.emptyPendingText}>Loading...</Text>
               </View>
-            ) : recentReceipts.length === 0 ? (
+            ) : paymentRequests.length === 0 && recentReceipts.length === 0 ? (
               <View style={styles.emptyPending}>
                 <Feather name="inbox" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptyPendingText}>No recent payments</Text>
+                <Text style={styles.emptyPendingText}>No ongoing payments</Text>
               </View>
             ) : (
-              recentReceipts.slice(0, 5).map((receipt, index) => {
-                const receiptAmount = typeof receipt.amount === 'string' ? parseFloat(receipt.amount) : (receipt.amount || 0);
-                const receiptDate = receipt.createdAt ? format(parseISO(receipt.createdAt), 'MMM d, yyyy') : 'Unknown date';
-                const client = receipt.clientId ? clients.find(c => c.id === receipt.clientId) : null;
-                const clientName = client?.name || 'Walk-in Customer';
-                const paymentMethod = getPaymentMethodLabel(receipt.paymentMethod || 'other');
+              <>
+                {/* Pending Payment Requests (QR codes & Payment Links) */}
+                {paymentRequests
+                  .filter(req => req.status === 'pending')
+                  .slice(0, 5)
+                  .map((request, index) => {
+                    const requestAmount = typeof request.amount === 'string' ? parseFloat(request.amount) : (request.amount || 0);
+                    const requestDate = request.createdAt ? format(parseISO(request.createdAt), 'MMM d') : '';
+                    const client = request.clientId ? clients.find(c => c.id === request.clientId) : null;
+                    const clientName = client?.name || 'Customer';
+                    const isQR = !!request.qrCodeUrl;
+                    
+                    return (
+                      <View
+                        key={`req-${request.id || index}`}
+                        style={styles.recentPaymentItem}
+                      >
+                        <View style={styles.recentPaymentLeft}>
+                          <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.warningLight }]}>
+                            <Feather 
+                              name={isQR ? 'grid' : 'link'} 
+                              size={18} 
+                              color={colors.warning} 
+                            />
+                          </View>
+                          <View style={styles.recentPaymentContent}>
+                            <Text style={styles.recentPaymentClient}>{clientName}</Text>
+                            <Text style={styles.recentPaymentMeta}>
+                              {isQR ? 'QR Code' : 'Payment Link'} • {requestDate}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.recentPaymentAmount, { color: colors.foreground }]}>
+                            {formatCurrency(requestAmount)}
+                          </Text>
+                          <Badge variant="warning" style={{ marginTop: 4 }}>In Progress</Badge>
+                        </View>
+                      </View>
+                    );
+                  })}
                 
-                return (
-                  <TouchableOpacity
-                    key={receipt.id || index}
-                    style={styles.recentPaymentItem}
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-                  >
-                    <View style={styles.recentPaymentLeft}>
-                      <View style={styles.recentPaymentIconContainer}>
-                        <Feather 
-                          name={getPaymentMethodIcon(receipt.paymentMethod || 'other') as any} 
-                          size={18} 
-                          color={colors.success} 
-                        />
+                {/* Completed Payments (Receipts) */}
+                {recentReceipts.slice(0, 5).map((receipt, index) => {
+                  const receiptAmount = typeof receipt.amount === 'string' ? parseFloat(receipt.amount) : (receipt.amount || 0);
+                  const receiptDate = receipt.createdAt ? format(parseISO(receipt.createdAt), 'MMM d') : '';
+                  const client = receipt.clientId ? clients.find(c => c.id === receipt.clientId) : null;
+                  const clientName = client?.name || 'Walk-in Customer';
+                  const paymentMethod = getPaymentMethodLabel(receipt.paymentMethod || 'other');
+                  
+                  return (
+                    <TouchableOpacity
+                      key={`rcpt-${receipt.id || index}`}
+                      style={styles.recentPaymentItem}
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/more/receipt/${receipt.id}`)}
+                    >
+                      <View style={styles.recentPaymentLeft}>
+                        <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.successLight }]}>
+                          <Feather 
+                            name={getPaymentMethodIcon(receipt.paymentMethod || 'other') as any} 
+                            size={18} 
+                            color={colors.success} 
+                          />
+                        </View>
+                        <View style={styles.recentPaymentContent}>
+                          <Text style={styles.recentPaymentClient}>{clientName}</Text>
+                          <Text style={styles.recentPaymentMeta}>
+                            {paymentMethod} • {receiptDate}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={styles.recentPaymentContent}>
-                        <Text style={styles.recentPaymentClient}>{clientName}</Text>
-                        <Text style={styles.recentPaymentMeta}>
-                          {paymentMethod} • {receiptDate}
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.recentPaymentAmount}>
+                          +{formatCurrency(receiptAmount)}
                         </Text>
+                        <Badge variant="success" style={{ marginTop: 4 }}>Paid</Badge>
                       </View>
-                    </View>
-                    <Text style={styles.recentPaymentAmount}>
-                      +{formatCurrency(receiptAmount)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })
+                    </TouchableOpacity>
+                  );
+                })}
+                
+                {/* Expired/Cancelled Payment Requests */}
+                {paymentRequests
+                  .filter(req => req.status === 'expired' || req.status === 'cancelled')
+                  .slice(0, 3)
+                  .map((request, index) => {
+                    const requestAmount = typeof request.amount === 'string' ? parseFloat(request.amount) : (request.amount || 0);
+                    const requestDate = request.createdAt ? format(parseISO(request.createdAt), 'MMM d') : '';
+                    const client = request.clientId ? clients.find(c => c.id === request.clientId) : null;
+                    const clientName = client?.name || 'Customer';
+                    const isQR = !!request.qrCodeUrl;
+                    
+                    return (
+                      <View
+                        key={`exp-${request.id || index}`}
+                        style={[styles.recentPaymentItem, { opacity: 0.6 }]}
+                      >
+                        <View style={styles.recentPaymentLeft}>
+                          <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.mutedForeground + '20' }]}>
+                            <Feather 
+                              name={isQR ? 'grid' : 'link'} 
+                              size={18} 
+                              color={colors.mutedForeground} 
+                            />
+                          </View>
+                          <View style={styles.recentPaymentContent}>
+                            <Text style={[styles.recentPaymentClient, { color: colors.mutedForeground }]}>{clientName}</Text>
+                            <Text style={styles.recentPaymentMeta}>
+                              {isQR ? 'QR Code' : 'Payment Link'} • {requestDate}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.recentPaymentAmount, { color: colors.mutedForeground }]}>
+                            {formatCurrency(requestAmount)}
+                          </Text>
+                          <Badge variant="secondary" style={{ marginTop: 4 }}>
+                            {request.status === 'expired' ? 'Expired' : 'Cancelled'}
+                          </Badge>
+                        </View>
+                      </View>
+                    );
+                  })}
+              </>
             )}
           </View>
 
