@@ -117,12 +117,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: colors.isDark ? colors.muted : colors.card,
     borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     height: 64,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.isDark ? colors.borderLight : colors.border,
   },
   currencySymbol: {
     fontSize: 32,
@@ -138,14 +138,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   descriptionInput: {
     marginTop: spacing.md,
-    backgroundColor: colors.card,
+    backgroundColor: colors.isDark ? colors.muted : colors.card,
     borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
     height: 48,
     color: colors.foreground,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.isDark ? colors.borderLight : colors.border,
   },
   paymentMethodCard: {
     backgroundColor: colors.card,
@@ -305,7 +305,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.isDark ? colors.borderLight : colors.border,
   },
   modalTitle: {
     fontSize: 18,
@@ -391,6 +391,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalFooter: {
     padding: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.isDark ? colors.borderLight : colors.border,
+    backgroundColor: colors.background,
   },
   statsGrid: {
     gap: spacing.md,
@@ -2100,8 +2103,8 @@ export default function CollectScreen() {
                           paddingHorizontal: spacing.sm,
                           borderRadius: radius.lg,
                           borderWidth: 2,
-                          borderColor: recordPaymentMethod === method.id ? colors.primary : colors.border,
-                          backgroundColor: recordPaymentMethod === method.id ? colors.primaryLight : colors.card,
+                          borderColor: recordPaymentMethod === method.id ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
+                          backgroundColor: recordPaymentMethod === method.id ? colors.primaryLight : (colors.isDark ? colors.muted : colors.card),
                           alignItems: 'center',
                           gap: spacing.xs,
                         }}
@@ -2152,8 +2155,8 @@ export default function CollectScreen() {
                         paddingHorizontal: spacing.md,
                         borderRadius: radius.lg,
                         borderWidth: 1,
-                        borderColor: !recordClientId ? colors.primary : colors.border,
-                        backgroundColor: !recordClientId ? colors.primaryLight : colors.card,
+                        borderColor: !recordClientId ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
+                        backgroundColor: !recordClientId ? colors.primaryLight : (colors.isDark ? colors.muted : colors.card),
                         marginRight: spacing.sm,
                       }}
                       activeOpacity={0.7}
@@ -2177,8 +2180,8 @@ export default function CollectScreen() {
                           paddingHorizontal: spacing.md,
                           borderRadius: radius.lg,
                           borderWidth: 1,
-                          borderColor: recordClientId === client.id ? colors.primary : colors.border,
-                          backgroundColor: recordClientId === client.id ? colors.primaryLight : colors.card,
+                          borderColor: recordClientId === client.id ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
+                          backgroundColor: recordClientId === client.id ? colors.primaryLight : (colors.isDark ? colors.muted : colors.card),
                           marginRight: spacing.sm,
                         }}
                         activeOpacity={0.7}
@@ -2209,8 +2212,8 @@ export default function CollectScreen() {
                           paddingHorizontal: spacing.md,
                           borderRadius: radius.lg,
                           borderWidth: 1,
-                          borderColor: !recordInvoiceId ? colors.primary : colors.border,
-                          backgroundColor: !recordInvoiceId ? colors.primaryLight : colors.card,
+                          borderColor: !recordInvoiceId ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
+                          backgroundColor: !recordInvoiceId ? colors.primaryLight : (colors.isDark ? colors.muted : colors.card),
                           marginRight: spacing.sm,
                         }}
                         activeOpacity={0.7}
@@ -2238,8 +2241,8 @@ export default function CollectScreen() {
                               paddingHorizontal: spacing.md,
                               borderRadius: radius.lg,
                               borderWidth: 1,
-                              borderColor: recordInvoiceId === invoice.id ? colors.primary : colors.border,
-                              backgroundColor: recordInvoiceId === invoice.id ? colors.primaryLight : colors.card,
+                              borderColor: recordInvoiceId === invoice.id ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
+                              backgroundColor: recordInvoiceId === invoice.id ? colors.primaryLight : (colors.isDark ? colors.muted : colors.card),
                               marginRight: spacing.sm,
                             }}
                             activeOpacity={0.7}
