@@ -1,10 +1,13 @@
 import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
+import { isIOS, isAndroid, supportsModernBlur, getBlurTint } from '../lib/device';
 
 interface NavItem {
   title: string;
@@ -124,9 +127,13 @@ function NavButton({
 export function BottomNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { triggerScrollToTop } = useScrollToTop();
+
+  // iOS: use blur for "Liquid Glass" effect
+  const useBlur = isIOS && supportsModernBlur();
+  const blurTint = getBlurTint(isDark);
 
   const isActive = (item: NavItem) => {
     // Chat-specific routes should only highlight Chat, not More
@@ -151,6 +158,11 @@ export function BottomNav() {
   };
 
   const handlePress = (item: NavItem) => {
+    // iOS: Add haptic feedback on tab press
+    if (isIOS) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
     if (isActive(item)) {
       // If on a subpage, navigate to main page; if already on main page, scroll to top
       if (isOnMainPage(item)) {
@@ -165,20 +177,38 @@ export function BottomNav() {
 
   const containerStyle = [styles.container, { paddingBottom: Math.max(insets.bottom, 8) }];
 
+  const navContent = (
+    <View style={styles.navBar}>
+      {navItems.map((item) => (
+        <NavButton
+          key={item.title}
+          item={item}
+          active={isActive(item)}
+          onPress={() => handlePress(item)}
+          colors={colors}
+          styles={styles}
+        />
+      ))}
+    </View>
+  );
+
+  // iOS: Use BlurView for translucent tab bar
+  if (useBlur) {
+    return (
+      <BlurView 
+        intensity={80} 
+        tint={blurTint}
+        style={[containerStyle, styles.containerBlur]}
+      >
+        {navContent}
+      </BlurView>
+    );
+  }
+
+  // Android and older iOS: solid background
   return (
     <View style={containerStyle}>
-      <View style={styles.navBar}>
-        {navItems.map((item) => (
-          <NavButton
-            key={item.title}
-            item={item}
-            active={isActive(item)}
-            onPress={() => handlePress(item)}
-            colors={colors}
-            styles={styles}
-          />
-        ))}
-      </View>
+      {navContent}
     </View>
   );
 }
@@ -193,9 +223,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.card,
+    backgroundColor: isAndroid ? colors.card : colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.cardBorder,
+  },
+  containerBlur: {
+    // iOS blur tab bar - transparent background under blur
+    backgroundColor: isIOS ? 'transparent' : colors.card,
+    overflow: 'hidden',
   },
   navBar: {
     flexDirection: 'row',

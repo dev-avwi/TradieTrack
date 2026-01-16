@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,8 +11,7 @@ import { useNotificationsStore } from '../lib/notifications-store';
 import { useUserRole } from '../hooks/use-user-role';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
-
-const isIOS = Platform.OS === 'ios';
+import { isIOS, isAndroid, supportsModernBlur, getBlurTint } from '../lib/device';
 
 interface HeaderProps {
   title?: string;
@@ -238,8 +238,12 @@ export function Header({
     }).start();
   };
 
-  return (
-    <View style={styles.header}>
+  // iOS with blur support - use BlurView for "Liquid Glass" effect
+  const useBlur = isIOS && supportsModernBlur();
+  const blurTint = getBlurTint(isDark);
+
+  const headerContent = (
+    <>
       <View style={styles.headerContent}>
         <View style={styles.leftSection}>
           {showBackButton ? (
@@ -323,14 +327,38 @@ export function Header({
       </View>
       
       <View style={styles.headerBorder} />
+    </>
+  );
+
+  // iOS: Use BlurView for translucent "Liquid Glass" header
+  if (useBlur) {
+    return (
+      <BlurView 
+        intensity={80} 
+        tint={blurTint}
+        style={[styles.header, styles.headerBlur]}
+      >
+        {headerContent}
+      </BlurView>
+    );
+  }
+
+  // Android and older iOS: Use solid background
+  return (
+    <View style={styles.header}>
+      {headerContent}
     </View>
   );
 }
 
 const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.create({
   header: {
-    backgroundColor: colors.background,
+    backgroundColor: isAndroid ? colors.background : colors.background,
     paddingTop: isIOS ? topInset : 0,
+  },
+  headerBlur: {
+    // iOS blur header - slightly transparent background under blur
+    backgroundColor: isIOS ? 'transparent' : colors.background,
   },
   headerContent: {
     flexDirection: 'row',
