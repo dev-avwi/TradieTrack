@@ -19,3 +19,4 @@ export { IOSTextField, IOSToggleRow } from './IOSFormInput';
 // iOS 26 Liquid Glass Components
 // Translucent, floating surfaces with blur effects
 export { GlassSurface } from './GlassSurface';
+export { LiquidGlassScrollView } from './LiquidGlassScrollView';
