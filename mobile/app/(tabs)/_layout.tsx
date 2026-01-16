@@ -1,14 +1,18 @@
 import { Tabs } from 'expo-router';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
 import { isIOS } from '../../src/lib/device';
 import { IOSSystemColors, LiquidGlass, getLiquidGlassColors } from '../../src/lib/ios-design';
+import { useTabBar } from '../../src/contexts/TabBarContext';
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { tabBarAnimatedValue } = useTabBar();
   
   // iOS: Use native tab bar with Liquid Glass effect
   // Android: Hide native tab bar (use custom BottomNav)
@@ -17,6 +21,13 @@ export default function TabLayout() {
   // iOS semantic colors for proper native appearance
   const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
   const glassColors = getLiquidGlassColors(isDark);
+  
+  // Calculate animated tab bar transform for hide-on-scroll
+  const tabBarHeight = LiquidGlass.tabBar.height + LiquidGlass.tabBar.marginBottom + insets.bottom;
+  const tabBarTranslateY = tabBarAnimatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, tabBarHeight + 20],
+  });
   
   return (
     <Tabs
@@ -44,7 +55,7 @@ export default function TabLayout() {
         headerTintColor: isIOS ? IOSSystemColors.systemBlue : undefined,
         headerShadowVisible: false,
         
-        // iOS: Floating Liquid Glass tab bar
+        // iOS: Floating Liquid Glass tab bar with animated hide-on-scroll
         tabBarStyle: useNativeTabBar ? {
           position: 'absolute',
           bottom: LiquidGlass.tabBar.marginBottom,
@@ -60,6 +71,8 @@ export default function TabLayout() {
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.15,
           shadowRadius: 24,
+          // Animated transform for hide-on-scroll
+          transform: [{ translateY: tabBarTranslateY as any }],
         } : { display: 'none' },
         
         // iOS Liquid Glass tab bar background

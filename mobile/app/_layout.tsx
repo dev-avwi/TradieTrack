@@ -22,6 +22,7 @@ import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPan
 import { useOfflineStore } from '../src/lib/offline-storage';
 import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
+import { TabBarProvider } from '../src/contexts/TabBarContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { isTablet, isIOS, isAndroid } from '../src/lib/device';
@@ -557,11 +558,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ActionSheetProvider>
           <ThemeProvider>
-            <ScrollProvider>
-              <TerminalProvider>
-                <RootLayoutContent />
-              </TerminalProvider>
-            </ScrollProvider>
+            <TabBarProvider>
+              <ScrollProvider>
+                <TerminalProvider>
+                  <RootLayoutContent />
+                </TerminalProvider>
+              </ScrollProvider>
+            </TabBarProvider>
           </ThemeProvider>
         </ActionSheetProvider>
       </SafeAreaProvider>

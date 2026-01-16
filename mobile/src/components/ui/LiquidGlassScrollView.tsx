@@ -6,25 +6,30 @@
  * - Content extends behind tab bar and headers (no clipping)
  * - Glass surfaces refract the scrolling content
  * - Transparent backgrounds let the shared background layer show through
+ * - Tab bar minimizes on scroll down, expands on scroll up
  * 
  * Features:
  * - Automatic content insets for floating tab bar
  * - Header insets for transparent navigation
  * - Content extends behind floating glass controls
  * - Optional integrated background gradient
+ * - Tab bar hide-on-scroll behavior (iOS 26)
  */
-import { ReactNode, forwardRef } from 'react';
+import { ReactNode, forwardRef, useCallback, useRef } from 'react';
 import { 
   ScrollView, 
   ScrollViewProps, 
   StyleSheet, 
   View,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
 import { isIOS } from '../../lib/device';
 import { LiquidGlass, IOSSystemColors } from '../../lib/ios-design';
+import { useTabBar } from '../../contexts/TabBarContext';
 
 interface LiquidGlassScrollViewProps extends ScrollViewProps {
   children: ReactNode;
@@ -44,6 +49,8 @@ interface LiquidGlassScrollViewProps extends ScrollViewProps {
   backgroundVariant?: 'default' | 'mesh';
   /** Use native iOS large title behavior (no manual top padding) */
   nativeLargeTitle?: boolean;
+  /** Enable tab bar hide on scroll (iOS 26 behavior) */
+  hidesTabBarOnScroll?: boolean;
 }
 
 export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollViewProps>(
@@ -58,9 +65,10 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
       showBackground = false,
       backgroundVariant = 'default',
       nativeLargeTitle = true,
+      hidesTabBarOnScroll = true,
       style,
       contentContainerStyle,
-      onScroll,
+      onScroll: externalOnScroll,
       scrollEventThrottle = 16,
       ...props
     },
@@ -68,6 +76,7 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
   ) {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { onScroll: tabBarOnScroll, onScrollBegin } = useTabBar();
     
     const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
     
@@ -102,6 +111,26 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
     
     const contentInsets = getContentInsets();
     
+    // Handle scroll events for tab bar hide/show
+    const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Call external scroll handler if provided
+      if (externalOnScroll) {
+        externalOnScroll(event);
+      }
+      
+      // Update tab bar visibility based on scroll
+      if (isIOS && hidesTabBarOnScroll) {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        tabBarOnScroll(offsetY);
+      }
+    }, [externalOnScroll, hidesTabBarOnScroll, tabBarOnScroll]);
+    
+    const handleScrollBeginDrag = useCallback(() => {
+      if (isIOS && hidesTabBarOnScroll) {
+        onScrollBegin();
+      }
+    }, [hidesTabBarOnScroll, onScrollBegin]);
+    
     const scrollViewContent = (
       <ScrollView
         ref={ref}
@@ -121,7 +150,8 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
           },
           contentContainerStyle,
         ]}
-        onScroll={onScroll}
+        onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
         scrollEventThrottle={scrollEventThrottle}
         // iOS-specific settings for native large title collapsing behavior
         contentInsetAdjustmentBehavior={isIOS ? 'automatic' : undefined}
