@@ -14,7 +14,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useUserRole, type UserRoleType } from '../../src/hooks/use-user-role';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 import { 
   getMorePageItemsByCategory, 
   categoryLabels, 

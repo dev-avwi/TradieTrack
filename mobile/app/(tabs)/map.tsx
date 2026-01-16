@@ -59,7 +59,7 @@ import { api } from '../../src/lib/api';
 import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 
 // Real-time polling interval for team locations (10 seconds)
 const LOCATION_POLL_INTERVAL = 10000;

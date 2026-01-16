@@ -71,11 +71,12 @@ export function Button({
             borderWidth: 1,
           };
         case 'secondary':
+          // Use soft card-like style for iOS - matches grouped list appearance
           return {
-            ...iosButtonStyle.gray,
+            ...iosButtonStyle.soft,
             backgroundColor: pressed
-              ? (isDark ? 'rgba(120, 120, 128, 0.4)' : 'rgba(120, 120, 128, 0.25)')
-              : iosButtonStyle.gray.backgroundColor,
+              ? (isDark ? 'rgba(44, 44, 46, 0.9)' : 'rgba(240, 240, 244, 1)')
+              : iosButtonStyle.soft.backgroundColor,
             overlayColor: 'transparent',
             borderWidth: 0,
             borderColor: 'transparent',

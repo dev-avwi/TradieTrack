@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../src/lib/theme';
 import { isIOS } from '../../src/lib/device';
+import { IOSSystemColors } from '../../src/lib/ios-design';
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
@@ -12,6 +13,9 @@ export default function TabLayout() {
   // iOS: Use native tab bar with blur effect
   // Android: Hide native tab bar (use custom BottomNav)
   const useNativeTabBar = isIOS;
+  
+  // iOS semantic colors for proper native appearance
+  const iosColors = isDark ? IOSSystemColors.dark : IOSSystemColors.light;
   
   return (
     <Tabs
@@ -23,10 +27,13 @@ export default function TabLayout() {
         headerStyle: isIOS ? {
           backgroundColor: 'transparent',
         } : undefined,
+        // iOS native header title styling
         headerTitleStyle: isIOS ? {
           fontWeight: '600',
           fontSize: 17,
+          color: iosColors.label,
         } : undefined,
+        headerTintColor: isIOS ? IOSSystemColors.systemBlue : undefined,
         headerShadowVisible: false,
         
         // iOS: Show native tab bar, Android: hide (custom BottomNav)
@@ -40,7 +47,7 @@ export default function TabLayout() {
         // iOS native tab bar styling
         tabBarBackground: useNativeTabBar ? () => (
           <BlurView
-            intensity={50}
+            intensity={60}
             tint={isDark ? 'dark' : 'light'}
             style={{
               position: 'absolute',
@@ -52,8 +59,9 @@ export default function TabLayout() {
           />
         ) : undefined,
         
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        // iOS native tab bar colors
+        tabBarActiveTintColor: isIOS ? IOSSystemColors.systemBlue : colors.primary,
+        tabBarInactiveTintColor: isIOS ? iosColors.secondaryLabel : colors.mutedForeground,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '500',
@@ -62,7 +70,7 @@ export default function TabLayout() {
         animation: 'shift',
       }}
       sceneContainerStyle={{
-        backgroundColor: colors.background,
+        backgroundColor: isIOS ? iosColors.systemGroupedBackground : colors.background,
       }}
       screenListeners={{
         tabPress: () => {

@@ -38,7 +38,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';

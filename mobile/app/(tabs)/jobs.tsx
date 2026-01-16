@@ -23,7 +23,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
-import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');

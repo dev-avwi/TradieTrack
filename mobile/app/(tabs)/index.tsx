@@ -27,7 +27,7 @@ import { NotificationBell, NotificationsPanel } from '../../src/components/Notif
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ 

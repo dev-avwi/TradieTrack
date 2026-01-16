@@ -270,6 +270,8 @@ export interface IOSButtonStyle {
   gray: ViewStyle & { textColor: string };
   plain: ViewStyle & { textColor: string };
   destructive: ViewStyle & { textColor: string };
+  // Card-like button style - matches grouped list item appearance
+  soft: ViewStyle & { textColor: string };
 }
 
 export function getIOSButtonStyle(isDark: boolean): IOSButtonStyle {
@@ -299,6 +301,14 @@ export function getIOSButtonStyle(isDark: boolean): IOSButtonStyle {
       borderRadius: IOSCorners.button,
       borderWidth: 0,
       textColor: IOSSystemColors.systemBlue,
+    },
+    // Card-like soft button - white/dark background that matches list items
+    soft: {
+      backgroundColor: colors.secondarySystemGroupedBackground,
+      borderRadius: IOSCorners.button,
+      borderWidth: 0,
+      textColor: IOSSystemColors.systemBlue,
+      ...IOSShadows.subtle,
     },
     destructive: {
       backgroundColor: IOSSystemColors.systemRed,

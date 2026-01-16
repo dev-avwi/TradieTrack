@@ -18,7 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { isIOS } from '../../src/lib/device';
-import { useIOSStyles, IOSTypography, IOSCorners, IOSShadows } from '../../src/lib/ios-design';
+import { useIOSStyles, IOSCorners, IOSShadows } from '../../src/lib/ios-design';
 import { api } from '../../src/lib/api';
 import { format, isAfter, isBefore, subDays, differenceInDays } from 'date-fns';
 import { XeroRibbon } from '../../src/components/XeroRibbon';
