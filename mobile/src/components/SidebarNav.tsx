@@ -128,14 +128,14 @@ export function SidebarNav() {
       {/* Safe area spacer */}
       <View style={{ height: insets.top + 8, backgroundColor: colors.background }} />
       
-      {/* Sidebar Header with Logo + Business Name */}
+      {/* Sidebar Header with Logo + Business Name - navigates to profile */}
       <Pressable 
         style={({ pressed }) => [
           themedStyles.headerSection,
           pressed && { opacity: 0.8 }
         ]}
-        onPress={() => router.push('/more/settings' as any)}
-        data-testid="sidebar-header-settings"
+        onPress={() => router.push('/more/profile-edit' as any)}
+        data-testid="sidebar-header-profile"
       >
         <View style={themedStyles.headerRow}>
           {/* Logo or Initials */}
@@ -152,15 +152,17 @@ export function SidebarNav() {
           <View style={themedStyles.headerTextContainer}>
             <Text 
               style={themedStyles.businessName} 
-              numberOfLines={1} 
+              numberOfLines={2} 
               ellipsizeMode="tail"
             >
               {businessName || 'TradieTrack'}
             </Text>
             <Text style={themedStyles.businessTagline}>
-              My Account
+              Profile Settings
             </Text>
           </View>
+          {/* Chevron indicator */}
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </View>
       </Pressable>
 
@@ -284,51 +286,54 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexShrink: 0,
   },
   headerSection: {
-    marginHorizontal: 12,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    marginHorizontal: 10,
+    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    flexShrink: 0,
   },
   logo: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
   },
   logoText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   headerTextContainer: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   businessName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 19,
     color: colors.foreground,
   },
   businessTagline: {
-    fontSize: 12,
-    marginTop: 1,
-    lineHeight: 16,
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 14,
     color: colors.mutedForeground,
   },
   scrollView: {
