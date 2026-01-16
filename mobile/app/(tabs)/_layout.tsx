@@ -19,7 +19,7 @@ export default function TabLayout() {
         // iOS: Show native header with blur, Android: hide
         headerShown: isIOS,
         headerTransparent: isIOS,
-        headerBlurEffect: isIOS ? (isDark ? 'dark' : 'light') : undefined,
+        headerBlurEffect: isIOS ? (isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight') : undefined,
         headerStyle: isIOS ? {
           backgroundColor: 'transparent',
         } : undefined,
