@@ -2627,6 +2627,31 @@ export const BUSINESS_TEMPLATE_PURPOSES = [
 ] as const;
 export type BusinessTemplatePurpose = typeof BUSINESS_TEMPLATE_PURPOSES[number];
 
+// Trade types supported for template filtering
+export const TRADE_TYPES = [
+  'general',
+  'plumbing',
+  'electrical',
+  'carpentry',
+  'painting',
+  'roofing',
+  'landscaping',
+  'hvac',
+  'building',
+  'cleaning',
+  'pest_control',
+  'security',
+  'flooring',
+  'tiling',
+  'fencing',
+  'concreting',
+  'demolition',
+  'renovation',
+  'handyman',
+  'other',
+] as const;
+export type TradeType = typeof TRADE_TYPES[number];
+
 // Business Templates - Unified template system for Templates Hub
 // Supports multiple template families: terms_conditions, warranty, email, sms, safety_form, checklist, payment_notice
 export const businessTemplates = pgTable("business_templates", {
@@ -2634,6 +2659,7 @@ export const businessTemplates = pgTable("business_templates", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   family: text("family").notNull(), // 'terms_conditions', 'warranty', 'email', 'sms', 'safety_form', 'checklist', 'payment_notice'
   purpose: text("purpose").default('general'), // When this template is used (quote_sent, invoice_sent, etc.)
+  tradeType: text("trade_type").default('general').notNull(), // Trade-specific templates: 'plumbing', 'electrical', etc. 'general' = all trades
   name: text("name").notNull(),
   description: text("description"),
   isDefault: boolean("is_default").default(false), // System-provided default template

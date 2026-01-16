@@ -2335,77 +2335,7 @@ export default function CollectScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.amountSection}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-              <Text style={styles.sectionLabel}>Payment Amount</Text>
-              {selectedInvoice && (
-                <TouchableOpacity 
-                  onPress={clearInvoiceSelection}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-                  <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>Clear</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {selectedInvoice && (
-              <View style={{
-                backgroundColor: colors.primaryLight,
-                borderRadius: radius.lg,
-                padding: spacing.md,
-                marginBottom: spacing.md,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.sm,
-                borderWidth: 1,
-                borderColor: colors.promoBorder,
-              }}>
-                <Feather name="file-text" size={18} color={colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
-                    {selectedInvoice.invoiceNumber}
-                  </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                    {selectedInvoice.clientName} • Due: {formatCurrency(selectedInvoice.amountDue)}
-                  </Text>
-                </View>
-                <Badge variant="success">Invoice</Badge>
-              </View>
-            )}
-            
-            <View style={styles.amountInputContainer}>
-              <Text style={styles.currencySymbol}>$</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="0.00"
-                placeholderTextColor={colors.mutedForeground}
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="Description (optional)"
-              placeholderTextColor={colors.mutedForeground}
-              value={description}
-              onChangeText={setDescription}
-            />
-          </View>
-
           <Text style={styles.sectionLabel}>Payment Methods</Text>
-
-          <PaymentMethodCard
-            icon={<Feather name="dollar-sign" size={24} color={colors.success} />}
-            title="Record Payment"
-            description="Cash, EFTPOS, or bank transfer already received"
-            badge="No Fees"
-            badgeVariant="success"
-            onPress={handleOpenRecordPayment}
-            colors={colors}
-          />
 
           {/* Apple Requirement 5.5: Use SF Symbol wave.3.right.circle for Tap to Pay
               In native builds, replace Feather 'radio' with actual SF Symbol via react-native-sfsymbols
@@ -2441,6 +2371,16 @@ export default function CollectScreen() {
             colors={colors}
           />
 
+          <PaymentMethodCard
+            icon={<Feather name="dollar-sign" size={24} color={colors.success} />}
+            title="Record Payment"
+            description="Cash, EFTPOS, or bank transfer already received"
+            badge="No Fees"
+            badgeVariant="success"
+            onPress={handleOpenRecordPayment}
+            colors={colors}
+          />
+
           {/* Ongoing Payments Section - Shows pending requests + completed payments */}
           <View style={styles.recentPaymentsSection}>
             <View style={styles.pendingSectionHeader}>
@@ -2472,9 +2412,22 @@ export default function CollectScreen() {
                     const isQR = !!request.qrCodeUrl;
                     
                     return (
-                      <View
+                      <TouchableOpacity
                         key={`req-${request.id || index}`}
                         style={styles.recentPaymentItem}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const paymentUrl = request.paymentUrl || request.qrCodeUrl;
+                          Alert.alert(
+                            isQR ? 'QR Code Payment' : 'Payment Link',
+                            `${clientName}\n${formatCurrency(requestAmount)}\n\nStatus: Pending`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              paymentUrl ? { text: 'Share Link', onPress: () => Share.share({ message: paymentUrl }) } : null,
+                              paymentUrl ? { text: 'Copy Link', onPress: () => Clipboard.setStringAsync(paymentUrl) } : null,
+                            ].filter(Boolean) as any
+                          );
+                        }}
                       >
                         <View style={styles.recentPaymentLeft}>
                           <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.warningLight }]}>
@@ -2497,7 +2450,7 @@ export default function CollectScreen() {
                           </Text>
                           <Badge variant="warning" style={{ marginTop: 4 }}>In Progress</Badge>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 
@@ -2513,9 +2466,17 @@ export default function CollectScreen() {
                     const isQR = !!request.qrCodeUrl;
                     
                     return (
-                      <View
+                      <TouchableOpacity
                         key={`paid-${request.id || index}`}
                         style={styles.recentPaymentItem}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          Alert.alert(
+                            'Payment Complete',
+                            `${clientName}\n${formatCurrency(requestAmount)}\n\nPaid via ${isQR ? 'QR Code' : 'Payment Link'}${requestDate ? ` on ${requestDate}` : ''}`,
+                            [{ text: 'OK' }]
+                          );
+                        }}
                       >
                         <View style={styles.recentPaymentLeft}>
                           <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.successLight }]}>
@@ -2538,7 +2499,7 @@ export default function CollectScreen() {
                           </Text>
                           <Badge variant="success" style={{ marginTop: 4 }}>Paid</Badge>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
 
@@ -2594,9 +2555,17 @@ export default function CollectScreen() {
                     const isQR = !!request.qrCodeUrl;
                     
                     return (
-                      <View
+                      <TouchableOpacity
                         key={`exp-${request.id || index}`}
                         style={[styles.recentPaymentItem, { opacity: 0.6 }]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          Alert.alert(
+                            request.status === 'expired' ? 'Payment Expired' : 'Payment Cancelled',
+                            `${clientName}\n${formatCurrency(requestAmount)}\n\n${isQR ? 'QR Code' : 'Payment Link'} ${request.status === 'expired' ? 'expired' : 'was cancelled'}${requestDate ? ` on ${requestDate}` : ''}`,
+                            [{ text: 'OK' }]
+                          );
+                        }}
                       >
                         <View style={styles.recentPaymentLeft}>
                           <View style={[styles.recentPaymentIconContainer, { backgroundColor: colors.mutedForeground + '20' }]}>
@@ -2621,7 +2590,7 @@ export default function CollectScreen() {
                             {request.status === 'expired' ? 'Expired' : 'Cancelled'}
                           </Badge>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
               </>

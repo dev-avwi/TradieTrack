@@ -12972,15 +12972,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Templates API (unified Templates Hub)
-  // GET /api/business-templates - List all templates (optionally filter by family)
+  // GET /api/business-templates - List all templates (optionally filter by family and tradeType)
+  // If no tradeType query param, uses user's tradeType with fallback to 'general'
   app.get("/api/business-templates", requireAuth, async (req: any, res) => {
     try {
       const family = req.query.family as string | undefined;
+      const tradeTypeParam = req.query.tradeType as string | undefined;
+      
       // Validate family if provided
       if (family && !BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
         return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
       }
-      const templates = await storage.getBusinessTemplates(req.userId, family);
+      
+      // If tradeType not specified, get user's tradeType from their profile
+      let tradeType = tradeTypeParam;
+      if (!tradeType) {
+        const user = await storage.getUser(req.userId);
+        tradeType = user?.tradeType || 'general';
+      }
+      
+      // Use fallback method to get templates: specific tradeType first, then 'general'
+      const templates = await storage.getBusinessTemplatesWithFallback(req.userId, tradeType, family);
       res.json(templates);
     } catch (error) {
       console.error('Error fetching business templates:', error);
@@ -12988,15 +13000,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/business-templates/active/:family - Get active template for a family
+  // GET /api/business-templates/active/:family - Get active template for a family (trade-type aware)
   app.get("/api/business-templates/active/:family", requireAuth, async (req: any, res) => {
     try {
       const { family } = req.params;
+      const tradeTypeParam = req.query.tradeType as string | undefined;
+      
       // Validate family
       if (!BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
         return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
       }
-      const template = await storage.getActiveBusinessTemplate(req.userId, family);
+      
+      // Get user's tradeType if not specified
+      let tradeType = tradeTypeParam;
+      if (!tradeType) {
+        const user = await storage.getUser(req.userId);
+        tradeType = user?.tradeType || 'general';
+      }
+      
+      const template = await storage.getActiveBusinessTemplate(req.userId, family, tradeType);
       if (!template) {
         return res.status(404).json({ error: 'No active template found for this family' });
       }
@@ -13007,15 +13029,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/business-templates/by-purpose/:family/:purpose - Get active template for family+purpose
+  // GET /api/business-templates/by-purpose/:family/:purpose - Get active template for family+purpose (trade-type aware)
   app.get("/api/business-templates/by-purpose/:family/:purpose", requireAuth, async (req: any, res) => {
     try {
       const { family, purpose } = req.params;
+      const tradeTypeParam = req.query.tradeType as string | undefined;
+      
       // Validate family
       if (!BUSINESS_TEMPLATE_FAMILIES.includes(family as any)) {
         return res.status(400).json({ error: `Invalid family. Must be one of: ${BUSINESS_TEMPLATE_FAMILIES.join(', ')}` });
       }
-      const template = await storage.getActiveBusinessTemplateByPurpose(req.userId, family, purpose);
+      
+      // Get user's tradeType if not specified
+      let tradeType = tradeTypeParam;
+      if (!tradeType) {
+        const user = await storage.getUser(req.userId);
+        tradeType = user?.tradeType || 'general';
+      }
+      
+      const template = await storage.getActiveBusinessTemplateByPurpose(req.userId, family, purpose, tradeType);
       if (!template) {
         return res.status(404).json({ error: 'No active template found for this family and purpose' });
       }
@@ -13630,6 +13662,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOvertime: data.isOvertime || false,
         hourlyRate: data.hourlyRate || '85.00', // Ensure string format for decimal
       } as InsertTimeEntry & { userId: string });
+      
+      // Auto-update job status from "scheduled" to "in_progress" when timer starts
+      if (data.jobId) {
+        const job = await storage.getJob(data.jobId, userId);
+        if (job && job.status === 'scheduled') {
+          await storage.updateJob(data.jobId, userId, {
+            status: 'in_progress',
+            startedAt: new Date(),
+          });
+        }
+      }
       
       res.status(201).json(timeEntry);
     } catch (error) {

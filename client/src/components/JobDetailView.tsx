@@ -257,8 +257,17 @@ export default function JobDetailView({
     enabled: !!jobId,
   });
 
+  // Time entry interface for calculating actual hours
+  interface TimeEntryForCosting {
+    id: string;
+    startTime: string;
+    endTime?: string;
+    isBreak?: boolean;
+    hourlyRate?: number;
+  }
+
   // Fetch time entries for this job - only for active jobs where time tracking applies
-  const { data: timeEntries = [] } = useQuery<{ id: string; endTime?: string }[]>({
+  const { data: timeEntries = [] } = useQuery<TimeEntryForCosting[]>({
     queryKey: ['/api/time-entries', { jobId }],
     queryFn: async () => {
       const res = await fetch(`/api/time-entries?jobId=${jobId}`, { credentials: 'include' });
@@ -267,6 +276,36 @@ export default function JobDetailView({
     },
     enabled: !!jobId,
   });
+
+  // Calculate actual hours from completed time entries (excluding breaks)
+  const actualHoursData = (() => {
+    const completedWorkEntries = timeEntries.filter(
+      (entry) => entry.endTime && !entry.isBreak
+    );
+    
+    const totalMinutes = completedWorkEntries.reduce((total, entry) => {
+      const start = new Date(entry.startTime).getTime();
+      const end = new Date(entry.endTime!).getTime();
+      return total + Math.floor((end - start) / 60000);
+    }, 0);
+    
+    const actualHours = totalMinutes / 60;
+    
+    // Get average hourly rate from entries that have it set
+    const entriesWithRate = completedWorkEntries.filter(e => e.hourlyRate && e.hourlyRate > 0);
+    const avgHourlyRate = entriesWithRate.length > 0
+      ? entriesWithRate.reduce((sum, e) => sum + (e.hourlyRate || 0), 0) / entriesWithRate.length
+      : 0;
+    
+    const laborCost = actualHours * avgHourlyRate;
+    
+    return {
+      actualHours: Math.round(actualHours * 100) / 100,
+      laborCost: Math.round(laborCost * 100) / 100,
+      hasData: completedWorkEntries.length > 0,
+      hourlyRate: avgHourlyRate,
+    };
+  })();
 
   // Fetch voice notes - enable for all job statuses to support team sync
   const { data: voiceNotes = [] } = useQuery<{ id: string }[]>({
@@ -1288,10 +1327,48 @@ export default function JobDetailView({
               </div>
             )}
 
-            {job.estimatedHours && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Estimated Hours</p>
-                <p className="text-sm">{job.estimatedHours} hours</p>
+            {/* Job Costing Section - Shows estimated vs actual hours */}
+            {(job.estimatedHours || actualHoursData.hasData) && (
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
+                  <DollarSign className="h-3 w-3" />
+                  Job Costing
+                </div>
+                <div className="space-y-2">
+                  {job.estimatedHours && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Estimated</span>
+                      <span className="text-sm font-medium">{job.estimatedHours} hrs</span>
+                    </div>
+                  )}
+                  {actualHoursData.hasData && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Actual</span>
+                      <span className="text-sm font-medium">{actualHoursData.actualHours} hrs</span>
+                    </div>
+                  )}
+                  {job.estimatedHours && actualHoursData.hasData && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Variance</span>
+                      {(() => {
+                        const variance = actualHoursData.actualHours - job.estimatedHours;
+                        const isOver = variance > 0;
+                        const isUnder = variance < 0;
+                        return (
+                          <span className={`text-sm font-medium ${isOver ? 'text-red-600 dark:text-red-400' : isUnder ? 'text-green-600 dark:text-green-400' : ''}`}>
+                            {isOver ? '+' : ''}{variance.toFixed(2)} hrs
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {actualHoursData.hasData && actualHoursData.laborCost > 0 && (
+                    <div className="flex items-center justify-between pt-1 border-t">
+                      <span className="text-sm text-muted-foreground">Labor Cost</span>
+                      <span className="text-sm font-medium">${actualHoursData.laborCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

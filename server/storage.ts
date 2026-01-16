@@ -652,10 +652,11 @@ export interface IStorage {
   ensureDefaultTemplates(userId: string): Promise<void>;
 
   // Business Templates (unified Templates Hub)
-  getBusinessTemplates(userId: string, family?: string): Promise<BusinessTemplate[]>;
+  getBusinessTemplates(userId: string, family?: string, tradeType?: string): Promise<BusinessTemplate[]>;
+  getBusinessTemplatesWithFallback(userId: string, tradeType: string, family?: string): Promise<BusinessTemplate[]>;
   getBusinessTemplate(id: string, userId: string): Promise<BusinessTemplate | undefined>;
-  getActiveBusinessTemplate(userId: string, family: string): Promise<BusinessTemplate | undefined>;
-  getActiveBusinessTemplateByPurpose(userId: string, family: string, purpose: string): Promise<BusinessTemplate | null>;
+  getActiveBusinessTemplate(userId: string, family: string, tradeType?: string): Promise<BusinessTemplate | undefined>;
+  getActiveBusinessTemplateByPurpose(userId: string, family: string, purpose: string, tradeType?: string): Promise<BusinessTemplate | null>;
   createBusinessTemplate(data: InsertBusinessTemplate): Promise<BusinessTemplate>;
   updateBusinessTemplate(id: string, userId: string, data: Partial<InsertBusinessTemplate>): Promise<BusinessTemplate | undefined>;
   deleteBusinessTemplate(id: string, userId: string): Promise<boolean>;
@@ -4869,18 +4870,37 @@ export class PostgresStorage implements IStorage {
   }
 
   // Business Templates (unified Templates Hub)
-  async getBusinessTemplates(userId: string, family?: string): Promise<BusinessTemplate[]> {
+  async getBusinessTemplates(userId: string, family?: string, tradeType?: string): Promise<BusinessTemplate[]> {
+    const conditions = [eq(businessTemplates.userId, userId)];
+    
     if (family) {
-      return await db.select().from(businessTemplates)
-        .where(and(
-          eq(businessTemplates.userId, userId),
-          eq(businessTemplates.family, family)
-        ))
-        .orderBy(desc(businessTemplates.isActive), asc(businessTemplates.name));
+      conditions.push(eq(businessTemplates.family, family));
     }
+    
+    if (tradeType) {
+      conditions.push(eq(businessTemplates.tradeType, tradeType));
+    }
+    
     return await db.select().from(businessTemplates)
-      .where(eq(businessTemplates.userId, userId))
+      .where(and(...conditions))
       .orderBy(businessTemplates.family, desc(businessTemplates.isActive), asc(businessTemplates.name));
+  }
+
+  async getBusinessTemplatesWithFallback(userId: string, tradeType: string, family?: string): Promise<BusinessTemplate[]> {
+    // First try to get templates for the specific trade type
+    let templates = await this.getBusinessTemplates(userId, family, tradeType);
+    
+    // If no trade-specific templates found and tradeType is not 'general', fall back to 'general'
+    if (templates.length === 0 && tradeType !== 'general') {
+      templates = await this.getBusinessTemplates(userId, family, 'general');
+    }
+    
+    // If still no templates, get all templates for this user (backward compatibility)
+    if (templates.length === 0) {
+      templates = await this.getBusinessTemplates(userId, family);
+    }
+    
+    return templates;
   }
 
   async getBusinessTemplate(id: string, userId: string): Promise<BusinessTemplate | undefined> {
@@ -4893,7 +4913,36 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async getActiveBusinessTemplate(userId: string, family: string): Promise<BusinessTemplate | undefined> {
+  async getActiveBusinessTemplate(userId: string, family: string, tradeType?: string): Promise<BusinessTemplate | undefined> {
+    // If tradeType is provided, try to find a template for that trade type first
+    if (tradeType) {
+      const result = await db.select().from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userId),
+          eq(businessTemplates.family, family),
+          eq(businessTemplates.tradeType, tradeType),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      
+      if (result[0]) return result[0];
+      
+      // Fallback to 'general' trade type if no trade-specific template found
+      if (tradeType !== 'general') {
+        const fallbackResult = await db.select().from(businessTemplates)
+          .where(and(
+            eq(businessTemplates.userId, userId),
+            eq(businessTemplates.family, family),
+            eq(businessTemplates.tradeType, 'general'),
+            eq(businessTemplates.isActive, true)
+          ))
+          .limit(1);
+        
+        if (fallbackResult[0]) return fallbackResult[0];
+      }
+    }
+    
+    // Fallback: get any active template for this family (backward compatibility)
     const result = await db.select().from(businessTemplates)
       .where(and(
         eq(businessTemplates.userId, userId),
@@ -4959,7 +5008,40 @@ export class PostgresStorage implements IStorage {
       ));
   }
 
-  async getActiveBusinessTemplateByPurpose(userId: string, family: string, purpose: string): Promise<BusinessTemplate | null> {
+  async getActiveBusinessTemplateByPurpose(userId: string, family: string, purpose: string, tradeType?: string): Promise<BusinessTemplate | null> {
+    // If tradeType is provided, try to find a template for that trade type first
+    if (tradeType) {
+      const [template] = await db.select()
+        .from(businessTemplates)
+        .where(and(
+          eq(businessTemplates.userId, userId),
+          eq(businessTemplates.family, family),
+          eq(businessTemplates.purpose, purpose),
+          eq(businessTemplates.tradeType, tradeType),
+          eq(businessTemplates.isActive, true)
+        ))
+        .limit(1);
+      
+      if (template) return template;
+      
+      // Fallback to 'general' trade type if no trade-specific template found
+      if (tradeType !== 'general') {
+        const [fallbackTemplate] = await db.select()
+          .from(businessTemplates)
+          .where(and(
+            eq(businessTemplates.userId, userId),
+            eq(businessTemplates.family, family),
+            eq(businessTemplates.purpose, purpose),
+            eq(businessTemplates.tradeType, 'general'),
+            eq(businessTemplates.isActive, true)
+          ))
+          .limit(1);
+        
+        if (fallbackTemplate) return fallbackTemplate;
+      }
+    }
+    
+    // Fallback: get any active template for this family+purpose (backward compatibility)
     const [template] = await db.select()
       .from(businessTemplates)
       .where(and(

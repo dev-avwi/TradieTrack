@@ -2,11 +2,42 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from '../lib/store';
 import { api } from '../lib/api';
 
+export type TradeType = 'general' | 'plumbing' | 'electrical' | 'carpentry' | 'painting' | 'landscaping' | 'roofing' | 'hvac' | 'tiling' | 'flooring' | 'fencing' | 'concreting' | 'demolition' | 'excavation' | 'building' | 'renovation' | 'handyman' | 'cleaning' | 'pest_control' | 'pool_maintenance' | 'solar' | 'security' | 'other';
+
+export const TRADE_TYPES: TradeType[] = ['general', 'plumbing', 'electrical', 'carpentry', 'painting', 'landscaping', 'roofing', 'hvac', 'tiling', 'flooring', 'fencing', 'concreting', 'demolition', 'excavation', 'building', 'renovation', 'handyman', 'cleaning', 'pest_control', 'pool_maintenance', 'solar', 'security', 'other'];
+
+export const TRADE_TYPE_LABELS: Record<TradeType, string> = {
+  general: 'General',
+  plumbing: 'Plumbing',
+  electrical: 'Electrical',
+  carpentry: 'Carpentry',
+  painting: 'Painting',
+  landscaping: 'Landscaping',
+  roofing: 'Roofing',
+  hvac: 'HVAC',
+  tiling: 'Tiling',
+  flooring: 'Flooring',
+  fencing: 'Fencing',
+  concreting: 'Concreting',
+  demolition: 'Demolition',
+  excavation: 'Excavation',
+  building: 'Building',
+  renovation: 'Renovation',
+  handyman: 'Handyman',
+  cleaning: 'Cleaning',
+  pest_control: 'Pest Control',
+  pool_maintenance: 'Pool Maintenance',
+  solar: 'Solar',
+  security: 'Security',
+  other: 'Other',
+};
+
 export interface BusinessTemplate {
   id: string;
   userId: string;
   family: 'email' | 'sms' | 'terms_conditions' | 'warranty' | 'safety_form' | 'checklist' | 'payment_notice';
   purpose: string;
+  tradeType: TradeType;
   name: string;
   description: string | null;
   content: string;

@@ -20,7 +20,8 @@ import {
   Briefcase,
   MapPin,
   CheckCircle2,
-  Timer
+  Timer,
+  Coffee
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -90,9 +91,9 @@ export function TimerWidget({
     .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
   : [];
 
-  // Calculate TOTAL time for this job (all time, not just today)
-  const totalMinutesAllTime = jobId ? (allTimeEntries as TimeEntry[])
-    .filter((entry: TimeEntry) => entry.jobId === jobId && entry.endTime)
+  // Calculate TOTAL work time for this job (all time, excluding breaks)
+  const totalWorkMinutesAllTime = jobId ? (allTimeEntries as TimeEntry[])
+    .filter((entry: TimeEntry) => entry.jobId === jobId && entry.endTime && !entry.isBreak)
     .reduce((total: number, entry: TimeEntry) => {
       const start = new Date(entry.startTime).getTime();
       const end = new Date(entry.endTime!).getTime();
@@ -100,21 +101,51 @@ export function TimerWidget({
     }, 0)
   : 0;
 
-  // Calculate total time today for this job
-  const totalMinutesToday = todaysJobEntries.reduce((total: number, entry: TimeEntry) => {
-    if (entry.endTime) {
+  // Calculate TOTAL break time for this job (all time)
+  const totalBreakMinutesAllTime = jobId ? (allTimeEntries as TimeEntry[])
+    .filter((entry: TimeEntry) => entry.jobId === jobId && entry.endTime && entry.isBreak)
+    .reduce((total: number, entry: TimeEntry) => {
       const start = new Date(entry.startTime).getTime();
-      const end = new Date(entry.endTime).getTime();
+      const end = new Date(entry.endTime!).getTime();
       return total + Math.floor((end - start) / 60000);
-    }
-    return total;
-  }, 0);
+    }, 0)
+  : 0;
+
+  // Calculate work time today for this job (excluding breaks)
+  const workMinutesToday = todaysJobEntries
+    .filter((entry: TimeEntry) => !entry.isBreak)
+    .reduce((total: number, entry: TimeEntry) => {
+      if (entry.endTime) {
+        const start = new Date(entry.startTime).getTime();
+        const end = new Date(entry.endTime).getTime();
+        return total + Math.floor((end - start) / 60000);
+      }
+      return total;
+    }, 0);
+
+  // Calculate break time today for this job
+  const breakMinutesToday = todaysJobEntries
+    .filter((entry: TimeEntry) => entry.isBreak)
+    .reduce((total: number, entry: TimeEntry) => {
+      if (entry.endTime) {
+        const start = new Date(entry.startTime).getTime();
+        const end = new Date(entry.endTime).getTime();
+        return total + Math.floor((end - start) / 60000);
+      }
+      return total;
+    }, 0);
+
+  // Legacy: total minutes today (for backwards compatibility)
+  const totalMinutesToday = workMinutesToday + breakMinutesToday;
 
   const latestCompletedEntry = todaysJobEntries[0];
 
   const activeTimer = jobId 
     ? (globalActiveTimer && (globalActiveTimer as any).jobId === jobId ? globalActiveTimer : null)
     : globalActiveTimer;
+  
+  // Check if active timer is a break
+  const isOnBreak = activeTimer && typeof activeTimer === 'object' && (activeTimer as any).isBreak === true;
 
   // Check location when timer starts
   const captureLocation = () => {
@@ -132,18 +163,22 @@ export function TimerWidget({
 
   // Start timer mutation
   const startTimerMutation = useMutation({
-    mutationFn: async (data: { description: string; jobId?: string; hourlyRate?: string }) => {
+    mutationFn: async (data: { description: string; jobId?: string; hourlyRate?: string; isBreak?: boolean }) => {
       return apiRequest('POST', '/api/time-entries', data);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      if (jobId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      }
       captureLocation();
       onTimerStart?.();
       toast({
-        title: "Timer Started",
-        description: "Time tracking has begun for this task.",
+        title: variables.isBreak ? "Break Started" : "Timer Started",
+        description: variables.isBreak ? "Taking a break. Resume when you're ready." : "Time tracking has begun for this task.",
       });
     },
     onError: (error: any) => {
@@ -274,6 +309,63 @@ export function TimerWidget({
     }
   };
 
+  // Handle taking a break - stop current work timer and start break timer
+  const handleTakeBreak = async () => {
+    if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) return;
+    
+    try {
+      // Stop the current work timer
+      await apiRequest('POST', `/api/time-entries/${activeTimer.id}/stop`);
+      
+      // Invalidate queries to reflect stopped timer
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      
+      // Start a break timer
+      const description = jobTitle ? `Break - ${jobTitle}` : 'Break';
+      startTimerMutation.mutate({
+        description,
+        ...(jobId && { jobId }),
+        isBreak: true,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Break Error",
+        description: error?.message || "Failed to start break",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle resuming work - stop break timer and start work timer
+  const handleResumeWork = async () => {
+    if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) return;
+    
+    try {
+      // Stop the break timer
+      await apiRequest('POST', `/api/time-entries/${activeTimer.id}/stop`);
+      
+      // Invalidate queries to reflect stopped timer
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      
+      // Start a work timer
+      const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
+      startTimerMutation.mutate({
+        description,
+        ...(jobId && { jobId }),
+        hourlyRate: '85.00',
+        isBreak: false,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Resume Error",
+        description: error?.message || "Failed to resume work",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteEntry = (entryId: string) => {
     if (window.confirm('Delete this time entry? You can then start a new timer.')) {
       deleteEntryMutation.mutate(entryId);
@@ -317,17 +409,21 @@ export function TimerWidget({
 
   // ACTIVE TIMER STATE - Enhanced with pulsing animation and brand colors
   if (activeTimer && typeof activeTimer === 'object' && 'startTime' in activeTimer) {
+    // Determine colors based on break status
+    const timerColor = isOnBreak ? '35 90% 55%' : 'var(--trade)'; // amber for break, trade color for work
+    const timerLabel = isOnBreak ? 'On Break' : 'Timer Running';
+    
     return (
       <div 
         className="relative rounded-xl overflow-hidden" 
-        style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
-        data-testid="timer-running-state"
+        style={{ backgroundColor: isOnBreak ? 'hsl(35 90% 55% / 0.1)' : 'hsl(var(--trade) / 0.1)' }}
+        data-testid={isOnBreak ? "timer-break-state" : "timer-running-state"}
       >
         {/* Pulsing border animation */}
         <div 
           className="absolute inset-0 rounded-xl animate-pulse"
           style={{ 
-            border: '2px solid hsl(var(--trade) / 0.5)',
+            border: isOnBreak ? '2px solid hsl(35 90% 55% / 0.5)' : '2px solid hsl(var(--trade) / 0.5)',
             animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
           }}
         />
@@ -336,46 +432,107 @@ export function TimerWidget({
           {/* Live timer display */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <div 
-                className="w-3 h-3 rounded-full animate-pulse" 
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              />
-              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'hsl(var(--trade))' }}>
-                Timer Running
+              {isOnBreak ? (
+                <Coffee className="h-4 w-4 text-amber-500 animate-pulse" />
+              ) : (
+                <div 
+                  className="w-3 h-3 rounded-full animate-pulse" 
+                  style={{ backgroundColor: 'hsl(var(--trade))' }}
+                />
+              )}
+              <span 
+                className="text-xs font-medium uppercase tracking-wide" 
+                style={{ color: isOnBreak ? 'hsl(35 90% 55%)' : 'hsl(var(--trade))' }}
+              >
+                {timerLabel}
               </span>
             </div>
             <div 
               className="text-4xl font-mono font-bold tracking-wider" 
-              style={{ color: 'hsl(var(--trade))' }}
+              style={{ color: isOnBreak ? 'hsl(35 90% 55%)' : 'hsl(var(--trade))' }}
               data-testid="text-elapsed-time"
             >
               {getElapsedTime(activeTimer.startTime as string)}
             </div>
             <p className="text-sm text-muted-foreground mt-1" data-testid="text-timer-description">
-              {(activeTimer as any).description || 'Working...'}
+              {(activeTimer as any).description || (isOnBreak ? 'Taking a break...' : 'Working...')}
             </p>
             <LocationIndicator />
           </div>
 
-          {/* Total time on job */}
-          {totalMinutesAllTime > 0 && (
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground border-t border-border/50 pt-2">
-              <Clock className="h-3 w-3" />
-              <span>Total on job: {formatDuration(totalMinutesAllTime)}</span>
+          {/* Work and break time totals */}
+          {(totalWorkMinutesAllTime > 0 || totalBreakMinutesAllTime > 0) && (
+            <div className="flex items-center justify-center gap-4 text-xs border-t border-border/50 pt-2">
+              {totalWorkMinutesAllTime > 0 && (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>Work: {formatDuration(totalWorkMinutesAllTime)}</span>
+                </div>
+              )}
+              {totalBreakMinutesAllTime > 0 && (
+                <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                  <Coffee className="h-3 w-3" />
+                  <span>Break: {formatDuration(totalBreakMinutesAllTime)}</span>
+                </div>
+              )}
             </div>
           )}
           
-          {/* Stop button - prominent */}
-          <Button 
-            variant="destructive" 
-            className="w-full h-12 text-base font-semibold" 
-            onClick={handleStopTimer}
-            disabled={stopTimerMutation.isPending}
-            data-testid="button-stop-timer"
-          >
-            <Square className="h-5 w-5 mr-2" />
-            {stopTimerMutation.isPending ? 'Saving...' : 'Clock Out'}
-          </Button>
+          {/* Action buttons */}
+          <div className="space-y-2">
+            {isOnBreak ? (
+              <>
+                {/* Resume Work button when on break */}
+                <Button 
+                  className="w-full h-12 text-base font-semibold text-white" 
+                  style={{ backgroundColor: 'hsl(var(--trade))' }}
+                  onClick={handleResumeWork}
+                  disabled={startTimerMutation.isPending}
+                  data-testid="button-resume-work"
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  {startTimerMutation.isPending ? 'Resuming...' : 'Resume Work'}
+                </Button>
+                {/* End break button */}
+                <Button 
+                  variant="outline" 
+                  className="w-full h-10 text-sm" 
+                  onClick={handleStopTimer}
+                  disabled={stopTimerMutation.isPending}
+                  data-testid="button-end-break"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  {stopTimerMutation.isPending ? 'Saving...' : 'End Break & Clock Out'}
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Take Break button when working */}
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 h-12 text-base font-semibold" 
+                    onClick={handleTakeBreak}
+                    disabled={startTimerMutation.isPending}
+                    data-testid="button-take-break"
+                  >
+                    <Coffee className="h-5 w-5 mr-2" />
+                    {startTimerMutation.isPending ? 'Starting...' : 'Take Break'}
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    className="flex-1 h-12 text-base font-semibold" 
+                    onClick={handleStopTimer}
+                    disabled={stopTimerMutation.isPending}
+                    data-testid="button-stop-timer"
+                  >
+                    <Square className="h-5 w-5 mr-2" />
+                    {stopTimerMutation.isPending ? 'Saving...' : 'Clock Out'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -385,7 +542,7 @@ export function TimerWidget({
   if (jobId && todaysJobEntries.length > 0) {
     return (
       <div className="space-y-3" data-testid="timer-saved-state">
-        {/* Today's summary */}
+        {/* Today's summary - Work and Break displayed separately */}
         <div 
           className="rounded-xl p-4"
           style={{ backgroundColor: 'hsl(var(--trade) / 0.08)' }}
@@ -399,20 +556,33 @@ export function TimerWidget({
                 <Timer className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
               </div>
               <div>
-                <div className="text-lg font-bold" data-testid="text-time-saved">
-                  {formatDuration(totalMinutesToday)}
+                <div className="text-lg font-bold" data-testid="text-work-time-today">
+                  {formatDuration(workMinutesToday)}
                 </div>
-                <p className="text-xs text-muted-foreground">Today</p>
+                <p className="text-xs text-muted-foreground">Work Today</p>
               </div>
             </div>
-            {totalMinutesAllTime !== totalMinutesToday && (
-              <div className="text-right">
-                <div className="text-sm font-medium text-muted-foreground">
-                  {formatDuration(totalMinutesAllTime)}
+            <div className="flex items-center gap-4">
+              {/* Break time today */}
+              {breakMinutesToday > 0 && (
+                <div className="text-right">
+                  <div className="flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+                    <Coffee className="h-3 w-3" />
+                    {formatDuration(breakMinutesToday)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Break</p>
                 </div>
-                <p className="text-xs text-muted-foreground">Total</p>
-              </div>
-            )}
+              )}
+              {/* Total all time (if different from today) */}
+              {totalWorkMinutesAllTime !== workMinutesToday && (
+                <div className="text-right">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    {formatDuration(totalWorkMinutesAllTime)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Total Work</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Today's entries quick view */}
@@ -421,11 +591,16 @@ export function TimerWidget({
             <div className="space-y-1">
               {todaysJobEntries.slice(0, 3).map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {format(new Date(entry.startTime), 'h:mm a')} - {entry.endTime ? format(new Date(entry.endTime), 'h:mm a') : 'Now'}
-                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">
+                    {entry.isBreak && (
+                      <Coffee className="h-3 w-3 text-amber-500" />
+                    )}
+                    <span className={entry.isBreak ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
+                      {format(new Date(entry.startTime), 'h:mm a')} - {entry.endTime ? format(new Date(entry.endTime), 'h:mm a') : 'Now'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-medium ${entry.isBreak ? 'text-amber-600 dark:text-amber-400' : ''}`}>
                       {formatDuration(Math.floor((new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / 60000))}
                     </span>
                     <Button
@@ -474,17 +649,25 @@ export function TimerWidget({
   // READY TO START STATE
   return (
     <div className="space-y-3" data-testid="timer-ready-state">
-      {/* Total time on job (if any previous entries exist) */}
-      {totalMinutesAllTime > 0 && (
+      {/* Total time on job (if any previous entries exist) - shows work and break separately */}
+      {(totalWorkMinutesAllTime > 0 || totalBreakMinutesAllTime > 0) && (
         <div 
           className="rounded-xl p-3 flex items-center justify-between"
           style={{ backgroundColor: 'hsl(var(--trade) / 0.08)' }}
         >
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-            <span className="text-sm font-medium">Total on job:</span>
+            <span className="text-sm font-medium">Total work:</span>
           </div>
-          <span className="font-bold">{formatDuration(totalMinutesAllTime)}</span>
+          <div className="flex items-center gap-3">
+            <span className="font-bold">{formatDuration(totalWorkMinutesAllTime)}</span>
+            {totalBreakMinutesAllTime > 0 && (
+              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-sm">
+                <Coffee className="h-3 w-3" />
+                <span>{formatDuration(totalBreakMinutesAllTime)}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
       
