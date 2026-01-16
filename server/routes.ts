@@ -13844,6 +13844,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Heartbeat endpoint - auto-save running timer every 30 seconds
+  // This updates the lastHeartbeat timestamp to track active sessions and prevent data loss
+  app.post("/api/time-entries/:id/heartbeat", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const existingEntry = await storage.getTimeEntry(id, userId);
+      if (!existingEntry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      
+      // Only allow heartbeat on active (non-completed) entries
+      if (existingEntry.endTime) {
+        return res.status(400).json({ error: 'Cannot heartbeat a completed time entry' });
+      }
+      
+      // Verify ownership
+      let canManageEntry = (existingEntry as any).userId === userId;
+      if (!canManageEntry) {
+        const teamMembers = await storage.getTeamMembers(userId);
+        const isTeamMember = teamMembers.some((member: any) => member.id === (existingEntry as any).userId);
+        canManageEntry = isTeamMember;
+      }
+      
+      if (!canManageEntry) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Update lastHeartbeat timestamp to mark the entry as still active
+      const updatedEntry = await storage.updateTimeEntry(id, userId, {
+        lastHeartbeat: new Date().toISOString(),
+      });
+      
+      res.json({ success: true, lastHeartbeat: (updatedEntry as any)?.lastHeartbeat || new Date().toISOString() });
+    } catch (error) {
+      console.error('Error updating time entry heartbeat:', error);
+      res.status(500).json({ error: 'Failed to update heartbeat' });
+    }
+  });
+
   app.post("/api/time-entries/:id/resume", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;

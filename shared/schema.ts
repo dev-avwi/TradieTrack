@@ -1206,6 +1206,8 @@ export const timeEntries = pgTable("time_entries", {
   // Origin tracking for geofence-triggered entries
   origin: text("origin").default('manual'), // manual, geofence
   geofenceEventId: varchar("geofence_event_id"), // Link to triggering geofence event
+  // Auto-save heartbeat tracking - last time the timer was confirmed active
+  lastHeartbeat: timestamp("last_heartbeat"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

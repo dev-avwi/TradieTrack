@@ -246,6 +246,39 @@ export function TimerWidget({
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-save heartbeat every 30 seconds while timer is running
+  // This ensures time is tracked even if the user forgets to stop
+  useEffect(() => {
+    if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) {
+      return;
+    }
+
+    const timerId = (activeTimer as any).id;
+    
+    // Send heartbeat every 30 seconds
+    const heartbeatInterval = setInterval(async () => {
+      try {
+        await fetch(`/api/time-entries/${timerId}/heartbeat`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        // Silently fail - heartbeat is non-critical
+        console.debug('Heartbeat failed:', error);
+      }
+    }, 30000); // 30 seconds
+
+    // Also send an initial heartbeat when timer starts
+    fetch(`/api/time-entries/${timerId}/heartbeat`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {});
+
+    return () => clearInterval(heartbeatInterval);
+  }, [activeTimer]);
+
   // If timer is active but location wasn't captured, try now
   useEffect(() => {
     if (activeTimer && locationStatus === 'idle') {

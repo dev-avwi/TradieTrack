@@ -138,9 +138,14 @@ export default function TradieDashboard({
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all relevant time tracking queries
+      // Invalidate all relevant time tracking queries AND job queries for immediate UI refresh
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/today'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/my-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/this-week'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       toast({ title: "Timer started", description: "Time tracking is now active" });
     },
     onError: (error: Error) => {
@@ -172,9 +177,14 @@ export default function TradieDashboard({
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all relevant time tracking queries
+      // Invalidate all relevant time tracking queries AND job queries for immediate UI refresh
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/today'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/my-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs/this-week'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       toast({ title: "Timer stopped", description: "Time has been recorded" });
     },
     onError: (error: Error) => {
