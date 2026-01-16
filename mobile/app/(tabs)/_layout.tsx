@@ -34,6 +34,13 @@ export default function TabLayout() {
           fontSize: 17,
           color: iosColors.label,
         } : undefined,
+        // iOS large title styling (collapses on scroll)
+        headerLargeTitleStyle: isIOS ? {
+          fontWeight: '700',
+          fontSize: 34,
+          color: iosColors.label,
+        } : undefined,
+        headerLargeTitleShadowVisible: false,
         headerTintColor: isIOS ? IOSSystemColors.systemBlue : undefined,
         headerShadowVisible: false,
         
@@ -165,6 +172,7 @@ export default function TabLayout() {
         options={{
           title: 'More',
           headerTitle: 'More',
+          headerLargeTitle: true,
           tabBarIcon: ({ color, size }) => (
             <Feather name="more-horizontal" size={size} color={color} />
           ),

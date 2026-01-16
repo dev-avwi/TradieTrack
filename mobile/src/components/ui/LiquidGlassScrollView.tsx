@@ -30,7 +30,7 @@ interface LiquidGlassScrollViewProps extends ScrollViewProps {
   children: ReactNode;
   /** Whether to add bottom inset for floating tab bar (default: true) */
   hasTabBar?: boolean;
-  /** Whether to add top inset for transparent header (default: true) */
+  /** Whether to add top inset for transparent header (default: false for native large title) */
   hasHeader?: boolean;
   /** Additional bottom padding */
   extraBottomPadding?: number;
@@ -42,6 +42,8 @@ interface LiquidGlassScrollViewProps extends ScrollViewProps {
   showBackground?: boolean;
   /** Background variant */
   backgroundVariant?: 'default' | 'mesh';
+  /** Use native iOS large title behavior (no manual top padding) */
+  nativeLargeTitle?: boolean;
 }
 
 export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollViewProps>(
@@ -49,12 +51,13 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
     {
       children,
       hasTabBar = true,
-      hasHeader = true,
+      hasHeader = false,
       extraBottomPadding = 0,
       extraTopPadding = 0,
       isVirtualized = false,
       showBackground = false,
       backgroundVariant = 'default',
+      nativeLargeTitle = true,
       style,
       contentContainerStyle,
       onScroll,
@@ -87,11 +90,12 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
         ? LiquidGlass.tabBar.height + LiquidGlass.tabBar.marginBottom + insets.bottom
         : insets.bottom;
       
-      // Header height (native header handles its own insets)
-      const headerInset = hasHeader ? 0 : 0;
+      // For native large title, let iOS handle top insets automatically
+      // This enables the collapsing large title behavior
+      const topInset = nativeLargeTitle ? 0 : (hasHeader ? 0 : 0);
       
       return {
-        top: headerInset + extraTopPadding,
+        top: topInset + extraTopPadding,
         bottom: tabBarInset + extraBottomPadding,
       };
     };
@@ -109,16 +113,20 @@ export const LiquidGlassScrollView = forwardRef<ScrollView, LiquidGlassScrollVie
         ]}
         contentContainerStyle={[
           {
-            paddingTop: contentInsets.top,
+            // Only add top padding if NOT using native large title (iOS handles insets automatically)
+            paddingTop: isIOS && nativeLargeTitle ? extraTopPadding : contentInsets.top,
             paddingBottom: contentInsets.bottom,
+            // Extra horizontal padding for content
+            paddingHorizontal: isIOS ? 16 : 0,
           },
           contentContainerStyle,
         ]}
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}
-        // iOS-specific settings for smooth edge-to-edge scrolling
+        // iOS-specific settings for native large title collapsing behavior
         contentInsetAdjustmentBehavior={isIOS ? 'automatic' : undefined}
         automaticallyAdjustContentInsets={isIOS}
+        automaticallyAdjustsScrollIndicatorInsets={isIOS}
         {...props}
       >
         {children}
