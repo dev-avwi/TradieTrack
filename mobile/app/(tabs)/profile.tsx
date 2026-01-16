@@ -209,7 +209,7 @@ function MenuItem({
         <View style={styles.menuItemTitleRow}>
           <Text style={[
             styles.menuItemTitle, 
-            isIOS && { ...IOSTypography.body, color: iosStyles.colors.label },
+            isIOS && { color: iosStyles.colors.label },
             destructive && { color: isIOS ? IOSSystemColors.systemRed : colors.destructive }
           ]}>
             {title}
@@ -221,7 +221,7 @@ function MenuItem({
           )}
         </View>
         {subtitle && (
-          <Text style={[styles.menuItemSubtitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel }]}>{subtitle}</Text>
+          <Text style={[styles.menuItemSubtitle, isIOS && { color: iosStyles.colors.secondaryLabel }]}>{subtitle}</Text>
         )}
       </View>
       <Feather 
@@ -356,7 +356,7 @@ export default function MoreScreen() {
     
     return (
       <View key={categoryKey}>
-        {label && <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>{label}</Text>}
+        {label && <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>{label}</Text>}
         <View style={[styles.section, sectionStyle, isFeatured && styles.featuredSection]}>
           {items.map((item, index) => {
             const colorValues = getColorValues(item.color, colors);
@@ -398,10 +398,10 @@ export default function MoreScreen() {
           <Text style={styles.avatarText}>{getInitials()}</Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={[styles.userName, isIOS && { ...IOSTypography.headline, color: iosStyles.colors.label }]}>
+          <Text style={[styles.userName, isIOS && { color: iosStyles.colors.label }]}>
             {user?.firstName} {user?.lastName}
           </Text>
-          <Text style={[styles.userEmail, isIOS && { ...IOSTypography.subhead, color: iosStyles.colors.secondaryLabel }]}>{user?.email}</Text>
+          <Text style={[styles.userEmail, isIOS && { color: iosStyles.colors.secondaryLabel }]}>{user?.email}</Text>
           {businessSettings?.businessName && (
             <View style={styles.businessRow}>
               <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
@@ -418,7 +418,7 @@ export default function MoreScreen() {
       )}
 
       {/* Account Section - special handling for sign out */}
-      <Text style={[styles.sectionTitle, isIOS && { ...IOSTypography.footnote, color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>Account</Text>
+      <Text style={[styles.sectionTitle, isIOS && { color: iosStyles.colors.secondaryLabel, textTransform: 'uppercase' }]}>Account</Text>
       <View style={[styles.section, sectionStyle]}>
         {(categorizedItems.account || []).map((item, index) => {
           const colorValues = getColorValues(item.color, colors);

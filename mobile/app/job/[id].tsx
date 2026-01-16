@@ -253,9 +253,9 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
     fontWeight: '600',
   },
   title: {
-    fontSize: isIOS ? IOSTypography.largeTitle.fontSize : 26,
-    fontWeight: isIOS ? IOSTypography.largeTitle.fontWeight as any : '700',
-    letterSpacing: isIOS ? IOSTypography.largeTitle.letterSpacing : -0.5,
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: colors.foreground,
     marginBottom: spacing.xs,
   },

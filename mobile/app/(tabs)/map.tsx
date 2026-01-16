@@ -222,9 +222,9 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
         marginLeft: spacing.md,
       },
       headerTitle: {
-        fontSize: isIOS ? IOSTypography.headline.fontSize : 17,
-        fontWeight: isIOS ? IOSTypography.headline.fontWeight as any : '600',
-        letterSpacing: isIOS ? IOSTypography.headline.letterSpacing : 0,
+        fontSize: 17,
+        fontWeight: '600',
+        letterSpacing: 0,
         color: colors.foreground,
       },
       headerSubtitle: {

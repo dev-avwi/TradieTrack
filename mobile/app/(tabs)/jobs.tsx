@@ -817,7 +817,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     backgroundColor: colors.card,
   },
   pageTitle: {
-    ...(isIOS ? { fontSize: IOSTypography.largeTitle.fontSize, fontWeight: IOSTypography.largeTitle.fontWeight as any, letterSpacing: IOSTypography.largeTitle.letterSpacing } : typography.pageTitle),
+    ...typography.pageTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
@@ -920,7 +920,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number, isDark: boolean
     gap: spacing.sm,
   },
   sectionTitle: {
-    ...(isIOS ? { fontSize: IOSTypography.headline.fontSize, fontWeight: IOSTypography.headline.fontWeight as any, letterSpacing: IOSTypography.headline.letterSpacing } : { ...typography.label, letterSpacing: 0.5 }),
+    ...typography.label,
+    letterSpacing: 0.5,
     color: colors.foreground,
   },
 

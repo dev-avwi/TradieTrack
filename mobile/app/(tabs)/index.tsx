@@ -2216,7 +2216,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) => {
     justifyContent: 'center',
   },
   sectionTitle: {
-    ...(isIOS ? { fontSize: IOSTypography.headline.fontSize, fontWeight: IOSTypography.headline.fontWeight as any, letterSpacing: IOSTypography.headline.letterSpacing } : typography.subtitle),
+    ...typography.subtitle,
     color: colors.foreground,
   },
   viewAllButton: {
