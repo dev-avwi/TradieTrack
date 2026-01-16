@@ -1,55 +1,56 @@
 ### Overview
-TradieTrack is a mobile-first web application for Australian tradespeople, designed to centralize and streamline business operations. It handles job management, quoting, invoicing, and payment collection, with specific support for Australian GST and AUD currency. The platform aims to boost productivity, financial management, and client communication for solo tradies and small businesses through features like AI-driven scheduling optimization and multi-option quote generation.
+TradieTrack is a mobile-first web application designed for Australian tradespeople. Its primary purpose is to centralize and streamline business operations, offering features for job management, quoting, invoicing, and payment collection with specific support for Australian GST and AUD currency. The project aims to enhance productivity, financial management, and client communication for solo tradespeople and small businesses through advanced features like AI-driven scheduling optimization and multi-option quote generation.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
 ### System Architecture
-TradieTrack uses an event-driven architecture with TypeScript. The frontend is React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API with Zod, PostgreSQL, and Drizzle ORM. A React Native/Expo mobile application integrates with the API, using Zustand for state management and SQLite-based offline mode.
+TradieTrack employs an event-driven architecture using TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile devices. The backend is an Express.js and TypeScript REST API, utilizing Zod for validation, PostgreSQL for the database, and Drizzle ORM. A React Native/Expo mobile application integrates with the API, featuring Zustand for state management and an SQLite-based offline mode.
 
 Key architectural and design decisions include:
-*   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and customizable theming. Features include a "Today's Schedule" dashboard, Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
-*   **Authentication**: Supports Email/password, Google OAuth, and secure password reset with cross-platform session tokens.
-*   **AI Integration**: GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision for AI Photo Analysis. AI Schedule Optimizer and AI-powered voice note transcription.
-*   **PDF Generation**: Server-side PDF generation for quotes and invoices via Puppeteer, with customizable templates.
-*   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators, professional confirmation emails, and rollback capabilities.
-*   **Live Quote/Invoice Editor**: Real-time preview, catalog items, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
-*   **Payment Collection**: Features Stripe Payment Links, "Tap to Pay Request Flow" for in-person payments, QR code support, comprehensive receipt generation, and Quick Collect Payment.
-*   **Subscription & Billing System**: Three-tier pricing (Free, Pro, Team) with smooth upgrade/downgrade flows and team member access control. Seat semantics: seats=0 means owner only, seats=N means owner + N additional members.
-*   **Email Automation**: SendGrid integration for customizable emails with AI suggestions.
-*   **PWA Support**: Offline capabilities via web manifest and service worker.
-*   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and two-way Twilio SMS integration with AI analysis. A Microsoft Teams-style Chat Hub unifies conversations.
-*   **Team Operations Center**: Unified hub for live operations, administration, scheduling, skills/certifications, and performance.
-*   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization.
-*   **Role-Based Access Control (RBAC)**: Granular permissions enforced by middleware.
-*   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart sync across web and mobile. Offline mutations are queued in IndexedDB and synced when online. IDs are reconciled post-sync.
-*   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web, including photo markup.
-*   **Recurring Invoices & Jobs**: Functionality for setting up recurring invoices and jobs, including templates.
-*   **Financial Management**: Unified dashboard with KPIs.
-*   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with KPI headers and document relationship links.
-*   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
-*   **Integrations**: Enhanced Xero integration (two-way sync, payment marking, chart of accounts, tax rates, bulk sync), MYOB AccountRight, and Google Calendar integrations.
-*   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signatures.
-*   **Templates Hub**: Central management for customizable content with live preview.
-*   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
-*   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
-*   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
-*   **Timesheet Approvals**: Workflow for crew timesheet approval.
-*   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
-*   **Immersive ServiceM8-Style Onboarding**: Full-screen onboarding with a 7-step "Life of a Job" walkthrough and an 18-step GuidedTour highlighting UI elements.
+*   **UI/UX**: Mobile-first design principles are applied, incorporating card-based layouts, touch-optimized components, and customizable theming. Features such as a "Today's Schedule" dashboard, Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation enhance user experience.
+*   **Authentication**: Supports Email/password, Google OAuth, and secure password reset mechanisms, ensuring cross-platform session token security.
+*   **AI Integration**: GPT-4o-mini is utilized for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision powers AI Photo Analysis, complemented by an AI Schedule Optimizer and AI-powered voice note transcription.
+*   **PDF Generation**: Server-side PDF generation for quotes and invoices is handled by Puppeteer, supporting customizable templates.
+*   **Job Workflow**: A 5-stage ServiceM8-style job status workflow is implemented, featuring visual indicators, professional confirmation emails, and rollback capabilities.
+*   **Live Quote/Invoice Editor**: Provides real-time preview, catalog item management, deposit settings, quote-to-invoice conversion, Stripe Elements for deposits, and digital signature capabilities.
+*   **Payment Collection**: Integrates Stripe Payment Links, supports a "Tap to Pay Request Flow" for in-person payments, QR code generation, comprehensive receipt generation, and Quick Collect Payment.
+*   **Subscription & Billing System**: A three-tier pricing model (Free, Pro, Team) with smooth upgrade/downgrade flows and team member access control, including seat semantics for managing additional members.
+*   **Email Automation**: Utilizes SendGrid for customizable email delivery, enhanced with AI suggestions.
+*   **PWA Support**: Offers offline capabilities through web manifest and service worker implementation.
+*   **Real-time Communication**: Features Job Chat, Team Chat, and Direct Messages with file attachments and two-way Twilio SMS integration, including AI analysis. A Microsoft Teams-style Chat Hub unifies all conversations.
+*   **Team Operations Center**: A unified hub for managing live operations, administration, scheduling, team skills/certifications, and performance monitoring.
+*   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking, including route optimization.
+*   **Role-Based Access Control (RBAC)**: Granular permissions are enforced via middleware.
+*   **Comprehensive Offline Mode**: Supports offline-first workflows with smart synchronization across web and mobile platforms. Offline mutations are queued in IndexedDB and synced upon regaining connectivity, with ID reconciliation post-sync.
+*   **Media Sync**: Ensures photos, videos, voice notes, and text notes, including photo markups, sync seamlessly between mobile and web.
+*   **Recurring Invoices & Jobs**: Functionality for setting up and managing recurring invoices and jobs using templates.
+*   **Financial Management**: A unified dashboard provides key performance indicators (KPIs).
+*   **Documents Hub**: A consolidated view of quotes, invoices, and receipts, featuring KPI headers and document relationship links.
+*   **Client Asset Library & Smart Pre-fill**: API endpoints facilitate the reuse of job photos, quote items, invoice items, and notes.
+*   **Integrations**: Enhanced two-way Xero integration (including payment marking, chart of accounts, tax rates, bulk sync), MYOB AccountRight, and Google Calendar integrations.
+*   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signature support.
+*   **Templates Hub**: Centralized management for customizable content with live preview.
+*   **Communications Hub**: A unified view of all sent emails and SMS messages, with statistics and filtering capabilities.
+*   **Automation Settings**: Configurable reminders for jobs, quotes, and invoices, along with photo requirements and GPS auto check-in/out.
+*   **Defect Tracking**: Manages warranty work and defects, including severity levels and photo attachments.
+*   **Timesheet Approvals**: Provides a workflow for crew timesheet approval.
+*   **Simple CRM / Lead Pipeline**: A Kanban-style lead tracking system with functionality to convert leads to clients.
+*   **Immersive Onboarding**: A full-screen onboarding experience includes a 7-step "Life of a Job" walkthrough and an 18-step GuidedTour to highlight UI elements.
 *   **Demo Data Persistence**: Demo data (clients, jobs, quotes, invoices, receipts) is preserved across server restarts for consistent IDs.
-*   **Unified Notifications**: Both web and mobile use the `/api/notifications/unified` endpoint, combining system, SMS, and chat notifications into a single feed.
-*   **Permission System**: Two parallel permission systems (`WORKER_PERMISSIONS` and `ActionPermissions`) with a translation layer for web and mobile parity, including offline SQLite caching for mobile.
-*   **Document Template System**: 35 default templates (quote, invoice, job) seeded for new users, adhering to Australian standards (GST, industry rates, payment terms). Templates are categorized by type, familyKey, and tradeType. Team members access owner's templates.
-*   **Trade-Specific Customization System**: Comprehensive trade catalog (`shared/tradeCatalog.ts`) with 13 priority trades, each featuring:
-    - Trade-specific terminology (e.g., "Work Order" and "Zone" for grounds maintenance, "Project" for builders)
-    - Custom job stages per trade (e.g., "Design Phase" → "Installation" for landscaping)
-    - Trade-specific custom fields (e.g., circuit types for electricians, pipe sizes for plumbers, area in hectares for grounds crew)
-    - Default materials catalog with industry-standard pricing
-    - Trade-specific rate cards (hourly rates, callout fees, after-hours multipliers)
-    - Safety checklists tailored to each trade's requirements
-    - Quote categories specific to each industry
-    - The `useTradeContext` hook provides frontend access to all trade-specific configuration
+*   **Unified Notifications**: Both web and mobile platforms utilize a single `/api/notifications/unified` endpoint to combine system, SMS, and chat notifications.
+*   **Permission System**: Two parallel permission systems (`WORKER_PERMISSIONS` and `ActionPermissions`) with a translation layer ensure parity between web and mobile, including offline SQLite caching for mobile.
+*   **Document Template System**: 35 default templates (quote, invoice, job) are pre-seeded for new users, adhering to Australian standards (GST, industry rates, payment terms). Templates are categorized, and team members access the owner's templates.
+*   **Trade-Specific Customization System**: A comprehensive trade catalog (`shared/tradeCatalog.ts`) supports 13 priority trades, each with:
+    *   Trade-specific terminology
+    *   Custom job stages
+    *   Trade-specific custom fields
+    *   Default materials catalog with industry-standard pricing
+    *   Trade-specific rate cards
+    *   Safety checklists
+    *   Quote categories
+    *   A `useTradeContext` hook provides frontend access to all trade-specific configuration.
+*   **iOS "Liquid Glass" Styling**: Platform-specific styling for iOS devices, incorporating `expo-blur` for translucent blur backgrounds on iOS 13+ and `expo-haptics` for haptic feedback. Android remains unchanged.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
@@ -65,44 +66,3 @@ Key architectural and design decisions include:
 *   **Maps**: Leaflet with react-leaflet
 *   **Accounting Integration**: Xero, MYOB AccountRight
 *   **Calendar Integration**: Google Calendar
-
-### Recent Changes (January 2026)
-*   **Trade-Specific Custom Fields Integration**: Integrated the `TradeCustomFieldsForm` component into `JobForm.tsx` and `LiveQuoteEditor.tsx`. When creating jobs or quotes, users now see trade-specific fields dynamically rendered based on their selected trade type (e.g., electricians see circuit types, plumbers see pipe sizes, grounds crew sees area in hectares). Custom field values are stored in the `customFields` JSONB column on jobs, quotes, and invoices tables. Fixed field property mapping (uses `field.name` for labels, `checkbox` type for toggles) and corrected `useTradeContext` hook to query `/api/auth/me`.
-*   **Enhanced Trade Onboarding Preview**: The BusinessProfileStep now shows detailed "What's Included" benefits when selecting a trade category, including custom field names, materials catalog count, rate card details, safety checklists, quote categories, and typical job types as badges.
-*   **Fixed Email Sending Bug**: Resolved undefined `baseUrl` variable in quote/invoice email handlers that caused custom/tone-adjusted emails to fail. Both `handleQuoteEmailWithPDF` and `handleInvoiceEmailWithPDF` now properly call `getProductionBaseUrl(req)`.
-*   **Fixed Quote-to-Job Document Linking**: The `/api/jobs/:id/linked-documents` endpoint now checks both directions for document relationships - forward (quote.jobId → job) and reverse (job.quoteId → quote). This ensures jobs created from quotes properly show their linked quote in the Documents tab.
-*   **Automatic Bidirectional Linking**: When creating a job from a quote, the quote's `jobId` is now automatically updated to point back to the new job, ensuring complete bidirectional linking.
-*   **Subscription Flow Updates**: Added Pro→Team upgrade (7-day trial), Team→Pro downgrade, and team member suspension logic with proper grace periods for past_due status.
-*   **Chat Hub Redesign**: Redesigned Chat Hub to be job-focused with "Job Communications" header. Added SMS conversation support with Twilio integration status checking (`/api/sms/status` returns `{ enabled, phoneNumber }`). Added clear Twilio setup guidance banners when not connected. Filter options: All, Team, Customers (SMS), Jobs.
-*   **Job Assignment Request System**: Team members with `REQUEST_JOB_ASSIGNMENT` permission can view available unassigned jobs and request to be assigned. Privacy-protected: only minimal info shown (title, suburb, scheduled date, duration - no client name, phone, email, or full address). Owner receives requests and can approve/reject. Database table: `job_assignment_requests`. API: GET `/api/jobs/available`, POST `/api/jobs/:id/request-assignment`, GET `/api/job-assignment-requests`, POST `/api/job-assignment-requests/:id/respond`. UI in StaffTradieDashboard "Available Jobs" section.
-*   **Enhanced Sidebar Header**: Made sidebar logo/business name clickable to navigate to `/settings` (My Account) page. Improved visual styling with better contrast using `text-sidebar-foreground` for text visibility on all themes. Uses `data-testid="button-sidebar-settings"` for testing.
-*   **Trade Type Dropdown Selection**: Replaced the grid of trade type buttons in onboarding with a proper Select dropdown organized by categories (Electrical & Mechanical, Plumbing & Water, Building & Construction, Interior & Finishing, Outdoor & Landscaping, Specialty Services). Added "Request new trade" option that allows users to submit a request for trades not listed, defaulting to "General" category in the meantime. Added `general` trade to the trade catalog.
-*   **QuickCreateFAB Component**: Replaced full-width bottom sheet with a centered floating widget popup. Features:
-    - Star icon FAB button positioned at bottom-right (above FloatingAIChat)
-    - Centered popup with 4 quick action icons: New Job, New Quote, New Invoice, New Client
-    - 2 secondary action buttons: AI Assistant (triggers FloatingAIChat), Collect Payment
-    - Trade-colored styling, smooth animations, click-outside-to-dismiss
-    - Positioned at `bottom: 168px` to avoid overlap with AI Chat FAB at `bottom: 96px`
-*   **Mobile Collect Payment Redesign (Production Ready)**: Complete overhaul of the mobile payment collection flow:
-    - Added "Record Payment" option for quick manual cash/EFTPOS/bank transfer payments with receipt generation
-    - Payment methods: Cash, Card/EFTPOS, Bank Transfer (all no fees)
-    - Optional linking to clients and invoices (can link later)
-    - Creates receipt immediately with GST calculated (amount/11 for Australian GST)
-    - Tap to Pay marked as "Coming Soon" with disabled state until native SDK build
-    - QR code generation creates Stripe payment requests with shareable links
-    - Receipt sending via email or SMS
-*   **Stripe Production Keys Configured**: STRIPE_SECRET_KEY and VITE_STRIPE_PUBLIC_KEY are configured for production payments
-*   **Team Features Verified Production Ready**:
-    - Team invite flow: Creates pending member with inviteToken, sends email, user accepts and links to team owner
-    - Free trial system: POST /api/subscription/trial starts trial, Pro→Team upgrade includes 7-day trial
-    - Live location tracking: POST /api/team-locations updates, GET /api/team/locations for owners/managers
-    - Mobile map polls team locations every 10 seconds for real-time updates
-*   **Production Readiness Status**: All features verified except Tap to Pay (requires EAS native build)
-*   **FloatingActionButton Tablet Improvements**: Redesigned the FAB component for better tablet UX:
-    - FAB button visible on all devices (removed mobile-only restriction)
-    - Star icon with trade-colored styling
-    - Responsive popup positioning: centered on tablets (md: 768-1023px), anchored bottom-right on mobile and desktop (lg: 1024px+)
-    - Quick actions: New Job, New Quote, New Invoice, New Client
-    - Secondary action: Collect Payment
-    - Click-outside-to-dismiss functionality
-*   **Sidebar Header Fixes**: Cleaned up AppSidebar header by removing unnecessary `group-data-[collapsible=icon]` classes. The sidebar uses "offcanvas" mode by default, ensuring header content (logo + business name) is always visible when the sidebar is open.
