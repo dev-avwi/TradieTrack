@@ -51,6 +51,16 @@ Core architectural and design decisions include:
 *   **QuickCreateFAB Component**: Replaces the full-width bottom sheet with a centered floating widget popup for quick actions like New Job, New Quote, New Invoice, New Client, AI Assistant, and Collect Payment.
 *   **Mobile Collect Payment Redesign**: Overhauled mobile payment flow to include "Record Payment" (for cash/EFTPOS/bank transfer) and QR code generation for Stripe payment requests, with receipt generation and optional linking to clients/invoices.
 *   **Job Assignment Request System**: Team members can request assignment to available unassigned jobs, with privacy-protected job details. Owners receive and approve/reject these requests.
+*   **Time Tracking Enhancements**: 
+    *   Break/pause functionality with "Take Break" and "Resume Work" buttons
+    *   Separate tracking for work time vs break time with visual display
+    *   Auto job status updates: starting a timer on a "scheduled" job automatically changes status to "in_progress"
+    *   Job costing widget calculates actual hours from time entries with variance display (estimated vs actual)
+*   **Trade-Type Aware Templates**: Business templates (quote, invoice, job) are filterable by trade type with fallback hierarchy: specific tradeType → 'general' → all templates. Database column `trade_type` added to `business_templates` table with default 'general'.
+*   **Mobile Payment Collection UI Improvements**:
+    *   Reordered payment methods: Tap to Pay, QR Code, Payment Link, then Record Payment
+    *   Ongoing payments are clickable with alert details
+    *   Streamlined UI without amount input section
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
