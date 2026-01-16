@@ -2320,18 +2320,6 @@ export default function CollectScreen() {
             </TouchableOpacity>
           </View>
 
-          {terminal.isSimulation && (
-            <View style={styles.demoModeBanner}>
-              <Feather name="smartphone" size={24} color={colors.info} />
-              <View style={styles.demoModeText}>
-                <Text style={[styles.demoModeTitle, { color: colors.info }]}>Native App Required for NFC</Text>
-                <Text style={styles.demoModeDescription}>
-                  Install the TradieTrack app from the App Store or Google Play to use Tap to Pay. QR codes, payment links, and record cash work now.
-                </Text>
-              </View>
-            </View>
-          )}
-
           <View style={styles.amountSection}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
               <Text style={styles.sectionLabel}>Payment Amount</Text>
@@ -2506,15 +2494,6 @@ export default function CollectScreen() {
             </CardContent>
           </Card>
 
-          {!tapToPaySupported && (
-            <View style={styles.warningCard}>
-              <Text style={styles.warningTitle}>Tap to Pay Requires Native Build</Text>
-              <Text style={styles.warningText}>
-                Tap to Pay uses your phone's NFC chip and requires building the app with EAS Build. 
-                QR codes and payment links work in Expo Go.
-              </Text>
-            </View>
-          )}
         </ScrollView>
 
         {renderTapToPayModal()}
