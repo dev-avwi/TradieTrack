@@ -165,10 +165,14 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     }
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
+    const baseUrlForLogo = getProductionBaseUrl(req);
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
-      const baseUrl = getProductionBaseUrl(req);
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
+    }
+    // Apply TradieTrack logo fallback if no business logo
+    if (!businessSettings.logoUrl) {
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
     }
 
     // 6. Validate business email for sending
@@ -490,10 +494,14 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
     }
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
+    const baseUrlForLogo = getProductionBaseUrl(req);
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
-      const baseUrl = getProductionBaseUrl(req);
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrl}${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
+    }
+    // Apply TradieTrack logo fallback if no business logo
+    if (!businessSettings.logoUrl) {
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
     }
 
     // 6. Validate business email for sending
@@ -991,9 +999,14 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     }
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
+    const baseUrlForLogo = getProductionBaseUrl(req);
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // Route is /objects/... not /api/objects/...
-      businessSettings = { ...businessSettings, logoUrl: `${getProductionBaseUrl(req)}${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
+    }
+    // Apply TradieTrack logo fallback if no business logo
+    if (!businessSettings.logoUrl) {
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1107,17 +1120,15 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     
     // Check for custom message from UI, or check for business template
     if (customMessage) {
-      // Use custom message from UI
+      // Use custom message from UI (logo always present due to fallback above)
       emailHtml = `
         <!DOCTYPE html>
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-            ${businessSettings.logoUrl ? `
-              <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-                <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
-              </div>
-            ` : ''}
+            <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+              <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+            </div>
             <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>
@@ -1265,9 +1276,14 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     }
     
     // Resolve logo URL for email (convert object storage path to public URL if needed)
+    const baseUrlForLogo = getProductionBaseUrl(req);
     if (businessSettings.logoUrl && businessSettings.logoUrl.startsWith('/objects/')) {
       // Route is /objects/... not /api/objects/...
-      businessSettings = { ...businessSettings, logoUrl: `${getProductionBaseUrl(req)}${businessSettings.logoUrl}` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
+    }
+    // Apply TradieTrack logo fallback if no business logo
+    if (!businessSettings.logoUrl) {
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1392,17 +1408,15 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     
     // Check for custom message from UI, or check for business template
     if (customMessage) {
-      // Use custom message from UI
+      // Use custom message from UI (logo always present due to fallback above)
       emailHtml = `
         <!DOCTYPE html>
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-            ${businessSettings.logoUrl ? `
-              <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-                <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
-              </div>
-            ` : ''}
+            <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+              <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+            </div>
             <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
           </div>

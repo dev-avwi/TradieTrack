@@ -75,7 +75,7 @@ const baseEmailWrapper = (content: string, brandColor: string = BRAND_BLUE) => `
 </html>
 `;
 
-// Header component
+// Header component - always shows logo with white container for consistency
 const emailHeader = (
   businessName: string, 
   documentType: string, 
@@ -86,7 +86,11 @@ const emailHeader = (
 ) => `
 <tr>
   <td class="header" style="background: linear-gradient(135deg, ${brandColor} 0%, ${adjustColor(brandColor, -20)} 100%); padding: 32px; text-align: center;">
-    ${logoUrl ? `<img src="${logoUrl}" alt="${businessName}" style="max-width: 150px; max-height: 60px; margin-bottom: 16px;" />` : ''}
+    ${logoUrl ? `
+      <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px;">
+        <img src="${logoUrl}" alt="${businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
+      </div>
+    ` : ''}
     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${businessName}</h1>
     ${abn ? `<p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">ABN: ${abn}</p>` : ''}
     <div style="margin-top: 16px; display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px;">
