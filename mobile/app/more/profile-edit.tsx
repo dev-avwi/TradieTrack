@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
+import { TradeTypeSelector } from '../../src/components/TradeTypeSelector';
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -250,17 +251,10 @@ export default function ProfileEditScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <Feather name="briefcase" size={18} color={colors.primary} />
-              <Text style={styles.inputLabelText}>Trade Type</Text>
-            </View>
-            <TextInput
-              style={styles.input}
+            <TradeTypeSelector
               value={form.tradeType}
-              onChangeText={(text) => setForm({ ...form, tradeType: text })}
-              placeholder="e.g., Electrician, Plumber"
-              placeholderTextColor={colors.mutedForeground}
-              autoCapitalize="words"
+              onChange={(value) => setForm({ ...form, tradeType: value })}
+              label="Trade Type"
             />
           </View>
 

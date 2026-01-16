@@ -17,6 +17,7 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import { SignaturePad } from '../../src/components/SignaturePad';
+import { TradeTypeSelector } from '../../src/components/TradeTypeSelector';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -141,6 +142,7 @@ export default function BusinessSettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     businessName: businessSettings?.businessName || '',
+    tradeType: (businessSettings as any)?.tradeType || 'general',
     abn: businessSettings?.abn || '',
     phone: businessSettings?.phone || '',
     email: businessSettings?.email || '',
@@ -156,6 +158,7 @@ export default function BusinessSettingsScreen() {
     if (businessSettings) {
       setForm({
         businessName: businessSettings.businessName || '',
+        tradeType: (businessSettings as any)?.tradeType || 'general',
         abn: businessSettings.abn || '',
         phone: businessSettings.phone || '',
         email: businessSettings.email || '',
@@ -224,6 +227,14 @@ export default function BusinessSettingsScreen() {
               onChangeText={(text) => setForm({ ...form, businessName: text })}
               placeholder="Enter your business name"
               placeholderTextColor={colors.mutedForeground}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <TradeTypeSelector
+              value={form.tradeType}
+              onChange={(value) => setForm({ ...form, tradeType: value })}
+              label="Trade Type"
             />
           </View>
 
