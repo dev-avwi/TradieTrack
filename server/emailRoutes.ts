@@ -9,17 +9,21 @@ import { processPaymentReceivedAutomation } from './automationService';
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 
 // Helper function to wrap template content in professional HTML email layout
+// Uses absolute TradieTrack logo URL as fallback for email client compatibility
 function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string, actionUrl?: string | null, actionLabel?: string): string {
+  // Compute absolute fallback URL for TradieTrack logo (relative URLs don't work in email clients)
+  const baseUrl = getProductionBaseUrl();
+  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const resolvedLogoUrl = business.logoUrl || defaultLogoUrl;
+  
   return `
     <!DOCTYPE html>
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-        ${business.logoUrl ? `
-          <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-            <img src="${business.logoUrl}" alt="${business.businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
-          </div>
-        ` : ''}
+        <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
+          <img src="${resolvedLogoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+        </div>
         <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName || 'Your Business'}</h1>
         ${business.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
       </div>

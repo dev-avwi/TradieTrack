@@ -3,6 +3,8 @@
  * Professional, responsive HTML email templates for all business communications
  */
 
+import { getProductionBaseUrl } from './urlHelper';
+
 // Brand colors
 const BRAND_BLUE = '#2563eb';
 const SUCCESS_GREEN = '#16a34a';
@@ -76,6 +78,7 @@ const baseEmailWrapper = (content: string, brandColor: string = BRAND_BLUE) => `
 `;
 
 // Header component - always shows logo with white container for consistency
+// Uses absolute TradieTrack logo URL as fallback for email client compatibility
 const emailHeader = (
   businessName: string, 
   documentType: string, 
@@ -83,14 +86,18 @@ const emailHeader = (
   brandColor: string,
   logoUrl?: string,
   abn?: string
-) => `
+) => {
+  // Compute absolute fallback URL for TradieTrack logo (relative URLs don't work in email clients)
+  const baseUrl = getProductionBaseUrl();
+  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const resolvedLogoUrl = logoUrl || defaultLogoUrl;
+  
+  return `
 <tr>
   <td class="header" style="background: linear-gradient(135deg, ${brandColor} 0%, ${adjustColor(brandColor, -20)} 100%); padding: 32px; text-align: center;">
-    ${logoUrl ? `
-      <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px;">
-        <img src="${logoUrl}" alt="${businessName}" style="max-height: 48px; max-width: 160px; display: block;" />
-      </div>
-    ` : ''}
+    <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px;">
+      <img src="${resolvedLogoUrl}" alt="${businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+    </div>
     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${businessName}</h1>
     ${abn ? `<p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">ABN: ${abn}</p>` : ''}
     <div style="margin-top: 16px; display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px;">
@@ -100,6 +107,7 @@ const emailHeader = (
   </td>
 </tr>
 `;
+};
 
 // Client info component
 const clientInfoSection = (
