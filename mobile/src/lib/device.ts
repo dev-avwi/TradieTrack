@@ -17,51 +17,95 @@ export function getIOSVersion(): number {
   return version as number;
 }
 
-// Check if device supports modern iOS features (iOS 13+)
-// iOS 13 introduced dark mode, SF Symbols, and improved blur
-export function supportsModernBlur(): boolean {
-  if (!isIOS) return false;
-  return getIOSVersion() >= 13;
-}
+// ============================================================================
+// iOS 26 "LIQUID GLASS" DESIGN SYSTEM
+// Modern frosted glass aesthetic with deep blur, translucent layers, and 
+// subtle highlights. Applied consistently across all iOS devices.
+// ============================================================================
 
-// Check if device supports latest iOS features (iOS 15+)
-// iOS 15 introduced materials system and enhanced vibrancy
-export function supportsLatestBlur(): boolean {
-  if (!isIOS) return false;
-  return getIOSVersion() >= 15;
-}
-
-// Check if device supports iOS 18+ features (latest)
-export function supportsIOS18(): boolean {
-  if (!isIOS) return false;
-  return getIOSVersion() >= 18;
-}
-
-// Use appropriate blur intensity based on iOS version
-export function getBlurIntensity(): number {
-  if (!isIOS) return 0;
-  const version = getIOSVersion();
-  if (version >= 18) return 80; // Latest iOS - full vibrancy
-  if (version >= 15) return 70; // iOS 15+ - good blur support
-  if (version >= 13) return 50; // iOS 13-14 - moderate blur
-  return 0; // Older iOS - no blur (use fallback)
-}
-
-// Get blur type based on iOS version
 export type BlurTint = 'light' | 'dark' | 'default' | 'extraLight' | 'regular' | 'prominent' | 'systemUltraThinMaterial' | 'systemThinMaterial' | 'systemMaterial' | 'systemThickMaterial' | 'systemChromeMaterial';
 
-export function getBlurTint(isDark: boolean): BlurTint {
-  const version = getIOSVersion();
-  if (version >= 15) {
-    // Use iOS 15+ system materials for best appearance
-    return isDark ? 'systemThinMaterial' : 'systemThinMaterial';
-  }
-  if (version >= 13) {
-    // iOS 13-14 use regular blur tints
-    return isDark ? 'dark' : 'light';
-  }
-  // Fallback for older versions
-  return isDark ? 'dark' : 'light';
+// Glass configuration - consistent modern aesthetic
+export interface GlassConfig {
+  // Blur settings
+  blurIntensity: number;
+  blurTint: BlurTint;
+  // Overlay colors (rgba)
+  overlayLight: string;
+  overlayDark: string;
+  // Border colors (hairline glass edge)
+  borderLight: string;
+  borderDark: string;
+  // Shadow for depth
+  shadowColor: string;
+  shadowOpacity: number;
+  shadowRadius: number;
+  shadowOffset: { width: number; height: number };
+}
+
+// Liquid Glass configuration for navbars/chrome
+export const GLASS_NAV: GlassConfig = {
+  blurIntensity: 100,
+  blurTint: 'systemChromeMaterial',
+  overlayLight: 'rgba(255, 255, 255, 0.72)',
+  overlayDark: 'rgba(28, 28, 30, 0.78)',
+  borderLight: 'rgba(255, 255, 255, 0.18)',
+  borderDark: 'rgba(255, 255, 255, 0.08)',
+  shadowColor: '#000000',
+  shadowOpacity: 0.08,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: -2 },
+};
+
+// Liquid Glass configuration for cards/surfaces
+export const GLASS_CARD: GlassConfig = {
+  blurIntensity: 80,
+  blurTint: 'systemThinMaterial',
+  overlayLight: 'rgba(255, 255, 255, 0.65)',
+  overlayDark: 'rgba(38, 38, 40, 0.70)',
+  borderLight: 'rgba(255, 255, 255, 0.20)',
+  borderDark: 'rgba(255, 255, 255, 0.10)',
+  shadowColor: '#000000',
+  shadowOpacity: 0.06,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+};
+
+// Liquid Glass configuration for buttons/controls
+export const GLASS_BUTTON: GlassConfig = {
+  blurIntensity: 60,
+  blurTint: 'systemUltraThinMaterial',
+  overlayLight: 'rgba(255, 255, 255, 0.55)',
+  overlayDark: 'rgba(48, 48, 52, 0.60)',
+  borderLight: 'rgba(255, 255, 255, 0.25)',
+  borderDark: 'rgba(255, 255, 255, 0.12)',
+  shadowColor: '#000000',
+  shadowOpacity: 0.04,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+};
+
+// Get glass styling for a specific element type
+export function getGlassStyle(type: 'nav' | 'card' | 'button', isDark: boolean) {
+  const config = type === 'nav' ? GLASS_NAV : type === 'card' ? GLASS_CARD : GLASS_BUTTON;
+  
+  return {
+    blurIntensity: config.blurIntensity,
+    blurTint: config.blurTint,
+    overlay: isDark ? config.overlayDark : config.overlayLight,
+    border: isDark ? config.borderDark : config.borderLight,
+    shadow: {
+      shadowColor: config.shadowColor,
+      shadowOpacity: config.shadowOpacity,
+      shadowRadius: config.shadowRadius,
+      shadowOffset: config.shadowOffset,
+    },
+  };
+}
+
+// Check if we should use glass effects (iOS only)
+export function useGlassEffects(): boolean {
+  return isIOS;
 }
 
 export function isTablet(): boolean {

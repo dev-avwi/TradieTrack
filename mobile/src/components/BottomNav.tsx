@@ -7,7 +7,7 @@ import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
-import { isIOS, isAndroid, supportsModernBlur, getBlurTint } from '../lib/device';
+import { isIOS, isAndroid, useGlassEffects, getGlassStyle } from '../lib/device';
 
 interface NavItem {
   title: string;
@@ -131,9 +131,9 @@ export function BottomNav() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { triggerScrollToTop } = useScrollToTop();
 
-  // iOS: use blur for "Liquid Glass" effect
-  const useBlur = isIOS && supportsModernBlur();
-  const blurTint = getBlurTint(isDark);
+  // iOS: Liquid Glass effect
+  const useGlass = useGlassEffects();
+  const glassStyle = getGlassStyle('nav', isDark);
 
   const isActive = (item: NavItem) => {
     // Chat-specific routes should only highlight Chat, not More
@@ -192,20 +192,25 @@ export function BottomNav() {
     </View>
   );
 
-  // iOS: Use BlurView for translucent tab bar
-  if (useBlur) {
+  // iOS: Use BlurView for "Liquid Glass" tab bar
+  if (useGlass) {
     return (
-      <BlurView 
-        intensity={80} 
-        tint={blurTint}
-        style={[containerStyle, styles.containerBlur]}
-      >
+      <View style={[containerStyle, styles.containerGlass]}>
+        <BlurView 
+          intensity={glassStyle.blurIntensity} 
+          tint={glassStyle.blurTint}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Glass overlay for depth */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: glassStyle.overlay }]} />
+        {/* Hairline top border for glass edge */}
+        <View style={[styles.glassTopBorder, { backgroundColor: glassStyle.border }]} />
         {navContent}
-      </BlurView>
+      </View>
     );
   }
 
-  // Android and older iOS: solid background
+  // Android: solid background
   return (
     <View style={containerStyle}>
       {navContent}
@@ -223,14 +228,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: isAndroid ? colors.card : colors.card,
+    backgroundColor: colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.cardBorder,
   },
-  containerBlur: {
-    // iOS blur tab bar - transparent background under blur
-    backgroundColor: isIOS ? 'transparent' : colors.card,
+  containerGlass: {
+    // iOS Liquid Glass container
+    backgroundColor: 'transparent',
+    borderTopWidth: 0, // Use custom glass border instead
     overflow: 'hidden',
+  },
+  glassTopBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
   },
   navBar: {
     flexDirection: 'row',

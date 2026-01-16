@@ -16,7 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme, ThemeColors, colorWithOpacity } from '../lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../lib/design-tokens';
-import { SIDEBAR_WIDTH, isIOS, supportsModernBlur, getBlurTint } from '../lib/device';
+import { SIDEBAR_WIDTH, isIOS, useGlassEffects, getGlassStyle } from '../lib/device';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -208,9 +208,9 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
   const styles = useMemo(() => createStyles(colors, isTabletStyle), [colors, isTabletStyle]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
-  // iOS blur support
-  const useBlur = isIOS && supportsModernBlur();
-  const blurTint = getBlurTint(isDark);
+  // iOS: Liquid Glass effect for buttons
+  const useGlass = useGlassEffects();
+  const glassStyle = getGlassStyle('button', isDark);
   
   const fabPositionStyle = isTabletStyle ? { bottom: 24, right: 24 } : {};
 

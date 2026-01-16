@@ -11,7 +11,7 @@ import { useNotificationsStore } from '../lib/notifications-store';
 import { useUserRole } from '../hooks/use-user-role';
 import { HEADER_HEIGHT } from '../lib/design-tokens';
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
-import { isIOS, isAndroid, supportsModernBlur, getBlurTint } from '../lib/device';
+import { isIOS, isAndroid, useGlassEffects, getGlassStyle } from '../lib/device';
 
 interface HeaderProps {
   title?: string;
@@ -238,9 +238,9 @@ export function Header({
     }).start();
   };
 
-  // iOS with blur support - use BlurView for "Liquid Glass" effect
-  const useBlur = isIOS && supportsModernBlur();
-  const blurTint = getBlurTint(isDark);
+  // iOS: Liquid Glass effect
+  const useGlass = useGlassEffects();
+  const glassStyle = getGlassStyle('nav', isDark);
 
   const headerContent = (
     <>
@@ -330,20 +330,23 @@ export function Header({
     </>
   );
 
-  // iOS: Use BlurView for translucent "Liquid Glass" header
-  if (useBlur) {
+  // iOS: Use BlurView for "Liquid Glass" header
+  if (useGlass) {
     return (
-      <BlurView 
-        intensity={80} 
-        tint={blurTint}
-        style={[styles.header, styles.headerBlur]}
-      >
+      <View style={[styles.header, styles.headerGlassContainer]}>
+        <BlurView 
+          intensity={glassStyle.blurIntensity} 
+          tint={glassStyle.blurTint}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Glass overlay for depth */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: glassStyle.overlay }]} />
         {headerContent}
-      </BlurView>
+      </View>
     );
   }
 
-  // Android and older iOS: Use solid background
+  // Android: Use solid background
   return (
     <View style={styles.header}>
       {headerContent}
@@ -353,12 +356,13 @@ export function Header({
 
 const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.create({
   header: {
-    backgroundColor: isAndroid ? colors.background : colors.background,
+    backgroundColor: colors.background,
     paddingTop: isIOS ? topInset : 0,
   },
-  headerBlur: {
-    // iOS blur header - slightly transparent background under blur
-    backgroundColor: isIOS ? 'transparent' : colors.background,
+  headerGlassContainer: {
+    // iOS Liquid Glass container
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   headerContent: {
     flexDirection: 'row',
