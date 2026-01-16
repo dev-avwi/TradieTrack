@@ -27,6 +27,7 @@ import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { isTablet, isIOS, isAndroid } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -554,13 +555,15 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <ScrollProvider>
-            <TerminalProvider>
-              <RootLayoutContent />
-            </TerminalProvider>
-          </ScrollProvider>
-        </ThemeProvider>
+        <ActionSheetProvider>
+          <ThemeProvider>
+            <ScrollProvider>
+              <TerminalProvider>
+                <RootLayoutContent />
+              </TerminalProvider>
+            </ScrollProvider>
+          </ThemeProvider>
+        </ActionSheetProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

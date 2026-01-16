@@ -57,6 +57,15 @@ Key architectural and design decisions include:
     - **Navigation config**: `getNavigationConfig()` in `mobile/src/lib/platform.ts` returns iOS-specific blur headers or solid Android headers
     - **Haptic feedback** (`expo-haptics`) on tab presses, FAB, and quick actions
     - Android unchanged with custom solid Header/BottomNav components
+*   **iOS Native UI Components**: Complete set of native iOS components in `mobile/src/components/ui/`:
+    - **IOSActionSheet** (`useIOSActionSheet`, `useConfirmActionSheet`): Native UIActionSheet on iOS via `@expo/react-native-action-sheet`
+    - **IOSContextMenu**: Native iOS context menus with haptic feedback via `zeego`, with SF Symbol icon mapping
+    - **IOSGroupedList** (`IOSGroupedList`, `IOSListItem`, `IOSListSeparator`): UITableView grouped/inset list styling with proper separators and touch feedback
+    - **IOSSegmentedControl**: Native iOS segmented control with animated sliding indicator
+    - **IOSFormInput** (`IOSTextField`, `IOSToggleRow`): iOS-style form inputs with clearable text fields, proper keyboard behavior, and native switches
+    - **IOSBackButton**: Native iOS back button with "soft" card-like variant for grouped list appearance
+    - All components include platform detection: iOS-native experience, Android uses custom fallback styling
+    - iOS design system defined in `mobile/src/lib/ios-design.ts`: system colors, corners, shadows, typography
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
