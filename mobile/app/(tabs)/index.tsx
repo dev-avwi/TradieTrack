@@ -21,6 +21,7 @@ import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
+import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
@@ -1619,7 +1620,7 @@ export default function DashboardScreen() {
 
   return (
   <>
-    <ScrollView 
+    <LiquidGlassScrollView 
       ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
@@ -1632,6 +1633,8 @@ export default function DashboardScreen() {
         />
       }
       showsVerticalScrollIndicator={false}
+      hasTabBar={true}
+      hasHeader={true}
     >
       {/* iOS-Style Header with Notification Bell */}
       <View style={styles.header}>
@@ -2048,9 +2051,9 @@ export default function DashboardScreen() {
         />
       </View>
 
-      {/* Bottom Spacing */}
-      <View style={{ height: spacing['4xl'] + 80 }} />
-    </ScrollView>
+      {/* Bottom Spacing - LiquidGlassScrollView handles tab bar inset automatically */}
+      <View style={{ height: spacing.xl }} />
+    </LiquidGlassScrollView>
   </>
   );
 }

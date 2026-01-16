@@ -66,6 +66,13 @@ Key architectural and design decisions include:
     - **IOSBackButton**: Native iOS back button with "soft" card-like variant for grouped list appearance
     - All components include platform detection: iOS-native experience, Android uses custom fallback styling
     - iOS design system defined in `mobile/src/lib/ios-design.ts`: system colors, corners, shadows, typography
+*   **iOS 26 Liquid Glass Design System**: Modern translucent floating UI matching iOS 26 aesthetic:
+    - **Floating Tab Bar**: Tab bar floats above content with rounded corners, margins (12px horizontal, 8px bottom), blur background, and subtle shadow. Content scrolls behind it.
+    - **GlassSurface Component**: Reusable translucent container with BlurView, glass tint overlay, subtle border highlight. Variants: default, tabBar, header, fab, card.
+    - **LiquidGlassScrollView**: ScrollView with automatic content insets for floating tab bar, edge-to-edge content that extends behind glass controls.
+    - **Design Tokens** in `mobile/src/lib/ios-design.ts`: `LiquidGlass` object with corners (12/20/26px), blur intensities (40-100), surface colors (light/dark glass backgrounds), tabBar/header/fab specific settings.
+    - **Edge-to-Edge Content**: Content extends behind transparent headers and floating tab bar for immersive feel.
+    - Android unchanged with solid UI, Liquid Glass effects iOS-only via `isIOS` platform detection.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)

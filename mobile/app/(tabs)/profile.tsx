@@ -24,6 +24,7 @@ import {
   type UserRole,
 } from '../../src/lib/navigation-config';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -383,11 +384,13 @@ export default function MoreScreen() {
   };
 
   return (
-    <ScrollView 
+    <LiquidGlassScrollView 
       ref={scrollRef}
       style={[styles.container, isIOS && containerStyle]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      hasTabBar={true}
+      hasHeader={true}
     >
       {/* Profile Header */}
       <TouchableOpacity 
@@ -452,9 +455,6 @@ export default function MoreScreen() {
         <Text style={styles.footerText}>TradieTrack Mobile</Text>
         <Text style={styles.versionText}>Version 1.0.0 (Beta)</Text>
       </View>
-
-      {/* Bottom Spacing */}
-      <View style={{ height: spacing['4xl'] }} />
-    </ScrollView>
+    </LiquidGlassScrollView>
   );
 }

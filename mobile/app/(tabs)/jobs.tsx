@@ -24,6 +24,7 @@ import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } fro
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 import { useIOSStyles, IOSCorners, IOSShadows, IOSSystemColors } from '../../src/lib/ios-design';
+import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -532,11 +533,13 @@ export default function JobsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <LiquidGlassScrollView 
         ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        hasTabBar={true}
+        hasHeader={true}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -766,7 +769,7 @@ export default function JobsScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </LiquidGlassScrollView>
     </View>
   );
 }

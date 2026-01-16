@@ -19,6 +19,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { isIOS } from '../../src/lib/device';
 import { useIOSStyles, IOSCorners, IOSShadows } from '../../src/lib/ios-design';
+import { LiquidGlassScrollView } from '../../src/components/ui/LiquidGlassScrollView';
 import { api } from '../../src/lib/api';
 import { format, isAfter, isBefore, subDays, differenceInDays } from 'date-fns';
 import { XeroRibbon } from '../../src/components/XeroRibbon';
@@ -1025,9 +1026,11 @@ export default function MoneyHubScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <LiquidGlassScrollView
         style={[styles.scrollView, isIOS && containerStyle]}
         contentContainerStyle={styles.scrollContent}
+        hasTabBar={true}
+        hasHeader={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1092,7 +1095,7 @@ export default function MoneyHubScreen() {
           {activeTab === 'quotes' && renderQuotes()}
           {activeTab === 'payments' && renderPayments()}
         </View>
-      </ScrollView>
+      </LiquidGlassScrollView>
     </View>
   );
 }
@@ -1144,7 +1147,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: spacing['3xl'],
   },
   quickActionsContainer: {
     marginBottom: spacing.lg,
