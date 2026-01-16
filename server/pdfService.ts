@@ -66,6 +66,21 @@ export async function resolveBusinessLogoForPdf<T extends { logoUrl?: string | n
   };
 }
 
+/**
+ * Calculates the line item total on-the-fly.
+ * If item.total is 0 or missing, calculates it from quantity * unitPrice.
+ * This ensures PDFs display correct amounts even if stored total is 0.
+ */
+function calculateLineItemTotal(item: { quantity?: string | number | null; unitPrice?: string | number | null; total?: string | number | null }): number {
+  const storedTotal = parseFloat(String(item.total || '0'));
+  if (storedTotal > 0) {
+    return storedTotal;
+  }
+  const qty = parseFloat(String(item.quantity || '1'));
+  const price = parseFloat(String(item.unitPrice || '0'));
+  return qty * price;
+}
+
 // Document Template Definitions (mirrored from client/src/lib/document-templates.ts)
 type TemplateId = 'professional' | 'modern' | 'minimal';
 
@@ -861,7 +876,7 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
             <td>${item.description}</td>
             <td>${parseFloat(item.quantity as unknown as string).toFixed(2)}</td>
             <td>${formatCurrency(item.unitPrice)}</td>
-            <td>${formatCurrency(item.total)}</td>
+            <td>${formatCurrency(calculateLineItemTotal(item))}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -1171,7 +1186,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
             <td>${item.description}</td>
             <td>${parseFloat(item.quantity as unknown as string).toFixed(2)}</td>
             <td>${formatCurrency(item.unitPrice)}</td>
-            <td>${formatCurrency(item.total)}</td>
+            <td>${formatCurrency(calculateLineItemTotal(item))}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -2279,7 +2294,7 @@ export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUr
                 ${item.description}
                 <br><small>${parseFloat(item.quantity as unknown as string)} × ${formatCurrency(item.unitPrice)}</small>
               </div>
-              <div class="line-item-amount">${formatCurrency(item.total)}</div>
+              <div class="line-item-amount">${formatCurrency(calculateLineItemTotal(item))}</div>
             </div>
           `).join('')}
         </div>
