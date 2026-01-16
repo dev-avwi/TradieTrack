@@ -50,7 +50,7 @@ Key architectural and design decisions include:
     *   Safety checklists
     *   Quote categories
     *   A `useTradeContext` hook provides frontend access to all trade-specific configuration.
-*   **iOS "Liquid Glass" Styling**: Platform-specific styling for iOS devices, incorporating `expo-blur` for translucent blur backgrounds on iOS 13+ and `expo-haptics` for haptic feedback. Android remains unchanged.
+*   **iOS 26 "Liquid Glass" Design System**: Modern unified glass aesthetic for iOS with clean, translucent chrome. Uses layered glass effects (BlurView + translucent overlays + hairline borders) via `GLASS_NAV`, `GLASS_CARD`, `GLASS_BUTTON` configurations. High-intensity blur (100), `systemChromeMaterial` tints, and haptic feedback (`expo-haptics`). Android remains unchanged with solid backgrounds.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
