@@ -19,70 +19,72 @@ export function getIOSVersion(): number {
 
 // ============================================================================
 // iOS 26 "LIQUID GLASS" DESIGN SYSTEM
-// Modern frosted glass aesthetic with deep blur, translucent layers, and 
-// subtle highlights. Applied consistently across all iOS devices.
+// Authentic Apple Liquid Glass aesthetic - light translucent materials that
+// let content peek through. Navigation floats as a distinct functional layer.
+// Key principles: minimal overlays, let blur do the work, subtle highlights.
 // ============================================================================
 
 export type BlurTint = 'light' | 'dark' | 'default' | 'extraLight' | 'regular' | 'prominent' | 'systemUltraThinMaterial' | 'systemThinMaterial' | 'systemMaterial' | 'systemThickMaterial' | 'systemChromeMaterial';
 
-// Glass configuration - consistent modern aesthetic
+// Glass configuration - authentic light translucent materials
 export interface GlassConfig {
-  // Blur settings
+  // Blur settings - moderate intensity lets content show through
   blurIntensity: number;
   blurTint: BlurTint;
-  // Overlay colors (rgba)
+  // Overlay - VERY light tint, not opaque (8-18% opacity)
   overlayLight: string;
   overlayDark: string;
-  // Border colors (hairline glass edge)
+  // Top highlight - subtle gradient sheen for glass reflection
+  highlightLight: string;
+  highlightDark: string;
+  // Border - barely visible separator (optional)
   borderLight: string;
   borderDark: string;
-  // Shadow for depth
-  shadowColor: string;
+  // Shadow - very subtle or none (glass floats, doesn't cast heavy shadows)
   shadowOpacity: number;
-  shadowRadius: number;
-  shadowOffset: { width: number; height: number };
 }
 
-// Liquid Glass configuration for navbars/chrome
+// Liquid Glass for navigation chrome (Header, TabBar)
+// Light translucent material - content can peek through
 export const GLASS_NAV: GlassConfig = {
-  blurIntensity: 100,
+  blurIntensity: 50, // Moderate - lets content show through
   blurTint: 'systemChromeMaterial',
-  overlayLight: 'rgba(255, 255, 255, 0.72)',
-  overlayDark: 'rgba(28, 28, 30, 0.78)',
-  borderLight: 'rgba(255, 255, 255, 0.18)',
-  borderDark: 'rgba(255, 255, 255, 0.08)',
-  shadowColor: '#000000',
-  shadowOpacity: 0.08,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: -2 },
+  // Very light overlay - just enough to separate from content
+  overlayLight: 'rgba(255, 255, 255, 0.12)',
+  overlayDark: 'rgba(0, 0, 0, 0.10)',
+  // Subtle top highlight for glass reflection effect
+  highlightLight: 'rgba(255, 255, 255, 0.35)',
+  highlightDark: 'rgba(255, 255, 255, 0.08)',
+  // Barely visible separator
+  borderLight: 'rgba(0, 0, 0, 0.04)',
+  borderDark: 'rgba(255, 255, 255, 0.06)',
+  shadowOpacity: 0,
 };
 
-// Liquid Glass configuration for cards/surfaces
+// Liquid Glass for floating cards/surfaces
 export const GLASS_CARD: GlassConfig = {
-  blurIntensity: 80,
+  blurIntensity: 40,
   blurTint: 'systemThinMaterial',
-  overlayLight: 'rgba(255, 255, 255, 0.65)',
-  overlayDark: 'rgba(38, 38, 40, 0.70)',
-  borderLight: 'rgba(255, 255, 255, 0.20)',
-  borderDark: 'rgba(255, 255, 255, 0.10)',
-  shadowColor: '#000000',
-  shadowOpacity: 0.06,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
+  overlayLight: 'rgba(255, 255, 255, 0.15)',
+  overlayDark: 'rgba(0, 0, 0, 0.12)',
+  highlightLight: 'rgba(255, 255, 255, 0.25)',
+  highlightDark: 'rgba(255, 255, 255, 0.06)',
+  borderLight: 'rgba(0, 0, 0, 0.03)',
+  borderDark: 'rgba(255, 255, 255, 0.05)',
+  shadowOpacity: 0.03,
 };
 
-// Liquid Glass configuration for buttons/controls
+// Liquid Glass for buttons/controls
 export const GLASS_BUTTON: GlassConfig = {
-  blurIntensity: 60,
+  blurIntensity: 30,
   blurTint: 'systemUltraThinMaterial',
-  overlayLight: 'rgba(255, 255, 255, 0.55)',
-  overlayDark: 'rgba(48, 48, 52, 0.60)',
-  borderLight: 'rgba(255, 255, 255, 0.25)',
-  borderDark: 'rgba(255, 255, 255, 0.12)',
-  shadowColor: '#000000',
-  shadowOpacity: 0.04,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 2 },
+  overlayLight: 'rgba(255, 255, 255, 0.18)',
+  overlayDark: 'rgba(0, 0, 0, 0.15)',
+  highlightLight: 'rgba(255, 255, 255, 0.30)',
+  highlightDark: 'rgba(255, 255, 255, 0.08)',
+  borderLight: 'rgba(0, 0, 0, 0.05)',
+  borderDark: 'rgba(255, 255, 255, 0.06)',
+  shadowOpacity: 0.02,
 };
 
 // Get glass styling for a specific element type
@@ -93,13 +95,9 @@ export function getGlassStyle(type: 'nav' | 'card' | 'button', isDark: boolean) 
     blurIntensity: config.blurIntensity,
     blurTint: config.blurTint,
     overlay: isDark ? config.overlayDark : config.overlayLight,
+    highlight: isDark ? config.highlightDark : config.highlightLight,
     border: isDark ? config.borderDark : config.borderLight,
-    shadow: {
-      shadowColor: config.shadowColor,
-      shadowOpacity: config.shadowOpacity,
-      shadowRadius: config.shadowRadius,
-      shadowOffset: config.shadowOffset,
-    },
+    shadowOpacity: config.shadowOpacity,
   };
 }
 

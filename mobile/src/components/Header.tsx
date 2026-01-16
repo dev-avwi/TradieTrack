@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -325,22 +326,38 @@ export function Header({
           )}
         </View>
       </View>
-      
-      <View style={styles.headerBorder} />
     </>
   );
 
-  // iOS: Use BlurView for "Liquid Glass" header
+  // iOS: Use BlurView for authentic "Liquid Glass" header
   if (useGlass) {
     return (
       <View style={[styles.header, styles.headerGlassContainer]}>
+        {/* Base blur layer - let the material do the work */}
         <BlurView 
           intensity={glassStyle.blurIntensity} 
           tint={glassStyle.blurTint}
           style={StyleSheet.absoluteFill}
         />
-        {/* Glass overlay for depth */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: glassStyle.overlay }]} />
+        {/* Very light overlay for separation */}
+        <View 
+          style={[
+            StyleSheet.absoluteFill, 
+            { backgroundColor: glassStyle.overlay }
+          ]} 
+        />
+        {/* Subtle top highlight gradient - glass reflection effect */}
+        <LinearGradient
+          colors={[glassStyle.highlight, 'transparent']}
+          style={styles.glassHighlight}
+        />
+        {/* Bottom edge separator */}
+        <View 
+          style={[
+            styles.glassBottomBorder, 
+            { backgroundColor: glassStyle.border }
+          ]} 
+        />
         {headerContent}
       </View>
     );
@@ -350,6 +367,7 @@ export function Header({
   return (
     <View style={styles.header}>
       {headerContent}
+      <View style={styles.headerBorder} />
     </View>
   );
 }
@@ -360,9 +378,24 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     paddingTop: isIOS ? topInset : 0,
   },
   headerGlassContainer: {
-    // iOS Liquid Glass container
+    // iOS Liquid Glass container - transparent to show blur
     backgroundColor: 'transparent',
     overflow: 'hidden',
+  },
+  glassHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 24,
+    opacity: 0.6,
+  },
+  glassBottomBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
   },
   headerContent: {
     flexDirection: 'row',

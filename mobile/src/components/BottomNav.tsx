@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
@@ -192,19 +193,35 @@ export function BottomNav() {
     </View>
   );
 
-  // iOS: Use BlurView for "Liquid Glass" tab bar
+  // iOS: Use BlurView for authentic "Liquid Glass" tab bar
   if (useGlass) {
     return (
       <View style={[containerStyle, styles.containerGlass]}>
+        {/* Base blur layer - let the material do the work */}
         <BlurView 
           intensity={glassStyle.blurIntensity} 
           tint={glassStyle.blurTint}
           style={StyleSheet.absoluteFill}
         />
-        {/* Glass overlay for depth */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: glassStyle.overlay }]} />
-        {/* Hairline top border for glass edge */}
-        <View style={[styles.glassTopBorder, { backgroundColor: glassStyle.border }]} />
+        {/* Very light overlay for separation */}
+        <View 
+          style={[
+            StyleSheet.absoluteFill, 
+            { backgroundColor: glassStyle.overlay }
+          ]} 
+        />
+        {/* Subtle top highlight gradient - glass reflection effect */}
+        <LinearGradient
+          colors={[glassStyle.highlight, 'transparent']}
+          style={styles.glassHighlight}
+        />
+        {/* Top edge separator */}
+        <View 
+          style={[
+            styles.glassTopBorder, 
+            { backgroundColor: glassStyle.border }
+          ]} 
+        />
         {navContent}
       </View>
     );
@@ -233,10 +250,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopColor: colors.cardBorder,
   },
   containerGlass: {
-    // iOS Liquid Glass container
+    // iOS Liquid Glass container - transparent to show blur
     backgroundColor: 'transparent',
-    borderTopWidth: 0, // Use custom glass border instead
+    borderTopWidth: 0,
     overflow: 'hidden',
+  },
+  glassHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 16,
+    opacity: 0.5,
   },
   glassTopBorder: {
     position: 'absolute',
