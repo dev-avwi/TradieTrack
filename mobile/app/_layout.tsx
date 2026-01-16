@@ -24,7 +24,7 @@ import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
-import { isTablet } from '../src/lib/device';
+import { isTablet, isIOS, isAndroid } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 
@@ -329,7 +329,29 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // iPhone: Bottom nav layout (default)
+  // iPhone: 
+  // iOS: Use native navigation (header/tab bar handled by expo-router)
+  // Android: Use custom Header + BottomNav
+  if (isIOS) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Main content - native nav handles header/tabs */}
+        <View style={styles.content}>
+          {children}
+        </View>
+        
+        {/* Overlays */}
+        <OfflineBanner />
+        <ConflictResolutionPanel />
+        <OfflineIndicator />
+        
+        {/* FAB */}
+        {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
+      </View>
+    );
+  }
+  
+  // Android: Bottom nav layout with custom components
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header at top in normal flow */}
