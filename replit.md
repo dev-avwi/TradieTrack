@@ -74,6 +74,15 @@ Core architectural and design decisions include:
     *   **BeforePhotoPrompt**: Modal prompting users to capture "before photos" when starting job timer, with skip option and camera integration
     *   **Contact Client Card**: Email/SMS buttons on job detail view with automatic Twilio/manual fallback detection
     *   Mobile Chat Hub uses native Linking API for SMS/Email fallback when Twilio not connected
+*   **Chat Hub Jobs Tab Client SMS Integration**:
+    *   Jobs tab shows client SMS conversations when clicking a job in the Chat Hub
+    *   Displays actual SMS message thread with the job's client in a team-only view (clients cannot see)
+    *   Uses separate `jobSmsMessages` query to prevent cross-conversation state pollution
+    *   Job-to-conversation mapping prefers jobId match, then falls back to clientId for accuracy
+    *   Send SMS to client directly from job chat context with Twilio/manual fallback
+    *   "Team Only" banner clarifies clients cannot see this internal conversation history
+    *   Three rendering states: conversation with messages, conversation without messages yet, no client linked
+    *   Cache invalidation on send ensures immediate message display in job view
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
