@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useOfflineTimeTracking } from "@/hooks/useOfflineTimeTracking";
 import { 
   Play, 
   Pause, 
@@ -21,7 +22,9 @@ import {
   MapPin,
   CheckCircle2,
   Timer,
-  Coffee
+  Coffee,
+  WifiOff,
+  RefreshCw
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -67,24 +70,44 @@ export function TimerWidget({
   const [locationStatus, setLocationStatus] = useState<'checking' | 'captured' | 'unavailable' | 'idle'>('idle');
   const { toast } = useToast();
 
-  // Get active timer
+  const offlineTimeTracking = useOfflineTimeTracking({
+    jobId: jobId ? (typeof jobId === 'string' ? parseInt(jobId, 10) : jobId) : undefined,
+  });
+  
+  const { 
+    entries: offlineEntries,
+    activeTimer: offlineActiveTimer,
+    isOffline,
+    isSyncing,
+    pendingSyncs,
+    startTimer: offlineStartTimer,
+    stopTimer: offlineStopTimer,
+    pauseTimer: offlinePauseTimer,
+    resumeTimer: offlineResumeTimer,
+    sync: triggerSync,
+  } = offlineTimeTracking;
+
+  // Get active timer from server (fallback when online)
   const { data: globalActiveTimer, isLoading } = useQuery({
     queryKey: ['/api/time-entries/active/current'],
-    refetchInterval: 1000,
+    refetchInterval: isOffline ? false : 1000,
+    enabled: !isOffline,
   });
 
   // Get ALL time entries for this job (not just today's) to show total time
   const { data: allTimeEntries = [] } = useQuery<TimeEntry[]>({
     queryKey: ['/api/time-entries', jobId],
-    enabled: !!jobId,
+    enabled: !!jobId && !isOffline,
   });
+  
+  const effectiveEntries = isOffline ? offlineEntries : allTimeEntries;
 
   // Filter to get today's entries for this job
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const todaysJobEntries = jobId ? (allTimeEntries as TimeEntry[])
-    .filter((entry: TimeEntry) => {
-      if (entry.jobId !== jobId) return false;
+  const todaysJobEntries = jobId ? (effectiveEntries as any[])
+    .filter((entry: any) => {
+      if (String(entry.jobId) !== String(jobId)) return false;
       const entryDate = new Date(entry.startTime);
       return entryDate >= todayStart && entry.endTime;
     })
@@ -92,9 +115,9 @@ export function TimerWidget({
   : [];
 
   // Calculate TOTAL work time for this job (all time, excluding breaks)
-  const totalWorkMinutesAllTime = jobId ? (allTimeEntries as TimeEntry[])
-    .filter((entry: TimeEntry) => entry.jobId === jobId && entry.endTime && !entry.isBreak)
-    .reduce((total: number, entry: TimeEntry) => {
+  const totalWorkMinutesAllTime = jobId ? (effectiveEntries as any[])
+    .filter((entry: any) => String(entry.jobId) === String(jobId) && entry.endTime && !entry.isBreak)
+    .reduce((total: number, entry: any) => {
       const start = new Date(entry.startTime).getTime();
       const end = new Date(entry.endTime!).getTime();
       return total + Math.floor((end - start) / 60000);
@@ -102,9 +125,9 @@ export function TimerWidget({
   : 0;
 
   // Calculate TOTAL break time for this job (all time)
-  const totalBreakMinutesAllTime = jobId ? (allTimeEntries as TimeEntry[])
-    .filter((entry: TimeEntry) => entry.jobId === jobId && entry.endTime && entry.isBreak)
-    .reduce((total: number, entry: TimeEntry) => {
+  const totalBreakMinutesAllTime = jobId ? (effectiveEntries as any[])
+    .filter((entry: any) => String(entry.jobId) === String(jobId) && entry.endTime && entry.isBreak)
+    .reduce((total: number, entry: any) => {
       const start = new Date(entry.startTime).getTime();
       const end = new Date(entry.endTime!).getTime();
       return total + Math.floor((end - start) / 60000);
@@ -140,12 +163,51 @@ export function TimerWidget({
 
   const latestCompletedEntry = todaysJobEntries[0];
 
+  // Use offline timer when offline, server timer when online
+  const effectiveActiveTimer = isOffline 
+    ? offlineActiveTimer 
+    : (offlineActiveTimer || globalActiveTimer);
+    
   const activeTimer = jobId 
-    ? (globalActiveTimer && (globalActiveTimer as any).jobId === jobId ? globalActiveTimer : null)
-    : globalActiveTimer;
+    ? (effectiveActiveTimer && String((effectiveActiveTimer as any).jobId) === String(jobId) ? effectiveActiveTimer : null)
+    : effectiveActiveTimer;
   
   // Check if active timer is a break
   const isOnBreak = activeTimer && typeof activeTimer === 'object' && (activeTimer as any).isBreak === true;
+  
+  // Offline status indicator component
+  const OfflineIndicator = () => {
+    if (!isOffline && pendingSyncs === 0) return null;
+    
+    return (
+      <div className="flex items-center justify-center gap-2 text-xs py-1 px-2 rounded-md bg-muted/50">
+        {isOffline && (
+          <>
+            <WifiOff className="h-3 w-3 text-amber-500" />
+            <span className="text-amber-600 dark:text-amber-400">Offline mode</span>
+          </>
+        )}
+        {pendingSyncs > 0 && (
+          <Badge variant="outline" className="text-xs h-5">
+            {isSyncing ? (
+              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+            ) : null}
+            {pendingSyncs} pending
+          </Badge>
+        )}
+        {!isOffline && pendingSyncs > 0 && !isSyncing && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-5 text-xs px-2"
+            onClick={() => triggerSync()}
+          >
+            Sync now
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   // Check location when timer starts
   const captureLocation = () => {
@@ -308,17 +370,19 @@ export function TimerWidget({
     return `${mins}m`;
   };
 
-  const handleStartTimer = () => {
-    if (globalActiveTimer) {
-      if (jobId && (globalActiveTimer as any).jobId !== jobId) {
+  const handleStartTimer = async () => {
+    const effectiveTimer = isOffline ? offlineActiveTimer : (offlineActiveTimer || globalActiveTimer);
+    
+    if (effectiveTimer) {
+      if (jobId && String((effectiveTimer as any).jobId) !== String(jobId)) {
         toast({
           title: "Timer Already Running",
-          description: `Stop the current timer for "${(globalActiveTimer as any).description || 'another job'}" before starting a new one.`,
+          description: `Stop the current timer for "${(effectiveTimer as any).description || 'another job'}" before starting a new one.`,
           variant: "destructive",
         });
         return;
       }
-      if (!jobId || (globalActiveTimer as any).jobId === jobId) {
+      if (!jobId || String((effectiveTimer as any).jobId) === String(jobId)) {
         toast({
           title: "Timer Already Running", 
           description: "A timer is already active. Stop it before starting a new one.",
@@ -329,16 +393,60 @@ export function TimerWidget({
     }
 
     const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
-    startTimerMutation.mutate({
-      description,
-      ...(jobId && { jobId }),
-      hourlyRate: '85.00',
-    });
+    
+    try {
+      await offlineStartTimer({
+        description,
+        hourlyRate: 85.00,
+        isBreak: false,
+      });
+      captureLocation();
+      onTimerStart?.();
+      
+      if (!isOffline) {
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      }
+      
+      toast({
+        title: "Timer Started",
+        description: isOffline ? "Timer started (offline mode)." : "Time tracking has begun for this task.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Timer Error",
+        description: error?.message || "Failed to start timer",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleStopTimer = () => {
+  const handleStopTimer = async () => {
     if (activeTimer && typeof activeTimer === 'object' && 'id' in activeTimer && activeTimer.id) {
-      stopTimerMutation.mutate(activeTimer.id as string);
+      try {
+        await offlineStopTimer(activeTimer.id as string);
+        setLocationStatus('idle');
+        onTimerStop?.();
+        
+        if (!isOffline) {
+          queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
+        }
+        
+        toast({
+          title: "Time Saved",
+          description: isOffline ? "Time recorded (will sync when online)." : "Your time has been recorded successfully.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Timer Error",
+          description: error?.message || "Failed to stop timer",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -347,19 +455,16 @@ export function TimerWidget({
     if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) return;
     
     try {
-      // Stop the current work timer
-      await apiRequest('POST', `/api/time-entries/${activeTimer.id}/stop`);
+      await offlinePauseTimer();
       
-      // Invalidate queries to reflect stopped timer
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      if (!isOffline) {
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      }
       
-      // Start a break timer
-      const description = jobTitle ? `Break - ${jobTitle}` : 'Break';
-      startTimerMutation.mutate({
-        description,
-        ...(jobId && { jobId }),
-        isBreak: true,
+      toast({
+        title: "Break Started",
+        description: isOffline ? "Taking a break (offline mode)." : "Taking a break. Resume when you're ready.",
       });
     } catch (error: any) {
       toast({
@@ -375,20 +480,20 @@ export function TimerWidget({
     if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) return;
     
     try {
-      // Stop the break timer
-      await apiRequest('POST', `/api/time-entries/${activeTimer.id}/stop`);
-      
-      // Invalidate queries to reflect stopped timer
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
-      
-      // Start a work timer
       const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
-      startTimerMutation.mutate({
+      await offlineResumeTimer({
         description,
-        ...(jobId && { jobId }),
-        hourlyRate: '85.00',
-        isBreak: false,
+        hourlyRate: 85.00,
+      });
+      
+      if (!isOffline) {
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      }
+      
+      toast({
+        title: "Work Resumed",
+        description: isOffline ? "Timer resumed (offline mode)." : "Timer resumed. Keep up the good work!",
       });
     } catch (error: any) {
       toast({
@@ -491,6 +596,7 @@ export function TimerWidget({
               {(activeTimer as any).description || (isOnBreak ? 'Taking a break...' : 'Working...')}
             </p>
             <LocationIndicator />
+            <OfflineIndicator />
           </div>
 
           {/* Work and break time totals */}
@@ -659,18 +765,19 @@ export function TimerWidget({
         </div>
         
         {/* Add more time button */}
+        <OfflineIndicator />
         <Button 
           className="w-full h-12 text-base font-semibold text-white" 
           style={{ backgroundColor: 'hsl(var(--trade))' }}
           onClick={handleStartTimer}
-          disabled={startTimerMutation.isPending || !!globalActiveTimer}
+          disabled={!!effectiveActiveTimer}
           data-testid="button-start-timer"
         >
           <Play className="h-5 w-5 mr-2" />
           Clock In Again
         </Button>
         
-        {globalActiveTimer && (globalActiveTimer as any).jobId !== jobId && (
+        {effectiveActiveTimer && String((effectiveActiveTimer as any).jobId) !== String(jobId) && (
           <p className="text-xs text-center text-amber-600">
             Timer running on another job
           </p>
@@ -711,20 +818,21 @@ export function TimerWidget({
         <p className="text-sm text-muted-foreground">
           Ready to track time
         </p>
+        <OfflineIndicator />
       </div>
       
       <Button 
         className="w-full h-12 text-base font-semibold text-white" 
         style={{ backgroundColor: 'hsl(var(--trade))' }}
         onClick={handleStartTimer}
-        disabled={startTimerMutation.isPending || !!globalActiveTimer}
+        disabled={!!effectiveActiveTimer}
         data-testid="button-start-timer"
       >
         <Play className="h-5 w-5 mr-2" />
         Clock In
       </Button>
       
-      {globalActiveTimer && (globalActiveTimer as any).jobId !== jobId && (
+      {effectiveActiveTimer && String((effectiveActiveTimer as any).jobId) !== String(jobId) && (
         <p className="text-xs text-center text-amber-600">
           Timer running on another job
         </p>
