@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAllItems, saveItem, getItem, deleteItem, addToSyncQueue, generateOfflineId, isOnline as checkOnline, type SyncOperation, type OfflineStoreName } from "./offlineStorage";
+import { syncManager } from "./syncManager";
 
 export function getStoreNameFromEndpoint(endpoint: string): OfflineStoreName | null {
   if (endpoint.includes('/api/clients')) return 'clients';
@@ -377,4 +378,84 @@ export async function safeInvalidateQueries(options: Parameters<typeof queryClie
   if (navigator.onLine) {
     await queryClient.invalidateQueries(options);
   }
+}
+
+/**
+ * Initialize the SyncManager to handle background sync operations.
+ * This sets up listeners for online/offline events and processes
+ * the sync queue when coming back online.
+ */
+export function initializeSyncManager(): void {
+  syncManager.initialize();
+
+  syncManager.on('syncComplete', (result) => {
+    if (result.completed > 0) {
+      console.log(`Sync complete: ${result.completed} operations synced`);
+    }
+  });
+
+  syncManager.on('syncError', (error) => {
+    console.error('Sync error:', error);
+  });
+
+  syncManager.on('conflict', (conflict) => {
+    console.warn('Sync conflict detected:', conflict.storeName, conflict.localVersion?.id);
+  });
+}
+
+/**
+ * Trigger a manual sync of pending operations.
+ * Returns a promise that resolves when sync is complete.
+ */
+export async function triggerManualSync(): Promise<void> {
+  return syncManager.triggerSync();
+}
+
+/**
+ * Get the current sync status and progress.
+ */
+export function getSyncStatus() {
+  return {
+    isOnline: syncManager.isNetworkOnline(),
+    isSyncing: syncManager.isSyncInProgress(),
+    progress: syncManager.getProgress(),
+    errors: syncManager.getErrors(),
+    conflicts: syncManager.getConflicts(),
+  };
+}
+
+/**
+ * Get the number of pending sync operations.
+ */
+export async function getPendingSyncCount(): Promise<number> {
+  return syncManager.getPendingCount();
+}
+
+/**
+ * Subscribe to sync events.
+ * Returns an unsubscribe function.
+ */
+export function onSyncEvent(
+  event: 'syncStart' | 'syncComplete' | 'syncError' | 'syncProgress' | 'online' | 'offline' | 'conflict',
+  callback: (data?: any) => void
+): () => void {
+  return syncManager.on(event, callback);
+}
+
+/**
+ * Resolve a sync conflict by choosing local or server version.
+ */
+export async function resolveSyncConflict(conflictId: string, useLocal: boolean): Promise<void> {
+  return syncManager.resolveConflict(conflictId, useLocal);
+}
+
+/**
+ * Get ID mapping for offline IDs that have been synced.
+ */
+export function getResolvedId(offlineId: string): string | number | undefined {
+  return syncManager.getIdMapping(offlineId);
+}
+
+if (typeof window !== 'undefined') {
+  initializeSyncManager();
 }
