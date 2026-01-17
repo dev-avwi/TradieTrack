@@ -68,6 +68,12 @@ Core architectural and design decisions include:
     *   Reordered payment methods: Tap to Pay, QR Code, Payment Link, then Record Payment
     *   Ongoing payments are clickable with alert details
     *   Streamlined UI without amount input section
+*   **Unified Communication Components**:
+    *   **ManualSmsComposer**: Graceful SMS fallback when Twilio not configured - copies message to clipboard and opens native SMS app with phone number pre-filled
+    *   **UnifiedSendModal**: Email/SMS tabs side-by-side for sending documents (jobs, quotes, invoices) to customers with template support
+    *   **BeforePhotoPrompt**: Modal prompting users to capture "before photos" when starting job timer, with skip option and camera integration
+    *   **Contact Client Card**: Email/SMS buttons on job detail view with automatic Twilio/manual fallback detection
+    *   Mobile Chat Hub uses native Linking API for SMS/Email fallback when Twilio not connected
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)

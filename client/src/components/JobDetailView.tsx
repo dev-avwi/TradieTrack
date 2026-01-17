@@ -18,6 +18,9 @@ import GeofenceSettingsCard from "./GeofenceSettingsCard";
 import { LinkedDocumentsCard } from "./JobWorkflowComponents";
 import JobFlowWizard from "@/components/JobFlowWizard";
 import QuickCollectPayment from "./QuickCollectPayment";
+import { BeforePhotoPrompt } from "./BeforePhotoPrompt";
+import { UnifiedSendModal } from "./UnifiedSendModal";
+import { ManualSmsComposer } from "./ManualSmsComposer";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -166,6 +169,10 @@ export default function JobDetailView({
   const [rollbackTargetStatus, setRollbackTargetStatus] = useState<JobStatus | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showQuickCollect, setShowQuickCollect] = useState(false);
+  const [showBeforePhotoPrompt, setShowBeforePhotoPrompt] = useState(false);
+  const [showUnifiedSendModal, setShowUnifiedSendModal] = useState(false);
+  const [showManualSms, setShowManualSms] = useState(false);
+  const [pendingTimerStart, setPendingTimerStart] = useState(false);
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -944,11 +951,10 @@ export default function JobDetailView({
                 </div>
               </div>
               <Button
-                onClick={() => startTimerMutation.mutate({
-                  description: `Working on ${job.title}`,
-                  jobId: jobId,
-                  hourlyRate: '85.00',
-                })}
+                onClick={() => {
+                  setPendingTimerStart(true);
+                  setShowBeforePhotoPrompt(true);
+                }}
                 disabled={startTimerMutation.isPending}
                 className="text-white shrink-0"
                 style={{ backgroundColor: 'hsl(var(--trade))' }}
@@ -969,7 +975,7 @@ export default function JobDetailView({
           return (
             <div 
               className={`rounded-xl p-4 border ${
-                !twilioConnected 
+                !twilioConnected && !client?.phone
                   ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
                   : overdue
                     ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
@@ -980,13 +986,13 @@ export default function JobDetailView({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-full ${
-                    !twilioConnected
+                    !twilioConnected && !client?.phone
                       ? 'bg-amber-200 dark:bg-amber-800'
                       : overdue
                         ? 'bg-amber-200 dark:bg-amber-800'
                         : 'bg-blue-200 dark:bg-blue-800'
                   }`}>
-                    {!twilioConnected ? (
+                    {!twilioConnected && !client?.phone ? (
                       <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     ) : overdue ? (
                       <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -995,10 +1001,15 @@ export default function JobDetailView({
                     )}
                   </div>
                   <div>
-                    {!twilioConnected ? (
+                    {!twilioConnected && !client?.phone ? (
                       <>
-                        <p className="font-semibold text-amber-700 dark:text-amber-300">SMS Not Connected</p>
-                        <p className="text-sm text-muted-foreground">Connect Twilio in Settings to text clients</p>
+                        <p className="font-semibold text-amber-700 dark:text-amber-300">SMS Not Available</p>
+                        <p className="text-sm text-muted-foreground">Connect Twilio or add client phone number</p>
+                      </>
+                    ) : !twilioConnected && client?.phone ? (
+                      <>
+                        <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
+                        <p className="text-sm text-muted-foreground">Let the client know via your SMS app</p>
                       </>
                     ) : overdue ? (
                       <>
@@ -1035,6 +1046,39 @@ export default function JobDetailView({
                       <>
                         <Navigation className="h-4 w-4 mr-2" />
                         On My Way
+                      </>
+                    )}
+                  </Button>
+                ) : client?.phone ? (
+                  <Button
+                    onClick={() => {
+                      let phone = client.phone?.replace(/\s+/g, '').replace(/^0/, '+61') || '';
+                      if (phone && !phone.startsWith('+')) {
+                        phone = '+61' + phone.replace(/^61/, '');
+                      }
+                      const message = encodeURIComponent(overdue 
+                        ? "Hi! Just letting you know I'm running a bit behind schedule. I'll be there as soon as I can. Sorry for any inconvenience!"
+                        : "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes."
+                      );
+                      window.open(`sms:${phone}?body=${message}`, '_blank');
+                      toast({ 
+                        title: "Opening SMS app", 
+                        description: "Your messaging app should open with the message ready to send" 
+                      });
+                    }}
+                    className="shrink-0"
+                    variant="outline"
+                    data-testid={overdue ? "button-running-late-manual" : "button-on-my-way-manual"}
+                  >
+                    {overdue ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2 text-amber-600" />
+                        Text Running Late
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="h-4 w-4 mr-2" />
+                        Text On My Way
                       </>
                     )}
                   </Button>
@@ -1226,6 +1270,55 @@ export default function JobDetailView({
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Contact Client - Email/SMS side by side */}
+        {client && (client.email || client.phone) && (
+          <Card data-testid="card-contact-client">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Send className="h-4 w-4" />
+                Contact Client
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2">
+                {client.email && (
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2"
+                    onClick={() => setShowUnifiedSendModal(true)}
+                    data-testid="button-email-client"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </Button>
+                )}
+                {client.phone && (
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2"
+                    onClick={() => {
+                      if (twilioConnected) {
+                        setShowUnifiedSendModal(true);
+                      } else {
+                        setShowManualSms(true);
+                      }
+                    }}
+                    data-testid="button-sms-client"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    SMS
+                  </Button>
+                )}
+              </div>
+              {!twilioConnected && client.phone && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  SMS via your phone's messaging app
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -2001,6 +2094,65 @@ export default function JobDetailView({
           onSuccess={(receiptId) => {
             navigate(`/receipts/${receiptId}`);
           }}
+        />
+      )}
+
+      {/* Before Photo Prompt - shown when starting timer */}
+      <BeforePhotoPrompt
+        open={showBeforePhotoPrompt}
+        onOpenChange={(open) => {
+          setShowBeforePhotoPrompt(open);
+          if (!open) {
+            setPendingTimerStart(false);
+          }
+        }}
+        jobId={jobId}
+        jobTitle={job?.title || 'Job'}
+        onComplete={() => {
+          if (job?.title) {
+            startTimerMutation.mutate({
+              description: `Working on ${job.title}`,
+              jobId: jobId,
+              hourlyRate: '85.00',
+            });
+          }
+          setShowBeforePhotoPrompt(false);
+          setPendingTimerStart(false);
+        }}
+        onSkip={() => {
+          if (job?.title) {
+            startTimerMutation.mutate({
+              description: `Working on ${job.title}`,
+              jobId: jobId,
+              hourlyRate: '85.00',
+            });
+          }
+          setShowBeforePhotoPrompt(false);
+          setPendingTimerStart(false);
+        }}
+      />
+
+      {/* Unified Send Modal - Email + SMS side by side */}
+      {client && (
+        <UnifiedSendModal
+          open={showUnifiedSendModal}
+          onOpenChange={setShowUnifiedSendModal}
+          documentType="job"
+          documentId={jobId}
+          recipientName={client.name}
+          recipientEmail={client.email}
+          recipientPhone={client.phone}
+          documentTitle={job?.title}
+        />
+      )}
+
+      {/* Manual SMS Composer - fallback when Twilio not configured */}
+      {client?.phone && (
+        <ManualSmsComposer
+          open={showManualSms}
+          onOpenChange={setShowManualSms}
+          recipientName={client.name}
+          recipientPhone={client.phone}
         />
       )}
     </PageShell>
