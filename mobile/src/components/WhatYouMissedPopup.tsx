@@ -16,6 +16,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
 import { useAuthStore } from '../lib/store';
 import { formatDistanceToNow } from 'date-fns';
+import api from '../lib/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isIOS = Platform.OS === 'ios';
@@ -229,25 +230,20 @@ export function WhatYouMissedPopup() {
   const [hasUrgent, setHasUrgent] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { token, baseUrl } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (!token || !baseUrl || hasShownOnce) return;
+    if (!isAuthenticated || hasShownOnce) return;
 
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`${baseUrl}/api/notifications/missed`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const data: MissedNotificationsResponse = await response.json();
-          if (data.count > 0) {
-            setNotifications(data.notifications);
-            setHasUrgent(data.hasUrgent);
-            setIsOpen(true);
-            setHasShownOnce(true);
-            setCountdown(AUTO_DISMISS_DELAY);
-          }
+        const response = await api.get<MissedNotificationsResponse>('/api/notifications/missed');
+        if (response.data && response.data.count > 0) {
+          setNotifications(response.data.notifications);
+          setHasUrgent(response.data.hasUrgent);
+          setIsOpen(true);
+          setHasShownOnce(true);
+          setCountdown(AUTO_DISMISS_DELAY);
         }
       } catch (error) {
         console.error('Failed to fetch missed notifications:', error);
@@ -255,7 +251,7 @@ export function WhatYouMissedPopup() {
     };
 
     fetchNotifications();
-  }, [token, baseUrl, hasShownOnce]);
+  }, [isAuthenticated, hasShownOnce]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -281,10 +277,7 @@ export function WhatYouMissedPopup() {
 
   const handleNotificationPress = async (notification: MissedNotification) => {
     try {
-      await fetch(`${baseUrl}/api/notifications/${notification.id}/read`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      await api.patch(`/api/notifications/${notification.id}/read`);
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
