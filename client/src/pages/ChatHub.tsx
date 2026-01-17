@@ -400,6 +400,37 @@ export default function ChatHub() {
     enabled: !!selectedSmsConversation && selectedConversation?.type === 'sms',
   });
 
+  // Find SMS conversation for the selected job - prefer jobId match, then clientId
+  const jobSmsConversation = useMemo(() => {
+    if (selectedConversation?.type !== 'job' || !selectedJob) return null;
+    // First try to find by jobId (most accurate)
+    const byJobId = smsConversations.find(c => c.jobId === selectedJob.id);
+    if (byJobId) return byJobId;
+    // Fallback to clientId match
+    if (selectedJob.clientId) {
+      return smsConversations.find(c => c.clientId === selectedJob.clientId) || null;
+    }
+    return null;
+  }, [selectedJob, smsConversations, selectedConversation?.type]);
+
+  // Separate query for job's SMS messages to avoid state pollution
+  const { data: jobSmsMessages = [] } = useQuery<SmsMessage[]>({
+    queryKey: ['/api/sms/conversations', jobSmsConversation?.id, 'messages'],
+    enabled: !!jobSmsConversation?.id && selectedConversation?.type === 'job',
+  });
+
+  // Get the client for the selected job (fetch single client by ID)
+  const { data: selectedJobClient, isError: clientFetchError } = useQuery<Client>({
+    queryKey: ['/api/clients', 'single', selectedJob?.clientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/clients/${selectedJob?.clientId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch client');
+      return res.json();
+    },
+    enabled: !!selectedJob?.clientId && selectedConversation?.type === 'job',
+    retry: 1,
+  });
+
   const sendTeamMessageMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await apiRequest('POST', '/api/team-chat', {
@@ -467,6 +498,10 @@ export default function ChatHub() {
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       if (selectedSmsConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation.id, 'messages'] });
+      }
+      // Also invalidate job SMS messages if viewing a job
+      if (jobSmsConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', jobSmsConversation.id, 'messages'] });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
     },
@@ -1565,6 +1600,25 @@ export default function ChatHub() {
     }
 
     if (selectedConversation.type === 'job' && selectedJob) {
+      // Derive client info with fallbacks, accounting for fetch errors
+      const clientName = !clientFetchError 
+        ? (selectedJobClient?.name || jobSmsConversation?.clientName || 'Client')
+        : (jobSmsConversation?.clientName || 'Client');
+      const clientPhone = !clientFetchError 
+        ? (selectedJobClient?.phone || jobSmsConversation?.clientPhone)
+        : jobSmsConversation?.clientPhone;
+      const hasClientConversation = !!jobSmsConversation || !!clientPhone;
+
+      // Handler to send SMS from job context
+      const handleSendJobSms = () => {
+        if (!smsNewMessage.trim() || !clientPhone) return;
+        sendSmsMutation.mutate({
+          clientId: selectedJob.clientId,
+          clientPhone: clientPhone,
+          message: smsNewMessage.trim(),
+        });
+      };
+
       return (
         <div className="flex-1 flex flex-col overflow-hidden" data-testid="job-chat-view">
           <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
@@ -1583,8 +1637,10 @@ export default function ChatHub() {
                 <Badge variant="secondary" className="text-[10px] h-4 px-1.5" style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20', color: STATUS_COLORS[selectedJob.status] || '#6B7280' }}>
                   {STATUS_LABELS[selectedJob.status] || 'Unknown'}
                 </Badge>
-                {selectedJob.address && (
-                  <span className="text-xs text-muted-foreground truncate">{selectedJob.address.split(',')[0]}</span>
+                {clientName && (
+                  <span className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                    <User className="h-3 w-3" /> {clientName}
+                  </span>
                 )}
               </div>
             </div>
@@ -1597,18 +1653,130 @@ export default function ChatHub() {
             </Button>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center py-8">
-            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-              <Briefcase className="h-7 w-7 text-muted-foreground" />
+          {/* Internal Team Note Banner */}
+          <div className="shrink-0 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span className="font-medium">Team Only</span>
+              <span className="text-amber-600 dark:text-amber-400">- Client cannot see this conversation history</span>
             </div>
-            <h3 className="font-medium text-sm mb-1">Job Room</h3>
-            <p className="text-xs text-muted-foreground text-center max-w-xs mb-4">
-              Job-specific chat is coming soon. View job details to see activity.
-            </p>
-            <Button variant="outline" size="sm" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job-details">
-              View Job Details
-            </Button>
           </div>
+
+          {hasClientConversation && jobSmsMessages.length > 0 ? (
+            <>
+              {/* SMS Messages Thread */}
+              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                <div className="space-y-4">
+                  {jobSmsMessages.map((msg) => (
+                    <div key={msg.id} className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                        msg.direction === 'outbound' 
+                          ? 'bg-green-600 text-white rounded-br-md' 
+                          : 'bg-muted rounded-bl-md'
+                      }`}>
+                        <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
+                        <div className={`flex items-center gap-1 mt-1 text-[10px] ${
+                          msg.direction === 'outbound' ? 'text-green-100' : 'text-muted-foreground'
+                        }`}>
+                          <span>{format(new Date(msg.createdAt), 'h:mm a')}</span>
+                          {msg.direction === 'outbound' && (
+                            msg.status === 'delivered' ? (
+                              <CheckCheck className="h-3 w-3" />
+                            ) : (
+                              <Check className="h-3 w-3" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div ref={messagesEndRef} />
+              </ScrollArea>
+
+              {/* SMS Input for Job */}
+              {twilioConnected && clientPhone ? (
+                <div className="shrink-0 p-3 border-t bg-background">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={`SMS to ${clientName}...`}
+                      value={smsNewMessage}
+                      onChange={(e) => setSmsNewMessage(e.target.value)}
+                      onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendJobSms(); } }}
+                      className="flex-1"
+                      data-testid="input-job-sms-message"
+                    />
+                    <Button onClick={handleSendJobSms} disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} size="icon" className="bg-green-600 hover:bg-green-700" data-testid="button-send-job-sms">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : !twilioConnected && clientPhone ? (
+                <div className="shrink-0 p-3 border-t bg-background">
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => {
+                      const message = `Hi! Update on ${selectedJob.title} - `;
+                      window.open(`sms:${clientPhone}?body=${encodeURIComponent(message)}`, '_blank');
+                    }}
+                    data-testid="button-manual-sms"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Open SMS App to Text {clientName}
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          ) : hasClientConversation && clientPhone ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-8">
+              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+                <MessageCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="font-medium text-sm mb-1">Start Conversation</h3>
+              <p className="text-xs text-muted-foreground text-center max-w-xs mb-4">
+                No messages yet with {clientName}. Send an SMS to start the conversation.
+              </p>
+              {twilioConnected ? (
+                <div className="flex gap-2 w-full max-w-xs px-4">
+                  <Input
+                    placeholder={`Message to ${clientName}...`}
+                    value={smsNewMessage}
+                    onChange={(e) => setSmsNewMessage(e.target.value)}
+                    className="flex-1"
+                    data-testid="input-job-first-sms"
+                  />
+                  <Button onClick={handleSendJobSms} disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} size="icon" className="bg-green-600 hover:bg-green-700">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const message = `Hi! Just wanted to touch base about ${selectedJob.title}.`;
+                    window.open(`sms:${clientPhone}?body=${encodeURIComponent(message)}`, '_blank');
+                  }}
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Open SMS App
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center py-8">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Briefcase className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium text-sm mb-1">No Client Linked</h3>
+              <p className="text-xs text-muted-foreground text-center max-w-xs mb-4">
+                This job doesn't have a client with a phone number. Add a client to enable SMS communication.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job-details">
+                View Job Details
+              </Button>
+            </div>
+          )}
         </div>
       );
     }
