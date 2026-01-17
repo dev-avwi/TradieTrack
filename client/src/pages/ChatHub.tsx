@@ -1134,36 +1134,35 @@ export default function ChatHub() {
   const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading || smsLoading;
 
   const renderConversationList = () => (
-    <div className="flex flex-col h-full border-r bg-background" data-testid="conversation-list">
-      <div className="shrink-0 p-4 pb-3 border-b">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <h1 className="text-lg font-bold">Job Communications</h1>
-            <p className="text-xs text-muted-foreground">SMS, team & job discussions</p>
-          </div>
+    <div className="flex flex-col h-full bg-muted/30" data-testid="conversation-list">
+      {/* Clean header with title and new message button */}
+      <div className="shrink-0 px-4 py-3 bg-background border-b">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h1 className="text-lg font-semibold">Inbox</h1>
           <Button
             onClick={() => setNewSmsDialogOpen(true)}
-            size="sm"
-            className="gap-1.5 bg-green-600 hover:bg-green-700"
+            size="icon"
+            variant="ghost"
             data-testid="button-new-sms"
           >
             <Plus className="h-4 w-4" />
-            New SMS
           </Button>
         </div>
 
+        {/* Search */}
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search conversations..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-9"
+            className="pl-9 h-8 text-sm bg-muted/50 border-0"
             data-testid="input-search"
           />
         </div>
 
-        <div className="flex gap-1.5">
+        {/* Filter pills */}
+        <div className="flex gap-1">
           {(['all', 'team', 'clients'] as FilterType[]).map((f) => {
             const count = f === 'all' 
               ? unreadCounts.teamChat + unreadCounts.directMessages + smsUnreadCount
@@ -1179,10 +1178,10 @@ export default function ChatHub() {
                 variant={filter === f ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setFilter(f)}
-                className="h-7 text-xs capitalize"
+                className="h-7 text-xs"
                 data-testid={`filter-${f}`}
               >
-                {f}
+                {f === 'all' ? 'All' : f === 'team' ? 'Team' : 'Clients'}
                 {count > 0 && (
                   <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
                     {count}
@@ -1197,87 +1196,94 @@ export default function ChatHub() {
       <OfflineBanner isConnected={smsSocketConnected} />
       {filter === 'clients' && !twilioConnected && <TwilioWarning />}
 
+      {/* Conversation list */}
       <ScrollArea className="flex-1">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-              <MessageCircle className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <h3 className="font-medium text-sm mb-1">No conversations</h3>
-            <p className="text-xs text-muted-foreground text-center max-w-[200px]">
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <MessageCircle className="h-10 w-10 text-muted-foreground/50 mb-3" />
+            <p className="text-sm text-muted-foreground text-center">
               {filter === 'clients' 
-                ? 'Client conversations and job updates will appear here'
-                : 'Your messages will appear here'}
+                ? 'No client conversations yet'
+                : 'No messages yet'}
             </p>
           </div>
         ) : (
-          <div className="p-2 space-y-0.5">
-            {conversationList.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
-                  selectedConversation?.id === item.id 
-                    ? 'bg-accent' 
-                    : 'hover:bg-muted/50'
-                }`}
-                onClick={() => handleConversationClick(item)}
-                data-testid={`conversation-${item.id}`}
-              >
-                <div className="relative shrink-0">
-                  {item.type === 'team' ? (
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                  ) : item.type === 'client' ? (
-                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <User className="h-5 w-5 text-green-600" />
-                    </div>
-                  ) : (
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={item.avatar || undefined} />
-                      <AvatarFallback className="text-xs">{item.avatarFallback}</AvatarFallback>
-                    </Avatar>
-                  )}
-                  {item.isOnline && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-background" />
-                  )}
-                  {/* Show job count indicator for client conversations */}
-                  {item.type === 'client' && item.relatedJobs && item.relatedJobs.length > 0 && (
-                    <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-blue-500 border-2 border-background flex items-center justify-center">
-                      <Briefcase className="h-2 w-2 text-white" />
-                    </div>
-                  )}
-                </div>
+          <div className="py-1">
+            {conversationList.map((item) => {
+              const isSelected = selectedConversation?.id === item.id;
+              const hasUnread = item.unreadCount > 0;
+              
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-start gap-3 mx-2 px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                    isSelected 
+                      ? 'bg-accent' 
+                      : hasUnread
+                      ? 'bg-primary/5 hover-elevate'
+                      : 'hover-elevate'
+                  }`}
+                  onClick={() => handleConversationClick(item)}
+                  data-testid={`conversation-${item.id}`}
+                >
+                  {/* Avatar */}
+                  <div className="relative shrink-0 mt-0.5">
+                    {item.type === 'team' ? (
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-primary" />
+                      </div>
+                    ) : item.type === 'client' ? (
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className="text-xs bg-green-500/10 text-green-700 dark:text-green-400">
+                          {item.avatarFallback}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={item.avatar || undefined} />
+                        <AvatarFallback className="text-xs">{item.avatarFallback}</AvatarFallback>
+                      </Avatar>
+                    )}
+                    {item.isOnline && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                    )}
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-medium text-sm truncate">{item.title}</span>
-                      <div className={`shrink-0 w-5 h-5 rounded flex items-center justify-center ${getTypeColor(item.type)}`}>
-                        {getTypeIcon(item.type)}
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                        {item.title}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {item.lastMessageTime && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatTime(item.lastMessageTime)}
+                          </span>
+                        )}
+                        {hasUnread && (
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        )}
                       </div>
                     </div>
-                    {item.lastMessageTime && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {formatTime(item.lastMessageTime)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground truncate">
-                      {item.lastMessage || item.subtitle || 'No messages yet'}
+                    <p className={`text-xs truncate mt-0.5 ${hasUnread ? 'text-foreground/80' : 'text-muted-foreground'}`}>
+                      {item.lastMessage || 'No messages yet'}
                     </p>
-                    {item.unreadCount > 0 && (
-                      <Badge className="shrink-0 h-4 min-w-4 px-1 text-[10px] bg-primary">
-                        {item.unreadCount}
-                      </Badge>
+                    {/* Show job count subtly for clients */}
+                    {item.type === 'client' && item.relatedJobs && item.relatedJobs.length > 0 && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Briefcase className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">
+                          {item.relatedJobs.length} job{item.relatedJobs.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </ScrollArea>
@@ -1287,14 +1293,14 @@ export default function ChatHub() {
   const renderChatView = () => {
     if (!selectedConversation) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center bg-muted/30" data-testid="empty-chat-view">
-          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-            <MessageCircle className="h-10 w-10 text-muted-foreground" />
+        <div className="flex-1 flex flex-col items-center justify-center" data-testid="empty-chat-view">
+          <div className="text-center">
+            <MessageCircle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <h3 className="font-medium text-muted-foreground mb-1">No conversation selected</h3>
+            <p className="text-sm text-muted-foreground/70">
+              Choose from the sidebar to start messaging
+            </p>
           </div>
-          <h3 className="font-semibold text-lg mb-1">Select a conversation</h3>
-          <p className="text-sm text-muted-foreground text-center max-w-xs">
-            Choose a conversation from the list to start messaging
-          </p>
         </div>
       );
     }
@@ -1302,24 +1308,25 @@ export default function ChatHub() {
     if (selectedConversation.type === 'team') {
       return (
         <div className="flex-1 flex flex-col overflow-hidden" data-testid="team-chat-view">
-          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+          {/* Minimal header */}
+          <div className="shrink-0 h-14 px-4 border-b bg-background flex items-center gap-3">
             <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-sm">Team Chat</h2>
-              <p className="text-xs text-muted-foreground">
+              <h2 className="font-medium text-sm">Team Chat</h2>
+              <p className="text-[11px] text-muted-foreground">
                 {teamMembers.filter(m => m.status === 'accepted').length + 1} members
               </p>
             </div>
             {pinnedMessages.length > 0 && (
-              <Badge variant="outline" className="gap-1 text-xs">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground">
                 <Pin className="h-3 w-3" />
                 {pinnedMessages.length}
-              </Badge>
+              </Button>
             )}
             <Button
               variant="ghost"
@@ -1327,7 +1334,7 @@ export default function ChatHub() {
               onClick={() => setShowContextPanel(!showContextPanel)}
               data-testid="button-toggle-context"
             >
-              {showContextPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRight className="h-5 w-5" />}
+              {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
             </Button>
           </div>
 
@@ -1368,7 +1375,8 @@ export default function ChatHub() {
             )}
           </ScrollArea>
 
-          <div className="shrink-0 p-3 border-t bg-background">
+          {/* Sticky composer */}
+          <div className="shrink-0 px-4 py-4 border-t bg-background">
             <ChatComposer
               onSend={handleSendTeamMessage}
               placeholder="Message your team..."
@@ -1382,11 +1390,12 @@ export default function ChatHub() {
     if (selectedConversation.type === 'direct' && selectedDirectUser) {
       return (
         <div className="flex-1 flex flex-col overflow-hidden" data-testid="direct-chat-view">
-          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+          {/* Minimal header */}
+          <div className="shrink-0 h-14 px-4 border-b bg-background flex items-center gap-3">
             <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="relative">
+            <div className="relative shrink-0">
               <Avatar className="h-9 w-9">
                 <AvatarImage src={selectedDirectUser.profileImageUrl || undefined} />
                 <AvatarFallback className="text-xs">{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
@@ -1394,8 +1403,8 @@ export default function ChatHub() {
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-sm truncate">{getUserDisplayName(selectedDirectUser)}</h2>
-              <p className="text-xs text-muted-foreground truncate">{selectedDirectUser.email}</p>
+              <h2 className="font-medium text-sm truncate">{getUserDisplayName(selectedDirectUser)}</h2>
+              <p className="text-[11px] text-muted-foreground truncate">Online</p>
             </div>
             <Button
               variant="ghost"
@@ -1403,7 +1412,7 @@ export default function ChatHub() {
               onClick={() => setShowContextPanel(!showContextPanel)}
               data-testid="button-toggle-context"
             >
-              {showContextPanel ? <PanelRightClose className="h-5 w-5" /> : <PanelRight className="h-5 w-5" />}
+              {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
             </Button>
           </div>
 
@@ -1441,7 +1450,8 @@ export default function ChatHub() {
             )}
           </ScrollArea>
 
-          <div className="shrink-0 p-3 border-t bg-background">
+          {/* Sticky composer */}
+          <div className="shrink-0 px-4 py-4 border-t bg-background">
             <div className="flex gap-2">
               <Input
                 placeholder="Type a message..."
@@ -1451,7 +1461,12 @@ export default function ChatHub() {
                 className="flex-1"
                 data-testid="input-message"
               />
-              <Button onClick={handleSendDirectMessage} disabled={!newMessage.trim() || sendDirectMessageMutation.isPending} size="icon" data-testid="button-send">
+              <Button 
+                onClick={handleSendDirectMessage} 
+                disabled={!newMessage.trim() || sendDirectMessageMutation.isPending} 
+                size="icon"
+                data-testid="button-send"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
@@ -1466,42 +1481,44 @@ export default function ChatHub() {
       
       return (
         <div className="flex-1 flex flex-col overflow-hidden" data-testid="client-chat-view">
-          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
+          {/* Minimal header */}
+          <div className="shrink-0 h-14 px-4 border-b bg-background flex items-center gap-3">
             <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back-client">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-green-600" />
-            </div>
+            <Avatar className="h-9 w-9 shrink-0">
+              <AvatarFallback className="text-xs bg-green-500/10 text-green-700 dark:text-green-400">
+                {(selectedSmsConversation.clientName || selectedSmsConversation.clientPhone).slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-sm truncate">
+              <h2 className="font-medium text-sm truncate">
                 {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
               </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground truncate">
-                  {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS'}
-                </span>
-                {relatedJobs.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px] h-4 gap-1">
-                    <Briefcase className="h-2.5 w-2.5" />
-                    {relatedJobs.length} job{relatedJobs.length > 1 ? 's' : ''}
-                  </Badge>
-                )}
-              </div>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS conversation'}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
-              {activeJobContext && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${activeJobContext.id}`)} data-testid="button-view-job">
-                  <Briefcase className="h-3 w-3" />
-                  View Job
-                </Button>
-              )}
+            {/* Active job context chip */}
+            {activeJobContext && (
+              <Button 
+                variant="secondary"
+                size="sm"
+                className="hidden sm:flex gap-1.5"
+                onClick={() => setLocation(`/jobs/${activeJobContext.id}`)}
+                data-testid="button-view-job"
+              >
+                <Briefcase className="h-3 w-3" />
+                <span className="max-w-24 truncate">{activeJobContext.title}</span>
+              </Button>
+            )}
+            <div className="flex items-center">
               <a href={`tel:${selectedSmsConversation.clientPhone}`}>
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-call">
+                <Button variant="ghost" size="icon" data-testid="button-call">
                   <Phone className="h-4 w-4" />
                 </Button>
               </a>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
+              <Button variant="ghost" size="icon" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
                 {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
               </Button>
             </div>
@@ -1593,32 +1610,39 @@ export default function ChatHub() {
             )}
           </ScrollArea>
 
-          <div className="shrink-0 px-3 py-2 flex gap-1.5 overflow-x-auto no-scrollbar border-t">
-            {QUICK_REPLY_TEMPLATES.slice(0, 4).map((template) => (
-              <Button
-                key={template.id}
-                variant="secondary"
-                size="sm"
-                className="shrink-0 text-[11px] h-7"
-                onClick={() => setSmsNewMessage(template.message)}
-                data-testid={`quick-reply-${template.id}`}
-              >
-                {template.label}
-              </Button>
-            ))}
-          </div>
-
-          <div className="shrink-0 p-3 border-t bg-background">
-            <div className="flex gap-2">
+          {/* Sticky composer */}
+          <div className="shrink-0 border-t bg-background">
+            {/* Quick replies */}
+            <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar">
+              {QUICK_REPLY_TEMPLATES.slice(0, 4).map((template) => (
+                <Button
+                  key={template.id}
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0 text-xs"
+                  onClick={() => setSmsNewMessage(template.message)}
+                  data-testid={`quick-reply-${template.id}`}
+                >
+                  {template.label}
+                </Button>
+              ))}
+            </div>
+            {/* Message input */}
+            <div className="px-4 pb-4 flex gap-2">
               <Input
-                placeholder="Type an SMS..."
+                placeholder="Type a message..."
                 value={smsNewMessage}
                 onChange={(e) => setSmsNewMessage(e.target.value)}
                 onKeyPress={handleSmsKeyPress}
                 className="flex-1"
                 data-testid="input-sms-message"
               />
-              <Button onClick={handleSendSms} disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} size="icon" className="bg-green-600 hover:bg-green-700" data-testid="button-send-sms">
+              <Button 
+                onClick={handleSendSms} 
+                disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} 
+                size="icon"
+                data-testid="button-send-sms"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
@@ -1638,7 +1662,7 @@ export default function ChatHub() {
         <div className="flex flex-col h-full">
           <div className="p-4 border-b flex items-center justify-between">
             <h3 className="font-semibold text-sm">Team Info</h3>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowContextPanel(false)}>
+            <Button variant="ghost" size="icon" onClick={() => setShowContextPanel(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1764,7 +1788,7 @@ export default function ChatHub() {
         <div className="flex flex-col h-full">
           <div className="p-4 border-b flex items-center justify-between">
             <h3 className="font-semibold text-sm">Contact Info</h3>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowContextPanel(false)}>
+            <Button variant="ghost" size="icon" onClick={() => setShowContextPanel(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1787,23 +1811,27 @@ export default function ChatHub() {
   };
 
   return (
-    <div className="flex h-full overflow-hidden" data-testid="chat-hub">
-      <div className={`w-full md:w-80 shrink-0 ${mobileShowChat ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
+    <div className="flex h-full overflow-hidden bg-background" data-testid="chat-hub">
+      {/* Left sidebar - conversation list */}
+      <div className={`w-full md:w-72 lg:w-80 shrink-0 border-r ${mobileShowChat ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
         {renderConversationList()}
       </div>
 
-      <div className={`flex-1 flex flex-col min-w-0 ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+      {/* Center - chat view (hero area) */}
+      <div className={`flex-1 flex flex-col min-w-0 bg-background ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
         {renderChatView()}
       </div>
 
+      {/* Right panel - context (collapsible) */}
       {showContextPanel && selectedConversation && (
-        <div className="hidden lg:flex w-80 shrink-0 border-l bg-background flex-col" data-testid="context-panel">
+        <div className="hidden xl:flex w-80 shrink-0 border-l bg-muted/30 flex-col" data-testid="context-panel">
           {renderContextPanel()}
         </div>
       )}
 
+      {/* Mobile sheet for context panel */}
       <Sheet open={showContextPanel && !!selectedConversation} onOpenChange={setShowContextPanel}>
-        <SheetContent side="right" className="w-[85vw] sm:w-[400px] p-0 lg:hidden" hideClose>
+        <SheetContent side="right" className="w-[85vw] sm:w-[350px] p-0 xl:hidden" hideClose>
           {renderContextPanel()}
         </SheetContent>
       </Sheet>
