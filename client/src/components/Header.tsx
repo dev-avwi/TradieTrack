@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import GlobalSearch from "@/components/GlobalSearch";
 import NotificationDropdown from "@/components/NotificationDropdown";
+import SyncStatusIndicator from "@/components/SyncStatusIndicator";
 import { 
   Search, 
   Sun, 
@@ -200,6 +201,8 @@ export default function Header({
             {addButtonText}
           </Button>
         )}
+
+        <SyncStatusIndicator />
 
         <Button
           variant="ghost"
