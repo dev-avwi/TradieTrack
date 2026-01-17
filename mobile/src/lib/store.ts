@@ -138,6 +138,7 @@ interface TimeEntry {
   startTime: string;
   endTime?: string;
   notes?: string;
+  isBreak?: boolean;
 }
 
 // ============ AUTH STORE ============
@@ -1710,9 +1711,12 @@ interface TimeTrackingState {
   error: string | null;
 
   fetchActiveTimer: () => Promise<void>;
-  startTimer: (jobId: string, description?: string) => Promise<boolean>;
+  startTimer: (jobId: string, description?: string, isBreak?: boolean) => Promise<boolean>;
   stopTimer: () => Promise<boolean>;
+  pauseTimer: () => Promise<boolean>;
+  resumeTimer: () => Promise<boolean>;
   getElapsedMinutes: () => number;
+  isOnBreak: () => boolean;
 }
 
 export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
@@ -1745,13 +1749,14 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
     }
   },
 
-  startTimer: async (jobId: string, description?: string) => {
+  startTimer: async (jobId: string, description?: string, isBreak?: boolean) => {
     set({ isLoading: true, error: null });
     try {
       const response = await api.post<TimeEntry>('/api/time-entries', {
         jobId,
-        description: description || 'Working on job',
+        description: description || (isBreak ? 'Taking a break' : 'Working on job'),
         startTime: new Date().toISOString(),
+        isBreak: isBreak || false,
       });
       
       if (response.data) {
@@ -1805,6 +1810,78 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
     }
   },
 
+  pauseTimer: async () => {
+    const { activeTimer, stopTimer, startTimer } = get();
+    if (!activeTimer || activeTimer.isBreak) {
+      set({ error: 'No work timer to pause' });
+      return false;
+    }
+
+    const jobId = activeTimer.jobId;
+    const description = activeTimer.description;
+    set({ isLoading: true, error: null });
+    
+    try {
+      // Stop the current work timer
+      const stopped = await stopTimer();
+      if (!stopped) {
+        set({ isLoading: false });
+        return false;
+      }
+      
+      // Start a break timer for the same job
+      const started = await startTimer(
+        jobId || '', 
+        `Break - ${description || 'Work session'}`,
+        true
+      );
+      
+      set({ isLoading: false });
+      return started;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Failed to pause timer';
+      set({ isLoading: false, error: errorMessage });
+      return false;
+    }
+  },
+
+  resumeTimer: async () => {
+    const { activeTimer, stopTimer, startTimer } = get();
+    if (!activeTimer) {
+      set({ error: 'No timer to resume from' });
+      return false;
+    }
+
+    const jobId = activeTimer.jobId;
+    const wasOnBreak = activeTimer.isBreak;
+    set({ isLoading: true, error: null });
+    
+    try {
+      // If on break, stop the break timer first
+      if (wasOnBreak) {
+        const stopped = await stopTimer();
+        if (!stopped) {
+          set({ isLoading: false });
+          return false;
+        }
+      }
+      
+      // Start a work timer for the same job
+      const started = await startTimer(
+        jobId || '', 
+        'Working on job',
+        false
+      );
+      
+      set({ isLoading: false });
+      return started;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Failed to resume timer';
+      set({ isLoading: false, error: errorMessage });
+      return false;
+    }
+  },
+
   getElapsedMinutes: () => {
     const { activeTimer } = get();
     if (!activeTimer?.startTime) return 0;
@@ -1816,6 +1893,11 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
     } catch {
       return 0;
     }
+  },
+
+  isOnBreak: () => {
+    const { activeTimer } = get();
+    return activeTimer?.isBreak === true;
   },
 }));
 
