@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useOfflineStore } from '../lib/offline-storage';
 import offlineStorage from '../lib/offline-storage';
@@ -7,7 +7,22 @@ import offlineStorage from '../lib/offline-storage';
 export function OfflineIndicator() {
   const { isOnline, isSyncing, pendingSyncCount, lastSyncTime } = useOfflineStore();
   const [showSyncMessage, setShowSyncMessage] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  // Fetch detailed pending message when pending count changes
+  const fetchPendingMessage = useCallback(async () => {
+    if (pendingSyncCount > 0) {
+      const message = await offlineStorage.getPendingUploadsMessage();
+      setPendingMessage(message);
+    } else {
+      setPendingMessage(null);
+    }
+  }, [pendingSyncCount]);
+  
+  useEffect(() => {
+    fetchPendingMessage();
+  }, [fetchPendingMessage]);
   
   // Pulse animation when syncing
   useEffect(() => {
@@ -78,12 +93,12 @@ export function OfflineIndicator() {
           size={16} 
           color={isOnline ? '#f59e0b' : '#6b7280'}
         />
-        <Text style={[styles.text, isOnline ? styles.pendingText : styles.offlineText]}>
+        <Text style={[styles.text, isOnline ? styles.pendingText : styles.offlineText]} numberOfLines={2}>
           {!isOnline 
             ? 'Offline mode' 
             : isSyncing 
               ? 'Syncing...' 
-              : `${pendingSyncCount} change${pendingSyncCount !== 1 ? 's' : ''} to sync`
+              : pendingMessage || `${pendingSyncCount} pending`
           }
         </Text>
         {isOnline && !isSyncing && pendingSyncCount > 0 && (
@@ -96,6 +111,19 @@ export function OfflineIndicator() {
 
 export function OfflineBanner() {
   const { isOnline, pendingSyncCount } = useOfflineStore();
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchMessage = async () => {
+      if (pendingSyncCount > 0) {
+        const message = await offlineStorage.getPendingUploadsMessage();
+        setPendingMessage(message);
+      } else {
+        setPendingMessage(null);
+      }
+    };
+    fetchMessage();
+  }, [pendingSyncCount]);
   
   if (isOnline) return null;
   
@@ -105,8 +133,10 @@ export function OfflineBanner() {
       <View style={styles.bannerTextContainer}>
         <Text style={styles.bannerTitle}>You're offline</Text>
         <Text style={styles.bannerSubtitle}>
-          Changes will sync when you're back online
-          {pendingSyncCount > 0 && ` (${pendingSyncCount} pending)`}
+          {pendingMessage 
+            ? `Pending: ${pendingMessage}`
+            : 'Changes will sync when you\'re back online'
+          }
         </Text>
       </View>
     </View>
@@ -115,6 +145,19 @@ export function OfflineBanner() {
 
 export function SyncStatus() {
   const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError } = useOfflineStore();
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchMessage = async () => {
+      if (pendingSyncCount > 0) {
+        const message = await offlineStorage.getPendingUploadsMessage();
+        setPendingMessage(message);
+      } else {
+        setPendingMessage(null);
+      }
+    };
+    fetchMessage();
+  }, [pendingSyncCount]);
   
   const formatLastSync = () => {
     if (!lastSyncTime) return 'Never';
@@ -140,12 +183,14 @@ export function SyncStatus() {
         <Text style={styles.syncValue}>{formatLastSync()}</Text>
       </View>
       
-      <View style={styles.syncStatusRow}>
-        <Text style={styles.syncLabel}>Pending changes</Text>
-        <Text style={[styles.syncValue, pendingSyncCount > 0 && styles.pendingValue]}>
-          {pendingSyncCount}
-        </Text>
-      </View>
+      {pendingSyncCount > 0 && (
+        <View style={styles.pendingDetailsRow}>
+          <Text style={styles.syncLabel}>Pending uploads</Text>
+          <Text style={[styles.syncValue, styles.pendingValue]} numberOfLines={2}>
+            {pendingMessage || `${pendingSyncCount} items`}
+          </Text>
+        </View>
+      )}
       
       {syncError && (
         <View style={styles.errorRow}>
@@ -249,6 +294,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  pendingDetailsRow: {
+    flexDirection: 'column',
+    gap: 4,
   },
   syncLabel: {
     color: '#6b7280',

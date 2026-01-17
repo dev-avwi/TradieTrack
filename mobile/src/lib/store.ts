@@ -1762,6 +1762,38 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
       if (response.data) {
         // Set active timer from the response
         set({ activeTimer: response.data, isLoading: false, error: null });
+        
+        // Auto-update job status to in_progress when starting a work timer (not a break)
+        // This correlates the timer with the job workflow
+        if (!isBreak && jobId) {
+          try {
+            const jobsStore = useJobsStore.getState();
+            // Try to get job from store first, then from offline cache
+            let job = await jobsStore.getJob(jobId);
+            
+            // If getJob returns null (e.g. offline with uncached job), try offline cache directly
+            if (!job) {
+              try {
+                const cachedJob = await offlineStorage.getCachedJob(jobId);
+                if (cachedJob) {
+                  job = cachedJob as Job;
+                }
+              } catch {
+                // Ignore cache errors
+              }
+            }
+            
+            // Update status if job is in a state that should transition to in_progress
+            if (job && (job.status === 'scheduled' || job.status === 'pending')) {
+              console.log('[TimeTracking] Auto-updating job status to in_progress');
+              await jobsStore.updateJobStatus(jobId, 'in_progress');
+            }
+          } catch (e) {
+            // Non-critical - don't fail the timer start if job update fails
+            console.log('[TimeTracking] Could not auto-update job status:', e);
+          }
+        }
+        
         return true;
       }
       

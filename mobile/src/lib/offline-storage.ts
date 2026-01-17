@@ -140,7 +140,7 @@ export interface CachedAttachment {
   quoteId?: string;
   invoiceId?: string;
   clientId?: string;
-  type: 'photo' | 'signature' | 'document';
+  type: 'photo' | 'signature' | 'document' | 'voice_note';
   filename: string;
   mimeType: string;
   localUri?: string; // Local file path on device (nullable for server-fetched attachments)
@@ -1888,6 +1888,147 @@ class OfflineStorageService {
         // Check if enough time has passed
         return now >= nextRetryTime;
       });
+  }
+
+  /**
+   * Get pending sync counts grouped by category for adaptive warning messages
+   * Returns counts for jobs, clients, quotes, invoices, time entries, and attachments by type
+   */
+  async getPendingSyncCountsByCategory(): Promise<{
+    jobs: number;
+    clients: number;
+    quotes: number;
+    invoices: number;
+    timeEntries: number;
+    photos: number;
+    signatures: number;
+    documents: number;
+    voiceNotes: number;
+    total: number;
+  }> {
+    if (!this.db) {
+      return { jobs: 0, clients: 0, quotes: 0, invoices: 0, timeEntries: 0, photos: 0, signatures: 0, documents: 0, voiceNotes: 0, total: 0 };
+    }
+    
+    const counts = {
+      jobs: 0,
+      clients: 0,
+      quotes: 0,
+      invoices: 0,
+      timeEntries: 0,
+      photos: 0,
+      signatures: 0,
+      documents: 0,
+      voiceNotes: 0,
+      total: 0,
+    };
+    
+    try {
+      // Get all pending sync items from the queue
+      const rows = await this.db.getAllAsync(
+        'SELECT type, data FROM sync_queue WHERE retry_count < ?',
+        [MAX_RETRY_ATTEMPTS]
+      ) as { type: string; data: string }[];
+      
+      for (const row of rows) {
+        counts.total++;
+        
+        switch (row.type) {
+          case 'job':
+            counts.jobs++;
+            break;
+          case 'client':
+            counts.clients++;
+            break;
+          case 'quote':
+            counts.quotes++;
+            break;
+          case 'invoice':
+            counts.invoices++;
+            break;
+          case 'timeEntry':
+            counts.timeEntries++;
+            break;
+          case 'attachment':
+            // Parse data to get attachment type (photo, signature, document, voice_note)
+            // Also check mimeType for audio files which are voice notes
+            try {
+              const data = JSON.parse(row.data);
+              const isAudioMimeType = data.mimeType?.startsWith('audio/');
+              
+              if (data.type === 'voice_note' || isAudioMimeType) {
+                counts.voiceNotes++;
+              } else if (data.type === 'photo') {
+                counts.photos++;
+              } else if (data.type === 'signature') {
+                counts.signatures++;
+              } else if (data.type === 'document') {
+                counts.documents++;
+              } else {
+                // Unknown attachment type, count as document
+                counts.documents++;
+              }
+            } catch {
+              counts.documents++;
+            }
+            break;
+        }
+      }
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to get pending sync counts:', error);
+    }
+    
+    return counts;
+  }
+
+  /**
+   * Generate human-readable message for pending uploads
+   * Returns a string like "2 photos, 1 voice note" or null if nothing pending
+   */
+  async getPendingUploadsMessage(): Promise<string | null> {
+    const counts = await this.getPendingSyncCountsByCategory();
+    
+    if (counts.total === 0) return null;
+    
+    const parts: string[] = [];
+    
+    // Attachments first (most visible to users)
+    if (counts.photos > 0) {
+      parts.push(`${counts.photos} photo${counts.photos !== 1 ? 's' : ''}`);
+    }
+    if (counts.voiceNotes > 0) {
+      parts.push(`${counts.voiceNotes} voice note${counts.voiceNotes !== 1 ? 's' : ''}`);
+    }
+    if (counts.signatures > 0) {
+      parts.push(`${counts.signatures} signature${counts.signatures !== 1 ? 's' : ''}`);
+    }
+    if (counts.documents > 0) {
+      parts.push(`${counts.documents} document${counts.documents !== 1 ? 's' : ''}`);
+    }
+    
+    // Core data types
+    if (counts.jobs > 0) {
+      parts.push(`${counts.jobs} job update${counts.jobs !== 1 ? 's' : ''}`);
+    }
+    if (counts.clients > 0) {
+      parts.push(`${counts.clients} client update${counts.clients !== 1 ? 's' : ''}`);
+    }
+    if (counts.quotes > 0) {
+      parts.push(`${counts.quotes} quote${counts.quotes !== 1 ? 's' : ''}`);
+    }
+    if (counts.invoices > 0) {
+      parts.push(`${counts.invoices} invoice${counts.invoices !== 1 ? 's' : ''}`);
+    }
+    if (counts.timeEntries > 0) {
+      parts.push(`${counts.timeEntries} time ${counts.timeEntries !== 1 ? 'entries' : 'entry'}`);
+    }
+    
+    if (parts.length === 0) return null;
+    
+    // Format: "2 photos, 1 voice note, 3 job updates"
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+    return parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1];
   }
 
   /**
