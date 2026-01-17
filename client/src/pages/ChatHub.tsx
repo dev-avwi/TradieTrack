@@ -160,11 +160,11 @@ interface Client {
   email?: string | null;
 }
 
-type FilterType = 'all' | 'team' | 'clients';
+type FilterType = 'all' | 'team' | 'jobs' | 'unassigned';
 
 interface ConversationItem {
   id: string;
-  type: 'team' | 'direct' | 'client';
+  type: 'team' | 'direct' | 'job' | 'unassigned';
   title: string;
   subtitle?: string;
   avatar?: string | null;
@@ -173,11 +173,15 @@ interface ConversationItem {
   lastMessageTime?: string;
   unreadCount: number;
   status?: string;
-  // Client conversation context
+  // Job context
+  jobId?: string;
+  jobStatus?: string;
+  jobAddress?: string;
+  // Client/SMS context
   clientId?: string;
   clientPhone?: string;
-  clientEmail?: string;
-  relatedJobs?: Job[];  // Jobs associated with this client
+  clientName?: string;
+  smsConversation?: SmsConversation;
   isOnline?: boolean;
   data: any;
 }
@@ -397,7 +401,7 @@ export default function ChatHub() {
 
   const { data: smsMessages = [], refetch: refetchSmsMessages } = useQuery<SmsMessage[]>({
     queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'],
-    enabled: !!selectedSmsConversation && selectedConversation?.type === 'client',
+    enabled: !!selectedSmsConversation && ['client', 'job', 'unassigned'].includes(selectedConversation?.type || ''),
   });
 
   const sendTeamMessageMutation = useMutation({
@@ -785,94 +789,123 @@ export default function ChatHub() {
   const buildConversationList = useCallback((): ConversationItem[] => {
     const items: ConversationItem[] = [];
     
+    // Team Chat - always at top if showing
     if (filter === 'all' || filter === 'team') {
-      if (teamMessages.length > 0) {
-        const lastTeamMsg = teamMessages[teamMessages.length - 1];
-        items.push({
-          id: 'team-chat',
-          type: 'team',
-          title: 'Team Chat',
-          subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
-          avatarFallback: 'TC',
-          lastMessage: lastTeamMsg?.message,
-          lastMessageTime: lastTeamMsg?.createdAt,
-          unreadCount: unreadCounts.teamChat,
-          data: null,
-        });
-      } else {
-        items.push({
-          id: 'team-chat',
-          type: 'team',
-          title: 'Team Chat',
-          subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
-          avatarFallback: 'TC',
-          lastMessage: 'Start a conversation with your team',
-          unreadCount: 0,
-          data: null,
+      const lastTeamMsg = teamMessages[teamMessages.length - 1];
+      items.push({
+        id: 'team-chat',
+        type: 'team',
+        title: 'Team Chat',
+        subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
+        avatarFallback: 'TC',
+        lastMessage: lastTeamMsg?.message || 'Start a conversation with your team',
+        lastMessageTime: lastTeamMsg?.createdAt,
+        unreadCount: unreadCounts.teamChat,
+        data: null,
+      });
+      
+      // Direct messages under team filter
+      if (showDirectFilter) {
+        dmConversations.forEach(dm => {
+          const displayName = getUserDisplayName(dm.otherUser);
+          items.push({
+            id: `dm-${dm.otherUser.id}`,
+            type: 'direct',
+            title: displayName,
+            avatar: dm.otherUser.profileImageUrl,
+            avatarFallback: getInitials(displayName),
+            lastMessage: dm.lastMessage?.content,
+            lastMessageTime: dm.lastMessage?.createdAt,
+            unreadCount: dm.unreadCount,
+            isOnline: true,
+            data: dm.otherUser,
+          });
         });
       }
     }
     
-    if ((filter === 'all' || filter === 'team') && showDirectFilter) {
-      dmConversations.forEach(dm => {
-        const displayName = getUserDisplayName(dm.otherUser);
-        items.push({
-          id: `dm-${dm.otherUser.id}`,
-          type: 'direct',
-          title: displayName,
-          avatar: dm.otherUser.profileImageUrl,
-          avatarFallback: getInitials(displayName),
-          lastMessage: dm.lastMessage?.content,
-          lastMessageTime: dm.lastMessage?.createdAt,
-          unreadCount: dm.unreadCount,
-          isOnline: true,
-          data: dm.otherUser,
-        });
-      });
-    }
-    
-    // Unified Clients section - merge SMS conversations with job context
-    if (filter === 'all' || filter === 'clients') {
-      // Build a map of clientId -> jobs for context
-      const clientJobsMap = new Map<string, Job[]>();
-      jobs.forEach(job => {
-        if (job.clientId) {
-          const existing = clientJobsMap.get(job.clientId) || [];
-          clientJobsMap.set(job.clientId, [...existing, job]);
+    // JOB-CENTRIC: Build job items with their associated SMS conversations
+    if (filter === 'all' || filter === 'jobs') {
+      // Build a map of jobId -> SMS conversation for jobs with client messages
+      const jobSmsMap = new Map<string, SmsConversation>();
+      smsConversations.forEach(sms => {
+        if (sms.jobId) {
+          jobSmsMap.set(sms.jobId, sms);
         }
       });
       
-      // Create unified client conversation items
+      // Build clientId -> SMS map for jobs that have a client but SMS linked via client
+      const clientSmsMap = new Map<string, SmsConversation>();
       smsConversations.forEach(sms => {
-        const clientJobs = sms.clientId ? clientJobsMap.get(sms.clientId) || [] : [];
-        // Sort jobs by most recent first
-        const sortedJobs = clientJobs.sort((a, b) => {
-          const aDate = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
-          const bDate = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
-          return bDate - aDate;
-        });
+        if (sms.clientId) {
+          clientSmsMap.set(sms.clientId, sms);
+        }
+      });
+      
+      // Create job-centric conversation items
+      jobs.forEach(job => {
+        // Find SMS conversation for this job (direct link or via client)
+        const directSms = jobSmsMap.get(job.id);
+        const clientSms = job.clientId ? clientSmsMap.get(job.clientId) : undefined;
+        const smsConvo = directSms || clientSms;
         
         items.push({
-          id: sms.id,
-          type: 'client',
-          title: sms.clientName || sms.clientPhone,
-          subtitle: sortedJobs.length > 0 
-            ? `${sortedJobs.length} job${sortedJobs.length > 1 ? 's' : ''} · ${sms.clientPhone}`
-            : sms.clientName ? sms.clientPhone : undefined,
-          avatarFallback: (sms.clientName || sms.clientPhone).slice(0, 2).toUpperCase(),
-          lastMessageTime: sms.lastMessageAt || undefined,
-          unreadCount: sms.unreadCount,
-          clientId: sms.clientId || undefined,
-          clientPhone: sms.clientPhone,
-          relatedJobs: sortedJobs,
-          data: sms,
+          id: `job-${job.id}`,
+          type: 'job',
+          title: job.title,
+          subtitle: smsConvo?.clientName || smsConvo?.clientPhone || job.address,
+          avatarFallback: job.title.slice(0, 2).toUpperCase(),
+          lastMessage: undefined, // Will show job status instead
+          lastMessageTime: smsConvo?.lastMessageAt || job.scheduledAt || undefined,
+          unreadCount: smsConvo?.unreadCount || 0,
+          status: job.status,
+          jobId: job.id,
+          jobStatus: job.status,
+          jobAddress: job.address,
+          clientId: job.clientId || smsConvo?.clientId || undefined,
+          clientPhone: smsConvo?.clientPhone,
+          clientName: smsConvo?.clientName || undefined,
+          smsConversation: smsConvo,
+          data: job,
         });
       });
     }
     
+    // UNASSIGNED: SMS conversations not linked to any job
+    if (filter === 'all' || filter === 'unassigned') {
+      // Find SMS conversations that don't have a jobId and whose clientId doesn't have jobs
+      const clientsWithJobs = new Set<string>();
+      jobs.forEach(job => {
+        if (job.clientId) clientsWithJobs.add(job.clientId);
+      });
+      
+      smsConversations.forEach(sms => {
+        const hasJob = sms.jobId || (sms.clientId && clientsWithJobs.has(sms.clientId));
+        if (!hasJob) {
+          items.push({
+            id: `unassigned-${sms.id}`,
+            type: 'unassigned',
+            title: sms.clientName || sms.clientPhone,
+            subtitle: sms.clientName ? sms.clientPhone : 'New enquiry',
+            avatarFallback: (sms.clientName || sms.clientPhone).slice(0, 2).toUpperCase(),
+            lastMessageTime: sms.lastMessageAt || undefined,
+            unreadCount: sms.unreadCount,
+            clientId: sms.clientId || undefined,
+            clientPhone: sms.clientPhone,
+            clientName: sms.clientName || undefined,
+            smsConversation: sms,
+            data: sms,
+          });
+        }
+      });
+    }
+    
+    // Sort: Team first, then by unread, then by time
     items.sort((a, b) => {
       if (a.type === 'team' && b.type !== 'team') return -1;
       if (b.type === 'team' && a.type !== 'team') return 1;
+      if (a.type === 'direct' && b.type !== 'direct' && b.type !== 'team') return -1;
+      if (b.type === 'direct' && a.type !== 'direct' && a.type !== 'team') return 1;
       
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
@@ -887,7 +920,8 @@ export default function ChatHub() {
       return items.filter(item => 
         item.title.toLowerCase().includes(search) ||
         item.subtitle?.toLowerCase().includes(search) ||
-        item.lastMessage?.toLowerCase().includes(search)
+        item.clientName?.toLowerCase().includes(search) ||
+        item.clientPhone?.toLowerCase().includes(search)
       );
     }
     
@@ -909,14 +943,25 @@ export default function ChatHub() {
       setSelectedDirectUser(item.data);
       setSelectedSmsConversation(null);
       setActiveJobContext(null);
-    } else if (item.type === 'client') {
-      // Unified client conversation - set SMS conversation and first related job as context
-      setSelectedSmsConversation(item.data);
+    } else if (item.type === 'job') {
+      // Job-centric conversation - set job as context, SMS if available
       setSelectedDirectUser(null);
-      // Set the first (most recent) job as active context, if any
-      setActiveJobContext(item.relatedJobs?.[0] || null);
-      if (item.data.id !== 'new') {
-        markSmsReadMutation.mutate(item.data.id);
+      setActiveJobContext(item.data); // The job itself
+      if (item.smsConversation) {
+        setSelectedSmsConversation(item.smsConversation);
+        if (item.smsConversation.id !== 'new') {
+          markSmsReadMutation.mutate(item.smsConversation.id);
+        }
+      } else {
+        setSelectedSmsConversation(null);
+      }
+    } else if (item.type === 'unassigned') {
+      // Unassigned SMS - no job context
+      setSelectedDirectUser(null);
+      setActiveJobContext(null);
+      setSelectedSmsConversation(item.smsConversation || item.data);
+      if (item.smsConversation && item.smsConversation.id !== 'new') {
+        markSmsReadMutation.mutate(item.smsConversation.id);
       }
     }
   };
@@ -1163,14 +1208,35 @@ export default function ChatHub() {
 
         {/* Filter pills */}
         <div className="flex gap-1">
-          {(['all', 'team', 'clients'] as FilterType[]).map((f) => {
+          {(['all', 'team', 'jobs', 'unassigned'] as FilterType[]).map((f) => {
+            const jobsWithSms = jobs.filter(job => {
+              return smsConversations.some(sms => 
+                sms.jobId === job.id || (job.clientId && sms.clientId === job.clientId)
+              );
+            });
+            const jobUnreadCount = jobsWithSms.reduce((sum, job) => {
+              const sms = smsConversations.find(s => s.jobId === job.id || s.clientId === job.clientId);
+              return sum + (sms?.unreadCount || 0);
+            }, 0);
+            
+            const clientsWithJobs = new Set<string>();
+            jobs.forEach(job => { if (job.clientId) clientsWithJobs.add(job.clientId); });
+            const unassignedSms = smsConversations.filter(sms => 
+              !sms.jobId && (!sms.clientId || !clientsWithJobs.has(sms.clientId))
+            );
+            const unassignedUnreadCount = unassignedSms.reduce((sum, sms) => sum + sms.unreadCount, 0);
+            
             const count = f === 'all' 
               ? unreadCounts.teamChat + unreadCounts.directMessages + smsUnreadCount
               : f === 'team' 
               ? unreadCounts.teamChat + unreadCounts.directMessages
-              : f === 'clients'
-              ? smsUnreadCount
+              : f === 'jobs'
+              ? jobUnreadCount
+              : f === 'unassigned'
+              ? unassignedUnreadCount
               : 0;
+            
+            const label = f === 'all' ? 'All' : f === 'team' ? 'Team' : f === 'jobs' ? 'Jobs' : 'New';
             
             return (
               <Button
@@ -1178,10 +1244,10 @@ export default function ChatHub() {
                 variant={filter === f ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setFilter(f)}
-                className="h-7 text-xs"
+                className="text-xs"
                 data-testid={`filter-${f}`}
               >
-                {f === 'all' ? 'All' : f === 'team' ? 'Team' : 'Clients'}
+                {label}
                 {count > 0 && (
                   <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
                     {count}
@@ -1194,9 +1260,9 @@ export default function ChatHub() {
       </div>
 
       <OfflineBanner isConnected={smsSocketConnected} />
-      {filter === 'clients' && !twilioConnected && <TwilioWarning />}
+      {filter === 'unassigned' && !twilioConnected && <TwilioWarning />}
 
-      {/* Conversation list */}
+      {/* Conversation list with separators */}
       <ScrollArea className="flex-1">
         {isLoading ? (
           <ConversationSkeleton />
@@ -1204,82 +1270,122 @@ export default function ChatHub() {
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <MessageCircle className="h-10 w-10 text-muted-foreground/50 mb-3" />
             <p className="text-sm text-muted-foreground text-center">
-              {filter === 'clients' 
-                ? 'No client conversations yet'
+              {filter === 'jobs' 
+                ? 'No jobs yet'
+                : filter === 'unassigned'
+                ? 'No new enquiries'
                 : 'No messages yet'}
             </p>
           </div>
         ) : (
           <div className="py-1">
-            {conversationList.map((item) => {
+            {conversationList.map((item, index) => {
               const isSelected = selectedConversation?.id === item.id;
               const hasUnread = item.unreadCount > 0;
+              const prevItem = index > 0 ? conversationList[index - 1] : null;
+              const showSectionHeader = !prevItem || prevItem.type !== item.type;
               
               return (
-                <div
-                  key={item.id}
-                  className={`flex items-start gap-3 mx-2 px-3 py-3 rounded-lg cursor-pointer transition-colors ${
-                    isSelected 
-                      ? 'bg-accent' 
-                      : hasUnread
-                      ? 'bg-primary/5 hover-elevate'
-                      : 'hover-elevate'
-                  }`}
-                  onClick={() => handleConversationClick(item)}
-                  data-testid={`conversation-${item.id}`}
-                >
-                  {/* Avatar */}
-                  <div className="relative shrink-0 mt-0.5">
-                    {item.type === 'team' ? (
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="h-4 w-4 text-primary" />
-                      </div>
-                    ) : item.type === 'client' ? (
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="text-xs bg-green-500/10 text-green-700 dark:text-green-400">
-                          {item.avatarFallback}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={item.avatar || undefined} />
-                        <AvatarFallback className="text-xs">{item.avatarFallback}</AvatarFallback>
-                      </Avatar>
-                    )}
-                    {item.isOnline && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
-                        {item.title}
+                <div key={item.id}>
+                  {/* Section header for type changes */}
+                  {showSectionHeader && filter === 'all' && (
+                    <div className="px-4 py-2 mt-2 first:mt-0">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                        {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'Direct Messages' : item.type === 'job' ? 'Jobs' : 'New Enquiries'}
                       </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {item.lastMessageTime && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatTime(item.lastMessageTime)}
-                          </span>
-                        )}
-                        {hasUnread && (
-                          <div className="w-2 h-2 rounded-full bg-primary" />
-                        )}
-                      </div>
                     </div>
-                    <p className={`text-xs truncate mt-0.5 ${hasUnread ? 'text-foreground/80' : 'text-muted-foreground'}`}>
-                      {item.lastMessage || 'No messages yet'}
-                    </p>
-                    {/* Show job count subtly for clients */}
-                    {item.type === 'client' && item.relatedJobs && item.relatedJobs.length > 0 && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Briefcase className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground">
-                          {item.relatedJobs.length} job{item.relatedJobs.length !== 1 ? 's' : ''}
+                  )}
+                  
+                  <div
+                    className={`flex items-start gap-3 mx-2 px-3 py-3 cursor-pointer transition-colors border-b border-border/50 last:border-b-0 ${
+                      isSelected 
+                        ? 'bg-accent' 
+                        : hasUnread
+                        ? 'bg-primary/5 hover-elevate'
+                        : 'hover-elevate'
+                    }`}
+                    onClick={() => handleConversationClick(item)}
+                    data-testid={`conversation-${item.id}`}
+                  >
+                    {/* Avatar/Icon */}
+                    <div className="relative shrink-0 mt-0.5">
+                      {item.type === 'team' ? (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                      ) : item.type === 'job' ? (
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      ) : item.type === 'unassigned' ? (
+                        <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                          <MessageCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                      ) : (
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={item.avatar || undefined} />
+                          <AvatarFallback className="text-xs">{item.avatarFallback}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      {item.isOnline && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                          {item.title}
                         </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.lastMessageTime && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatTime(item.lastMessageTime)}
+                            </span>
+                          )}
+                          {hasUnread && (
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                          )}
+                        </div>
                       </div>
-                    )}
+                      
+                      {/* Second line: subtitle or client name */}
+                      {item.subtitle && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {item.subtitle}
+                        </p>
+                      )}
+                      
+                      {/* Job status badge */}
+                      {item.type === 'job' && item.jobStatus && (
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <Badge 
+                            variant="secondary" 
+                            className="text-[10px] h-5 px-1.5"
+                            style={{ 
+                              backgroundColor: `${STATUS_COLORS[item.jobStatus]}20`,
+                              color: STATUS_COLORS[item.jobStatus]
+                            }}
+                          >
+                            {STATUS_LABELS[item.jobStatus] || item.jobStatus}
+                          </Badge>
+                          {item.smsConversation && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-2.5 w-2.5" />
+                              SMS
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Unassigned: show phone number */}
+                      {item.type === 'unassigned' && item.clientPhone && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {item.clientPhone}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1475,49 +1581,83 @@ export default function ChatHub() {
       );
     }
 
-    if (selectedConversation.type === 'client' && selectedSmsConversation) {
-      // Get related jobs for context from the conversation item
-      const relatedJobs = selectedConversation.relatedJobs || [];
+    // Job-centric or unassigned SMS view
+    if ((selectedConversation.type === 'job' || selectedConversation.type === 'unassigned') && (selectedSmsConversation || selectedConversation.type === 'job')) {
+      const isJobView = selectedConversation.type === 'job';
+      // Get job from activeJobContext or from the selected conversation's data
+      const job = isJobView ? (activeJobContext || selectedConversation.data) : null;
       
       return (
-        <div className="flex-1 flex flex-col overflow-hidden" data-testid="client-chat-view">
-          {/* Minimal header */}
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid={isJobView ? "job-chat-view" : "unassigned-chat-view"}>
+          {/* Header - shows job info for job view, client info for unassigned */}
           <div className="shrink-0 h-14 px-4 border-b bg-background flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back-client">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarFallback className="text-xs bg-green-500/10 text-green-700 dark:text-green-400">
-                {(selectedSmsConversation.clientName || selectedSmsConversation.clientPhone).slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-medium text-sm truncate">
-                {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
-              </h2>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS conversation'}
-              </p>
-            </div>
-            {/* Active job context chip */}
-            {activeJobContext && (
-              <Button 
-                variant="secondary"
-                size="sm"
-                className="hidden sm:flex gap-1.5"
-                onClick={() => setLocation(`/jobs/${activeJobContext.id}`)}
-                data-testid="button-view-job"
-              >
-                <Briefcase className="h-3 w-3" />
-                <span className="max-w-24 truncate">{activeJobContext.title}</span>
-              </Button>
+            
+            {isJobView && job ? (
+              <>
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-medium text-sm truncate">{job.title}</h2>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant="secondary" 
+                      className="text-[10px] h-4 px-1.5"
+                      style={{ 
+                        backgroundColor: `${STATUS_COLORS[job.status]}20`,
+                        color: STATUS_COLORS[job.status]
+                      }}
+                    >
+                      {STATUS_LABELS[job.status] || job.status}
+                    </Badge>
+                    {selectedSmsConversation && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                  <MessageCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-medium text-sm truncate">
+                    {selectedSmsConversation?.clientName || selectedSmsConversation?.clientPhone || 'New Enquiry'}
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {selectedSmsConversation?.clientName ? selectedSmsConversation.clientPhone : 'No job linked'}
+                  </p>
+                </div>
+              </>
             )}
-            <div className="flex items-center">
-              <a href={`tel:${selectedSmsConversation.clientPhone}`}>
-                <Button variant="ghost" size="icon" data-testid="button-call">
-                  <Phone className="h-4 w-4" />
+            
+            {/* Actions */}
+            <div className="flex items-center gap-1">
+              {isJobView && job && (
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  className="hidden sm:flex gap-1.5"
+                  onClick={() => setLocation(`/jobs/${job.id}`)}
+                  data-testid="button-view-job"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View Job
                 </Button>
-              </a>
+              )}
+              {selectedSmsConversation && (
+                <a href={`tel:${selectedSmsConversation.clientPhone}`}>
+                  <Button variant="ghost" size="icon" data-testid="button-call">
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                </a>
+              )}
               <Button variant="ghost" size="icon" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
                 {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
               </Button>
@@ -1527,7 +1667,7 @@ export default function ChatHub() {
           <OfflineBanner isConnected={smsSocketConnected} />
           {!twilioConnected && <TwilioWarning />}
 
-          {isUnknownClient && selectedSmsConversation.id !== 'new' && (
+          {selectedSmsConversation && isUnknownClient && selectedSmsConversation.id !== 'new' && (
             <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -1543,14 +1683,18 @@ export default function ChatHub() {
           )}
 
           <ScrollArea className="flex-1 px-4 py-2">
-            {smsMessages.length === 0 ? (
+            {!selectedSmsConversation || smsMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-8">
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Phone className="h-7 w-7 text-muted-foreground" />
+                  {isJobView ? <Briefcase className="h-7 w-7 text-muted-foreground" /> : <Phone className="h-7 w-7 text-muted-foreground" />}
                 </div>
-                <h3 className="font-medium text-sm mb-1">No messages yet</h3>
+                <h3 className="font-medium text-sm mb-1">
+                  {isJobView && !selectedSmsConversation ? 'No client messages' : 'No messages yet'}
+                </h3>
                 <p className="text-xs text-muted-foreground text-center max-w-xs">
-                  Send a text to {selectedSmsConversation.clientName || 'this customer'}
+                  {isJobView && !selectedSmsConversation 
+                    ? 'This job has no SMS conversation linked'
+                    : `Send a text to ${selectedSmsConversation?.clientName || 'this customer'}`}
                 </p>
               </div>
             ) : (
@@ -1610,43 +1754,60 @@ export default function ChatHub() {
             )}
           </ScrollArea>
 
-          {/* Sticky composer */}
-          <div className="shrink-0 border-t bg-background">
-            {/* Quick replies */}
-            <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar">
-              {QUICK_REPLY_TEMPLATES.slice(0, 4).map((template) => (
-                <Button
-                  key={template.id}
-                  variant="secondary"
-                  size="sm"
-                  className="shrink-0 text-xs"
-                  onClick={() => setSmsNewMessage(template.message)}
-                  data-testid={`quick-reply-${template.id}`}
+          {/* Sticky composer - only show if there's an SMS conversation or if we can start one */}
+          {selectedSmsConversation ? (
+            <div className="shrink-0 border-t bg-background">
+              {/* Quick replies */}
+              <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar">
+                {QUICK_REPLY_TEMPLATES.slice(0, 4).map((template) => (
+                  <Button
+                    key={template.id}
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 text-xs"
+                    onClick={() => setSmsNewMessage(template.message)}
+                    data-testid={`quick-reply-${template.id}`}
+                  >
+                    {template.label}
+                  </Button>
+                ))}
+              </div>
+              {/* Message input */}
+              <div className="px-4 pb-4 flex gap-2">
+                <Input
+                  placeholder="Type a message..."
+                  value={smsNewMessage}
+                  onChange={(e) => setSmsNewMessage(e.target.value)}
+                  onKeyPress={handleSmsKeyPress}
+                  className="flex-1"
+                  data-testid="input-sms-message"
+                />
+                <Button 
+                  onClick={handleSendSms} 
+                  disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} 
+                  size="icon"
+                  data-testid="button-send-sms"
                 >
-                  {template.label}
+                  <Send className="h-4 w-4" />
                 </Button>
-              ))}
+              </div>
             </div>
-            {/* Message input */}
-            <div className="px-4 pb-4 flex gap-2">
-              <Input
-                placeholder="Type a message..."
-                value={smsNewMessage}
-                onChange={(e) => setSmsNewMessage(e.target.value)}
-                onKeyPress={handleSmsKeyPress}
-                className="flex-1"
-                data-testid="input-sms-message"
-              />
-              <Button 
-                onClick={handleSendSms} 
-                disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} 
-                size="icon"
-                data-testid="button-send-sms"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+          ) : isJobView && job ? (
+            <div className="shrink-0 border-t bg-background p-4">
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <MessageCircle className="h-4 w-4" />
+                <span>Add a client phone number to start SMS</span>
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="h-auto p-0"
+                  onClick={() => setLocation(`/jobs/${job.id}`)}
+                >
+                  Edit Job
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       );
     }
@@ -1753,7 +1914,7 @@ export default function ChatHub() {
       );
     }
 
-    if (selectedConversation.type === 'client' && selectedSmsConversation) {
+    if (['client', 'job', 'unassigned'].includes(selectedConversation.type) && selectedSmsConversation) {
       return (
         <ClientInsightsPanel
           clientId={selectedSmsConversation.clientId}
