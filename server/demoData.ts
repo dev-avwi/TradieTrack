@@ -296,8 +296,9 @@ export async function createDemoUserAndData() {
       // This keeps IDs stable across server restarts for mobile app compatibility
       await ensureDemoBusinessAndTeam(demoUser);
       
-      // Refresh demo dates to keep scheduled jobs current with today's date
-      await refreshDemoDates(demoUser.id);
+      // NOTE: Demo date refresh disabled to preserve user-modified data
+      // The dates should only be set during initial demo data creation, not on every restart
+      // await refreshDemoDates(demoUser.id);
       
       return demoUser;
     }
