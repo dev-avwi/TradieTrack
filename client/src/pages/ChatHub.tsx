@@ -44,6 +44,7 @@ import {
   MapPin,
   Calendar,
   Circle,
+  Navigation,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +89,7 @@ interface Job {
   clientId?: string;
   address?: string;
   scheduledAt?: string;
+  assignedTo?: string;
 }
 
 interface User {
@@ -485,11 +487,12 @@ export default function ChatHub() {
   });
 
   const sendSmsMutation = useMutation({
-    mutationFn: async ({ clientId, clientPhone, message }: { clientId?: string; clientPhone: string; message: string }) => {
+    mutationFn: async ({ clientId, clientPhone, message, jobId }: { clientId?: string; clientPhone: string; message: string; jobId?: string }) => {
       const response = await apiRequest('POST', '/api/sms/send', {
         clientId,
         clientPhone,
         message,
+        jobId,
       });
       return response.json();
     },
@@ -508,6 +511,40 @@ export default function ChatHub() {
     onError: (error: any) => {
       toast({
         title: "Failed to send SMS",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Quick action mutation for "On My Way" and other automations
+  const quickActionMutation = useMutation({
+    mutationFn: async ({ conversationId, actionType, jobId, jobTitle }: { conversationId: string; actionType: string; jobId?: string; jobTitle?: string }) => {
+      const response = await apiRequest('POST', '/api/sms/quick-action', {
+        conversationId,
+        actionType,
+        jobId,
+        jobTitle,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+      if (selectedSmsConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation.id, 'messages'] });
+      }
+      if (jobSmsConversation) {
+        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', jobSmsConversation.id, 'messages'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+      toast({
+        title: "Message sent",
+        description: "Quick action SMS has been sent to the client.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -1616,8 +1653,30 @@ export default function ChatHub() {
           clientId: selectedJob.clientId,
           clientPhone: clientPhone,
           message: smsNewMessage.trim(),
+          jobId: selectedJob.id,
         });
       };
+
+      // Handler for "On My Way" quick action
+      const handleOnMyWay = () => {
+        if (!jobSmsConversation?.id) return;
+        quickActionMutation.mutate({
+          conversationId: jobSmsConversation.id,
+          actionType: 'on_my_way',
+          jobId: selectedJob.id,
+          jobTitle: selectedJob.title,
+        });
+      };
+
+      // Check if current user is assigned to this job
+      // assignedTo can be either a userId or a teamMemberId, so check both
+      const currentUserTeamMember = teamMembers.find(m => m.userId === currentUser?.id);
+      const isAssignedToJob = selectedJob.assignedTo === currentUser?.id || 
+                              (currentUserTeamMember && selectedJob.assignedTo === currentUserTeamMember.id);
+      
+      // Get assigned team member info for avatar display
+      const assignedTeamMember = selectedJob.assignedTo ? 
+        teamMembers.find(m => m.userId === selectedJob.assignedTo || m.id === selectedJob.assignedTo) : null;
 
       return (
         <div className="flex-1 flex flex-col overflow-hidden" data-testid="job-chat-view">
@@ -1644,6 +1703,20 @@ export default function ChatHub() {
                 )}
               </div>
             </div>
+            {/* "On My Way" Quick Action Button - visible to owner and assigned members only */}
+            {hasClientConversation && jobSmsConversation && twilioConnected && (isOwner || isAssignedToJob) && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="gap-1.5 text-xs h-7 bg-blue-600 hover:bg-blue-700"
+                onClick={handleOnMyWay}
+                disabled={quickActionMutation.isPending}
+                data-testid="button-on-my-way"
+              >
+                <Navigation className="h-3 w-3" />
+                On My Way
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job">
               <ExternalLink className="h-3 w-3" />
               Open
@@ -1652,6 +1725,33 @@ export default function ChatHub() {
               {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
             </Button>
           </div>
+
+          {/* Assigned Team Member Info - shows assignment status with avatar */}
+          {selectedJob.assignedTo && (
+            <div className="shrink-0 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+                {assignedTeamMember ? (
+                  <Avatar className="h-5 w-5">
+                    {assignedTeamMember.profileImageUrl ? (
+                      <AvatarImage src={assignedTeamMember.profileImageUrl} alt={assignedTeamMember.name} />
+                    ) : null}
+                    <AvatarFallback className="text-[9px] bg-blue-200 dark:bg-blue-800">
+                      {assignedTeamMember.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <User className="h-3.5 w-3.5" />
+                )}
+                <span className="font-medium">
+                  {isAssignedToJob 
+                    ? 'You are assigned to this job - you can send SMS and use quick actions' 
+                    : assignedTeamMember 
+                      ? `Assigned to ${assignedTeamMember.name}` 
+                      : 'Job assigned to team member'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Internal Team Note Banner */}
           <div className="shrink-0 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">

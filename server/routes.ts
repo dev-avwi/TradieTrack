@@ -20108,6 +20108,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessOwnerId = membership.businessOwnerId;
       }
       
+      // Authorization: If sending from job context, verify user is owner or assigned
+      if (jobId) {
+        const job = await storage.getJob(jobId, businessOwnerId);
+        if (!job) {
+          return res.status(404).json({ error: 'Job not found' });
+        }
+        // Check if user is authorized: is owner OR assigned to this job
+        const isOwner = userId === businessOwnerId;
+        // Resolve assignedTo (can be userId or teamMemberId) to userId for comparison
+        const assigneeUserId = await resolveAssigneeUserId(job.assignedTo, businessOwnerId);
+        const isAssigned = assigneeUserId === userId;
+        if (!isOwner && !isAssigned) {
+          return res.status(403).json({ error: 'Not authorized to send SMS for this job' });
+        }
+      }
+      
       const { sendSmsToClient } = await import('./services/smsService');
       const smsMessage = await sendSmsToClient({
         businessOwnerId,
@@ -20127,19 +20143,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Send quick action SMS
+  // Send quick action SMS (includes "On My Way" automation)
   app.post("/api/sms/quick-action", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const { conversationId, actionType, jobTitle, estimatedTime } = req.body;
+      const { conversationId, actionType, jobTitle, estimatedTime, jobId } = req.body;
       
       if (!conversationId || !actionType) {
         return res.status(400).json({ error: 'Conversation ID and action type are required' });
       }
       
+      // Determine business owner for authorization
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        businessOwnerId = membership.businessOwnerId;
+      }
+      
+      // Authorization: If jobId provided, verify user is owner or assigned
+      if (jobId) {
+        const job = await storage.getJob(jobId, businessOwnerId);
+        if (!job) {
+          return res.status(404).json({ error: 'Job not found' });
+        }
+        const isOwner = userId === businessOwnerId;
+        // Resolve assignedTo (can be userId or teamMemberId) to userId for comparison
+        const assigneeUserId = await resolveAssigneeUserId(job.assignedTo, businessOwnerId);
+        const isAssigned = assigneeUserId === userId;
+        if (!isOwner && !isAssigned) {
+          return res.status(403).json({ error: 'Not authorized to send quick action for this job' });
+        }
+      }
+      
       // Get business name for the message
-      const user = await storage.getUser(userId);
-      const businessSettings = await storage.getBusinessSettings(userId);
+      const user = await storage.getUser(businessOwnerId);
+      const businessSettings = await storage.getBusinessSettings(businessOwnerId);
       const businessName = businessSettings?.businessName || user?.firstName || 'Your tradie';
       
       const { sendQuickAction } = await import('./services/smsService');

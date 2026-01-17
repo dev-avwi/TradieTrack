@@ -83,6 +83,16 @@ Core architectural and design decisions include:
     *   "Team Only" banner clarifies clients cannot see this internal conversation history
     *   Three rendering states: conversation with messages, conversation without messages yet, no client linked
     *   Cache invalidation on send ensures immediate message display in job view
+*   **Team Member Job Chat Access**:
+    *   Assigned team members can access job chats and send SMS to clients
+    *   Backend authorization uses `resolveAssigneeUserId` helper to properly resolve assignedTo (which can be userId or teamMemberId)
+    *   Authorization checks on `/api/sms/send` and `/api/sms/quick-action` verify user is owner OR assigned to job
+    *   "On My Way" quick action button visible only to owner and assigned team members (when Twilio connected)
+    *   Assigned team member info banner shows assignment status with avatar (profile image or initials fallback)
+    *   Frontend `isAssignedToJob` check handles both userId and teamMemberId matching via `currentUserTeamMember` lookup
+    *   Contextual assignment text: "You are assigned..." for self, "Assigned to [Name]" for others
+    *   SMS send mutation includes jobId for proper authorization context
+    *   Quick action mutation for "On My Way" with proper cache invalidation
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
