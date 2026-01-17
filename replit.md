@@ -74,13 +74,14 @@ Core architectural and design decisions include:
     *   **BeforePhotoPrompt**: Modal prompting users to capture "before photos" when starting job timer, with skip option and camera integration
     *   **Contact Client Card**: Email/SMS buttons on job detail view with automatic Twilio/manual fallback detection
     *   Mobile Chat Hub uses native Linking API for SMS/Email fallback when Twilio not connected
-*   **Unified Chat Hub with Client-Centric Design**:
-    *   Merged Jobs and SMS tabs into unified "Clients" view where job context is shown as badges
-    *   ConversationItem type simplified to 'team'|'direct'|'client' (removed legacy 'job' and 'sms' types)
-    *   Client conversations display relatedJobs array as clickable badges showing job context
+*   **Unified Chat Hub with Job-Centric Design**:
+    *   Jobs are primary navigation items in the conversation list with briefcase icons and status badges
+    *   ConversationItem types: 'team'|'direct'|'job'|'unassigned' - jobs are first-class conversation items
+    *   "New" section shows unassigned SMS enquiries (messages not linked to any job) with orange icons
+    *   Filter options: 'all'|'team'|'jobs'|'unassigned' for job-centric navigation
     *   ClientInsightsPanel accepts activeJobContext and onJobContextChange props for switching job context
-    *   Filter options: 'all'|'team'|'clients' for clean navigation
-    *   "Team Only" banner clarifies clients cannot see internal conversation history
+    *   Visual separators between conversation items and section headers
+    *   Empty state for jobs without SMS shows "No client messages" with prompt to add client phone
     *   Backend authorization uses `resolveAssigneeUserId` helper for proper assignedTo resolution
     *   SMS authorization checks on `/api/sms/send` and `/api/sms/quick-action` verify owner OR assigned member
     *   Quick action buttons (On My Way) visible to owner and assigned team members when Twilio connected
