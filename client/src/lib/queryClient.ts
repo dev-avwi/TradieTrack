@@ -1,13 +1,14 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { getAllItems, saveItem, getItem, deleteItem, addToSyncQueue, generateOfflineId, isOnline as checkOnline, type SyncOperation } from "./offlineStorage";
-
-type OfflineStoreName = 'clients' | 'jobs' | 'quotes' | 'invoices';
+import { getAllItems, saveItem, getItem, deleteItem, addToSyncQueue, generateOfflineId, isOnline as checkOnline, type SyncOperation, type OfflineStoreName } from "./offlineStorage";
 
 export function getStoreNameFromEndpoint(endpoint: string): OfflineStoreName | null {
   if (endpoint.includes('/api/clients')) return 'clients';
   if (endpoint.includes('/api/jobs')) return 'jobs';
   if (endpoint.includes('/api/quotes')) return 'quotes';
   if (endpoint.includes('/api/invoices')) return 'invoices';
+  if (endpoint.includes('/api/time-entries')) return 'timeEntries';
+  if (endpoint.includes('/api/payments')) return 'payments';
+  if (endpoint.includes('/api/templates')) return 'templates';
   return null;
 }
 
