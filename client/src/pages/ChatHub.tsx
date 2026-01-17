@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ClientInsightsPanel from "@/components/ClientInsightsPanel";
 import { 
   Users, 
@@ -45,6 +46,7 @@ import {
   Calendar,
   Circle,
   Navigation,
+  ChevronDown,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -160,7 +162,7 @@ interface Client {
   email?: string | null;
 }
 
-type FilterType = 'all' | 'team' | 'jobs' | 'unassigned';
+type FilterType = 'jobs' | 'team';
 
 interface ConversationItem {
   id: string;
@@ -202,14 +204,16 @@ const STATUS_LABELS: Record<string, string> = {
   invoiced: 'Invoiced',
 };
 
-const QUICK_REPLY_TEMPLATES = [
-  { id: 'omw', label: "On my way!", message: "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes." },
-  { id: 'running-late', label: "Running late", message: "Apologies, I'm running a bit behind schedule. Will be there as soon as I can - should only be another 15-20 minutes." },
-  { id: 'job-done', label: "Job done", message: "All done! The job's been completed. Let me know if you have any questions or need anything else." },
-  { id: 'thanks', label: "Thanks", message: "Thanks for your business mate! Really appreciate it. Don't hesitate to reach out if you need anything." },
-  { id: 'confirm', label: "Confirm", message: "Just confirming our appointment. Please reply to let me know you're still available, or give us a bell if you need to reschedule." },
-  { id: 'quote-sent', label: "Quote sent", message: "I've sent through your quote. Have a look and let me know if you've got any questions or want to go ahead." },
+const QUICK_ACTION_TEMPLATES = [
+  { id: 'omw', label: "On my way", icon: Navigation, message: "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes.", primary: true },
+  { id: 'running-late', label: "Running late", icon: Clock, message: "Apologies, I'm running a bit behind schedule. Will be there as soon as I can - should only be another 15-20 minutes.", primary: true },
+  { id: 'job-done', label: "Job done", icon: Check, message: "All done! The job's been completed. Let me know if you have any questions or need anything else.", primary: true },
+  { id: 'quote-sent', label: "Quote sent", icon: FileText, message: "I've sent through your quote. Have a look and let me know if you've got any questions or want to go ahead.", primary: false },
+  { id: 'confirm', label: "Confirm booking", icon: Calendar, message: "Just confirming our appointment. Please reply to let me know you're still available, or give us a bell if you need to reschedule.", primary: false },
+  { id: 'thanks', label: "Thanks", icon: User, message: "Thanks for your business mate! Really appreciate it. Don't hesitate to reach out if you need anything.", primary: false },
 ];
+
+const QUICK_REPLY_TEMPLATES = QUICK_ACTION_TEMPLATES;
 
 function ConversationSkeleton() {
   return (
@@ -290,11 +294,12 @@ export default function ChatHub() {
   const searchString = useSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const smsInputRef = useRef<HTMLInputElement>(null);
   const { isOwner, isManager } = useAppMode();
   
   const showDirectFilter = isOwner || isManager;
   
-  const [filter, setFilter] = useState<FilterType>('all');
+  const [filter, setFilter] = useState<FilterType>('jobs');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<ConversationItem | null>(null);
   const [selectedDirectUser, setSelectedDirectUser] = useState<User | null>(null);
@@ -789,8 +794,8 @@ export default function ChatHub() {
   const buildConversationList = useCallback((): ConversationItem[] => {
     const items: ConversationItem[] = [];
     
-    // Team Chat - always at top if showing
-    if (filter === 'all' || filter === 'team') {
+    // Team Chat - only show in team filter
+    if (filter === 'team') {
       const lastTeamMsg = teamMessages[teamMessages.length - 1];
       items.push({
         id: 'team-chat',
@@ -825,7 +830,7 @@ export default function ChatHub() {
     }
     
     // JOB-CENTRIC: Build job items with their associated SMS conversations
-    if (filter === 'all' || filter === 'jobs') {
+    if (filter === 'jobs') {
       // Build a map of jobId -> SMS conversation for jobs with client messages
       const jobSmsMap = new Map<string, SmsConversation>();
       smsConversations.forEach(sms => {
@@ -871,8 +876,8 @@ export default function ChatHub() {
       });
     }
     
-    // UNASSIGNED: SMS conversations not linked to any job
-    if (filter === 'all' || filter === 'unassigned') {
+    // UNASSIGNED: SMS conversations not linked to any job - also show in jobs filter
+    if (filter === 'jobs') {
       // Find SMS conversations that don't have a jobId and whose clientId doesn't have jobs
       const clientsWithJobs = new Set<string>();
       jobs.forEach(job => {
@@ -886,7 +891,7 @@ export default function ChatHub() {
             id: `unassigned-${sms.id}`,
             type: 'unassigned',
             title: sms.clientName || sms.clientPhone,
-            subtitle: sms.clientName ? sms.clientPhone : 'New enquiry',
+            subtitle: 'New enquiry - tap to create job',
             avatarFallback: (sms.clientName || sms.clientPhone).slice(0, 2).toUpperCase(),
             lastMessageTime: sms.lastMessageAt || undefined,
             unreadCount: sms.unreadCount,
@@ -1183,7 +1188,7 @@ export default function ChatHub() {
       {/* Clean header with title and new message button */}
       <div className="shrink-0 px-4 py-3 bg-background border-b">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h1 className="text-lg font-semibold">Inbox</h1>
+          <h1 className="text-lg font-semibold">Messages</h1>
           <Button
             onClick={() => setNewSmsDialogOpen(true)}
             size="icon"
@@ -1206,61 +1211,43 @@ export default function ChatHub() {
           />
         </div>
 
-        {/* Filter pills */}
+        {/* Simplified filter - Jobs primary, Team secondary */}
         <div className="flex gap-1">
-          {(['all', 'team', 'jobs', 'unassigned'] as FilterType[]).map((f) => {
-            const jobsWithSms = jobs.filter(job => {
-              return smsConversations.some(sms => 
-                sms.jobId === job.id || (job.clientId && sms.clientId === job.clientId)
-              );
-            });
-            const jobUnreadCount = jobsWithSms.reduce((sum, job) => {
-              const sms = smsConversations.find(s => s.jobId === job.id || s.clientId === job.clientId);
-              return sum + (sms?.unreadCount || 0);
-            }, 0);
-            
-            const clientsWithJobs = new Set<string>();
-            jobs.forEach(job => { if (job.clientId) clientsWithJobs.add(job.clientId); });
-            const unassignedSms = smsConversations.filter(sms => 
-              !sms.jobId && (!sms.clientId || !clientsWithJobs.has(sms.clientId))
-            );
-            const unassignedUnreadCount = unassignedSms.reduce((sum, sms) => sum + sms.unreadCount, 0);
-            
-            const count = f === 'all' 
-              ? unreadCounts.teamChat + unreadCounts.directMessages + smsUnreadCount
-              : f === 'team' 
-              ? unreadCounts.teamChat + unreadCounts.directMessages
-              : f === 'jobs'
-              ? jobUnreadCount
-              : f === 'unassigned'
-              ? unassignedUnreadCount
-              : 0;
-            
-            const label = f === 'all' ? 'All' : f === 'team' ? 'Team' : f === 'jobs' ? 'Jobs' : 'New';
-            
-            return (
-              <Button
-                key={f}
-                variant={filter === f ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setFilter(f)}
-                className="text-xs"
-                data-testid={`filter-${f}`}
-              >
-                {label}
-                {count > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
-                    {count}
-                  </Badge>
-                )}
-              </Button>
-            );
-          })}
+          <Button
+            variant={filter === 'jobs' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setFilter('jobs')}
+            className="text-xs"
+            data-testid="filter-jobs"
+          >
+            <Briefcase className="h-3 w-3 mr-1" />
+            Jobs
+            {smsUnreadCount > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                {smsUnreadCount}
+              </Badge>
+            )}
+          </Button>
+          <Button
+            variant={filter === 'team' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setFilter('team')}
+            className="text-xs"
+            data-testid="filter-team"
+          >
+            <Users className="h-3 w-3 mr-1" />
+            Team
+            {(unreadCounts.teamChat + unreadCounts.directMessages) > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                {unreadCounts.teamChat + unreadCounts.directMessages}
+              </Badge>
+            )}
+          </Button>
         </div>
       </div>
 
       <OfflineBanner isConnected={smsSocketConnected} />
-      {filter === 'unassigned' && !twilioConnected && <TwilioWarning />}
+      {filter === 'jobs' && !twilioConnected && <TwilioWarning />}
 
       {/* Conversation list with separators */}
       <ScrollArea className="flex-1">
@@ -1268,14 +1255,36 @@ export default function ChatHub() {
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
-            <MessageCircle className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground text-center">
-              {filter === 'jobs' 
-                ? 'No jobs yet'
-                : filter === 'unassigned'
-                ? 'No new enquiries'
-                : 'No messages yet'}
-            </p>
+            {filter === 'jobs' ? (
+              <>
+                <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
+                  <Briefcase className="h-7 w-7 text-blue-500/50" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">No jobs yet</p>
+                <p className="text-xs text-muted-foreground/70 text-center mb-3">
+                  Create your first job to start messaging clients
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1.5"
+                  onClick={() => setLocation('/jobs/new')}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  New Job
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <Users className="h-7 w-7 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Team chat is ready</p>
+                <p className="text-xs text-muted-foreground/70 text-center">
+                  Start chatting with your team
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="py-1">
@@ -1601,11 +1610,11 @@ export default function ChatHub() {
                   <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-medium text-sm truncate">{job.title}</h2>
                   <div className="flex items-center gap-2">
+                    <h2 className="font-medium text-sm truncate">{job.title}</h2>
                     <Badge 
                       variant="secondary" 
-                      className="text-[10px] h-4 px-1.5"
+                      className="text-[10px] px-1.5 shrink-0"
                       style={{ 
                         backgroundColor: `${STATUS_COLORS[job.status]}20`,
                         color: STATUS_COLORS[job.status]
@@ -1613,10 +1622,30 @@ export default function ChatHub() {
                     >
                       {STATUS_LABELS[job.status] || job.status}
                     </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
                     {selectedSmsConversation && (
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="truncate">
                         {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
                       </span>
+                    )}
+                    {job.scheduledAt && (
+                      <>
+                        {selectedSmsConversation && <span className="text-muted-foreground/50">•</span>}
+                        <span className="flex items-center gap-0.5 shrink-0">
+                          <Calendar className="h-2.5 w-2.5" />
+                          {format(new Date(job.scheduledAt), 'MMM d')}
+                        </span>
+                      </>
+                    )}
+                    {job.address && (
+                      <>
+                        <span className="text-muted-foreground/50">•</span>
+                        <span className="truncate flex items-center gap-0.5">
+                          <MapPin className="h-2.5 w-2.5" />
+                          {job.address.split(',')[0]}
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1637,8 +1666,26 @@ export default function ChatHub() {
               </>
             )}
             
-            {/* Actions */}
+            {/* Actions - one-tap call, SMS, and job view */}
             <div className="flex items-center gap-1">
+              {selectedSmsConversation && (
+                <>
+                  <a href={`tel:${selectedSmsConversation.clientPhone}`}>
+                    <Button variant="ghost" size="icon" data-testid="button-call" title="Call client">
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                  </a>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => smsInputRef.current?.focus()}
+                    data-testid="button-sms"
+                    title="Send SMS"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
               {isJobView && job && (
                 <Button 
                   variant="secondary"
@@ -1650,13 +1697,6 @@ export default function ChatHub() {
                   <ExternalLink className="h-3 w-3" />
                   View Job
                 </Button>
-              )}
-              {selectedSmsConversation && (
-                <a href={`tel:${selectedSmsConversation.clientPhone}`}>
-                  <Button variant="ghost" size="icon" data-testid="button-call">
-                    <Phone className="h-4 w-4" />
-                  </Button>
-                </a>
               )}
               <Button variant="ghost" size="icon" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
                 {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
@@ -1686,16 +1726,29 @@ export default function ChatHub() {
             {!selectedSmsConversation || smsMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-8">
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-                  {isJobView ? <Briefcase className="h-7 w-7 text-muted-foreground" /> : <Phone className="h-7 w-7 text-muted-foreground" />}
+                  {isJobView ? <MessageCircle className="h-7 w-7 text-muted-foreground" /> : <Phone className="h-7 w-7 text-muted-foreground" />}
                 </div>
                 <h3 className="font-medium text-sm mb-1">
-                  {isJobView && !selectedSmsConversation ? 'No client messages' : 'No messages yet'}
+                  {isJobView && !selectedSmsConversation ? 'No client messages yet' : 'Start the conversation'}
                 </h3>
-                <p className="text-xs text-muted-foreground text-center max-w-xs">
+                <p className="text-xs text-muted-foreground text-center max-w-xs mb-3">
                   {isJobView && !selectedSmsConversation 
-                    ? 'This job has no SMS conversation linked'
-                    : `Send a text to ${selectedSmsConversation?.clientName || 'this customer'}`}
+                    ? 'Add a client phone number to send SMS from this job'
+                    : `Use the quick actions above to message ${selectedSmsConversation?.clientName || 'your customer'}`}
                 </p>
+                {isJobView && !selectedSmsConversation && job && (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-1.5"
+                      onClick={() => setLocation(`/jobs/${job.id}`)}
+                    >
+                      <Briefcase className="h-3.5 w-3.5" />
+                      Edit Job
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -1757,24 +1810,91 @@ export default function ChatHub() {
           {/* Sticky composer - only show if there's an SMS conversation or if we can start one */}
           {selectedSmsConversation ? (
             <div className="shrink-0 border-t bg-background">
-              {/* Quick replies */}
-              <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar">
-                {QUICK_REPLY_TEMPLATES.slice(0, 4).map((template) => (
-                  <Button
-                    key={template.id}
-                    variant="secondary"
-                    size="sm"
-                    className="shrink-0 text-xs"
-                    onClick={() => setSmsNewMessage(template.message)}
-                    data-testid={`quick-reply-${template.id}`}
-                  >
-                    {template.label}
-                  </Button>
-                ))}
+              {/* Quick Actions - ServiceM8 style with primary actions + template picker */}
+              <div className="px-3 py-2 border-b bg-muted/30">
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                  {/* Primary quick actions */}
+                  {QUICK_ACTION_TEMPLATES.filter(t => t.primary).map((template) => {
+                    const Icon = template.icon;
+                    return (
+                      <Button
+                        key={template.id}
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1.5 bg-background"
+                        onClick={() => {
+                          const message = selectedSmsConversation 
+                            ? applySmsTemplateFields(template.message, selectedSmsConversation)
+                            : template.message;
+                          setSmsNewMessage(message);
+                        }}
+                        data-testid={`quick-action-${template.id}`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {template.label}
+                      </Button>
+                    );
+                  })}
+                  
+                  {/* Template picker dropdown for additional templates */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" data-testid="template-picker">
+                        <FileText className="h-3.5 w-3.5" />
+                        Templates
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
+                      <DropdownMenuLabel className="text-xs">More Quick Messages</DropdownMenuLabel>
+                      {QUICK_ACTION_TEMPLATES.filter(t => !t.primary).map((template) => {
+                        const Icon = template.icon;
+                        return (
+                          <DropdownMenuItem
+                            key={template.id}
+                            onClick={() => {
+                              const message = selectedSmsConversation 
+                                ? applySmsTemplateFields(template.message, selectedSmsConversation)
+                                : template.message;
+                              setSmsNewMessage(message);
+                            }}
+                            className="gap-2"
+                          >
+                            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">{template.label}</span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      
+                      {userSmsTemplates.length > 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel className="text-xs">Your Templates</DropdownMenuLabel>
+                          {userSmsTemplates.map((template) => (
+                            <DropdownMenuItem
+                              key={template.id}
+                              onClick={() => {
+                                const message = selectedSmsConversation 
+                                  ? applySmsTemplateFields(template.content, selectedSmsConversation)
+                                  : template.content;
+                                setSmsNewMessage(message);
+                              }}
+                              className="gap-2"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm truncate">{template.name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
               {/* Message input */}
-              <div className="px-4 pb-4 flex gap-2">
+              <div className="px-4 py-3 flex gap-2">
                 <Input
+                  ref={smsInputRef}
                   placeholder="Type a message..."
                   value={smsNewMessage}
                   onChange={(e) => setSmsNewMessage(e.target.value)}
