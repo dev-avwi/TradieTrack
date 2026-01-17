@@ -74,25 +74,16 @@ Core architectural and design decisions include:
     *   **BeforePhotoPrompt**: Modal prompting users to capture "before photos" when starting job timer, with skip option and camera integration
     *   **Contact Client Card**: Email/SMS buttons on job detail view with automatic Twilio/manual fallback detection
     *   Mobile Chat Hub uses native Linking API for SMS/Email fallback when Twilio not connected
-*   **Chat Hub Jobs Tab Client SMS Integration**:
-    *   Jobs tab shows client SMS conversations when clicking a job in the Chat Hub
-    *   Displays actual SMS message thread with the job's client in a team-only view (clients cannot see)
-    *   Uses separate `jobSmsMessages` query to prevent cross-conversation state pollution
-    *   Job-to-conversation mapping prefers jobId match, then falls back to clientId for accuracy
-    *   Send SMS to client directly from job chat context with Twilio/manual fallback
-    *   "Team Only" banner clarifies clients cannot see this internal conversation history
-    *   Three rendering states: conversation with messages, conversation without messages yet, no client linked
-    *   Cache invalidation on send ensures immediate message display in job view
-*   **Team Member Job Chat Access**:
-    *   Assigned team members can access job chats and send SMS to clients
-    *   Backend authorization uses `resolveAssigneeUserId` helper to properly resolve assignedTo (which can be userId or teamMemberId)
-    *   Authorization checks on `/api/sms/send` and `/api/sms/quick-action` verify user is owner OR assigned to job
-    *   "On My Way" quick action button visible only to owner and assigned team members (when Twilio connected)
-    *   Assigned team member info banner shows assignment status with avatar (profile image or initials fallback)
-    *   Frontend `isAssignedToJob` check handles both userId and teamMemberId matching via `currentUserTeamMember` lookup
-    *   Contextual assignment text: "You are assigned..." for self, "Assigned to [Name]" for others
-    *   SMS send mutation includes jobId for proper authorization context
-    *   Quick action mutation for "On My Way" with proper cache invalidation
+*   **Unified Chat Hub with Client-Centric Design**:
+    *   Merged Jobs and SMS tabs into unified "Clients" view where job context is shown as badges
+    *   ConversationItem type simplified to 'team'|'direct'|'client' (removed legacy 'job' and 'sms' types)
+    *   Client conversations display relatedJobs array as clickable badges showing job context
+    *   ClientInsightsPanel accepts activeJobContext and onJobContextChange props for switching job context
+    *   Filter options: 'all'|'team'|'clients' for clean navigation
+    *   "Team Only" banner clarifies clients cannot see internal conversation history
+    *   Backend authorization uses `resolveAssigneeUserId` helper for proper assignedTo resolution
+    *   SMS authorization checks on `/api/sms/send` and `/api/sms/quick-action` verify owner OR assigned member
+    *   Quick action buttons (On My Way) visible to owner and assigned team members when Twilio connected
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)

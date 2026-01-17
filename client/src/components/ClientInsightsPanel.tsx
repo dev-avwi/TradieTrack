@@ -17,6 +17,16 @@ import {
 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 
+interface Job {
+  id: string;
+  title: string;
+  status: string;
+  clientId?: string;
+  address?: string;
+  scheduledAt?: string;
+  assignedTo?: string;
+}
+
 interface ClientInsightsPanelProps {
   clientId: string | null;
   clientPhone: string;
@@ -26,6 +36,10 @@ interface ClientInsightsPanelProps {
   onNavigateToInvoice?: (invoiceId: string) => void;
   onCreateJob?: () => void;
   onCreateQuote?: () => void;
+  // Job context for unified client view
+  activeJobContext?: Job | null;
+  onJobContextChange?: (job: Job | null) => void;
+  relatedJobs?: Job[];
 }
 
 interface ClientInsightsData {
@@ -60,7 +74,10 @@ export default function ClientInsightsPanel({
   onNavigateToJob,
   onNavigateToInvoice,
   onCreateJob,
-  onCreateQuote
+  onCreateQuote,
+  activeJobContext,
+  onJobContextChange,
+  relatedJobs
 }: ClientInsightsPanelProps) {
   const { data: insights, isLoading } = useQuery<ClientInsightsData>({
     queryKey: ['/api/sms/conversations', conversationId, 'client-insights'],
@@ -182,6 +199,54 @@ export default function ClientInsightsPanel({
           <div className="space-y-1">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Address</h3>
             <p className="text-sm" data-testid="text-client-address">{client.address}</p>
+          </div>
+        )}
+
+        {/* Active Job Context - show related jobs that can be selected */}
+        {relatedJobs && relatedJobs.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+              <Briefcase className="h-3 w-3" />
+              Related Jobs
+            </h3>
+            <div className="space-y-1.5">
+              {relatedJobs.map((job) => {
+                const isActive = activeJobContext?.id === job.id;
+                return (
+                  <Card 
+                    key={job.id}
+                    className={`cursor-pointer transition-all ${isActive ? 'ring-2 ring-primary bg-primary/5' : 'hover-elevate'}`}
+                    onClick={() => onJobContextChange?.(isActive ? null : job)}
+                    data-testid={`card-related-job-${job.id}`}
+                  >
+                    <CardContent className="p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm truncate">{job.title}</span>
+                            <StatusBadge status={job.status} />
+                          </div>
+                          {job.address && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{job.address}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNavigateToJob?.(job.id);
+                          }}
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
 

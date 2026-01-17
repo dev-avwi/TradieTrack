@@ -160,11 +160,11 @@ interface Client {
   email?: string | null;
 }
 
-type FilterType = 'all' | 'team' | 'customers' | 'jobs';
+type FilterType = 'all' | 'team' | 'clients';
 
 interface ConversationItem {
   id: string;
-  type: 'team' | 'direct' | 'job' | 'sms';
+  type: 'team' | 'direct' | 'client';
   title: string;
   subtitle?: string;
   avatar?: string | null;
@@ -173,6 +173,11 @@ interface ConversationItem {
   lastMessageTime?: string;
   unreadCount: number;
   status?: string;
+  // Client conversation context
+  clientId?: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  relatedJobs?: Job[];  // Jobs associated with this client
   isOnline?: boolean;
   data: any;
 }
@@ -239,10 +244,8 @@ function getTypeIcon(type: string) {
   switch (type) {
     case 'team':
       return <Users className="h-4 w-4" />;
-    case 'sms':
-      return <Phone className="h-4 w-4" />;
-    case 'job':
-      return <Briefcase className="h-4 w-4" />;
+    case 'client':
+      return <User className="h-4 w-4" />;
     case 'direct':
       return <Mail className="h-4 w-4" />;
     default:
@@ -254,10 +257,8 @@ function getTypeColor(type: string) {
   switch (type) {
     case 'team':
       return 'bg-primary/10 text-primary';
-    case 'sms':
+    case 'client':
       return 'bg-green-500/10 text-green-600';
-    case 'job':
-      return 'bg-blue-500/10 text-blue-600';
     case 'direct':
       return 'bg-purple-500/10 text-purple-600';
     default:
@@ -269,10 +270,8 @@ function getTypeLabel(type: string) {
   switch (type) {
     case 'team':
       return 'Team';
-    case 'sms':
-      return 'Customer';
-    case 'job':
-      return 'Job';
+    case 'client':
+      return 'Client';
     case 'direct':
       return 'Direct';
     default:
@@ -295,7 +294,6 @@ export default function ChatHub() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<ConversationItem | null>(null);
   const [selectedDirectUser, setSelectedDirectUser] = useState<User | null>(null);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedSmsConversation, setSelectedSmsConversation] = useState<SmsConversation | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [smsNewMessage, setSmsNewMessage] = useState('');
@@ -399,38 +397,7 @@ export default function ChatHub() {
 
   const { data: smsMessages = [], refetch: refetchSmsMessages } = useQuery<SmsMessage[]>({
     queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'],
-    enabled: !!selectedSmsConversation && selectedConversation?.type === 'sms',
-  });
-
-  // Find SMS conversation for the selected job - prefer jobId match, then clientId
-  const jobSmsConversation = useMemo(() => {
-    if (selectedConversation?.type !== 'job' || !selectedJob) return null;
-    // First try to find by jobId (most accurate)
-    const byJobId = smsConversations.find(c => c.jobId === selectedJob.id);
-    if (byJobId) return byJobId;
-    // Fallback to clientId match
-    if (selectedJob.clientId) {
-      return smsConversations.find(c => c.clientId === selectedJob.clientId) || null;
-    }
-    return null;
-  }, [selectedJob, smsConversations, selectedConversation?.type]);
-
-  // Separate query for job's SMS messages to avoid state pollution
-  const { data: jobSmsMessages = [] } = useQuery<SmsMessage[]>({
-    queryKey: ['/api/sms/conversations', jobSmsConversation?.id, 'messages'],
-    enabled: !!jobSmsConversation?.id && selectedConversation?.type === 'job',
-  });
-
-  // Get the client for the selected job (fetch single client by ID)
-  const { data: selectedJobClient, isError: clientFetchError } = useQuery<Client>({
-    queryKey: ['/api/clients', 'single', selectedJob?.clientId],
-    queryFn: async () => {
-      const res = await fetch(`/api/clients/${selectedJob?.clientId}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch client');
-      return res.json();
-    },
-    enabled: !!selectedJob?.clientId && selectedConversation?.type === 'job',
-    retry: 1,
+    enabled: !!selectedSmsConversation && selectedConversation?.type === 'client',
   });
 
   const sendTeamMessageMutation = useMutation({
@@ -748,11 +715,14 @@ export default function ChatHub() {
         setSelectedSmsConversation(existingConvo);
         setSelectedConversation({
           id: existingConvo.id,
-          type: 'sms',
+          type: 'client',
           title: existingConvo.clientName || existingConvo.clientPhone,
           subtitle: existingConvo.clientName ? existingConvo.clientPhone : undefined,
           avatarFallback: (existingConvo.clientName || existingConvo.clientPhone).slice(0, 2).toUpperCase(),
           unreadCount: existingConvo.unreadCount,
+          clientId: existingConvo.clientId || undefined,
+          clientPhone: existingConvo.clientPhone,
+          relatedJobs: existingConvo.clientId ? jobs.filter(j => j.clientId === existingConvo.clientId) : [],
           data: existingConvo,
         });
         setMobileShowChat(true);
@@ -772,10 +742,11 @@ export default function ChatHub() {
         setSelectedSmsConversation(tempConvo);
         setSelectedConversation({
           id: 'new',
-          type: 'sms',
+          type: 'client',
           title: smsPhone,
           avatarFallback: smsPhone.slice(0, 2).toUpperCase(),
           unreadCount: 0,
+          clientPhone: smsPhone,
           data: tempConvo,
         });
         setMobileShowChat(true);
@@ -860,32 +831,41 @@ export default function ChatHub() {
       });
     }
     
-    if (filter === 'all' || filter === 'customers') {
+    // Unified Clients section - merge SMS conversations with job context
+    if (filter === 'all' || filter === 'clients') {
+      // Build a map of clientId -> jobs for context
+      const clientJobsMap = new Map<string, Job[]>();
+      jobs.forEach(job => {
+        if (job.clientId) {
+          const existing = clientJobsMap.get(job.clientId) || [];
+          clientJobsMap.set(job.clientId, [...existing, job]);
+        }
+      });
+      
+      // Create unified client conversation items
       smsConversations.forEach(sms => {
+        const clientJobs = sms.clientId ? clientJobsMap.get(sms.clientId) || [] : [];
+        // Sort jobs by most recent first
+        const sortedJobs = clientJobs.sort((a, b) => {
+          const aDate = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+          const bDate = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+          return bDate - aDate;
+        });
+        
         items.push({
           id: sms.id,
-          type: 'sms',
+          type: 'client',
           title: sms.clientName || sms.clientPhone,
-          subtitle: sms.clientName ? sms.clientPhone : undefined,
+          subtitle: sortedJobs.length > 0 
+            ? `${sortedJobs.length} job${sortedJobs.length > 1 ? 's' : ''} · ${sms.clientPhone}`
+            : sms.clientName ? sms.clientPhone : undefined,
           avatarFallback: (sms.clientName || sms.clientPhone).slice(0, 2).toUpperCase(),
           lastMessageTime: sms.lastMessageAt || undefined,
           unreadCount: sms.unreadCount,
+          clientId: sms.clientId || undefined,
+          clientPhone: sms.clientPhone,
+          relatedJobs: sortedJobs,
           data: sms,
-        });
-      });
-    }
-    
-    if (filter === 'all' || filter === 'jobs') {
-      jobs.slice(0, 10).forEach(job => {
-        items.push({
-          id: `job-${job.id}`,
-          type: 'job',
-          title: job.title,
-          subtitle: job.address?.split(',')[0],
-          avatarFallback: job.title.slice(0, 2).toUpperCase(),
-          status: job.status,
-          unreadCount: 0,
-          data: job,
         });
       });
     }
@@ -914,6 +894,9 @@ export default function ChatHub() {
     return items;
   }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm]);
 
+  // State for active job context when viewing client conversations
+  const [activeJobContext, setActiveJobContext] = useState<Job | null>(null);
+
   const handleConversationClick = (item: ConversationItem) => {
     setSelectedConversation(item);
     setMobileShowChat(true);
@@ -921,22 +904,20 @@ export default function ChatHub() {
     if (item.type === 'team') {
       setSelectedDirectUser(null);
       setSelectedSmsConversation(null);
-      setSelectedJob(null);
+      setActiveJobContext(null);
     } else if (item.type === 'direct') {
       setSelectedDirectUser(item.data);
       setSelectedSmsConversation(null);
-      setSelectedJob(null);
-    } else if (item.type === 'sms') {
+      setActiveJobContext(null);
+    } else if (item.type === 'client') {
+      // Unified client conversation - set SMS conversation and first related job as context
       setSelectedSmsConversation(item.data);
       setSelectedDirectUser(null);
-      setSelectedJob(null);
+      // Set the first (most recent) job as active context, if any
+      setActiveJobContext(item.relatedJobs?.[0] || null);
       if (item.data.id !== 'new') {
         markSmsReadMutation.mutate(item.data.id);
       }
-    } else if (item.type === 'job') {
-      setSelectedJob(item.data);
-      setSelectedDirectUser(null);
-      setSelectedSmsConversation(null);
     }
   };
 
@@ -944,7 +925,7 @@ export default function ChatHub() {
     setSelectedConversation(null);
     setSelectedDirectUser(null);
     setSelectedSmsConversation(null);
-    setSelectedJob(null);
+    setActiveJobContext(null);
     setMobileShowChat(false);
     setShowContextPanel(false);
   };
@@ -1091,10 +1072,13 @@ export default function ChatHub() {
       setSelectedSmsConversation(existingConvo);
       setSelectedConversation({
         id: existingConvo.id,
-        type: 'sms',
+        type: 'client',
         title: existingConvo.clientName || existingConvo.clientPhone,
         avatarFallback: (existingConvo.clientName || existingConvo.clientPhone).slice(0, 2).toUpperCase(),
         unreadCount: existingConvo.unreadCount,
+        clientId: existingConvo.clientId || undefined,
+        clientPhone: existingConvo.clientPhone,
+        relatedJobs: existingConvo.clientId ? jobs.filter(j => j.clientId === existingConvo.clientId) : [],
         data: existingConvo,
       });
       setMobileShowChat(true);
@@ -1122,10 +1106,11 @@ export default function ChatHub() {
       setSelectedSmsConversation(tempConvo);
       setSelectedConversation({
         id: 'new',
-        type: 'sms',
+        type: 'client',
         title: clientName || phone,
         avatarFallback: (clientName || phone).slice(0, 2).toUpperCase(),
         unreadCount: 0,
+        clientPhone: phone,
         data: tempConvo,
       });
       setMobileShowChat(true);
@@ -1179,12 +1164,12 @@ export default function ChatHub() {
         </div>
 
         <div className="flex gap-1.5">
-          {(['all', 'team', 'customers', 'jobs'] as FilterType[]).map((f) => {
+          {(['all', 'team', 'clients'] as FilterType[]).map((f) => {
             const count = f === 'all' 
               ? unreadCounts.teamChat + unreadCounts.directMessages + smsUnreadCount
               : f === 'team' 
               ? unreadCounts.teamChat + unreadCounts.directMessages
-              : f === 'customers'
+              : f === 'clients'
               ? smsUnreadCount
               : 0;
             
@@ -1210,7 +1195,7 @@ export default function ChatHub() {
       </div>
 
       <OfflineBanner isConnected={smsSocketConnected} />
-      {filter === 'customers' && !twilioConnected && <TwilioWarning />}
+      {filter === 'clients' && !twilioConnected && <TwilioWarning />}
 
       <ScrollArea className="flex-1">
         {isLoading ? (
@@ -1222,10 +1207,8 @@ export default function ChatHub() {
             </div>
             <h3 className="font-medium text-sm mb-1">No conversations</h3>
             <p className="text-xs text-muted-foreground text-center max-w-[200px]">
-              {filter === 'customers' 
-                ? 'Customer SMS conversations will appear here'
-                : filter === 'jobs'
-                ? 'Job chat threads will appear here'
+              {filter === 'clients' 
+                ? 'Client conversations and job updates will appear here'
                 : 'Your messages will appear here'}
             </p>
           </div>
@@ -1247,16 +1230,9 @@ export default function ChatHub() {
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <Users className="h-5 w-5 text-primary" />
                     </div>
-                  ) : item.type === 'job' ? (
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: (STATUS_COLORS[item.status || 'pending'] || '#6B7280') + '20' }}
-                    >
-                      <Briefcase className="h-5 w-5" style={{ color: STATUS_COLORS[item.status || 'pending'] || '#6B7280' }} />
-                    </div>
-                  ) : item.type === 'sms' ? (
+                  ) : item.type === 'client' ? (
                     <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <Phone className="h-5 w-5 text-green-600" />
+                      <User className="h-5 w-5 text-green-600" />
                     </div>
                   ) : (
                     <Avatar className="h-10 w-10">
@@ -1266,6 +1242,12 @@ export default function ChatHub() {
                   )}
                   {item.isOnline && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-background" />
+                  )}
+                  {/* Show job count indicator for client conversations */}
+                  {item.type === 'client' && item.relatedJobs && item.relatedJobs.length > 0 && (
+                    <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-blue-500 border-2 border-background flex items-center justify-center">
+                      <Briefcase className="h-2 w-2 text-white" />
+                    </div>
                   )}
                 </div>
 
@@ -1478,29 +1460,38 @@ export default function ChatHub() {
       );
     }
 
-    if (selectedConversation.type === 'sms' && selectedSmsConversation) {
-      const linkedJob = selectedSmsConversation.jobId ? jobs.find(j => j.id === selectedSmsConversation.jobId) : null;
+    if (selectedConversation.type === 'client' && selectedSmsConversation) {
+      // Get related jobs for context from the conversation item
+      const relatedJobs = selectedConversation.relatedJobs || [];
       
       return (
-        <div className="flex-1 flex flex-col overflow-hidden" data-testid="sms-chat-view">
+        <div className="flex-1 flex flex-col overflow-hidden" data-testid="client-chat-view">
           <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back-sms">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back-client">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
-              <Phone className="h-5 w-5 text-green-600" />
+              <User className="h-5 w-5 text-green-600" />
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="font-semibold text-sm truncate">
                 {selectedSmsConversation.clientName || selectedSmsConversation.clientPhone}
               </h2>
-              <p className="text-xs text-muted-foreground truncate">
-                {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS'}
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground truncate">
+                  {selectedSmsConversation.clientName ? selectedSmsConversation.clientPhone : 'SMS'}
+                </span>
+                {relatedJobs.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-4 gap-1">
+                    <Briefcase className="h-2.5 w-2.5" />
+                    {relatedJobs.length} job{relatedJobs.length > 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-1">
-              {linkedJob && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${linkedJob.id}`)} data-testid="button-view-linked-job">
+              {activeJobContext && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${activeJobContext.id}`)} data-testid="button-view-job">
                   <Briefcase className="h-3 w-3" />
                   View Job
                 </Button>
@@ -1636,251 +1627,6 @@ export default function ChatHub() {
       );
     }
 
-    if (selectedConversation.type === 'job' && selectedJob) {
-      // Derive client info with fallbacks, accounting for fetch errors
-      const clientName = !clientFetchError 
-        ? (selectedJobClient?.name || jobSmsConversation?.clientName || 'Client')
-        : (jobSmsConversation?.clientName || 'Client');
-      const clientPhone = !clientFetchError 
-        ? (selectedJobClient?.phone || jobSmsConversation?.clientPhone)
-        : jobSmsConversation?.clientPhone;
-      const hasClientConversation = !!jobSmsConversation || !!clientPhone;
-
-      // Handler to send SMS from job context
-      const handleSendJobSms = () => {
-        if (!smsNewMessage.trim() || !clientPhone) return;
-        sendSmsMutation.mutate({
-          clientId: selectedJob.clientId,
-          clientPhone: clientPhone,
-          message: smsNewMessage.trim(),
-          jobId: selectedJob.id,
-        });
-      };
-
-      // Handler for "On My Way" quick action
-      const handleOnMyWay = () => {
-        if (!jobSmsConversation?.id) return;
-        quickActionMutation.mutate({
-          conversationId: jobSmsConversation.id,
-          actionType: 'on_my_way',
-          jobId: selectedJob.id,
-          jobTitle: selectedJob.title,
-        });
-      };
-
-      // Check if current user is assigned to this job
-      // assignedTo can be either a userId or a teamMemberId, so check both
-      const currentUserTeamMember = teamMembers.find(m => m.userId === currentUser?.id);
-      const isAssignedToJob = selectedJob.assignedTo === currentUser?.id || 
-                              (currentUserTeamMember && selectedJob.assignedTo === currentUserTeamMember.id);
-      
-      // Get assigned team member info for avatar display
-      const assignedTeamMember = selectedJob.assignedTo ? 
-        teamMembers.find(m => m.userId === selectedJob.assignedTo || m.id === selectedJob.assignedTo) : null;
-
-      return (
-        <div className="flex-1 flex flex-col overflow-hidden" data-testid="job-chat-view">
-          <div className="shrink-0 p-3 border-b bg-background flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={handleBack} data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div 
-              className="w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20' }}
-            >
-              <Briefcase className="h-5 w-5" style={{ color: STATUS_COLORS[selectedJob.status] || '#6B7280' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-sm truncate">{selectedJob.title}</h2>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-[10px] h-4 px-1.5" style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20', color: STATUS_COLORS[selectedJob.status] || '#6B7280' }}>
-                  {STATUS_LABELS[selectedJob.status] || 'Unknown'}
-                </Badge>
-                {clientName && (
-                  <span className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                    <User className="h-3 w-3" /> {clientName}
-                  </span>
-                )}
-              </div>
-            </div>
-            {/* "On My Way" Quick Action Button - visible to owner and assigned members only */}
-            {hasClientConversation && jobSmsConversation && twilioConnected && (isOwner || isAssignedToJob) && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="gap-1.5 text-xs h-7 bg-blue-600 hover:bg-blue-700"
-                onClick={handleOnMyWay}
-                disabled={quickActionMutation.isPending}
-                data-testid="button-on-my-way"
-              >
-                <Navigation className="h-3 w-3" />
-                On My Way
-              </Button>
-            )}
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job">
-              <ExternalLink className="h-3 w-3" />
-              Open
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
-              {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
-            </Button>
-          </div>
-
-          {/* Assigned Team Member Info - shows assignment status with avatar */}
-          {selectedJob.assignedTo && (
-            <div className="shrink-0 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
-                {assignedTeamMember ? (
-                  <Avatar className="h-5 w-5">
-                    {assignedTeamMember.profileImageUrl ? (
-                      <AvatarImage src={assignedTeamMember.profileImageUrl} alt={assignedTeamMember.name} />
-                    ) : null}
-                    <AvatarFallback className="text-[9px] bg-blue-200 dark:bg-blue-800">
-                      {assignedTeamMember.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <User className="h-3.5 w-3.5" />
-                )}
-                <span className="font-medium">
-                  {isAssignedToJob 
-                    ? 'You are assigned to this job - you can send SMS and use quick actions' 
-                    : assignedTeamMember 
-                      ? `Assigned to ${assignedTeamMember.name}` 
-                      : 'Job assigned to team member'}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Internal Team Note Banner */}
-          <div className="shrink-0 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
-            <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              <span className="font-medium">Team Only</span>
-              <span className="text-amber-600 dark:text-amber-400">- Client cannot see this conversation history</span>
-            </div>
-          </div>
-
-          {hasClientConversation && jobSmsMessages.length > 0 ? (
-            <>
-              {/* SMS Messages Thread */}
-              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                <div className="space-y-4">
-                  {jobSmsMessages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        msg.direction === 'outbound' 
-                          ? 'bg-green-600 text-white rounded-br-md' 
-                          : 'bg-muted rounded-bl-md'
-                      }`}>
-                        <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-                        <div className={`flex items-center gap-1 mt-1 text-[10px] ${
-                          msg.direction === 'outbound' ? 'text-green-100' : 'text-muted-foreground'
-                        }`}>
-                          <span>{format(new Date(msg.createdAt), 'h:mm a')}</span>
-                          {msg.direction === 'outbound' && (
-                            msg.status === 'delivered' ? (
-                              <CheckCheck className="h-3 w-3" />
-                            ) : (
-                              <Check className="h-3 w-3" />
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div ref={messagesEndRef} />
-              </ScrollArea>
-
-              {/* SMS Input for Job */}
-              {twilioConnected && clientPhone ? (
-                <div className="shrink-0 p-3 border-t bg-background">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={`SMS to ${clientName}...`}
-                      value={smsNewMessage}
-                      onChange={(e) => setSmsNewMessage(e.target.value)}
-                      onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendJobSms(); } }}
-                      className="flex-1"
-                      data-testid="input-job-sms-message"
-                    />
-                    <Button onClick={handleSendJobSms} disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} size="icon" className="bg-green-600 hover:bg-green-700" data-testid="button-send-job-sms">
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : !twilioConnected && clientPhone ? (
-                <div className="shrink-0 p-3 border-t bg-background">
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    onClick={() => {
-                      const message = `Hi! Update on ${selectedJob.title} - `;
-                      window.open(`sms:${clientPhone}?body=${encodeURIComponent(message)}`, '_blank');
-                    }}
-                    data-testid="button-manual-sms"
-                  >
-                    <Phone className="h-4 w-4" />
-                    Open SMS App to Text {clientName}
-                  </Button>
-                </div>
-              ) : null}
-            </>
-          ) : hasClientConversation && clientPhone ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-8">
-              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
-                <MessageCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="font-medium text-sm mb-1">Start Conversation</h3>
-              <p className="text-xs text-muted-foreground text-center max-w-xs mb-4">
-                No messages yet with {clientName}. Send an SMS to start the conversation.
-              </p>
-              {twilioConnected ? (
-                <div className="flex gap-2 w-full max-w-xs px-4">
-                  <Input
-                    placeholder={`Message to ${clientName}...`}
-                    value={smsNewMessage}
-                    onChange={(e) => setSmsNewMessage(e.target.value)}
-                    className="flex-1"
-                    data-testid="input-job-first-sms"
-                  />
-                  <Button onClick={handleSendJobSms} disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} size="icon" className="bg-green-600 hover:bg-green-700">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    const message = `Hi! Just wanted to touch base about ${selectedJob.title}.`;
-                    window.open(`sms:${clientPhone}?body=${encodeURIComponent(message)}`, '_blank');
-                  }}
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Open SMS App
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center py-8">
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-                <Briefcase className="h-7 w-7 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-sm mb-1">No Client Linked</h3>
-              <p className="text-xs text-muted-foreground text-center max-w-xs mb-4">
-                This job doesn't have a client with a phone number. Add a client to enable SMS communication.
-              </p>
-              <Button variant="outline" size="sm" onClick={() => setLocation(`/jobs/${selectedJob.id}`)} data-testid="button-view-job-details">
-                View Job Details
-              </Button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
     return null;
   };
 
@@ -1942,7 +1688,6 @@ export default function ChatHub() {
                     setSelectedConversation(dmConversation);
                     setSelectedDirectUser(user);
                     setSelectedSmsConversation(null);
-                    setSelectedJob(null);
                     setMobileShowChat(true);
                     setShowContextPanel(false);
                   };
@@ -1984,66 +1729,33 @@ export default function ChatHub() {
       );
     }
 
-    if (selectedConversation.type === 'sms' && selectedSmsConversation) {
+    if (selectedConversation.type === 'client' && selectedSmsConversation) {
       return (
         <ClientInsightsPanel
           clientId={selectedSmsConversation.clientId}
           clientPhone={selectedSmsConversation.clientPhone}
           conversationId={selectedSmsConversation.id}
           onClose={() => setShowContextPanel(false)}
-          onNavigateToJob={(jobId) => { setShowContextPanel(false); setLocation(`/jobs/${jobId}`); }}
-          onNavigateToInvoice={(invoiceId) => { setShowContextPanel(false); setLocation(`/invoices/${invoiceId}`); }}
-          onCreateJob={() => { setShowContextPanel(false); setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); }}
-          onCreateQuote={() => { setShowContextPanel(false); setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); }}
+          onNavigateToJob={(jobId) => { 
+            setShowContextPanel(false); 
+            setLocation(`/jobs/${jobId}`); 
+          }}
+          onNavigateToInvoice={(invoiceId) => { 
+            setShowContextPanel(false); 
+            setLocation(`/invoices/${invoiceId}`); 
+          }}
+          onCreateJob={() => { 
+            setShowContextPanel(false); 
+            setLocation('/jobs/new?clientId=' + selectedSmsConversation.clientId); 
+          }}
+          onCreateQuote={() => { 
+            setShowContextPanel(false); 
+            setLocation('/quotes/new?clientId=' + selectedSmsConversation.clientId); 
+          }}
+          activeJobContext={activeJobContext}
+          onJobContextChange={(job) => setActiveJobContext(job)}
+          relatedJobs={selectedConversation.relatedJobs}
         />
-      );
-    }
-
-    if (selectedConversation.type === 'job' && selectedJob) {
-      return (
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold text-sm">Job Details</h3>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowContextPanel(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground mb-1">Status</h4>
-                <Badge style={{ backgroundColor: (STATUS_COLORS[selectedJob.status] || '#6B7280') + '20', color: STATUS_COLORS[selectedJob.status] || '#6B7280' }}>
-                  {STATUS_LABELS[selectedJob.status] || 'Unknown'}
-                </Badge>
-              </div>
-              
-              {selectedJob.address && (
-                <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    Address
-                  </h4>
-                  <p className="text-sm">{selectedJob.address}</p>
-                </div>
-              )}
-              
-              {selectedJob.scheduledAt && (
-                <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Scheduled
-                  </h4>
-                  <p className="text-sm">{format(new Date(selectedJob.scheduledAt), 'PPP p')}</p>
-                </div>
-              )}
-              
-              <Button className="w-full" variant="outline" onClick={() => setLocation(`/jobs/${selectedJob.id}`)}>
-                View Full Details
-              </Button>
-            </div>
-          </ScrollArea>
-        </div>
       );
     }
 
