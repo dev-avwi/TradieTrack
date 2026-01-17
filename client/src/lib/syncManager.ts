@@ -7,6 +7,7 @@ import {
   deleteItem,
   updateSyncMetadata,
   isOnline,
+  markPaymentAsSynced,
   type SyncOperation,
   type OfflineStoreName,
 } from './offlineStorage';
@@ -186,13 +187,18 @@ class SyncManager {
 
       if (operation.type === 'create') {
         const dataWithoutOfflineId = { ...operation.data };
+        const originalOfflineId = operation.data.id;
         delete dataWithoutOfflineId.id;
 
         response = await apiRequest('POST', operation.endpoint, dataWithoutOfflineId);
         result = await response.json();
 
+        if (operation.storeName === 'payments' && originalOfflineId) {
+          await markPaymentAsSynced(originalOfflineId);
+        }
+        
         if (result && result.id) {
-          await this.reconcileId(operation.storeName, operation.data.id, result.id);
+          await this.reconcileId(operation.storeName, originalOfflineId, result.id);
         }
       } else if (operation.type === 'update') {
         const serverItem = await this.fetchServerItem(operation.endpoint);

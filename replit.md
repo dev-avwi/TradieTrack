@@ -23,7 +23,14 @@ Core architectural and design decisions include:
 *   **Team Operations Center**: A centralized hub for live operations, administration, scheduling, skills/certifications, and performance monitoring.
 *   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization.
 *   **Role-Based Access Control (RBAC)**: Granular permissions are enforced through middleware.
-*   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization across web and mobile. Offline mutations are queued and synced when online, with ID reconciliation post-sync.
+*   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization across web and mobile. Key features include:
+    *   **Web IndexedDB Storage**: Stores jobs, clients, quotes, invoices, time entries, payments, templates, and subscription cache with sync queue.
+    *   **Sync Manager**: Centralized sync orchestration with exponential backoff retry, conflict detection (server-wins strategy with local backup), and ID reconciliation.
+    *   **Offline Time Tracking**: Timer operations with heartbeat mechanism saving state every 30 seconds for crash recovery.
+    *   **Offline Payment Drafts**: Record cash/EFTPOS/bank transfer payments offline with automatic sync on reconnect.
+    *   **Sync Status UI**: Header indicator showing offline status, pending sync count, sync progress, and conflicts.
+    *   **Subscription Caching**: TTL-based caching (24 hours) of plan/entitlement data for offline feature gating.
+    *   **Mobile SQLite**: Comprehensive SQLite-based offline storage with subscription_cache table and sync queue.
 *   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web, including photo markup.
 *   **Recurring Invoices & Jobs**: Functionality for setting up recurring invoices and jobs, including templates.
 *   **Financial Management**: A unified dashboard with key performance indicators.

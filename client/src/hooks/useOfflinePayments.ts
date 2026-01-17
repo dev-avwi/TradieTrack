@@ -4,14 +4,13 @@ import {
   getAllDraftPayments,
   getPendingDraftPayments,
   deleteDraftPayment,
-  markPaymentAsSynced,
   addToSyncQueue,
   generateOfflineId,
   isOnline,
   type DraftPayment,
 } from '@/lib/offlineStorage';
 import { useNetwork } from '@/contexts/NetworkContext';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { syncManager } from '@/lib/syncManager';
 
 export type PaymentMethod = 'cash' | 'eftpos' | 'bank_transfer' | 'card' | 'cheque' | 'other';
 
@@ -43,7 +42,7 @@ export function useOfflinePayments(): UseOfflinePaymentsReturn {
   const [pendingPayments, setPendingPayments] = useState<DraftPayment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isOnline: networkOnline, sync: triggerNetworkSync } = useNetwork();
+  const { isOnline: networkOnline } = useNetwork();
 
   const refreshPayments = useCallback(async () => {
     try {
@@ -68,7 +67,7 @@ export function useOfflinePayments(): UseOfflinePaymentsReturn {
 
   useEffect(() => {
     if (networkOnline && pendingPayments.length > 0) {
-      syncAllPayments();
+      syncManager.triggerSync();
     }
   }, [networkOnline]);
 
@@ -90,7 +89,7 @@ export function useOfflinePayments(): UseOfflinePaymentsReturn {
     };
 
     const savedPayment = await saveDraftPayment(payment);
-
+    
     await addToSyncQueue({
       type: 'create',
       storeName: 'payments',
@@ -98,15 +97,15 @@ export function useOfflinePayments(): UseOfflinePaymentsReturn {
       endpoint: '/api/payments',
       method: 'POST',
     });
-
+    
     await refreshPayments();
 
     if (isOnline()) {
-      triggerNetworkSync();
+      syncManager.triggerSync();
     }
 
     return savedPayment;
-  }, [refreshPayments, triggerNetworkSync]);
+  }, [refreshPayments]);
 
   const getPendingPaymentsAsync = useCallback(async (): Promise<DraftPayment[]> => {
     const pending = await getPendingDraftPayments();
@@ -114,49 +113,14 @@ export function useOfflinePayments(): UseOfflinePaymentsReturn {
     return pending;
   }, []);
 
-  const syncPayment = useCallback(async (paymentId: string | number): Promise<boolean> => {
+  const syncPayment = useCallback(async (_paymentId: string | number): Promise<boolean> => {
     if (!isOnline()) {
       setError('Cannot sync while offline');
       return false;
     }
 
     try {
-      const payments = await getAllDraftPayments();
-      const payment = payments.find(p => p.id === paymentId);
-      
-      if (!payment) {
-        setError('Payment not found');
-        return false;
-      }
-
-      if (payment.status === 'synced') {
-        return true;
-      }
-
-      const payloadData: Record<string, any> = {
-        amount: payment.amount,
-        paymentMethod: payment.paymentMethod,
-        paymentDate: payment.paymentDate,
-        reference: payment.reference,
-        notes: payment.notes,
-      };
-
-      if (payment.invoiceId) {
-        payloadData.invoiceId = payment.invoiceId;
-      }
-      if (payment.clientId) {
-        payloadData.clientId = payment.clientId;
-      }
-
-      await apiRequest('POST', '/api/payments', payloadData);
-
-      await markPaymentAsSynced(paymentId);
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
-      if (payment.invoiceId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-      }
-      
+      await syncManager.triggerSync();
       await refreshPayments();
       setError(null);
       return true;
@@ -168,21 +132,20 @@ export function useOfflinePayments(): UseOfflinePaymentsReturn {
   }, [refreshPayments]);
 
   const syncAllPayments = useCallback(async (): Promise<{ synced: number; failed: number }> => {
-    const pending = await getPendingDraftPayments();
-    let synced = 0;
-    let failed = 0;
-
-    for (const payment of pending) {
-      const success = await syncPayment(payment.id);
-      if (success) {
-        synced++;
-      } else {
-        failed++;
-      }
+    if (!isOnline()) {
+      return { synced: 0, failed: 0 };
     }
-
-    return { synced, failed };
-  }, [syncPayment]);
+    
+    const pendingBefore = await getPendingDraftPayments();
+    await syncManager.triggerSync();
+    const pendingAfter = await getPendingDraftPayments();
+    
+    const synced = pendingBefore.length - pendingAfter.length;
+    const failed = pendingAfter.length;
+    
+    await refreshPayments();
+    return { synced: Math.max(0, synced), failed };
+  }, [refreshPayments]);
 
   const deleteDraft = useCallback(async (paymentId: string | number): Promise<void> => {
     await deleteDraftPayment(paymentId);
