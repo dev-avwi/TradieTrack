@@ -423,6 +423,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   stopButton: {
     backgroundColor: colors.destructive,
   },
+  timerBreakCard: {
+    borderColor: colors.warning,
+    borderWidth: 2,
+    backgroundColor: colors.warningLight || '#FEF3C7',
+  },
+  timerBreakIcon: {
+    backgroundColor: colors.warning,
+  },
+  timerBreakValue: {
+    color: colors.warning,
+    fontWeight: '700',
+  },
+  timerButtonGroup: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  breakButton: {
+    backgroundColor: colors.warningLight || '#FDE68A',
+  },
+  resumeButton: {
+    backgroundColor: colors.primary,
+  },
   quickActionsSection: {
     marginBottom: spacing.xl,
   },
@@ -1761,8 +1783,11 @@ export default function JobDetailScreen() {
     fetchActiveTimer, 
     startTimer, 
     stopTimer, 
+    pauseTimer,
+    resumeTimer,
     isLoading: timerLoading, 
     getElapsedMinutes,
+    isOnBreak,
     error: timerError 
   } = useTimeTrackingStore();
 
@@ -2889,6 +2914,20 @@ export default function JobDetailScreen() {
     );
   };
 
+  const handleTakeBreak = async () => {
+    const success = await pauseTimer();
+    if (!success) {
+      Alert.alert('Error', 'Failed to start break. Please try again.');
+    }
+  };
+
+  const handleResumeWork = async () => {
+    const success = await resumeTimer();
+    if (!success) {
+      Alert.alert('Error', 'Failed to resume work. Please try again.');
+    }
+  };
+
   const handleStatusChange = async () => {
     if (!job) return;
     
@@ -3720,53 +3759,93 @@ export default function JobDetailScreen() {
       )}
 
       {/* Time Tracking Card with Pulse Animation */}
-      {(job.status === 'scheduled' || job.status === 'in_progress') && (
-        <Animated.View 
-          style={[
-            styles.timerCard, 
-            isTimerForThisJob && styles.timerActiveCard,
-            { transform: [{ scale: isTimerForThisJob ? pulseAnim : 1 }] }
-          ]}
-        >
-          <View style={[styles.timerIconContainer, isTimerForThisJob && styles.timerActiveIcon]}>
-            <Feather 
-              name="clock" 
-              size={iconSizes.xl} 
-              color={isTimerForThisJob ? colors.primaryForeground : colors.primary} 
-            />
-          </View>
-          <View style={styles.timerContent}>
-            <Text style={styles.timerLabel}>Time Tracking</Text>
-            {isTimerForThisJob ? (
-              <Text style={[styles.timerValue, styles.timerActiveValue]}>
-                Running: {formatElapsedTime(elapsedTime)}
-              </Text>
-            ) : activeTimer ? (
-              <Text style={styles.timerValue}>Timer on another job</Text>
-            ) : totalTrackedHours > 0 ? (
-              <Text style={styles.timerValue}>Total: {formatTrackedHours(totalTrackedHours)} tracked</Text>
-            ) : (
-              <Text style={styles.timerValue}>Not started</Text>
-            )}
-          </View>
-          <TouchableOpacity
-            onPress={isTimerForThisJob ? handleStopTimer : handleStartTimer}
+      {(job.status === 'scheduled' || job.status === 'in_progress') && (() => {
+        const isBreakActive = isTimerForThisJob && isOnBreak();
+        return (
+          <Animated.View 
             style={[
-              styles.timerButton,
-              isTimerForThisJob ? styles.stopButton : styles.startButton
+              styles.timerCard, 
+              isTimerForThisJob && (isBreakActive ? styles.timerBreakCard : styles.timerActiveCard),
+              { transform: [{ scale: isTimerForThisJob ? pulseAnim : 1 }] }
             ]}
-            disabled={timerLoading}
           >
-            {timerLoading ? (
-              <ActivityIndicator size="small" color={colors.primaryForeground} />
-            ) : isTimerForThisJob ? (
-              <Feather name="square" size={iconSizes.md} color={colors.primaryForeground} />
-            ) : (
-              <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+            <View style={[
+              styles.timerIconContainer, 
+              isTimerForThisJob && (isBreakActive ? styles.timerBreakIcon : styles.timerActiveIcon)
+            ]}>
+              <Feather 
+                name={isBreakActive ? "coffee" : "clock"} 
+                size={iconSizes.xl} 
+                color={isTimerForThisJob ? colors.primaryForeground : colors.primary} 
+              />
+            </View>
+            <View style={styles.timerContent}>
+              <Text style={styles.timerLabel}>
+                {isBreakActive ? 'On Break' : 'Time Tracking'}
+              </Text>
+              {isTimerForThisJob ? (
+                <Text style={[
+                  styles.timerValue, 
+                  isBreakActive ? styles.timerBreakValue : styles.timerActiveValue
+                ]}>
+                  {isBreakActive ? 'Break: ' : 'Running: '}{formatElapsedTime(elapsedTime)}
+                </Text>
+              ) : activeTimer ? (
+                <Text style={styles.timerValue}>Timer on another job</Text>
+              ) : totalTrackedHours > 0 ? (
+                <Text style={styles.timerValue}>Total: {formatTrackedHours(totalTrackedHours)} tracked</Text>
+              ) : (
+                <Text style={styles.timerValue}>Not started</Text>
+              )}
+            </View>
+            
+            {/* Timer action buttons */}
+            <View style={styles.timerButtonGroup}>
+              {isTimerForThisJob ? (
+                <>
+                  {/* Break / Resume button */}
+                  <TouchableOpacity
+                    onPress={isBreakActive ? handleResumeWork : handleTakeBreak}
+                    style={[
+                      styles.timerButton,
+                      isBreakActive ? styles.resumeButton : styles.breakButton
+                    ]}
+                    disabled={timerLoading}
+                  >
+                    {timerLoading ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : isBreakActive ? (
+                      <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
+                    ) : (
+                      <Feather name="coffee" size={iconSizes.md} color={colors.foreground} />
+                    )}
+                  </TouchableOpacity>
+                  {/* Stop button */}
+                  <TouchableOpacity
+                    onPress={handleStopTimer}
+                    style={[styles.timerButton, styles.stopButton]}
+                    disabled={timerLoading}
+                  >
+                    <Feather name="square" size={iconSizes.md} color={colors.primaryForeground} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleStartTimer}
+                  style={[styles.timerButton, styles.startButton]}
+                  disabled={timerLoading}
+                >
+                  {timerLoading ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.View>
+        );
+      })()}
 
       {/* Linked Documents Card */}
       <LinkedDocumentsCard
