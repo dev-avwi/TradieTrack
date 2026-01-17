@@ -153,6 +153,13 @@ export interface CachedAttachment {
   localId?: string;
 }
 
+export interface CachedSubscription {
+  key: string;
+  data: any; // The subscription data (plan, features, etc.)
+  cachedAt: number;
+  ttlMs: number;
+}
+
 export interface PendingSyncItem {
   id: string;
   type: 'job' | 'client' | 'quote' | 'invoice' | 'timeEntry' | 'attachment';
@@ -424,6 +431,14 @@ class OfflineStorageService {
         -- Create indexes for line items
         CREATE INDEX IF NOT EXISTS idx_quote_line_items_quote_id ON quote_line_items(quote_id);
         CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice_id ON invoice_line_items(invoice_id);
+        
+        -- Subscription cache table for offline entitlement/plan access
+        CREATE TABLE IF NOT EXISTS subscription_cache (
+          key TEXT PRIMARY KEY,
+          data TEXT NOT NULL,
+          cached_at INTEGER NOT NULL,
+          ttl_ms INTEGER NOT NULL
+        );
       `);
       
       // Run migrations to fix old schemas with NOT NULL constraints
@@ -3051,6 +3066,112 @@ class OfflineStorageService {
   async hasCachedAuth(): Promise<boolean> {
     const cached = await this.getCachedAuthData();
     return cached !== null && cached.userData !== null;
+  }
+
+  // ============ SUBSCRIPTION CACHE ============
+  // Cache subscription/entitlement data for offline feature gating
+
+  private static DEFAULT_SUBSCRIPTION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+  /**
+   * Cache subscription data with TTL for offline access
+   * @param key - Unique key for the subscription data (e.g., 'user_plan', 'feature_flags')
+   * @param data - The subscription data to cache (plan, features, etc.)
+   * @param ttlMs - Time-to-live in milliseconds (default 24 hours)
+   */
+  async cacheSubscriptionData(key: string, data: any, ttlMs?: number): Promise<void> {
+    if (!this.db) return;
+    
+    const now = Date.now();
+    const ttl = ttlMs ?? OfflineStorageService.DEFAULT_SUBSCRIPTION_TTL_MS;
+    
+    try {
+      await this.db.runAsync(
+        `INSERT OR REPLACE INTO subscription_cache (key, data, cached_at, ttl_ms)
+         VALUES (?, ?, ?, ?)`,
+        [key, JSON.stringify(data), now, ttl]
+      );
+      console.log(`[OfflineStorage] Cached subscription data for key: ${key}`);
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to cache subscription data:', error);
+    }
+  }
+
+  /**
+   * Get cached subscription data if not expired
+   * @param key - The key to retrieve
+   * @returns The cached data or null if expired/not found
+   */
+  async getCachedSubscriptionData<T>(key: string): Promise<T | null> {
+    if (!this.db) return null;
+    
+    try {
+      const result = await this.db.getFirstAsync(
+        'SELECT data, cached_at, ttl_ms FROM subscription_cache WHERE key = ?',
+        [key]
+      ) as any;
+      
+      if (!result) return null;
+      
+      const now = Date.now();
+      const expiresAt = result.cached_at + result.ttl_ms;
+      
+      if (now > expiresAt) {
+        console.log(`[OfflineStorage] Subscription cache expired for key: ${key}`);
+        return null;
+      }
+      
+      return JSON.parse(result.data) as T;
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to get cached subscription data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if subscription cache is still valid (not expired)
+   * @param key - The key to check
+   * @returns true if cache exists and is not expired
+   */
+  async isSubscriptionCacheValid(key: string): Promise<boolean> {
+    if (!this.db) return false;
+    
+    try {
+      const result = await this.db.getFirstAsync(
+        'SELECT cached_at, ttl_ms FROM subscription_cache WHERE key = ?',
+        [key]
+      ) as any;
+      
+      if (!result) return false;
+      
+      const now = Date.now();
+      const expiresAt = result.cached_at + result.ttl_ms;
+      
+      return now <= expiresAt;
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to check subscription cache validity:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Invalidate subscription cache
+   * @param key - Optional key to invalidate. If not provided, clears all subscription caches.
+   */
+  async invalidateSubscriptionCache(key?: string): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      if (key) {
+        await this.db.runAsync('DELETE FROM subscription_cache WHERE key = ?', [key]);
+        console.log(`[OfflineStorage] Invalidated subscription cache for key: ${key}`);
+      } else {
+        await this.db.runAsync('DELETE FROM subscription_cache');
+        console.log('[OfflineStorage] Invalidated all subscription caches');
+      }
+    } catch (error) {
+      console.error('[OfflineStorage] Failed to invalidate subscription cache:', error);
+    }
   }
 }
 
