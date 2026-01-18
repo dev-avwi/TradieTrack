@@ -757,6 +757,25 @@ export default function Integrations() {
     }
   }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero, refetchOutlook]);
 
+  // Handle hash scroll (e.g., /integrations#twilio)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const elementId = hash.substring(1); // Remove the #
+      setTimeout(() => {
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Optional: highlight the element briefly
+          element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+          }, 2000);
+        }
+      }, 500); // Delay to ensure page is rendered
+    }
+  }, []);
+
   const handleOpenTwilioSetup = () => {
     // Pre-fill with existing values (don't show masked values in editable fields)
     setTwilioAccountSid('');
@@ -1935,7 +1954,7 @@ export default function Integrations() {
         
         <div className="grid gap-4 md:grid-cols-2">
           {/* Twilio SMS Notifications Card */}
-          <Card data-testid="card-twilio-integration">
+          <Card id="twilio" data-testid="card-twilio-integration">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">

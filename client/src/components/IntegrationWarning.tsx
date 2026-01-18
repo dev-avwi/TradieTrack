@@ -133,7 +133,32 @@ export function IntegrationWarning({
 }
 
 // Specific warning components for common use cases
-export function TwilioWarning({ className }: { className?: string }) {
+export function TwilioWarning({ className, compact = false }: { className?: string; compact?: boolean }) {
+  if (compact) {
+    // Compact version for Chat Hub sidebar - single line with link
+    return (
+      <div 
+        className={`flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 ${className}`}
+        data-testid="twilio-warning-compact"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="text-xs font-medium text-amber-700 dark:text-amber-300 truncate">SMS not connected</span>
+        </div>
+        <Link href="/integrations#twilio">
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="h-6 text-[10px] px-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300"
+            data-testid="button-connect-twilio-compact"
+          >
+            <Settings className="h-3 w-3 mr-1" />
+            Connect
+          </Button>
+        </Link>
+      </div>
+    );
+  }
   return <IntegrationWarning type="twilio" variant="banner" className={className} />;
 }
 

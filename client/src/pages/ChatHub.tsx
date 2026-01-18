@@ -1260,7 +1260,7 @@ export default function ChatHub() {
       </div>
 
       <OfflineBanner isConnected={smsSocketConnected} />
-      {filter === 'jobs' && !twilioConnected && <TwilioWarning />}
+      {filter === 'jobs' && !twilioConnected && <TwilioWarning compact />}
 
       {/* Conversation list with separators */}
       <ScrollArea className="flex-1 px-2">
@@ -1724,7 +1724,7 @@ export default function ChatHub() {
           </div>
 
           <OfflineBanner isConnected={smsSocketConnected} />
-          {!twilioConnected && <TwilioWarning />}
+          {!twilioConnected && <TwilioWarning compact />}
 
           {selectedSmsConversation && isUnknownClient && selectedSmsConversation.id !== 'new' && (
             <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
