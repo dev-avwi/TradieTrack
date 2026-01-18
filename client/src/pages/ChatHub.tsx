@@ -1183,20 +1183,33 @@ export default function ChatHub() {
   const conversationList = buildConversationList();
   const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading || smsLoading;
 
+  // Personalized title for tradies (team members) vs owners
+  const isTradie = !isOwner && !isManager;
+  const firstName = currentUser?.firstName || 'there';
+  
   const renderConversationList = () => (
     <div className="flex flex-col h-full bg-muted/30" data-testid="conversation-list">
-      {/* Clean header with title and new message button */}
+      {/* Clean header with personalized title */}
       <div className="shrink-0 px-4 py-3 bg-background border-b">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h1 className="text-lg font-semibold">Messages</h1>
-          <Button
-            onClick={() => setNewSmsDialogOpen(true)}
-            size="icon"
-            variant="ghost"
-            data-testid="button-new-sms"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          <div>
+            <h1 className="text-lg font-semibold">
+              {isTradie ? `Hey ${firstName}` : 'Messages'}
+            </h1>
+            {isTradie && (
+              <p className="text-xs text-muted-foreground">Your jobs & team chat</p>
+            )}
+          </div>
+          {!isTradie && (
+            <Button
+              onClick={() => setNewSmsDialogOpen(true)}
+              size="icon"
+              variant="ghost"
+              data-testid="button-new-sms"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -1211,7 +1224,7 @@ export default function ChatHub() {
           />
         </div>
 
-        {/* Simplified filter - Jobs primary, Team secondary */}
+        {/* Simplified filter - personalized labels for tradies */}
         <div className="flex gap-1">
           <Button
             variant={filter === 'jobs' ? 'default' : 'ghost'}
@@ -1221,7 +1234,7 @@ export default function ChatHub() {
             data-testid="filter-jobs"
           >
             <Briefcase className="h-3 w-3 mr-1" />
-            Jobs
+            {isTradie ? 'My Jobs' : 'Jobs'}
             {smsUnreadCount > 0 && (
               <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
                 {smsUnreadCount}
@@ -1260,19 +1273,25 @@ export default function ChatHub() {
                 <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
                   <Briefcase className="h-7 w-7 text-blue-500/50" />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">No jobs yet</p>
-                <p className="text-xs text-muted-foreground/70 text-center mb-3">
-                  Create your first job to start messaging clients
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  {isTradie ? 'No jobs assigned' : 'No jobs yet'}
                 </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-1.5"
-                  onClick={() => setLocation('/jobs/new')}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  New Job
-                </Button>
+                <p className="text-xs text-muted-foreground/70 text-center mb-3">
+                  {isTradie 
+                    ? "When you're assigned a job, it'll appear here" 
+                    : 'Create your first job to start messaging clients'}
+                </p>
+                {!isTradie && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-1.5"
+                    onClick={() => setLocation('/jobs/new')}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    New Job
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -1281,7 +1300,7 @@ export default function ChatHub() {
                 </div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Team chat is ready</p>
                 <p className="text-xs text-muted-foreground/70 text-center">
-                  Start chatting with your team
+                  {isTradie ? 'Chat with your team and the boss' : 'Start chatting with your team'}
                 </p>
               </>
             )}
