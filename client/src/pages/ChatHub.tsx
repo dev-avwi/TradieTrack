@@ -1706,16 +1706,30 @@ export default function ChatHub() {
                 </>
               )}
               {isJobView && job && (
-                <Button 
-                  variant="secondary"
-                  size="sm"
-                  className="hidden sm:flex gap-1.5"
-                  onClick={() => setLocation(`/jobs/${job.id}`)}
-                  data-testid="button-view-job"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  View Job
-                </Button>
+                <>
+                  {/* Mobile: icon-only button */}
+                  <Button 
+                    variant="ghost"
+                    size="icon"
+                    className="sm:hidden"
+                    onClick={() => setLocation(`/jobs/${job.id}`)}
+                    data-testid="button-view-job-mobile"
+                    title="View Job"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                  {/* Desktop: text button */}
+                  <Button 
+                    variant="secondary"
+                    size="sm"
+                    className="hidden sm:flex gap-1.5"
+                    onClick={() => setLocation(`/jobs/${job.id}`)}
+                    data-testid="button-view-job"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View Job
+                  </Button>
+                </>
               )}
               <Button variant="ghost" size="icon" onClick={() => setShowContextPanel(!showContextPanel)} data-testid="button-toggle-context">
                 {showContextPanel ? <PanelRightClose className="h-4 w-4" /> : <Info className="h-4 w-4" />}
