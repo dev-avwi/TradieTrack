@@ -1250,7 +1250,7 @@ export default function ChatHub() {
       {filter === 'jobs' && !twilioConnected && <TwilioWarning />}
 
       {/* Conversation list with separators */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 px-2">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
@@ -1306,7 +1306,7 @@ export default function ChatHub() {
                   )}
                   
                   <div
-                    className={`flex items-start gap-3 mx-2 px-3 py-3 cursor-pointer transition-colors border-b border-border/50 last:border-b-0 ${
+                    className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-colors ${
                       isSelected 
                         ? 'bg-accent' 
                         : hasUnread
