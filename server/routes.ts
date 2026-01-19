@@ -8516,6 +8516,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.userId);
       const userName = user?.firstName || user?.username || 'Team member';
       
+      // Broadcast real-time job status change to all connected users
+      if (status !== existingJob.status) {
+        const { broadcastJobStatusChange } = await import('./websocket');
+        broadcastJobStatusChange(effectiveUserId, {
+          jobId: job.id,
+          status,
+          title: job.title,
+          updatedBy: req.userId,
+        });
+      }
+      
       // Create notifications for status changes (notify owner/manager)
       if (status !== existingJob.status) {
         const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
@@ -13701,15 +13712,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hourlyRate: data.hourlyRate || '85.00', // Ensure string format for decimal
       } as InsertTimeEntry & { userId: string });
       
+      // Get user context for broadcasts - effectiveUserId is the business owner ID
+      const userContext = await getUserContext(userId);
+      const businessId = userContext.effectiveUserId; // Business owner ID for broadcast targeting
+      
       // Auto-update job status from "scheduled" to "in_progress" when timer starts
       if (data.jobId) {
-        const job = await storage.getJob(data.jobId, userId);
+        const job = await storage.getJob(data.jobId, businessId);
         if (job && job.status === 'scheduled') {
-          await storage.updateJob(data.jobId, userId, {
+          await storage.updateJob(data.jobId, businessId, {
             status: 'in_progress',
             startedAt: new Date(),
           });
+          
+          // Broadcast job status change to all business users
+          const { broadcastJobStatusChange } = await import('./websocket');
+          broadcastJobStatusChange(businessId, {
+            jobId: data.jobId,
+            status: 'in_progress',
+            title: job.title,
+            updatedBy: userId,
+          });
         }
+        
+        // Broadcast timer started event to all business users
+        const { broadcastTimerEvent } = await import('./websocket');
+        broadcastTimerEvent(businessId, {
+          jobId: data.jobId,
+          userId,
+          action: 'started',
+          timeEntryId: timeEntry.id,
+        });
       }
       
       res.status(201).json(timeEntry);
@@ -13820,6 +13853,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stoppedEntry = await storage.stopTimeEntry(id, userId);
       if (!stoppedEntry) {
         return res.status(500).json({ error: 'Failed to stop time entry' });
+      }
+      
+      // Broadcast timer stopped event
+      if (existingEntry.jobId) {
+        const userContext = await getUserContext(userId);
+        const businessId = userContext.effectiveUserId;
+        const { broadcastTimerEvent } = await import('./websocket');
+        broadcastTimerEvent(businessId, {
+          jobId: existingEntry.jobId,
+          userId: (existingEntry as any).userId || userId,
+          action: 'stopped',
+          timeEntryId: id,
+        });
       }
       
       res.json(stoppedEntry);

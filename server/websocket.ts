@@ -286,3 +286,86 @@ export function broadcastPaymentReceived(
   console.log(`[WebSocket] 💰 Payment notification sent to user ${userId}: $${(paymentDetails.amount / 100).toFixed(2)}`);
   return notifiedCount > 0;
 }
+
+/**
+ * Broadcast job status change to all connected business users
+ */
+export function broadcastJobStatusChange(
+  businessId: string,
+  jobDetails: {
+    jobId: string;
+    status: string;
+    title?: string;
+    updatedBy?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'job_status_changed',
+    ...jobDetails,
+    timestamp: Date.now(),
+  });
+  console.log(`[WebSocket] 🔄 Job status changed: ${jobDetails.jobId} -> ${jobDetails.status}`);
+}
+
+/**
+ * Broadcast timer event (start/stop/break) to all connected business users
+ */
+export function broadcastTimerEvent(
+  businessId: string,
+  timerDetails: {
+    jobId: string;
+    userId: string;
+    action: 'started' | 'stopped' | 'paused' | 'resumed';
+    timeEntryId?: string;
+    elapsedSeconds?: number;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'timer_event',
+    ...timerDetails,
+    timestamp: Date.now(),
+  });
+  console.log(`[WebSocket] ⏱️ Timer ${timerDetails.action}: Job ${timerDetails.jobId} by user ${timerDetails.userId}`);
+}
+
+/**
+ * Broadcast quote/invoice status change
+ */
+export function broadcastDocumentStatusChange(
+  businessId: string,
+  documentDetails: {
+    documentType: 'quote' | 'invoice';
+    documentId: string;
+    status: string;
+    clientName?: string;
+    amount?: number;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'document_status_changed',
+    ...documentDetails,
+    timestamp: Date.now(),
+  });
+  console.log(`[WebSocket] 📄 ${documentDetails.documentType} status changed: ${documentDetails.documentId} -> ${documentDetails.status}`);
+}
+
+/**
+ * Broadcast notification to user(s)
+ */
+export function broadcastNotification(
+  targetUserIds: string[],
+  notification: {
+    title: string;
+    message: string;
+    severity: 'info' | 'success' | 'warning' | 'error';
+    link?: string;
+    entityType?: string;
+    entityId?: string;
+  }
+) {
+  broadcastToUsers(targetUserIds, {
+    type: 'notification',
+    ...notification,
+    timestamp: Date.now(),
+  });
+}
