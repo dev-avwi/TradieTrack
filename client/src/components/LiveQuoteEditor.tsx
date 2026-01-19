@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Form } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -441,6 +442,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       <div className="flex-1 flex overflow-hidden">
         {/* Form Panel */}
         <div className={`flex-1 overflow-auto p-4 lg:p-6 ${mobileView === 'preview' ? 'hidden lg:block' : ''}`}>
+          <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 max-w-xl mx-auto lg:mx-0">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -838,6 +840,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               )}
             </Button>
           </form>
+          </Form>
         </div>
 
         {/* Preview Panel */}
