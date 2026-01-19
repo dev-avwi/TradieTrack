@@ -8689,6 +8689,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send job via email (unified send modal)
+  app.post("/api/jobs/:id/send", requireAuth, async (req: any, res) => {
+    try {
+      const { method, subject, body } = req.body;
+      const userContext = await getUserContext(req.userId);
+      const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (!job.clientId) {
+        return res.status(400).json({ error: "Job has no associated client" });
+      }
+
+      const client = await storage.getClient(job.clientId, userContext.effectiveUserId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      if (!client.email) {
+        return res.status(400).json({ error: "Client has no email address" });
+      }
+
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId) || {
+        businessName: 'Business',
+        abn: '',
+        address: '',
+        phone: '',
+        email: '',
+        brandColor: '#2563eb'
+      };
+
+      if (method === 'email') {
+        // Send via SendGrid
+        const sgMail = await import('@sendgrid/mail');
+        if (!process.env.SENDGRID_API_KEY) {
+          return res.status(400).json({ error: "Email service not configured" });
+        }
+        
+        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+        
+        const fromEmail = business.email || 'noreply@tradietrack.com.au';
+        const businessName = business.businessName || 'TradieTrack';
+        
+        await sgMail.default.send({
+          to: client.email,
+          from: {
+            email: fromEmail,
+            name: businessName
+          },
+          subject: subject || `Your Job from ${businessName}`,
+          text: body || `Hi ${client.firstName || 'there'},\n\nHere are the details for your job: ${job.title}\n\nScheduled: ${job.scheduledDate || 'To be confirmed'}\nAddress: ${job.address || 'To be confirmed'}\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers,\n${businessName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: ${business.brandColor || '#2563eb'};">${businessName}</h2>
+              <p>Hi ${client.firstName || 'there'},</p>
+              <p>${body?.replace(/\n/g, '<br>') || `Here are the details for your job: <strong>${job.title}</strong>`}</p>
+              <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <p style="margin: 0;"><strong>Job:</strong> ${job.title}</p>
+                <p style="margin: 8px 0 0;"><strong>Scheduled:</strong> ${job.scheduledDate || 'To be confirmed'}</p>
+                <p style="margin: 8px 0 0;"><strong>Address:</strong> ${job.address || 'To be confirmed'}</p>
+              </div>
+              <p>If you have any questions, please don't hesitate to reach out.</p>
+              <p>Cheers,<br>${businessName}</p>
+            </div>
+          `,
+        });
+
+        // Log activity
+        await logActivity(
+          userContext.effectiveUserId,
+          'email_sent',
+          `Job details sent - ${job.title}`,
+          `Email sent to ${client.email}`,
+          'job',
+          job.id,
+          { clientEmail: client.email, subject }
+        );
+
+        res.json({ success: true, message: 'Job details sent via email' });
+      } else {
+        return res.status(400).json({ error: "Unsupported send method" });
+      }
+    } catch (error: any) {
+      console.error("Error sending job:", error);
+      res.status(500).json({ error: error.message || "Failed to send job details" });
+    }
+  });
+
   // Send job confirmation email (team-aware)
   app.post("/api/jobs/:id/send-confirmation", requireAuth, async (req: any, res) => {
     try {
