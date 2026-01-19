@@ -20,6 +20,7 @@ Core architectural and design decisions include:
 *   **Email Automation**: SendGrid integration for customizable emails with AI suggestions.
 *   **PWA Support**: Offline capabilities are provided via web manifest and service worker.
 *   **Real-time Communication**: Includes Job Chat, Team Chat, and Direct Messages with file attachments and two-way Twilio SMS integration with AI analysis, unified in a Microsoft Teams-style Chat Hub.
+*   **Real-time WebSocket Updates**: The `useRealtimeUpdates` hook in App.tsx connects to `/ws/location?businessId={id}` for live UI synchronization. Broadcasts include job status changes, timer events, document updates (quotes/invoices), payment records, and notifications. React Query caches auto-invalidate on WebSocket messages, eliminating manual refreshes across views.
 *   **Team Operations Center**: A centralized hub for live operations, administration, scheduling, skills/certifications, and performance monitoring.
 *   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization.
 *   **Role-Based Access Control (RBAC)**: Granular permissions are enforced through middleware.

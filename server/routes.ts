@@ -13958,11 +13958,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update lastHeartbeat timestamp to mark the entry as still active
+      // Note: Drizzle expects Date objects for timestamp columns, not ISO strings
+      const now = new Date();
       const updatedEntry = await storage.updateTimeEntry(id, userId, {
-        lastHeartbeat: new Date().toISOString(),
+        lastHeartbeat: now,
       });
       
-      res.json({ success: true, lastHeartbeat: (updatedEntry as any)?.lastHeartbeat || new Date().toISOString() });
+      res.json({ success: true, lastHeartbeat: (updatedEntry as any)?.lastHeartbeat || now.toISOString() });
     } catch (error) {
       console.error('Error updating time entry heartbeat:', error);
       res.status(500).json({ error: 'Failed to update heartbeat' });

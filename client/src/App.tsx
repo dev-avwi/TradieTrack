@@ -8,6 +8,7 @@ import AuthFlow from "@/components/AuthFlow";
 import SimpleOnboarding from "@/components/SimpleOnboarding";
 import OnboardingWizard, { type OnboardingData } from "@/components/OnboardingWizard";
 import { useCompleteOnboarding } from "@/hooks/useCompleteOnboarding";
+import { useRealtimeUpdates } from "@/hooks/use-realtime-updates";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -679,6 +680,18 @@ function AppLayout() {
   // Staff users (team members on someone else's team) should skip onboarding entirely
   // Owners without business settings still need to complete onboarding
   const isStaffOnOtherTeam = !!teamRoleInfo && teamRoleInfo.role !== 'owner';
+
+  // Get the businessId for real-time updates
+  // For team members, use their business owner's ID; for owners, use their own ID
+  const realtimeBusinessId = teamRoleInfo?.businessOwnerId || userCheck?.id || '';
+  
+  // Wire up real-time WebSocket updates for live UI synchronization
+  // This handles job status changes, timer events, document updates, payments, etc.
+  // MUST be called unconditionally before any early returns (React Rules of Hooks)
+  useRealtimeUpdates({
+    businessId: realtimeBusinessId,
+    enabled: !!userCheck && !!realtimeBusinessId && !isLoading && !businessSettingsLoading,
+  });
 
   // Initialize and update trade colors based on theme and trade selection
   // IMPORTANT: All useEffect hooks must be called before any conditional returns
