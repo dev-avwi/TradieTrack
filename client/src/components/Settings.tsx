@@ -76,6 +76,8 @@ import { TemplateUploader } from "./TemplateUploader";
 import { SavedTemplates } from "./SavedTemplates";
 import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
 import { PRICING } from "@shared/schema";
+import { tradeCatalog, getTradeDefinition } from "@shared/tradeCatalog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Types for MyAccount tab
 interface ColorOption {
@@ -199,7 +201,8 @@ export default function Settings({
     aiEnabled: true,
     aiPhotoAnalysisEnabled: true,
     aiSuggestionsEnabled: true,
-    emailSendingMode: "manual" as "manual" | "automatic"
+    emailSendingMode: "manual" as "manual" | "automatic",
+    tradeType: "general"
   });
 
   // Default color matches ThemeProvider's default (#3B5998 navy)
@@ -352,7 +355,8 @@ export default function Settings({
         aiEnabled: (businessSettings as any).aiEnabled !== false,
         aiPhotoAnalysisEnabled: (businessSettings as any).aiPhotoAnalysisEnabled !== false,
         aiSuggestionsEnabled: (businessSettings as any).aiSuggestionsEnabled !== false,
-        emailSendingMode: (businessSettings as any).emailSendingMode || "manual"
+        emailSendingMode: (businessSettings as any).emailSendingMode || "manual",
+        tradeType: (businessSettings as any).tradeType || "general"
       });
       
       // Always update payment data
@@ -508,6 +512,7 @@ export default function Settings({
       email: businessData.email,
       address: businessData.address,
       gstEnabled: businessData.gstEnabled,
+      tradeType: businessData.tradeType,
       primaryColor: brandingData.color,
       invoicePrefix: brandingData.invoicePrefix,
       quotePrefix: brandingData.quotePrefix,
@@ -1140,14 +1145,45 @@ export default function Settings({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={businessData.address}
-                  onChange={(e) => setBusinessData(prev => ({ ...prev, address: e.target.value }))}
-                  data-testid="input-address"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={businessData.address}
+                    onChange={(e) => setBusinessData(prev => ({ ...prev, address: e.target.value }))}
+                    data-testid="input-address"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="trade-type">Trade Type</Label>
+                  <Select 
+                    value={businessData.tradeType} 
+                    onValueChange={(value) => setBusinessData(prev => ({ ...prev, tradeType: value }))}
+                  >
+                    <SelectTrigger data-testid="select-trade-type">
+                      <SelectValue placeholder="Select your trade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(tradeCatalog).map(([key, trade]) => (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: trade.color }}
+                            />
+                            <span>{trade.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {businessData.tradeType && businessData.tradeType !== 'general' && (
+                    <p className="text-xs text-muted-foreground">
+                      {getTradeDefinition(businessData.tradeType)?.description}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <Separator />

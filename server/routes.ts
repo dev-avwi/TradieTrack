@@ -3691,6 +3691,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Ensure logoUrl is accessible - absolute URL for mobile, relative for web
         logoUrl: resolveBrowserLogoUrl(settings.logoUrl, isMobileApp),
         subscriptionTier: user?.subscriptionTier || 'free',
+        // Include tradeType from user table
+        tradeType: user?.tradeType || 'general',
       });
     } catch (error) {
       console.error("Error fetching business settings:", error);
