@@ -6784,7 +6784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
         const jobs = await storage.getJobs(userContext.effectiveUserId);
-        const assignedJobs = jobs.filter(job => job.assignedTo === req.userId);
+        const assignedJobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
         const assignedClientIds = [...new Set(assignedJobs.map(j => j.clientId).filter(Boolean))];
         clients = clients.filter(c => assignedClientIds.includes(c.id));
       }
@@ -7137,7 +7137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Staff tradies (team members without VIEW_ALL permission) only see their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
       }
       
       // Filter for unassigned jobs if requested
@@ -7194,9 +7194,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jobs = await storage.getJobs(userContext.effectiveUserId);
       const clients = await storage.getClients(userContext.effectiveUserId);
       
-      // Filter to only jobs assigned to this user
+      // Filter to only jobs assigned to this user (use teamMemberId, not userId)
       const myJobs = jobs
-        .filter(job => job.assignedTo === req.userId)
+        .filter(job => job.assignedTo === userContext.teamMemberId)
         .map(job => {
           const client = clients.find((c: any) => c.id === job.clientId);
           return {
@@ -7495,7 +7495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Staff tradies only see their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
       }
       
       const today = new Date();
@@ -7984,9 +7984,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Staff tradies can only view their assigned jobs
       const hasViewAll = userContext?.permissions?.includes('view_all') || userContext?.isOwner;
       if (!hasViewAll && userContext?.teamMemberId) {
-        // Check if job is assigned to this team member (by member ID or user ID)
+        // Check if job is assigned to this team member
         const isAssigned = job.assignedTo === userContext.teamMemberId || 
-                          job.assignedTo === req.userId ||
                           job.assignedTeamMemberId === userContext.teamMemberId;
         if (!isAssigned) {
           return res.status(403).json({ error: "You can only view your assigned jobs" });
@@ -11294,7 +11293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Staff tradies only see stats for their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
         // For staff, don't show financial stats - they only see job stats
         quotes = [];
         invoices = [];
@@ -11351,7 +11350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Staff tradies only see stats for their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
         quotes = [];
         invoices = [];
       }
@@ -11436,7 +11435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Staff view filter
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === req.userId);
+        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
         quotes = [];
         invoices = [];
       }
