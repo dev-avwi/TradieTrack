@@ -3307,9 +3307,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // AI Quote Generator from Photos + Voice - THE KILLER FEATURE (team-aware)
   app.post("/api/ai/generate-quote", requireAuth, async (req: any, res) => {
+    console.log('[AI Quote] Starting AI quote generation for user:', req.userId);
     try {
       const userContext = await getUserContext(req.userId);
       const { jobId, photoUrls, voiceTranscription, jobDescription } = req.body;
+      console.log('[AI Quote] Input:', { jobId, hasPhotos: !!photoUrls?.length, hasVoice: !!voiceTranscription, hasDescription: !!jobDescription });
       
       // Get business settings for trade type
       const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
@@ -3333,6 +3335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { generateQuoteFromMedia } = await import('./ai');
       
+      console.log('[AI Quote] Calling generateQuoteFromMedia with:', { tradeType, businessName, hasDescription: !!description });
       const result = await generateQuoteFromMedia({
         photoUrls: photos,
         voiceTranscription,
@@ -3341,9 +3344,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessName,
       });
       
+      console.log('[AI Quote] Result:', { success: result.success, lineItemCount: result.lineItems?.length, confidence: result.confidence });
       res.json(result);
-    } catch (error) {
-      console.error("Error generating AI quote:", error);
+    } catch (error: any) {
+      console.error("[AI Quote] Error generating AI quote:", error?.message || error);
       res.status(500).json({ error: "Failed to generate quote. Please try again." });
     }
   });

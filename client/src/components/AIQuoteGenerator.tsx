@@ -134,16 +134,13 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
         }
       }
 
-      const response = await apiRequest('/api/ai/generate-quote', {
-        method: 'POST',
-        body: JSON.stringify({
-          jobId,
-          photoUrls,
-          jobDescription: jobDescription.trim() || undefined,
-          voiceTranscription: voiceTranscription.trim() || undefined,
-        }),
+      const response = await apiRequest('POST', '/api/ai/generate-quote', {
+        jobId,
+        photoUrls,
+        jobDescription: jobDescription.trim() || undefined,
+        voiceTranscription: voiceTranscription.trim() || undefined,
       });
-      return response as AIQuoteResult;
+      return await response.json() as AIQuoteResult;
     },
     onSuccess: (data) => {
       setResult(data);
