@@ -22,7 +22,8 @@ import {
   Minus,
   Plus,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Gift
 } from "lucide-react";
 
 interface SubscriptionStatus {
@@ -203,15 +204,15 @@ export default function SubscriptionPage() {
           <div className="flex flex-wrap justify-center gap-4 pt-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="w-4 h-4 text-green-600" />
-              <span>Cancel anytime</span>
+              <span>No credit card required</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CreditCard className="w-4 h-4 text-green-600" />
-              <span>No payment until trial ends</span>
+              <span>All features unlocked</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4 text-green-600" />
-              <span>Full access for 14 days</span>
+              <span>Lifetime access for early adopters</span>
             </div>
           </div>
         </div>
@@ -231,10 +232,10 @@ export default function SubscriptionPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg capitalize">{status?.tier} Plan</h3>
+                      <h3 className="font-semibold text-lg capitalize">{status?.tier === 'trial' ? 'Pro' : status?.tier} Plan</h3>
                       {status?.tier === 'trial' && (
-                        <Badge variant="outline" className="border-orange-400 text-orange-600">
-                          Trial
+                        <Badge variant="outline" className="border-green-400 text-green-600 bg-green-50">
+                          Beta Access
                         </Badge>
                       )}
                       {status?.cancelAtPeriodEnd && (
@@ -245,7 +246,7 @@ export default function SubscriptionPage() {
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {status?.tier === 'trial' && status.trialEndsAt ? (
-                        <>Trial ends on {formatDate(status.trialEndsAt)}</>
+                        <>Beta access active - all Pro features unlocked</>
                       ) : status?.nextBillingDate ? (
                         <>Next billing date: {formatDate(status.nextBillingDate)}</>
                       ) : (
@@ -387,10 +388,10 @@ export default function SubscriptionPage() {
                   </Button>
                 )}
 
-                {/* Charged after trial note */}
+                {/* Price after beta note */}
                 {tier.id === 'pro' && !isCurrentTier(tier.id) && (
                   <p className="text-xs text-center text-muted-foreground">
-                    ${tier.price} AUD/month after trial
+                    ${tier.price} AUD/month after beta ends
                   </p>
                 )}
                 
@@ -421,59 +422,59 @@ export default function SubscriptionPage() {
           ))}
         </div>
 
-        {/* Trial Information Section */}
-        <Card className="bg-muted/30">
+        {/* Beta Information Section */}
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              How the 14-day trial works
+            <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
+              <Sparkles className="w-5 h-5" />
+              Early Adopter Program
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-primary">1</span>
+                <div className="w-10 h-10 rounded-full bg-green-600/10 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bold text-green-600">1</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1">Start your trial</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Enter your card details to begin. You won't be charged today.
+                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Sign up for free</h4>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    No credit card required. Get instant access to all features.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-primary">2</span>
+                <div className="w-10 h-10 rounded-full bg-green-600/10 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bold text-green-600">2</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1">Full access for 14 days</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Explore all features with no restrictions during your trial period.
+                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Use all Pro features</h4>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Unlimited jobs, quotes, invoices, AI features, and more.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-primary">3</span>
+                <div className="w-10 h-10 rounded-full bg-green-600/10 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bold text-green-600">3</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1">Cancel anytime</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Cancel before the trial ends and you won't be charged a cent.
+                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Share your feedback</h4>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Provide a testimonial and secure lifetime free access.
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="mt-6 p-4 bg-background rounded-lg border">
+            <div className="mt-6 p-4 bg-white/60 dark:bg-green-800/20 rounded-lg border border-green-200 dark:border-green-700">
               <div className="flex items-start gap-3">
-                <CreditCard className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <Gift className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-medium mb-1">Card required upfront</h4>
-                  <p className="text-sm text-muted-foreground">
-                    We collect your payment details to start the trial, but you won't be charged until the 14-day period ends. 
-                    You'll receive an email reminder before your first charge.
+                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Limited early adopter spots</h4>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    First 10 users who sign up and agree to provide a testimonial receive lifetime free access to all Pro features, 
+                    even after we officially launch with paid plans.
                   </p>
                 </div>
               </div>

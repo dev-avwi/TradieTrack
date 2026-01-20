@@ -607,10 +607,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 max-w-sm mx-auto">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Gift className="h-5 w-5 text-green-600" />
-              <span className="font-semibold text-green-900 dark:text-green-100">14-Day Team Trial Active</span>
+              <span className="font-semibold text-green-900 dark:text-green-100">Team Beta Access Active</span>
             </div>
             <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-              You're the Team Owner! Start by inviting your first team member.
+              You're the Team Owner! All Team features unlocked during beta.
             </p>
             <a href="/team" className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400">
               Go to Team Management →
@@ -622,13 +622,13 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Gift className="h-5 w-5 text-orange-500" />
-              <span className="font-semibold text-blue-900 dark:text-blue-100">Start Your Pro Trial</span>
+              <span className="font-semibold text-blue-900 dark:text-blue-100">Pro Features Unlocked</span>
             </div>
             <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-              Get unlimited jobs, invoices, and AI features for 14 days free!
+              All Pro features are free during beta - unlimited jobs, invoices, and AI!
             </p>
             <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
-              Activate Pro Trial →
+              View Plans →
             </a>
           </div>
         </>

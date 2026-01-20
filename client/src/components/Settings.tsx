@@ -2112,7 +2112,7 @@ function BillingTabContent() {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/status'] });
       toast({
         title: "Upgraded to Team!",
-        description: data.message || "Enjoy your 7-day free trial of Team features.",
+        description: data.message || "Team features are now unlocked - free during beta!",
       });
     },
     onError: (error: any) => {
@@ -2191,7 +2191,7 @@ function BillingTabContent() {
                     <p className="text-sm text-muted-foreground">
                       {hasPaidPlan 
                         ? isTrialing 
-                          ? 'Free trial active' 
+                          ? 'Beta access active - all Pro features unlocked' 
                           : isCanceled 
                             ? 'Cancels at period end' 
                             : isTeam 
@@ -2205,16 +2205,16 @@ function BillingTabContent() {
                   {hasPaidPlan ? (
                     <Badge 
                       variant="default" 
-                      style={{ backgroundColor: isTrialing ? 'hsl(var(--warning))' : isCanceled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--success))' }}
+                      style={{ backgroundColor: isTrialing ? 'hsl(var(--success))' : isCanceled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--success))' }}
                     >
-                      {isTrialing ? 'Trial' : isCanceled ? 'Canceling' : 'Active'}
+                      {isTrialing ? 'Beta Access' : isCanceled ? 'Canceling' : 'Active'}
                     </Badge>
                   ) : (
                     <Badge variant="secondary">Free</Badge>
                   )}
-                  {effectiveEndDate && (
+                  {effectiveEndDate && !isTrialing && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {isTrialing ? 'Trial ends' : isCanceled ? 'Ends' : 'Renews'}: {effectiveEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {isCanceled ? 'Ends' : 'Renews'}: {effectiveEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   )}
                 </div>
@@ -2317,15 +2317,15 @@ function BillingTabContent() {
                 </div>
               )}
 
-              {/* Trial Countdown */}
-              {isTrialing && effectiveEndDate && (
-                <div className="p-3 rounded-lg bg-warning/10 border border-warning/30">
+              {/* Beta Access Banner */}
+              {isTrialing && (
+                <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-700">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-warning" />
-                    <span className="font-medium text-warning">Free trial ends {effectiveEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <Zap className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-green-700 dark:text-green-300">Beta access active - all Pro features unlocked!</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your card will be charged when the trial ends. Cancel anytime before then.
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    You're an early adopter. Provide a testimonial to secure lifetime free access.
                   </p>
                 </div>
               )}
@@ -2347,7 +2347,7 @@ function BillingTabContent() {
                         ) : (
                           <Users className="h-4 w-4 mr-2" />
                         )}
-                        Try Team Free for 7 Days
+                        Upgrade to Team (Free During Beta)
                       </Button>
                     )}
                     {isTeam && (

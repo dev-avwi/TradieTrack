@@ -91,7 +91,7 @@ const tiers: Tier[] = [
       { text: 'Team management', included: false },
       { text: 'Team seats', included: false },
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Free During Beta',
     popular: true,
   },
   {
@@ -110,7 +110,7 @@ const tiers: Tier[] = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Free During Beta',
     popular: false,
   },
 ];
@@ -773,8 +773,8 @@ export default function SubscriptionScreen() {
         {tier.id !== 'free' && !isCurrentTier(tier.id) && (
           <Text style={styles.ctaSubtext}>
             {tier.id === 'team' 
-              ? `$${teamTotal} AUD charged after 14-day trial`
-              : `$${tier.price} AUD/month after trial`
+              ? `$${teamTotal} AUD/month after beta ends`
+              : `$${tier.price} AUD/month after beta ends`
             }
           </Text>
         )}
@@ -828,27 +828,27 @@ export default function SubscriptionScreen() {
               <View style={styles.heroSection}>
                 <View style={styles.trialBadge}>
                   <Feather name="star" size={14} color={colors.primary} />
-                  <Text style={styles.trialBadgeText}>14-Day Free Trial</Text>
+                  <Text style={styles.trialBadgeText}>Beta Access</Text>
                 </View>
                 <Text style={styles.heroTitle}>
-                  Try Pro or Team free for 14 days
+                  All features free during beta
                 </Text>
                 <Text style={styles.heroSubtitle}>
-                  No charges until your trial ends. Cancel anytime with one click.
+                  First 10 users get lifetime free access in exchange for a testimonial.
                 </Text>
                 
                 <View style={styles.trustBadges}>
                   <View style={styles.trustBadge}>
                     <Feather name="shield" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>Cancel anytime</Text>
+                    <Text style={styles.trustBadgeText}>No credit card required</Text>
                   </View>
                   <View style={styles.trustBadge}>
                     <Feather name="credit-card" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>No payment until trial ends</Text>
+                    <Text style={styles.trustBadgeText}>All features unlocked</Text>
                   </View>
                   <View style={styles.trustBadge}>
                     <Feather name="clock" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>Full access for 14 days</Text>
+                    <Text style={styles.trustBadgeText}>Lifetime access for early adopters</Text>
                   </View>
                 </View>
               </View>
@@ -867,12 +867,12 @@ export default function SubscriptionScreen() {
                       <View style={styles.currentPlanDetails}>
                         <View style={styles.currentPlanHeader}>
                           <Text style={styles.currentPlanName}>
-                            {subscriptionStatus?.tier} Plan
+                            {subscriptionStatus?.tier === 'trial' ? 'Pro' : subscriptionStatus?.tier} Plan
                           </Text>
                           {subscriptionStatus?.tier === 'trial' && (
-                            <View style={[styles.currentPlanBadge, styles.trialBadgeStyle]}>
-                              <Text style={[styles.currentPlanBadgeText, styles.trialBadgeTextStyle]}>
-                                Trial
+                            <View style={[styles.currentPlanBadge, { backgroundColor: colors.success + '20' }]}>
+                              <Text style={[styles.currentPlanBadgeText, { color: colors.success }]}>
+                                Beta Access
                               </Text>
                             </View>
                           )}
@@ -886,7 +886,7 @@ export default function SubscriptionScreen() {
                         </View>
                         <Text style={styles.currentPlanSubtext}>
                           {subscriptionStatus?.tier === 'trial' && subscriptionStatus.trialEndsAt ? (
-                            `Trial ends on ${formatDate(subscriptionStatus.trialEndsAt)}`
+                            `Beta access active - all Pro features unlocked`
                           ) : subscriptionStatus?.nextBillingDate ? (
                             `Next billing: ${formatDate(subscriptionStatus.nextBillingDate)}`
                           ) : subscriptionStatus?.currentPeriodEnd ? (

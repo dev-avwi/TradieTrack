@@ -210,17 +210,17 @@ export default function RegisterScreen() {
               <Text style={styles.appNameBlue}>Tradie</Text>
               <Text style={styles.appNameOrange}>Track</Text>
             </View>
-            <Text style={styles.title}>Start your free trial</Text>
-            <Text style={styles.subtitle}>Join thousands of Australian tradies</Text>
+            <Text style={styles.title}>Join the Beta</Text>
+            <Text style={styles.subtitle}>First 10 users get lifetime free access!</Text>
           </View>
 
           <View style={styles.trialInfoCard}>
-            <Text style={styles.trialInfoTitle}>Start with our Free plan</Text>
+            <Text style={styles.trialInfoTitle}>Beta Access - All Features Free</Text>
             <Text style={styles.trialInfoText}>
-              Upgrade to Pro or Team to get a 14-day free trial
+              No credit card required. Full Pro access during beta.
             </Text>
             <Text style={styles.trialInfoSubtext}>
-              Card collected upfront, charged after trial ends
+              Provide a testimonial for lifetime free access
             </Text>
           </View>
 
