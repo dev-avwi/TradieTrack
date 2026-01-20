@@ -16,10 +16,10 @@
 Create a demo account Apple's reviewers can use to test the app:
 
 **Demo Credentials (add these to App Store Connect):**
-- Email: `review@tradietrack.com.au`
-- Password: `AppleReview2024!`
+- Email: `demo@tradietrack.com.au`
+- Password: `demo123`
 
-**Important**: Create this account in your production database before submission!
+**Note**: This is the existing demo account with pre-populated sample data.
 
 ### 4. App Store Connect Metadata
 
@@ -125,8 +125,8 @@ Same screens (if supporting iPad)
 - Email: [Your email]
 
 **Demo Account:**
-- Username: `review@tradietrack.com.au`
-- Password: `AppleReview2024!`
+- Username: `demo@tradietrack.com.au`
+- Password: `demo123`
 
 **Notes for Reviewer:**
 ```
