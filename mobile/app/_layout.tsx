@@ -283,8 +283,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isOnline, offlineInitialized]);
   
-  // Compute FAB visibility - always show on tablet, otherwise show for owners/non-staff
-  const showFab = isTabletDevice ? true : (isOwner() || !isStaff());
+  // Show FAB for all authenticated users - permissions are checked within FloatingActionButton
+  const showFab = true;
   const isTeamOwner = isOwner() && hasActiveTeam();
 
   // Unauthenticated: render children with safe area padding (no header/nav)

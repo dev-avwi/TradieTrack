@@ -16,7 +16,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore } from '../../src/lib/store';
+import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore, useTimeTrackingStore } from '../../src/lib/store';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
@@ -166,10 +166,20 @@ function ActivityFeed({
 }
 
 // Time Tracking Widget - Enhanced with job info and manual controls
+// Uses global useTimeTrackingStore for unified state with Time Tracking page
 function TimeTrackingWidget() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [activeTimer, setActiveTimer] = useState<any>(null);
+  
+  // Use global store for activeTimer - synced with Time Tracking page
+  const { 
+    activeTimer, 
+    fetchActiveTimer, 
+    startTimer: storeStartTimer, 
+    stopTimer: storeStopTimer 
+  } = useTimeTrackingStore();
+  
+  // Local state only for UI concerns
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [totalMinutesToday, setTotalMinutesToday] = useState(0);
   const [todayEntries, setTodayEntries] = useState<any[]>([]);
@@ -181,17 +191,27 @@ function TimeTrackingWidget() {
   const [isStartingTimer, setIsStartingTimer] = useState<string | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
+  // Fetch active timer when screen gains focus - keeps dashboard and time tracking page in sync
+  useFocusEffect(
+    useCallback(() => {
+      fetchActiveTimer();
+      loadDashboardData();
+      loadTodaysJobs();
+    }, [])
+  );
+
   useEffect(() => {
-    loadTimeData();
+    loadDashboardData();
     loadTodaysJobs();
-    // Refresh every 15 seconds for more responsive updates
-    const interval = setInterval(loadTimeData, 15000);
+    // Refresh dashboard data every 15 seconds
+    const interval = setInterval(loadDashboardData, 15000);
     
     // Auto-refresh when app comes to foreground
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
         // App has come to the foreground - refresh data
-        loadTimeData();
+        fetchActiveTimer();
+        loadDashboardData();
         loadTodaysJobs();
       }
       appStateRef.current = nextAppState;
@@ -231,21 +251,15 @@ function TimeTrackingWidget() {
         return;
       }
       
-      const { default: api } = await import('../../src/lib/api');
-      const response = await api.post('/api/time-entries', {
-        jobId: job.id,
-        startTime: new Date().toISOString(),
-        description: job.title,
-      });
+      // Use the store's startTimer - it will update activeTimer globally
+      // Pass job.title as description so it shows in the timer widget
+      const success = await storeStartTimer(job.id, job.title);
       
-      if (response.data) {
-        setActiveTimer({
-          ...response.data,
-          jobTitle: job.title,
-          jobId: job.id,
-        });
+      if (success) {
         Alert.alert('Timer Started', `Tracking time for "${job.title}"`);
-        loadTimeData();
+        loadDashboardData();
+      } else {
+        Alert.alert('Error', 'Failed to start timer');
       }
     } catch (error: any) {
       Alert.alert('Error', 'Failed to start timer');
@@ -272,19 +286,11 @@ function TimeTrackingWidget() {
     return () => clearInterval(timer);
   }, [activeTimer]);
 
-  const loadTimeData = async () => {
+  // Load dashboard data (today's entries and stats) - activeTimer comes from the store
+  const loadDashboardData = async () => {
     try {
       const { default: api } = await import('../../src/lib/api');
-      const [activeResponse, dashboardResponse] = await Promise.all([
-        api.get('/api/time-entries/active/current'),
-        api.get('/api/time-tracking/dashboard')
-      ]);
-      
-      if (activeResponse.data) {
-        setActiveTimer(activeResponse.data);
-      } else {
-        setActiveTimer(null);
-      }
+      const dashboardResponse = await api.get('/api/time-tracking/dashboard');
       
       if (dashboardResponse.data) {
         const entries = (dashboardResponse.data as any).recentEntries || [];
@@ -304,8 +310,7 @@ function TimeTrackingWidget() {
         setTotalMinutesToday(total);
       }
     } catch (error) {
-      console.log('Error loading time data:', error);
-      setActiveTimer(null);
+      console.log('Error loading dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -328,13 +333,10 @@ function TimeTrackingWidget() {
         ? `/api/time-entries/${activeTimer.id}/resume`
         : `/api/time-entries/${activeTimer.id}/pause`;
       
-      const response = await api.post(endpoint, {});
+      await api.post(endpoint, {});
       
-      if (response.data) {
-        setActiveTimer(response.data);
-      } else {
-        loadTimeData();
-      }
+      // Refresh from store to get updated state
+      fetchActiveTimer();
     } catch (error: any) {
       Alert.alert('Error', `Failed to ${activeTimer.isPaused ? 'resume' : 'pause'} timer`);
     } finally {
@@ -367,9 +369,10 @@ function TimeTrackingWidget() {
               const { default: api } = await import('../../src/lib/api');
               await api.delete(`/api/time-entries/${activeTimer.id}`);
               
-              setActiveTimer(null);
+              // Refresh from store to clear activeTimer
+              fetchActiveTimer();
               Alert.alert('Timer Cancelled', 'Time was not recorded');
-              loadTimeData();
+              loadDashboardData();
             } catch (error: any) {
               Alert.alert('Error', 'Failed to cancel timer');
             } finally {
@@ -389,28 +392,28 @@ function TimeTrackingWidget() {
       
       if (!isOnline) {
         await offlineStorage.stopTimeEntryOffline(activeTimer.id);
-        setActiveTimer(null);
+        // Refresh from store to update state
+        fetchActiveTimer();
         Alert.alert('Saved Offline', 'Time entry will sync when online');
-        loadTimeData();
+        loadDashboardData();
         return;
       }
       
-      const { default: api } = await import('../../src/lib/api');
-      const endTime = new Date();
-      const startTime = new Date(activeTimer.startTime);
-      const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+      // Use the store's stopTimer - it will update activeTimer globally
+      const success = await storeStopTimer();
       
-      await api.post(`/api/time-entries/${activeTimer.id}/stop`, {});
-      
-      setActiveTimer(null);
-      Alert.alert('Timer Stopped', 'Time has been recorded');
-      loadTimeData();
+      if (success) {
+        Alert.alert('Timer Stopped', 'Time has been recorded');
+        loadDashboardData();
+      } else {
+        Alert.alert('Error', 'Failed to stop timer');
+      }
     } catch (error: any) {
       if (error.message?.includes('Network')) {
         await offlineStorage.stopTimeEntryOffline(activeTimer.id);
-        setActiveTimer(null);
+        fetchActiveTimer();
         Alert.alert('Saved Offline', 'Changes will sync when connection restored');
-        loadTimeData();
+        loadDashboardData();
       } else {
         Alert.alert('Error', 'Failed to stop timer');
       }
@@ -452,13 +455,32 @@ function TimeTrackingWidget() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
-  // Today's entries list component
+  // Today's entries list component - shows active timer first if running
   const renderTodayEntries = () => {
-    if (todayEntries.length === 0) return null;
+    // Show section if there's an active timer or completed entries
+    if (!activeTimer && todayEntries.length === 0) return null;
     
     return (
       <View style={styles.todayEntriesContainer}>
         <Text style={styles.todayEntriesTitle}>Today's Work</Text>
+        
+        {/* Show active timer at the top with tracking indicator */}
+        {activeTimer && (
+          <TouchableOpacity
+            style={styles.todayEntryRow}
+            onPress={() => activeTimer.jobId && router.push(`/job/${activeTimer.jobId}`)}
+            disabled={!activeTimer.jobId}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.todayEntryDot, { backgroundColor: colors.success }]} />
+            <Text style={[styles.todayEntryJobTitle, { color: colors.success }]} numberOfLines={1}>
+              {activeTimer.description || activeTimer.jobTitle || 'General time'}
+            </Text>
+            <Text style={[styles.todayEntryDuration, { color: colors.success }]}>tracking</Text>
+          </TouchableOpacity>
+        )}
+        
+        {/* Show completed entries */}
         {todayEntries.map((entry, index) => (
           <TouchableOpacity
             key={entry.id || index}
@@ -469,7 +491,7 @@ function TimeTrackingWidget() {
           >
             <View style={styles.todayEntryDot} />
             <Text style={styles.todayEntryJobTitle} numberOfLines={1}>
-              {entry.jobTitle || 'General time'}
+              {entry.description || entry.jobTitle || 'General time'}
             </Text>
             <Text style={styles.todayEntryDuration}>{formatEntryDuration(entry)}</Text>
           </TouchableOpacity>
@@ -571,7 +593,7 @@ function TimeTrackingWidget() {
               activeOpacity={0.7}
             >
               <Text style={[styles.timerJobTitle, activeTimer.jobId && styles.timerJobTitleLink]} numberOfLines={1}>
-                {activeTimer.jobTitle || 'General time'}
+                {activeTimer.description || activeTimer.jobTitle || 'General time'}
               </Text>
             </TouchableOpacity>
           </View>

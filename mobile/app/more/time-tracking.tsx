@@ -12,7 +12,7 @@ import {
   Platform
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
@@ -505,6 +505,13 @@ export default function TimeTrackingScreen() {
   useEffect(() => {
     refreshData();
   }, []);
+
+  // Refresh data when screen comes into focus (e.g., navigating from dashboard)
+  useFocusEffect(
+    useCallback(() => {
+      refreshData();
+    }, [refreshData])
+  );
 
   useEffect(() => {
     if (activeTimer) {
