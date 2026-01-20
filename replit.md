@@ -73,6 +73,14 @@ Core architectural and design decisions include:
     *   Auto job status updates: starting a timer on a "scheduled" job automatically changes status to "in_progress"
     *   Job costing widget calculates actual hours from time entries with variance display (estimated vs actual)
 *   **Trade-Type Aware Templates**: Business templates (quote, invoice, job) are filterable by trade type with fallback hierarchy: specific tradeType → 'general' → all templates. Database column `trade_type` added to `business_templates` table with default 'general'.
+*   **Trade-Specific Safety Forms System**: 18 Australian WHS-compliant safety checklists are auto-seeded for new users:
+    *   2 forms per trade (electrical, plumbing, carpentry, painting, hvac, roofing, tiling, landscaping, general)
+    *   Forms include pre-work safety checklists and post-work compliance forms
+    *   Each form has trade-specific items (e.g., electrical isolation, waterproofing flood tests)
+    *   Forms support digital signatures (requiresSignature field)
+    *   Trade type filtering: `/api/custom-forms?tradeType=plumbing` returns plumbing + general forms
+    *   Defined in `server/tradieSafetyForms.ts`, seeded via `storage.seedDefaultSafetyForms(userId)`
+    *   Schema columns: `trade_type` and `is_default` on `custom_forms` table
 *   **Mobile Payment Collection UI Improvements**:
     *   Reordered payment methods: Tap to Pay, QR Code, Payment Link, then Record Payment
     *   Ongoing payments are clickable with alert details

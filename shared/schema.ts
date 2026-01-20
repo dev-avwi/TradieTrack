@@ -1676,9 +1676,11 @@ export const customForms = pgTable("custom_forms", {
   name: text("name").notNull(),
   description: text("description"),
   formType: text("form_type").default('general'), // 'general', 'safety', 'compliance', 'inspection'
+  tradeType: text("trade_type").default('general'), // Trade-specific forms (plumbing, electrical, etc.)
   fields: json("fields").default([]), // Form field definitions
   settings: json("settings").default({}), // Form settings and styling
   requiresSignature: boolean("requires_signature").default(false),
+  isDefault: boolean("is_default").default(false), // System-provided default form
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

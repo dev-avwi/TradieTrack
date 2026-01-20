@@ -189,6 +189,18 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
     });
     console.log('✅ Demo worker added to team');
   }
+
+  // Seed default safety forms if not already present
+  try {
+    const existingForms = await storage.getCustomForms(demoUser.id);
+    const defaultForms = existingForms.filter(f => f.isDefault);
+    if (defaultForms.length === 0) {
+      await storage.seedDefaultSafetyForms(demoUser.id);
+      console.log('✅ Demo safety forms seeded');
+    }
+  } catch (err) {
+    console.error('Failed to seed demo safety forms:', err);
+  }
 }
 
 // ============================================

@@ -561,11 +561,12 @@ export interface IStorage {
   getAutomationLogs(userId: string, limit?: number): Promise<AutomationLog[]>;
 
   // Custom Forms
-  getCustomForms(userId: string): Promise<CustomForm[]>;
+  getCustomForms(userId: string, tradeType?: string): Promise<CustomForm[]>;
   getCustomForm(id: string, userId: string): Promise<CustomForm | undefined>;
   createCustomForm(form: InsertCustomForm & { userId: string }): Promise<CustomForm>;
   updateCustomForm(id: string, userId: string, form: Partial<InsertCustomForm>): Promise<CustomForm | undefined>;
   deleteCustomForm(id: string, userId: string): Promise<boolean>;
+  seedDefaultSafetyForms(userId: string): Promise<CustomForm[]>;
 
   // Form Submissions
   getFormSubmissions(formId: string, userId: string): Promise<FormSubmission[]>;
@@ -2134,14 +2135,29 @@ export class PostgresStorage implements IStorage {
     
     const baseCondition = or(...userConditions);
     
+    // Trade type filtering with fallback to 'general' templates
+    // If a specific trade is requested, return matching trade + general fallback
+    // User-created templates (isDefault = false) are always included regardless of trade type
     if (type && tradeType) {
-      const conditions = and(baseCondition, eq(documentTemplates.type, type), eq(documentTemplates.tradeType, tradeType));
+      // Include specific trade type, 'general' fallback, AND user-created templates (isDefault = false)
+      const tradeCondition = or(
+        eq(documentTemplates.tradeType, tradeType),
+        eq(documentTemplates.tradeType, 'general'),
+        eq(documentTemplates.isDefault, false) // User-created templates
+      );
+      const conditions = and(baseCondition, eq(documentTemplates.type, type), tradeCondition);
       return await db.select().from(documentTemplates).where(conditions).orderBy(desc(documentTemplates.createdAt));
     } else if (type) {
       const conditions = and(baseCondition, eq(documentTemplates.type, type));
       return await db.select().from(documentTemplates).where(conditions).orderBy(desc(documentTemplates.createdAt));
     } else if (tradeType) {
-      const conditions = and(baseCondition, eq(documentTemplates.tradeType, tradeType));
+      // Include specific trade type, 'general' fallback, AND user-created templates
+      const tradeCondition = or(
+        eq(documentTemplates.tradeType, tradeType),
+        eq(documentTemplates.tradeType, 'general'),
+        eq(documentTemplates.isDefault, false) // User-created templates
+      );
+      const conditions = and(baseCondition, tradeCondition);
       return await db.select().from(documentTemplates).where(conditions).orderBy(desc(documentTemplates.createdAt));
     }
     
@@ -4288,7 +4304,19 @@ export class PostgresStorage implements IStorage {
   }
 
   // Custom Forms
-  async getCustomForms(userId: string): Promise<CustomForm[]> {
+  async getCustomForms(userId: string, tradeType?: string): Promise<CustomForm[]> {
+    // Trade type filtering with fallback to 'general' forms
+    // If a specific trade is requested, return matching trade + general fallback
+    if (tradeType) {
+      const tradeCondition = or(
+        eq(customForms.tradeType, tradeType),
+        eq(customForms.tradeType, 'general'),
+        eq(customForms.isDefault, false) // User-created forms always included
+      );
+      return await db.select().from(customForms)
+        .where(and(eq(customForms.userId, userId), tradeCondition))
+        .orderBy(desc(customForms.createdAt));
+    }
     return await db.select().from(customForms)
       .where(eq(customForms.userId, userId))
       .orderBy(desc(customForms.createdAt));
@@ -4319,6 +4347,37 @@ export class PostgresStorage implements IStorage {
       .where(and(eq(customForms.id, id), eq(customForms.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  async seedDefaultSafetyForms(userId: string): Promise<CustomForm[]> {
+    const { tradieSafetyForms } = await import('./tradieSafetyForms');
+    
+    const existing = await this.getCustomForms(userId);
+    if (existing.filter(f => f.isDefault).length > 0) {
+      return existing;
+    }
+
+    const created: CustomForm[] = [];
+    for (const formDef of tradieSafetyForms) {
+      try {
+        const form = await this.createCustomForm({
+          userId,
+          name: formDef.name,
+          description: formDef.description,
+          formType: formDef.formType,
+          tradeType: formDef.tradeType,
+          fields: formDef.fields,
+          settings: formDef.settings,
+          requiresSignature: formDef.requiresSignature,
+          isDefault: true,
+          isActive: true,
+        });
+        created.push(form);
+      } catch (error) {
+        console.error(`Error creating safety form ${formDef.name}:`, error);
+      }
+    }
+    return created;
   }
 
   // Form Submissions

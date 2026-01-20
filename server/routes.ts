@@ -1112,11 +1112,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.register(cleanUserData);
       
       if (result.success) {
-        // Seed default templates for new user (non-blocking)
+        // Seed default templates and safety forms for new user (non-blocking)
         try {
           await storage.seedDefaultBusinessTemplates(result.user.id);
           await storage.ensureDefaultTemplates(result.user.id);
           await storage.seedDefaultDocumentTemplates(result.user.id);
+          await storage.seedDefaultSafetyForms(result.user.id);
         } catch (templateError) {
           console.error('Failed to seed default templates:', templateError);
           // Don't fail registration if template seeding fails
@@ -1238,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Seed default templates if new user (async, don't block login)
+      // Seed default templates and safety forms if new user (async, don't block login)
       storage.seedDefaultBusinessTemplates(user.id).catch(err => {
         console.error('Failed to seed business templates for passwordless user:', err);
       });
@@ -1247,6 +1248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       storage.seedDefaultDocumentTemplates(user.id).catch(err => {
         console.error('Failed to seed document templates for passwordless user:', err);
+      });
+      storage.seedDefaultSafetyForms(user.id).catch(err => {
+        console.error('Failed to seed safety forms for passwordless user:', err);
       });
       
       // Create session and explicitly save
@@ -22353,11 +22357,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all custom forms for user
+  // Get all custom forms for user (with optional trade type filtering)
   app.get("/api/custom-forms", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const forms = await storage.getCustomForms(userId);
+      const { tradeType } = req.query;
+      const forms = await storage.getCustomForms(userId, tradeType as string | undefined);
       res.json(forms);
     } catch (error: any) {
       console.error('Error fetching custom forms:', error);
