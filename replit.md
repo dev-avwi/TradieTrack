@@ -12,6 +12,13 @@ Core architectural and design decisions include:
 *   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and customizable theming. Key features include a "Today's Schedule" dashboard, Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
 *   **Authentication**: Supports Email/password, Google OAuth, and secure password reset with cross-platform session tokens.
 *   **AI Integration**: GPT-4o-mini is used for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision enables AI Photo Analysis, and the system includes an AI Schedule Optimizer and AI-powered voice note transcription.
+*   **Role-Aware AI Assistant**: The AI assistant adapts to user roles with filtered context and permission-gated actions:
+    *   **Context Filtering**: Workers see only their assigned jobs (no financial data), managers see team workload, owners see full business including financials.
+    *   **Role-Specific Prompts**: Workers get suggestions for job status, photos, and time tracking; managers for team scheduling; owners for financial insights.
+    *   **Permission-Gated Actions**: ACTION_PERMISSIONS map in `/api/ai/execute-action` uses default-deny with `every()` check. Workers cannot execute owner-level actions like invoicing, quoting, or payments.
+    *   **Rich Content**: AI responses include tappable entity links (jobs, quotes, invoices, clients) with status badges and amounts.
+    *   **Action Confirmations**: Sensitive actions require user confirmation before execution.
+    *   **Web-Mobile Parity**: Full feature parity with personalized greetings, animated thinking indicators, and suggested follow-ups on both platforms.
 *   **PDF Generation**: Server-side PDF generation for quotes and invoices is handled via Puppeteer, supporting customizable templates.
 *   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators, professional confirmation emails, and rollback capabilities.
 *   **Live Quote/Invoice Editor**: Provides real-time preview, catalog item integration, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
