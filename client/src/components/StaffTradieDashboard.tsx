@@ -78,7 +78,7 @@ export default function StaffTradieDashboard({
   };
 
   // Check if any quick action permissions are available
-  // Note: Log Hours and Photo Receipt are always available for staff
+  // Note: Log Hours is always available for staff
   const hasAnyQuickActionPermission = true; // Always show quick actions for basic features
 
   // Fetch only jobs assigned to this user
@@ -511,24 +511,6 @@ export default function StaffTradieDashboard({
                   <Timer className="h-6 w-6" style={{ color: 'hsl(220 70% 50%)' }} />
                 </div>
                 <span className="text-sm font-medium">Log Hours</span>
-              </Button>
-            </Card>
-            
-            {/* Photo Receipt - Always Available */}
-            <Card className="hover-elevate active-elevate-2" data-testid="quick-action-photo-receipt">
-              <Button
-                variant="ghost"
-                className="w-full h-auto p-4 flex flex-col items-center gap-2 text-center hover:bg-transparent no-default-hover-elevate no-default-active-elevate"
-                onClick={() => onNavigate?.('/expenses')}
-                data-testid="button-photo-receipt"
-              >
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  style={{ backgroundColor: 'hsl(35 90% 55% / 0.15)' }}
-                >
-                  <Receipt className="h-6 w-6" style={{ color: 'hsl(35 90% 55%)' }} />
-                </div>
-                <span className="text-sm font-medium">Photo Receipt</span>
               </Button>
             </Card>
             

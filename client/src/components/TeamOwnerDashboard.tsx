@@ -536,16 +536,6 @@ export default function TeamOwnerDashboard({
                 variant="outline"
                 size="sm"
                 className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
-                onClick={() => onNavigate?.('/expenses')}
-                data-testid="button-photo-receipt"
-              >
-                <Receipt className="h-4 w-4 mr-1.5" />
-                <span className="truncate">Photo Receipt</span>
-              </Button>
-              <Button 
-                variant="outline"
-                size="sm"
-                className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
                 onClick={() => onNavigate?.('/collect-payment')}
                 data-testid="button-request-payment"
               >

@@ -446,16 +446,6 @@ export default function OwnerManagerDashboard({
                 variant="outline"
                 size="sm"
                 className="flex-1 h-10 px-3 rounded-xl press-scale"
-                onClick={() => onNavigate?.('/expenses')}
-                data-testid="button-photo-receipt"
-              >
-                <Receipt className="h-4 w-4 mr-1.5" />
-                <span className="truncate">Photo Receipt</span>
-              </Button>
-              <Button 
-                variant="outline"
-                size="sm"
-                className="flex-1 h-10 px-3 rounded-xl press-scale"
                 onClick={() => onNavigate?.('/collect-payment')}
                 data-testid="button-request-payment"
               >

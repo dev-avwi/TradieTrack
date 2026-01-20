@@ -835,17 +835,6 @@ export default function TradieDashboard({
             Log Hours
           </Button>
           
-          {/* Photo Receipt - Expense Tracking */}
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={() => onNavigate?.('/expenses')}
-            data-testid="button-photo-receipt"
-          >
-            <Receipt className="h-4 w-4 mr-2" />
-            Photo Receipt
-          </Button>
-          
           {/* Request Payment - From Unpaid Invoices */}
           <Button 
             variant="outline" 
