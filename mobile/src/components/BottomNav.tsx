@@ -196,6 +196,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.cardBorder,
+    zIndex: 100,
+    elevation: 100,
   },
   navBar: {
     flexDirection: 'row',

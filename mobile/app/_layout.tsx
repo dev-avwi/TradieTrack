@@ -334,7 +334,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   // iPhone: Bottom nav layout (default)
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, position: 'relative', overflow: 'visible' }]}>
       {/* Header at top in normal flow */}
       <Header />
       
@@ -355,7 +355,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <WhatYouMissedPopup />
       
       {/* FAB positioned above bottom nav */}
-      {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} />}
+      {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} bottomOffset={bottomNavHeight} />}
       
       {/* Bottom navigation */}
       <BottomNav />

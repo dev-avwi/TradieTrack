@@ -50,7 +50,6 @@ const ACTION_BG_COLORS = {
 const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet.create({
   fabButton: {
     position: 'absolute',
-    bottom: 24,
     right: 20,
     // Apple HIG: minimum 44pt touch target
     width: 56,
@@ -199,16 +198,19 @@ interface FloatingActionButtonProps {
   isTeamOwner?: boolean;
   onAssignPress?: () => void;
   fabStyle?: 'phone' | 'tablet';
+  bottomOffset?: number;
 }
 
-export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabStyle = 'phone' }: FloatingActionButtonProps) {
+export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabStyle = 'phone', bottomOffset = 0 }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { colors } = useTheme();
   const isTabletStyle = fabStyle === 'tablet';
   const styles = useMemo(() => createStyles(colors, isTabletStyle), [colors, isTabletStyle]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
-  const fabPositionStyle = isTabletStyle ? { bottom: 24, right: 24 } : {};
+  const fabPositionStyle = isTabletStyle 
+    ? { bottom: 24, right: 24 } 
+    : { bottom: bottomOffset + 16, right: 20 };
 
   const handlePressIn = () => {
     Animated.timing(scaleAnim, {
