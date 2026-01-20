@@ -55,6 +55,8 @@ function JobListRow({
   const contentWidth = useContentWidth();
   const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   
+  const urgency = getJobUrgency(job.scheduledAt, job.status);
+  
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
@@ -122,7 +124,7 @@ function JobListRow({
           <Text style={styles.jobListRowAddress} numberOfLines={1}>{job.address?.split(',')[0] || 'No address'}</Text>
         </View>
         <View style={styles.jobListRowCenter}>
-          <StatusBadge status={job.status} size="sm" />
+          <StatusBadge status={urgency?.level === 'overdue' ? 'overdue' : job.status} size="sm" />
         </View>
         <Text style={styles.jobListRowDate}>
           {formatDate(job.scheduledAt)}
@@ -232,7 +234,7 @@ function JobCard({
       {job.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.jobCardContent}>
         <View style={styles.jobCardStatusRow}>
-          <StatusBadge status={job.status} size="sm" />
+          <StatusBadge status={urgency?.level === 'overdue' ? 'overdue' : job.status} size="sm" />
           {job.isRecurring && (
             <View style={styles.recurringBadge}>
               <Feather name="repeat" size={10} color={colors.primary} />

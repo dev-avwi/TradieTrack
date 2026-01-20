@@ -108,6 +108,19 @@ const getInvoiceStatusConfig = (status: string) => {
   }
 };
 
+const getInvoiceDisplayStatus = (invoice: Invoice): string => {
+  if (invoice.status === 'sent' && invoice.dueDate) {
+    const dueDate = new Date(invoice.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    if (dueDate < today) {
+      return 'overdue';
+    }
+  }
+  return invoice.status;
+};
+
 const getPaymentMethodLabel = (method: string) => {
   switch (method) {
     case 'bank_transfer': return 'Bank Transfer';
@@ -744,7 +757,8 @@ export default function DocumentsScreen() {
   };
 
   const renderInvoiceGridCard = (invoice: Invoice) => {
-    const statusConfig = getInvoiceStatusConfig(invoice.status);
+    const displayStatus = getInvoiceDisplayStatus(invoice);
+    const statusConfig = getInvoiceStatusConfig(displayStatus);
     const client = clientMap.get(invoice.clientId);
     const linkedReceipt = receipts.find(r => r.invoiceId === invoice.id);
     
@@ -783,7 +797,8 @@ export default function DocumentsScreen() {
   };
 
   const renderInvoiceListRow = (invoice: Invoice, isLast: boolean = false) => {
-    const statusConfig = getInvoiceStatusConfig(invoice.status);
+    const displayStatus = getInvoiceDisplayStatus(invoice);
+    const statusConfig = getInvoiceStatusConfig(displayStatus);
     const client = clientMap.get(invoice.clientId);
     
     return (

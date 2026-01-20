@@ -41,7 +41,7 @@ import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecord
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
-import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard } from '../../src/components/JobWorkflowComponents';
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard, ScheduleNotificationCard, SmsContactCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
@@ -3602,6 +3602,28 @@ export default function JobDetailScreen() {
     <>
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
+
+      {/* Schedule Notification Card - Shows scheduled time and Start Now */}
+      <ScheduleNotificationCard
+        jobStatus={job.status}
+        urgency={getJobUrgency(job.scheduledAt, job.status)}
+        onStartJob={async () => {
+          try {
+            await updateJobStatus(job.id, 'in_progress');
+            await loadJob();
+          } catch (error) {
+            console.error('Failed to start job:', error);
+          }
+        }}
+      />
+
+      {/* SMS Contact Card - "Heading to the job?" */}
+      <SmsContactCard
+        jobStatus={job.status}
+        clientPhone={client?.phone}
+        clientName={client?.name?.split(' ')[0]}
+        isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
+      />
 
       {/* Safety & Compliance Section - Prominent before work starts */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && availableForms.some(isSafetyForm) && (

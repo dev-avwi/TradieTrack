@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, iconSizes } from '../lib/design-tokens';
+import { JobUrgency } from '../lib/jobUrgency';
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
@@ -714,5 +715,212 @@ const createPaymentStyles = (colors: ThemeColors) => StyleSheet.create({
   paymentLabel: {
     fontSize: 13,
     fontWeight: '600',
+  },
+});
+
+// Schedule Notification Card - Shows scheduled time and Start Now button
+interface ScheduleNotificationCardProps {
+  jobStatus: 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
+  urgency: JobUrgency | null;
+  onStartJob: () => void;
+  isLoading?: boolean;
+}
+
+export function ScheduleNotificationCard({
+  jobStatus,
+  urgency,
+  onStartJob,
+  isLoading = false,
+}: ScheduleNotificationCardProps) {
+  const { colors } = useTheme();
+  const styles = createScheduleCardStyles(colors);
+
+  if (jobStatus !== 'scheduled' || !urgency) {
+    return null;
+  }
+
+  const isOverdue = urgency.level === 'overdue';
+  const borderColor = isOverdue ? '#ea580c' : colors.primary;
+  const bgColor = isOverdue ? '#fff7ed' : `${colors.primary}08`;
+  const iconBgColor = isOverdue ? '#ffedd5' : `${colors.primary}15`;
+  const iconColor = isOverdue ? '#ea580c' : colors.primary;
+
+  return (
+    <View style={[styles.container, { borderColor, backgroundColor: bgColor }]}>
+      <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
+        <Feather 
+          name={isOverdue ? "alert-circle" : "clock"} 
+          size={20} 
+          color={iconColor} 
+        />
+      </View>
+      <View style={styles.content}>
+        <Text style={[styles.title, { color: iconColor }]}>
+          {urgency.label}
+        </Text>
+        <Text style={styles.subtitle}>
+          {isOverdue 
+            ? "This job is past its scheduled time"
+            : "Ready to start?"}
+        </Text>
+      </View>
+      <TouchableOpacity 
+        style={[styles.actionButton, { backgroundColor: colors.primary }]} 
+        onPress={onStartJob}
+        disabled={isLoading}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionButtonText}>Start Now</Text>
+        <Feather name="play" size={14} color={colors.primaryForeground} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const createScheduleCardStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+});
+
+// SMS Contact Card - "Heading to the job?" with Text On My Way button
+interface SmsContactCardProps {
+  jobStatus: 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
+  clientPhone?: string | null;
+  clientName?: string;
+  isOverdue?: boolean;
+}
+
+export function SmsContactCard({
+  jobStatus,
+  clientPhone,
+  clientName,
+  isOverdue = false,
+}: SmsContactCardProps) {
+  const { colors } = useTheme();
+  const styles = createSmsCardStyles(colors);
+
+  if (!clientPhone || (jobStatus !== 'scheduled' && jobStatus !== 'in_progress')) {
+    return null;
+  }
+
+  const handleSendSms = () => {
+    const message = isOverdue 
+      ? `Hi${clientName ? ` ${clientName}` : ''}, I'm running a bit late. I'll be there as soon as possible.`
+      : `Hi${clientName ? ` ${clientName}` : ''}, I'm on my way to your job now.`;
+    
+    const smsUrl = `sms:${clientPhone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+    Linking.openURL(smsUrl).catch(() => {
+      Linking.openURL(`sms:${clientPhone}`);
+    });
+  };
+
+  const buttonLabel = isOverdue ? "Text Running Late" : "Text On My Way";
+  const buttonBg = isOverdue ? '#ea580c' : colors.primary;
+
+  return (
+    <View style={styles.container}>
+      <View style={[styles.iconContainer, { backgroundColor: `${colors.scheduled}15` }]}>
+        <Feather name="message-circle" size={20} color={colors.scheduled} />
+      </View>
+      <View style={styles.content}>
+        <Text style={styles.title}>Heading to the job?</Text>
+        <Text style={styles.subtitle}>Let the client know via your SMS app</Text>
+      </View>
+      <TouchableOpacity 
+        style={[styles.actionButton, { backgroundColor: buttonBg }]} 
+        onPress={handleSendSms}
+        activeOpacity={0.8}
+      >
+        <Feather name="message-square" size={14} color="#FFFFFF" />
+        <Text style={styles.actionButtonText}>{buttonLabel}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
