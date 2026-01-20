@@ -4,8 +4,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, Loader2, Lightbulb, ExternalLink, Briefcase, FileText, Receipt, User, Check, X, Bell, ChevronRight } from "lucide-react";
+import { Sparkles, Send, Loader2, Lightbulb, ExternalLink, Briefcase, FileText, Receipt, User, Check, X, Bell, ChevronRight, Zap } from "lucide-react";
 import { Link, useLocation } from "wouter";
+
+function ThinkingIndicator() {
+  return (
+    <div 
+      className="p-2.5 sm:p-3 rounded-lg mr-4 sm:mr-8 flex items-center gap-2"
+      style={{
+        backgroundColor: 'hsl(var(--trade) / 0.05)',
+        border: '1px solid hsl(var(--trade) / 0.1)'
+      }}
+    >
+      <div className="flex items-center gap-1">
+        <Sparkles className="h-3.5 w-3.5 animate-pulse" style={{ color: 'hsl(var(--trade))' }} />
+      </div>
+      <span className="text-xs sm:text-sm text-muted-foreground">
+        Thinking
+        <span className="inline-flex ml-1">
+          <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+          <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+          <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+        </span>
+      </span>
+    </div>
+  );
+}
 
 interface RichContentItem {
   type: 'job_link' | 'quote_link' | 'invoice_link' | 'client_link' | 'action_button';
@@ -204,6 +228,16 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
     }
   };
 
+  const { data: userData } = useQuery({
+    queryKey: ["/api/auth/me"],
+  });
+
+  const { data: businessSettings } = useQuery({
+    queryKey: ["/api/business-settings"],
+  });
+
+  const userName = (userData as any)?.firstName || (businessSettings as any)?.ownerName?.split(' ')[0] || '';
+
   const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
     queryKey: ["/api/ai/suggestions"],
     refetchInterval: 5 * 60 * 1000,
@@ -327,18 +361,15 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
         {msg.suggestedFollowups && msg.suggestedFollowups.length > 0 && !pendingAction && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {msg.suggestedFollowups.map((followup, idx) => (
-              <button
+              <Badge
                 key={idx}
+                variant="outline"
+                className="cursor-pointer text-xs"
                 onClick={() => setChatMessage(followup)}
-                className="text-xs px-2 py-1 rounded-full transition-all hover-elevate"
-                style={{
-                  backgroundColor: 'hsl(var(--muted))',
-                  border: '1px solid hsl(var(--border))'
-                }}
                 data-testid={`ai-followup-${idx}`}
               >
                 {followup}
-              </button>
+              </Badge>
             ))}
           </div>
         )}
@@ -349,7 +380,7 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
   const content = (
     <div className={`flex-1 flex flex-col gap-3 sm:gap-4 ${embedded ? 'p-4 sm:p-6' : ''}`}>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          I can help with jobs, quotes, invoices, and more. Just ask!
+          {userName ? `G'day${userName ? ` ${userName}` : ''}! ` : ''}I can help with jobs, quotes, invoices, and more. Just ask!
         </p>
 
         {chatHistory.length === 0 && (
@@ -403,7 +434,7 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
           </div>
         ) : null}
 
-        {chatHistory.length > 0 && (
+        {(chatHistory.length > 0 || chatMutation.isPending) && (
           <div className="flex-1 space-y-2 sm:space-y-3 overflow-y-auto max-h-48 sm:max-h-64">
             {chatHistory.map((msg, index) => (
               <div
@@ -426,6 +457,7 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
                 )}
               </div>
             ))}
+            {chatMutation.isPending && <ThinkingIndicator />}
           </div>
         )}
 

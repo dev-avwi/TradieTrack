@@ -225,12 +225,34 @@ async function resolveAssigneeUserId(assignedTo: string | null | undefined, busi
 }
 
 // Helper function to gather rich business context for AI
-async function gatherAIContext(userId: string, storage: any): Promise<BusinessContext> {
+// Enhanced to be role-aware: workers see limited data, owners/managers see everything
+async function gatherAIContext(userId: string, storage: any, userContext?: UserContext): Promise<BusinessContext> {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Determine user role from context
+  const isOwner = !userContext || userContext.isOwner;
+  const effectiveUserId = userContext?.effectiveUserId || userId;
+  
+  // Determine role string for the context
+  let userRole: 'owner' | 'manager' | 'supervisor' | 'worker' = 'owner';
+  if (userContext && !userContext.isOwner) {
+    // Check permissions to determine role
+    const hasManageTeam = userContext.permissions.includes('manage_team');
+    const hasViewAll = userContext.permissions.includes('view_all');
+    const hasWriteJobs = userContext.permissions.includes('write_jobs');
+    
+    if (hasManageTeam && hasViewAll) {
+      userRole = 'manager';
+    } else if (hasViewAll && hasWriteJobs) {
+      userRole = 'supervisor';
+    } else {
+      userRole = 'worker';
+    }
+  }
 
   // Fetch all data in parallel
   const [
@@ -241,30 +263,47 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
     allQuotes,
     allClients,
     emailIntegration,
-    gmailStatus
+    gmailStatus,
+    currentUser,
+    teamMember
   ] = await Promise.all([
-    storage.getBusinessSettings(userId),
+    storage.getBusinessSettings(effectiveUserId),
+    storage.getUser(effectiveUserId),
+    storage.getJobs(effectiveUserId),
+    storage.getInvoices(effectiveUserId),
+    storage.getQuotes(effectiveUserId),
+    storage.getClients(effectiveUserId),
+    getEmailIntegration(effectiveUserId),
+    getGmailConnectionStatus(),
     storage.getUser(userId),
-    storage.getJobs(userId),
-    storage.getInvoices(userId),
-    storage.getQuotes(userId),
-    storage.getClients(userId),
-    getEmailIntegration(userId),
-    getGmailConnectionStatus()
+    userContext?.teamMemberId ? storage.getTeamMember(userContext.teamMemberId) : null
   ]);
 
-  // Process jobs - open jobs count
-  const openJobs = allJobs.filter((j: any) => j.status !== 'done' && j.status !== 'cancelled').length;
+  // For workers, filter jobs to only their assigned ones
+  const isWorker = userRole === 'worker';
+  let filteredJobs = allJobs;
+  
+  if (isWorker && userContext) {
+    filteredJobs = allJobs.filter((j: any) => {
+      return j.assignedTo === userId || 
+             j.assignedTo === userContext.teamMemberId ||
+             (j.assignedTeamMembers && Array.isArray(j.assignedTeamMembers) && 
+              (j.assignedTeamMembers.includes(userId) || j.assignedTeamMembers.includes(userContext.teamMemberId)));
+    });
+  }
+
+  // Process jobs - open jobs count (workers only see their assigned count)
+  const openJobs = filteredJobs.filter((j: any) => j.status !== 'done' && j.status !== 'cancelled').length;
   
   // Completed jobs this month
-  const completedJobsThisMonth = allJobs.filter((j: any) => {
+  const completedJobsThisMonth = filteredJobs.filter((j: any) => {
     if (j.status !== 'done') return false;
     const completedDate = j.completedAt ? new Date(j.completedAt) : null;
     return completedDate && completedDate >= startOfMonth;
   }).length;
 
   // Today's jobs with full details
-  const todaysJobs = allJobs
+  const todaysJobs = filteredJobs
     .filter((j: any) => {
       if (!j.scheduledAt) return false;
       const jobDate = new Date(j.scheduledAt);
@@ -284,7 +323,7 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
     });
 
   // Upcoming jobs (next 7 days)
-  const upcomingJobs = allJobs
+  const upcomingJobs = filteredJobs
     .filter((j: any) => {
       if (!j.scheduledAt) return false;
       const jobDate = new Date(j.scheduledAt);
@@ -303,100 +342,123 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
     })
     .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
 
-  // Process invoices - overdue list with full details
-  const overdueInvoicesList = allInvoices
-    .filter((i: any) => {
-      if (i.status === 'paid') return false;
-      if (!i.dueDate) return false;
-      return new Date(i.dueDate) < now;
-    })
-    .map((i: any) => {
-      const client = allClients.find((c: any) => c.id === i.clientId);
-      const daysPastDue = Math.floor((now.getTime() - new Date(i.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-      return {
-        id: i.id,
-        clientName: client?.name || 'Unknown Client',
-        clientId: i.clientId,
-        clientEmail: client?.email,
-        clientPhone: client?.phone,
-        amount: parseFloat(i.total || '0'),
-        daysPastDue,
-        invoiceNumber: i.number
-      };
-    })
-    .sort((a: any, b: any) => b.daysPastDue - a.daysPastDue);
+  // Workers see assigned jobs array
+  const assignedJobs = isWorker ? filteredJobs.map((j: any) => {
+    const client = allClients.find((c: any) => c.id === j.clientId);
+    return {
+      id: j.id,
+      title: j.title || 'Untitled Job',
+      clientName: client?.name || 'Unknown Client',
+      address: j.address || j.location,
+      status: j.status,
+      scheduledDate: j.scheduledAt ? new Date(j.scheduledAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : undefined
+    };
+  }) : undefined;
 
-  const unpaidInvoicesTotal = overdueInvoicesList.reduce((sum: number, i: any) => sum + i.amount, 0);
+  // Financial data - hide from workers
+  let overdueInvoicesList: any[] = [];
+  let unpaidInvoicesTotal = 0;
+  let paidThisMonth = 0;
+  let recentInvoices: any[] = [];
+  let pendingQuotes: any[] = [];
+  let recentQuotes: any[] = [];
 
-  // Paid this month
-  const paidThisMonth = allInvoices
-    .filter((i: any) => {
-      if (i.status !== 'paid') return false;
-      const paidDate = i.paidAt ? new Date(i.paidAt) : null;
-      return paidDate && paidDate >= startOfMonth;
-    })
-    .reduce((sum: number, i: any) => sum + parseFloat(i.total || '0'), 0);
+  if (!isWorker) {
+    // Process invoices - overdue list with full details
+    overdueInvoicesList = allInvoices
+      .filter((i: any) => {
+        if (i.status === 'paid') return false;
+        if (!i.dueDate) return false;
+        return new Date(i.dueDate) < now;
+      })
+      .map((i: any) => {
+        const client = allClients.find((c: any) => c.id === i.clientId);
+        const daysPastDue = Math.floor((now.getTime() - new Date(i.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          id: i.id,
+          clientName: client?.name || 'Unknown Client',
+          clientId: i.clientId,
+          clientEmail: client?.email,
+          clientPhone: client?.phone,
+          amount: parseFloat(i.total || '0'),
+          daysPastDue,
+          invoiceNumber: i.number
+        };
+      })
+      .sort((a: any, b: any) => b.daysPastDue - a.daysPastDue);
 
-  // Recent invoices
-  const recentInvoices = allInvoices
-    .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, 10)
-    .map((i: any) => {
-      const client = allClients.find((c: any) => c.id === i.clientId);
-      return {
-        id: i.id,
-        clientName: client?.name || 'Unknown Client',
-        amount: parseFloat(i.total || '0'),
-        status: i.status,
-        invoiceNumber: i.number
-      };
-    });
+    unpaidInvoicesTotal = overdueInvoicesList.reduce((sum: number, i: any) => sum + i.amount, 0);
 
-  // Process quotes - pending with full details
-  const pendingQuotes = allQuotes
-    .filter((q: any) => q.status === 'sent' || q.status === 'pending')
-    .map((q: any) => {
-      const client = allClients.find((c: any) => c.id === q.clientId);
-      const createdDaysAgo = Math.floor((now.getTime() - new Date(q.createdAt || q.issuedDate || now).getTime()) / (1000 * 60 * 60 * 24));
-      return {
-        id: q.id,
-        clientName: client?.name || 'Unknown Client',
-        clientId: q.clientId,
-        clientEmail: client?.email,
-        total: parseFloat(q.total || '0'),
-        createdDaysAgo,
-        quoteNumber: q.number
-      };
-    });
+    // Paid this month
+    paidThisMonth = allInvoices
+      .filter((i: any) => {
+        if (i.status !== 'paid') return false;
+        const paidDate = i.paidAt ? new Date(i.paidAt) : null;
+        return paidDate && paidDate >= startOfMonth;
+      })
+      .reduce((sum: number, i: any) => sum + parseFloat(i.total || '0'), 0);
 
-  // Recent quotes
-  const recentQuotes = allQuotes
-    .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-    .slice(0, 10)
-    .map((q: any) => {
-      const client = allClients.find((c: any) => c.id === q.clientId);
-      return {
-        id: q.id,
-        clientName: client?.name || 'Unknown Client',
-        amount: q.totalAmount || 0,
-        status: q.status,
-        quoteNumber: q.quoteNumber
-      };
-    });
+    // Recent invoices
+    recentInvoices = allInvoices
+      .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 10)
+      .map((i: any) => {
+        const client = allClients.find((c: any) => c.id === i.clientId);
+        return {
+          id: i.id,
+          clientName: client?.name || 'Unknown Client',
+          amount: parseFloat(i.total || '0'),
+          status: i.status,
+          invoiceNumber: i.number
+        };
+      });
 
-  // Recent clients with full details
+    // Process quotes - pending with full details
+    pendingQuotes = allQuotes
+      .filter((q: any) => q.status === 'sent' || q.status === 'pending')
+      .map((q: any) => {
+        const client = allClients.find((c: any) => c.id === q.clientId);
+        const createdDaysAgo = Math.floor((now.getTime() - new Date(q.createdAt || q.issuedDate || now).getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          id: q.id,
+          clientName: client?.name || 'Unknown Client',
+          clientId: q.clientId,
+          clientEmail: client?.email,
+          total: parseFloat(q.total || '0'),
+          createdDaysAgo,
+          quoteNumber: q.number
+        };
+      });
+
+    // Recent quotes
+    recentQuotes = allQuotes
+      .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 10)
+      .map((q: any) => {
+        const client = allClients.find((c: any) => c.id === q.clientId);
+        return {
+          id: q.id,
+          clientName: client?.name || 'Unknown Client',
+          amount: q.totalAmount || 0,
+          status: q.status,
+          quoteNumber: q.quoteNumber
+        };
+      });
+  }
+
+  // Recent clients - workers get limited info (no emails/phones)
   const recentClients = allClients
     .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 15)
     .map((c: any) => ({
       id: c.id,
       name: c.name || 'Unknown',
-      email: c.email,
-      phone: c.phone
+      email: isWorker ? undefined : c.email,
+      phone: isWorker ? undefined : c.phone
     }));
 
   // Recent activity
-  const recentActivity = allJobs
+  const recentActivity = filteredJobs
     .slice(0, 3)
     .map((j: any) => j.title)
     .filter(Boolean) as string[];
@@ -406,10 +468,14 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
   const twilioStatus = await checkTwilioAvailability();
   const hasSmsSetup = twilioStatus.verified === true;
 
+  // Get user name for context
+  const userName = currentUser?.firstName || currentUser?.name?.split(' ')[0] || 'mate';
+  const teamMemberName = teamMember?.name;
+
   return {
     businessName: businessSettings?.businessName || 'Your Business',
     trade: businessSettings?.tradeType || 'Trade Business',
-    tradieFirstName: user?.firstName || user?.name?.split(' ')[0] || 'mate',
+    tradieFirstName: isOwner ? (user?.firstName || user?.name?.split(' ')[0] || 'mate') : userName,
     tradieEmail: user?.email || '',
     openJobs,
     completedJobsThisMonth,
@@ -432,7 +498,13 @@ async function gatherAIContext(userId: string, storage: any): Promise<BusinessCo
     ),
     emailAddress: emailIntegration?.emailAddress || (gmailStatus.connected ? gmailStatus.email : undefined),
     emailProvider: emailIntegration?.status === 'connected' ? 'smtp' : (gmailStatus.connected ? 'gmail' : (process.env.SENDGRID_API_KEY ? 'platform' : undefined)),
-    hasSmsSetup
+    hasSmsSetup,
+    userRole,
+    userName,
+    permissions: userContext?.permissions || Object.values(PERMISSIONS),
+    isTeamMember: !isOwner,
+    teamMemberName,
+    assignedJobs
   };
 }
 
@@ -2515,7 +2587,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Assistant Routes - Enhanced with rich business context
   app.get("/api/ai/suggestions", requireAuth, async (req: any, res) => {
     try {
-      const context = await gatherAIContext(req.userId, storage);
+      const userContext = await getUserContext(req.userId);
+      const context = await gatherAIContext(req.userId, storage, userContext);
       const suggestions = await generateAISuggestions(context);
       res.json({ suggestions });
     } catch (error) {
@@ -2527,66 +2600,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Smart Notifications - role-based reminders and alerts
   app.get("/api/ai/notifications", requireAuth, async (req: any, res) => {
     try {
-      const context = await gatherAIContext(req.userId, storage);
+      const userContext = await getUserContext(req.userId);
+      const context = await gatherAIContext(req.userId, storage, userContext);
       const notifications: any[] = [];
       const now = new Date();
 
-      // Overdue invoices - high priority
-      for (const invoice of context.overdueInvoicesList.slice(0, 3)) {
-        notifications.push({
-          id: `overdue-invoice-${invoice.id}`,
-          type: 'alert',
-          title: 'Payment Overdue',
-          message: `${invoice.clientName} owes $${invoice.amount.toFixed(2)} - ${invoice.daysPastDue} days overdue`,
-          entityType: 'invoice',
-          entityId: String(invoice.id),
-          priority: invoice.daysPastDue > 30 ? 'high' : 'medium',
-          timestamp: now,
-        });
+      // Role-based notifications
+      const isWorker = context.userRole === 'worker';
+      const isManager = context.userRole === 'manager' || context.userRole === 'supervisor';
+      const isOwner = context.userRole === 'owner';
+
+      // Workers: Only job reminders for their assigned jobs
+      if (isWorker) {
+        // Today's assigned jobs reminder
+        if (context.todaysJobs.length > 0) {
+          const firstJob = context.todaysJobs[0];
+          notifications.push({
+            id: `todays-jobs`,
+            type: 'suggestion',
+            title: `${context.todaysJobs.length} Job${context.todaysJobs.length > 1 ? 's' : ''} Today`,
+            message: `First up: ${firstJob.title} for ${firstJob.clientName}${firstJob.time ? ` at ${firstJob.time}` : ''}`,
+            entityType: 'job',
+            entityId: String(firstJob.id),
+            priority: 'medium',
+            timestamp: now,
+          });
+        }
+
+        // Reminder to check in
+        if (context.todaysJobs.some(j => j.status === 'scheduled' || j.status === 'pending')) {
+          notifications.push({
+            id: `checkin-reminder`,
+            type: 'reminder',
+            title: 'Time to Check In',
+            message: 'Remember to check in when you arrive at the job site',
+            entityType: 'job',
+            priority: 'low',
+            timestamp: now,
+          });
+        }
+
+        // Jobs ready to complete
+        const inProgressJobs = context.todaysJobs.filter(j => j.status === 'in_progress' || j.status === 'started');
+        if (inProgressJobs.length > 0) {
+          notifications.push({
+            id: `complete-reminder`,
+            type: 'suggestion',
+            title: 'Jobs in Progress',
+            message: `${inProgressJobs.length} job${inProgressJobs.length > 1 ? 's' : ''} waiting to be marked complete`,
+            entityType: 'job',
+            entityId: String(inProgressJobs[0].id),
+            priority: 'medium',
+            timestamp: now,
+          });
+        }
       }
 
-      // Pending quotes older than 7 days - medium priority
-      for (const quote of context.pendingQuotes.filter(q => q.createdDaysAgo >= 7).slice(0, 2)) {
-        notifications.push({
-          id: `pending-quote-${quote.id}`,
-          type: 'reminder',
-          title: 'Quote Follow-up',
-          message: `${quote.clientName}'s quote ($${quote.total.toFixed(2)}) sent ${quote.createdDaysAgo} days ago - worth a follow-up`,
-          entityType: 'quote',
-          entityId: String(quote.id),
-          priority: quote.createdDaysAgo > 14 ? 'high' : 'medium',
-          timestamp: now,
-        });
+      // Managers: Team scheduling issues, unassigned jobs
+      if (isManager || isOwner) {
+        // Today's jobs reminder
+        if (context.todaysJobs.length > 0) {
+          const firstJob = context.todaysJobs[0];
+          notifications.push({
+            id: `todays-jobs`,
+            type: 'suggestion',
+            title: `${context.todaysJobs.length} Job${context.todaysJobs.length > 1 ? 's' : ''} Today`,
+            message: `First up: ${firstJob.title} for ${firstJob.clientName}${firstJob.time ? ` at ${firstJob.time}` : ''}`,
+            entityType: 'job',
+            entityId: String(firstJob.id),
+            priority: 'medium',
+            timestamp: now,
+          });
+        }
       }
 
-      // Today's jobs reminder
-      if (context.todaysJobs.length > 0) {
-        const firstJob = context.todaysJobs[0];
-        notifications.push({
-          id: `todays-jobs`,
-          type: 'suggestion',
-          title: `${context.todaysJobs.length} Job${context.todaysJobs.length > 1 ? 's' : ''} Today`,
-          message: `First up: ${firstJob.title} for ${firstJob.clientName}${firstJob.time ? ` at ${firstJob.time}` : ''}`,
-          entityType: 'job',
-          entityId: String(firstJob.id),
-          priority: 'medium',
-          timestamp: now,
-        });
-      }
+      // Owners: Financial alerts (overdue invoices, pending quotes) + job reminders
+      if (isOwner) {
+        // Overdue invoices - high priority
+        for (const invoice of context.overdueInvoicesList.slice(0, 3)) {
+          notifications.push({
+            id: `overdue-invoice-${invoice.id}`,
+            type: 'alert',
+            title: 'Payment Overdue',
+            message: `${invoice.clientName} owes $${invoice.amount.toFixed(2)} - ${invoice.daysPastDue} days overdue`,
+            entityType: 'invoice',
+            entityId: String(invoice.id),
+            priority: invoice.daysPastDue > 30 ? 'high' : 'medium',
+            timestamp: now,
+          });
+        }
 
-      // Jobs done but not invoiced
-      const doneJobs = context.todaysJobs.filter(j => j.status === 'done');
-      if (doneJobs.length > 0) {
-        notifications.push({
-          id: `invoice-reminder`,
-          type: 'suggestion',
-          title: 'Ready to Invoice',
-          message: `${doneJobs.length} completed job${doneJobs.length > 1 ? 's' : ''} waiting for invoices`,
-          entityType: 'job',
-          entityId: String(doneJobs[0].id),
-          priority: 'low',
-          timestamp: now,
-        });
+        // Pending quotes older than 7 days - medium priority
+        for (const quote of context.pendingQuotes.filter(q => q.createdDaysAgo >= 7).slice(0, 2)) {
+          notifications.push({
+            id: `pending-quote-${quote.id}`,
+            type: 'reminder',
+            title: 'Quote Follow-up',
+            message: `${quote.clientName}'s quote ($${quote.total.toFixed(2)}) sent ${quote.createdDaysAgo} days ago - worth a follow-up`,
+            entityType: 'quote',
+            entityId: String(quote.id),
+            priority: quote.createdDaysAgo > 14 ? 'high' : 'medium',
+            timestamp: now,
+          });
+        }
+
+        // Jobs done but not invoiced
+        const doneJobs = context.todaysJobs.filter(j => j.status === 'done');
+        if (doneJobs.length > 0) {
+          notifications.push({
+            id: `invoice-reminder`,
+            type: 'suggestion',
+            title: 'Ready to Invoice',
+            message: `${doneJobs.length} completed job${doneJobs.length > 1 ? 's' : ''} waiting for invoices`,
+            entityType: 'job',
+            entityId: String(doneJobs[0].id),
+            priority: 'low',
+            timestamp: now,
+          });
+        }
       }
 
       res.json({ notifications });
@@ -2605,7 +2736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userContext = await getUserContext(req.userId);
-      const context = await gatherAIContext(userContext.effectiveUserId, storage);
+      const context = await gatherAIContext(req.userId, storage, userContext);
       const chatResponse = await chatWithAI(message, context);
       
       res.json(chatResponse);
@@ -2622,6 +2753,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!action || !action.type) {
         return res.status(400).json({ error: "Action is required" });
+      }
+
+      // Permission-gated AI actions with default-deny for unknown actions
+      const userContext = await getUserContext(req.userId);
+      
+      // Define action permissions - what role can do what
+      // Empty array = anyone can do it, undefined = action not recognized (denied)
+      const ACTION_PERMISSIONS: Record<string, string[]> = {
+        // Financial actions - owner only
+        'send_invoice': [PERMISSIONS.WRITE_INVOICES],
+        'send_quote': [PERMISSIONS.WRITE_QUOTES],
+        'create_invoice': [PERMISSIONS.WRITE_INVOICES],
+        'create_quote': [PERMISSIONS.WRITE_QUOTES],
+        'payment_reminder': [PERMISSIONS.WRITE_INVOICES],
+        // Communication - anyone can do
+        'send_email': [],
+        'send_sms': [],
+        'draft_message': [],
+        // Job actions - depends on role
+        'mark_job_complete': [PERMISSIONS.WRITE_JOBS],
+        'create_job': [PERMISSIONS.WRITE_JOBS],
+        'update_job_status': [PERMISSIONS.WRITE_JOBS],
+        // Navigation and read actions - anyone
+        'navigate': [],
+        'daily_summary': [],
+        'plan_route': [],
+        'view_job': [PERMISSIONS.READ_JOBS],
+        'view_quote': [PERMISSIONS.READ_QUOTES],
+        'view_invoice': [PERMISSIONS.READ_INVOICES],
+        'view_client': [PERMISSIONS.READ_CLIENTS],
+      };
+
+      // Default-deny: reject unknown action types
+      if (!(action.type in ACTION_PERMISSIONS)) {
+        console.log(`[AI Action] Unknown action type rejected: ${action.type}`);
+        return res.json({
+          success: false,
+          response: `I'm not able to perform that action. Please try a different request.`,
+          message: `Unknown action type: ${action.type}`
+        });
+      }
+
+      const requiredPermissions = ACTION_PERMISSIONS[action.type];
+      
+      // Check if user has ALL required permissions (owners have all)
+      if (requiredPermissions.length > 0 && !userContext.isOwner) {
+        const hasAllPermissions = requiredPermissions.every(
+          perm => userContext.permissions.includes(perm as any)
+        );
+        
+        if (!hasAllPermissions) {
+          return res.json({
+            success: false,
+            response: `Sorry, you don't have permission to ${action.type.replace(/_/g, ' ')}. Please ask your manager or the business owner to do this.`,
+            message: `Action not permitted for your role`
+          });
+        }
       }
 
       const { sendEmailViaIntegration } = await import('./emailIntegrationService');
@@ -2641,7 +2829,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Helper to find client by name (team-aware)
-      const userContext = await getUserContext(req.userId);
       const findClient = async (clientName: string) => {
         const clients = await storage.getClients(userContext.effectiveUserId);
         return clients.find((c: any) => 
