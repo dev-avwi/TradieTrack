@@ -241,7 +241,7 @@ function JobCard({
               <Text style={styles.recurringBadgeText}>Recurring</Text>
             </View>
           )}
-          {urgency && (
+          {urgency && urgency.level !== 'overdue' && (
             <View style={[styles.urgencyBadge, { backgroundColor: urgency.bgColor }]}>
               {urgency.animate && (
                 <View style={[styles.urgencyDot, { backgroundColor: urgency.color }]} />
