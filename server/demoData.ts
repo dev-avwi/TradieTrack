@@ -1482,3 +1482,212 @@ export async function forceResetDemoData(): Promise<{ success: boolean; message:
     return { success: false, message: error.message || 'Failed to reset demo data' };
   }
 }
+
+// ============================================
+// SEED DEMO DATA FOR NEW USERS (Onboarding)
+// Creates sample data so new users can explore the app with real examples
+// ============================================
+export async function seedUserDemoData(userId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    console.log(`[DemoSeed] Seeding demo data for user ${userId}...`);
+    
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
+    
+    // Check if already seeded
+    if (user.hasDemoData) {
+      console.log(`[DemoSeed] User ${userId} already has demo data, skipping`);
+      return { success: true, message: 'Demo data already exists' };
+    }
+    
+    // ============================================
+    // CREATE 5 SAMPLE CLIENTS
+    // ============================================
+    const sampleClients = [
+      { name: 'Sarah Mitchell', email: 'sarah.mitchell@example.com', phone: '+61412345678', address: '15 Smith Street, Sydney NSW 2000' },
+      { name: 'David Wilson', email: 'david.wilson@example.com', phone: '+61423456789', address: '28 Park Avenue, Melbourne VIC 3000' },
+      { name: 'Emma Thompson', email: 'emma.t@example.com', phone: '+61434567890', address: '7 Beach Road, Brisbane QLD 4000' },
+      { name: 'James Brown', email: 'james.brown@example.com', phone: '+61445678901', address: '92 Main Street, Perth WA 6000' },
+      { name: 'Lisa Chen', email: 'lisa.chen@example.com', phone: '+61456789012', address: '45 River Drive, Adelaide SA 5000' },
+    ];
+
+    const createdClients = [];
+    for (const clientData of sampleClients) {
+      const client = await storage.createClient({
+        userId,
+        ...clientData,
+      });
+      createdClients.push(client);
+    }
+    console.log(`[DemoSeed] Created ${createdClients.length} sample clients`);
+
+    // ============================================
+    // CREATE 6 SAMPLE JOBS (different statuses)
+    // ============================================
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const sampleJobs = [
+      { client: 0, title: 'Kitchen Tap Repair', description: 'Customer reports dripping tap in kitchen. Need to replace washer or entire tap assembly.', status: 'pending', address: sampleClients[0].address },
+      { client: 1, title: 'Hot Water System Service', description: 'Annual service and safety check on electric hot water system.', status: 'scheduled', address: sampleClients[1].address, scheduledAt: tomorrow },
+      { client: 2, title: 'Bathroom Renovation', description: 'Complete bathroom rough-in for renovation. Relocate toilet, vanity and shower.', status: 'in_progress', address: sampleClients[2].address },
+      { client: 3, title: 'Blocked Drain', description: 'Slow draining kitchen sink. May need high pressure jetting.', status: 'done', address: sampleClients[3].address },
+      { client: 4, title: 'Gas Heater Installation', description: 'Install new Rinnai gas heater with flue kit. Need gas compliance certificate.', status: 'invoiced', address: sampleClients[4].address },
+      { client: 0, title: 'Outdoor Tap Installation', description: 'Install new garden tap near shed for irrigation system.', status: 'scheduled', address: sampleClients[0].address, scheduledAt: nextWeek },
+    ];
+
+    const createdJobs = [];
+    for (const job of sampleJobs) {
+      const createdJob = await storage.createJob({
+        userId,
+        clientId: createdClients[job.client].id,
+        title: job.title,
+        description: job.description,
+        address: job.address,
+        status: job.status as any,
+        scheduledAt: job.scheduledAt,
+        estimatedDuration: 60,
+      });
+      createdJobs.push(createdJob);
+    }
+    console.log(`[DemoSeed] Created ${createdJobs.length} sample jobs`);
+
+    // ============================================
+    // CREATE 3 SAMPLE QUOTES
+    // ============================================
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 30);
+
+    const sampleQuotes = [
+      { 
+        client: 0, 
+        job: 0, 
+        title: 'Kitchen Tap Replacement Quote',
+        items: [
+          { description: 'Mixer tap - chrome finish', quantity: 1, unitPrice: 185, total: 185 },
+          { description: 'Labour - installation', quantity: 1, unitPrice: 150, total: 150 },
+          { description: 'Callout fee', quantity: 1, unitPrice: 80, total: 80 },
+        ],
+        status: 'sent',
+        subtotal: 415,
+        gst: 41.50,
+        total: 456.50,
+      },
+      { 
+        client: 2, 
+        job: 2, 
+        title: 'Bathroom Renovation Quote',
+        items: [
+          { description: 'Rough-in plumbing - toilet, vanity, shower', quantity: 1, unitPrice: 1800, total: 1800 },
+          { description: 'Materials - pipes, fittings, valves', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Hot water connection', quantity: 1, unitPrice: 350, total: 350 },
+        ],
+        status: 'accepted',
+        subtotal: 2600,
+        gst: 260,
+        total: 2860,
+      },
+      { 
+        client: 4, 
+        job: 4, 
+        title: 'Gas Heater Installation Quote',
+        items: [
+          { description: 'Rinnai Energysaver 561FT', quantity: 1, unitPrice: 1450, total: 1450 },
+          { description: 'Flue kit and installation', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Gas compliance certificate', quantity: 1, unitPrice: 120, total: 120 },
+        ],
+        status: 'accepted',
+        subtotal: 2020,
+        gst: 202,
+        total: 2222,
+      },
+    ];
+
+    const createdQuotes = [];
+    for (const quote of sampleQuotes) {
+      const createdQuote = await storage.createQuote({
+        userId,
+        clientId: createdClients[quote.client].id,
+        jobId: createdJobs[quote.job]?.id,
+        title: quote.title,
+        items: quote.items,
+        status: quote.status as any,
+        subtotal: quote.subtotal.toString(),
+        gst: quote.gst.toString(),
+        total: quote.total.toString(),
+        validUntil,
+      });
+      createdQuotes.push(createdQuote);
+    }
+    console.log(`[DemoSeed] Created ${createdQuotes.length} sample quotes`);
+
+    // ============================================
+    // CREATE 2 SAMPLE INVOICES
+    // ============================================
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14);
+
+    const sampleInvoices = [
+      { 
+        client: 3, 
+        job: 3, 
+        title: 'Blocked Drain - Completed',
+        items: [
+          { description: 'High pressure drain jetting', quantity: 1, unitPrice: 320, total: 320 },
+          { description: 'CCTV inspection', quantity: 1, unitPrice: 180, total: 180 },
+          { description: 'Callout fee', quantity: 1, unitPrice: 80, total: 80 },
+        ],
+        status: 'sent',
+        subtotal: 580,
+        gst: 58,
+        total: 638,
+      },
+      { 
+        client: 4, 
+        job: 4, 
+        title: 'Gas Heater Installation - Invoice',
+        items: [
+          { description: 'Rinnai Energysaver 561FT', quantity: 1, unitPrice: 1450, total: 1450 },
+          { description: 'Flue kit and installation', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Gas compliance certificate', quantity: 1, unitPrice: 120, total: 120 },
+        ],
+        status: 'paid',
+        subtotal: 2020,
+        gst: 202,
+        total: 2222,
+      },
+    ];
+
+    for (const invoice of sampleInvoices) {
+      await storage.createInvoice({
+        userId,
+        clientId: createdClients[invoice.client].id,
+        jobId: createdJobs[invoice.job]?.id,
+        title: invoice.title,
+        items: invoice.items,
+        status: invoice.status as any,
+        subtotal: invoice.subtotal.toString(),
+        gst: invoice.gst.toString(),
+        total: invoice.total.toString(),
+        dueDate,
+      });
+    }
+    console.log(`[DemoSeed] Created ${sampleInvoices.length} sample invoices`);
+
+    // Mark user as having demo data
+    await storage.updateUser(userId, { hasDemoData: true });
+    
+    console.log(`[DemoSeed] Demo data seeding complete for user ${userId}`);
+    return { success: true, message: 'Sample data created successfully! You now have clients, jobs, quotes, and invoices to explore.' };
+  } catch (error: any) {
+    console.error('[DemoSeed] Error seeding demo data:', error);
+    return { success: false, message: error.message || 'Failed to seed demo data' };
+  }
+}

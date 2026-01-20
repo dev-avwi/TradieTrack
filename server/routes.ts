@@ -6083,6 +6083,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint to seed demo data for new users during onboarding
+  // Creates sample clients, jobs, quotes, and invoices to explore
+  app.post("/api/onboarding/seed-demo-data", requireAuth, async (req: any, res) => {
+    try {
+      const { seedUserDemoData } = await import('./demoData');
+      const userId = req.userId!;
+      
+      const result = await seedUserDemoData(userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      console.error("Error seeding demo data:", error);
+      res.status(500).json({ error: error.message || "Failed to seed demo data" });
+    }
+  });
+
   // OAuth redirect URIs helper endpoint - shows required URIs for OAuth setup
   // This helps users configure their Google Cloud Console and Xero Developer Portal correctly
   app.get("/api/integrations/oauth-uris", async (req, res) => {

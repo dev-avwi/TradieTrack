@@ -208,26 +208,41 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       return;
     }
     
-    // Done step - start trial for pro/team users before completing
+    // Done step - seed demo data and start trial for pro/team users before completing
     const doneStepIndex = isTeamPlan ? 3 : 2;
     if (currentStep === doneStepIndex) {
-      // If user selected pro or team, start their trial automatically
-      if (isProPlan || isTeamPlan) {
-        setIsSubmitting(true);
+      setIsSubmitting(true);
+      try {
+        // Seed demo data so user has something to explore
         try {
-          await apiRequest('POST', '/api/subscription/trial', {});
-          await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-          await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+          await apiRequest('POST', '/api/onboarding/seed-demo-data', {});
+          // Invalidate all data queries so demo data shows up immediately
+          await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
         } catch (error) {
-          console.error('Failed to start trial:', error);
-          // Don't block onboarding completion if trial start fails
-          toast({
-            title: "Trial activation pending",
-            description: "You can activate your trial from the subscription settings.",
-          });
-        } finally {
-          setIsSubmitting(false);
+          console.log('Demo data seeding skipped:', error);
+          // Don't block onboarding if demo data fails
         }
+
+        // If user selected pro or team, start their trial automatically
+        if (isProPlan || isTeamPlan) {
+          try {
+            await apiRequest('POST', '/api/subscription/trial', {});
+            await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+            await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+          } catch (error) {
+            console.error('Failed to start trial:', error);
+            // Don't block onboarding completion if trial start fails
+            toast({
+              title: "Trial activation pending",
+              description: "You can activate your trial from the subscription settings.",
+            });
+          }
+        }
+      } finally {
+        setIsSubmitting(false);
       }
       onComplete();
       return;

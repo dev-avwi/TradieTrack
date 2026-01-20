@@ -258,6 +258,8 @@ export const users = pgTable("users", {
   testimonialConsent: boolean("testimonial_consent").default(false), // Agreed to provide testimonial
   testimonialConsentAt: timestamp("testimonial_consent_at"), // When they agreed
   betaCohortNumber: integer("beta_cohort_number"), // Which early adopter they are (1-10)
+  // Onboarding demo data
+  hasDemoData: boolean("has_demo_data").default(false), // Whether demo data has been seeded for this user
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
