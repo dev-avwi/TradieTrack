@@ -25,6 +25,13 @@ interface User {
   subscriptionTier?: 'free' | 'pro' | 'team' | 'trial';
   trialEndsAt?: string;
   trialStatus?: string;
+  hasDemoData?: boolean;
+  demoDataIds?: {
+    clients: string[];
+    jobs: string[];
+    quotes: string[];
+    invoices: string[];
+  };
 }
 
 interface TemplateCustomization {
