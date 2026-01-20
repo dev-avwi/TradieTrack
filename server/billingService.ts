@@ -108,7 +108,7 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   return price.id;
 }
 
-// Get or create Team base price ($59/month) and seat price ($29/month)
+// Get or create Team base price ($49/month) and seat price ($29/month)
 async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: string; seatPriceId: string }> {
   // Try to find existing prices
   const prices = await stripe.prices.list({

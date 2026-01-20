@@ -81,7 +81,7 @@ const tiers = [
   {
     id: 'team',
     name: 'Team',
-    price: 59,
+    price: 49,
     seatPrice: 29,
     description: 'For businesses with employees',
     features: [
