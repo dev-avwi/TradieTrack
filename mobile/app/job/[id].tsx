@@ -22,7 +22,7 @@ import {
   AppState,
   AppStateStatus,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
@@ -1680,6 +1680,7 @@ export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   
   const [job, setJob] = useState<Job | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -5629,7 +5630,7 @@ export default function JobDetailScreen() {
       {/* Job Completion Summary Modal */}
       {job && (
         <Modal visible={showCompletionModal} animationType="slide">
-          <SafeAreaView style={styles.completionModal} edges={['top']}>
+          <View style={[styles.completionModal, { paddingTop: insets.top }]}>
             <View style={styles.completionHeader}>
               <Text style={styles.completionTitle}>Complete Job</Text>
               <TouchableOpacity onPress={() => setShowCompletionModal(false)}>
@@ -5809,7 +5810,7 @@ export default function JobDetailScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </View>
         </Modal>
       )}
 
