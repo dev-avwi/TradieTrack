@@ -536,8 +536,22 @@ export function FormSubmissionList({ jobId, onFillForm }: FormSubmissionListProp
     queryKey: ['/api/jobs', jobId, 'form-submissions'],
   });
 
+  // Get user's trade type for filtering custom forms
+  const { data: user } = useQuery<{ tradeType?: string }>({
+    queryKey: ['/api/auth/me'],
+  });
+  const tradeType = user?.tradeType;
+
   const { data: forms, isLoading: loadingForms } = useQuery<CustomForm[]>({
-    queryKey: ['/api/custom-forms'],
+    queryKey: ['/api/custom-forms', tradeType],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (tradeType) params.append('tradeType', tradeType);
+      const url = `/api/custom-forms${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch forms');
+      return response.json();
+    },
   });
 
   const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);

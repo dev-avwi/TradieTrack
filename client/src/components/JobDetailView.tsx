@@ -457,8 +457,22 @@ export default function JobDetailView({
     enabled: !!jobId,
   });
 
+  // Get user's trade type for filtering custom forms
+  const { data: authUser } = useQuery<{ tradeType?: string }>({
+    queryKey: ['/api/auth/me'],
+  });
+  const userTradeType = authUser?.tradeType;
+
   const { data: customForms = [] } = useQuery<{ id: string; formType: string; requiresSignature: boolean }[]>({
-    queryKey: ['/api/custom-forms'],
+    queryKey: ['/api/custom-forms', userTradeType],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (userTradeType) params.append('tradeType', userTradeType);
+      const url = `/api/custom-forms${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch forms');
+      return response.json();
+    },
     enabled: !!jobId,
   });
 

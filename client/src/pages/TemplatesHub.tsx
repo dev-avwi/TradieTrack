@@ -176,6 +176,148 @@ function renderPreview(content: string): string {
   return preview;
 }
 
+// Document Templates Section (Job, Quote, Invoice templates with trade type filtering)
+function DocumentTemplatesSection() {
+  const [expandedType, setExpandedType] = useState<string | null>(null);
+
+  // Get user's trade type for filtering
+  const { data: user } = useQuery<{ tradeType?: string }>({
+    queryKey: ['/api/auth/me'],
+  });
+  const tradeType = user?.tradeType;
+
+  // Fetch document templates with trade type filtering
+  const { data: templates = [], isLoading } = useQuery<Array<{
+    id: string;
+    type: string;
+    name: string;
+    familyKey: string;
+    tradeType: string;
+    isDefault: boolean;
+  }>>({
+    queryKey: ['/api/templates', undefined, tradeType],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (tradeType) params.append('tradeType', tradeType);
+      const url = `/api/templates${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch templates');
+      return response.json();
+    },
+  });
+
+  const TEMPLATE_TYPES = [
+    { type: 'job', name: 'Job Templates', description: 'Default settings for new jobs', icon: ClipboardList },
+    { type: 'quote', name: 'Quote Templates', description: 'Pre-configured quote formats', icon: FileText },
+    { type: 'invoice', name: 'Invoice Templates', description: 'Standard invoice layouts', icon: Receipt },
+  ];
+
+  const getTemplatesByType = (type: string) => templates.filter(t => t.type === type);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Document Templates</h3>
+            <p className="text-sm text-muted-foreground">Pre-configured templates for jobs, quotes, and invoices</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Document Templates</h3>
+          <p className="text-sm text-muted-foreground">
+            Pre-configured templates for jobs, quotes, and invoices
+            {tradeType && <span className="ml-1">(filtered for {tradeType})</span>}
+          </p>
+        </div>
+      </div>
+
+      {TEMPLATE_TYPES.map(({ type, name, description, icon: Icon }) => {
+        const typeTemplates = getTemplatesByType(type);
+        const isExpanded = expandedType === type;
+
+        return (
+          <Card key={type} className="hover-elevate" data-testid={`card-document-${type}`}>
+            <CardHeader
+              className="cursor-pointer"
+              onClick={() => setExpandedType(isExpanded ? null : type)}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
+                  >
+                    <Icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{name}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" data-testid={`badge-count-${type}`}>
+                    {typeTemplates.length} template{typeTemplates.length !== 1 ? "s" : ""}
+                  </Badge>
+                  {isExpanded ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+
+            {isExpanded && (
+              <CardContent className="pt-0">
+                <div className="border-t pt-4 space-y-3">
+                  {typeTemplates.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No {type} templates available for your trade type
+                    </p>
+                  ) : (
+                    typeTemplates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                        data-testid={`template-item-${template.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium truncate">{template.name}</p>
+                            <Badge variant="secondary" className="text-xs capitalize">
+                              {template.tradeType}
+                            </Badge>
+                            {template.isDefault && (
+                              <Badge variant="outline" className="text-xs">
+                                System Default
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TemplatesHub() {
   const { toast } = useToast();
   const [location] = useLocation();
@@ -642,6 +784,11 @@ export default function TemplatesHub() {
                       </Card>
                     );
                   })}
+                </div>
+
+                {/* Document Templates Section (Job, Quote, Invoice) */}
+                <div className="border-t pt-6 mt-6">
+                  <DocumentTemplatesSection />
                 </div>
 
                 {/* Custom Forms Builder Section */}
