@@ -203,8 +203,19 @@ export default function OnboardingSetupScreen() {
     }
   };
 
+  const [demoDataSeeded, setDemoDataSeeded] = useState(false);
+
   const markOnboardingComplete = async () => {
     try {
+      // Seed demo data so user has something to explore
+      try {
+        await api.post('/api/onboarding/seed-demo-data', {});
+        setDemoDataSeeded(true);
+      } catch (error) {
+        console.log('Demo data seeding skipped:', error);
+        // Don't block onboarding if demo data fails
+      }
+      
       await api.patch('/api/business-settings', { onboardingCompleted: true });
       await fetchBusinessSettings();
     } catch (error) {
@@ -679,17 +690,39 @@ export default function OnboardingSetupScreen() {
         </View>
         
         <Text style={styles.completeTitle}>Welcome to TradieTrack!</Text>
-        <Text style={styles.completeSubtitle}>Your account is ready. Let's get you some jobs!</Text>
+        <Text style={styles.completeSubtitle}>
+          {demoDataSeeded 
+            ? "We've set up sample data so you can explore the app right away."
+            : "Your account is ready. Let's get you some jobs!"}
+        </Text>
 
         <View style={styles.checkList}>
           <View style={styles.checkItem}>
             <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             <Text style={styles.checkText}>Business details configured</Text>
           </View>
-          <View style={styles.checkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-            <Text style={styles.checkText}>Ready to create quotes, jobs & invoices</Text>
-          </View>
+          {demoDataSeeded && (
+            <>
+              <View style={styles.checkItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Text style={styles.checkText}>5 sample clients loaded</Text>
+              </View>
+              <View style={styles.checkItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Text style={styles.checkText}>6 sample jobs created</Text>
+              </View>
+              <View style={styles.checkItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Text style={styles.checkText}>Sample quotes & invoices ready</Text>
+              </View>
+            </>
+          )}
+          {!demoDataSeeded && (
+            <View style={styles.checkItem}>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              <Text style={styles.checkText}>Ready to create quotes, jobs & invoices</Text>
+            </View>
+          )}
           {isTeamMode && teamInvites.length > 0 && (
             <View style={styles.checkItem}>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
@@ -707,6 +740,12 @@ export default function OnboardingSetupScreen() {
             <Text style={styles.freePlanItem}>50 clients</Text>
           </View>
         </View>
+        
+        {demoDataSeeded && (
+          <Text style={[styles.completeSubtitle, { fontSize: 13, marginTop: 12, opacity: 0.8 }]}>
+            You can clear sample data anytime in Settings → Account
+          </Text>
+        )}
       </View>
 
       <TouchableOpacity

@@ -1528,6 +1528,64 @@ export default function SettingsScreen() {
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
+
+              {user?.hasDemoData && (
+                <View style={[styles.subscriptionCard, { borderColor: colors.mutedForeground }]}>
+                  <View style={styles.subscriptionHeader}>
+                    <Feather name="database" size={20} color={colors.mutedForeground} />
+                    <Text style={styles.subscriptionTitle}>Sample Data</Text>
+                  </View>
+                  <Text style={[styles.planDescription, { marginBottom: spacing.md }]}>
+                    You have sample data loaded to help you explore the app. Clear it when you're ready to add your real business data.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.settingsCard, { backgroundColor: colors.muted, borderColor: colors.destructive }]}
+                    onPress={() => {
+                      Alert.alert(
+                        'Clear Sample Data?',
+                        'This will remove all sample clients, jobs, quotes, and invoices. Your real data won\'t be affected.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { 
+                            text: 'Clear Sample Data', 
+                            style: 'destructive',
+                            onPress: async () => {
+                              setIsLoading(true);
+                              try {
+                                const response = await api.post('/api/onboarding/clear-demo-data');
+                                if (response.error) {
+                                  Alert.alert('Error', response.error);
+                                } else {
+                                  await refreshUser();
+                                  Alert.alert('Done', response.data?.message || 'Sample data cleared successfully!');
+                                }
+                              } catch (error: any) {
+                                Alert.alert('Error', error.message || 'Failed to clear sample data');
+                              } finally {
+                                setIsLoading(false);
+                              }
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                    data-testid="button-clear-sample-data"
+                  >
+                    <View style={styles.settingsCardHeader}>
+                      <Feather name="trash-2" size={20} color={colors.destructive} />
+                      <View style={styles.settingsCardInfo}>
+                        <Text style={[styles.settingsCardTitle, { color: colors.destructive }]}>Clear Sample Data</Text>
+                        <Text style={styles.settingsCardSubtitle}>Remove all demo clients, jobs, quotes & invoices</Text>
+                      </View>
+                    </View>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={colors.destructive} />
+                    ) : (
+                      <Feather name="chevron-right" size={18} color={colors.destructive} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
 
