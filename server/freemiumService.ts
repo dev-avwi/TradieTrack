@@ -1,7 +1,14 @@
 import { storage } from "./storage";
 
-// Beta mode - set to false to enforce freemium limits
-export const IS_BETA = false;
+// Beta mode - set to true during beta phase (first 10 users get lifetime free with testimonial)
+export const IS_BETA = true;
+
+// Beta configuration
+export const BETA_CONFIG = {
+  maxLifetimeUsers: 10,         // First 10 users get lifetime free
+  requiresTestimonialConsent: true,
+  betaEndDate: null as Date | null, // Set to a date to auto-end beta
+};
 
 export interface FreemiumLimits {
   jobsPerMonth: number;

@@ -252,6 +252,12 @@ export const users = pgTable("users", {
   subscriptionResetDate: timestamp("subscription_reset_date").defaultNow(),
   // Platform admin flag - for admin@avwebinnovation.com to access platform dashboard
   isPlatformAdmin: boolean("is_platform_admin").default(false),
+  // Beta program fields
+  betaUser: boolean("beta_user").default(false), // Signed up during beta
+  betaLifetimeAccess: boolean("beta_lifetime_access").default(false), // First 10 users get lifetime free
+  testimonialConsent: boolean("testimonial_consent").default(false), // Agreed to provide testimonial
+  testimonialConsentAt: timestamp("testimonial_consent_at"), // When they agreed
+  betaCohortNumber: integer("beta_cohort_number"), // Which early adopter they are (1-10)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -396,10 +396,16 @@ export default function LandingPage() {
                 </a>
               </div>
 
-              {/* Free access note */}
-              <p className="text-sm text-gray-500">
-                Currently free while in beta. No credit card required.
-              </p>
+              {/* Beta access note */}
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                </span>
+                <span className="text-sm font-medium text-orange-700">
+                  Beta: First 10 users get lifetime free access
+                </span>
+              </div>
             </div>
 
             {/* Right: Phone Mockup */}
@@ -774,7 +780,7 @@ export default function LandingPage() {
                   "Recurring invoices",
                   "Priority support"
                 ]}
-                buttonText="Start 14-Day Free Trial"
+                buttonText="Join Beta Free"
                 buttonVariant="default"
                 popular={true}
                 href="/auth?mode=signup&plan=pro"
@@ -799,15 +805,20 @@ export default function LandingPage() {
                   "Job assignments",
                   "Advanced reporting"
                 ]}
-                buttonText="Start 14-Day Free Trial"
+                buttonText="Join Beta Free"
                 buttonVariant="default"
                 href="/auth?mode=signup&plan=team"
               />
             </AnimatedSection>
           </div>
 
-          <AnimatedSection delay={400} className="text-center text-sm text-gray-500 mt-10">
-            <p>All paid plans include a 14-day free trial. No credit card required. Team plan: you become the Team Owner and can invite your staff.</p>
+          <AnimatedSection delay={400} className="text-center mt-10">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-5 py-2.5 mb-4">
+              <span className="text-sm font-semibold text-green-700">
+                Beta Special: First 10 users get lifetime free access in exchange for a testimonial
+              </span>
+            </div>
+            <p className="text-sm text-gray-500">All features unlocked during beta. No credit card required.</p>
           </AnimatedSection>
         </div>
       </section>
@@ -912,16 +923,16 @@ export default function LandingPage() {
             Ready to simplify your business?
           </h2>
           <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
-            Join our growing community of Australian tradies. Free while we're in beta.
+            Join our growing community of Australian tradies. Free during beta - first 10 users get lifetime access!
           </p>
           <Link href="/auth?mode=signup">
             <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" data-testid="cta-start-trial">
-              Get Started Free
+              Join the Beta
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
           <p className="text-sm text-blue-200 mt-5">
-            No credit card required. No commitment.
+            No credit card required. Just agree to provide a testimonial.
           </p>
         </AnimatedSection>
       </section>

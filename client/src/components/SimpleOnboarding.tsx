@@ -532,8 +532,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             <span className="text-primary font-bold text-sm">1</span>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white">Your 14-day free trial</h4>
-            <p className="text-sm text-muted-foreground">Full Team features with no credit card required</p>
+            <h4 className="font-medium text-gray-900 dark:text-white">Beta Access Unlocked</h4>
+            <p className="text-sm text-muted-foreground">Full Team features during beta - no credit card required</p>
           </div>
         </div>
         
@@ -663,10 +663,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
               <span className="font-semibold text-blue-900 dark:text-blue-100">Want Unlimited Access?</span>
             </div>
             <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-              Try Pro free for 14 days. No credit card required!
+              All Pro features are unlocked during beta!
             </p>
             <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
-              Start Free Trial →
+              View Plans →
             </a>
           </div>
         </>

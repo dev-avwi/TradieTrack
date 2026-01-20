@@ -74,7 +74,7 @@ const tiers = [
       { text: 'Team management', included: false },
       { text: 'Team seats', included: false },
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Free During Beta',
     popular: true,
   },
   {
@@ -93,7 +93,7 @@ const tiers = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Free During Beta',
     isContactSales: false,
     popular: false,
   },
@@ -188,15 +188,15 @@ export default function SubscriptionPage() {
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Hero Section */}
         <div className="text-center space-y-4 py-6">
-          <Badge className="bg-primary/10 text-primary border-0 px-4 py-1.5">
+          <Badge className="bg-orange-100 text-orange-700 border-0 px-4 py-1.5">
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            14-Day Free Trial
+            Beta Access
           </Badge>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            Try Pro or Team free for 14 days
+            All features free during beta
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            No charges until your trial ends. Cancel anytime with one click.
+            First 10 users get lifetime free access in exchange for a testimonial.
           </p>
           
           {/* Trust Badges */}
