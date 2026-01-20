@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Check, 
   X, 
@@ -120,7 +120,17 @@ export default function SubscriptionPage() {
       });
       return response.json();
     },
-    onSuccess: (data: { url: string }) => {
+    onSuccess: (data: { url?: string; betaAccess?: boolean; message?: string; tier?: string }) => {
+      // Beta mode: access granted without Stripe
+      if (data.betaAccess) {
+        queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+        toast({
+          title: "Beta Access Granted!",
+          description: data.message || `${data.tier} access unlocked - free during beta!`,
+        });
+        return;
+      }
+      // Production mode: redirect to Stripe checkout
       if (data.url) {
         window.location.href = data.url;
       }

@@ -1747,9 +1747,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/subscription/create-checkout - Creates Stripe checkout session with trial
+  // During beta: Skip Stripe and grant free access directly
   app.post("/api/subscription/create-checkout", requireAuth, async (req: any, res) => {
     try {
-      const { createSubscriptionCheckout, createTeamSubscriptionCheckout } = await import('./billingService');
+      const { IS_BETA } = await import('./freemiumService');
       const userId = req.userId!;
       const { tier, seats } = req.body;
       
@@ -1762,6 +1763,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user?.email) {
         return res.status(400).json({ error: 'User email is required for checkout' });
       }
+      
+      // BETA MODE: Skip Stripe, grant free access immediately
+      if (IS_BETA) {
+        // Update user subscription tier directly (no Stripe)
+        const subscriptionTier = tier as 'pro' | 'team';
+        await storage.updateUser(userId, { 
+          subscriptionTier,
+          betaUser: true,
+          // Set trial end date far in future for beta users
+          trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        });
+        
+        console.log(`[BETA] Granted ${tier} access to user ${userId} without payment`);
+        
+        // Return success without Stripe URL - frontend will handle this
+        return res.json({ 
+          success: true, 
+          betaAccess: true,
+          tier: subscriptionTier,
+          message: `${tier.charAt(0).toUpperCase() + tier.slice(1)} access granted - free during beta!`
+        });
+      }
+      
+      // PRODUCTION MODE: Use Stripe checkout
+      const { createSubscriptionCheckout, createTeamSubscriptionCheckout } = await import('./billingService');
       
       // Get base URL for success/cancel redirects
       const protocol = req.headers['x-forwarded-proto'] || 'https';
