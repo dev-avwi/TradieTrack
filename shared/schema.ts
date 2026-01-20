@@ -260,6 +260,7 @@ export const users = pgTable("users", {
   betaCohortNumber: integer("beta_cohort_number"), // Which early adopter they are (1-10)
   // Onboarding demo data
   hasDemoData: boolean("has_demo_data").default(false), // Whether demo data has been seeded for this user
+  demoDataIds: jsonb("demo_data_ids"), // Stores IDs of demo records: { clients: [], jobs: [], quotes: [], invoices: [] }
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

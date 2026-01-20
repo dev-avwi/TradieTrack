@@ -47,6 +47,7 @@ Core architectural and design decisions include:
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
 *   **Immersive Onboarding**: Full-screen onboarding with a 7-step "Life of a Job" walkthrough and an 18-step GuidedTour highlighting UI elements.
 *   **Demo Data Persistence**: Demo data is preserved across server restarts for consistent IDs.
+*   **Safe Demo Data Deletion**: Demo record IDs are stored in `user.demoDataIds` (JSONB) during seeding. Clearing demo data only deletes records with tracked IDs, never touching user-created data.
 *   **Unified Notifications**: A single endpoint `/api/notifications/unified` combines system, SMS, and chat notifications for both web and mobile.
 *   **Permission System**: Two parallel permission systems (`WORKER_PERMISSIONS` and `ActionPermissions`) with a translation layer ensuring web and mobile parity, including offline SQLite caching for mobile.
 *   **Document Template System**: 35 default templates (quote, invoice, job) are seeded for new users, adhering to Australian standards (GST, industry rates, payment terms).

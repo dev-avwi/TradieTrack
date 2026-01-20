@@ -1665,8 +1665,9 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
       },
     ];
 
+    const createdInvoices = [];
     for (const invoice of sampleInvoices) {
-      await storage.createInvoice({
+      const createdInvoice = await storage.createInvoice({
         userId,
         clientId: createdClients[invoice.client].id,
         jobId: createdJobs[invoice.job]?.id,
@@ -1678,16 +1679,131 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
         total: invoice.total.toString(),
         dueDate,
       });
+      createdInvoices.push(createdInvoice);
     }
-    console.log(`[DemoSeed] Created ${sampleInvoices.length} sample invoices`);
+    console.log(`[DemoSeed] Created ${createdInvoices.length} sample invoices`);
 
-    // Mark user as having demo data
-    await storage.updateUser(userId, { hasDemoData: true });
+    // Store the IDs of all demo records for safe cleanup later
+    const demoDataIds = {
+      clients: createdClients.map(c => c.id),
+      jobs: createdJobs.map(j => j.id),
+      quotes: createdQuotes.map(q => q.id),
+      invoices: createdInvoices.map(i => i.id),
+    };
+
+    // Mark user as having demo data and store the demo record IDs
+    await storage.updateUser(userId, { 
+      hasDemoData: true,
+      demoDataIds: demoDataIds as any,
+    });
     
     console.log(`[DemoSeed] Demo data seeding complete for user ${userId}`);
+    console.log(`[DemoSeed] Stored demo IDs: ${JSON.stringify(demoDataIds)}`);
     return { success: true, message: 'Sample data created successfully! You now have clients, jobs, quotes, and invoices to explore.' };
   } catch (error: any) {
     console.error('[DemoSeed] Error seeding demo data:', error);
     return { success: false, message: error.message || 'Failed to seed demo data' };
+  }
+}
+
+// ============================================
+// CLEAR DEMO DATA FOR USER (Start Fresh)
+// Removes ONLY sample data records that were created during onboarding
+// Uses stored demo record IDs for precise deletion
+// ============================================
+
+interface DemoDataIds {
+  clients: string[];
+  jobs: string[];
+  quotes: string[];
+  invoices: string[];
+}
+
+export async function clearUserDemoData(userId: string): Promise<{ 
+  success: boolean; 
+  message: string; 
+  deleted: { clients: number; jobs: number; quotes: number; invoices: number };
+}> {
+  try {
+    console.log(`[DemoClear] Clearing demo data for user ${userId}...`);
+    
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return { success: false, message: 'User not found', deleted: { clients: 0, jobs: 0, quotes: 0, invoices: 0 } };
+    }
+    
+    if (!user.hasDemoData) {
+      console.log(`[DemoClear] User ${userId} has no demo data to clear`);
+      return { success: true, message: 'No sample data to clear', deleted: { clients: 0, jobs: 0, quotes: 0, invoices: 0 } };
+    }
+    
+    // Get the stored demo data IDs
+    const demoDataIds = user.demoDataIds as DemoDataIds | null;
+    
+    if (!demoDataIds) {
+      console.log(`[DemoClear] User ${userId} has hasDemoData=true but no demoDataIds stored (legacy)`);
+      // For legacy users who have hasDemoData but no IDs stored, just mark as cleared
+      await storage.updateUser(userId, { hasDemoData: false, demoDataIds: null });
+      return { success: true, message: 'Demo data flag cleared (no tracked IDs)', deleted: { clients: 0, jobs: 0, quotes: 0, invoices: 0 } };
+    }
+    
+    console.log(`[DemoClear] Found demo IDs to delete: ${JSON.stringify(demoDataIds)}`);
+    
+    const deleted = { clients: 0, jobs: 0, quotes: 0, invoices: 0 };
+    
+    // Delete in order: invoices -> quotes -> jobs -> clients (due to foreign keys)
+    // Only delete records that match the stored demo IDs
+    for (const invoiceId of demoDataIds.invoices || []) {
+      try {
+        await storage.deleteInvoice(invoiceId, userId);
+        deleted.invoices++;
+      } catch (e) {
+        console.log(`[DemoClear] Invoice ${invoiceId} already deleted or not found`);
+      }
+    }
+    console.log(`[DemoClear] Deleted ${deleted.invoices} demo invoices`);
+    
+    for (const quoteId of demoDataIds.quotes || []) {
+      try {
+        await storage.deleteQuote(quoteId, userId);
+        deleted.quotes++;
+      } catch (e) {
+        console.log(`[DemoClear] Quote ${quoteId} already deleted or not found`);
+      }
+    }
+    console.log(`[DemoClear] Deleted ${deleted.quotes} demo quotes`);
+    
+    for (const jobId of demoDataIds.jobs || []) {
+      try {
+        await storage.deleteJob(jobId, userId);
+        deleted.jobs++;
+      } catch (e) {
+        console.log(`[DemoClear] Job ${jobId} already deleted or not found`);
+      }
+    }
+    console.log(`[DemoClear] Deleted ${deleted.jobs} demo jobs`);
+    
+    for (const clientId of demoDataIds.clients || []) {
+      try {
+        await storage.deleteClient(clientId, userId);
+        deleted.clients++;
+      } catch (e) {
+        console.log(`[DemoClear] Client ${clientId} already deleted or not found`);
+      }
+    }
+    console.log(`[DemoClear] Deleted ${deleted.clients} demo clients`);
+    
+    // Mark user as no longer having demo data and clear stored IDs
+    await storage.updateUser(userId, { hasDemoData: false, demoDataIds: null });
+    
+    console.log(`[DemoClear] Demo data cleared for user ${userId}`);
+    return { 
+      success: true, 
+      message: 'Sample data cleared! You now have a fresh start.',
+      deleted
+    };
+  } catch (error: any) {
+    console.error('[DemoClear] Error clearing demo data:', error);
+    return { success: false, message: error.message || 'Failed to clear demo data', deleted: { clients: 0, jobs: 0, quotes: 0, invoices: 0 } };
   }
 }

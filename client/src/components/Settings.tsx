@@ -154,6 +154,97 @@ interface SettingsProps {
   onUpgradePlan?: () => void;
 }
 
+// Component to clear sample/demo data when user is ready to start fresh
+function ClearSampleDataCard() {
+  const { toast } = useToast();
+  const [isClearing, setIsClearing] = useState(false);
+  
+  // Check if user has demo data
+  const { data: userData } = useQuery({
+    queryKey: ['/api/auth/me'],
+  });
+  
+  const hasDemoData = (userData as any)?.user?.hasDemoData === true;
+  
+  const handleClearData = async () => {
+    if (!confirm('Clear all sample data? This only removes demo records - your own data is safe.')) {
+      return;
+    }
+    
+    setIsClearing(true);
+    try {
+      const response = await fetch('/api/onboarding/clear-demo-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to clear sample data');
+      }
+      
+      toast({
+        title: "Sample data cleared",
+        description: `Removed ${data.deleted?.clients || 0} clients, ${data.deleted?.jobs || 0} jobs, ${data.deleted?.quotes || 0} quotes, ${data.deleted?.invoices || 0} invoices. You're ready to add your own!`,
+      });
+      
+      // Invalidate all relevant queries
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to clear sample data",
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
+  
+  if (!hasDemoData) return null;
+  
+  return (
+    <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-5 w-5 text-amber-600" />
+          Sample Data
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          You have sample clients, jobs, quotes, and invoices from your onboarding. 
+          When you're ready to start fresh with your own data, clear them here.
+        </p>
+        <Button 
+          variant="outline"
+          onClick={handleClearData}
+          disabled={isClearing}
+          className="border-amber-300"
+        >
+          {isClearing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Clearing...
+            </>
+          ) : (
+            <>
+              <X className="h-4 w-4 mr-2" />
+              Clear Sample Data
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Settings({
   onSave,
   onUploadLogo,
@@ -1094,6 +1185,9 @@ export default function Settings({
               </Card>
             </>
           )}
+
+          {/* Clear Sample Data Card - shown when user has demo data */}
+          <ClearSampleDataCard />
         </TabsContent>
 
         <TabsContent value="business" className="space-y-6">

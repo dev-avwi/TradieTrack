@@ -6106,6 +6106,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint to clear demo data when user is ready to start fresh
+  // Removes ONLY the sample records created during onboarding (tracked by ID)
+  // User's own data is never touched
+  app.post("/api/onboarding/clear-demo-data", requireAuth, async (req: any, res) => {
+    try {
+      const { clearUserDemoData } = await import('./demoData');
+      const userId = req.userId!;
+      
+      const result = await clearUserDemoData(userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+        deleted: result.deleted,
+      });
+    } catch (error: any) {
+      console.error("Error clearing demo data:", error);
+      res.status(500).json({ error: error.message || "Failed to clear demo data" });
+    }
+  });
+
   // OAuth redirect URIs helper endpoint - shows required URIs for OAuth setup
   // This helps users configure their Google Cloud Console and Xero Developer Portal correctly
   app.get("/api/integrations/oauth-uris", async (req, res) => {
