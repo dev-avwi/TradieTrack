@@ -72,7 +72,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "clients-page",
     title: "Your Client List",
-    description: "Here's where all your customers are stored. You can search, call, email, or view their job history from here.",
+    description: "Here's where all your customers are stored. We've added 5 sample clients to get you started - try clicking one to see their details!",
     route: "/clients",
     icon: Users,
     targetSelector: '[data-testid="clients-content"], [data-testid="clients-list"], main'
@@ -100,7 +100,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "jobs-page",
     title: "Your Job Board",
-    description: "Jobs flow through stages: Pending → Scheduled → In Progress → Done → Invoiced. Each card shows a job's status.",
+    description: "Jobs flow through stages: Pending → Scheduled → In Progress → Done. You have 6 sample jobs in various stages - click one to see how job tracking works!",
     route: "/work",
     icon: Briefcase,
     targetSelector: '[data-testid="work-content"], [data-testid="jobs-list"], main'
@@ -128,7 +128,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "quotes-page",
     title: "Your Quotes",
-    description: "Create quotes with line items and GST calculated automatically. When a client accepts, you can convert it straight to an invoice!",
+    description: "You have 3 sample quotes ready to explore. Click one to see the professional layout with GST calculated automatically. When a client accepts, convert it to an invoice with one click!",
     route: "/quotes",
     icon: FileText,
     targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"], main'
@@ -156,7 +156,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "invoices-page",
     title: "Getting Paid",
-    description: "Track all your invoices here - what's pending, overdue, or paid. Connect Stripe to accept card payments directly!",
+    description: "You have 2 sample invoices to explore. Track pending, overdue, or paid invoices. Connect Stripe to accept card payments and get paid faster!",
     route: "/invoices",
     icon: Receipt,
     targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"], main'
@@ -192,7 +192,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: "complete",
     title: "You're All Set!",
-    description: "Great job! You've seen all the main areas. Start by adding your first client, create a job, then send a quote. Good luck!",
+    description: "Great job! You've explored all the main areas. You have sample clients, jobs, quotes, and invoices to practice with. When you're ready, add your first real client!",
     route: "/",
     icon: CheckCircle2
   }

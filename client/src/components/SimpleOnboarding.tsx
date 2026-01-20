@@ -21,13 +21,16 @@ import {
   CheckCircle,
   Sparkles,
   User,
+  Users,
   Briefcase,
   Phone,
   Mail,
   MapPin,
   Gift,
   Loader2,
-  MessageSquarePlus
+  MessageSquarePlus,
+  FileText,
+  Receipt
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -602,17 +605,48 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   );
 
   const renderDoneStep = () => (
-    <div className="text-center py-8 space-y-6">
-      <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-        <CheckCircle className="h-10 w-10 text-green-600" />
+    <div className="text-center py-6 space-y-5">
+      <div className="relative mx-auto w-24 h-24">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full animate-pulse opacity-20" />
+        <div className="relative w-24 h-24 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 rounded-full flex items-center justify-center">
+          <CheckCircle className="h-12 w-12 text-green-600" />
+        </div>
       </div>
       
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          You're all set!
+          You're Ready to Go!
         </h2>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          Welcome to TradieTrack. You can add more details in Settings anytime.
+          We've set up sample data so you can explore the app right away.
+        </p>
+      </div>
+
+      <div className="bg-muted/50 rounded-xl p-4 max-w-sm mx-auto text-left">
+        <h3 className="font-medium text-center mb-3 flex items-center justify-center gap-2">
+          <Sparkles className="h-4 w-4 text-orange-500" />
+          What's Waiting for You
+        </h3>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-blue-500" />
+            <span>5 sample clients</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-orange-500" />
+            <span>6 example jobs</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-purple-500" />
+            <span>3 draft quotes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-green-500" />
+            <span>2 invoices</span>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground text-center mt-3">
+          Click through these to see how everything works!
         </p>
       </div>
       
