@@ -57,7 +57,7 @@ Core architectural and design decisions include:
 *   **Safe Demo Data Deletion**: Demo record IDs are stored in `user.demoDataIds` (JSONB) during seeding. Clearing demo data only deletes records with tracked IDs, never touching user-created data.
 *   **Unified Notifications**: A single endpoint `/api/notifications/unified` combines system, SMS, and chat notifications for both web and mobile.
 *   **Permission System**: Two parallel permission systems (`WORKER_PERMISSIONS` and `ActionPermissions`) with a translation layer ensuring web and mobile parity, including offline SQLite caching for mobile.
-*   **Document Template System**: 35 default templates (quote, invoice, job) are seeded for new users, adhering to Australian standards (GST, industry rates, payment terms).
+*   **Document Template System**: 81 balanced templates (9 trades × 9 templates each: 3 quotes, 3 invoices, 3 jobs per trade) are seeded for new users, adhering to Australian standards (GST, industry rates, payment terms). Trade filtering includes general fallback templates so users always have access to general templates regardless of their trade filter.
 *   **Trade-Specific Customization System**: A comprehensive trade catalog (`shared/tradeCatalog.ts`) supports 13 priority trades, each with:
     *   Trade-specific terminology and custom job stages.
     *   Trade-specific custom fields (e.g., circuit types for electricians, pipe sizes for plumbers).
