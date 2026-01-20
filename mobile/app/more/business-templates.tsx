@@ -233,23 +233,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: spacing.md,
   },
   templateInfo: {
     flex: 1,
-    minWidth: 0,
   },
   templateName: {
     fontSize: 15,
     fontWeight: '500',
     color: colors.foreground,
-    lineHeight: 21,
   },
   templateBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   triggerBadge: {
     backgroundColor: colors.primaryLight,
@@ -271,7 +268,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    flexShrink: 0,
   },
   actionButton: {
     padding: spacing.sm,

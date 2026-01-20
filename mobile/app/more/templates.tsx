@@ -233,24 +233,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: spacing.sm,
-    gap: spacing.md,
   },
   templateInfo: {
     flex: 1,
-    minWidth: 0,
   },
   templateName: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.foreground,
-    lineHeight: 22,
   },
   templateMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xs,
-    flexWrap: 'wrap',
+    marginTop: 4,
   },
   templateType: {
     fontSize: 12,
@@ -271,14 +267,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    flexShrink: 0,
   },
   actionButton: {
     padding: spacing.sm,
     borderRadius: radius.md,
   },
   templateDetails: {
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   templateTitle: {
     fontSize: 14,
@@ -299,7 +294,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   badge: {
     fontSize: 11,
@@ -1558,8 +1553,8 @@ export default function TemplatesScreen() {
                     {template.defaults?.gstEnabled && (
                       <Text style={styles.badge}>GST included</Text>
                     )}
-                    {(template.defaults?.depositPct ?? 0) > 0 && (
-                      <Text style={styles.badge}>{template.defaults?.depositPct}% deposit</Text>
+                    {template.defaults?.depositPct > 0 && (
+                      <Text style={styles.badge}>{template.defaults.depositPct}% deposit</Text>
                     )}
                     {template.styling?.templateStyle && (
                       <Text style={styles.badge}>{template.styling.templateStyle} style</Text>
