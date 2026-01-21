@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CustomFormsPage } from "@/components/CustomFormBuilder";
@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -53,6 +54,8 @@ import {
   Package,
   Eye,
   Check,
+  Upload,
+  Sparkles,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { StylePreset, RateCard, LineItemCatalog, DocumentTemplate } from "@shared/schema";
@@ -1074,67 +1077,56 @@ function ComponentsTab() {
 }
 
 function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate | null; stylePreset: StylePreset | null }) {
-  const getSampleData = () => {
-    const baseData = {
-      businessName: "Your Business Name",
-      businessAddress: "123 Trade Street, Sydney NSW 2000",
-      businessPhone: "0400 000 000",
-      businessEmail: "hello@yourbusiness.com",
-      clientName: "John Smith",
-      clientAddress: "456 Customer Ave, Melbourne VIC 3000",
-      date: new Date().toLocaleDateString("en-AU"),
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU"),
-    };
-
-    if (template?.type === "invoice") {
-      return {
-        ...baseData,
-        documentNumber: "INV-00042",
-        documentTitle: "TAX INVOICE",
-        items: [
+  // Extract template-specific data
+  const defaults = (template?.defaults as Record<string, unknown>) || {};
+  const styling = (template?.styling as Record<string, unknown>) || {};
+  const templateLineItems = (template?.defaultLineItems as Array<{ description: string; qty: number; unitPrice: number; unit?: string }>) || [];
+  
+  // Calculate totals from template line items or use defaults
+  const items = templateLineItems.length > 0 
+    ? templateLineItems.map(item => ({
+        description: item.description,
+        qty: item.qty || 1,
+        unit: item.unit || "each",
+        unitPrice: item.unitPrice || 0,
+        total: (item.qty || 1) * (item.unitPrice || 0)
+      }))
+    : template?.type === "invoice" 
+      ? [
           { description: "Labour - Completed Work", qty: 6, unit: "hour", unitPrice: 95, total: 570 },
-          { description: "Parts - Replacement Items", qty: 3, unit: "each", unitPrice: 85, total: 255 },
-        ],
-        subtotal: 825.00,
-        gst: 82.50,
-        total: 907.50,
-        showPaymentTerms: true,
-      };
-    } else if (template?.type === "job") {
-      return {
-        ...baseData,
-        documentNumber: "JOB-00127",
-        documentTitle: "JOB CARD",
-        items: [
-          { description: template?.content?.description || "Site inspection and assessment", qty: 1, unit: "visit", unitPrice: 150, total: 150 },
-          { description: "Labour - estimated hours", qty: 3, unit: "hour", unitPrice: 95, total: 285 },
-        ],
-        subtotal: 435.00,
-        gst: 43.50,
-        total: 478.50,
-        showPaymentTerms: false,
-      };
-    } else {
-      return {
-        ...baseData,
-        documentNumber: "Q-00089",
-        documentTitle: "QUOTE",
-        items: [
+          { description: "Parts & Materials", qty: 1, unit: "lot", unitPrice: 255, total: 255 },
+        ]
+      : template?.type === "job"
+      ? [
+          { description: "Site Work - As quoted", qty: 1, unit: "job", unitPrice: 450, total: 450 },
+        ]
+      : [
           { description: "Labour - Standard Rate", qty: 4, unit: "hour", unitPrice: 95, total: 380 },
-          { description: "Materials - Supplies", qty: 1, unit: "item", unitPrice: 245.50, total: 245.50 },
-        ],
-        subtotal: 625.50,
-        gst: 62.55,
-        total: 688.05,
-        showPaymentTerms: true,
-      };
-    }
-  };
+          { description: "Materials", qty: 1, unit: "lot", unitPrice: 245.50, total: 245.50 },
+        ];
 
-  const sampleData = getSampleData();
-  const primaryColor = stylePreset?.primaryColor || "#1e40af";
+  const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+  const gst = subtotal * 0.1;
+  const total = subtotal + gst;
+
+  // Get document title from template or use default based on type
+  const documentTitle = (defaults.title as string) || 
+    (template?.type === "invoice" ? "TAX INVOICE" : template?.type === "job" ? "JOB CARD" : "QUOTE");
+  
+  // Get description/terms from template
+  const description = (defaults.description as string) || "";
+  const terms = (defaults.terms as string) || "";
+  const depositPct = (defaults.depositPct as number) || 0;
+  const dueDays = (defaults.dueTermDays as number) || 14;
+
+  // Use template brand color or style preset colors
+  const templateBrandColor = styling.brandColor as string;
+  const primaryColor = templateBrandColor || stylePreset?.primaryColor || "#1e40af";
   const accentColor = stylePreset?.accentColor || "#059669";
   const fontFamily = stylePreset?.fontFamily || "Inter";
+  
+  // Document number based on type
+  const docNumber = template?.type === "invoice" ? "INV-00042" : template?.type === "job" ? "JOB-00127" : "Q-00089";
 
   return (
     <div
@@ -1150,33 +1142,40 @@ function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate
             <img src={stylePreset.logoUrl} alt="Logo" className="h-12 mb-2 object-contain" />
           )}
           <h2 className="text-lg font-bold" style={{ color: primaryColor }}>
-            {sampleData.businessName}
+            Your Business Name
           </h2>
           {stylePreset?.showBusinessDetails !== false && (
             <div className="text-xs text-gray-600 mt-1">
-              <p>{sampleData.businessAddress}</p>
-              <p>{sampleData.businessPhone} | {sampleData.businessEmail}</p>
+              <p>123 Trade Street, Sydney NSW 2000</p>
+              <p>0400 000 000 | hello@yourbusiness.com</p>
             </div>
           )}
         </div>
         <div className="text-right">
           <h1 className="text-2xl font-bold" style={{ color: primaryColor }}>
-            {sampleData.documentTitle}
+            {documentTitle}
           </h1>
-          <p className="text-sm text-gray-600">{sampleData.documentNumber}</p>
-          <p className="text-sm text-gray-600">{sampleData.date}</p>
+          <p className="text-sm text-gray-600">{docNumber}</p>
+          <p className="text-sm text-gray-600">{new Date().toLocaleDateString("en-AU")}</p>
           {template && (
-            <p className="text-xs mt-1 px-2 py-0.5 rounded" style={{ backgroundColor: accentColor, color: "white" }}>
+            <p className="text-xs mt-1 px-2 py-0.5 rounded inline-block" style={{ backgroundColor: accentColor, color: "white" }}>
               {template.name}
             </p>
           )}
         </div>
       </div>
 
+      {/* Description from template */}
+      {description && (
+        <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: `${primaryColor}10` }}>
+          <p className="text-gray-700 italic">{description}</p>
+        </div>
+      )}
+
       <div className="mb-4">
         <p className="text-xs font-semibold text-gray-500 uppercase">Bill To</p>
-        <p className="font-medium">{sampleData.clientName}</p>
-        <p className="text-sm text-gray-600">{sampleData.clientAddress}</p>
+        <p className="font-medium">John Smith</p>
+        <p className="text-sm text-gray-600">456 Customer Ave, Melbourne VIC 3000</p>
       </div>
 
       <table className="w-full text-sm mb-4" style={{ borderCollapse: "collapse" }}>
@@ -1190,7 +1189,7 @@ function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate
           </tr>
         </thead>
         <tbody>
-          {sampleData.items.map((item, idx) => (
+          {items.map((item, idx) => (
             <tr
               key={idx}
               style={{
@@ -1212,26 +1211,40 @@ function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate
         <div className="w-48">
           <div className="flex justify-between py-1 text-sm">
             <span>Subtotal:</span>
-            <span>${sampleData.subtotal.toFixed(2)}</span>
+            <span>${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between py-1 text-sm">
             <span>GST (10%):</span>
-            <span>${sampleData.gst.toFixed(2)}</span>
+            <span>${gst.toFixed(2)}</span>
           </div>
+          {depositPct > 0 && (
+            <div className="flex justify-between py-1 text-sm text-gray-600">
+              <span>Deposit ({depositPct}%):</span>
+              <span>${(total * depositPct / 100).toFixed(2)}</span>
+            </div>
+          )}
           <div
             className="flex justify-between py-2 font-bold text-base mt-1"
             style={{ borderTop: `2px solid ${primaryColor}`, color: primaryColor }}
           >
             <span>Total:</span>
-            <span>${sampleData.total.toFixed(2)}</span>
+            <span>${total.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
-      {stylePreset?.showBankDetails !== false && (
-        <div className="mt-6 pt-4 border-t text-xs text-gray-500">
-          <p className="font-semibold">Payment Details</p>
-          <p>BSB: 123-456 | Account: 12345678</p>
+      {/* Terms & Conditions */}
+      {terms && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Terms & Conditions</p>
+          <p className="text-xs text-gray-600">{terms}</p>
+        </div>
+      )}
+
+      {/* Payment due */}
+      {dueDays > 0 && template?.type !== "job" && (
+        <div className="mt-3 text-xs text-gray-500">
+          Payment due within {dueDays} days
         </div>
       )}
     </div>
@@ -1239,8 +1252,14 @@ function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate
 }
 
 function DocumentsTab() {
+  const { toast } = useToast();
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadType, setUploadType] = useState<"quote" | "invoice">("quote");
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: user } = useQuery<{ tradeType?: string }>({
     queryKey: ["/api/auth/me"],
@@ -1265,6 +1284,75 @@ function DocumentsTab() {
 
   const defaultPreset = stylePresets.find((p) => p.isDefault) || stylePresets[0] || null;
 
+  // Poll for analysis job completion
+  const { data: analysisJob } = useQuery({
+    queryKey: ["/api/templates/analyze", analysisJobId],
+    queryFn: async () => {
+      if (!analysisJobId) return null;
+      const res = await fetch(`/api/templates/analyze/${analysisJobId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to check job status");
+      return res.json();
+    },
+    enabled: !!analysisJobId,
+    refetchInterval: analysisJobId ? 2000 : false,
+  });
+
+  // Handle analysis completion
+  useEffect(() => {
+    if (analysisJob?.status === "completed") {
+      toast({
+        title: "Template created!",
+        description: "Your document has been analyzed and a new template was created.",
+      });
+      setAnalysisJobId(null);
+      setUploadDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+    } else if (analysisJob?.status === "failed") {
+      toast({
+        title: "Analysis failed",
+        description: analysisJob.error || "Could not analyze the document. Please try again.",
+        variant: "destructive",
+      });
+      setAnalysisJobId(null);
+    }
+  }, [analysisJob?.status]);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", uploadType);
+      formData.append("tradeType", user?.tradeType || "general");
+
+      const res = await fetch("/api/templates/analyze", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setAnalysisJobId(data.jobId);
+      toast({
+        title: "Analyzing document...",
+        description: "AI is analyzing your document to create a template. This may take a moment.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Could not upload the file",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const TEMPLATE_TYPES = [
     { type: "quote", name: "Quote Templates", description: "Pre-configured quote formats", icon: FileText },
     { type: "invoice", name: "Invoice Templates", description: "Standard invoice layouts", icon: Receipt },
@@ -1283,13 +1371,98 @@ function DocumentsTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Document Templates</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage templates for quotes, invoices, and jobs
-          {user?.tradeType && <span className="ml-1">(filtered for {user.tradeType})</span>}
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold">Document Templates</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage templates for quotes, invoices, and jobs
+            {user?.tradeType && <span className="ml-1">(filtered for {user.tradeType})</span>}
+          </p>
+        </div>
+        <Button onClick={() => setUploadDialogOpen(true)} variant="default">
+          <Upload className="h-4 w-4 mr-2" />
+          Upload Document
+        </Button>
       </div>
+
+      {/* AI Document Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Template Creator
+            </DialogTitle>
+            <DialogDescription>
+              Upload an existing quote or invoice (PDF or image) and AI will analyze it to create a matching template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Document Type</Label>
+              <Select value={uploadType} onValueChange={(v) => setUploadType(v as "quote" | "invoice")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="quote">Quote</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div 
+              className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover-elevate transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUpload(file);
+                }}
+              />
+              {uploading || analysisJobId ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  <p className="font-medium">
+                    {uploading ? "Uploading..." : "AI is analyzing your document..."}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    This may take up to 30 seconds
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="font-medium">Drop your document here</p>
+                  <p className="text-sm text-muted-foreground">or click to browse</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Supports PDF, PNG, JPG (max 10MB)
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <p className="font-medium mb-1 flex items-center gap-1">
+                <Sparkles className="h-4 w-4" />
+                What AI extracts:
+              </p>
+              <ul className="text-muted-foreground space-y-1 text-xs">
+                <li>• Brand colors and styling</li>
+                <li>• Logo placement and layout</li>
+                <li>• Line item columns and structure</li>
+                <li>• Terms, payment details, signatures</li>
+              </ul>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
