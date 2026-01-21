@@ -163,6 +163,43 @@ function StylePresetsTab() {
     },
   });
 
+  const setDefaultMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/style-presets/${id}`, { isDefault: true });
+    },
+    onSuccess: () => {
+      toast({ title: "Default style updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to set default", variant: "destructive" });
+    },
+  });
+
+  const createDefaultPresetMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/style-presets", {
+        name: "Professional Navy",
+        primaryColor: "#1e40af",
+        accentColor: "#059669",
+        fontFamily: "Inter",
+        headerLayout: "standard",
+        footerLayout: "standard",
+        showLogo: true,
+        showBusinessDetails: true,
+        showBankDetails: true,
+        tableBorders: true,
+        alternateRowColors: true,
+        compactMode: false,
+        isDefault: true,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Default style created" });
+      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -250,10 +287,16 @@ function StylePresetsTab() {
           <p className="text-sm text-muted-foreground mb-4">
             Create your first style preset to customize how your documents look
           </p>
-          <Button onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Style Preset
-          </Button>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <Button onClick={() => createDefaultPresetMutation.mutate()} variant="default">
+              {createDefaultPresetMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Use Default Navy Style
+            </Button>
+            <Button onClick={openCreateDialog} variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Custom
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -298,7 +341,7 @@ function StylePresetsTab() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent className="pt-0 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground">Primary:</span>
@@ -309,6 +352,19 @@ function StylePresetsTab() {
                     <ColorSwatch color={preset.accentColor || "#059669"} />
                   </div>
                 </div>
+                {!preset.isDefault && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setDefaultMutation.mutate(preset.id)}
+                    disabled={setDefaultMutation.isPending}
+                  >
+                    {setDefaultMutation.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+                    <Star className="h-3 w-3 mr-1" />
+                    Set as Default
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -554,6 +610,7 @@ function StylePresetsTab() {
 function RateCardsSection() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     tradeType: "general",
@@ -595,6 +652,11 @@ function RateCardsSection() {
     },
   });
 
+  const filteredCards = rateCards.filter((card) =>
+    card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    card.tradeType?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -605,42 +667,53 @@ function RateCardsSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          {rateCards.length} rate card{rateCards.length !== 1 ? "s" : ""}
-        </p>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <Input
+            placeholder="Search rate cards..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8"
+          />
+        </div>
         <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-rate-card">
           <Plus className="h-4 w-4 mr-1" />
           Add
         </Button>
       </div>
 
-      {rateCards.length === 0 ? (
+      <p className="text-xs text-muted-foreground">
+        {filteredCards.length} of {rateCards.length} rate card{rateCards.length !== 1 ? "s" : ""}
+      </p>
+
+      {filteredCards.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">
-          No rate cards yet. Create one to set your pricing.
+          {rateCards.length === 0 ? "No rate cards yet. Create one to set your pricing." : "No matching rate cards found."}
         </p>
       ) : (
-        <div className="space-y-2">
-          {rateCards.map((card) => (
-            <div
-              key={card.id}
-              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-              data-testid={`rate-card-${card.id}`}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{card.name}</p>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
-                  <span>${card.hourlyRate}/hr</span>
-                  <span>Callout: ${card.calloutFee}</span>
-                  <span>{card.afterHoursMultiplier}x after hours</span>
+        <ScrollArea className="h-[200px]">
+          <div className="space-y-2 pr-3">
+            {filteredCards.map((card) => (
+              <div
+                key={card.id}
+                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                data-testid={`rate-card-${card.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{card.name}</p>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
+                    <span>${card.hourlyRate}/hr</span>
+                    <span>Callout: ${card.calloutFee}</span>
+                    <span>{card.afterHoursMultiplier}x after hours</span>
+                  </div>
                 </div>
+                <Badge variant="secondary" className="capitalize ml-2">
+                  {card.tradeType}
+                </Badge>
               </div>
-              <Badge variant="secondary" className="capitalize ml-2">
-                {card.tradeType}
-              </Badge>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </ScrollArea>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -737,6 +810,7 @@ function RateCardsSection() {
 function LineItemsCatalogSection() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -776,6 +850,11 @@ function LineItemsCatalogSection() {
     },
   });
 
+  const filteredItems = catalogItems.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -786,40 +865,51 @@ function LineItemsCatalogSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          {catalogItems.length} item{catalogItems.length !== 1 ? "s" : ""} in catalog
-        </p>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <Input
+            placeholder="Search catalog items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8"
+          />
+        </div>
         <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-catalog-item">
           <Plus className="h-4 w-4 mr-1" />
           Add
         </Button>
       </div>
 
-      {catalogItems.length === 0 ? (
+      <p className="text-xs text-muted-foreground">
+        {filteredItems.length} of {catalogItems.length} item{catalogItems.length !== 1 ? "s" : ""} in catalog
+      </p>
+
+      {filteredItems.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">
-          No catalog items yet. Add items you use frequently.
+          {catalogItems.length === 0 ? "No catalog items yet. Add items you use frequently." : "No matching items found."}
         </p>
       ) : (
-        <div className="space-y-2">
-          {catalogItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-              data-testid={`catalog-item-${item.id}`}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{item.name}</p>
-                <p className="text-sm text-muted-foreground truncate">
-                  {item.description}
-                </p>
+        <ScrollArea className="h-[200px]">
+          <div className="space-y-2 pr-3">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                data-testid={`catalog-item-${item.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{item.name}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {item.description}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                  <Badge variant="outline">${item.unitPrice}/{item.unit}</Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                <Badge variant="outline">${item.unitPrice}/{item.unit}</Badge>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </ScrollArea>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -984,25 +1074,64 @@ function ComponentsTab() {
 }
 
 function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate | null; stylePreset: StylePreset | null }) {
-  const sampleData = {
-    businessName: "Your Business Name",
-    businessAddress: "123 Trade Street, Sydney NSW 2000",
-    businessPhone: "0400 000 000",
-    businessEmail: "hello@yourbusiness.com",
-    clientName: "John Smith",
-    clientAddress: "456 Customer Ave, Melbourne VIC 3000",
-    documentNumber: "Q-00001",
-    date: new Date().toLocaleDateString("en-AU"),
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU"),
-    items: [
-      { description: "Labour - Standard Rate", qty: 4, unit: "hour", unitPrice: 95, total: 380 },
-      { description: "Materials - Electrical Supplies", qty: 1, unit: "item", unitPrice: 245.50, total: 245.50 },
-    ],
-    subtotal: 625.50,
-    gst: 62.55,
-    total: 688.05,
+  const getSampleData = () => {
+    const baseData = {
+      businessName: "Your Business Name",
+      businessAddress: "123 Trade Street, Sydney NSW 2000",
+      businessPhone: "0400 000 000",
+      businessEmail: "hello@yourbusiness.com",
+      clientName: "John Smith",
+      clientAddress: "456 Customer Ave, Melbourne VIC 3000",
+      date: new Date().toLocaleDateString("en-AU"),
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU"),
+    };
+
+    if (template?.type === "invoice") {
+      return {
+        ...baseData,
+        documentNumber: "INV-00042",
+        documentTitle: "TAX INVOICE",
+        items: [
+          { description: "Labour - Completed Work", qty: 6, unit: "hour", unitPrice: 95, total: 570 },
+          { description: "Parts - Replacement Items", qty: 3, unit: "each", unitPrice: 85, total: 255 },
+        ],
+        subtotal: 825.00,
+        gst: 82.50,
+        total: 907.50,
+        showPaymentTerms: true,
+      };
+    } else if (template?.type === "job") {
+      return {
+        ...baseData,
+        documentNumber: "JOB-00127",
+        documentTitle: "JOB CARD",
+        items: [
+          { description: template?.content?.description || "Site inspection and assessment", qty: 1, unit: "visit", unitPrice: 150, total: 150 },
+          { description: "Labour - estimated hours", qty: 3, unit: "hour", unitPrice: 95, total: 285 },
+        ],
+        subtotal: 435.00,
+        gst: 43.50,
+        total: 478.50,
+        showPaymentTerms: false,
+      };
+    } else {
+      return {
+        ...baseData,
+        documentNumber: "Q-00089",
+        documentTitle: "QUOTE",
+        items: [
+          { description: "Labour - Standard Rate", qty: 4, unit: "hour", unitPrice: 95, total: 380 },
+          { description: "Materials - Supplies", qty: 1, unit: "item", unitPrice: 245.50, total: 245.50 },
+        ],
+        subtotal: 625.50,
+        gst: 62.55,
+        total: 688.05,
+        showPaymentTerms: true,
+      };
+    }
   };
 
+  const sampleData = getSampleData();
   const primaryColor = stylePreset?.primaryColor || "#1e40af";
   const accentColor = stylePreset?.accentColor || "#059669";
   const fontFamily = stylePreset?.fontFamily || "Inter";
@@ -1032,10 +1161,15 @@ function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate
         </div>
         <div className="text-right">
           <h1 className="text-2xl font-bold" style={{ color: primaryColor }}>
-            {template?.type === "invoice" ? "INVOICE" : template?.type === "job" ? "JOB CARD" : "QUOTE"}
+            {sampleData.documentTitle}
           </h1>
           <p className="text-sm text-gray-600">{sampleData.documentNumber}</p>
           <p className="text-sm text-gray-600">{sampleData.date}</p>
+          {template && (
+            <p className="text-xs mt-1 px-2 py-0.5 rounded" style={{ backgroundColor: accentColor, color: "white" }}>
+              {template.name}
+            </p>
+          )}
         </div>
       </div>
 
