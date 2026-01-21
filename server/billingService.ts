@@ -875,6 +875,77 @@ export async function initializeStripeProducts(): Promise<{
   }
 }
 
+// Fix Team base price - creates new price at $49/month and archives the old $59 price
+export async function fixTeamBasePrice(): Promise<{
+  success: boolean;
+  oldPrice?: { id: string; amount: number };
+  newPrice?: { id: string; amount: number };
+  error?: string;
+}> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Stripe not configured' };
+  }
+
+  try {
+    // Find the Team base product
+    const products = await stripe.products.list({ active: true, limit: 100 });
+    const teamBaseProduct = products.data.find(p => p.name === PRICING.team.baseName && p.active);
+    
+    if (!teamBaseProduct) {
+      return { success: false, error: 'Team base product not found - run init-stripe-products first' };
+    }
+
+    // Get all prices for this product
+    const prices = await stripe.prices.list({ 
+      product: teamBaseProduct.id,
+      active: true,
+      limit: 100 
+    });
+
+    // Find price with wrong amount ($59 = 5900 cents)
+    const wrongPrice = prices.data.find(p => p.unit_amount === 5900);
+    const correctPrice = prices.data.find(p => p.unit_amount === PRICING.team.baseMonthly);
+
+    if (!wrongPrice && correctPrice) {
+      return { 
+        success: true, 
+        newPrice: { id: correctPrice.id, amount: correctPrice.unit_amount || 0 },
+        error: 'Price is already correct at $49/month' 
+      };
+    }
+
+    if (!wrongPrice) {
+      return { success: false, error: 'No $59 price found to fix' };
+    }
+
+    // Create new price at correct amount ($49 = 4900 cents)
+    const newPrice = await stripe.prices.create({
+      product: teamBaseProduct.id,
+      unit_amount: PRICING.team.baseMonthly, // 4900 = $49
+      currency: 'aud',
+      recurring: { interval: 'month' },
+      lookup_key: 'tradietrack_team_base_monthly',
+      transfer_lookup_key: true, // Transfer lookup key from old price
+      metadata: { tier: 'team', type: 'base' },
+    });
+
+    // Archive the old price (can't delete, but can deactivate)
+    await stripe.prices.update(wrongPrice.id, { active: false });
+
+    console.log(`✅ Fixed Team base price: archived ${wrongPrice.id} ($59), created ${newPrice.id} ($49)`);
+
+    return {
+      success: true,
+      oldPrice: { id: wrongPrice.id, amount: 5900 },
+      newPrice: { id: newPrice.id, amount: PRICING.team.baseMonthly },
+    };
+  } catch (error: any) {
+    console.error('Failed to fix Team base price:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export interface UpgradeToTeamResult {
   success: boolean;
   subscriptionId?: string;

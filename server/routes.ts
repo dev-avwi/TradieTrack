@@ -6279,6 +6279,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to fix Team base price from $59 to $49
+  app.post("/api/admin/fix-team-price", async (req, res) => {
+    try {
+      const { fixTeamBasePrice } = await import('./billingService');
+      const result = await fixTeamBasePrice();
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          success: false, 
+          error: result.error,
+          message: result.error 
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Team base price fixed from $59 to $49/month',
+        oldPrice: result.oldPrice,
+        newPrice: result.newPrice
+      });
+    } catch (error: any) {
+      console.error("Error fixing Team price:", error);
+      res.status(500).json({ error: error.message || "Failed to fix Team price" });
+    }
+  });
+
   // Admin endpoint to force reset demo data (deletes all and recreates with new IDs)
   // Use when mobile/web IDs are out of sync or data is corrupted
   app.post("/api/admin/reset-demo-data", requireAuth, async (req: any, res) => {
