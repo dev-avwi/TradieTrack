@@ -1,19 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CustomFormsPage } from "@/components/CustomFormBuilder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -39,26 +35,15 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Palette,
-  Layers,
-  FileText,
-  ClipboardList,
-  Receipt,
   Plus,
   Pencil,
   Trash2,
   Loader2,
-  ChevronRight,
-  ChevronDown,
   Star,
-  DollarSign,
-  Package,
   Eye,
-  Check,
   Upload,
-  Sparkles,
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { StylePreset, RateCard, LineItemCatalog, DocumentTemplate } from "@shared/schema";
+import type { StylePreset } from "@shared/schema";
 import LiveDocumentPreview from "@/components/LiveDocumentPreview";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
@@ -97,13 +82,13 @@ function ColorSwatch({ color, size = "sm" }: { color: string; size?: "sm" | "md"
   );
 }
 
-function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: () => void }) {
+function StylePresetsWithPreview() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
-  const navigateAfterSaveRef = useRef(false);
-  const [savingWithPreview, setSavingWithPreview] = useState(false);
+  const [previewPreset, setPreviewPreset] = useState<StylePreset | null>(null);
+  const [previewType, setPreviewType] = useState<"quote" | "invoice">("quote");
   const [isCreating, setIsCreating] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -124,9 +109,19 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
     isDefault: false,
   });
 
+  const { data: business } = useBusinessSettings();
+
   const { data: presets = [], isLoading } = useQuery<StylePreset[]>({
     queryKey: ["/api/style-presets"],
   });
+
+  // Auto-select default preset for preview
+  useEffect(() => {
+    if (presets.length > 0 && !previewPreset) {
+      const defaultPreset = presets.find(p => p.isDefault) || presets[0];
+      setPreviewPreset(defaultPreset);
+    }
+  }, [presets, previewPreset]);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -137,16 +132,10 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       setDialogOpen(false);
       resetForm();
       setIsCreating(false);
-      setSavingWithPreview(false);
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-      if (navigateAfterSaveRef.current && onNavigateToDocuments) {
-        navigateAfterSaveRef.current = false;
-        onNavigateToDocuments();
-      }
     },
     onError: () => {
       toast({ title: "Failed to create preset", variant: "destructive" });
-      setSavingWithPreview(false);
     },
   });
 
@@ -159,16 +148,10 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       setDialogOpen(false);
       resetForm();
       setIsCreating(false);
-      setSavingWithPreview(false);
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-      if (navigateAfterSaveRef.current && onNavigateToDocuments) {
-        navigateAfterSaveRef.current = false;
-        onNavigateToDocuments();
-      }
     },
     onError: () => {
       toast({ title: "Failed to update preset", variant: "destructive" });
-      setSavingWithPreview(false);
     },
   });
 
@@ -180,6 +163,9 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       toast({ title: "Style preset deleted" });
       setDeleteDialogOpen(false);
       setSelectedPreset(null);
+      if (previewPreset?.id === selectedPreset?.id) {
+        setPreviewPreset(null);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
     },
     onError: () => {
@@ -242,27 +228,10 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       isDefault: false,
     });
     setSelectedPreset(null);
-    // Note: isCreating is NOT reset here - callers control it separately
   };
 
   const openCreateDialog = () => {
-    setFormData({
-      name: "",
-      logoUrl: "",
-      primaryColor: "#1e40af",
-      accentColor: "#059669",
-      fontFamily: "Inter",
-      headerLayout: "standard",
-      footerLayout: "standard",
-      showLogo: true,
-      showBusinessDetails: true,
-      showBankDetails: true,
-      tableBorders: true,
-      alternateRowColors: true,
-      compactMode: false,
-      isDefault: false,
-    });
-    setSelectedPreset(null);
+    resetForm();
     setIsCreating(true);
     setDialogOpen(true);
   };
@@ -289,9 +258,7 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
     setDialogOpen(true);
   };
 
-  const handleSave = (andNavigate = false) => {
-    navigateAfterSaveRef.current = andNavigate;
-    setSavingWithPreview(andNavigate);
+  const handleSave = () => {
     if (isCreating) {
       createMutation.mutate(formData);
     } else if (selectedPreset) {
@@ -332,7 +299,7 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       const data = await response.json();
       setFormData(prev => ({ ...prev, logoUrl: data.url }));
       toast({ title: "Logo uploaded successfully" });
-    } catch (error) {
+    } catch {
       toast({ title: "Failed to upload logo", variant: "destructive" });
     } finally {
       setIsUploadingLogo(false);
@@ -341,6 +308,20 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       }
     }
   };
+
+  // Build template customization from preset for preview
+  const buildTemplateCustomization = (preset: StylePreset): TemplateCustomization => ({
+    primaryColor: preset.primaryColor || "#1e40af",
+    accentColor: preset.accentColor || "#059669",
+    fontFamily: preset.fontFamily || "Inter",
+    logoUrl: preset.logoUrl,
+    showLogo: preset.showLogo ?? true,
+    showBusinessDetails: preset.showBusinessDetails ?? true,
+    showBankDetails: preset.showBankDetails ?? true,
+    tableBorders: preset.tableBorders ?? true,
+    alternateRowColors: preset.alternateRowColors ?? true,
+    compactMode: preset.compactMode ?? false,
+  });
 
   if (isLoading) {
     return (
@@ -351,111 +332,176 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold">Document Styles</h2>
-          <p className="text-sm text-muted-foreground">
-            Create reusable style presets for your quotes, invoices, and documents
-          </p>
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Left side: Style presets list */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold">Document Styles</h2>
+            <p className="text-sm text-muted-foreground">
+              Click a style to preview it
+            </p>
+          </div>
+          <Button onClick={openCreateDialog} size="sm" data-testid="button-create-style">
+            <Plus className="h-4 w-4 mr-2" />
+            New Style
+          </Button>
         </div>
-        <Button onClick={openCreateDialog} data-testid="button-create-style">
-          <Plus className="h-4 w-4 mr-2" />
-          New Style
-        </Button>
+
+        {presets.length === 0 ? (
+          <Card className="p-6 text-center">
+            <Palette className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+            <h3 className="font-semibold mb-2">No style presets yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create your first style to customize your documents
+            </p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button onClick={() => createDefaultPresetMutation.mutate()} variant="default" size="sm">
+                {createDefaultPresetMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Use Default Style
+              </Button>
+              <Button onClick={openCreateDialog} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Custom
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {presets.map((preset) => (
+              <Card 
+                key={preset.id} 
+                className={`cursor-pointer transition-all ${previewPreset?.id === preset.id ? 'ring-2 ring-primary' : 'hover-elevate'}`}
+                onClick={() => setPreviewPreset(preset)}
+                data-testid={`card-style-${preset.id}`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex gap-1">
+                        <ColorSwatch color={preset.primaryColor || "#1e40af"} />
+                        <ColorSwatch color={preset.accentColor || "#059669"} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">{preset.name}</span>
+                          {preset.isDefault && (
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">
+                              <Star className="h-3 w-3 mr-1" />
+                              Default
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{preset.fontFamily || "Inter"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {!preset.isDefault && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDefaultMutation.mutate(preset.id)}
+                          title="Set as default"
+                        >
+                          <Star className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(preset)}
+                        data-testid={`button-edit-style-${preset.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedPreset(preset);
+                          setDeleteDialogOpen(true);
+                        }}
+                        data-testid={`button-delete-style-${preset.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
-      {presets.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Palette className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="font-semibold mb-2">No style presets yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Create your first style preset to customize how your documents look
-          </p>
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            <Button onClick={() => createDefaultPresetMutation.mutate()} variant="default">
-              {createDefaultPresetMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Use Default Navy Style
-            </Button>
-            <Button onClick={openCreateDialog} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Custom
-            </Button>
+      {/* Right side: Live preview */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold">Live Preview</h2>
+            <p className="text-sm text-muted-foreground">
+              See how your documents will look
+            </p>
           </div>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {presets.map((preset) => (
-            <Card key={preset.id} className="hover-elevate" data-testid={`card-style-${preset.id}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate flex items-center gap-2">
-                      {preset.name}
-                      {preset.isDefault && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Star className="h-3 w-3 mr-1" />
-                          Default
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                      {preset.fontFamily || "Inter"}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEditDialog(preset)}
-                      data-testid={`button-edit-style-${preset.id}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setSelectedPreset(preset);
-                        setDeleteDialogOpen(true);
-                      }}
-                      data-testid={`button-delete-style-${preset.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">Primary:</span>
-                    <ColorSwatch color={preset.primaryColor || "#1e40af"} />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">Accent:</span>
-                    <ColorSwatch color={preset.accentColor || "#059669"} />
-                  </div>
-                </div>
-                {!preset.isDefault && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setDefaultMutation.mutate(preset.id)}
-                    disabled={setDefaultMutation.isPending}
-                  >
-                    {setDefaultMutation.isPending && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
-                    <Star className="h-3 w-3 mr-1" />
-                    Set as Default
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+          <Select value={previewType} onValueChange={(v) => setPreviewType(v as "quote" | "invoice")}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="quote">Quote</SelectItem>
+              <SelectItem value="invoice">Invoice</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      )}
 
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            {previewPreset && business ? (
+              <div className="bg-muted/30 p-4">
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '600px', overflow: 'auto' }}>
+                  <LiveDocumentPreview
+                    documentType={previewType}
+                    business={{
+                      name: business.name || "Your Business",
+                      email: business.email || "email@example.com",
+                      phone: business.phone || "",
+                      address: business.address || "",
+                      abn: business.abn || "",
+                      bankName: business.bankName || "",
+                      bankBsb: business.bankBsb || "",
+                      bankAccount: business.bankAccount || "",
+                    }}
+                    client={{
+                      name: "Sample Client",
+                      email: "client@example.com",
+                      phone: "0400 000 000",
+                      address: "123 Sample Street, Sydney NSW 2000",
+                    }}
+                    lineItems={[
+                      { description: "Labour - Standard Rate", quantity: 4, unitPrice: 85, unit: "hour" },
+                      { description: "Materials and Supplies", quantity: 1, unitPrice: 150, unit: "item" },
+                    ]}
+                    gstEnabled={business.gstEnabled ?? true}
+                    templateId={"modern-professional" as TemplateId}
+                    templateCustomization={buildTemplateCustomization(previewPreset)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-16 text-center">
+                <div>
+                  <Eye className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    {presets.length === 0 ? "Create a style to see preview" : "Select a style to preview"}
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -484,7 +530,6 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                 accept="image/*"
                 className="hidden"
                 onChange={handleLogoUpload}
-                data-testid="input-logo-file"
               />
               {formData.logoUrl ? (
                 <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
@@ -504,7 +549,6 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                       size="sm"
                       onClick={() => logoInputRef.current?.click()}
                       disabled={isUploadingLogo}
-                      data-testid="button-change-logo"
                     >
                       {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Change"}
                     </Button>
@@ -513,7 +557,6 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                       variant="ghost"
                       size="sm"
                       onClick={() => setFormData(prev => ({ ...prev, logoUrl: "" }))}
-                      data-testid="button-remove-logo"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -523,10 +566,9 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full h-20 border-dashed"
+                  className="w-full h-16 border-dashed"
                   onClick={() => logoInputRef.current?.click()}
                   disabled={isUploadingLogo}
-                  data-testid="button-upload-logo"
                 >
                   {isUploadingLogo ? (
                     <>
@@ -558,7 +600,6 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                     value={formData.primaryColor}
                     onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                     className="flex-1"
-                    data-testid="input-primary-color"
                   />
                 </div>
               </div>
@@ -577,7 +618,6 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                     value={formData.accentColor}
                     onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
                     className="flex-1"
-                    data-testid="input-accent-color"
                   />
                 </div>
               </div>
@@ -589,7 +629,7 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
                 value={formData.fontFamily}
                 onValueChange={(value) => setFormData({ ...formData, fontFamily: value })}
               >
-                <SelectTrigger data-testid="select-font-family">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -602,49 +642,9 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
               </Select>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Display Options</Label>
               <div className="space-y-2">
-                <Label>Header Layout</Label>
-                <Select
-                  value={formData.headerLayout}
-                  onValueChange={(value) => setFormData({ ...formData, headerLayout: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LAYOUT_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Footer Layout</Label>
-                <Select
-                  value={formData.footerLayout}
-                  onValueChange={(value) => setFormData({ ...formData, footerLayout: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LAYOUT_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Label className="text-base">Display Options</Label>
-              <div className="grid gap-3 md:grid-cols-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="showLogo" className="font-normal">Show Logo</Label>
                   <Switch
@@ -706,36 +706,25 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
             </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
             <Button
-              variant="outline"
-              onClick={() => handleSave(false)}
+              onClick={handleSave}
               disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
               data-testid="button-save-style"
             >
-              {(createMutation.isPending || updateMutation.isPending) && !savingWithPreview && (
+              {(createMutation.isPending || updateMutation.isPending) && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
-              {isCreating ? "Create" : "Save"}
-            </Button>
-            <Button
-              onClick={() => handleSave(true)}
-              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
-              data-testid="button-save-preview-style"
-            >
-              {(createMutation.isPending || updateMutation.isPending) && savingWithPreview && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              <Eye className="h-4 w-4 mr-2" />
-              {isCreating ? "Create & Preview" : "Save & Preview"}
+              {isCreating ? "Create Style" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -760,1255 +749,18 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
   );
 }
 
-function RateCardsSection() {
-  const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    tradeType: "general",
-    hourlyRate: "100.00",
-    calloutFee: "80.00",
-    materialMarkupPct: "20.00",
-    afterHoursMultiplier: "1.50",
-    gstEnabled: true,
-  });
-
-  const { data: user } = useQuery<{ tradeType?: string }>({
-    queryKey: ["/api/auth/me"],
-  });
-
-  const { data: rateCards = [], isLoading } = useQuery<RateCard[]>({
-    queryKey: ["/api/rate-cards"],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      return apiRequest("POST", "/api/rate-cards", data);
-    },
-    onSuccess: () => {
-      toast({ title: "Rate card created" });
-      setDialogOpen(false);
-      setFormData({
-        name: "",
-        tradeType: user?.tradeType || "general",
-        hourlyRate: "100.00",
-        calloutFee: "80.00",
-        materialMarkupPct: "20.00",
-        afterHoursMultiplier: "1.50",
-        gstEnabled: true,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to create rate card", variant: "destructive" });
-    },
-  });
-
-  const filteredCards = rateCards.filter((card) =>
-    card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    card.tradeType?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <Input
-            placeholder="Search rate cards..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8"
-          />
-        </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-rate-card">
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </Button>
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        {filteredCards.length} of {rateCards.length} rate card{rateCards.length !== 1 ? "s" : ""}
-      </p>
-
-      {filteredCards.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          {rateCards.length === 0 ? "No rate cards yet. Create one to set your pricing." : "No matching rate cards found."}
-        </p>
-      ) : (
-        <ScrollArea className="h-[200px]">
-          <div className="space-y-2 pr-3">
-            {filteredCards.map((card) => (
-              <div
-                key={card.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                data-testid={`rate-card-${card.id}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{card.name}</p>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
-                    <span>${card.hourlyRate}/hr</span>
-                    <span>Callout: ${card.calloutFee}</span>
-                    <span>{card.afterHoursMultiplier}x after hours</span>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="capitalize ml-2">
-                  {card.tradeType}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Rate Card</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="rate-name">Name</Label>
-              <Input
-                id="rate-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Standard Rates"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
-                <Input
-                  id="hourlyRate"
-                  type="number"
-                  step="0.01"
-                  value={formData.hourlyRate}
-                  onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="calloutFee">Callout Fee ($)</Label>
-                <Input
-                  id="calloutFee"
-                  type="number"
-                  step="0.01"
-                  value={formData.calloutFee}
-                  onChange={(e) => setFormData({ ...formData, calloutFee: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="afterHoursMultiplier">After Hours Multiplier</Label>
-                <Input
-                  id="afterHoursMultiplier"
-                  type="number"
-                  step="0.1"
-                  value={formData.afterHoursMultiplier}
-                  onChange={(e) => setFormData({ ...formData, afterHoursMultiplier: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="materialMarkupPct">Material Markup (%)</Label>
-                <Input
-                  id="materialMarkupPct"
-                  type="number"
-                  step="1"
-                  value={formData.materialMarkupPct}
-                  onChange={(e) => setFormData({ ...formData, materialMarkupPct: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="gstEnabled">GST Enabled</Label>
-              <Switch
-                id="gstEnabled"
-                checked={formData.gstEnabled}
-                onCheckedChange={(checked) => setFormData({ ...formData, gstEnabled: checked })}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createMutation.mutate(formData)}
-              disabled={!formData.name || createMutation.isPending}
-            >
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function LineItemsCatalogSection() {
-  const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    unit: "item",
-    unitPrice: "0.00",
-    tradeType: "general",
-    defaultQty: "1.00",
-  });
-
-  const { data: user } = useQuery<{ tradeType?: string }>({
-    queryKey: ["/api/auth/me"],
-  });
-
-  const { data: catalogItems = [], isLoading } = useQuery<LineItemCatalog[]>({
-    queryKey: ["/api/catalog"],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      return apiRequest("POST", "/api/catalog", data);
-    },
-    onSuccess: () => {
-      toast({ title: "Catalog item created" });
-      setDialogOpen(false);
-      setFormData({
-        name: "",
-        description: "",
-        unit: "item",
-        unitPrice: "0.00",
-        tradeType: user?.tradeType || "general",
-        defaultQty: "1.00",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/catalog"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to create item", variant: "destructive" });
-    },
-  });
-
-  const filteredItems = catalogItems.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <Input
-            placeholder="Search catalog items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8"
-          />
-        </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-catalog-item">
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </Button>
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        {filteredItems.length} of {catalogItems.length} item{catalogItems.length !== 1 ? "s" : ""} in catalog
-      </p>
-
-      {filteredItems.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          {catalogItems.length === 0 ? "No catalog items yet. Add items you use frequently." : "No matching items found."}
-        </p>
-      ) : (
-        <ScrollArea className="h-[200px]">
-          <div className="space-y-2 pr-3">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                data-testid={`catalog-item-${item.id}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{item.name}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {item.description}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                  <Badge variant="outline">${item.unitPrice}/{item.unit}</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Catalog Item</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="item-name">Name</Label>
-              <Input
-                id="item-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Labour - Standard"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="item-description">Description</Label>
-              <Input
-                id="item-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="unitPrice">Unit Price ($)</Label>
-                <Input
-                  id="unitPrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.unitPrice}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Unit</Label>
-                <Select
-                  value={formData.unit}
-                  onValueChange={(value) => setFormData({ ...formData, unit: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map((unit) => (
-                      <SelectItem key={unit.value} value={unit.value}>
-                        {unit.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createMutation.mutate(formData)}
-              disabled={!formData.name || !formData.description || createMutation.isPending}
-            >
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Add Item
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function ComponentsTab() {
-  const [rateCardsOpen, setRateCardsOpen] = useState(true);
-  const [lineItemsOpen, setLineItemsOpen] = useState(true);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Reusable Components</h2>
-        <p className="text-sm text-muted-foreground">
-          Building blocks for your quotes and invoices
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <Collapsible open={rateCardsOpen} onOpenChange={setRateCardsOpen}>
-          <Card data-testid="card-rate-cards">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-                    >
-                      <DollarSign className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Rate Cards</CardTitle>
-                      <CardDescription>Hourly rates, callout fees, and multipliers</CardDescription>
-                    </div>
-                  </div>
-                  {rateCardsOpen ? (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <RateCardsSection />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        <Collapsible open={lineItemsOpen} onOpenChange={setLineItemsOpen}>
-          <Card data-testid="card-line-items">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-                    >
-                      <Package className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Line Items Catalog</CardTitle>
-                      <CardDescription>Reusable items for quotes and invoices</CardDescription>
-                    </div>
-                  </div>
-                  {lineItemsOpen ? (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <LineItemsCatalogSection />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-      </div>
-    </div>
-  );
-}
-
-function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate | null; stylePreset: StylePreset | null }) {
-  // Fetch business settings to show realistic preview
-  const { data: businessSettings } = useBusinessSettings();
-  
-  // Extract template-specific data
-  const defaults = (template?.defaults as Record<string, unknown>) || {};
-  const styling = (template?.styling as Record<string, unknown>) || {};
-  const templateLineItems = (template?.defaultLineItems as Array<{ description: string; qty: number; unitPrice: number; unit?: string }>) || [];
-  
-  // Use template line items or sensible defaults based on document type
-  const lineItems = templateLineItems.length > 0 
-    ? templateLineItems.map(item => ({
-        description: item.description,
-        quantity: item.qty || 1,
-        unitPrice: item.unitPrice || 0,
-      }))
-    : template?.type === "invoice" 
-      ? [
-          { description: "Labour - Completed Work", quantity: 6, unitPrice: 95 },
-          { description: "Parts & Materials", quantity: 1, unitPrice: 255 },
-        ]
-      : [
-          { description: "Labour - Standard Rate", quantity: 4, unitPrice: 95 },
-          { description: "Materials", quantity: 1, unitPrice: 245.50 },
-        ];
-
-  // Get description/terms from template
-  const description = (defaults.description as string) || "";
-  const terms = (defaults.terms as string) || "";
-  const depositPct = (defaults.depositPct as number) || 0;
-  const validDays = (defaults.validDays as number) || 30;
-
-  // Use template brand color or style preset colors
-  const templateBrandColor = styling.brandColor as string;
-  const brandColor = templateBrandColor || stylePreset?.primaryColor || businessSettings?.brandColor || "#1e40af";
-
-  // Map style preset to TemplateCustomization for LiveDocumentPreview
-  const templateCustomization: TemplateCustomization = {
-    tableStyle: stylePreset?.alternateRowColors ? 'striped' : stylePreset?.tableBorders ? 'bordered' : 'minimal',
-    accentColor: stylePreset?.accentColor,
-    showHeaderDivider: true,
-  };
-
-  // Determine template ID - use a sensible default for preview
-  const templateId: TemplateId = (styling.templateId as TemplateId) || 'minimal';
-
-  // Document number based on type
-  const docNumber = template?.type === "invoice" ? "INV-00042" : "Q-00089";
-
-  // Calculate valid until date
-  const today = new Date();
-  const validUntil = new Date(today);
-  validUntil.setDate(validUntil.getDate() + validDays);
-
-  // Calculate due date for invoices
-  const dueDate = new Date(today);
-  dueDate.setDate(dueDate.getDate() + ((defaults.dueTermDays as number) || 14));
-
-  // Business info - use actual settings or sensible placeholder
-  const business = {
-    businessName: businessSettings?.businessName || "Your Business Name",
-    abn: businessSettings?.abn || "12 345 678 901",
-    address: businessSettings?.address || "123 Trade Street, Sydney NSW 2000",
-    phone: businessSettings?.phone || "0400 000 000",
-    email: businessSettings?.email || "hello@yourbusiness.com",
-    logoUrl: stylePreset?.showLogo !== false ? (businessSettings?.logoUrl || stylePreset?.logoUrl) : undefined,
-    brandColor: brandColor,
-    gstEnabled: businessSettings?.gstEnabled !== false,
-  };
-
-  // Sample client for preview
-  const sampleClient = {
-    name: "John Smith",
-    email: "john.smith@example.com",
-    phone: "0412 345 678",
-    address: "456 Customer Ave, Melbourne VIC 3000",
-  };
-
-  // Don't render for job templates (they show job settings, not document preview)
-  if (template?.type === "job") {
-    return (
-      <div className="bg-white rounded-lg shadow-lg p-6 text-black min-h-[400px]">
-        <div className="text-center text-gray-500 py-12">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="font-medium">Job Template Preview</p>
-          <p className="text-sm mt-1">Job templates define default settings for new jobs</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <LiveDocumentPreview
-      type={template?.type === "invoice" ? "invoice" : "quote"}
-      documentNumber={docNumber}
-      title={template?.name || (template?.type === "invoice" ? "Invoice" : "Quote")}
-      description={description}
-      date={today.toISOString()}
-      validUntil={template?.type !== "invoice" ? validUntil.toISOString() : undefined}
-      dueDate={template?.type === "invoice" ? dueDate.toISOString() : undefined}
-      lineItems={lineItems}
-      notes={terms || "Thank you for your business"}
-      business={business}
-      client={sampleClient}
-      showDepositSection={depositPct > 0}
-      depositPercent={depositPct}
-      gstEnabled={business.gstEnabled}
-      templateId={templateId}
-      templateCustomization={templateCustomization}
-    />
-  );
-}
-
-function DocumentsTab({ autoSelectFirst, onAutoSelectComplete }: { autoSelectFirst?: boolean; onAutoSelectComplete?: () => void }) {
-  const { toast } = useToast();
-  const [expandedType, setExpandedType] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadType, setUploadType] = useState<"quote" | "invoice">("quote");
-  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
-  const [newTemplate, setNewTemplate] = useState({
-    name: "",
-    type: "quote" as "quote" | "invoice" | "job",
-    tradeType: "general",
-    title: "",
-    description: "",
-    terms: "",
-  });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { data: user } = useQuery<{ tradeType?: string }>({
-    queryKey: ["/api/auth/me"],
-  });
-
-  const { data: templates = [], isLoading: templatesLoading } = useQuery<DocumentTemplate[]>({
-    queryKey: ["/api/templates", user?.tradeType],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (user?.tradeType) params.append("tradeType", user.tradeType);
-      const url = `/api/templates${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await fetch(url, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch templates");
-      return response.json();
-    },
-    enabled: true,
-  });
-
-  const { data: stylePresets = [] } = useQuery<StylePreset[]>({
-    queryKey: ["/api/style-presets"],
-  });
-
-  const defaultPreset = stylePresets.find((p) => p.isDefault) || stylePresets[0] || null;
-
-  // Auto-select first quote template when requested (after Save & Preview from Styles tab)
-  useEffect(() => {
-    // Only proceed if autoSelectFirst is true and templates have loaded
-    if (autoSelectFirst && !templatesLoading && templates.length > 0 && !selectedTemplate) {
-      // Find first quote template, or fall back to first template
-      const quoteTemplate = templates.find((t) => t.type === "quote") || templates[0];
-      if (quoteTemplate) {
-        setSelectedTemplate(quoteTemplate);
-        // Expand the quote section if the template is a quote
-        if (quoteTemplate.type === "quote") {
-          setExpandedType("quote");
-        }
-      }
-      onAutoSelectComplete?.();
-    }
-  }, [autoSelectFirst, templates, templatesLoading, selectedTemplate, onAutoSelectComplete]);
-
-  // Poll for analysis job completion
-  const { data: analysisJob } = useQuery({
-    queryKey: ["/api/templates/analyze", analysisJobId],
-    queryFn: async () => {
-      if (!analysisJobId) return null;
-      const res = await fetch(`/api/templates/analyze/${analysisJobId}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to check job status");
-      return res.json();
-    },
-    enabled: !!analysisJobId,
-    refetchInterval: analysisJobId ? 2000 : false,
-  });
-
-  // Handle analysis completion
-  useEffect(() => {
-    if (analysisJob?.status === "completed") {
-      toast({
-        title: "Template created!",
-        description: "Your document has been analyzed and a new template was created.",
-      });
-      setAnalysisJobId(null);
-      setUploadDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
-    } else if (analysisJob?.status === "failed") {
-      toast({
-        title: "Analysis failed",
-        description: analysisJob.error || "Could not analyze the document. Please try again.",
-        variant: "destructive",
-      });
-      setAnalysisJobId(null);
-    }
-  }, [analysisJob?.status]);
-
-  // Mutation for setting template as default
-  const setDefaultMutation = useMutation({
-    mutationFn: async (templateId: string) => {
-      const res = await fetch(`/api/templates/${templateId}/set-default`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to set default template");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Default template updated" });
-      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to update default", variant: "destructive" });
-    },
-  });
-
-  const createTemplateMutation = useMutation({
-    mutationFn: async (data: typeof newTemplate) => {
-      const res = await apiRequest("POST", "/api/templates", {
-        name: data.name,
-        type: data.type,
-        tradeType: data.tradeType || "general",
-        familyKey: `custom-${data.type}-${Date.now()}`,
-        styling: { brandColor: "#6366f1" },
-        sections: { showHeader: true, showLineItems: true, showTotals: true, showTerms: true },
-        defaults: {
-          title: data.title || data.name,
-          description: data.description,
-          terms: data.terms,
-          gstEnabled: true,
-        },
-        defaultLineItems: [],
-        isDefault: false,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Template created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
-      setCreateDialogOpen(false);
-      setNewTemplate({ name: "", type: "quote", tradeType: "general", title: "", description: "", terms: "" });
-    },
-    onError: () => {
-      toast({ title: "Failed to create template", variant: "destructive" });
-    },
-  });
-
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("templateType", uploadType);
-      formData.append("tradeType", user?.tradeType || "general");
-
-      const res = await fetch("/api/templates/analyze", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Upload failed");
-      }
-
-      const data = await res.json();
-      setAnalysisJobId(data.jobId);
-      toast({
-        title: "Analyzing document...",
-        description: "AI is analyzing your document to create a template. This may take a moment.",
-      });
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Could not upload the file",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const TEMPLATE_TYPES = [
-    { type: "quote", name: "Quote Templates", description: "Pre-configured quote formats", icon: FileText },
-    { type: "invoice", name: "Invoice Templates", description: "Standard invoice layouts", icon: Receipt },
-    { type: "job", name: "Job Templates", description: "Default settings for new jobs", icon: ClipboardList },
-  ];
-
-  const getTemplatesByType = (type: string) => templates.filter((t) => t.type === type);
-
-  if (templatesLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold">Document Templates</h2>
-          <p className="text-sm text-muted-foreground">
-            Manage templates for quotes, invoices, and jobs
-            {user?.tradeType && <span className="ml-1">(filtered for {user.tradeType})</span>}
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button onClick={() => setCreateDialogOpen(true)} variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Template
-          </Button>
-          <Button onClick={() => setUploadDialogOpen(true)} variant="default">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Document
-          </Button>
-        </div>
-      </div>
-
-      {/* Create Template Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" />
-              Create New Template
-            </DialogTitle>
-            <DialogDescription>
-              Create a custom template for your quotes, invoices, or jobs.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Template Name</Label>
-              <Input
-                placeholder="e.g., My Custom Quote"
-                value={newTemplate.name}
-                onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Template Type</Label>
-              <Select
-                value={newTemplate.type}
-                onValueChange={(v) => setNewTemplate({ ...newTemplate, type: v as "quote" | "invoice" | "job" })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="quote">Quote</SelectItem>
-                  <SelectItem value="invoice">Invoice</SelectItem>
-                  <SelectItem value="job">Job</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Default Title</Label>
-              <Input
-                placeholder="e.g., Professional Services Quote"
-                value={newTemplate.title}
-                onChange={(e) => setNewTemplate({ ...newTemplate, title: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Description (optional)</Label>
-              <Input
-                placeholder="Brief description of services"
-                value={newTemplate.description}
-                onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Terms & Conditions (optional)</Label>
-              <Input
-                placeholder="e.g., Payment due within 14 days"
-                value={newTemplate.terms}
-                onChange={(e) => setNewTemplate({ ...newTemplate, terms: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createTemplateMutation.mutate(newTemplate)}
-              disabled={!newTemplate.name || createTemplateMutation.isPending}
-            >
-              {createTemplateMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Template"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Document Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI Template Creator
-            </DialogTitle>
-            <DialogDescription>
-              Upload an existing quote or invoice (PDF or image) and AI will analyze it to create a matching template.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Document Type</Label>
-              <Select value={uploadType} onValueChange={(v) => setUploadType(v as "quote" | "invoice")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="quote">Quote</SelectItem>
-                  <SelectItem value="invoice">Invoice</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div 
-              className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover-elevate transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUpload(file);
-                }}
-              />
-              {uploading || analysisJobId ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="font-medium">
-                    {uploading ? "Uploading..." : "AI is analyzing your document..."}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    This may take up to 30 seconds
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                  <p className="font-medium">Drop your document here</p>
-                  <p className="text-sm text-muted-foreground">or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Supports PDF, PNG, JPG (max 10MB)
-                  </p>
-                </>
-              )}
-            </div>
-
-            <div className="bg-muted/50 rounded-lg p-3 text-sm">
-              <p className="font-medium mb-1 flex items-center gap-1">
-                <Sparkles className="h-4 w-4" />
-                What AI extracts:
-              </p>
-              <ul className="text-muted-foreground space-y-1 text-xs">
-                <li>• Brand colors and styling</li>
-                <li>• Logo placement and layout</li>
-                <li>• Line item columns and structure</li>
-                <li>• Terms, payment details, signatures</li>
-              </ul>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
-          {TEMPLATE_TYPES.map(({ type, name, description, icon: Icon }) => {
-            const typeTemplates = getTemplatesByType(type);
-            const isExpanded = expandedType === type;
-
-            return (
-              <Collapsible
-                key={type}
-                open={isExpanded}
-                onOpenChange={(open) => setExpandedType(open ? type : null)}
-              >
-                <Card data-testid={`card-document-${type}`}>
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center"
-                            style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-                          >
-                            <Icon className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{name}</CardTitle>
-                            <CardDescription>{description}</CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary">
-                            {typeTemplates.length} template{typeTemplates.length !== 1 ? "s" : ""}
-                          </Badge>
-                          {isExpanded ? (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <div className="border-t pt-4 space-y-2">
-                        {typeTemplates.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No {type} templates available
-                          </p>
-                        ) : (
-                          typeTemplates.map((template) => (
-                            <div
-                              key={template.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer ${
-                                selectedTemplate?.id === template.id
-                                  ? "border-primary bg-primary/5"
-                                  : "bg-muted/30 hover-elevate"
-                              }`}
-                              onClick={() => setSelectedTemplate(template)}
-                              data-testid={`template-item-${template.id}`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-medium truncate">{template.name}</p>
-                                  {template.tradeType && (
-                                    <Badge variant="secondary" className="text-xs capitalize">
-                                      {template.tradeType}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {template.isDefault ? (
-                                  <Badge variant="default" className="text-xs">
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Default
-                                  </Badge>
-                                ) : (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-xs h-7"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDefaultMutation.mutate(template.id);
-                                    }}
-                                    disabled={setDefaultMutation.isPending}
-                                  >
-                                    {setDefaultMutation.isPending ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Star className="h-3 w-3 mr-1" />
-                                    )}
-                                    Set Default
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTemplate(template);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            );
-          })}
-        </div>
-
-        <div className="lg:sticky lg:top-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-base">Live Preview</CardTitle>
-              </div>
-              <CardDescription>
-                {selectedTemplate
-                  ? `Previewing: ${selectedTemplate.name}`
-                  : "Select a template to preview"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                {selectedTemplate ? (
-                  selectedTemplate.type === "job" ? (
-                    // Job templates show settings preview, not a document
-                    <div className="space-y-4">
-                      <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <ClipboardList className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold">{selectedTemplate.name}</h3>
-                        </div>
-                        {(() => {
-                          const defaults = selectedTemplate.defaults as Record<string, unknown> || {};
-                          return (
-                            <>
-                              {defaults.description && (
-                                <p className="text-sm text-muted-foreground">{String(defaults.description)}</p>
-                              )}
-                              <div className="grid grid-cols-2 gap-3 pt-2">
-                                {defaults.estimatedHours && (
-                                  <div className="bg-background rounded p-2">
-                                    <p className="text-xs text-muted-foreground">Estimated Hours</p>
-                                    <p className="font-medium">{String(defaults.estimatedHours)}h</p>
-                                  </div>
-                                )}
-                                {defaults.priority && (
-                                  <div className="bg-background rounded p-2">
-                                    <p className="text-xs text-muted-foreground">Priority</p>
-                                    <p className="font-medium capitalize">{String(defaults.priority)}</p>
-                                  </div>
-                                )}
-                              </div>
-                              {defaults.notes && (
-                                <div className="bg-background rounded p-2 mt-2">
-                                  <p className="text-xs text-muted-foreground mb-1">Default Notes</p>
-                                  <p className="text-sm">{String(defaults.notes)}</p>
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center">
-                        Job templates define default settings when creating new jobs
-                      </p>
-                    </div>
-                  ) : (
-                    <DocumentPreview template={selectedTemplate} stylePreset={defaultPreset} />
-                  )
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                    <FileText className="h-12 w-12 mb-4 opacity-50" />
-                    <p className="text-sm">Click a template to see preview</p>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function TemplatesHub() {
-  const getInitialTab = () => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const tabParam = searchParams.get("tab");
-    if (tabParam && ["styles", "components", "documents", "forms"].includes(tabParam)) {
-      return tabParam;
-    }
-    return "styles";
-  };
-
-  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
-  const [autoSelectFirstTemplate, setAutoSelectFirstTemplate] = useState(() => {
-    // Check URL for auto-select flag on initial render
-    const params = new URLSearchParams(window.location.search);
-    return params.get("autoSelect") === "true";
-  });
-
-  // Sync tab state with URL to persist across remounts
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tab);
-    window.history.replaceState({}, "", url.toString());
-  };
-
-  const handleNavigateToDocumentsWithPreview = () => {
-    // Use URL params to persist the auto-select flag across potential re-mounts
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", "documents");
-    url.searchParams.set("autoSelect", "true");
-    window.history.replaceState({}, "", url.toString());
-    
-    setActiveTab("documents");
-    setAutoSelectFirstTemplate(true);
-  };
-  
-  // Clear URL param after auto-select completes
-  const handleAutoSelectComplete = () => {
-    setAutoSelectFirstTemplate(false);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("autoSelect");
-    window.history.replaceState({}, "", url.toString());
-  };
-
   return (
     <PageShell>
       <PageHeader
         title="Templates Hub"
-        subtitle="Manage styles, components, and document templates"
-        leading={<Layers className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />}
+        subtitle="Customize your document styles with live preview"
+        leading={<Palette className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />}
       />
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid" data-testid="tabs-list">
-          <TabsTrigger value="styles" className="gap-2" data-testid="tab-styles">
-            <Palette className="h-4 w-4 hidden sm:block" />
-            Styles
-          </TabsTrigger>
-          <TabsTrigger value="components" className="gap-2" data-testid="tab-components">
-            <Layers className="h-4 w-4 hidden sm:block" />
-            Components
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-2" data-testid="tab-documents">
-            <FileText className="h-4 w-4 hidden sm:block" />
-            Documents
-          </TabsTrigger>
-          <TabsTrigger value="forms" className="gap-2" data-testid="tab-forms">
-            <ClipboardList className="h-4 w-4 hidden sm:block" />
-            Forms
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="styles" className="mt-6">
-          <StylePresetsTab onNavigateToDocuments={handleNavigateToDocumentsWithPreview} />
-        </TabsContent>
-
-        <TabsContent value="components" className="mt-6">
-          <ComponentsTab />
-        </TabsContent>
-
-        <TabsContent value="documents" className="mt-6">
-          <DocumentsTab 
-            autoSelectFirst={autoSelectFirstTemplate} 
-            onAutoSelectComplete={handleAutoSelectComplete} 
-          />
-        </TabsContent>
-
-        <TabsContent value="forms" className="mt-6">
-          <CustomFormsPage />
-        </TabsContent>
-      </Tabs>
+      <div className="mt-6">
+        <StylePresetsWithPreview />
+      </div>
     </PageShell>
   );
 }
