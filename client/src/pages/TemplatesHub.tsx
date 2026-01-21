@@ -99,7 +99,8 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
-  const [navigateAfterSave, setNavigateAfterSave] = useState(false);
+  const navigateAfterSaveRef = useRef(false);
+  const [savingWithPreview, setSavingWithPreview] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -132,14 +133,17 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       toast({ title: "Style preset created" });
       setDialogOpen(false);
       resetForm();
+      setIsCreating(false);
+      setSavingWithPreview(false);
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-      if (navigateAfterSave && onNavigateToDocuments) {
-        setNavigateAfterSave(false);
+      if (navigateAfterSaveRef.current && onNavigateToDocuments) {
+        navigateAfterSaveRef.current = false;
         onNavigateToDocuments();
       }
     },
     onError: () => {
       toast({ title: "Failed to create preset", variant: "destructive" });
+      setSavingWithPreview(false);
     },
   });
 
@@ -151,14 +155,17 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       toast({ title: "Style preset updated" });
       setDialogOpen(false);
       resetForm();
+      setIsCreating(false);
+      setSavingWithPreview(false);
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-      if (navigateAfterSave && onNavigateToDocuments) {
-        setNavigateAfterSave(false);
+      if (navigateAfterSaveRef.current && onNavigateToDocuments) {
+        navigateAfterSaveRef.current = false;
         onNavigateToDocuments();
       }
     },
     onError: () => {
       toast({ title: "Failed to update preset", variant: "destructive" });
+      setSavingWithPreview(false);
     },
   });
 
@@ -232,12 +239,28 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
       isDefault: false,
     });
     setSelectedPreset(null);
-    setIsCreating(false);
+    // Note: isCreating is NOT reset here - callers control it separately
   };
 
   const openCreateDialog = () => {
+    setFormData({
+      name: "",
+      logoUrl: "",
+      primaryColor: "#1e40af",
+      accentColor: "#059669",
+      fontFamily: "Inter",
+      headerLayout: "standard",
+      footerLayout: "standard",
+      showLogo: true,
+      showBusinessDetails: true,
+      showBankDetails: true,
+      tableBorders: true,
+      alternateRowColors: true,
+      compactMode: false,
+      isDefault: false,
+    });
+    setSelectedPreset(null);
     setIsCreating(true);
-    resetForm();
     setDialogOpen(true);
   };
 
@@ -264,9 +287,8 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
   };
 
   const handleSave = (andNavigate = false) => {
-    if (andNavigate) {
-      setNavigateAfterSave(true);
-    }
+    navigateAfterSaveRef.current = andNavigate;
+    setSavingWithPreview(andNavigate);
     if (isCreating) {
       createMutation.mutate(formData);
     } else if (selectedPreset) {
@@ -691,7 +713,7 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
               disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
               data-testid="button-save-style"
             >
-              {(createMutation.isPending || updateMutation.isPending) && !navigateAfterSave && (
+              {(createMutation.isPending || updateMutation.isPending) && !savingWithPreview && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               {isCreating ? "Create" : "Save"}
@@ -701,7 +723,7 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
               disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
               data-testid="button-save-preview-style"
             >
-              {(createMutation.isPending || updateMutation.isPending) && navigateAfterSave && (
+              {(createMutation.isPending || updateMutation.isPending) && savingWithPreview && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               <Eye className="h-4 w-4 mr-2" />
@@ -1376,7 +1398,7 @@ function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate
   );
 }
 
-function DocumentsTab() {
+function DocumentsTab({ autoSelectFirst, onAutoSelectComplete }: { autoSelectFirst?: boolean; onAutoSelectComplete?: () => void }) {
   const { toast } = useToast();
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
@@ -1408,6 +1430,23 @@ function DocumentsTab() {
   });
 
   const defaultPreset = stylePresets.find((p) => p.isDefault) || stylePresets[0] || null;
+
+  // Auto-select first quote template when requested (after Save & Preview from Styles tab)
+  useEffect(() => {
+    // Only proceed if autoSelectFirst is true and templates have loaded
+    if (autoSelectFirst && !templatesLoading && templates.length > 0 && !selectedTemplate) {
+      // Find first quote template, or fall back to first template
+      const quoteTemplate = templates.find((t) => t.type === "quote") || templates[0];
+      if (quoteTemplate) {
+        setSelectedTemplate(quoteTemplate);
+        // Expand the quote section if the template is a quote
+        if (quoteTemplate.type === "quote") {
+          setExpandedType("quote");
+        }
+      }
+      onAutoSelectComplete?.();
+    }
+  }, [autoSelectFirst, templates, templatesLoading, selectedTemplate, onAutoSelectComplete]);
 
   // Poll for analysis job completion
   const { data: analysisJob } = useQuery({
@@ -1814,6 +1853,30 @@ export default function TemplatesHub() {
   };
 
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
+  const [autoSelectFirstTemplate, setAutoSelectFirstTemplate] = useState(() => {
+    // Check URL for auto-select flag on initial render
+    const params = new URLSearchParams(window.location.search);
+    return params.get("autoSelect") === "true";
+  });
+
+  const handleNavigateToDocumentsWithPreview = () => {
+    // Use URL params to persist the auto-select flag across potential re-mounts
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "documents");
+    url.searchParams.set("autoSelect", "true");
+    window.history.replaceState({}, "", url.toString());
+    
+    setActiveTab("documents");
+    setAutoSelectFirstTemplate(true);
+  };
+  
+  // Clear URL param after auto-select completes
+  const handleAutoSelectComplete = () => {
+    setAutoSelectFirstTemplate(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("autoSelect");
+    window.history.replaceState({}, "", url.toString());
+  };
 
   return (
     <PageShell>
@@ -1844,7 +1907,7 @@ export default function TemplatesHub() {
         </TabsList>
 
         <TabsContent value="styles" className="mt-6">
-          <StylePresetsTab onNavigateToDocuments={() => setActiveTab("documents")} />
+          <StylePresetsTab onNavigateToDocuments={handleNavigateToDocumentsWithPreview} />
         </TabsContent>
 
         <TabsContent value="components" className="mt-6">
@@ -1852,7 +1915,10 @@ export default function TemplatesHub() {
         </TabsContent>
 
         <TabsContent value="documents" className="mt-6">
-          <DocumentsTab />
+          <DocumentsTab 
+            autoSelectFirst={autoSelectFirstTemplate} 
+            onAutoSelectComplete={handleAutoSelectComplete} 
+          />
         </TabsContent>
 
         <TabsContent value="forms" className="mt-6">
