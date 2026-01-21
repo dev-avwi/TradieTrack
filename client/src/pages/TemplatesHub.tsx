@@ -1800,6 +1800,14 @@ export default function TemplatesHub() {
     return params.get("autoSelect") === "true";
   });
 
+  // Sync tab state with URL to persist across remounts
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState({}, "", url.toString());
+  };
+
   const handleNavigateToDocumentsWithPreview = () => {
     // Use URL params to persist the auto-select flag across potential re-mounts
     const url = new URL(window.location.href);
@@ -1827,7 +1835,7 @@ export default function TemplatesHub() {
         leading={<Layers className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid" data-testid="tabs-list">
           <TabsTrigger value="styles" className="gap-2" data-testid="tab-styles">
             <Palette className="h-4 w-4 hidden sm:block" />
