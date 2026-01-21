@@ -3509,8 +3509,10 @@ export const convertPdfToImage = async (pdfBuffer: Buffer): Promise<Buffer> => {
       </html>
     `;
     
+    // Use domcontentloaded instead of networkidle0 to avoid frame detachment issues
+    // The PDF rendering happens client-side, so we just need the DOM ready
     await page.setContent(html, { 
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
     

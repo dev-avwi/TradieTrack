@@ -59,7 +59,8 @@ import type { StylePreset, RateCard, LineItemCatalog, CustomForm } from "@shared
 import { format } from "date-fns";
 import LiveDocumentPreview from "@/components/LiveDocumentPreview";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
-import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
+import { TemplateId, TemplateCustomization, DOCUMENT_TEMPLATES, DOCUMENT_ACCENT_COLOR } from "@/lib/document-templates";
+import { Check, Settings } from "lucide-react";
 
 const FONT_FAMILIES = [
   { value: "Inter", label: "Inter" },
@@ -95,29 +96,128 @@ function ColorSwatch({ color, size = "sm" }: { color: string; size?: "sm" | "md"
   );
 }
 
+// Mini template preview component
+function MiniTemplatePreview({ templateId, accentColor }: { templateId: TemplateId; accentColor: string }) {
+  const template = DOCUMENT_TEMPLATES[templateId];
+  
+  return (
+    <div className="w-full aspect-[8.5/11] bg-white rounded border border-border shadow-sm p-2 text-[6px] overflow-hidden">
+      {/* Header section */}
+      <div 
+        className="flex justify-between items-start mb-2 pb-1.5"
+        style={{ 
+          borderBottom: template.showHeaderDivider 
+            ? `${template.headerBorderWidth} solid ${accentColor}` 
+            : 'none' 
+        }}
+      >
+        <div>
+          <div 
+            className="w-8 h-3 rounded-sm mb-0.5"
+            style={{ backgroundColor: accentColor + '30' }}
+          />
+          <div className="w-12 h-1 bg-muted rounded-sm" />
+        </div>
+        <div 
+          className="text-right font-bold"
+          style={{ color: accentColor, fontSize: '8px' }}
+        >
+          INVOICE
+        </div>
+      </div>
+      
+      {/* Client info */}
+      <div className="flex gap-2 mb-2">
+        <div className="flex-1">
+          <div className="w-8 h-1 bg-muted-foreground/30 rounded-sm mb-0.5" />
+          <div className="w-10 h-1 bg-muted rounded-sm" />
+        </div>
+        <div className="flex-1">
+          <div className="w-6 h-1 bg-muted-foreground/30 rounded-sm mb-0.5" />
+          <div className="w-8 h-1 bg-muted rounded-sm" />
+        </div>
+      </div>
+      
+      {/* Table section */}
+      <div className="mb-2">
+        <div 
+          className="flex gap-1 px-1 py-0.5 mb-0.5"
+          style={{ 
+            backgroundColor: template.tableStyle === 'minimal' ? 'transparent' : accentColor,
+            borderBottom: template.tableStyle === 'minimal' ? `1px solid ${accentColor}` : 'none',
+          }}
+        >
+          <div 
+            className="flex-1 h-1 rounded-sm"
+            style={{ 
+              backgroundColor: template.tableStyle === 'minimal' ? '#666' : 'rgba(255,255,255,0.8)'
+            }}
+          />
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div 
+            key={i}
+            className="flex gap-1 px-1 py-0.5"
+            style={{ 
+              backgroundColor: template.tableStyle === 'striped' && i % 2 === 0 ? '#f9fafb' : 'transparent',
+              borderBottom: template.tableStyle === 'bordered' ? '1px solid #eee' : 'none',
+            }}
+          >
+            <div className="flex-1 h-1 bg-muted rounded-sm" />
+            <div className="w-3 h-1 bg-muted rounded-sm" />
+          </div>
+        ))}
+      </div>
+      
+      {/* Totals */}
+      <div className="flex justify-end mb-2">
+        <div className="w-12">
+          <div className="flex justify-between mb-0.5">
+            <div className="w-4 h-1 bg-muted rounded-sm" />
+            <div className="w-3 h-1 bg-muted rounded-sm" />
+          </div>
+          <div 
+            className="flex justify-between pt-0.5"
+            style={{ borderTop: `1px solid ${accentColor}` }}
+          >
+            <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: accentColor }} />
+            <div className="w-4 h-1 rounded-sm" style={{ backgroundColor: accentColor }} />
+          </div>
+        </div>
+      </div>
+      
+      {/* Notes section */}
+      <div 
+        className="p-1"
+        style={{
+          borderLeft: template.noteStyle === 'bordered' ? `2px solid ${accentColor}` : 'none',
+          backgroundColor: template.noteStyle === 'bordered' ? '#fafafa' : 
+                          template.noteStyle === 'highlighted' ? accentColor + '10' : 'transparent',
+          borderRadius: template.noteStyle === 'highlighted' ? '2px' : 
+                        template.noteStyle === 'bordered' ? '0 2px 2px 0' : '0',
+          borderTop: template.noteStyle === 'simple' ? '1px solid #e5e7eb' : 'none',
+        }}
+      >
+        <div className="w-8 h-1 bg-muted rounded-sm" />
+      </div>
+    </div>
+  );
+}
+
 function StylePresetsWithPreview() {
   const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
-  const [previewPreset, setPreviewPreset] = useState<StylePreset | null>(null);
   const [previewType, setPreviewType] = useState<"quote" | "invoice">("quote");
-  const [isCreating, setIsCreating] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    logoUrl: "",
-    primaryColor: "#1f3a5f",
-    accentColor: "#1f3a5f",
-    fontFamily: "Inter",
-    headerLayout: "standard",
-    footerLayout: "standard",
-    showLogo: true,
-    showBusinessDetails: true,
-    showBankDetails: true,
-    tableBorders: true,
-    alternateRowColors: true,
-    compactMode: false,
-    isDefault: false,
+  const [selectedTemplateId, setSelectedTemplateId] = useState<TemplateId>('professional');
+  
+  // Customization state
+  const [customization, setCustomization] = useState<TemplateCustomization>({
+    tableStyle: 'bordered',
+    noteStyle: 'bordered',
+    headerBorderWidth: '2px',
+    showHeaderDivider: true,
+    bodyWeight: 600,
+    headingWeight: 700,
+    accentColor: DOCUMENT_ACCENT_COLOR,
   });
 
   const { data: business } = useBusinessSettings();
@@ -126,169 +226,53 @@ function StylePresetsWithPreview() {
     queryKey: ["/api/style-presets"],
   });
 
-  // Auto-select default preset for preview
+  // Get default preset accent color for preview
+  const defaultPreset = presets.find(p => p.isDefault) || presets[0];
+  const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
+
+  // Update customization when template changes
   useEffect(() => {
-    if (presets.length > 0 && !previewPreset) {
-      const defaultPreset = presets.find(p => p.isDefault) || presets[0];
-      setPreviewPreset(defaultPreset);
+    const template = DOCUMENT_TEMPLATES[selectedTemplateId];
+    if (template) {
+      setCustomization(prev => ({
+        ...prev,
+        tableStyle: template.tableStyle,
+        noteStyle: template.noteStyle,
+        headerBorderWidth: template.headerBorderWidth as '1px' | '2px' | '3px' | '4px',
+        showHeaderDivider: template.showHeaderDivider,
+        bodyWeight: template.bodyWeight as 400 | 500 | 600 | 700,
+        headingWeight: template.headingWeight as 600 | 700 | 800,
+      }));
     }
-  }, [presets, previewPreset]);
+  }, [selectedTemplateId]);
 
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      return apiRequest("POST", "/api/style-presets", data);
-    },
-    onSuccess: () => {
-      toast({ title: "Style preset created" });
-      setDialogOpen(false);
-      resetForm();
-      setIsCreating(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to create preset", variant: "destructive" });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      return apiRequest("PATCH", `/api/style-presets/${id}`, data);
-    },
-    onSuccess: () => {
-      toast({ title: "Style preset updated" });
-      setDialogOpen(false);
-      resetForm();
-      setIsCreating(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to update preset", variant: "destructive" });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/style-presets/${id}`);
-    },
-    onSuccess: () => {
-      toast({ title: "Style preset deleted" });
-      setDeleteDialogOpen(false);
-      setSelectedPreset(null);
-      if (previewPreset?.id === selectedPreset?.id) {
-        setPreviewPreset(null);
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete preset", variant: "destructive" });
-    },
-  });
-
-  const setDefaultMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("PATCH", `/api/style-presets/${id}`, { isDefault: true });
-    },
-    onSuccess: () => {
-      toast({ title: "Default style updated" });
-      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to set default", variant: "destructive" });
-    },
-  });
-
-  const createDefaultPresetMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/style-presets", {
-        name: "Professional Navy",
-        primaryColor: "#1f3a5f",
-        accentColor: "#1f3a5f",
-        fontFamily: "Inter",
-        headerLayout: "standard",
-        footerLayout: "standard",
-        showLogo: true,
-        showBusinessDetails: true,
-        showBankDetails: true,
-        tableBorders: true,
-        alternateRowColors: true,
-        compactMode: false,
-        isDefault: true,
+  // Sync template selection to style preset
+  const updateTemplateMutation = useMutation({
+    mutationFn: async (templateId: TemplateId) => {
+      if (!defaultPreset) return;
+      return apiRequest("PATCH", `/api/style-presets/${defaultPreset.id}`, {
+        headerLayout: templateId,
       });
     },
     onSuccess: () => {
-      toast({ title: "Default style created" });
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      logoUrl: "",
-      primaryColor: "#1f3a5f",
-      accentColor: "#1f3a5f",
-      fontFamily: "Inter",
-      headerLayout: "standard",
-      footerLayout: "standard",
-      showLogo: true,
-      showBusinessDetails: true,
-      showBankDetails: true,
-      tableBorders: true,
-      alternateRowColors: true,
-      compactMode: false,
-      isDefault: false,
-    });
-    setSelectedPreset(null);
+  const handleSelectTemplate = (templateId: TemplateId) => {
+    setSelectedTemplateId(templateId);
+    updateTemplateMutation.mutate(templateId);
+    toast({ title: `${DOCUMENT_TEMPLATES[templateId].name} template selected` });
   };
 
-  const openCreateDialog = () => {
-    resetForm();
-    setIsCreating(true);
-    setDialogOpen(true);
+  const updateCustomization = (updates: Partial<TemplateCustomization>) => {
+    setCustomization(prev => ({ ...prev, ...updates }));
   };
 
-  const openEditDialog = (preset: StylePreset) => {
-    setIsCreating(false);
-    setSelectedPreset(preset);
-    setFormData({
-      name: preset.name,
-      logoUrl: preset.logoUrl || "",
-      primaryColor: preset.primaryColor || "#1f3a5f",
-      accentColor: preset.accentColor || "#1f3a5f",
-      fontFamily: preset.fontFamily || "Inter",
-      headerLayout: preset.headerLayout || "standard",
-      footerLayout: preset.footerLayout || "standard",
-      showLogo: preset.showLogo ?? true,
-      showBusinessDetails: preset.showBusinessDetails ?? true,
-      showBankDetails: preset.showBankDetails ?? true,
-      tableBorders: preset.tableBorders ?? true,
-      alternateRowColors: preset.alternateRowColors ?? true,
-      compactMode: preset.compactMode ?? false,
-      isDefault: preset.isDefault ?? false,
-    });
-    setDialogOpen(true);
-  };
-
-  const handleSave = () => {
-    if (isCreating) {
-      createMutation.mutate(formData);
-    } else if (selectedPreset) {
-      updateMutation.mutate({ id: selectedPreset.id, data: formData });
-    }
-  };
-
-  // Build template customization from preset for preview
-  const buildTemplateCustomization = (preset: StylePreset): TemplateCustomization => ({
-    primaryColor: preset.primaryColor || "#1f3a5f",
-    accentColor: preset.accentColor || "#1f3a5f",
-    fontFamily: preset.fontFamily || "Inter",
-    logoUrl: preset.logoUrl,
-    showLogo: preset.showLogo ?? true,
-    showBusinessDetails: preset.showBusinessDetails ?? true,
-    showBankDetails: preset.showBankDetails ?? true,
-    tableBorders: preset.tableBorders ?? true,
-    alternateRowColors: preset.alternateRowColors ?? true,
-    compactMode: preset.compactMode ?? false,
+  // Build template customization for live preview
+  const buildTemplateCustomization = (): TemplateCustomization => ({
+    ...customization,
+    accentColor: customization.accentColor || DOCUMENT_ACCENT_COLOR,
   });
 
   if (isLoading) {
@@ -299,362 +283,349 @@ function StylePresetsWithPreview() {
     );
   }
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      {/* Left side: Style presets list */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-lg font-semibold">Document Styles</h2>
-            <p className="text-sm text-muted-foreground">
-              Click a style to preview it
-            </p>
-          </div>
-          <Button onClick={openCreateDialog} size="sm" data-testid="button-create-style">
-            <Plus className="h-4 w-4 mr-2" />
-            New Style
-          </Button>
-        </div>
+  const templateIds: TemplateId[] = ['professional', 'modern', 'minimal'];
 
-        {presets.length === 0 ? (
-          <Card className="p-6 text-center">
-            <Palette className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-semibold mb-2">No style presets yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create your first style to customize your documents
-            </p>
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <Button onClick={() => createDefaultPresetMutation.mutate()} variant="default" size="sm">
-                {createDefaultPresetMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Use Default Style
-              </Button>
-              <Button onClick={openCreateDialog} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Custom
-              </Button>
+  return (
+    <div className="space-y-8">
+      {/* Main layout: Template cards + Customization on left, Preview on right */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Left side: Template selection + Customization */}
+        <div className="space-y-6">
+          {/* Template Style Cards */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Template Style</h2>
+              <p className="text-sm text-muted-foreground">
+                Choose a base template for your quotes and invoices
+              </p>
             </div>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {presets.map((preset) => (
-              <Card 
-                key={preset.id} 
-                className={`cursor-pointer transition-all ${previewPreset?.id === preset.id ? 'ring-2 ring-primary' : 'hover-elevate'}`}
-                onClick={() => setPreviewPreset(preset)}
-                data-testid={`card-style-${preset.id}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="flex gap-1">
-                        <ColorSwatch color={preset.primaryColor || "#1f3a5f"} />
-                        <ColorSwatch color={preset.accentColor || "#1f3a5f"} />
-                      </div>
-                      <div className="min-w-0 flex-1">
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {templateIds.map((templateId) => {
+                const template = DOCUMENT_TEMPLATES[templateId];
+                const isActive = selectedTemplateId === templateId;
+                
+                return (
+                  <Card 
+                    key={templateId}
+                    className={`cursor-pointer transition-all ${isActive ? 'ring-2 ring-primary' : 'hover-elevate'}`}
+                    onClick={() => handleSelectTemplate(templateId)}
+                    data-testid={`card-template-${templateId}`}
+                  >
+                    <CardContent className="p-3 space-y-3">
+                      {/* Mini preview */}
+                      <MiniTemplatePreview templateId={templateId} accentColor={accentColor} />
+                      
+                      {/* Template info */}
+                      <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{preset.name}</span>
-                          {preset.isDefault && (
-                            <Badge variant="secondary" className="text-xs flex-shrink-0">
-                              <Star className="h-3 w-3 mr-1" />
-                              Default
+                          <span className="font-semibold text-sm">{template.name}</span>
+                          {isActive && (
+                            <Badge variant="default" className="text-xs">
+                              <Check className="h-3 w-3 mr-1" />
+                              Active
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">{preset.fontFamily || "Inter"}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {template.description}
+                        </p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {!preset.isDefault && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDefaultMutation.mutate(preset.id)}
-                          title="Set as default"
+                      
+                      {/* Action button */}
+                      {!isActive && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectTemplate(templateId);
+                          }}
                         >
-                          <Star className="h-4 w-4" />
+                          Select Template
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(preset)}
-                        data-testid={`button-edit-style-${preset.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedPreset(preset);
-                          setDeleteDialogOpen(true);
-                        }}
-                        data-testid={`button-delete-style-${preset.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Right side: Live preview */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-lg font-semibold">Live Preview</h2>
-            <p className="text-sm text-muted-foreground">
-              See how your documents will look
-            </p>
-          </div>
-          <Select value={previewType} onValueChange={(v) => setPreviewType(v as "quote" | "invoice")}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="quote">Quote</SelectItem>
-              <SelectItem value="invoice">Invoice</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Customise Template Panel */}
+          <Card data-testid="card-customise-template">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+                >
+                  <Settings className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Customise Template</CardTitle>
+                  <CardDescription>
+                    Fine-tune the {DOCUMENT_TEMPLATES[selectedTemplateId].name} template
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Table Style */}
+              <div className="space-y-2">
+                <Label>Table Style</Label>
+                <Select
+                  value={customization.tableStyle || 'bordered'}
+                  onValueChange={(value) => updateCustomization({ tableStyle: value as 'bordered' | 'striped' | 'minimal' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bordered">Bordered</SelectItem>
+                    <SelectItem value="striped">Striped</SelectItem>
+                    <SelectItem value="minimal">Minimal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Notes Style */}
+              <div className="space-y-2">
+                <Label>Notes Style</Label>
+                <Select
+                  value={customization.noteStyle || 'bordered'}
+                  onValueChange={(value) => updateCustomization({ noteStyle: value as 'bordered' | 'highlighted' | 'simple' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bordered">Bordered - Left accent bar</SelectItem>
+                    <SelectItem value="highlighted">Highlighted</SelectItem>
+                    <SelectItem value="simple">Simple</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Header Border Width */}
+              <div className="space-y-2">
+                <Label>Header Border Width</Label>
+                <Select
+                  value={customization.headerBorderWidth || '2px'}
+                  onValueChange={(value) => updateCustomization({ headerBorderWidth: value as '1px' | '2px' | '3px' | '4px' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0px">None</SelectItem>
+                    <SelectItem value="1px">Thin (1px)</SelectItem>
+                    <SelectItem value="2px">Medium (2px)</SelectItem>
+                    <SelectItem value="3px">Thick (3px)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Show Header Divider */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="showHeaderDivider">Show Header Divider</Label>
+                  <p className="text-xs text-muted-foreground">Display a line under the header</p>
+                </div>
+                <Switch
+                  id="showHeaderDivider"
+                  checked={customization.showHeaderDivider ?? true}
+                  onCheckedChange={(checked) => updateCustomization({ showHeaderDivider: checked })}
+                />
+              </div>
+
+              {/* Body Text Weight */}
+              <div className="space-y-2">
+                <Label>Body Text Weight</Label>
+                <Select
+                  value={String(customization.bodyWeight || 600)}
+                  onValueChange={(value) => updateCustomization({ bodyWeight: parseInt(value) as 400 | 500 | 600 | 700 })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="400">Normal (400)</SelectItem>
+                    <SelectItem value="500">Medium (500)</SelectItem>
+                    <SelectItem value="600">Semibold (600)</SelectItem>
+                    <SelectItem value="700">Bold (700)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Heading Weight */}
+              <div className="space-y-2">
+                <Label>Heading Weight</Label>
+                <Select
+                  value={String(customization.headingWeight || 700)}
+                  onValueChange={(value) => updateCustomization({ headingWeight: parseInt(value) as 600 | 700 | 800 })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="600">Semibold (600)</SelectItem>
+                    <SelectItem value="700">Bold (700)</SelectItem>
+                    <SelectItem value="800">Extrabold (800)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Accent Colour */}
+              <div className="space-y-2">
+                <Label>Accent Colour</Label>
+                <p className="text-xs text-muted-foreground">Used for headers, totals, and emphasis</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
+                    onChange={(e) => updateCustomization({ accentColor: e.target.value })}
+                    className="w-10 h-10 rounded-md border cursor-pointer"
+                  />
+                  <Input
+                    value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
+                    onChange={(e) => updateCustomization({ accentColor: e.target.value })}
+                    placeholder="#1e3a5f"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            {previewPreset && business ? (
-              <div className="bg-muted/30 p-4">
-                <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '600px', overflow: 'auto' }}>
-                  <LiveDocumentPreview
-                    documentType={previewType}
-                    business={{
-                      businessName: business.businessName || business.name || "Your Business",
-                      email: business.email || "email@example.com",
-                      phone: business.phone || "",
-                      address: business.address || "",
-                      abn: business.abn || "",
-                      logoUrl: business.logoUrl || "",
-                      bankName: business.bankName || "",
-                      bankBsb: business.bankBsb || "",
-                      bankAccount: business.bankAccount || "",
-                    }}
-                    client={{
-                      name: "Sample Client",
-                      email: "client@example.com",
-                      phone: "0400 000 000",
-                      address: "123 Sample Street, Sydney NSW 2000",
-                    }}
-                    lineItems={[
-                      { description: "Labour - Standard Rate", quantity: 4, unitPrice: 85, unit: "hour" },
-                      { description: "Materials and Supplies", quantity: 1, unitPrice: 150, unit: "item" },
-                    ]}
-                    gstEnabled={business.gstEnabled ?? true}
-                    templateId={"modern-professional" as TemplateId}
-                    templateCustomization={buildTemplateCustomization(previewPreset)}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center py-16 text-center">
-                <div>
-                  <Eye className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    {presets.length === 0 ? "Create a style to see preview" : "Select a style to preview"}
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Edit/Create Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {isCreating ? "Create Style Preset" : "Edit Style Preset"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Professional Blue"
-                data-testid="input-style-name"
-              />
+        {/* Right side: Live preview */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold">Live Preview</h2>
+              <p className="text-sm text-muted-foreground">
+                See how your documents will look
+              </p>
             </div>
-
-            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md">
-              Your business logo is pulled from Business Settings automatically.
-            </p>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="primaryColor">Primary Color</Label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    id="primaryColor"
-                    value={formData.primaryColor}
-                    onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                    className="w-10 h-10 rounded-md border cursor-pointer"
-                  />
-                  <Input
-                    value={formData.primaryColor}
-                    onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="accentColor">Accent Color</Label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    id="accentColor"
-                    value={formData.accentColor}
-                    onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
-                    className="w-10 h-10 rounded-md border cursor-pointer"
-                  />
-                  <Input
-                    value={formData.accentColor}
-                    onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Font Family</Label>
-              <Select
-                value={formData.fontFamily}
-                onValueChange={(value) => setFormData({ ...formData, fontFamily: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_FAMILIES.map((font) => (
-                    <SelectItem key={font.value} value={font.value}>
-                      {font.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Display Options</Label>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showLogo" className="font-normal">Show Logo</Label>
-                  <Switch
-                    id="showLogo"
-                    checked={formData.showLogo}
-                    onCheckedChange={(checked) => setFormData({ ...formData, showLogo: checked })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showBusinessDetails" className="font-normal">Show Business Details</Label>
-                  <Switch
-                    id="showBusinessDetails"
-                    checked={formData.showBusinessDetails}
-                    onCheckedChange={(checked) => setFormData({ ...formData, showBusinessDetails: checked })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showBankDetails" className="font-normal">Show Bank Details</Label>
-                  <Switch
-                    id="showBankDetails"
-                    checked={formData.showBankDetails}
-                    onCheckedChange={(checked) => setFormData({ ...formData, showBankDetails: checked })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="tableBorders" className="font-normal">Table Borders</Label>
-                  <Switch
-                    id="tableBorders"
-                    checked={formData.tableBorders}
-                    onCheckedChange={(checked) => setFormData({ ...formData, tableBorders: checked })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="alternateRowColors" className="font-normal">Alternate Row Colors</Label>
-                  <Switch
-                    id="alternateRowColors"
-                    checked={formData.alternateRowColors}
-                    onCheckedChange={(checked) => setFormData({ ...formData, alternateRowColors: checked })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="compactMode" className="font-normal">Compact Mode</Label>
-                  <Switch
-                    id="compactMode"
-                    checked={formData.compactMode}
-                    onCheckedChange={(checked) => setFormData({ ...formData, compactMode: checked })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between border-t pt-4">
-              <Label htmlFor="isDefault" className="font-medium">Set as Default</Label>
-              <Switch
-                id="isDefault"
-                checked={formData.isDefault}
-                onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked })}
-              />
-            </div>
+            <Select value={previewType} onValueChange={(v) => setPreviewType(v as "quote" | "invoice")}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="quote">Quote</SelectItem>
+                <SelectItem value="invoice">Invoice</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
-              data-testid="button-save-style"
-            >
-              {(createMutation.isPending || updateMutation.isPending) && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {business ? (
+                <div className="bg-muted/30 p-4">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '700px', overflow: 'auto' }}>
+                    <LiveDocumentPreview
+                      type={previewType}
+                      documentNumber={previewType === 'quote' ? 'Q-2024-001' : 'INV-2024-001'}
+                      title={previewType === 'quote' ? 'Quote' : 'Invoice'}
+                      date={new Date().toISOString()}
+                      validUntil={previewType === 'quote' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : undefined}
+                      dueDate={previewType === 'invoice' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() : undefined}
+                      business={{
+                        businessName: business.businessName || business.name || "Your Business",
+                        email: business.email || "email@example.com",
+                        phone: business.phone || "",
+                        address: business.address || "",
+                        abn: business.abn || "",
+                        logoUrl: business.logoUrl || "",
+                      }}
+                      client={{
+                        name: "Sample Client",
+                        email: "client@example.com",
+                        phone: "0400 000 000",
+                        address: "123 Sample Street, Sydney NSW 2000",
+                      }}
+                      lineItems={[
+                        { description: "Labour - Standard Rate", quantity: 4, unitPrice: 85 },
+                        { description: "Materials and Supplies", quantity: 1, unitPrice: 150 },
+                        { description: "Site Preparation", quantity: 2, unitPrice: 65 },
+                      ]}
+                      notes="Thank you for your business. Payment is due within 14 days of invoice date."
+                      gstEnabled={business.gstEnabled ?? true}
+                      templateId={selectedTemplateId}
+                      templateCustomization={buildTemplateCustomization()}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-16 text-center">
+                  <div>
+                    <Eye className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Configure your business settings to see preview
+                    </p>
+                  </div>
+                </div>
               )}
-              {isCreating ? "Create Style" : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Style Preset</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{selectedPreset?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedPreset && deleteMutation.mutate(selectedPreset.id)}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Template Features Comparison Table */}
+      <Card data-testid="card-template-features">
+        <CardHeader>
+          <CardTitle className="text-lg">Template Features</CardTitle>
+          <CardDescription>Compare the built-in features of each template style</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-semibold">Feature</th>
+                  <th className="text-center py-3 px-4 font-semibold">Professional</th>
+                  <th className="text-center py-3 px-4 font-semibold">Modern</th>
+                  <th className="text-center py-3 px-4 font-semibold">Minimal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                <tr>
+                  <td className="py-3 px-4 text-muted-foreground">Default Table Style</td>
+                  <td className="py-3 px-4 text-center">Bordered</td>
+                  <td className="py-3 px-4 text-center">Striped</td>
+                  <td className="py-3 px-4 text-center">Minimal</td>
+                </tr>
+                <tr>
+                  <td className="py-3 px-4 text-muted-foreground">Header Divider</td>
+                  <td className="py-3 px-4 text-center">Yes (2px)</td>
+                  <td className="py-3 px-4 text-center">Yes (3px)</td>
+                  <td className="py-3 px-4 text-center">No</td>
+                </tr>
+                <tr>
+                  <td className="py-3 px-4 text-muted-foreground">Notes Style</td>
+                  <td className="py-3 px-4 text-center">Bordered</td>
+                  <td className="py-3 px-4 text-center">Highlighted</td>
+                  <td className="py-3 px-4 text-center">Simple</td>
+                </tr>
+                <tr>
+                  <td className="py-3 px-4 text-muted-foreground">Best For</td>
+                  <td className="py-3 px-4 text-center">
+                    <Badge variant="secondary">Traditional business</Badge>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <Badge variant="secondary">Modern trades</Badge>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <Badge variant="secondary">Clean aesthetic</Badge>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

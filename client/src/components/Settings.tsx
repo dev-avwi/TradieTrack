@@ -71,9 +71,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LogoUpload } from "./LogoUpload";
 import { useToast } from "@/hooks/use-toast";
 import DataSafetyBanner from "./DataSafetyBanner";
-import DocumentTemplateSelector from "./DocumentTemplateSelector";
-import { TemplateUploader } from "./TemplateUploader";
-import { SavedTemplates } from "./SavedTemplates";
 import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
 import { PRICING } from "@shared/schema";
 import { tradeCatalog, getTradeDefinition } from "@shared/tradeCatalog";
@@ -268,6 +265,12 @@ export default function Settings({
       ? localStorage.getItem('tradietrack-settings-tab') 
       : null;
     if (savedTab) {
+      // Templates tab was removed - clear invalid stored value
+      if (savedTab === 'templates') {
+        localStorage.removeItem('tradietrack-settings-tab');
+        setActiveTab(defaultTab);
+        return;
+      }
       // Staff can access account and support tabs only
       if (isTradie && savedTab !== 'support' && savedTab !== 'account') {
         setActiveTab('account');
@@ -796,17 +799,6 @@ export default function Settings({
               >
                 <Palette className="h-4 w-4 mr-1.5" />
                 Brand
-              </TabsTrigger>
-            )}
-            {canAccessBusinessSettings && (
-              <TabsTrigger 
-                value="templates" 
-                data-testid="tab-templates"
-                className="flex-shrink-0"
-              >
-                <FileText className="h-4 w-4 mr-1.5" />
-                <span className="hidden sm:inline">Templates</span>
-                <span className="sm:hidden">Docs</span>
               </TabsTrigger>
             )}
             {canAccessBusinessSettings && (
@@ -1589,24 +1581,6 @@ export default function Settings({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="templates" className="space-y-6">
-          <TemplateUploader 
-            onComplete={(templateId) => {
-              queryClient.invalidateQueries({ queryKey: ['/api/templates'] });
-            }}
-          />
-          
-          <SavedTemplates />
-          
-          <DocumentTemplateSelector
-            selectedTemplate={documentTemplate}
-            onSelectTemplate={setDocumentTemplate}
-            customization={templateCustomization}
-            onCustomizationChange={setTemplateCustomization}
-            brandColor={brandingData.color}
-          />
         </TabsContent>
 
         <TabsContent value="payment" className="space-y-6">
