@@ -26,6 +26,8 @@ import {
   type InsertLineItemCatalog,
   type RateCard,
   type InsertRateCard,
+  type StylePreset,
+  type InsertStylePreset,
   type IntegrationSettings,
   type InsertIntegrationSettings,
   type LoginCode,
@@ -94,6 +96,7 @@ import {
   documentTemplates,
   lineItemCatalog,
   rateCards,
+  stylePresets,
   integrationSettings,
   notifications,
   pushTokens,
@@ -2281,6 +2284,82 @@ export class PostgresStorage implements IStorage {
 
   async deleteRateCard(id: string): Promise<void> {
     await db.delete(rateCards).where(eq(rateCards.id, id));
+  }
+
+  // Style Presets implementation
+  async getStylePresets(userId: string): Promise<StylePreset[]> {
+    return await db.select().from(stylePresets)
+      .where(eq(stylePresets.userId, userId))
+      .orderBy(desc(stylePresets.createdAt));
+  }
+
+  async getStylePreset(id: string): Promise<StylePreset | null> {
+    const result = await db.select().from(stylePresets).where(eq(stylePresets.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async getDefaultStylePreset(userId: string): Promise<StylePreset | null> {
+    const result = await db.select().from(stylePresets)
+      .where(and(eq(stylePresets.userId, userId), eq(stylePresets.isDefault, true)))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async createStylePreset(data: InsertStylePreset & { userId: string }): Promise<StylePreset> {
+    // If this is being set as default, unset other defaults first
+    if (data.isDefault) {
+      await db.update(stylePresets)
+        .set({ isDefault: false })
+        .where(eq(stylePresets.userId, data.userId));
+    }
+    const result = await db.insert(stylePresets).values(data).returning();
+    return result[0];
+  }
+
+  async updateStylePreset(id: string, userId: string, data: Partial<InsertStylePreset>): Promise<StylePreset> {
+    // If setting as default, unset other defaults first
+    if (data.isDefault) {
+      await db.update(stylePresets)
+        .set({ isDefault: false })
+        .where(eq(stylePresets.userId, userId));
+    }
+    const result = await db
+      .update(stylePresets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(stylePresets.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteStylePreset(id: string): Promise<void> {
+    await db.delete(stylePresets).where(eq(stylePresets.id, id));
+  }
+
+  async seedDefaultStylePreset(userId: string): Promise<StylePreset> {
+    // Check if user already has a style preset
+    const existing = await this.getStylePresets(userId);
+    if (existing.length > 0) {
+      return existing[0];
+    }
+    // Create default style preset
+    return await this.createStylePreset({
+      userId,
+      name: 'Professional',
+      isDefault: true,
+      primaryColor: '#1e40af',
+      accentColor: '#059669',
+      fontFamily: 'Inter',
+      headerFontSize: '24px',
+      bodyFontSize: '14px',
+      headerLayout: 'standard',
+      footerLayout: 'standard',
+      showLogo: true,
+      showBusinessDetails: true,
+      showBankDetails: true,
+      tableBorders: true,
+      alternateRowColors: true,
+      compactMode: false,
+    });
   }
 
   // Template Analysis Jobs

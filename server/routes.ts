@@ -13764,6 +13764,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Style Presets Routes
+  app.get("/api/style-presets", requireAuth, async (req: any, res) => {
+    try {
+      const presets = await storage.getStylePresets(req.userId);
+      res.json(presets);
+    } catch (error) {
+      console.error("Error fetching style presets:", error);
+      res.status(500).json({ error: "Failed to fetch style presets" });
+    }
+  });
+
+  app.get("/api/style-presets/default", requireAuth, async (req: any, res) => {
+    try {
+      let preset = await storage.getDefaultStylePreset(req.userId);
+      if (!preset) {
+        // Create default preset if none exists
+        preset = await storage.seedDefaultStylePreset(req.userId);
+      }
+      res.json(preset);
+    } catch (error) {
+      console.error("Error fetching default style preset:", error);
+      res.status(500).json({ error: "Failed to fetch default style preset" });
+    }
+  });
+
+  app.get("/api/style-presets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const preset = await storage.getStylePreset(req.params.id);
+      if (!preset) {
+        return res.status(404).json({ error: "Style preset not found" });
+      }
+      res.json(preset);
+    } catch (error) {
+      console.error("Error fetching style preset:", error);
+      res.status(500).json({ error: "Failed to fetch style preset" });
+    }
+  });
+
+  app.post("/api/style-presets", requireAuth, async (req: any, res) => {
+    try {
+      const preset = await storage.createStylePreset({ ...req.body, userId: req.userId });
+      res.status(201).json(preset);
+    } catch (error) {
+      console.error("Error creating style preset:", error);
+      res.status(500).json({ error: "Failed to create style preset" });
+    }
+  });
+
+  app.patch("/api/style-presets/:id", requireAuth, async (req: any, res) => {
+    try {
+      const preset = await storage.updateStylePreset(req.params.id, req.userId, req.body);
+      res.json(preset);
+    } catch (error) {
+      console.error("Error updating style preset:", error);
+      res.status(500).json({ error: "Failed to update style preset" });
+    }
+  });
+
+  app.delete("/api/style-presets/:id", requireAuth, async (req: any, res) => {
+    try {
+      await storage.deleteStylePreset(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting style preset:", error);
+      res.status(500).json({ error: "Failed to delete style preset" });
+    }
+  });
+
   // Seed tradie templates endpoint
   app.post("/api/seed-tradie-templates", requireAuth, async (req: any, res) => {
     try {
