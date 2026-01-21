@@ -1317,12 +1317,31 @@ function DocumentsTab() {
     }
   }, [analysisJob?.status]);
 
+  // Mutation for setting template as default
+  const setDefaultMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const res = await fetch(`/api/templates/${templateId}/set-default`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to set default template");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Default template updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update default", variant: "destructive" });
+    },
+  });
+
   const handleUpload = async (file: File) => {
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("type", uploadType);
+      formData.append("templateType", uploadType);
       formData.append("tradeType", user?.tradeType || "general");
 
       const res = await fetch("/api/templates/analyze", {
@@ -1532,24 +1551,44 @@ function DocumentsTab() {
                                       {template.tradeType}
                                     </Badge>
                                   )}
-                                  {template.isDefault && (
-                                    <Badge variant="outline" className="text-xs">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Default
-                                    </Badge>
-                                  )}
                                 </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedTemplate(template);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                {template.isDefault ? (
+                                  <Badge variant="default" className="text-xs">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Default
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-7"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDefaultMutation.mutate(template.id);
+                                    }}
+                                    disabled={setDefaultMutation.isPending}
+                                  >
+                                    {setDefaultMutation.isPending ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Star className="h-3 w-3 mr-1" />
+                                    )}
+                                    Set Default
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTemplate(template);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           ))
                         )}
@@ -1578,7 +1617,52 @@ function DocumentsTab() {
             <CardContent>
               <ScrollArea className="h-[500px]">
                 {selectedTemplate ? (
-                  <DocumentPreview template={selectedTemplate} stylePreset={defaultPreset} />
+                  selectedTemplate.type === "job" ? (
+                    // Job templates show settings preview, not a document
+                    <div className="space-y-4">
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <ClipboardList className="h-5 w-5 text-primary" />
+                          <h3 className="font-semibold">{selectedTemplate.name}</h3>
+                        </div>
+                        {(() => {
+                          const defaults = selectedTemplate.defaults as Record<string, unknown> || {};
+                          return (
+                            <>
+                              {defaults.description && (
+                                <p className="text-sm text-muted-foreground">{String(defaults.description)}</p>
+                              )}
+                              <div className="grid grid-cols-2 gap-3 pt-2">
+                                {defaults.estimatedHours && (
+                                  <div className="bg-background rounded p-2">
+                                    <p className="text-xs text-muted-foreground">Estimated Hours</p>
+                                    <p className="font-medium">{String(defaults.estimatedHours)}h</p>
+                                  </div>
+                                )}
+                                {defaults.priority && (
+                                  <div className="bg-background rounded p-2">
+                                    <p className="text-xs text-muted-foreground">Priority</p>
+                                    <p className="font-medium capitalize">{String(defaults.priority)}</p>
+                                  </div>
+                                )}
+                              </div>
+                              {defaults.notes && (
+                                <div className="bg-background rounded p-2 mt-2">
+                                  <p className="text-xs text-muted-foreground mb-1">Default Notes</p>
+                                  <p className="text-sm">{String(defaults.notes)}</p>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Job templates define default settings when creating new jobs
+                      </p>
+                    </div>
+                  ) : (
+                    <DocumentPreview template={selectedTemplate} stylePreset={defaultPreset} />
+                  )
                 ) : (
                   <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                     <FileText className="h-12 w-12 mb-4 opacity-50" />
