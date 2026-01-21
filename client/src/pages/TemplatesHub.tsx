@@ -1344,9 +1344,18 @@ function DocumentsTab({ autoSelectFirst, onAutoSelectComplete }: { autoSelectFir
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadType, setUploadType] = useState<"quote" | "invoice">("quote");
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    type: "quote" as "quote" | "invoice" | "job",
+    tradeType: "general",
+    title: "",
+    description: "",
+    terms: "",
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: user } = useQuery<{ tradeType?: string }>({
@@ -1441,6 +1450,37 @@ function DocumentsTab({ autoSelectFirst, onAutoSelectComplete }: { autoSelectFir
     },
   });
 
+  const createTemplateMutation = useMutation({
+    mutationFn: async (data: typeof newTemplate) => {
+      const res = await apiRequest("POST", "/api/templates", {
+        name: data.name,
+        type: data.type,
+        tradeType: data.tradeType || "general",
+        familyKey: `custom-${data.type}-${Date.now()}`,
+        styling: { brandColor: "#6366f1" },
+        sections: { showHeader: true, showLineItems: true, showTotals: true, showTerms: true },
+        defaults: {
+          title: data.title || data.name,
+          description: data.description,
+          terms: data.terms,
+          gstEnabled: true,
+        },
+        defaultLineItems: [],
+        isDefault: false,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Template created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+      setCreateDialogOpen(false);
+      setNewTemplate({ name: "", type: "quote", tradeType: "general", title: "", description: "", terms: "" });
+    },
+    onError: () => {
+      toast({ title: "Failed to create template", variant: "destructive" });
+    },
+  });
+
   const handleUpload = async (file: File) => {
     setUploading(true);
     try {
@@ -1503,11 +1543,106 @@ function DocumentsTab({ autoSelectFirst, onAutoSelectComplete }: { autoSelectFir
             {user?.tradeType && <span className="ml-1">(filtered for {user.tradeType})</span>}
           </p>
         </div>
-        <Button onClick={() => setUploadDialogOpen(true)} variant="default">
-          <Upload className="h-4 w-4 mr-2" />
-          Upload Document
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => setCreateDialogOpen(true)} variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Template
+          </Button>
+          <Button onClick={() => setUploadDialogOpen(true)} variant="default">
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Document
+          </Button>
+        </div>
       </div>
+
+      {/* Create Template Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Create New Template
+            </DialogTitle>
+            <DialogDescription>
+              Create a custom template for your quotes, invoices, or jobs.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Template Name</Label>
+              <Input
+                placeholder="e.g., My Custom Quote"
+                value={newTemplate.name}
+                onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Template Type</Label>
+              <Select
+                value={newTemplate.type}
+                onValueChange={(v) => setNewTemplate({ ...newTemplate, type: v as "quote" | "invoice" | "job" })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="quote">Quote</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="job">Job</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Default Title</Label>
+              <Input
+                placeholder="e.g., Professional Services Quote"
+                value={newTemplate.title}
+                onChange={(e) => setNewTemplate({ ...newTemplate, title: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Input
+                placeholder="Brief description of services"
+                value={newTemplate.description}
+                onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Terms & Conditions (optional)</Label>
+              <Input
+                placeholder="e.g., Payment due within 14 days"
+                value={newTemplate.terms}
+                onChange={(e) => setNewTemplate({ ...newTemplate, terms: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createTemplateMutation.mutate(newTemplate)}
+              disabled={!newTemplate.name || createTemplateMutation.isPending}
+            >
+              {createTemplateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Template"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* AI Document Upload Dialog */}
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
