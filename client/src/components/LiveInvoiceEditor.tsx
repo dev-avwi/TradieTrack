@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useSearch } from "wouter";
+import { useSearch, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ import {
   BookOpen,
   ChevronLeft,
   Check,
+  Palette,
 } from "lucide-react";
 
 const lineItemSchema = z.object({
@@ -814,7 +815,15 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
           <div className="max-w-lg mx-auto">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Live Preview</h2>
-              <Badge variant="outline" className="text-xs">Updates as you type</Badge>
+              <div className="flex items-center gap-2">
+                <Link href="/templates">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" data-testid="button-customize-template">
+                    <Palette className="h-3 w-3" />
+                    Customize
+                  </Button>
+                </Link>
+                <Badge variant="outline" className="text-xs">Updates as you type</Badge>
+              </div>
             </div>
             <LiveDocumentPreview
               type="invoice"

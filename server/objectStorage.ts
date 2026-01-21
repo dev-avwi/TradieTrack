@@ -238,7 +238,8 @@ export class ObjectStorageService {
     });
   }
 
-  // Upload a file to object storage and return the object path
+  // Upload a file to object storage and return the object path in /objects/{fileName} format
+  // The returned path can be used with the /objects/:objectPath(*) route to access the file
   async uploadFile(fileName: string, buffer: Buffer, contentType: string): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     const fullPath = `${privateObjectDir}/${fileName}`;
@@ -254,8 +255,9 @@ export class ObjectStorageService {
       },
     });
     
-    // Return path that includes the private directory for correct retrieval
-    return this.normalizeObjectEntityPath(fullPath);
+    // Return the /objects/{fileName} path format that works with /objects/:objectPath(*) route
+    // The route handler strips /objects/ and prepends the private directory to find the actual file
+    return `/objects/${fileName}`;
   }
 
   // Delete a file from object storage

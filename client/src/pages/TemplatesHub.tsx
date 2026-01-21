@@ -101,6 +101,8 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
   const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
   const [navigateAfterSave, setNavigateAfterSave] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     logoUrl: "",
@@ -272,6 +274,49 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image must be smaller than 5MB", variant: "destructive" });
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('type', 'logo');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formDataUpload,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setFormData(prev => ({ ...prev, logoUrl: data.url }));
+      toast({ title: "Logo uploaded successfully" });
+    } catch (error) {
+      toast({ title: "Failed to upload logo", variant: "destructive" });
+    } finally {
+      setIsUploadingLogo(false);
+      if (logoInputRef.current) {
+        logoInputRef.current.value = '';
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -407,14 +452,70 @@ function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: ()
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="logoUrl">Logo URL</Label>
-              <Input
-                id="logoUrl"
-                value={formData.logoUrl}
-                onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                placeholder="https://example.com/logo.png"
-                data-testid="input-style-logo"
+              <Label>{formData.logoUrl ? "Current Logo" : "Upload Logo"}</Label>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+                data-testid="input-logo-file"
               />
+              {formData.logoUrl ? (
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                  <img 
+                    src={formData.logoUrl} 
+                    alt="Logo" 
+                    className="h-12 w-12 object-contain rounded border bg-white"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">Logo uploaded</p>
+                    <p className="text-xs text-muted-foreground">Click to change</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={isUploadingLogo}
+                      data-testid="button-change-logo"
+                    >
+                      {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Change"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({ ...prev, logoUrl: "" }))}
+                      data-testid="button-remove-logo"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-20 border-dashed"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={isUploadingLogo}
+                  data-testid="button-upload-logo"
+                >
+                  {isUploadingLogo ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 mr-2" />
+                      Click to upload your logo
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">

@@ -4009,6 +4009,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // General file upload endpoint for logos and images
+  const generalUpload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  });
+
+  app.post("/api/upload", requireAuth, generalUpload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const uploadType = req.body.type || 'general';
+      const fileExt = req.file.originalname.split('.').pop() || 'png';
+      const fileName = `${uploadType}/${req.userId}/${crypto.randomUUID()}.${fileExt}`;
+
+      // Try to upload to object storage
+      try {
+        const objectStorage = new ObjectStorageService();
+        const objectPath = await objectStorage.uploadFile(fileName, req.file.buffer, req.file.mimetype);
+        // uploadFile returns the path in /objects/{filename} format that works with /objects route
+        res.json({ url: objectPath });
+      } catch (storageError) {
+        console.log("[Upload] Object storage not available, using data URL");
+        // Fallback to data URL if object storage is not available
+        const dataUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        res.json({ url: dataUrl });
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
   // ===== PAYMENT SETTINGS ROUTES =====
   
   // Get payment method settings (available methods, fees, bank details)
@@ -13579,12 +13613,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create the analysis job first
       const jobId = crypto.randomUUID();
-      const fileKey = `/.private/template-uploads/${req.userId}/${jobId}.pdf`;
+      const fileName = `template-uploads/${req.userId}/${jobId}.pdf`;
 
       // Store PDF in object storage
+      let fileKey: string;
       try {
-        const objectStorage = await ObjectStorageService.getInstance();
-        await objectStorage.storeObject(fileKey, pdfBuffer, 'application/pdf');
+        const objectStorage = new ObjectStorageService();
+        // uploadFile returns the path in /objects/{filename} format
+        fileKey = await objectStorage.uploadFile(fileName, pdfBuffer, 'application/pdf');
       } catch (storageError) {
         console.error("Failed to store PDF:", storageError);
         return res.status(500).json({ error: "Failed to store uploaded file" });
