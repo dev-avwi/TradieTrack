@@ -22,6 +22,8 @@ import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templat
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import LiveDocumentPreview from "./LiveDocumentPreview";
+import type { StylePreset } from "@shared/schema";
+import { TemplateCustomization } from "@/lib/document-templates";
 import CatalogModal from "@/components/CatalogModal";
 import {
   Plus,
@@ -117,6 +119,20 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     queryKey: ['/api/jobs', effectiveJobId, 'signatures'],
     enabled: !!effectiveJobId,
   });
+
+  // Fetch style presets to get the default style for the preview
+  const { data: stylePresets = [] } = useQuery<StylePreset[]>({
+    queryKey: ['/api/style-presets'],
+  });
+
+  // Get the default style preset for preview styling
+  const defaultStylePreset = stylePresets.find((p) => p.isDefault) || stylePresets[0];
+
+  // Fetch document templates for template selector
+  const { data: documentTemplates = [] } = useDocumentTemplates('quote');
+  
+  // Track selected document template
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
@@ -520,6 +536,39 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   <FileText className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                   Quote Details
                 </div>
+
+                {/* Template Selector */}
+                {documentTemplates.length > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Template</Label>
+                    <Select
+                      value={selectedTemplateId || ""}
+                      onValueChange={(value) => {
+                        setSelectedTemplateId(value || null);
+                        const template = documentTemplates.find((t) => t.id === value);
+                        if (template) {
+                          handleApplyTemplate(template);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-12 rounded-xl mt-1">
+                        <SelectValue placeholder="Start from a template (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {documentTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{template.name}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {template.tradeType}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 
                 <div>
                   <Label htmlFor="title" className="text-xs text-muted-foreground">Title</Label>
@@ -850,6 +899,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
             </div>
             <LiveDocumentPreview
               type="quote"
+              documentNumber="Q-XXXXX"
               title={watchedValues.title}
               description={watchedValues.description}
               validUntil={watchedValues.validUntil}
@@ -861,7 +911,13 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               depositPercent={watchedValues.depositPercent}
               gstEnabled={gstEnabled}
               templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
-              templateCustomization={(businessSettings as any)?.documentTemplateSettings}
+              templateCustomization={{
+                // User's saved settings take priority; fall back to default style preset when unset
+                tableStyle: (businessSettings as any)?.documentTemplateSettings?.tableStyle || 
+                  (defaultStylePreset?.alternateRowColors ? 'striped' : defaultStylePreset?.tableBorders ? 'bordered' : 'minimal'),
+                accentColor: (businessSettings as any)?.documentTemplateSettings?.accentColor || defaultStylePreset?.accentColor,
+                showHeaderDivider: (businessSettings as any)?.documentTemplateSettings?.showHeaderDivider ?? true,
+              } as TemplateCustomization}
               jobSignatures={jobSignatures?.filter((s: any) => s.documentType === 'job_completion') || []}
             />
           </div>
