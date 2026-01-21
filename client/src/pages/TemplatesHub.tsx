@@ -539,7 +539,7 @@ function StylePresetsTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => selectedPreset && deleteMutation.mutate(selectedPreset.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground"
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete
@@ -1209,10 +1209,10 @@ function DocumentsTab() {
                           typeTemplates.map((template) => (
                             <div
                               key={template.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                              className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer ${
                                 selectedTemplate?.id === template.id
                                   ? "border-primary bg-primary/5"
-                                  : "bg-muted/30 hover:bg-muted/50"
+                                  : "bg-muted/30 hover-elevate"
                               }`}
                               onClick={() => setSelectedTemplate(template)}
                               data-testid={`template-item-${template.id}`}
