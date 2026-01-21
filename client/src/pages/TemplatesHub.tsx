@@ -41,8 +41,10 @@ import {
   Loader2,
   Star,
   Eye,
-  Upload,
+  Layers,
+  FileText,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { StylePreset } from "@shared/schema";
 import LiveDocumentPreview from "@/components/LiveDocumentPreview";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -90,13 +92,11 @@ function StylePresetsWithPreview() {
   const [previewPreset, setPreviewPreset] = useState<StylePreset | null>(null);
   const [previewType, setPreviewType] = useState<"quote" | "invoice">("quote");
   const [isCreating, setIsCreating] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     logoUrl: "",
-    primaryColor: "#1e40af",
-    accentColor: "#059669",
+    primaryColor: "#1f3a5f",
+    accentColor: "#1f3a5f",
     fontFamily: "Inter",
     headerLayout: "standard",
     footerLayout: "standard",
@@ -190,8 +190,8 @@ function StylePresetsWithPreview() {
     mutationFn: async () => {
       return apiRequest("POST", "/api/style-presets", {
         name: "Professional Navy",
-        primaryColor: "#1e40af",
-        accentColor: "#059669",
+        primaryColor: "#1f3a5f",
+        accentColor: "#1f3a5f",
         fontFamily: "Inter",
         headerLayout: "standard",
         footerLayout: "standard",
@@ -214,8 +214,8 @@ function StylePresetsWithPreview() {
     setFormData({
       name: "",
       logoUrl: "",
-      primaryColor: "#1e40af",
-      accentColor: "#059669",
+      primaryColor: "#1f3a5f",
+      accentColor: "#1f3a5f",
       fontFamily: "Inter",
       headerLayout: "standard",
       footerLayout: "standard",
@@ -242,8 +242,8 @@ function StylePresetsWithPreview() {
     setFormData({
       name: preset.name,
       logoUrl: preset.logoUrl || "",
-      primaryColor: preset.primaryColor || "#1e40af",
-      accentColor: preset.accentColor || "#059669",
+      primaryColor: preset.primaryColor || "#1f3a5f",
+      accentColor: preset.accentColor || "#1f3a5f",
       fontFamily: preset.fontFamily || "Inter",
       headerLayout: preset.headerLayout || "standard",
       footerLayout: preset.footerLayout || "standard",
@@ -266,53 +266,10 @@ function StylePresetsWithPreview() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast({ title: "Please select an image file", variant: "destructive" });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Image must be smaller than 5MB", variant: "destructive" });
-      return;
-    }
-
-    setIsUploadingLogo(true);
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      formDataUpload.append('type', 'logo');
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formDataUpload,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
-      setFormData(prev => ({ ...prev, logoUrl: data.url }));
-      toast({ title: "Logo uploaded successfully" });
-    } catch {
-      toast({ title: "Failed to upload logo", variant: "destructive" });
-    } finally {
-      setIsUploadingLogo(false);
-      if (logoInputRef.current) {
-        logoInputRef.current.value = '';
-      }
-    }
-  };
-
   // Build template customization from preset for preview
   const buildTemplateCustomization = (preset: StylePreset): TemplateCustomization => ({
-    primaryColor: preset.primaryColor || "#1e40af",
-    accentColor: preset.accentColor || "#059669",
+    primaryColor: preset.primaryColor || "#1f3a5f",
+    accentColor: preset.accentColor || "#1f3a5f",
     fontFamily: preset.fontFamily || "Inter",
     logoUrl: preset.logoUrl,
     showLogo: preset.showLogo ?? true,
@@ -379,8 +336,8 @@ function StylePresetsWithPreview() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="flex gap-1">
-                        <ColorSwatch color={preset.primaryColor || "#1e40af"} />
-                        <ColorSwatch color={preset.accentColor || "#059669"} />
+                        <ColorSwatch color={preset.primaryColor || "#1f3a5f"} />
+                        <ColorSwatch color={preset.accentColor || "#1f3a5f"} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -462,11 +419,12 @@ function StylePresetsWithPreview() {
                   <LiveDocumentPreview
                     documentType={previewType}
                     business={{
-                      name: business.name || "Your Business",
+                      businessName: business.businessName || business.name || "Your Business",
                       email: business.email || "email@example.com",
                       phone: business.phone || "",
                       address: business.address || "",
                       abn: business.abn || "",
+                      logoUrl: business.logoUrl || "",
                       bankName: business.bankName || "",
                       bankBsb: business.bankBsb || "",
                       bankAccount: business.bankAccount || "",
@@ -522,68 +480,9 @@ function StylePresetsWithPreview() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>{formData.logoUrl ? "Current Logo" : "Upload Logo"}</Label>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleLogoUpload}
-              />
-              {formData.logoUrl ? (
-                <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
-                  <img 
-                    src={formData.logoUrl} 
-                    alt="Logo" 
-                    className="h-12 w-12 object-contain rounded border bg-white"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">Logo uploaded</p>
-                    <p className="text-xs text-muted-foreground">Click to change</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => logoInputRef.current?.click()}
-                      disabled={isUploadingLogo}
-                    >
-                      {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Change"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({ ...prev, logoUrl: "" }))}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-16 border-dashed"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={isUploadingLogo}
-                >
-                  {isUploadingLogo ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-5 w-5 mr-2" />
-                      Click to upload your logo
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md">
+              Your business logo is pulled from Business Settings automatically.
+            </p>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -749,17 +648,178 @@ function StylePresetsWithPreview() {
   );
 }
 
+function ComponentsTab() {
+  const { data: business } = useBusinessSettings();
+  
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Reusable Components</h2>
+          <p className="text-sm text-muted-foreground">
+            Create and manage reusable content blocks for your documents
+          </p>
+        </div>
+        
+        <Card className="p-6 text-center">
+          <Layers className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <h3 className="font-semibold mb-2">Coming Soon</h3>
+          <p className="text-sm text-muted-foreground">
+            Save reusable paragraphs, terms, and content blocks to quickly add to quotes and invoices.
+          </p>
+        </Card>
+      </div>
+      
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Preview</h2>
+          <p className="text-sm text-muted-foreground">
+            See how components appear in documents
+          </p>
+        </div>
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="bg-muted/30 p-4">
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '400px', overflow: 'auto' }}>
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    {business?.logoUrl && (
+                      <img src={business.logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
+                    )}
+                    <div>
+                      <h3 className="font-bold text-lg" style={{ color: '#1f3a5f' }}>
+                        {business?.businessName || 'Your Business'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{business?.address}</p>
+                    </div>
+                  </div>
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-2">Sample Component Block</h4>
+                    <p className="text-sm text-muted-foreground">
+                      This is where your reusable content blocks will be previewed. Components can include warranty terms, payment conditions, or any frequently used text.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function FormsTab() {
+  const { data: business } = useBusinessSettings();
+  
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Form Templates</h2>
+          <p className="text-sm text-muted-foreground">
+            Create custom forms for job sites and client interactions
+          </p>
+        </div>
+        
+        <Card className="p-6 text-center">
+          <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <h3 className="font-semibold mb-2">Coming Soon</h3>
+          <p className="text-sm text-muted-foreground">
+            Design custom safety checklists, site inspections, and client intake forms with digital signatures.
+          </p>
+        </Card>
+      </div>
+      
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Preview</h2>
+          <p className="text-sm text-muted-foreground">
+            See how forms appear on mobile devices
+          </p>
+        </div>
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="bg-muted/30 p-4">
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '400px', overflow: 'auto' }}>
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    {business?.logoUrl && (
+                      <img src={business.logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
+                    )}
+                    <div>
+                      <h3 className="font-bold text-lg" style={{ color: '#1f3a5f' }}>
+                        {business?.businessName || 'Your Business'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Safety Checklist</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3 border-t pt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 rounded" />
+                      <span className="text-sm">Site hazards identified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 rounded" />
+                      <span className="text-sm">PPE requirements verified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 rounded" />
+                      <span className="text-sm">Emergency exits noted</span>
+                    </div>
+                    <div className="border-t pt-3 mt-3">
+                      <p className="text-xs text-muted-foreground">Signature required</p>
+                      <div className="h-16 border-2 border-dashed rounded mt-2" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function TemplatesHub() {
   return (
     <PageShell>
       <PageHeader
         title="Templates Hub"
-        subtitle="Customize your document styles with live preview"
+        subtitle="Customize your document styles, components, and forms"
         leading={<Palette className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />}
       />
 
       <div className="mt-6">
-        <StylePresetsWithPreview />
+        <Tabs defaultValue="styles" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="styles" className="gap-2">
+              <Palette className="h-4 w-4" />
+              Styles
+            </TabsTrigger>
+            <TabsTrigger value="components" className="gap-2">
+              <Layers className="h-4 w-4" />
+              Components
+            </TabsTrigger>
+            <TabsTrigger value="forms" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Forms
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="styles">
+            <StylePresetsWithPreview />
+          </TabsContent>
+          
+          <TabsContent value="components">
+            <ComponentsTab />
+          </TabsContent>
+          
+          <TabsContent value="forms">
+            <FormsTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </PageShell>
   );
