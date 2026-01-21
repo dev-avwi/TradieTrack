@@ -94,11 +94,12 @@ function ColorSwatch({ color, size = "sm" }: { color: string; size?: "sm" | "md"
   );
 }
 
-function StylePresetsTab() {
+function StylePresetsTab({ onNavigateToDocuments }: { onNavigateToDocuments?: () => void }) {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
+  const [navigateAfterSave, setNavigateAfterSave] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -130,6 +131,10 @@ function StylePresetsTab() {
       setDialogOpen(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
+      if (navigateAfterSave && onNavigateToDocuments) {
+        setNavigateAfterSave(false);
+        onNavigateToDocuments();
+      }
     },
     onError: () => {
       toast({ title: "Failed to create preset", variant: "destructive" });
@@ -145,6 +150,10 @@ function StylePresetsTab() {
       setDialogOpen(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
+      if (navigateAfterSave && onNavigateToDocuments) {
+        setNavigateAfterSave(false);
+        onNavigateToDocuments();
+      }
     },
     onError: () => {
       toast({ title: "Failed to update preset", variant: "destructive" });
@@ -252,7 +261,10 @@ function StylePresetsTab() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = (andNavigate = false) => {
+    if (andNavigate) {
+      setNavigateAfterSave(true);
+    }
     if (isCreating) {
       createMutation.mutate(formData);
     } else if (selectedPreset) {
@@ -568,19 +580,31 @@ function StylePresetsTab() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
             <Button
-              onClick={handleSave}
+              variant="outline"
+              onClick={() => handleSave(false)}
               disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
               data-testid="button-save-style"
             >
-              {(createMutation.isPending || updateMutation.isPending) && (
+              {(createMutation.isPending || updateMutation.isPending) && !navigateAfterSave && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               {isCreating ? "Create" : "Save"}
+            </Button>
+            <Button
+              onClick={() => handleSave(true)}
+              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
+              data-testid="button-save-preview-style"
+            >
+              {(createMutation.isPending || updateMutation.isPending) && navigateAfterSave && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              <Eye className="h-4 w-4 mr-2" />
+              {isCreating ? "Create & Preview" : "Save & Preview"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1719,7 +1743,7 @@ export default function TemplatesHub() {
         </TabsList>
 
         <TabsContent value="styles" className="mt-6">
-          <StylePresetsTab />
+          <StylePresetsTab onNavigateToDocuments={() => setActiveTab("documents")} />
         </TabsContent>
 
         <TabsContent value="components" className="mt-6">
