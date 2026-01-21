@@ -19,8 +19,6 @@ import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
-import TradeCustomFieldsForm, { getCustomFieldsDefaultValues } from "@/components/TradeCustomFieldsForm";
-import { useTradeContext } from "@/hooks/useTradeContext";
 import { useSearch } from "wouter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +68,10 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const [previousJobsOpen, setPreviousJobsOpen] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   
+  // Local state for controlled inputs that need to update from templates
+  const [titleValue, setTitleValue] = useState("");
+  const [descriptionValue, setDescriptionValue] = useState("");
+  
   // Read clientId and quoteId from URL params (when navigating from client view or quote)
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
@@ -100,9 +102,6 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     staleTime: 30000,
   });
 
-  // Get trade-specific custom fields for the current user
-  const { customFields: tradeCustomFields } = useTradeContext();
-
   const form = useForm<JobFormData>({
     resolver: zodResolver(jobFormSchema),
     defaultValues: {
@@ -113,7 +112,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       scheduledAt: "",
       priority: "medium",
       estimatedHours: "",
-      customFields: getCustomFieldsDefaultValues(tradeCustomFields),
+      customFields: {},
     },
   });
 
@@ -176,14 +175,19 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     if (sourceQuote && !quoteApplied) {
       // Pre-fill job title from quote title or number
       if (sourceQuote.title) {
+        setTitleValue(sourceQuote.title);
         form.setValue("title", sourceQuote.title, { shouldValidate: true });
       } else if (sourceQuote.number) {
-        form.setValue("title", `Job from ${sourceQuote.number}`, { shouldValidate: true });
+        const title = `Job from ${sourceQuote.number}`;
+        setTitleValue(title);
+        form.setValue("title", title, { shouldValidate: true });
       }
       
       // Pre-fill description from quote description or job scope
       if (sourceQuote.description || sourceQuote.jobScope) {
-        form.setValue("description", sourceQuote.description || sourceQuote.jobScope);
+        const desc = sourceQuote.description || sourceQuote.jobScope;
+        setDescriptionValue(desc);
+        form.setValue("description", desc);
       }
       
       setQuoteApplied(true);
@@ -318,8 +322,18 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     try {
       const defaults = template.defaults || {};
       
-      if (defaults.title) form.setValue("title", defaults.title);
-      if (defaults.description) form.setValue("description", defaults.description);
+      // Update local state (this forces React re-render)
+      if (defaults.title) {
+        setTitleValue(defaults.title);
+        form.setValue("title", defaults.title);
+      }
+      if (defaults.description) {
+        setDescriptionValue(defaults.description);
+        form.setValue("description", defaults.description);
+      }
+      if (defaults.dueTermDays && defaults.dueTermDays > 0) {
+        form.setValue("estimatedHours", String(defaults.dueTermDays));
+      }
     } catch (error) {
       toast({
         title: "Error applying template",
@@ -412,33 +426,39 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
           <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Job Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter job title" {...field} data-testid="input-job-title" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="title" className="text-sm font-medium">Job Title</label>
+                <Input 
+                  id="title"
+                  placeholder="Enter job title"
+                  value={titleValue}
+                  onChange={(e) => {
+                    setTitleValue(e.target.value);
+                    form.setValue("title", e.target.value);
+                  }}
+                  data-testid="input-job-title" 
+                />
+                {form.formState.errors.title && (
+                  <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
                 )}
-              />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Enter job description" {...field} data-testid="input-job-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <div className="space-y-2">
+                <label htmlFor="description" className="text-sm font-medium">Description</label>
+                <Textarea 
+                  id="description"
+                  placeholder="Enter job description"
+                  value={descriptionValue}
+                  onChange={(e) => {
+                    setDescriptionValue(e.target.value);
+                    form.setValue("description", e.target.value);
+                  }}
+                  data-testid="input-job-description" 
+                />
+                {form.formState.errors.description && (
+                  <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
                 )}
-              />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -671,9 +691,6 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                   )}
                 />
               </div>
-
-              {/* Trade-Specific Custom Fields */}
-              <TradeCustomFieldsForm form={form} />
 
               <div className="flex gap-4">
                 <Button type="submit" disabled={createJobMutation.isPending} data-testid="button-submit-job">
