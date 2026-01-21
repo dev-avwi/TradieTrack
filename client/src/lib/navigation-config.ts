@@ -197,8 +197,8 @@ export const mainMenuItems: NavItem[] = [
   {
     title: "Templates",
     url: "/templates",
-    icon: Files,
-    description: "Manage email, SMS, and document templates",
+    icon: LayoutGrid,
+    description: "Styles, components, and document templates",
     color: "text-primary",
     bgColor: "bg-primary/10",
     hideForStaff: true,

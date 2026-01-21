@@ -1,19 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CustomFormsPage } from "@/components/CustomFormBuilder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -28,1074 +27,501 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
-  Mail,
-  MessageSquare,
-  ScrollText,
-  Shield,
-  Receipt,
-  ClipboardList,
-  CheckSquare,
+  Palette,
+  Layers,
   FileText,
+  ClipboardList,
+  Receipt,
   Plus,
   Pencil,
   Trash2,
-  CheckCircle,
   Loader2,
   ChevronRight,
   ChevronDown,
+  Star,
+  DollarSign,
+  Package,
   Eye,
-  AlertTriangle,
-  ExternalLink,
-  Settings,
-  Zap,
+  Check,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { BusinessTemplate, BusinessTemplateFamily, BusinessTemplatePurpose } from "@shared/schema";
-import { BUSINESS_TEMPLATE_PURPOSES } from "@shared/schema";
-import { type LucideIcon } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { StylePreset, RateCard, LineItemCatalog, DocumentTemplate } from "@shared/schema";
 
-interface TemplateFamilyMeta {
-  family: BusinessTemplateFamily;
-  count: number;
-  activeTemplateId: string | null;
-  activeTemplateName: string | null;
-}
+const FONT_FAMILIES = [
+  { value: "Inter", label: "Inter" },
+  { value: "Roboto", label: "Roboto" },
+  { value: "Open Sans", label: "Open Sans" },
+  { value: "Lato", label: "Lato" },
+  { value: "Montserrat", label: "Montserrat" },
+  { value: "Poppins", label: "Poppins" },
+  { value: "Source Sans Pro", label: "Source Sans Pro" },
+];
 
-interface FamilyConfig {
-  name: string;
-  description: string;
-  icon: LucideIcon;
-  category: "communications" | "financial" | "jobs_safety";
-}
+const LAYOUT_OPTIONS = [
+  { value: "standard", label: "Standard" },
+  { value: "minimal", label: "Minimal" },
+  { value: "detailed", label: "Detailed" },
+];
 
-const FAMILY_CONFIG: Record<BusinessTemplateFamily, FamilyConfig> = {
-  email: {
-    name: "Email Templates",
-    description: "Customizable email templates for client communications",
-    icon: Mail,
-    category: "communications",
-  },
-  sms: {
-    name: "SMS Templates",
-    description: "Text message templates for quick updates",
-    icon: MessageSquare,
-    category: "communications",
-  },
-  terms_conditions: {
-    name: "Terms & Conditions",
-    description: "Standard terms included in quotes and invoices",
-    icon: ScrollText,
-    category: "financial",
-  },
-  warranty: {
-    name: "Warranty Terms",
-    description: "Warranty information for your work",
-    icon: Shield,
-    category: "financial",
-  },
-  payment_notice: {
-    name: "Payment Notices",
-    description: "Templates for payment reminders and overdue notices",
-    icon: Receipt,
-    category: "financial",
-  },
-  safety_form: {
-    name: "Safety Forms",
-    description: "Job site safety checklists and documentation",
-    icon: ClipboardList,
-    category: "jobs_safety",
-  },
-  checklist: {
-    name: "Job Checklists",
-    description: "Standard checklists for job completion",
-    icon: CheckSquare,
-    category: "jobs_safety",
-  },
-};
+const UNIT_OPTIONS = [
+  { value: "hour", label: "Hour" },
+  { value: "item", label: "Item" },
+  { value: "m", label: "Metre (m)" },
+  { value: "sqm", label: "Square Metre (sqm)" },
+  { value: "each", label: "Each" },
+];
 
-const CATEGORIES = {
-  communications: { name: "Communications", families: ["email", "sms"] as BusinessTemplateFamily[] },
-  financial: { name: "Financial", families: ["terms_conditions", "warranty", "payment_notice"] as BusinessTemplateFamily[] },
-  jobs_safety: { name: "Jobs & Safety", families: ["safety_form", "checklist"] as BusinessTemplateFamily[] },
-};
-
-const PURPOSE_CONFIG: Record<BusinessTemplatePurpose, { label: string; family: 'email' | 'sms' | 'general' }> = {
-  quote_sent: { label: "Quote Sent", family: 'email' },
-  invoice_sent: { label: "Invoice Sent", family: 'email' },
-  payment_reminder: { label: "Payment Reminder", family: 'email' },
-  job_confirmation: { label: "Job Confirmation", family: 'email' },
-  job_completed: { label: "Job Completed", family: 'email' },
-  quote_accepted: { label: "Quote Accepted", family: 'email' },
-  quote_declined: { label: "Quote Declined", family: 'email' },
-  sms_quote_sent: { label: "Quote Sent", family: 'sms' },
-  sms_invoice_sent: { label: "Invoice Sent", family: 'sms' },
-  sms_payment_reminder: { label: "Payment Reminder", family: 'sms' },
-  sms_job_confirmation: { label: "Job Confirmation", family: 'sms' },
-  sms_job_completed: { label: "Job Completed", family: 'sms' },
-  general: { label: "General", family: 'general' },
-};
-
-const getPurposesForFamily = (family: BusinessTemplateFamily): BusinessTemplatePurpose[] => {
-  if (family === 'email') {
-    return ['quote_sent', 'invoice_sent', 'payment_reminder', 'job_confirmation', 'job_completed', 'quote_accepted', 'quote_declined'];
-  }
-  if (family === 'sms') {
-    return ['sms_quote_sent', 'sms_invoice_sent', 'sms_payment_reminder', 'sms_job_confirmation', 'sms_job_completed'];
-  }
-  return ['general'];
-};
-
-const SAMPLE_DATA: Record<string, string> = {
-  client_name: "John Smith",
-  business_name: "My Trade Business",
-  quote_number: "Q-0001",
-  invoice_number: "INV-0001",
-  quote_total: "$1,250.00",
-  invoice_total: "$1,250.00",
-  job_title: "Kitchen Renovation",
-  job_address: "123 Main St, Sydney NSW 2000",
-  due_date: "15 Jan 2025",
-  completion_date: "10 Jan 2025",
-  warranty_months: "12",
-  deposit_percent: "50",
-  bank_details: "BSB: 123-456, Account: 12345678",
-  days_overdue: "7",
-  worker_name: "Mike Johnson",
-  date: "27 Dec 2024",
-};
-
-function renderPreview(content: string): string {
-  let preview = content;
-  for (const [key, value] of Object.entries(SAMPLE_DATA)) {
-    preview = preview.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-  }
-  return preview;
-}
-
-// Document Templates Section (Job, Quote, Invoice templates with trade type filtering)
-function DocumentTemplatesSection() {
-  const [expandedType, setExpandedType] = useState<string | null>(null);
-
-  // Get user's trade type for filtering
-  const { data: user } = useQuery<{ tradeType?: string }>({
-    queryKey: ['/api/auth/me'],
-  });
-  const tradeType = user?.tradeType;
-
-  // Fetch document templates with trade type filtering
-  const { data: templates = [], isLoading } = useQuery<Array<{
-    id: string;
-    type: string;
-    name: string;
-    familyKey: string;
-    tradeType: string;
-    isDefault: boolean;
-  }>>({
-    queryKey: ['/api/templates', undefined, tradeType],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (tradeType) params.append('tradeType', tradeType);
-      const url = `/api/templates${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url, { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch templates');
-      return response.json();
-    },
-  });
-
-  const TEMPLATE_TYPES = [
-    { type: 'job', name: 'Job Templates', description: 'Default settings for new jobs', icon: ClipboardList },
-    { type: 'quote', name: 'Quote Templates', description: 'Pre-configured quote formats', icon: FileText },
-    { type: 'invoice', name: 'Invoice Templates', description: 'Standard invoice layouts', icon: Receipt },
-  ];
-
-  const getTemplatesByType = (type: string) => templates.filter(t => t.type === type);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">Document Templates</h3>
-            <p className="text-sm text-muted-foreground">Pre-configured templates for jobs, quotes, and invoices</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center p-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
-  }
-
+function ColorSwatch({ color, size = "sm" }: { color: string; size?: "sm" | "md" }) {
+  const sizeClass = size === "sm" ? "w-5 h-5" : "w-8 h-8";
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Document Templates</h3>
-          <p className="text-sm text-muted-foreground">
-            Pre-configured templates for jobs, quotes, and invoices
-            {tradeType && <span className="ml-1">(filtered for {tradeType})</span>}
-          </p>
-        </div>
-      </div>
-
-      {TEMPLATE_TYPES.map(({ type, name, description, icon: Icon }) => {
-        const typeTemplates = getTemplatesByType(type);
-        const isExpanded = expandedType === type;
-
-        return (
-          <Card key={type} className="hover-elevate" data-testid={`card-document-${type}`}>
-            <CardHeader
-              className="cursor-pointer"
-              onClick={() => setExpandedType(isExpanded ? null : type)}
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
-                  >
-                    <Icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{name}</CardTitle>
-                    <CardDescription>{description}</CardDescription>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" data-testid={`badge-count-${type}`}>
-                    {typeTemplates.length} template{typeTemplates.length !== 1 ? "s" : ""}
-                  </Badge>
-                  {isExpanded ? (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-
-            {isExpanded && (
-              <CardContent className="pt-0">
-                <div className="border-t pt-4 space-y-3">
-                  {typeTemplates.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No {type} templates available for your trade type
-                    </p>
-                  ) : (
-                    typeTemplates.map((template) => (
-                      <div
-                        key={template.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                        data-testid={`template-item-${template.id}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium truncate">{template.name}</p>
-                            <Badge variant="secondary" className="text-xs capitalize">
-                              {template.tradeType}
-                            </Badge>
-                            {template.isDefault && (
-                              <Badge variant="outline" className="text-xs">
-                                System Default
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        );
-      })}
-    </div>
+    <div
+      className={`${sizeClass} rounded-md border border-border shadow-sm`}
+      style={{ backgroundColor: color }}
+    />
   );
 }
 
-export default function TemplatesHub() {
+function StylePresetsTab() {
   const { toast } = useToast();
-  const [location] = useLocation();
-  
-  // Parse URL query params for auto-selecting tab
-  const getInitialTab = () => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const tabParam = searchParams.get('tab');
-    if (tabParam && ['communications', 'financial', 'jobs_safety'].includes(tabParam)) {
-      return tabParam;
-    }
-    return "communications";
-  };
-  
-  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
-  const [expandedFamily, setExpandedFamily] = useState<BusinessTemplateFamily | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<BusinessTemplate | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    content: "",
-    subject: "",
-    purpose: "general" as BusinessTemplatePurpose,
+    logoUrl: "",
+    primaryColor: "#1e40af",
+    accentColor: "#059669",
+    fontFamily: "Inter",
+    headerLayout: "standard",
+    footerLayout: "standard",
+    showLogo: true,
+    showBusinessDetails: true,
+    showBankDetails: true,
+    tableBorders: true,
+    alternateRowColors: true,
+    compactMode: false,
+    isDefault: false,
   });
 
-  const { data: familiesMeta = [], isLoading: familiesLoading, refetch: refetchFamilies } = useQuery<TemplateFamilyMeta[]>({
-    queryKey: ["/api/business-templates/families"],
+  const { data: presets = [], isLoading } = useQuery<StylePreset[]>({
+    queryKey: ["/api/style-presets"],
   });
-
-  const { data: templates = [], isLoading: templatesLoading, refetch: refetchTemplates } = useQuery<BusinessTemplate[]>({
-    queryKey: ["/api/business-templates"],
-  });
-
-  // Integration health check for email/SMS providers
-  interface IntegrationHealth {
-    allReady: boolean;
-    servicesReady: {
-      sendgrid: boolean;
-      twilio: boolean;
-      stripe: boolean;
-    };
-    warnings: string[];
-    fixes: { service: string; action: string; url?: string }[];
-  }
-  
-  const { data: integrationHealth } = useQuery<IntegrationHealth>({
-    queryKey: ["/api/integrations/health"],
-    staleTime: 60000, // Cache for 1 minute
-    refetchInterval: 300000, // Refetch every 5 minutes
-  });
-
-  const seedMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/business-templates/seed");
-    },
-    onSuccess: () => {
-      refetchFamilies();
-      refetchTemplates();
-    },
-  });
-
-  useEffect(() => {
-    if (!familiesLoading && familiesMeta.length === 0) {
-      seedMutation.mutate();
-    }
-  }, [familiesLoading, familiesMeta.length]);
 
   const createMutation = useMutation({
-    mutationFn: async (data: { family: string; name: string; description?: string; content: string; subject?: string; purpose?: string }) => {
-      return apiRequest("POST", "/api/business-templates", data);
+    mutationFn: async (data: typeof formData) => {
+      return apiRequest("POST", "/api/style-presets", data);
     },
     onSuccess: () => {
-      toast({ title: "Template created successfully" });
-      setEditDialogOpen(false);
+      toast({ title: "Style preset created" });
+      setDialogOpen(false);
       resetForm();
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
     },
     onError: () => {
-      toast({ title: "Failed to create template", variant: "destructive" });
+      toast({ title: "Failed to create preset", variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; content?: string; subject?: string; purpose?: string } }) => {
-      return apiRequest("PATCH", `/api/business-templates/${id}`, data);
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      return apiRequest("PATCH", `/api/style-presets/${id}`, data);
     },
     onSuccess: () => {
-      toast({ title: "Template updated successfully" });
-      setEditDialogOpen(false);
+      toast({ title: "Style preset updated" });
+      setDialogOpen(false);
       resetForm();
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
     },
     onError: () => {
-      toast({ title: "Failed to update template", variant: "destructive" });
+      toast({ title: "Failed to update preset", variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/business-templates/${id}`);
+      return apiRequest("DELETE", `/api/style-presets/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Template deleted successfully" });
+      toast({ title: "Style preset deleted" });
       setDeleteDialogOpen(false);
-      setSelectedTemplate(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
+      setSelectedPreset(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
     },
     onError: () => {
-      toast({ title: "Failed to delete template", variant: "destructive" });
-    },
-  });
-
-  const activateMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("POST", `/api/business-templates/${id}/activate`);
-    },
-    onSuccess: () => {
-      toast({ title: "Template set as active" });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-templates/families"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to set active template", variant: "destructive" });
+      toast({ title: "Failed to delete preset", variant: "destructive" });
     },
   });
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", content: "", subject: "", purpose: "general" });
-    setSelectedTemplate(null);
-    setIsCreating(false);
-  };
-
-  const openCreateDialog = (family: BusinessTemplateFamily) => {
-    setIsCreating(true);
-    setSelectedTemplate({ family } as BusinessTemplate);
-    const defaultPurpose = getPurposesForFamily(family)[0] || 'general';
-    setFormData({ name: "", description: "", content: "", subject: "", purpose: defaultPurpose });
-    setEditDialogOpen(true);
-  };
-
-  const openEditDialog = (template: BusinessTemplate) => {
-    setIsCreating(false);
-    setSelectedTemplate(template);
     setFormData({
-      name: template.name,
-      description: template.description || "",
-      content: template.content,
-      subject: template.subject || "",
-      purpose: (template.purpose as BusinessTemplatePurpose) || "general",
+      name: "",
+      logoUrl: "",
+      primaryColor: "#1e40af",
+      accentColor: "#059669",
+      fontFamily: "Inter",
+      headerLayout: "standard",
+      footerLayout: "standard",
+      showLogo: true,
+      showBusinessDetails: true,
+      showBankDetails: true,
+      tableBorders: true,
+      alternateRowColors: true,
+      compactMode: false,
+      isDefault: false,
     });
-    setEditDialogOpen(true);
+    setSelectedPreset(null);
+    setIsCreating(false);
+  };
+
+  const openCreateDialog = () => {
+    setIsCreating(true);
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (preset: StylePreset) => {
+    setIsCreating(false);
+    setSelectedPreset(preset);
+    setFormData({
+      name: preset.name,
+      logoUrl: preset.logoUrl || "",
+      primaryColor: preset.primaryColor || "#1e40af",
+      accentColor: preset.accentColor || "#059669",
+      fontFamily: preset.fontFamily || "Inter",
+      headerLayout: preset.headerLayout || "standard",
+      footerLayout: preset.footerLayout || "standard",
+      showLogo: preset.showLogo ?? true,
+      showBusinessDetails: preset.showBusinessDetails ?? true,
+      showBankDetails: preset.showBankDetails ?? true,
+      tableBorders: preset.tableBorders ?? true,
+      alternateRowColors: preset.alternateRowColors ?? true,
+      compactMode: preset.compactMode ?? false,
+      isDefault: preset.isDefault ?? false,
+    });
+    setDialogOpen(true);
   };
 
   const handleSave = () => {
-    if (!selectedTemplate) return;
-    
     if (isCreating) {
-      createMutation.mutate({
-        family: selectedTemplate.family,
-        name: formData.name,
-        description: formData.description || undefined,
-        content: formData.content,
-        subject: formData.subject || undefined,
-        purpose: formData.purpose,
-      });
-    } else {
-      updateMutation.mutate({
-        id: selectedTemplate.id,
-        data: {
-          name: formData.name,
-          description: formData.description || undefined,
-          content: formData.content,
-          subject: formData.subject || undefined,
-          purpose: formData.purpose,
-        },
-      });
+      createMutation.mutate(formData);
+    } else if (selectedPreset) {
+      updateMutation.mutate({ id: selectedPreset.id, data: formData });
     }
   };
-
-  const handleDelete = () => {
-    if (selectedTemplate) {
-      deleteMutation.mutate(selectedTemplate.id);
-    }
-  };
-
-  const getFamilyMeta = (family: BusinessTemplateFamily): TemplateFamilyMeta | undefined => {
-    return familiesMeta.find((m) => m.family === family);
-  };
-
-  const getFamilyTemplates = (family: BusinessTemplateFamily): BusinessTemplate[] => {
-    return templates.filter((t) => t.family === family);
-  };
-
-  const isLoading = familiesLoading || templatesLoading || seedMutation.isPending;
 
   if (isLoading) {
     return (
-      <PageShell>
-        <PageHeader
-          title="Templates"
-          subtitle="Manage all your business templates in one place"
-          leading={<FileText className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
-        />
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </PageShell>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Templates"
-        subtitle="Manage all your business templates in one place"
-        leading={<FileText className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
-      />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold">Document Styles</h2>
+          <p className="text-sm text-muted-foreground">
+            Create reusable style presets for your quotes, invoices, and documents
+          </p>
+        </div>
+        <Button onClick={openCreateDialog} data-testid="button-create-style">
+          <Plus className="h-4 w-4 mr-2" />
+          New Style
+        </Button>
+      </div>
 
-      {/* Integration Status Warning */}
-      {integrationHealth && !integrationHealth.allReady && (
-        <Card className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20" data-testid="card-integration-status">
-          <CardContent className="pt-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0 space-y-2">
-                <p className="font-medium text-amber-800 dark:text-amber-200">Some integrations need setup</p>
-                <div className="space-y-1.5">
-                  {!integrationHealth.servicesReady.sendgrid && (
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Email (SendGrid): Not configured
-                      </span>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
-                          Fallback: Open with Gmail/Outlook
+      {presets.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Palette className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="font-semibold mb-2">No style presets yet</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Create your first style preset to customize how your documents look
+          </p>
+          <Button onClick={openCreateDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Style Preset
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {presets.map((preset) => (
+            <Card key={preset.id} className="hover-elevate" data-testid={`card-style-${preset.id}`}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base truncate flex items-center gap-2">
+                      {preset.name}
+                      {preset.isDefault && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Star className="h-3 w-3 mr-1" />
+                          Default
                         </Badge>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-amber-700 dark:text-amber-300 p-0 h-auto"
-                          onClick={() => window.location.href = '/settings?tab=integrations'}
-                          data-testid="button-setup-sendgrid"
-                        >
-                          <Settings className="h-3 w-3 mr-1" />
-                          Setup
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {!integrationHealth.servicesReady.twilio && (
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        SMS (Twilio): Not configured
-                      </span>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-amber-700 dark:text-amber-300 p-0 h-auto"
-                        onClick={() => window.location.href = '/settings?tab=integrations'}
-                        data-testid="button-setup-twilio"
-                      >
-                        <Settings className="h-3 w-3 mr-1" />
-                        Setup
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Your templates will still work - emails will open in your default email app instead of sending automatically.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* All integrations ready indicator */}
-      {integrationHealth?.allReady && (
-        <Card className="mt-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20" data-testid="card-integrations-ready">
-          <CardContent className="py-3">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-sm text-green-700 dark:text-green-300">
-                All integrations ready - emails and SMS will send automatically
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="communications" data-testid="tab-communications">
-            Communications
-          </TabsTrigger>
-          <TabsTrigger value="financial" data-testid="tab-financial">
-            Financial
-          </TabsTrigger>
-          <TabsTrigger value="jobs_safety" data-testid="tab-jobs-safety">
-            Jobs & Safety
-          </TabsTrigger>
-        </TabsList>
-
-        {Object.entries(CATEGORIES).map(([categoryKey, category]) => (
-          <TabsContent key={categoryKey} value={categoryKey} className="space-y-4">
-            {categoryKey === "jobs_safety" ? (
-              <>
-                {/* Default Templates Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Default Templates</h3>
-                  {category.families.map((family) => {
-                    const config = FAMILY_CONFIG[family];
-                    const meta = getFamilyMeta(family);
-                    const familyTemplates = getFamilyTemplates(family);
-                    const Icon = config.icon;
-                    const isExpanded = expandedFamily === family;
-
-                    return (
-                      <Card key={family} className="hover-elevate" data-testid={`card-family-${family}`}>
-                        <CardHeader
-                          className="cursor-pointer"
-                          onClick={() => setExpandedFamily(isExpanded ? null : family)}
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                                style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
-                              >
-                                <Icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg">{config.name}</CardTitle>
-                                <CardDescription>{config.description}</CardDescription>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge variant="secondary" data-testid={`badge-count-${family}`}>
-                                {meta?.count || 0} template{(meta?.count || 0) !== 1 ? "s" : ""}
-                              </Badge>
-                              {meta?.activeTemplateName && (
-                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Active
-                                </Badge>
-                              )}
-                              {isExpanded ? (
-                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
-
-                        {isExpanded && (
-                          <CardContent className="pt-0">
-                            <div className="border-t pt-4 space-y-3">
-                              <div className="flex justify-between items-center mb-4">
-                                <p className="text-sm text-muted-foreground">
-                                  {familyTemplates.length === 0
-                                    ? "No templates yet"
-                                    : `${familyTemplates.length} template${familyTemplates.length !== 1 ? "s" : ""}`}
-                                </p>
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openCreateDialog(family);
-                                  }}
-                                  data-testid={`button-create-${family}`}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  Create New
-                                </Button>
-                              </div>
-
-                              {familyTemplates.map((template) => (
-                                <div
-                                  key={template.id}
-                                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                                  data-testid={`template-item-${template.id}`}
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="font-medium truncate">{template.name}</p>
-                                      {template.purpose && template.purpose !== 'general' && PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose] && (
-                                        <Badge variant="secondary" size="sm" className="text-xs" data-testid={`badge-trigger-${template.id}`}>
-                                          Trigger: {PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose]?.label}
-                                        </Badge>
-                                      )}
-                                      {template.isActive && (
-                                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" size="sm">
-                                          Active
-                                        </Badge>
-                                      )}
-                                      {template.isDefault && (
-                                        <Badge variant="outline" size="sm">
-                                          System Default
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {template.description && (
-                                      <p className="text-sm text-muted-foreground truncate">
-                                        {template.description}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 ml-3">
-                                    {!template.isActive && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          activateMutation.mutate(template.id);
-                                        }}
-                                        disabled={activateMutation.isPending}
-                                        data-testid={`button-activate-${template.id}`}
-                                      >
-                                        Set Active
-                                      </Button>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openEditDialog(template);
-                                      }}
-                                      data-testid={`button-edit-${template.id}`}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    {!template.isDefault && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedTemplate(template);
-                                          setDeleteDialogOpen(true);
-                                        }}
-                                        className="text-destructive hover:text-destructive"
-                                        data-testid={`button-delete-${template.id}`}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        )}
-                      </Card>
-                    );
-                  })}
-                </div>
-
-                {/* Document Templates Section (Job, Quote, Invoice) */}
-                <div className="border-t pt-6 mt-6">
-                  <DocumentTemplatesSection />
-                </div>
-
-                {/* Custom Forms Builder Section */}
-                <div className="border-t pt-6 mt-6">
-                  <CustomFormsPage hideHeader={false} />
-                </div>
-              </>
-            ) : (
-              category.families.map((family) => {
-                const config = FAMILY_CONFIG[family];
-                const meta = getFamilyMeta(family);
-                const familyTemplates = getFamilyTemplates(family);
-                const Icon = config.icon;
-                const isExpanded = expandedFamily === family;
-
-                return (
-                  <Card key={family} className="hover-elevate" data-testid={`card-family-${family}`}>
-                    <CardHeader
-                      className="cursor-pointer"
-                      onClick={() => setExpandedFamily(isExpanded ? null : family)}
+                      )}
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                      {preset.fontFamily || "Inter"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openEditDialog(preset)}
+                      data-testid={`button-edit-style-${preset.id}`}
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center"
-                            style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
-                          >
-                            <Icon className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{config.name}</CardTitle>
-                            <CardDescription>{config.description}</CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary" data-testid={`badge-count-${family}`}>
-                            {meta?.count || 0} template{(meta?.count || 0) !== 1 ? "s" : ""}
-                          </Badge>
-                          {meta?.activeTemplateName && (
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Active
-                            </Badge>
-                          )}
-                          {isExpanded ? (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-
-                    {isExpanded && (
-                      <CardContent className="pt-0">
-                        <div className="border-t pt-4 space-y-3">
-                          <div className="flex justify-between items-center mb-4">
-                            <p className="text-sm text-muted-foreground">
-                              {familyTemplates.length === 0
-                                ? "No templates yet"
-                                : `${familyTemplates.length} template${familyTemplates.length !== 1 ? "s" : ""}`}
-                            </p>
-                            <Button
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openCreateDialog(family);
-                              }}
-                              data-testid={`button-create-${family}`}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Create New
-                            </Button>
-                          </div>
-
-                          {familyTemplates.map((template) => (
-                            <div
-                              key={template.id}
-                              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                              data-testid={`template-item-${template.id}`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="font-medium truncate">{template.name}</p>
-                                  {(family === 'email' || family === 'sms') && template.purpose && template.purpose !== 'general' && PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose] && (
-                                    <Badge variant="secondary" size="sm" className="text-xs" data-testid={`badge-trigger-${template.id}`}>
-                                      Trigger: {PURPOSE_CONFIG[template.purpose as BusinessTemplatePurpose]?.label}
-                                    </Badge>
-                                  )}
-                                  {template.isActive && (
-                                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" size="sm">
-                                      Active
-                                    </Badge>
-                                  )}
-                                  {template.isDefault && (
-                                    <Badge variant="outline" size="sm">
-                                      System Default
-                                    </Badge>
-                                  )}
-                                </div>
-                                {template.description && (
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {template.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 ml-3">
-                                {!template.isActive && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      activateMutation.mutate(template.id);
-                                    }}
-                                    disabled={activateMutation.isPending}
-                                    data-testid={`button-activate-${template.id}`}
-                                  >
-                                    Set Active
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openEditDialog(template);
-                                  }}
-                                  data-testid={`button-edit-${template.id}`}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                {!template.isDefault && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedTemplate(template);
-                                      setDeleteDialogOpen(true);
-                                    }}
-                                    data-testid={`button-delete-${template.id}`}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                );
-              })
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
-
-      <Dialog open={editDialogOpen} onOpenChange={(open) => {
-        setEditDialogOpen(open);
-        if (!open) resetForm();
-      }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>
-              {isCreating ? "Create Template" : "Edit Template"}
-            </DialogTitle>
-            <DialogDescription>
-              {isCreating
-                ? `Create a new ${FAMILY_CONFIG[selectedTemplate?.family as BusinessTemplateFamily]?.name || "template"}`
-                : `Edit your ${FAMILY_CONFIG[selectedTemplate?.family as BusinessTemplateFamily]?.name || "template"}`}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 flex-1 overflow-y-auto min-h-0">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Template Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter template name"
-                  data-testid="input-template-name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Brief description of this template"
-                  data-testid="input-template-description"
-                />
-              </div>
-
-              {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
-                <div className="space-y-2">
-                  <Label htmlFor="purpose">Trigger / Purpose</Label>
-                  <Select
-                    value={formData.purpose}
-                    onValueChange={(value) => setFormData({ ...formData, purpose: value as BusinessTemplatePurpose })}
-                  >
-                    <SelectTrigger data-testid="select-template-purpose">
-                      <SelectValue placeholder="Select when this template is used" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getPurposesForFamily(selectedTemplate.family).map((purpose) => (
-                        <SelectItem key={purpose} value={purpose}>
-                          {PURPOSE_CONFIG[purpose]?.label || purpose}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Multiple templates can be active for different triggers
-                  </p>
-                </div>
-              )}
-
-              {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && (
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject Line</Label>
-                  <Input
-                    id="subject"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    placeholder="Email subject or SMS opening"
-                    data-testid="input-template-subject"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="content">Content</Label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Enter template content..."
-                  rows={10}
-                  className="resize-none"
-                  data-testid="input-template-content"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use variables like {"{client_name}"}, {"{job_title}"}, {"{quote_total}"} for dynamic content
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col rounded-lg border bg-muted/50 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted">
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-sm">Live Preview</span>
-              </div>
-              <ScrollArea className="flex-1 p-4" data-testid="preview-panel">
-                <div className="space-y-4">
-                  {(selectedTemplate?.family === "email" || selectedTemplate?.family === "sms") && formData.subject && (
-                    <div className="rounded-md border bg-background p-3">
-                      <p className="text-xs text-muted-foreground mb-1">Subject</p>
-                      <p className="font-medium">{renderPreview(formData.subject)}</p>
-                    </div>
-                  )}
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    {formData.content ? (
-                      <div className="whitespace-pre-wrap">
-                        {renderPreview(formData.content).split('\n').map((line, i) => {
-                          if ((selectedTemplate?.family === "terms_conditions" || selectedTemplate?.family === "safety_form") && line.trim().endsWith(':')) {
-                            return <p key={i} className="font-semibold mt-4 mb-2">{line}</p>;
-                          }
-                          if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
-                            return <p key={i} className="ml-4">{line}</p>;
-                          }
-                          if (line.trim().match(/^\d+\./)) {
-                            return <p key={i} className="ml-4">{line}</p>;
-                          }
-                          return <p key={i} className="mb-2">{line || '\u00A0'}</p>;
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground italic">
-                        Start typing to see a live preview of your template...
-                      </p>
-                    )}
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedPreset(preset);
+                        setDeleteDialogOpen(true);
+                      }}
+                      data-testid={`button-delete-style-${preset.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </ScrollArea>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Primary:</span>
+                    <ColorSwatch color={preset.primaryColor || "#1e40af"} />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Accent:</span>
+                    <ColorSwatch color={preset.accentColor || "#059669"} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isCreating ? "Create Style Preset" : "Edit Style Preset"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Professional Blue"
+                data-testid="input-style-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="logoUrl">Logo URL</Label>
+              <Input
+                id="logoUrl"
+                value={formData.logoUrl}
+                onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                placeholder="https://example.com/logo.png"
+                data-testid="input-style-logo"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="primaryColor">Primary Color</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    id="primaryColor"
+                    value={formData.primaryColor}
+                    onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                    className="w-10 h-10 rounded-md border cursor-pointer"
+                  />
+                  <Input
+                    value={formData.primaryColor}
+                    onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                    className="flex-1"
+                    data-testid="input-primary-color"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accentColor">Accent Color</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    id="accentColor"
+                    value={formData.accentColor}
+                    onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
+                    className="w-10 h-10 rounded-md border cursor-pointer"
+                  />
+                  <Input
+                    value={formData.accentColor}
+                    onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
+                    className="flex-1"
+                    data-testid="input-accent-color"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Font Family</Label>
+              <Select
+                value={formData.fontFamily}
+                onValueChange={(value) => setFormData({ ...formData, fontFamily: value })}
+              >
+                <SelectTrigger data-testid="select-font-family">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONT_FAMILIES.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Header Layout</Label>
+                <Select
+                  value={formData.headerLayout}
+                  onValueChange={(value) => setFormData({ ...formData, headerLayout: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LAYOUT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Footer Layout</Label>
+                <Select
+                  value={formData.footerLayout}
+                  onValueChange={(value) => setFormData({ ...formData, footerLayout: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LAYOUT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-base">Display Options</Label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="showLogo" className="font-normal">Show Logo</Label>
+                  <Switch
+                    id="showLogo"
+                    checked={formData.showLogo}
+                    onCheckedChange={(checked) => setFormData({ ...formData, showLogo: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="showBusinessDetails" className="font-normal">Show Business Details</Label>
+                  <Switch
+                    id="showBusinessDetails"
+                    checked={formData.showBusinessDetails}
+                    onCheckedChange={(checked) => setFormData({ ...formData, showBusinessDetails: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="showBankDetails" className="font-normal">Show Bank Details</Label>
+                  <Switch
+                    id="showBankDetails"
+                    checked={formData.showBankDetails}
+                    onCheckedChange={(checked) => setFormData({ ...formData, showBankDetails: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="tableBorders" className="font-normal">Table Borders</Label>
+                  <Switch
+                    id="tableBorders"
+                    checked={formData.tableBorders}
+                    onCheckedChange={(checked) => setFormData({ ...formData, tableBorders: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="alternateRowColors" className="font-normal">Alternate Row Colors</Label>
+                  <Switch
+                    id="alternateRowColors"
+                    checked={formData.alternateRowColors}
+                    onCheckedChange={(checked) => setFormData({ ...formData, alternateRowColors: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="compactMode" className="font-normal">Compact Mode</Label>
+                  <Switch
+                    id="compactMode"
+                    checked={formData.compactMode}
+                    onCheckedChange={(checked) => setFormData({ ...formData, compactMode: checked })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4">
+              <Label htmlFor="isDefault" className="font-medium">Set as Default</Label>
+              <Switch
+                id="isDefault"
+                checked={formData.isDefault}
+                onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked })}
+              />
             </div>
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!formData.name || !formData.content || createMutation.isPending || updateMutation.isPending}
-              data-testid="button-save-template"
+              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
+              data-testid="button-save-style"
             >
               {(createMutation.isPending || updateMutation.isPending) && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
-              {isCreating ? "Create Template" : "Save Changes"}
+              {isCreating ? "Create" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1104,17 +530,16 @@ export default function TemplatesHub() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogTitle>Delete Style Preset</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedTemplate?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{selectedPreset?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => selectedPreset && deleteMutation.mutate(selectedPreset.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete
@@ -1122,6 +547,802 @@ export default function TemplatesHub() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function RateCardsSection() {
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    tradeType: "general",
+    hourlyRate: "100.00",
+    calloutFee: "80.00",
+    materialMarkupPct: "20.00",
+    afterHoursMultiplier: "1.50",
+    gstEnabled: true,
+  });
+
+  const { data: user } = useQuery<{ tradeType?: string }>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  const { data: rateCards = [], isLoading } = useQuery<RateCard[]>({
+    queryKey: ["/api/rate-cards"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return apiRequest("POST", "/api/rate-cards", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Rate card created" });
+      setDialogOpen(false);
+      setFormData({
+        name: "",
+        tradeType: user?.tradeType || "general",
+        hourlyRate: "100.00",
+        calloutFee: "80.00",
+        materialMarkupPct: "20.00",
+        afterHoursMultiplier: "1.50",
+        gstEnabled: true,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to create rate card", variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {rateCards.length} rate card{rateCards.length !== 1 ? "s" : ""}
+        </p>
+        <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-rate-card">
+          <Plus className="h-4 w-4 mr-1" />
+          Add
+        </Button>
+      </div>
+
+      {rateCards.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          No rate cards yet. Create one to set your pricing.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {rateCards.map((card) => (
+            <div
+              key={card.id}
+              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+              data-testid={`rate-card-${card.id}`}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{card.name}</p>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
+                  <span>${card.hourlyRate}/hr</span>
+                  <span>Callout: ${card.calloutFee}</span>
+                  <span>{card.afterHoursMultiplier}x after hours</span>
+                </div>
+              </div>
+              <Badge variant="secondary" className="capitalize ml-2">
+                {card.tradeType}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Rate Card</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rate-name">Name</Label>
+              <Input
+                id="rate-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Standard Rates"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+                <Input
+                  id="hourlyRate"
+                  type="number"
+                  step="0.01"
+                  value={formData.hourlyRate}
+                  onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="calloutFee">Callout Fee ($)</Label>
+                <Input
+                  id="calloutFee"
+                  type="number"
+                  step="0.01"
+                  value={formData.calloutFee}
+                  onChange={(e) => setFormData({ ...formData, calloutFee: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="afterHoursMultiplier">After Hours Multiplier</Label>
+                <Input
+                  id="afterHoursMultiplier"
+                  type="number"
+                  step="0.1"
+                  value={formData.afterHoursMultiplier}
+                  onChange={(e) => setFormData({ ...formData, afterHoursMultiplier: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="materialMarkupPct">Material Markup (%)</Label>
+                <Input
+                  id="materialMarkupPct"
+                  type="number"
+                  step="1"
+                  value={formData.materialMarkupPct}
+                  onChange={(e) => setFormData({ ...formData, materialMarkupPct: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="gstEnabled">GST Enabled</Label>
+              <Switch
+                id="gstEnabled"
+                checked={formData.gstEnabled}
+                onCheckedChange={(checked) => setFormData({ ...formData, gstEnabled: checked })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createMutation.mutate(formData)}
+              disabled={!formData.name || createMutation.isPending}
+            >
+              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function LineItemsCatalogSection() {
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    unit: "item",
+    unitPrice: "0.00",
+    tradeType: "general",
+    defaultQty: "1.00",
+  });
+
+  const { data: user } = useQuery<{ tradeType?: string }>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  const { data: catalogItems = [], isLoading } = useQuery<LineItemCatalog[]>({
+    queryKey: ["/api/catalog"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return apiRequest("POST", "/api/catalog", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Catalog item created" });
+      setDialogOpen(false);
+      setFormData({
+        name: "",
+        description: "",
+        unit: "item",
+        unitPrice: "0.00",
+        tradeType: user?.tradeType || "general",
+        defaultQty: "1.00",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to create item", variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {catalogItems.length} item{catalogItems.length !== 1 ? "s" : ""} in catalog
+        </p>
+        <Button size="sm" onClick={() => setDialogOpen(true)} data-testid="button-create-catalog-item">
+          <Plus className="h-4 w-4 mr-1" />
+          Add
+        </Button>
+      </div>
+
+      {catalogItems.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          No catalog items yet. Add items you use frequently.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {catalogItems.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+              data-testid={`catalog-item-${item.id}`}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{item.name}</p>
+                <p className="text-sm text-muted-foreground truncate">
+                  {item.description}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                <Badge variant="outline">${item.unitPrice}/{item.unit}</Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Catalog Item</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="item-name">Name</Label>
+              <Input
+                id="item-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Labour - Standard"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="item-description">Description</Label>
+              <Input
+                id="item-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="unitPrice">Unit Price ($)</Label>
+                <Input
+                  id="unitPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.unitPrice}
+                  onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Unit</Label>
+                <Select
+                  value={formData.unit}
+                  onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((unit) => (
+                      <SelectItem key={unit.value} value={unit.value}>
+                        {unit.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createMutation.mutate(formData)}
+              disabled={!formData.name || !formData.description || createMutation.isPending}
+            >
+              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Add Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ComponentsTab() {
+  const [rateCardsOpen, setRateCardsOpen] = useState(true);
+  const [lineItemsOpen, setLineItemsOpen] = useState(true);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">Reusable Components</h2>
+        <p className="text-sm text-muted-foreground">
+          Building blocks for your quotes and invoices
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <Collapsible open={rateCardsOpen} onOpenChange={setRateCardsOpen}>
+          <Card data-testid="card-rate-cards">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+                    >
+                      <DollarSign className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Rate Cards</CardTitle>
+                      <CardDescription>Hourly rates, callout fees, and multipliers</CardDescription>
+                    </div>
+                  </div>
+                  {rateCardsOpen ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <RateCardsSection />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        <Collapsible open={lineItemsOpen} onOpenChange={setLineItemsOpen}>
+          <Card data-testid="card-line-items">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+                    >
+                      <Package className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Line Items Catalog</CardTitle>
+                      <CardDescription>Reusable items for quotes and invoices</CardDescription>
+                    </div>
+                  </div>
+                  {lineItemsOpen ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <LineItemsCatalogSection />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      </div>
+    </div>
+  );
+}
+
+function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate | null; stylePreset: StylePreset | null }) {
+  const sampleData = {
+    businessName: "Your Business Name",
+    businessAddress: "123 Trade Street, Sydney NSW 2000",
+    businessPhone: "0400 000 000",
+    businessEmail: "hello@yourbusiness.com",
+    clientName: "John Smith",
+    clientAddress: "456 Customer Ave, Melbourne VIC 3000",
+    documentNumber: "Q-00001",
+    date: new Date().toLocaleDateString("en-AU"),
+    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-AU"),
+    items: [
+      { description: "Labour - Standard Rate", qty: 4, unit: "hour", unitPrice: 95, total: 380 },
+      { description: "Materials - Electrical Supplies", qty: 1, unit: "item", unitPrice: 245.50, total: 245.50 },
+    ],
+    subtotal: 625.50,
+    gst: 62.55,
+    total: 688.05,
+  };
+
+  const primaryColor = stylePreset?.primaryColor || "#1e40af";
+  const accentColor = stylePreset?.accentColor || "#059669";
+  const fontFamily = stylePreset?.fontFamily || "Inter";
+
+  return (
+    <div
+      className="bg-white rounded-lg shadow-lg p-6 text-black min-h-[400px]"
+      style={{ fontFamily }}
+    >
+      <div
+        className="flex items-start justify-between pb-4 mb-4"
+        style={{ borderBottom: `2px solid ${primaryColor}` }}
+      >
+        <div>
+          {stylePreset?.showLogo && stylePreset?.logoUrl && (
+            <img src={stylePreset.logoUrl} alt="Logo" className="h-12 mb-2 object-contain" />
+          )}
+          <h2 className="text-lg font-bold" style={{ color: primaryColor }}>
+            {sampleData.businessName}
+          </h2>
+          {stylePreset?.showBusinessDetails !== false && (
+            <div className="text-xs text-gray-600 mt-1">
+              <p>{sampleData.businessAddress}</p>
+              <p>{sampleData.businessPhone} | {sampleData.businessEmail}</p>
+            </div>
+          )}
+        </div>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold" style={{ color: primaryColor }}>
+            {template?.type === "invoice" ? "INVOICE" : template?.type === "job" ? "JOB CARD" : "QUOTE"}
+          </h1>
+          <p className="text-sm text-gray-600">{sampleData.documentNumber}</p>
+          <p className="text-sm text-gray-600">{sampleData.date}</p>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase">Bill To</p>
+        <p className="font-medium">{sampleData.clientName}</p>
+        <p className="text-sm text-gray-600">{sampleData.clientAddress}</p>
+      </div>
+
+      <table className="w-full text-sm mb-4" style={{ borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ backgroundColor: primaryColor, color: "white" }}>
+            <th className="text-left p-2">Description</th>
+            <th className="text-right p-2">Qty</th>
+            <th className="text-right p-2">Unit</th>
+            <th className="text-right p-2">Price</th>
+            <th className="text-right p-2">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sampleData.items.map((item, idx) => (
+            <tr
+              key={idx}
+              style={{
+                backgroundColor: stylePreset?.alternateRowColors && idx % 2 === 1 ? "#f9fafb" : "white",
+                borderBottom: stylePreset?.tableBorders ? "1px solid #e5e7eb" : "none",
+              }}
+            >
+              <td className="p-2">{item.description}</td>
+              <td className="text-right p-2">{item.qty}</td>
+              <td className="text-right p-2">{item.unit}</td>
+              <td className="text-right p-2">${item.unitPrice.toFixed(2)}</td>
+              <td className="text-right p-2">${item.total.toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="flex justify-end">
+        <div className="w-48">
+          <div className="flex justify-between py-1 text-sm">
+            <span>Subtotal:</span>
+            <span>${sampleData.subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between py-1 text-sm">
+            <span>GST (10%):</span>
+            <span>${sampleData.gst.toFixed(2)}</span>
+          </div>
+          <div
+            className="flex justify-between py-2 font-bold text-base mt-1"
+            style={{ borderTop: `2px solid ${primaryColor}`, color: primaryColor }}
+          >
+            <span>Total:</span>
+            <span>${sampleData.total.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {stylePreset?.showBankDetails !== false && (
+        <div className="mt-6 pt-4 border-t text-xs text-gray-500">
+          <p className="font-semibold">Payment Details</p>
+          <p>BSB: 123-456 | Account: 12345678</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DocumentsTab() {
+  const [expandedType, setExpandedType] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
+
+  const { data: user } = useQuery<{ tradeType?: string }>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  const { data: templates = [], isLoading: templatesLoading } = useQuery<DocumentTemplate[]>({
+    queryKey: ["/api/templates", user?.tradeType],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (user?.tradeType) params.append("tradeType", user.tradeType);
+      const url = `/api/templates${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch templates");
+      return response.json();
+    },
+    enabled: true,
+  });
+
+  const { data: stylePresets = [] } = useQuery<StylePreset[]>({
+    queryKey: ["/api/style-presets"],
+  });
+
+  const defaultPreset = stylePresets.find((p) => p.isDefault) || stylePresets[0] || null;
+
+  const TEMPLATE_TYPES = [
+    { type: "quote", name: "Quote Templates", description: "Pre-configured quote formats", icon: FileText },
+    { type: "invoice", name: "Invoice Templates", description: "Standard invoice layouts", icon: Receipt },
+    { type: "job", name: "Job Templates", description: "Default settings for new jobs", icon: ClipboardList },
+  ];
+
+  const getTemplatesByType = (type: string) => templates.filter((t) => t.type === type);
+
+  if (templatesLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">Document Templates</h2>
+        <p className="text-sm text-muted-foreground">
+          Manage templates for quotes, invoices, and jobs
+          {user?.tradeType && <span className="ml-1">(filtered for {user.tradeType})</span>}
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4">
+          {TEMPLATE_TYPES.map(({ type, name, description, icon: Icon }) => {
+            const typeTemplates = getTemplatesByType(type);
+            const isExpanded = expandedType === type;
+
+            return (
+              <Collapsible
+                key={type}
+                open={isExpanded}
+                onOpenChange={(open) => setExpandedType(open ? type : null)}
+              >
+                <Card data-testid={`card-document-${type}`}>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+                          >
+                            <Icon className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{name}</CardTitle>
+                            <CardDescription>{description}</CardDescription>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary">
+                            {typeTemplates.length} template{typeTemplates.length !== 1 ? "s" : ""}
+                          </Badge>
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="border-t pt-4 space-y-2">
+                        {typeTemplates.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No {type} templates available
+                          </p>
+                        ) : (
+                          typeTemplates.map((template) => (
+                            <div
+                              key={template.id}
+                              className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                                selectedTemplate?.id === template.id
+                                  ? "border-primary bg-primary/5"
+                                  : "bg-muted/30 hover:bg-muted/50"
+                              }`}
+                              onClick={() => setSelectedTemplate(template)}
+                              data-testid={`template-item-${template.id}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium truncate">{template.name}</p>
+                                  {template.tradeType && (
+                                    <Badge variant="secondary" className="text-xs capitalize">
+                                      {template.tradeType}
+                                    </Badge>
+                                  )}
+                                  {template.isDefault && (
+                                    <Badge variant="outline" className="text-xs">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Default
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTemplate(template);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
+        </div>
+
+        <div className="lg:sticky lg:top-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">Live Preview</CardTitle>
+              </div>
+              <CardDescription>
+                {selectedTemplate
+                  ? `Previewing: ${selectedTemplate.name}`
+                  : "Select a template to preview"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
+                {selectedTemplate ? (
+                  <DocumentPreview template={selectedTemplate} stylePreset={defaultPreset} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                    <FileText className="h-12 w-12 mb-4 opacity-50" />
+                    <p className="text-sm">Click a template to see preview</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function TemplatesHub() {
+  const getInitialTab = () => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["styles", "components", "documents", "forms"].includes(tabParam)) {
+      return tabParam;
+    }
+    return "styles";
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
+
+  return (
+    <PageShell>
+      <PageHeader
+        title="Templates Hub"
+        subtitle="Manage styles, components, and document templates"
+        leading={<Layers className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />}
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid" data-testid="tabs-list">
+          <TabsTrigger value="styles" className="gap-2" data-testid="tab-styles">
+            <Palette className="h-4 w-4 hidden sm:block" />
+            Styles
+          </TabsTrigger>
+          <TabsTrigger value="components" className="gap-2" data-testid="tab-components">
+            <Layers className="h-4 w-4 hidden sm:block" />
+            Components
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-2" data-testid="tab-documents">
+            <FileText className="h-4 w-4 hidden sm:block" />
+            Documents
+          </TabsTrigger>
+          <TabsTrigger value="forms" className="gap-2" data-testid="tab-forms">
+            <ClipboardList className="h-4 w-4 hidden sm:block" />
+            Forms
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="styles" className="mt-6">
+          <StylePresetsTab />
+        </TabsContent>
+
+        <TabsContent value="components" className="mt-6">
+          <ComponentsTab />
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-6">
+          <DocumentsTab />
+        </TabsContent>
+
+        <TabsContent value="forms" className="mt-6">
+          <CustomFormsPage />
+        </TabsContent>
+      </Tabs>
     </PageShell>
   );
 }
