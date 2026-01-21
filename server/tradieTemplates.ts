@@ -559,49 +559,57 @@ export const tradieQuoteTemplates = [
     '#6366f1', 'Project Quote', 'Complete project quotation',
     'Quote valid for 45 days. Progress payments apply for larger projects. Full scope included. GST included.',
     30, 45, [
-      { description: 'Project work complete', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Labour', qty: 8, unitPrice: 85.00, unit: 'hour' },
+      { description: 'Materials and supplies', qty: 1, unitPrice: 350.00, unit: 'lot' }
     ]),
   createTemplate('quote', 'general', 'general-maintenance', 'Maintenance Quote',
     '#6366f1', 'Maintenance Quote', 'Regular maintenance services',
     'Quote valid for 30 days. All routine maintenance included. GST included.',
     0, 30, [
-      { description: 'Maintenance service', qty: 1, unitPrice: 0, unit: 'visit' }
+      { description: 'Service call', qty: 1, unitPrice: 95.00, unit: 'visit' },
+      { description: 'Labour', qty: 1, unitPrice: 85.00, unit: 'hour' }
     ]),
   createTemplate('invoice', 'general', 'general-standard-inv', 'Standard Invoice',
     '#6366f1', 'Services Invoice', 'Invoice for services rendered',
     'Payment due within 14 days. All work guaranteed.',
     0, 14, [
-      { description: 'Work complete', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Labour', qty: 2, unitPrice: 85.00, unit: 'hour' },
+      { description: 'Materials', qty: 1, unitPrice: 50.00, unit: 'lot' }
     ]),
   createTemplate('invoice', 'general', 'general-project-inv', 'Project Invoice',
     '#6366f1', 'Project Invoice', 'Invoice for project work',
     'Payment due within 14 days. Final payment as per quote.',
     0, 14, [
-      { description: 'Project work complete', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Labour', qty: 8, unitPrice: 85.00, unit: 'hour' },
+      { description: 'Materials and supplies', qty: 1, unitPrice: 350.00, unit: 'lot' }
     ]),
   createTemplate('invoice', 'general', 'general-maintenance-inv', 'Maintenance Invoice',
     '#6366f1', 'Maintenance Invoice', 'Invoice for maintenance services',
     'Payment due within 14 days.',
     0, 14, [
-      { description: 'Maintenance complete', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Service call', qty: 1, unitPrice: 95.00, unit: 'visit' },
+      { description: 'Labour', qty: 1, unitPrice: 85.00, unit: 'hour' }
     ]),
   createTemplate('job', 'general', 'general-standard-job', 'Standard Job',
     '#6366f1', 'Service Work', 'General work',
     'All work completed to high standard.',
     0, 14, [
-      { description: 'Work as discussed', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Labour', qty: 2, unitPrice: 85.00, unit: 'hour' },
+      { description: 'Materials', qty: 1, unitPrice: 50.00, unit: 'lot' }
     ]),
   createTemplate('job', 'general', 'general-project-job', 'Project Job',
     '#6366f1', 'Project', 'Project work',
     'Complete project scope.',
     0, 14, [
-      { description: 'Project work', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Labour', qty: 4, unitPrice: 85.00, unit: 'hour' },
+      { description: 'Materials and supplies', qty: 1, unitPrice: 150.00, unit: 'lot' }
     ]),
   createTemplate('job', 'general', 'general-maintenance-job', 'Maintenance Job',
     '#6366f1', 'Maintenance', 'Routine maintenance',
     'Regular maintenance service.',
     0, 14, [
-      { description: 'Maintenance', qty: 1, unitPrice: 0, unit: 'job' }
+      { description: 'Service call', qty: 1, unitPrice: 95.00, unit: 'visit' },
+      { description: 'Labour', qty: 1, unitPrice: 85.00, unit: 'hour' }
     ]),
 ];
 
