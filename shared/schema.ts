@@ -929,6 +929,42 @@ export const rateCards = pgTable("rate_cards", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Style Presets for Document Templates
+export const stylePresets = pgTable("style_presets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  isDefault: boolean("is_default").default(false),
+  // Branding
+  logoUrl: text("logo_url"),
+  primaryColor: text("primary_color").default('#1e40af'), // Blue
+  accentColor: text("accent_color").default('#059669'), // Green
+  // Typography
+  fontFamily: text("font_family").default('Inter'),
+  headerFontSize: text("header_font_size").default('24px'),
+  bodyFontSize: text("body_font_size").default('14px'),
+  // Layout Options
+  headerLayout: text("header_layout").default('standard'), // 'standard', 'minimal', 'detailed'
+  footerLayout: text("footer_layout").default('standard'), // 'standard', 'minimal', 'detailed'
+  showLogo: boolean("show_logo").default(true),
+  showBusinessDetails: boolean("show_business_details").default(true),
+  showBankDetails: boolean("show_bank_details").default(true),
+  // Spacing & Borders
+  tableBorders: boolean("table_borders").default(true),
+  alternateRowColors: boolean("alternate_row_colors").default(true),
+  compactMode: boolean("compact_mode").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStylePresetSchema = createInsertSchema(stylePresets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertStylePreset = z.infer<typeof insertStylePresetSchema>;
+export type StylePreset = typeof stylePresets.$inferSelect;
+
 // Zod schemas for inserts
 export const insertBusinessSettingsSchema = createInsertSchema(businessSettings).omit({
   id: true,
