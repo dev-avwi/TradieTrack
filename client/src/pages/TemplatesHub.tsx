@@ -59,6 +59,9 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { StylePreset, RateCard, LineItemCatalog, DocumentTemplate } from "@shared/schema";
+import LiveDocumentPreview from "@/components/LiveDocumentPreview";
+import { useBusinessSettings } from "@/hooks/use-business-settings";
+import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
 
 const FONT_FAMILIES = [
   { value: "Inter", label: "Inter" },
@@ -1224,177 +1227,115 @@ function ComponentsTab() {
 }
 
 function DocumentPreview({ template, stylePreset }: { template: DocumentTemplate | null; stylePreset: StylePreset | null }) {
+  // Fetch business settings to show realistic preview
+  const { data: businessSettings } = useBusinessSettings();
+  
   // Extract template-specific data
   const defaults = (template?.defaults as Record<string, unknown>) || {};
   const styling = (template?.styling as Record<string, unknown>) || {};
   const templateLineItems = (template?.defaultLineItems as Array<{ description: string; qty: number; unitPrice: number; unit?: string }>) || [];
   
-  // Calculate totals from template line items or use defaults
-  const items = templateLineItems.length > 0 
+  // Use template line items or sensible defaults based on document type
+  const lineItems = templateLineItems.length > 0 
     ? templateLineItems.map(item => ({
         description: item.description,
-        qty: item.qty || 1,
-        unit: item.unit || "each",
+        quantity: item.qty || 1,
         unitPrice: item.unitPrice || 0,
-        total: (item.qty || 1) * (item.unitPrice || 0)
       }))
     : template?.type === "invoice" 
       ? [
-          { description: "Labour - Completed Work", qty: 6, unit: "hour", unitPrice: 95, total: 570 },
-          { description: "Parts & Materials", qty: 1, unit: "lot", unitPrice: 255, total: 255 },
-        ]
-      : template?.type === "job"
-      ? [
-          { description: "Site Work - As quoted", qty: 1, unit: "job", unitPrice: 450, total: 450 },
+          { description: "Labour - Completed Work", quantity: 6, unitPrice: 95 },
+          { description: "Parts & Materials", quantity: 1, unitPrice: 255 },
         ]
       : [
-          { description: "Labour - Standard Rate", qty: 4, unit: "hour", unitPrice: 95, total: 380 },
-          { description: "Materials", qty: 1, unit: "lot", unitPrice: 245.50, total: 245.50 },
+          { description: "Labour - Standard Rate", quantity: 4, unitPrice: 95 },
+          { description: "Materials", quantity: 1, unitPrice: 245.50 },
         ];
 
-  const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const gst = subtotal * 0.1;
-  const total = subtotal + gst;
-
-  // Get document title from template or use default based on type
-  const documentTitle = (defaults.title as string) || 
-    (template?.type === "invoice" ? "TAX INVOICE" : template?.type === "job" ? "JOB CARD" : "QUOTE");
-  
   // Get description/terms from template
   const description = (defaults.description as string) || "";
   const terms = (defaults.terms as string) || "";
   const depositPct = (defaults.depositPct as number) || 0;
-  const dueDays = (defaults.dueTermDays as number) || 14;
+  const validDays = (defaults.validDays as number) || 30;
 
   // Use template brand color or style preset colors
   const templateBrandColor = styling.brandColor as string;
-  const primaryColor = templateBrandColor || stylePreset?.primaryColor || "#1e40af";
-  const accentColor = stylePreset?.accentColor || "#059669";
-  const fontFamily = stylePreset?.fontFamily || "Inter";
-  
+  const brandColor = templateBrandColor || stylePreset?.primaryColor || businessSettings?.brandColor || "#1e40af";
+
+  // Map style preset to TemplateCustomization for LiveDocumentPreview
+  const templateCustomization: TemplateCustomization = {
+    tableStyle: stylePreset?.alternateRowColors ? 'striped' : stylePreset?.tableBorders ? 'bordered' : 'minimal',
+    accentColor: stylePreset?.accentColor,
+    showHeaderDivider: true,
+  };
+
+  // Determine template ID - use a sensible default for preview
+  const templateId: TemplateId = (styling.templateId as TemplateId) || 'minimal';
+
   // Document number based on type
-  const docNumber = template?.type === "invoice" ? "INV-00042" : template?.type === "job" ? "JOB-00127" : "Q-00089";
+  const docNumber = template?.type === "invoice" ? "INV-00042" : "Q-00089";
+
+  // Calculate valid until date
+  const today = new Date();
+  const validUntil = new Date(today);
+  validUntil.setDate(validUntil.getDate() + validDays);
+
+  // Calculate due date for invoices
+  const dueDate = new Date(today);
+  dueDate.setDate(dueDate.getDate() + ((defaults.dueTermDays as number) || 14));
+
+  // Business info - use actual settings or sensible placeholder
+  const business = {
+    businessName: businessSettings?.businessName || "Your Business Name",
+    abn: businessSettings?.abn || "12 345 678 901",
+    address: businessSettings?.address || "123 Trade Street, Sydney NSW 2000",
+    phone: businessSettings?.phone || "0400 000 000",
+    email: businessSettings?.email || "hello@yourbusiness.com",
+    logoUrl: stylePreset?.showLogo !== false ? (businessSettings?.logoUrl || stylePreset?.logoUrl) : undefined,
+    brandColor: brandColor,
+    gstEnabled: businessSettings?.gstEnabled !== false,
+  };
+
+  // Sample client for preview
+  const sampleClient = {
+    name: "John Smith",
+    email: "john.smith@example.com",
+    phone: "0412 345 678",
+    address: "456 Customer Ave, Melbourne VIC 3000",
+  };
+
+  // Don't render for job templates (they show job settings, not document preview)
+  if (template?.type === "job") {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6 text-black min-h-[400px]">
+        <div className="text-center text-gray-500 py-12">
+          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p className="font-medium">Job Template Preview</p>
+          <p className="text-sm mt-1">Job templates define default settings for new jobs</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="bg-white rounded-lg shadow-lg p-6 text-black min-h-[400px]"
-      style={{ fontFamily }}
-    >
-      <div
-        className="flex items-start justify-between pb-4 mb-4"
-        style={{ borderBottom: `2px solid ${primaryColor}` }}
-      >
-        <div>
-          {stylePreset?.showLogo && stylePreset?.logoUrl && (
-            <img src={stylePreset.logoUrl} alt="Logo" className="h-12 mb-2 object-contain" />
-          )}
-          <h2 className="text-lg font-bold" style={{ color: primaryColor }}>
-            Your Business Name
-          </h2>
-          {stylePreset?.showBusinessDetails !== false && (
-            <div className="text-xs text-gray-600 mt-1">
-              <p>123 Trade Street, Sydney NSW 2000</p>
-              <p>0400 000 000 | hello@yourbusiness.com</p>
-            </div>
-          )}
-        </div>
-        <div className="text-right">
-          <h1 className="text-2xl font-bold" style={{ color: primaryColor }}>
-            {documentTitle}
-          </h1>
-          <p className="text-sm text-gray-600">{docNumber}</p>
-          <p className="text-sm text-gray-600">{new Date().toLocaleDateString("en-AU")}</p>
-          {template && (
-            <p className="text-xs mt-1 px-2 py-0.5 rounded inline-block" style={{ backgroundColor: accentColor, color: "white" }}>
-              {template.name}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Description from template */}
-      {description && (
-        <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: `${primaryColor}10` }}>
-          <p className="text-gray-700 italic">{description}</p>
-        </div>
-      )}
-
-      <div className="mb-4">
-        <p className="text-xs font-semibold text-gray-500 uppercase">Bill To</p>
-        <p className="font-medium">John Smith</p>
-        <p className="text-sm text-gray-600">456 Customer Ave, Melbourne VIC 3000</p>
-      </div>
-
-      <table className="w-full text-sm mb-4" style={{ borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ backgroundColor: primaryColor, color: "white" }}>
-            <th className="text-left p-2">Description</th>
-            <th className="text-right p-2">Qty</th>
-            <th className="text-right p-2">Unit</th>
-            <th className="text-right p-2">Price</th>
-            <th className="text-right p-2">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, idx) => (
-            <tr
-              key={idx}
-              style={{
-                backgroundColor: stylePreset?.alternateRowColors && idx % 2 === 1 ? "#f9fafb" : "white",
-                borderBottom: stylePreset?.tableBorders ? "1px solid #e5e7eb" : "none",
-              }}
-            >
-              <td className="p-2">{item.description}</td>
-              <td className="text-right p-2">{item.qty}</td>
-              <td className="text-right p-2">{item.unit}</td>
-              <td className="text-right p-2">${item.unitPrice.toFixed(2)}</td>
-              <td className="text-right p-2">${item.total.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="flex justify-end">
-        <div className="w-48">
-          <div className="flex justify-between py-1 text-sm">
-            <span>Subtotal:</span>
-            <span>${subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between py-1 text-sm">
-            <span>GST (10%):</span>
-            <span>${gst.toFixed(2)}</span>
-          </div>
-          {depositPct > 0 && (
-            <div className="flex justify-between py-1 text-sm text-gray-600">
-              <span>Deposit ({depositPct}%):</span>
-              <span>${(total * depositPct / 100).toFixed(2)}</span>
-            </div>
-          )}
-          <div
-            className="flex justify-between py-2 font-bold text-base mt-1"
-            style={{ borderTop: `2px solid ${primaryColor}`, color: primaryColor }}
-          >
-            <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Terms & Conditions */}
-      {terms && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Terms & Conditions</p>
-          <p className="text-xs text-gray-600">{terms}</p>
-        </div>
-      )}
-
-      {/* Payment due */}
-      {dueDays > 0 && template?.type !== "job" && (
-        <div className="mt-3 text-xs text-gray-500">
-          Payment due within {dueDays} days
-        </div>
-      )}
-    </div>
+    <LiveDocumentPreview
+      type={template?.type === "invoice" ? "invoice" : "quote"}
+      documentNumber={docNumber}
+      title={template?.name || (template?.type === "invoice" ? "Invoice" : "Quote")}
+      description={description}
+      date={today.toISOString()}
+      validUntil={template?.type !== "invoice" ? validUntil.toISOString() : undefined}
+      dueDate={template?.type === "invoice" ? dueDate.toISOString() : undefined}
+      lineItems={lineItems}
+      notes={terms || "Thank you for your business"}
+      business={business}
+      client={sampleClient}
+      showDepositSection={depositPct > 0}
+      depositPercent={depositPct}
+      gstEnabled={business.gstEnabled}
+      templateId={templateId}
+      templateCustomization={templateCustomization}
+    />
   );
 }
 
