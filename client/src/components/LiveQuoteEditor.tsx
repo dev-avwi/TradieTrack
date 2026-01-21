@@ -44,8 +44,6 @@ import {
   Palette
 } from "lucide-react";
 import AIQuoteGenerator from "@/components/AIQuoteGenerator";
-import TradeCustomFieldsForm, { getCustomFieldsDefaultValues } from "@/components/TradeCustomFieldsForm";
-import { useTradeContext } from "@/hooks/useTradeContext";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
@@ -63,7 +61,6 @@ const quoteFormSchema = z.object({
   depositRequired: z.boolean().default(false),
   depositPercent: z.number().min(0).max(100).default(50),
   lineItems: z.array(lineItemSchema).min(1, "At least one line item required"),
-  customFields: z.record(z.any()).optional(),
 });
 
 type QuoteFormData = z.infer<typeof quoteFormSchema>;
@@ -105,9 +102,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     staleTime: 30000,
   });
 
-  // Get trade-specific custom fields
-  const { customFields: tradeCustomFields } = useTradeContext();
-
   // Fetch job data if jobId is provided in URL
   const { data: preloadedJob, isLoading: jobLoading } = useQuery({
     queryKey: ['/api/jobs', urlJobId],
@@ -135,7 +129,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       depositRequired: false,
       depositPercent: 50,
       lineItems: [],
-      customFields: getCustomFieldsDefaultValues(tradeCustomFields),
     },
   });
 
@@ -362,7 +355,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
           total: (parseFloat(item.quantity || "0") * parseFloat(item.unitPrice || "0")).toFixed(2),
           cost: item.cost && parseFloat(item.cost) > 0 ? item.cost : null,
         })),
-        customFields: data.customFields,
       };
 
       const result = await createQuoteMutation.mutateAsync(quoteData);
@@ -813,9 +805,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                 />
               </CardContent>
             </Card>
-
-            {/* Trade-Specific Custom Fields */}
-            <TradeCustomFieldsForm form={form} />
 
             {/* Submit Button */}
             <Button
