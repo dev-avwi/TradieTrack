@@ -48,7 +48,7 @@ const COUNTDOWN_INTERVAL = 100;
 
 export default function WhatYouMissedModal() {
   const [open, setOpen] = useState(false);
-  const [hasShownOnce, setHasShownOnce] = useState(false);
+  const [shownNotificationIds, setShownNotificationIds] = useState<Set<string>>(new Set());
   const [countdown, setCountdown] = useState(AUTO_DISMISS_DELAY);
   const [, setLocation] = useLocation();
 
@@ -57,14 +57,23 @@ export default function WhatYouMissedModal() {
     refetchInterval: 60000,
   });
 
-  // Show modal once when data is available
+  // Show modal when there are new notifications that haven't been shown yet
   useEffect(() => {
-    if (data && data.count > 0 && !hasShownOnce) {
-      setOpen(true);
-      setHasShownOnce(true);
-      setCountdown(AUTO_DISMISS_DELAY);
+    if (data && data.count > 0) {
+      const currentIds = data.notifications.map(n => n.id);
+      
+      setShownNotificationIds(prevShownIds => {
+        const hasNewNotifications = currentIds.some(id => !prevShownIds.has(id));
+        
+        if (hasNewNotifications) {
+          setOpen(true);
+          setCountdown(AUTO_DISMISS_DELAY);
+          return new Set(currentIds);
+        }
+        return prevShownIds;
+      });
     }
-  }, [data, hasShownOnce]);
+  }, [data]);
 
   // Handle countdown timer separately when modal is open
   useEffect(() => {

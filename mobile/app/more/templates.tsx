@@ -19,7 +19,28 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
-import { TemplateId, DOCUMENT_TEMPLATES } from '../../src/lib/document-templates';
+import { TemplateId, DOCUMENT_TEMPLATES, TemplateCustomization } from '../../src/lib/document-templates';
+
+interface StylePreset {
+  id: string;
+  userId: string;
+  name: string;
+  isDefault: boolean;
+  logoUrl?: string;
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: string;
+  headerLayout: string;
+  footerLayout: string;
+  showLogo: boolean;
+  showBusinessDetails: boolean;
+  showBankDetails: boolean;
+  tableBorders: boolean;
+  alternateRowColors: boolean;
+  compactMode: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface DocumentTemplate {
   id: string;
@@ -637,6 +658,126 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
+  stylePresetsSection: {
+    marginBottom: spacing.xl,
+  },
+  stylePresetsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  stylePresetsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  viewAllButtonText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  stylePresetCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stylePresetCardActive: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
+  stylePresetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  stylePresetInfo: {
+    flex: 1,
+  },
+  stylePresetName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  stylePresetMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  defaultBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  defaultBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  colorSwatches: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  colorSwatch: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  stylePresetDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  stylePresetDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stylePresetDetailText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  previewSection: {
+    marginTop: spacing.md,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    height: 200,
+  },
+  stylePresetListModal: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  stylePresetList: {
+    gap: spacing.md,
+  },
+  emptyStylePresets: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyStylePresetsText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+  },
 });
 
 function StatCard({ 
@@ -713,6 +854,10 @@ export default function TemplatesScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { token, businessSettings } = useAuthStore();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [stylePresets, setStylePresets] = useState<StylePreset[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
+  const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [isLoadingPresets, setIsLoadingPresets] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<'all' | 'quote' | 'invoice' | 'job'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -738,6 +883,28 @@ export default function TemplatesScreen() {
   });
   const [isCreating, setIsCreating] = useState(false);
 
+  const fetchStylePresets = useCallback(async () => {
+    setIsLoadingPresets(true);
+    try {
+      const response = await fetch(`${API_URL}/api/style-presets`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStylePresets(data || []);
+        const defaultPreset = data?.find((p: StylePreset) => p.isDefault) || data?.[0] || null;
+        if (!selectedPreset && defaultPreset) {
+          setSelectedPreset(defaultPreset);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch style presets:', error);
+    }
+    setIsLoadingPresets(false);
+  }, [token, selectedPreset]);
+
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -759,6 +926,10 @@ export default function TemplatesScreen() {
     }
     setIsLoading(false);
   }, [token, typeFilter]);
+
+  useEffect(() => {
+    fetchStylePresets();
+  }, []);
 
   useEffect(() => {
     refreshData();
@@ -1449,6 +1620,122 @@ export default function TemplatesScreen() {
             />
           </View>
 
+          {/* Style Presets Section */}
+          <View style={styles.stylePresetsSection}>
+            <View style={styles.stylePresetsSectionHeader}>
+              <Text style={styles.stylePresetsSectionTitle}>Style Presets</Text>
+              {stylePresets.length > 0 && (
+                <TouchableOpacity
+                  style={styles.viewAllButton}
+                  onPress={() => setShowPresetsModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.viewAllButtonText}>View All</Text>
+                  <Feather name="chevron-right" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {isLoadingPresets ? (
+              <View style={[styles.stylePresetCard, { alignItems: 'center', paddingVertical: spacing.xl }]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.stylePresetDetailText, { marginTop: spacing.sm }]}>
+                  Loading style presets...
+                </Text>
+              </View>
+            ) : stylePresets.length === 0 ? (
+              <View style={styles.stylePresetCard}>
+                <View style={styles.emptyStylePresets}>
+                  <Feather name="palette" size={32} color={colors.mutedForeground} style={{ marginBottom: spacing.md }} />
+                  <Text style={styles.emptyStylePresetsText}>
+                    No style presets yet. Create them in the web dashboard to customize your document appearance.
+                  </Text>
+                </View>
+              </View>
+            ) : selectedPreset ? (
+              <TouchableOpacity
+                style={[
+                  styles.stylePresetCard,
+                  selectedPreset.isDefault && styles.stylePresetCardActive
+                ]}
+                onPress={() => setShowPresetsModal(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.stylePresetHeader}>
+                  <View style={styles.stylePresetInfo}>
+                    <Text style={styles.stylePresetName}>{selectedPreset.name}</Text>
+                    <View style={styles.stylePresetMeta}>
+                      {selectedPreset.isDefault && (
+                        <View style={styles.defaultBadge}>
+                          <Text style={styles.defaultBadgeText}>Default</Text>
+                        </View>
+                      )}
+                      <View style={styles.colorSwatches}>
+                        <View style={[styles.colorSwatch, { backgroundColor: selectedPreset.primaryColor }]} />
+                        <View style={[styles.colorSwatch, { backgroundColor: selectedPreset.accentColor }]} />
+                      </View>
+                    </View>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </View>
+
+                <View style={styles.stylePresetDetails}>
+                  <View style={styles.stylePresetDetail}>
+                    <Feather name="type" size={12} color={colors.mutedForeground} />
+                    <Text style={styles.stylePresetDetailText}>{selectedPreset.fontFamily}</Text>
+                  </View>
+                  <View style={styles.stylePresetDetail}>
+                    <Feather name="layout" size={12} color={colors.mutedForeground} />
+                    <Text style={styles.stylePresetDetailText}>{selectedPreset.headerLayout}</Text>
+                  </View>
+                  {selectedPreset.showLogo && (
+                    <View style={styles.stylePresetDetail}>
+                      <Feather name="image" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.stylePresetDetailText}>Logo</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.previewSection}>
+                  <LiveDocumentPreview
+                    type="quote"
+                    documentNumber="Q-PREVIEW"
+                    title="Sample Quote"
+                    description="Preview of how your documents will look with this style preset."
+                    date={new Date().toISOString()}
+                    validUntil={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
+                    lineItems={[
+                      { description: 'Sample Service', quantity: 2, unitPrice: 150 },
+                      { description: 'Materials', quantity: 1, unitPrice: 85 },
+                    ]}
+                    terms="Payment due within 14 days."
+                    business={{
+                      businessName: businessSettings?.businessName || 'Your Business',
+                      abn: businessSettings?.abn,
+                      address: businessSettings?.address,
+                      phone: businessSettings?.phone,
+                      email: businessSettings?.email,
+                      logoUrl: selectedPreset.showLogo ? businessSettings?.logoUrl : undefined,
+                      brandColor: selectedPreset.primaryColor,
+                      gstEnabled: businessSettings?.gstEnabled ?? true,
+                    }}
+                    client={{
+                      name: 'John Smith',
+                      email: 'john@example.com',
+                      phone: '0400 123 456',
+                      address: '123 Sample St, Sydney NSW 2000',
+                    }}
+                    gstEnabled={businessSettings?.gstEnabled ?? true}
+                    templateId="professional"
+                    templateCustomization={{
+                      accentColor: selectedPreset.accentColor,
+                    }}
+                  />
+                </View>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
           <View style={styles.filtersRow}>
             {(['all', 'quote', 'invoice', 'job'] as const).map((type) => (
               <TouchableOpacity
@@ -1626,6 +1913,142 @@ export default function TemplatesScreen() {
             </View>
 
             {activeTab === 'edit' ? renderEditTab() : renderPreviewTab()}
+          </View>
+        </Modal>
+
+        {/* Style Presets Modal */}
+        <Modal
+          visible={showPresetsModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowPresetsModal(false)}
+        >
+          <View style={styles.stylePresetListModal}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowPresetsModal(false)}
+                activeOpacity={0.7}
+              >
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Style Presets</Text>
+              <View style={{ width: 24 }} />
+            </View>
+
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.contentContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={[styles.pageSubtitle, { marginBottom: spacing.lg }]}>
+                Select a style preset to preview how your documents will look.
+              </Text>
+
+              <View style={styles.stylePresetList}>
+                {stylePresets.map((preset) => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[
+                      styles.stylePresetCard,
+                      selectedPreset?.id === preset.id && styles.stylePresetCardActive
+                    ]}
+                    onPress={() => setSelectedPreset(preset)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.stylePresetHeader}>
+                      <View style={styles.stylePresetInfo}>
+                        <Text style={styles.stylePresetName}>{preset.name}</Text>
+                        <View style={styles.stylePresetMeta}>
+                          {preset.isDefault && (
+                            <View style={styles.defaultBadge}>
+                              <Text style={styles.defaultBadgeText}>Default</Text>
+                            </View>
+                          )}
+                          <View style={styles.colorSwatches}>
+                            <View style={[styles.colorSwatch, { backgroundColor: preset.primaryColor }]} />
+                            <View style={[styles.colorSwatch, { backgroundColor: preset.accentColor }]} />
+                          </View>
+                        </View>
+                      </View>
+                      {selectedPreset?.id === preset.id && (
+                        <Feather name="check-circle" size={20} color={colors.primary} />
+                      )}
+                    </View>
+
+                    <View style={styles.stylePresetDetails}>
+                      <View style={styles.stylePresetDetail}>
+                        <Feather name="type" size={12} color={colors.mutedForeground} />
+                        <Text style={styles.stylePresetDetailText}>{preset.fontFamily}</Text>
+                      </View>
+                      <View style={styles.stylePresetDetail}>
+                        <Feather name="layout" size={12} color={colors.mutedForeground} />
+                        <Text style={styles.stylePresetDetailText}>{preset.headerLayout}</Text>
+                      </View>
+                      {preset.showLogo && (
+                        <View style={styles.stylePresetDetail}>
+                          <Feather name="image" size={12} color={colors.mutedForeground} />
+                          <Text style={styles.stylePresetDetailText}>Logo</Text>
+                        </View>
+                      )}
+                      {preset.tableBorders && (
+                        <View style={styles.stylePresetDetail}>
+                          <Feather name="grid" size={12} color={colors.mutedForeground} />
+                          <Text style={styles.stylePresetDetailText}>Table Borders</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {selectedPreset?.id === preset.id && (
+                      <View style={styles.previewSection}>
+                        <LiveDocumentPreview
+                          type="quote"
+                          documentNumber="Q-PREVIEW"
+                          title="Sample Quote"
+                          description="Preview of how your documents will look."
+                          date={new Date().toISOString()}
+                          validUntil={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
+                          lineItems={[
+                            { description: 'Sample Service', quantity: 2, unitPrice: 150 },
+                            { description: 'Materials', quantity: 1, unitPrice: 85 },
+                          ]}
+                          terms="Payment due within 14 days."
+                          business={{
+                            businessName: businessSettings?.businessName || 'Your Business',
+                            abn: businessSettings?.abn,
+                            address: businessSettings?.address,
+                            phone: businessSettings?.phone,
+                            email: businessSettings?.email,
+                            logoUrl: preset.showLogo ? businessSettings?.logoUrl : undefined,
+                            brandColor: preset.primaryColor,
+                            gstEnabled: businessSettings?.gstEnabled ?? true,
+                          }}
+                          client={{
+                            name: 'John Smith',
+                            email: 'john@example.com',
+                            phone: '0400 123 456',
+                            address: '123 Sample St, Sydney NSW 2000',
+                          }}
+                          gstEnabled={businessSettings?.gstEnabled ?? true}
+                          templateId="professional"
+                          templateCustomization={{
+                            accentColor: preset.accentColor,
+                          }}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.saveButton, { marginTop: spacing.xl }]}
+                onPress={() => setShowPresetsModal(false)}
+                activeOpacity={0.7}
+              >
+                <Feather name="check" size={18} color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>Done</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </Modal>
       </View>
