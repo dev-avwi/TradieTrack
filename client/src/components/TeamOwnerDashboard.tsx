@@ -679,12 +679,12 @@ export default function TeamOwnerDashboard({
           )}
 
           {/* Team Members - Compact View with Search */}
-          <Collapsible 
-            open={isTeamExpanded || !!selectedJob} 
-            onOpenChange={setIsTeamExpanded}
-          >
-            {/* Team Summary Header */}
-            <div className="feed-card">
+          <div className="feed-card">
+            <Collapsible 
+              open={isTeamExpanded || !!selectedJob} 
+              onOpenChange={setIsTeamExpanded}
+            >
+              {/* Team Summary Header */}
               <div className="card-padding">
                 <CollapsibleTrigger asChild>
                   <div className="flex items-center justify-between cursor-pointer hover-elevate rounded-lg -m-2 p-2">
@@ -721,9 +721,8 @@ export default function TeamOwnerDashboard({
                   </div>
                 </CollapsibleTrigger>
               </div>
-            </div>
 
-            <CollapsibleContent className="space-y-3 mt-3">
+              <CollapsibleContent className="space-y-3 mt-3 px-4 pb-4">
               {/* Search Input */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -808,7 +807,8 @@ export default function TeamOwnerDashboard({
                   })}
               </div>
             </CollapsibleContent>
-          </Collapsible>
+            </Collapsible>
+          </div>
 
             {/* Invite More */}
             <Button
