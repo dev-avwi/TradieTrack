@@ -321,19 +321,30 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const handleApplyTemplate = (template: DocumentTemplate) => {
     try {
       const defaults = template.defaults || {};
+      const currentValues = form.getValues();
       
-      // Update local state (this forces React re-render)
-      if (defaults.title) {
-        setTitleValue(defaults.title);
-        form.setValue("title", defaults.title);
-      }
-      if (defaults.description) {
-        setDescriptionValue(defaults.description);
-        form.setValue("description", defaults.description);
-      }
-      if (defaults.dueTermDays && defaults.dueTermDays > 0) {
-        form.setValue("estimatedHours", String(defaults.dueTermDays));
-      }
+      // Determine the new values from template, using current values as fallback
+      const newTitle = defaults.title || currentValues.title;
+      const newDescription = defaults.description || currentValues.description;
+      const newEstimatedHours = defaults.dueTermDays && defaults.dueTermDays > 0 
+        ? String(defaults.dueTermDays) 
+        : currentValues.estimatedHours;
+      
+      // Build the new values object
+      const newValues = {
+        ...currentValues,
+        title: newTitle,
+        description: newDescription,
+        estimatedHours: newEstimatedHours,
+      };
+      
+      // Use form.reset() first to ensure form state is updated
+      form.reset(newValues, { keepDirty: false });
+      
+      // Then update local state to match the form values (controlled inputs)
+      setTitleValue(newTitle);
+      setDescriptionValue(newDescription);
+      
     } catch (error) {
       toast({
         title: "Error applying template",

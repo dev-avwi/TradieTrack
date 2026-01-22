@@ -106,19 +106,25 @@ export default function InvoiceForm({ onSubmit, onCancel }: InvoiceFormProps) {
     try {
       const defaults = template.defaults || {};
       const defaultLineItems = template.defaultLineItems || [];
+      const currentValues = form.getValues();
       
-      if (defaults.title) form.setValue("title", defaults.title);
-      if (defaults.description) form.setValue("description", defaults.description);
-      if (defaults.terms) form.setValue("notes", defaults.terms);
+      // Build new values object
+      const newValues = {
+        ...currentValues,
+        title: defaults.title || currentValues.title,
+        description: defaults.description || currentValues.description,
+        notes: defaults.terms || currentValues.notes,
+        lineItems: defaultLineItems.length > 0 
+          ? defaultLineItems.map((item) => ({
+              description: item.description || "",
+              quantity: String(item.qty || 1),
+              unitPrice: String(item.unitPrice || ""),
+            }))
+          : currentValues.lineItems,
+      };
       
-      if (defaultLineItems.length > 0) {
-        const templateLineItems = defaultLineItems.map((item) => ({
-          description: item.description || "",
-          quantity: String(item.qty || 1),
-          unitPrice: String(item.unitPrice || ""),
-        }));
-        form.setValue("lineItems", templateLineItems);
-      }
+      // Use form.reset() to ensure form state and UI are in sync
+      form.reset(newValues, { keepDirty: false });
     } catch (error) {
       toast({
         title: "Error applying template",
