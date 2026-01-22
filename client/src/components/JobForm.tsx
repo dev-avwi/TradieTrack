@@ -68,9 +68,6 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const [previousJobsOpen, setPreviousJobsOpen] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   
-  // Local state for controlled inputs that need to update from templates
-  const [titleValue, setTitleValue] = useState("");
-  const [descriptionValue, setDescriptionValue] = useState("");
   
   // Read clientId and quoteId from URL params (when navigating from client view or quote)
   const searchString = useSearch();
@@ -175,18 +172,15 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     if (sourceQuote && !quoteApplied) {
       // Pre-fill job title from quote title or number
       if (sourceQuote.title) {
-        setTitleValue(sourceQuote.title);
         form.setValue("title", sourceQuote.title, { shouldValidate: true });
       } else if (sourceQuote.number) {
         const title = `Job from ${sourceQuote.number}`;
-        setTitleValue(title);
         form.setValue("title", title, { shouldValidate: true });
       }
       
       // Pre-fill description from quote description or job scope
       if (sourceQuote.description || sourceQuote.jobScope) {
         const desc = sourceQuote.description || sourceQuote.jobScope;
-        setDescriptionValue(desc);
         form.setValue("description", desc);
       }
       
@@ -321,29 +315,20 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const handleApplyTemplate = (template: DocumentTemplate) => {
     try {
       const defaults = template.defaults || {};
-      const currentValues = form.getValues();
       
-      // Determine the new values from template, using current values as fallback
-      const newTitle = defaults.title || currentValues.title;
-      const newDescription = defaults.description || currentValues.description;
-      const newEstimatedHours = defaults.dueTermDays && defaults.dueTermDays > 0 
-        ? String(defaults.dueTermDays) 
-        : currentValues.estimatedHours;
+      // Apply each field individually with trigger to force UI update
+      if (defaults.title) {
+        form.setValue("title", defaults.title);
+      }
+      if (defaults.description) {
+        form.setValue("description", defaults.description);
+      }
+      if (defaults.dueTermDays && defaults.dueTermDays > 0) {
+        form.setValue("estimatedHours", String(defaults.dueTermDays));
+      }
       
-      // Build the new values object
-      const newValues = {
-        ...currentValues,
-        title: newTitle,
-        description: newDescription,
-        estimatedHours: newEstimatedHours,
-      };
-      
-      // Use form.reset() first to ensure form state is updated
-      form.reset(newValues, { keepDirty: false });
-      
-      // Then update local state to match the form values (controlled inputs)
-      setTitleValue(newTitle);
-      setDescriptionValue(newDescription);
+      // Force form validation/re-render
+      form.trigger();
       
     } catch (error) {
       toast({
@@ -437,39 +422,49 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
           <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <div className="space-y-2">
-                <label htmlFor="title" className="text-sm font-medium">Job Title</label>
-                <Input 
-                  id="title"
-                  placeholder="Enter job title"
-                  value={titleValue}
-                  onChange={(e) => {
-                    setTitleValue(e.target.value);
-                    form.setValue("title", e.target.value);
-                  }}
-                  data-testid="input-job-title" 
-                />
-                {form.formState.errors.title && (
-                  <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Title</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter job title"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        data-testid="input-job-title" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
 
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">Description</label>
-                <Textarea 
-                  id="description"
-                  placeholder="Enter job description"
-                  value={descriptionValue}
-                  onChange={(e) => {
-                    setDescriptionValue(e.target.value);
-                    form.setValue("description", e.target.value);
-                  }}
-                  data-testid="input-job-description" 
-                />
-                {form.formState.errors.description && (
-                  <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter job description"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        data-testid="input-job-description" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField

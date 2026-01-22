@@ -37,6 +37,24 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
     return { subtotal, gst, total: subtotal + gst };
   };
 
+  // Handle template selection - auto-apply when template is selected
+  const handleSelectTemplate = (template: DocumentTemplate) => {
+    // If clicking the same template, deselect it
+    if (selectedTemplateId === template.id) {
+      setSelectedTemplateId("");
+      return;
+    }
+    
+    // Select and apply the template
+    setSelectedTemplateId(template.id);
+    onApplyTemplate(template);
+    
+    toast({
+      title: "Template applied",
+      description: `"${template.name}" has been applied`,
+    });
+  };
+
   const handleApplyTemplate = () => {
     if (!selectedTemplate) {
       toast({
@@ -115,7 +133,7 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
               return (
                 <div
                   key={template.id}
-                  onClick={() => setSelectedTemplateId(isSelected ? "" : template.id)}
+                  onClick={() => handleSelectTemplate(template)}
                   className={cn(
                     "p-3 rounded-lg border cursor-pointer transition-all",
                     isSelected 
