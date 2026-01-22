@@ -318,10 +318,23 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       return;
     }
 
+    // Use form.reset() to ensure both useFieldArray.fields and form.watch() stay synchronized
+    const currentValues = form.getValues();
+    
     if (editingLineIndex === -1) {
-      append(editForm);
+      // Adding new item - use form.reset() to sync fields and watched values
+      form.reset({
+        ...currentValues,
+        lineItems: [...(currentValues.lineItems || []), editForm],
+      }, { keepDirty: true });
     } else if (editingLineIndex !== null) {
-      update(editingLineIndex, editForm);
+      // Editing existing item
+      const updatedLineItems = [...(currentValues.lineItems || [])];
+      updatedLineItems[editingLineIndex] = editForm;
+      form.reset({
+        ...currentValues,
+        lineItems: updatedLineItems,
+      }, { keepDirty: true });
     }
     setEditingLineIndex(null);
   };
@@ -329,11 +342,22 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const handleCatalogSelect = (item: any) => {
     // Use name as the description (what user sees as title), fallback to description if name is empty
     const itemDescription = item.name || item.description || 'Service item';
-    append({
+    
+    // Use form.reset() to ensure both useFieldArray.fields and form.watch() stay synchronized
+    // This fixes the issue where append() alone doesn't properly sync with watched values
+    const currentValues = form.getValues();
+    const newItem = {
       description: itemDescription,
       quantity: String(item.defaultQuantity || 1),
       unitPrice: String(item.unitPrice || 0),
-    });
+      cost: "",
+    };
+    
+    form.reset({
+      ...currentValues,
+      lineItems: [...(currentValues.lineItems || []), newItem],
+    }, { keepDirty: true });
+    
     setCatalogOpen(false);
     toast({
       title: "Item added",
@@ -1258,22 +1282,22 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         onOpenChange={setAiQuoteOpen}
         jobId={selectedJobId}
         onApplyItems={(items, title, description) => {
-          // Add AI-generated items to the form
-          items.forEach(item => {
-            append({
-              description: item.description,
-              quantity: item.quantity.toString(),
-              unitPrice: item.unitPrice.toString(),
-              cost: "",
-            });
-          });
-          // Update title and description if empty
-          if (title && !form.getValues('title')) {
-            form.setValue('title', title);
-          }
-          if (description && !form.getValues('description')) {
-            form.setValue('description', description);
-          }
+          // Use form.reset() to ensure both useFieldArray.fields and form.watch() stay synchronized
+          const currentValues = form.getValues();
+          const newItems = items.map(item => ({
+            description: item.description,
+            quantity: item.quantity.toString(),
+            unitPrice: item.unitPrice.toString(),
+            cost: "",
+          }));
+          
+          form.reset({
+            ...currentValues,
+            title: title && !currentValues.title ? title : currentValues.title,
+            description: description && !currentValues.description ? description : currentValues.description,
+            lineItems: [...(currentValues.lineItems || []), ...newItems],
+          }, { keepDirty: true });
+          
           toast({
             title: "Items added",
             description: `${items.length} items added from AI generation`,
