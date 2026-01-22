@@ -496,16 +496,16 @@ export async function createDemoUserAndData() {
       createdJobs.push(createdJob);
     }
 
-    // INVOICED JOBS (8)
+    // INVOICED JOBS (8) - with complete journey dates (scheduled -> started -> completed -> invoiced)
     const invoicedJobs = [
-      { clientIdx: 8, title: 'Emergency Pipe Repair', description: 'Repaired burst pipe under house', address: clientsData[8].address, completedAt: getDaysAgo(10), invoicedAt: getDaysAgo(9) },
-      { clientIdx: 9, title: 'Hot Water Thermostat', description: 'Replaced faulty thermostat on HWS', address: clientsData[9].address, completedAt: getDaysAgo(12), invoicedAt: getDaysAgo(11) },
-      { clientIdx: 0, title: 'Bathroom Fit-Out Complete', description: 'Final fix plumbing for bathroom reno', address: clientsData[0].address, completedAt: getDaysAgo(15), invoicedAt: getDaysAgo(14) },
-      { clientIdx: 1, title: 'Kitchen Plumbing Upgrade', description: 'Upgraded kitchen plumbing for renovation', address: clientsData[1].address, completedAt: getDaysAgo(18), invoicedAt: getDaysAgo(17) },
-      { clientIdx: 2, title: 'Gas Compliance Certificate', description: 'Annual gas safety inspection', address: clientsData[2].address, completedAt: getDaysAgo(20), invoicedAt: getDaysAgo(19) },
-      { clientIdx: 3, title: 'Septic Tank Pump-Out', description: 'Pumped out and serviced septic system', address: clientsData[3].address, completedAt: getDaysAgo(22), invoicedAt: getDaysAgo(21) },
-      { clientIdx: 4, title: 'Roof Plumbing Repair', description: 'Fixed leaking roof flashing', address: clientsData[4].address, completedAt: getDaysAgo(25), invoicedAt: getDaysAgo(24) },
-      { clientIdx: 5, title: 'Rainwater Tank Connection', description: 'Connected rainwater tank to toilets', address: clientsData[5].address, completedAt: getDaysAgo(28), invoicedAt: getDaysAgo(27) },
+      { clientIdx: 8, title: 'Emergency Pipe Repair', description: 'Repaired burst pipe under house', address: clientsData[8].address, scheduledAt: getDaysAgo(12), startedAt: getDaysAgo(11), completedAt: getDaysAgo(10), invoicedAt: getDaysAgo(9) },
+      { clientIdx: 9, title: 'Hot Water Thermostat', description: 'Replaced faulty thermostat on HWS', address: clientsData[9].address, scheduledAt: getDaysAgo(14), startedAt: getDaysAgo(13), completedAt: getDaysAgo(12), invoicedAt: getDaysAgo(11) },
+      { clientIdx: 0, title: 'Bathroom Fit-Out Complete', description: 'Final fix plumbing for bathroom reno', address: clientsData[0].address, scheduledAt: getDaysAgo(17), startedAt: getDaysAgo(16), completedAt: getDaysAgo(15), invoicedAt: getDaysAgo(14) },
+      { clientIdx: 1, title: 'Kitchen Plumbing Upgrade', description: 'Upgraded kitchen plumbing for renovation', address: clientsData[1].address, scheduledAt: getDaysAgo(20), startedAt: getDaysAgo(19), completedAt: getDaysAgo(18), invoicedAt: getDaysAgo(17) },
+      { clientIdx: 2, title: 'Gas Compliance Certificate', description: 'Annual gas safety inspection', address: clientsData[2].address, scheduledAt: getDaysAgo(22), startedAt: getDaysAgo(21), completedAt: getDaysAgo(20), invoicedAt: getDaysAgo(19) },
+      { clientIdx: 3, title: 'Septic Tank Pump-Out', description: 'Pumped out and serviced septic system', address: clientsData[3].address, scheduledAt: getDaysAgo(24), startedAt: getDaysAgo(23), completedAt: getDaysAgo(22), invoicedAt: getDaysAgo(21) },
+      { clientIdx: 4, title: 'Roof Plumbing Repair', description: 'Fixed leaking roof flashing', address: clientsData[4].address, scheduledAt: getDaysAgo(27), startedAt: getDaysAgo(26), completedAt: getDaysAgo(25), invoicedAt: getDaysAgo(24) },
+      { clientIdx: 5, title: 'Rainwater Tank Connection', description: 'Connected rainwater tank to toilets', address: clientsData[5].address, scheduledAt: getDaysAgo(30), startedAt: getDaysAgo(29), completedAt: getDaysAgo(28), invoicedAt: getDaysAgo(27) },
     ];
 
     for (const job of invoicedJobs) {
@@ -516,6 +516,8 @@ export async function createDemoUserAndData() {
         description: job.description,
         address: job.address,
         status: 'invoiced',
+        scheduledAt: job.scheduledAt,
+        startedAt: job.startedAt,
         completedAt: job.completedAt,
         invoicedAt: job.invoicedAt,
         estimatedDuration: 90,
@@ -1574,6 +1576,57 @@ export async function createDemoActivityLogs(userId: string): Promise<void> {
       });
     }
     
+    // Add journey activities for invoiced jobs (showing full workflow)
+    const invoicedJobsWithJourney = jobs
+      .filter(j => j.status === 'invoiced' && j.scheduledAt && j.startedAt && j.completedAt)
+      .slice(0, 3); // Just show 3 complete journeys
+    
+    for (const job of invoicedJobsWithJourney) {
+      const client = clientMap.get(job.clientId!);
+      
+      // Add scheduled activity
+      if (job.scheduledAt) {
+        activityItems.push({
+          userId,
+          type: 'job_scheduled',
+          title: `Job Scheduled: ${job.title}`,
+          description: client ? `For ${client.name}` : '',
+          entityType: 'job',
+          entityId: job.id,
+          metadata: { clientName: client?.name, status: 'scheduled', journey: true },
+          createdAt: job.scheduledAt,
+        });
+      }
+      
+      // Add started activity
+      if (job.startedAt) {
+        activityItems.push({
+          userId,
+          type: 'job_started',
+          title: `Job Started: ${job.title}`,
+          description: client ? `For ${client.name}` : '',
+          entityType: 'job',
+          entityId: job.id,
+          metadata: { clientName: client?.name, status: 'in_progress', journey: true },
+          createdAt: job.startedAt,
+        });
+      }
+      
+      // Add completed activity  
+      if (job.completedAt) {
+        activityItems.push({
+          userId,
+          type: 'job_completed',
+          title: `Job Completed: ${job.title}`,
+          description: client ? `For ${client.name}` : '',
+          entityType: 'job',
+          entityId: job.id,
+          metadata: { clientName: client?.name, status: 'done', journey: true },
+          createdAt: job.completedAt,
+        });
+      }
+    }
+    
     // Add recent quotes
     const recentQuotes = quotes
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
@@ -1739,15 +1792,58 @@ export async function refreshDemoDataForScreenshots(): Promise<{ success: boolea
       });
     }
     
-    // Update completed jobs to have completed recently
-    const doneJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced');
-    for (let i = 0; i < doneJobs.length && i < 10; i++) {
+    // Update completed/invoiced jobs with complete journey dates (scheduled -> started -> completed -> invoiced)
+    const doneJobs = jobs.filter(j => j.status === 'done');
+    for (let i = 0; i < doneJobs.length && i < 5; i++) {
       const job = doneJobs[i];
+      const daysAgo = i + 1; // 1-5 days ago
+      
+      const scheduledDate = new Date();
+      scheduledDate.setDate(scheduledDate.getDate() - (daysAgo + 2));
+      scheduledDate.setHours(9 + (i % 4), 0, 0, 0);
+      
+      const startedDate = new Date();
+      startedDate.setDate(startedDate.getDate() - (daysAgo + 1));
+      startedDate.setHours(9 + (i % 4), 0, 0, 0);
+      
       const completedDate = new Date();
-      completedDate.setDate(completedDate.getDate() - (i + 1)); // Completed 1-10 days ago
+      completedDate.setDate(completedDate.getDate() - daysAgo);
+      completedDate.setHours(15 + (i % 3), 0, 0, 0);
       
       await storage.updateJob(job.id, demoUser.id, {
+        scheduledAt: scheduledDate,
+        startedAt: startedDate,
         completedAt: completedDate,
+      });
+    }
+    
+    // Update invoiced jobs with complete journey including invoice date
+    const invoicedJobs = jobs.filter(j => j.status === 'invoiced');
+    for (let i = 0; i < invoicedJobs.length && i < 8; i++) {
+      const job = invoicedJobs[i];
+      const baseDays = (i + 1) * 3; // 3, 6, 9, 12, 15, 18, 21, 24 days ago
+      
+      const scheduledDate = new Date();
+      scheduledDate.setDate(scheduledDate.getDate() - (baseDays + 3));
+      scheduledDate.setHours(9 + (i % 4), 0, 0, 0);
+      
+      const startedDate = new Date();
+      startedDate.setDate(startedDate.getDate() - (baseDays + 2));
+      startedDate.setHours(9 + (i % 4), 0, 0, 0);
+      
+      const completedDate = new Date();
+      completedDate.setDate(completedDate.getDate() - (baseDays + 1));
+      completedDate.setHours(15 + (i % 3), 0, 0, 0);
+      
+      const invoicedDate = new Date();
+      invoicedDate.setDate(invoicedDate.getDate() - baseDays);
+      invoicedDate.setHours(10, 0, 0, 0);
+      
+      await storage.updateJob(job.id, demoUser.id, {
+        scheduledAt: scheduledDate,
+        startedAt: startedDate,
+        completedAt: completedDate,
+        invoicedAt: invoicedDate,
       });
     }
     
