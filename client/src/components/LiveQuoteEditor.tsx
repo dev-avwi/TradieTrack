@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useClients } from "@/hooks/use-clients";
+import { useClients, useCreateClient } from "@/hooks/use-clients";
 import { useCreateQuote } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templates";
@@ -43,7 +43,9 @@ import {
   Percent,
   Briefcase,
   Sparkles,
-  Palette
+  Palette,
+  Search,
+  UserPlus
 } from "lucide-react";
 import AIQuoteGenerator from "@/components/AIQuoteGenerator";
 
@@ -92,6 +94,12 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(urlJobId || undefined);
   const [jobAutoLoaded, setJobAutoLoaded] = useState(false);
   const [aiQuoteOpen, setAiQuoteOpen] = useState(false);
+  const [quickAddClientOpen, setQuickAddClientOpen] = useState(false);
+  const [quickClientName, setQuickClientName] = useState("");
+  const [quickClientEmail, setQuickClientEmail] = useState("");
+  const [quickClientPhone, setQuickClientPhone] = useState("");
+  
+  const createClient = useCreateClient();
 
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -133,6 +141,16 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   
   // Track selected document template
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  
+  // Filter templates by search
+  const filteredTemplates = documentTemplates.filter(template => {
+    if (!templateSearch.trim()) return true;
+    const search = templateSearch.toLowerCase();
+    return template.name.toLowerCase().includes(search) || 
+           template.tradeType?.toLowerCase().includes(search);
+  });
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteFormSchema),
@@ -148,7 +166,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove, update, replace } = useFieldArray({
     control: form.control,
     name: "lineItems"
   });
@@ -205,7 +223,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
           quantity: String(item.quantity || item.qty || 1),
           unitPrice: String(item.unitPrice || 0),
         }));
-        form.setValue("lineItems", items);
+        replace(items);
       }
       
       toast({
@@ -220,12 +238,12 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     form.setValue("description", job.description || "");
     
     // Clear existing line items and add job-based items
-    form.setValue("lineItems", []);
+    replace([]);
     
     // If job has time tracking, add a labor line item
     if (job.timeTracking?.totalHours > 0) {
       const hourlyRate = businessSettings?.defaultHourlyRate || 85;
-      form.setValue("lineItems", [{
+      replace([{
         description: `Labour - ${job.title}`,
         quantity: String(job.timeTracking.totalHours),
         unitPrice: String(hourlyRate),
@@ -239,23 +257,33 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   };
 
   const handleApplyTemplate = (template: DocumentTemplate) => {
-    form.setValue("title", template.defaults?.title || "");
-    form.setValue("description", template.defaults?.description || "");
-    form.setValue("notes", template.defaults?.terms || "");
+    // Get current form values
+    const currentValues = form.getValues();
     
-    if (template.defaults?.depositPct) {
-      form.setValue("depositRequired", true);
-      form.setValue("depositPercent", template.defaults.depositPct);
-    }
-    
-    if (template.defaultLineItems) {
-      const items = template.defaultLineItems.map((item: any) => ({
-        description: item.description,
+    // Build new line items from template
+    let newLineItems = currentValues.lineItems || [];
+    if (template.defaultLineItems && template.defaultLineItems.length > 0) {
+      newLineItems = template.defaultLineItems.map((item: any) => ({
+        description: item.description || "",
         quantity: String(item.qty || 1),
         unitPrice: String(item.unitPrice || 0),
       }));
-      form.setValue("lineItems", items);
     }
+    
+    // Reset form with all values including new line items
+    // This ensures both useFieldArray fields and form.watch() are in sync
+    form.reset({
+      ...currentValues,
+      title: template.defaults?.title || currentValues.title,
+      description: template.defaults?.description || currentValues.description,
+      notes: template.defaults?.terms || currentValues.notes,
+      depositRequired: template.defaults?.depositPct ? true : currentValues.depositRequired,
+      depositPercent: template.defaults?.depositPct || currentValues.depositPercent,
+      lineItems: newLineItems,
+    }, {
+      keepDirty: false,
+      keepDefaultValues: false,
+    });
     
     setTemplateSheetOpen(false);
     toast({
@@ -299,16 +327,54 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   };
 
   const handleCatalogSelect = (item: any) => {
+    // Use name as the description (what user sees as title), fallback to description if name is empty
+    const itemDescription = item.name || item.description || 'Service item';
     append({
-      description: item.description,
+      description: itemDescription,
       quantity: String(item.defaultQuantity || 1),
       unitPrice: String(item.unitPrice || 0),
     });
     setCatalogOpen(false);
     toast({
       title: "Item added",
-      description: `"${item.description}" added to quote`,
+      description: `"${itemDescription}" added to quote`,
     });
+  };
+
+  const handleQuickAddClient = async () => {
+    if (!quickClientName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a client name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const newClient = await createClient.mutateAsync({
+        name: quickClientName.trim(),
+        email: quickClientEmail.trim() || undefined,
+        phone: quickClientPhone.trim() || undefined,
+      });
+      
+      form.setValue("clientId", newClient.id);
+      setQuickAddClientOpen(false);
+      setQuickClientName("");
+      setQuickClientEmail("");
+      setQuickClientPhone("");
+      
+      toast({
+        title: "Client created",
+        description: `${newClient.name} has been added`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create client",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -484,10 +550,75 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
             {/* Client Selection */}
             <Card className="rounded-2xl overflow-hidden">
               <CardContent className="p-4 space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <User className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-                  Client
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <User className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                    Client
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuickAddClientOpen(!quickAddClientOpen)}
+                    className="text-xs"
+                    data-testid="btn-quick-add-client"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Quick Add
+                  </Button>
                 </div>
+
+                {/* Quick Add Client Form */}
+                {quickAddClientOpen && (
+                  <div className="p-4 rounded-xl border bg-muted/30 space-y-3">
+                    <div className="text-xs font-medium text-muted-foreground">New Client</div>
+                    <Input
+                      placeholder="Client name *"
+                      value={quickClientName}
+                      onChange={(e) => setQuickClientName(e.target.value)}
+                      data-testid="input-quick-client-name"
+                    />
+                    <Input
+                      placeholder="Email (optional)"
+                      type="email"
+                      value={quickClientEmail}
+                      onChange={(e) => setQuickClientEmail(e.target.value)}
+                      data-testid="input-quick-client-email"
+                    />
+                    <Input
+                      placeholder="Phone (optional)"
+                      type="tel"
+                      value={quickClientPhone}
+                      onChange={(e) => setQuickClientPhone(e.target.value)}
+                      data-testid="input-quick-client-phone"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setQuickAddClientOpen(false);
+                          setQuickClientName("");
+                          setQuickClientEmail("");
+                          setQuickClientPhone("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        onClick={handleQuickAddClient}
+                        disabled={createClient.isPending || !quickClientName.trim()}
+                        data-testid="btn-save-quick-client"
+                      >
+                        {createClient.isPending ? "Saving..." : "Add Client"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <Select
                   value={watchedValues.clientId}
                   onValueChange={(value) => form.setValue("clientId", value)}
@@ -537,36 +668,93 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   Quote Details
                 </div>
 
-                {/* Template Selector */}
+                {/* Template Selector with Search */}
                 {documentTemplates.length > 0 && (
-                  <div>
+                  <div className="relative">
                     <Label className="text-xs text-muted-foreground">Template</Label>
-                    <Select
-                      value={selectedTemplateId || ""}
-                      onValueChange={(value) => {
-                        setSelectedTemplateId(value || null);
-                        const template = documentTemplates.find((t) => t.id === value);
-                        if (template) {
-                          handleApplyTemplate(template);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl mt-1">
-                        <SelectValue placeholder="Start from a template (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {documentTemplates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{template.name}</span>
-                              <Badge variant="secondary" className="text-xs">
-                                {template.tradeType}
-                              </Badge>
-                            </div>
-                          </SelectItem>
+                    
+                    {/* Selected template display */}
+                    {selectedTemplateId && !templateSearch && (
+                      <div className="flex items-center gap-2 mt-1 p-3 rounded-xl border bg-muted/30">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium flex-1">
+                          {documentTemplates.find(t => t.id === selectedTemplateId)?.name}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {documentTemplates.find(t => t.id === selectedTemplateId)?.tradeType}
+                        </Badge>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedTemplateId(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Search input - only show when no template selected */}
+                    {!selectedTemplateId && (
+                      <div className="relative mt-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                        <Input
+                          placeholder="Search templates..."
+                          value={templateSearch}
+                          onChange={(e) => {
+                            setTemplateSearch(e.target.value);
+                            setShowTemplateDropdown(true);
+                          }}
+                          onFocus={() => setShowTemplateDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowTemplateDropdown(false), 200)}
+                          className="h-12 rounded-xl pl-10"
+                          data-testid="input-template-search"
+                        />
+                        {templateSearch && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 z-10"
+                            onClick={() => {
+                              setTemplateSearch("");
+                              setShowTemplateDropdown(false);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    {showTemplateDropdown && filteredTemplates.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-lg z-50 max-h-[300px] overflow-y-auto bg-background border-border">
+                        {filteredTemplates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="p-3 cursor-pointer border-b last:border-b-0 border-border hover-elevate overflow-visible flex items-center justify-between gap-2"
+                            onClick={() => {
+                              setSelectedTemplateId(template.id);
+                              setTemplateSearch("");
+                              setShowTemplateDropdown(false);
+                              handleApplyTemplate(template);
+                            }}
+                            data-testid={`template-option-${template.id}`}
+                          >
+                            <span className="font-medium text-sm">{template.name}</span>
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">
+                              {template.tradeType}
+                            </Badge>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    )}
+                    {showTemplateDropdown && templateSearch && filteredTemplates.length === 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-lg z-50 p-3 text-sm text-muted-foreground bg-background border-border">
+                        No templates match your search
+                      </div>
+                    )}
                   </div>
                 )}
                 
