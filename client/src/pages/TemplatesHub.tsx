@@ -1122,7 +1122,7 @@ function LineItemsCatalogSection() {
                     {item.description}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="outline">${item.unitPrice}/{item.unit}</Badge>
                   <Button 
                     size="icon" 
