@@ -1131,6 +1131,11 @@ export async function createDemoUserAndData() {
       console.log(`✅ Templates already exist: ${templates.length} templates (${existingJobTemplates.length} job templates)`);
     }
 
+    // ============================================
+    // CREATE ACTIVITY LOGS for Recent Activity
+    // ============================================
+    await createDemoActivityLogs(demoUser.id);
+
     return demoUser;
   } catch (error) {
     console.error('Error setting up demo data:', error);
@@ -1480,18 +1485,291 @@ export async function forceResetDemoData(): Promise<{ success: boolean; message:
       await storage.deleteClient(client.id, demoUser.id);
     }
 
+    // Also delete existing activity logs
+    const deletedLogsCount = await storage.deleteActivityLogs(demoUser.id);
+    console.log(`[DemoReset] Deleted ${deletedLogsCount} activity logs`);
+
     console.log('[DemoReset] Existing demo data deleted, recreating...');
 
     // Reset counters for deterministic IDs
     resetDemoCounters();
     
     // Now call the main function which will create fresh data since there are no clients
+    // This also creates activity logs at the end, so no need to call createDemoActivityLogs separately
     await createDemoUserAndData();
 
     return { success: true, message: 'Demo data reset complete. All clients, jobs, quotes, invoices, and receipts have been recreated with new IDs.' };
   } catch (error: any) {
     console.error('[DemoReset] Error resetting demo data:', error);
     return { success: false, message: error.message || 'Failed to reset demo data' };
+  }
+}
+
+// ============================================
+// CREATE ACTIVITY LOGS: Generate Recent Activity items from existing data
+// ============================================
+export async function createDemoActivityLogs(userId: string): Promise<void> {
+  try {
+    console.log('[DemoActivity] Creating activity logs for Recent Activity...');
+    
+    // Get recent jobs, quotes, and invoices
+    const jobs = await storage.getJobs(userId);
+    const quotes = await storage.getQuotes(userId);
+    const invoices = await storage.getInvoices(userId);
+    const clients = await storage.getClients(userId);
+    
+    // Create a client lookup map
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+    
+    const activityItems: Array<{
+      userId: string;
+      type: string;
+      title: string;
+      description: string;
+      entityType: string;
+      entityId: string;
+      metadata: any;
+      createdAt: Date;
+    }> = [];
+    
+    // Add recent jobs (completed, scheduled, in progress)
+    const recentJobs = jobs
+      .filter(j => j.status !== 'cancelled')
+      .sort((a, b) => {
+        const dateA = a.completedAt || a.scheduledAt || a.createdAt;
+        const dateB = b.completedAt || b.scheduledAt || b.createdAt;
+        return new Date(dateB || 0).getTime() - new Date(dateA || 0).getTime();
+      })
+      .slice(0, 8);
+    
+    for (const job of recentJobs) {
+      const client = clientMap.get(job.clientId!);
+      let type = 'job';
+      let title = job.title;
+      let eventDate = job.createdAt || new Date();
+      
+      if (job.status === 'done' || job.status === 'invoiced') {
+        type = 'job_completed';
+        title = `Job Completed: ${job.title}`;
+        eventDate = job.completedAt || job.createdAt || new Date();
+      } else if (job.status === 'scheduled') {
+        type = 'job_scheduled';
+        title = `Job Scheduled: ${job.title}`;
+        eventDate = job.scheduledAt || job.createdAt || new Date();
+      } else if (job.status === 'in_progress') {
+        type = 'job_started';
+        title = `Job Started: ${job.title}`;
+        eventDate = job.startedAt || job.createdAt || new Date();
+      }
+      
+      activityItems.push({
+        userId,
+        type,
+        title,
+        description: client ? `For ${client.name}` : '',
+        entityType: 'job',
+        entityId: job.id,
+        metadata: { clientName: client?.name, status: job.status },
+        createdAt: eventDate,
+      });
+    }
+    
+    // Add recent quotes
+    const recentQuotes = quotes
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 6);
+    
+    for (const quote of recentQuotes) {
+      const client = clientMap.get(quote.clientId!);
+      let type = 'quote';
+      let title = `Quote #${quote.number?.slice(-6) || quote.id.slice(-6)}`;
+      let eventDate = quote.createdAt || new Date();
+      
+      if (quote.status === 'accepted') {
+        type = 'quote_accepted';
+        title = `Quote Accepted: #${quote.number?.slice(-6) || quote.id.slice(-6)}`;
+        eventDate = quote.acceptedAt || quote.createdAt || new Date();
+      } else if (quote.status === 'sent') {
+        type = 'quote_sent';
+        title = `Quote Sent: #${quote.number?.slice(-6) || quote.id.slice(-6)}`;
+        eventDate = quote.sentAt || quote.createdAt || new Date();
+      }
+      
+      activityItems.push({
+        userId,
+        type,
+        title,
+        description: client ? `To ${client.name} - $${quote.total}` : `$${quote.total}`,
+        entityType: 'quote',
+        entityId: quote.id,
+        metadata: { clientName: client?.name, total: quote.total, status: quote.status },
+        createdAt: eventDate,
+      });
+    }
+    
+    // Add recent invoices
+    const recentInvoices = invoices
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 6);
+    
+    for (const invoice of recentInvoices) {
+      const client = clientMap.get(invoice.clientId!);
+      let type = 'invoice';
+      let title = `Invoice #${invoice.number?.slice(-6) || invoice.id.slice(-6)}`;
+      let eventDate = invoice.createdAt || new Date();
+      
+      if (invoice.status === 'paid') {
+        type = 'invoice_paid';
+        title = `Invoice Paid: #${invoice.number?.slice(-6) || invoice.id.slice(-6)}`;
+        eventDate = invoice.paidAt || invoice.createdAt || new Date();
+      } else if (invoice.status === 'sent') {
+        type = 'invoice_sent';
+        title = `Invoice Sent: #${invoice.number?.slice(-6) || invoice.id.slice(-6)}`;
+        eventDate = invoice.sentAt || invoice.createdAt || new Date();
+      }
+      
+      activityItems.push({
+        userId,
+        type,
+        title,
+        description: client ? `To ${client.name} - $${invoice.total}` : `$${invoice.total}`,
+        entityType: 'invoice',
+        entityId: invoice.id,
+        metadata: { clientName: client?.name, total: invoice.total, status: invoice.status },
+        createdAt: eventDate,
+      });
+    }
+    
+    // Sort by date descending and take the most recent 15
+    activityItems.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const topActivities = activityItems.slice(0, 15);
+    
+    // Create activity logs
+    for (const activity of topActivities) {
+      await storage.createActivityLog({
+        userId: activity.userId,
+        type: activity.type,
+        title: activity.title,
+        description: activity.description,
+        entityType: activity.entityType,
+        entityId: activity.entityId,
+        metadata: activity.metadata,
+      });
+    }
+    
+    console.log(`[DemoActivity] Created ${topActivities.length} activity logs for Recent Activity`);
+  } catch (error) {
+    console.error('[DemoActivity] Error creating activity logs:', error);
+  }
+}
+
+// ============================================
+// REFRESH FOR SCREENSHOTS: Update dates for App Store screenshots
+// ============================================
+export async function refreshDemoDataForScreenshots(): Promise<{ success: boolean; message: string; updated: any }> {
+  try {
+    const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+    if (!demoUser) {
+      return { success: false, message: 'Demo user not found', updated: {} };
+    }
+
+    console.log('[DemoScreenshots] Refreshing demo data for App Store screenshots...');
+    
+    const jobs = await storage.getJobs(demoUser.id);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const updated = {
+      todaysJobs: 0,
+      thisWeekJobs: 0,
+      upcomingJobs: 0,
+      activityLogs: 0,
+    };
+    
+    // Sort scheduled jobs by ID for consistency
+    const scheduledJobs = jobs
+      .filter(j => j.status === 'scheduled')
+      .sort((a, b) => a.id.localeCompare(b.id));
+    
+    // Distribute scheduled jobs across today and next 2 weeks
+    const scheduleTimes = [
+      { day: 0, hour: 9, minute: 0 },   // Today 9:00 AM
+      { day: 0, hour: 11, minute: 30 }, // Today 11:30 AM
+      { day: 0, hour: 14, minute: 0 },  // Today 2:00 PM
+      { day: 1, hour: 10, minute: 0 },  // Tomorrow 10:00 AM
+      { day: 1, hour: 14, minute: 30 }, // Tomorrow 2:30 PM
+      { day: 2, hour: 9, minute: 0 },   // Day 2
+      { day: 3, hour: 11, minute: 0 },  // Day 3
+      { day: 4, hour: 9, minute: 30 },  // Day 4
+      { day: 7, hour: 10, minute: 0 },  // Next week
+      { day: 8, hour: 14, minute: 0 },  // Next week
+      { day: 10, hour: 9, minute: 0 },  // Next week
+      { day: 14, hour: 11, minute: 30 },// 2 weeks
+    ];
+    
+    for (let i = 0; i < scheduledJobs.length && i < scheduleTimes.length; i++) {
+      const job = scheduledJobs[i];
+      const slot = scheduleTimes[i];
+      
+      const newDate = new Date();
+      newDate.setDate(newDate.getDate() + slot.day);
+      newDate.setHours(slot.hour, slot.minute, 0, 0);
+      
+      await storage.updateJob(job.id, demoUser.id, {
+        scheduledAt: newDate,
+        scheduledTime: `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`,
+      });
+      
+      if (slot.day === 0) updated.todaysJobs++;
+      else if (slot.day <= 7) updated.thisWeekJobs++;
+      else updated.upcomingJobs++;
+    }
+    
+    // Update in-progress jobs to have started recently
+    const inProgressJobs = jobs.filter(j => j.status === 'in_progress');
+    for (let i = 0; i < inProgressJobs.length; i++) {
+      const job = inProgressJobs[i];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (i % 3)); // Started 0-2 days ago
+      startDate.setHours(8 + (i % 4), 0, 0, 0);
+      
+      await storage.updateJob(job.id, demoUser.id, {
+        startedAt: startDate,
+        scheduledAt: startDate,
+      });
+    }
+    
+    // Update completed jobs to have completed recently
+    const doneJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced');
+    for (let i = 0; i < doneJobs.length && i < 10; i++) {
+      const job = doneJobs[i];
+      const completedDate = new Date();
+      completedDate.setDate(completedDate.getDate() - (i + 1)); // Completed 1-10 days ago
+      
+      await storage.updateJob(job.id, demoUser.id, {
+        completedAt: completedDate,
+      });
+    }
+    
+    // Recreate activity logs with current dates
+    // Delete existing logs first
+    const deletedCount = await storage.deleteActivityLogs(demoUser.id);
+    console.log(`[DemoScreenshots] Deleted ${deletedCount} existing activity logs`);
+    
+    // Create fresh activity logs
+    await createDemoActivityLogs(demoUser.id);
+    updated.activityLogs = 15;
+    
+    console.log(`[DemoScreenshots] Updated jobs: ${updated.todaysJobs} today, ${updated.thisWeekJobs} this week, ${updated.upcomingJobs} upcoming`);
+    
+    return { 
+      success: true, 
+      message: `Demo data refreshed for screenshots: ${updated.todaysJobs} jobs today, ${updated.thisWeekJobs} this week, ${updated.upcomingJobs} upcoming. Activity logs updated.`,
+      updated
+    };
+  } catch (error: any) {
+    console.error('[DemoScreenshots] Error refreshing demo data:', error);
+    return { success: false, message: error.message || 'Failed to refresh demo data', updated: {} };
   }
 }
 

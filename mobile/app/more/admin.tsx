@@ -7,6 +7,7 @@ import {
   RefreshControl,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -446,6 +447,38 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </View>
+
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 16 }]}>Demo Tools</Text>
+      <Card>
+        <CardContent style={{ paddingVertical: 12 }}>
+          <TouchableOpacity
+            style={[styles.demoToolButton, { backgroundColor: colors.primary }]}
+            onPress={async () => {
+              try {
+                const response = await api.post('/api/admin/refresh-demo-screenshots');
+                if (response.data?.success) {
+                  Alert.alert(
+                    'Demo Data Refreshed',
+                    `${response.data.updated?.todaysJobs || 0} jobs today\n${response.data.updated?.thisWeekJobs || 0} jobs this week\n${response.data.updated?.upcomingJobs || 0} upcoming jobs\n\nPull down to refresh to see updated data.`
+                  );
+                } else {
+                  Alert.alert('Error', 'Failed to refresh demo data');
+                }
+              } catch (error: any) {
+                Alert.alert('Error', error.response?.data?.error || 'Failed to refresh demo data');
+              }
+            }}
+          >
+            <Feather name="camera" size={18} color={colors.primaryForeground} />
+            <Text style={[styles.demoToolButtonText, { color: colors.primaryForeground }]}>
+              Refresh for Screenshots
+            </Text>
+          </TouchableOpacity>
+          <Text style={[styles.demoToolHint, { color: colors.mutedForeground }]}>
+            Updates jobs to today/this week and refreshes activity logs for App Store screenshots.
+          </Text>
+        </CardContent>
+      </Card>
     </>
   );
 
@@ -969,6 +1002,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     marginTop: 4,
+  },
+  demoToolButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  demoToolButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  demoToolHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
   },
   usersSectionHeader: {
     flexDirection: 'row',

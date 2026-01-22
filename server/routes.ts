@@ -6334,6 +6334,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to refresh demo data for App Store screenshots
+  // Updates scheduled jobs to today/this week and refreshes activity logs
+  app.post("/api/admin/refresh-demo-screenshots", requireAuth, async (req: any, res) => {
+    try {
+      const { refreshDemoDataForScreenshots, DEMO_USER, createDemoActivityLogs } = await import('./demoData');
+      
+      // Only allow demo user to refresh their data
+      const user = await storage.getUser(req.userId);
+      if (!user || user.email !== DEMO_USER.email) {
+        return res.status(403).json({ error: 'Only the demo account can refresh demo data for screenshots' });
+      }
+      
+      const result = await refreshDemoDataForScreenshots();
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.message });
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+        updated: result.updated,
+        instructions: 'Pull down to refresh on the home screen to see updated jobs and activity.'
+      });
+    } catch (error: any) {
+      console.error("Error refreshing demo data for screenshots:", error);
+      res.status(500).json({ error: error.message || "Failed to refresh demo data" });
+    }
+  });
+
   // Endpoint to seed demo data for new users during onboarding
   // Creates sample clients, jobs, quotes, and invoices to explore
   app.post("/api/onboarding/seed-demo-data", requireAuth, async (req: any, res) => {

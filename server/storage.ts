@@ -297,6 +297,7 @@ export interface IStorage {
   // Activity Logs (Dashboard Activity Feed)
   getActivityLogs(userId: string, limit?: number): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+  deleteActivityLogs(userId: string): Promise<number>;
 
   // Platform Stats (for trust signals)
   getPlatformStats(): Promise<{ userCount: number; quotesCount: number; paidInvoicesCount: number }>;
@@ -1145,6 +1146,11 @@ export class PostgresStorage implements IStorage {
   async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
     const result = await db.insert(activityLogs).values(log).returning();
     return result[0];
+  }
+
+  async deleteActivityLogs(userId: string): Promise<number> {
+    const result = await db.delete(activityLogs).where(eq(activityLogs.userId, userId)).returning();
+    return result.length;
   }
 
   // Platform Stats (for trust signals)
