@@ -23,7 +23,7 @@ Core architectural and design decisions include:
 *   **Real-time Communication**: Includes Job Chat, Team Chat, and Direct Messages with file attachments and two-way Twilio SMS integration with AI analysis, unified in a Microsoft Teams-style Chat Hub.
 *   **Real-time WebSocket Updates**: Live UI synchronization for job status changes, timer events, document updates, payment records, and notifications. React Query caches auto-invalidate on WebSocket messages.
 *   **Team Operations Center**: A centralized hub for live operations, administration, scheduling, skills/certifications, and performance monitoring.
-*   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization.
+*   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization. Includes job search with autocomplete to quickly find and zoom to specific jobs on the map.
 *   **Role-Based Access Control (RBAC)**: Granular permissions are enforced through middleware and a dual-permission system with offline caching.
 *   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization across web and mobile via IndexedDB and SQLite, including time tracking, payment drafts, and subscription caching.
 *   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web, including photo markup.

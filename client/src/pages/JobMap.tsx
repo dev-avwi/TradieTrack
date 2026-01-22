@@ -49,7 +49,8 @@ import {
   Check,
   Save,
   FolderOpen,
-  Trash2
+  Trash2,
+  Search
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -363,6 +364,42 @@ function FitBoundsController({
   return null;
 }
 
+function FlyToSearchedJob({ 
+  job, 
+  onComplete 
+}: { 
+  job: JobMapData | null;
+  onComplete?: () => void;
+}) {
+  const map = useMap();
+  const hasFlownRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    if (!job || !job.latitude || !job.longitude) return;
+    
+    // Avoid flying to the same job multiple times
+    if (hasFlownRef.current === job.id) return;
+    hasFlownRef.current = job.id;
+    
+    map.flyTo([job.latitude, job.longitude], 17, {
+      duration: 1.0,
+    });
+    
+    setTimeout(() => {
+      onComplete?.();
+    }, 1050);
+  }, [job, map, onComplete]);
+  
+  // Reset when job is cleared
+  useEffect(() => {
+    if (!job) {
+      hasFlownRef.current = null;
+    }
+  }, [job]);
+  
+  return null;
+}
+
 function FlyToTeamMember({ 
   selectedId, 
   teamLocations,
@@ -470,6 +507,9 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   const [showAlerts, setShowAlerts] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [jobSearch, setJobSearch] = useState("");
+  const [showJobSearchResults, setShowJobSearchResults] = useState(false);
+  const [selectedSearchJob, setSelectedSearchJob] = useState<JobMapData | null>(null);
   
   // Selected team member - when clicking a chip, fly to this member and show their info
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string | null>(null);
@@ -784,6 +824,21 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
     return filteredJobs.filter(job => job.latitude && job.longitude);
   }, [filteredJobs]);
 
+  // Job search results - filter by title, client name, or address (only jobs with coordinates)
+  const jobSearchResults = useMemo(() => {
+    if (!jobSearch.trim()) return [];
+    const searchLower = jobSearch.toLowerCase();
+    return jobsData
+      .filter(job => 
+        job.latitude && job.longitude && (
+          job.title.toLowerCase().includes(searchLower) ||
+          job.clientName?.toLowerCase().includes(searchLower) ||
+          job.address?.toLowerCase().includes(searchLower)
+        )
+      )
+      .slice(0, 8); // Limit to 8 results
+  }, [jobsData, jobSearch]);
+
   // Compute route polyline coordinates from enriched route jobs
   const routeCoordinates = useMemo(() => {
     return enrichedRouteJobs
@@ -1061,6 +1116,11 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
             teamLocations={teamLocations}
             markersRef={teamMemberMarkersRef}
             onComplete={() => setSelectedTeamMemberId(null)}
+          />
+          
+          <FlyToSearchedJob
+            job={selectedSearchJob}
+            onComplete={() => {}}
           />
           
           {/* Route polyline - draw line between stops */}
@@ -1486,6 +1546,74 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
             
             {showControls && (
               <div className="flex flex-wrap items-center gap-2">
+                {/* Job Search Input */}
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Find job on map..."
+                      value={jobSearch}
+                      onChange={(e) => {
+                        setJobSearch(e.target.value);
+                        setShowJobSearchResults(e.target.value.length > 0);
+                      }}
+                      onFocus={() => setShowJobSearchResults(jobSearch.length > 0)}
+                      onBlur={() => setTimeout(() => setShowJobSearchResults(false), 200)}
+                      className="pl-9 h-9 w-[180px] lg:w-[220px] text-sm"
+                      data-testid="input-job-search"
+                    />
+                    {jobSearch && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 scale-75"
+                        onClick={() => {
+                          setJobSearch("");
+                          setShowJobSearchResults(false);
+                          setSelectedSearchJob(null);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {showJobSearchResults && jobSearchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-lg z-50 max-h-[300px] overflow-y-auto bg-background border-border">
+                      {jobSearchResults.map((job) => (
+                        <div
+                          key={job.id}
+                          className="p-3 cursor-pointer border-b last:border-b-0 border-border hover-elevate overflow-visible"
+                          onClick={() => {
+                            setSelectedSearchJob(job);
+                            setJobSearch(job.title);
+                            setShowJobSearchResults(false);
+                          }}
+                          data-testid={`search-result-${job.id}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div 
+                              className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                              style={{ backgroundColor: STATUS_COLORS[job.status] || '#6B7280' }}
+                            />
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{job.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{job.clientName}</p>
+                              {job.address && (
+                                <p className="text-xs text-muted-foreground truncate">{job.address}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showJobSearchResults && jobSearch && jobSearchResults.length === 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-lg z-50 p-3 text-sm text-muted-foreground bg-background border-border">
+                      No jobs found
+                    </div>
+                  )}
+                </div>
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-[130px] text-sm h-9" data-testid="select-status-filter">
                     <Filter className="h-4 w-4 mr-2 text-muted-foreground" />

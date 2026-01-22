@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import GettingStartedChecklist from "./GettingStartedChecklist";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
@@ -25,6 +27,7 @@ import {
   MapPin,
   Plus,
   ChevronRight,
+  ChevronDown,
   CalendarDays,
   TrendingUp,
   AlertCircle,
@@ -43,7 +46,8 @@ import {
   Sparkles,
   Timer,
   Receipt,
-  CreditCard
+  CreditCard,
+  Search
 } from "lucide-react";
 
 interface TeamOwnerDashboardProps {
@@ -126,6 +130,8 @@ export default function TeamOwnerDashboard({
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverMember, setDragOverMember] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [teamSearch, setTeamSearch] = useState("");
+  const [isTeamExpanded, setIsTeamExpanded] = useState(false);
   const schedulerRef = useRef<HTMLElement>(null);
 
   // Scroll to job scheduler section
@@ -672,106 +678,137 @@ export default function TeamOwnerDashboard({
             </Card>
           )}
 
-          {/* Team Members - Drop Zones */}
-          <div className="grid gap-3">
-            {teamMembers.map((member) => {
-              const memberJobs = getJobsForMember(member.userId || '');
-              const isDragOver = dragOverMember === member.id;
-              const canReceiveJobs = !!member.userId && member.inviteStatus === 'accepted';
-              const isClickable = !!selectedJob && !assignJob.isPending && canReceiveJobs;
-              
-              return (
-                <div
-                  key={member.id}
-                  onDragOver={(e) => handleDragOver(e, member.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, member)}
-                  onClick={() => handleMemberClick(member)}
-                  className={`feed-card transition-all ${
-                    isDragOver 
-                      ? 'ring-2 ring-primary ring-offset-2' 
-                      : isClickable 
-                        ? 'cursor-pointer ring-1 ring-primary/30 hover:ring-2 hover:ring-primary' 
-                        : ''
-                  }`}
-                  data-testid={`team-member-drop-zone-${member.id}`}
-                >
-                  <div className="card-padding">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback 
-                            className="text-sm font-medium"
-                            style={{ backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' }}
-                          >
-                            {getInitials(member)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div 
-                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background"
-                          style={{ backgroundColor: getPresenceColor(getPresenceStatus(member.userId)) }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{getMemberName(member)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {memberJobs.length} active job{memberJobs.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      {isDragOver && canReceiveJobs && (
-                        <Badge style={{ backgroundColor: 'hsl(var(--trade))' }} className="text-white">
-                          Drop here
-                        </Badge>
-                      )}
-                      {isClickable && !isDragOver && (
-                        <Badge variant="outline" className="text-primary border-primary">
-                          Tap to assign
-                        </Badge>
-                      )}
-                      {!canReceiveJobs && (
-                        <Badge variant="secondary" className="text-xs">
-                          Invite pending
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {/* Member's assigned jobs */}
-                    {memberJobs.length > 0 ? (
-                      <div className="space-y-2">
-                        {memberJobs.slice(0, 3).map((job) => (
-                          <div 
-                            key={job.id}
-                            className="flex items-center justify-between p-2 rounded-lg bg-muted/50 cursor-pointer hover-elevate"
-                            onClick={() => onNavigate?.(`/jobs/${job.id}`)}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm truncate">{job.title}</span>
-                            </div>
-                            {getStatusBadge(job.status)}
-                          </div>
+          {/* Team Members - Compact View with Search */}
+          <Collapsible 
+            open={isTeamExpanded || !!selectedJob} 
+            onOpenChange={setIsTeamExpanded}
+          >
+            {/* Team Summary Header */}
+            <div className="feed-card">
+              <div className="card-padding">
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center justify-between cursor-pointer hover-elevate rounded-lg -m-2 p-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex -space-x-2">
+                        {teamMembers.slice(0, 4).map((member) => (
+                          <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
+                            <AvatarFallback 
+                              className="text-xs font-medium"
+                              style={{ backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' }}
+                            >
+                              {getInitials(member)}
+                            </AvatarFallback>
+                          </Avatar>
                         ))}
-                        {memberJobs.length > 3 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => onNavigate?.(`/jobs?assignedTo=${member.userId}`)}
-                          >
-                            View all {memberJobs.length} jobs
-                          </Button>
+                        {teamMembers.length > 4 && (
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center border-2 border-background">
+                            <span className="text-xs font-medium">+{teamMembers.length - 4}</span>
+                          </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="text-center py-4 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
-                        {isDragOver ? 'Release to assign' : 'No jobs assigned'}
+                      <div>
+                        <p className="font-medium">{teamMembers.length} Team Members</p>
+                        <p className="text-xs text-muted-foreground">
+                          {onlineTeamCount > 0 ? `${onlineTeamCount} online` : 'Tap to expand'}
+                        </p>
                       </div>
-                    )}
+                    </div>
+                    <ChevronDown 
+                      className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
+                        isTeamExpanded || !!selectedJob ? 'rotate-180' : ''
+                      }`} 
+                    />
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+
+            <CollapsibleContent className="space-y-3 mt-3">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search team members..."
+                  value={teamSearch}
+                  onChange={(e) => setTeamSearch(e.target.value)}
+                  className="pl-10 h-10 rounded-xl"
+                  data-testid="input-team-search"
+                />
+              </div>
+
+              {/* Filtered Team Members */}
+              <div className="grid gap-2 max-h-[400px] overflow-y-auto">
+                {teamMembers
+                  .filter((member) => {
+                    if (!teamSearch) return true;
+                    const name = getMemberName(member).toLowerCase();
+                    return name.includes(teamSearch.toLowerCase());
+                  })
+                  .map((member) => {
+                    const memberJobs = getJobsForMember(member.userId || '');
+                    const isDragOver = dragOverMember === member.id;
+                    const canReceiveJobs = !!member.userId && member.inviteStatus === 'accepted';
+                    const isClickable = !!selectedJob && !assignJob.isPending && canReceiveJobs;
+                    
+                    return (
+                      <div
+                        key={member.id}
+                        onDragOver={(e) => handleDragOver(e, member.id)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, member)}
+                        onClick={() => handleMemberClick(member)}
+                        className={`p-3 rounded-xl border bg-card transition-all ${
+                          isDragOver 
+                            ? 'ring-2 ring-primary ring-offset-2' 
+                            : isClickable 
+                              ? 'cursor-pointer ring-1 ring-primary/30 hover:ring-2 hover:ring-primary' 
+                              : 'hover-elevate'
+                        }`}
+                        data-testid={`team-member-drop-zone-${member.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Avatar className="h-9 w-9">
+                              <AvatarFallback 
+                                className="text-sm font-medium"
+                                style={{ backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' }}
+                              >
+                                {getInitials(member)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div 
+                              className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background"
+                              style={{ backgroundColor: getPresenceColor(getPresenceStatus(member.userId)) }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{getMemberName(member)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {memberJobs.length} job{memberJobs.length !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          {isDragOver && canReceiveJobs && (
+                            <Badge size="sm" style={{ backgroundColor: 'hsl(var(--trade))' }} className="text-white text-xs">
+                              Drop
+                            </Badge>
+                          )}
+                          {isClickable && !isDragOver && (
+                            <Badge variant="outline" className="text-primary border-primary text-xs">
+                              Assign
+                            </Badge>
+                          )}
+                          {!canReceiveJobs && (
+                            <Badge variant="secondary" className="text-xs">
+                              Pending
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
             {/* Invite More */}
             <Button
