@@ -943,9 +943,9 @@ export const stylePresets = pgTable("style_presets", {
   fontFamily: text("font_family").default('Inter'),
   headerFontSize: text("header_font_size").default('24px'),
   bodyFontSize: text("body_font_size").default('14px'),
-  // Layout Options
-  headerLayout: text("header_layout").default('standard'), // 'standard', 'minimal', 'detailed'
-  footerLayout: text("footer_layout").default('standard'), // 'standard', 'minimal', 'detailed'
+  // Layout Options - maps to document template IDs: 'professional', 'modern', 'minimal'
+  headerLayout: text("header_layout").default('professional'),
+  footerLayout: text("footer_layout").default('standard'),
   showLogo: boolean("show_logo").default(true),
   showBusinessDetails: boolean("show_business_details").default(true),
   showBankDetails: boolean("show_bank_details").default(true),

@@ -2357,7 +2357,7 @@ export class PostgresStorage implements IStorage {
       fontFamily: 'Inter',
       headerFontSize: '24px',
       bodyFontSize: '14px',
-      headerLayout: 'standard',
+      headerLayout: 'professional', // Maps to document template ID
       footerLayout: 'standard',
       showLogo: true,
       showBusinessDetails: true,

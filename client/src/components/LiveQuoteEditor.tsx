@@ -1100,7 +1100,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               gstEnabled={gstEnabled}
               templateId={(() => {
                 // Use headerLayout from style preset (set in Templates Hub)
-                const savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
+                let savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
+                // Backward compatibility: map legacy 'standard' to 'professional'
+                if (savedTemplateId === 'standard') {
+                  savedTemplateId = 'professional';
+                }
                 if (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId)) {
                   return savedTemplateId;
                 }
@@ -1108,7 +1112,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               })()}
               templateCustomization={(() => {
                 // Get template config from the selected template
-                const savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
+                let savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
+                // Backward compatibility: map legacy 'standard' to 'professional'
+                if (savedTemplateId === 'standard') {
+                  savedTemplateId = 'professional';
+                }
                 const templateId: TemplateId = (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId))
                   ? savedTemplateId
                   : ((businessSettings as any)?.documentTemplate || 'professional');

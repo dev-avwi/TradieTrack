@@ -233,7 +233,11 @@ function StylePresetsWithPreview() {
   // Sync selected template from server when preset loads
   useEffect(() => {
     if (defaultPreset?.headerLayout) {
-      const serverTemplateId = defaultPreset.headerLayout as TemplateId;
+      let serverTemplateId = defaultPreset.headerLayout as TemplateId;
+      // Backward compatibility: map legacy 'standard' to 'professional'
+      if (serverTemplateId === 'standard' as any) {
+        serverTemplateId = 'professional';
+      }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
       }
