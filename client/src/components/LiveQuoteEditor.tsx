@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useState, useEffect, useCallback } from "react";
+import { flushSync } from "react-dom";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useSearch, Link } from "wouter";
@@ -99,6 +100,17 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const [quickClientEmail, setQuickClientEmail] = useState("");
   const [quickClientPhone, setQuickClientPhone] = useState("");
   
+  // Local state for line items - more reliable than useFieldArray for dynamic updates
+  const [localLineItems, setLocalLineItems] = useState<Array<{
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    cost: string;
+  }>>([]);
+  
+  // Force update counter for debugging
+  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
+  
   const createClient = useCreateClient();
 
   const { data: userCheck } = useQuery({
@@ -171,6 +183,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     name: "lineItems"
   });
 
+  // Sync localLineItems with form whenever they change
+  useEffect(() => {
+    form.setValue("lineItems", localLineItems);
+  }, [localLineItems, form]);
+
   // Auto-fill form when job is loaded from URL parameter
   useEffect(() => {
     if (preloadedJob && !jobAutoLoaded && clients.length > 0) {
@@ -193,8 +210,16 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     }
   }, [preloadedJob, jobAutoLoaded, clients, form, toast]);
 
+  // Use form.watch() for general form values
   const watchedValues = form.watch();
   const selectedClient = (clients as any[]).find(c => c.id === watchedValues.clientId);
+  
+  // Use useWatch specifically for lineItems to ensure proper re-rendering
+  const lineItems = useWatch({
+    control: form.control,
+    name: "lineItems",
+    defaultValue: []
+  });
 
   // Prefill form from selected job (and optionally copy from existing quote)
   const handleSelectJob = (job: any, linkedDocument?: any) => {
@@ -222,8 +247,9 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
           description: item.description || "",
           quantity: String(item.quantity || item.qty || 1),
           unitPrice: String(item.unitPrice || 0),
+          cost: "",
         }));
-        replace(items);
+        setLocalLineItems(items);
       }
       
       toast({
@@ -238,15 +264,16 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     form.setValue("description", job.description || "");
     
     // Clear existing line items and add job-based items
-    replace([]);
+    setLocalLineItems([]);
     
     // If job has time tracking, add a labor line item
     if (job.timeTracking?.totalHours > 0) {
       const hourlyRate = businessSettings?.defaultHourlyRate || 85;
-      replace([{
+      setLocalLineItems([{
         description: `Labour - ${job.title}`,
         quantity: String(job.timeTracking.totalHours),
         unitPrice: String(hourlyRate),
+        cost: "",
       }]);
     }
     
@@ -272,7 +299,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       form.setValue("depositPercent", template.defaults.depositPct);
     }
     
-    // Build new line items from template and use replace() to sync with useFieldArray
+    // Build new line items from template and use setLocalLineItems for reliable sync
     if (template.defaultLineItems && template.defaultLineItems.length > 0) {
       const newLineItems = template.defaultLineItems.map((item: any) => ({
         description: item.description || "",
@@ -280,7 +307,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         unitPrice: String(item.unitPrice || 0),
         cost: "",
       }));
-      replace(newLineItems);
+      setLocalLineItems(newLineItems);
     }
     
     setTemplateSheetOpen(false);
@@ -296,7 +323,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   };
 
   const handleEditLineItem = (index: number) => {
-    const item = watchedValues.lineItems[index];
+    const item = localLineItems[index];
     setEditForm({
       description: item.description || "",
       quantity: String(item.quantity || "1"),
@@ -316,16 +343,12 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       return;
     }
 
-    // Get current line items
-    const currentLineItems = form.getValues("lineItems") || [];
-    
     if (editingLineIndex === -1) {
-      // Adding new item - use replace() to ensure fields array syncs
-      const updatedLineItems = [...currentLineItems, editForm];
-      replace(updatedLineItems);
+      // Adding new item - use local state
+      setLocalLineItems(prev => [...prev, editForm]);
     } else if (editingLineIndex !== null) {
-      // Editing existing item - use update() for single item changes
-      update(editingLineIndex, editForm);
+      // Editing existing item - update local state
+      setLocalLineItems(prev => prev.map((item, i) => i === editingLineIndex ? editForm : item));
     }
     setEditingLineIndex(null);
   };
@@ -342,15 +365,18 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       cost: "",
     };
     
-    // Get current line items and add new item
-    const currentLineItems = form.getValues("lineItems") || [];
-    const updatedLineItems = [...currentLineItems, newItem];
+    console.log('[CatalogSelect] Adding item:', itemDescription);
+    console.log('[CatalogSelect] Current items before:', localLineItems.length);
     
-    // Use replace() to update useFieldArray's fields array
-    // This ensures proper synchronization between fields and form state
-    replace(updatedLineItems);
+    // Use functional update to ensure we get the latest state
+    setLocalLineItems(prevItems => {
+      const updatedItems = [...prevItems, newItem];
+      console.log('[CatalogSelect] Updated items:', updatedItems.length);
+      return updatedItems;
+    });
     
-    setCatalogOpen(false);
+    // Note: Don't call setCatalogOpen here - CatalogModal already handles closing
+    
     toast({
       title: "Item added",
       description: `"${itemDescription}" added to quote`,
@@ -415,21 +441,21 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     return ((revenue - totalCost) / revenue) * 100;
   };
 
-  const subtotal = watchedValues.lineItems?.reduce(
+  const subtotal = localLineItems.reduce(
     (sum, item) => sum + calculateTotal(item.quantity, item.unitPrice), 
     0
-  ) || 0;
+  );
   const gst = subtotal * 0.1;
   const total = subtotal + gst;
   
   // Profit margin calculations
-  const totalCost = watchedValues.lineItems?.reduce(
+  const totalCost = localLineItems.reduce(
     (sum, item) => sum + calculateItemCost(item.quantity, item.cost || "0"), 
     0
-  ) || 0;
+  );
   const grossProfit = subtotal - totalCost;
   const profitMargin = subtotal > 0 ? (grossProfit / subtotal) * 100 : 0;
-  const hasCostData = watchedValues.lineItems?.some(item => item.cost && parseFloat(item.cost) > 0);
+  const hasCostData = localLineItems.some(item => item.cost && parseFloat(item.cost) > 0);
 
   const handleSubmit = async (data: QuoteFormData) => {
     try {
@@ -499,11 +525,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     address: selectedClient.address,
   } : null;
 
-  const previewLineItems = watchedValues.lineItems?.map(item => ({
+  const previewLineItems = localLineItems.map(item => ({
     description: item.description,
     quantity: parseFloat(item.quantity) || 0,
     unitPrice: parseFloat(item.unitPrice) || 0,
-  })) || [];
+  }));
 
   return (
     <div className="h-full flex flex-col">
@@ -824,14 +850,13 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     Line Items
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {fields.length} {fields.length === 1 ? 'item' : 'items'}
+                    {localLineItems.length} {localLineItems.length === 1 ? 'item' : 'items'}
                   </Badge>
                 </div>
 
-                {/* Item list */}
-                <div className="space-y-2">
-                  {fields.map((field, index) => {
-                    const item = watchedValues.lineItems[index];
+                {/* Item list - use localLineItems for reliable re-rendering */}
+                <div className="space-y-2" key={`line-items-${localLineItems.length}-${forceUpdateCounter}`}>
+                  {localLineItems.map((item, index) => {
                     const itemTotal = calculateTotal(item?.quantity || "0", item?.unitPrice || "0");
                     const itemMargin = item?.cost && parseFloat(item.cost) > 0 
                       ? calculateItemMargin(item.quantity, item.unitPrice, item.cost)
@@ -839,7 +864,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     
                     return (
                       <div 
-                        key={field.id}
+                        key={`line-item-${index}`}
                         className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover-elevate"
                       >
                         <div className="flex-1 min-w-0">
@@ -879,7 +904,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-lg text-destructive hover:text-destructive"
-                            onClick={() => remove(index)}
+                            onClick={() => setLocalLineItems(prev => prev.filter((_, i) => i !== index))}
                             data-testid={`button-delete-item-${index}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -929,7 +954,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                 )}
 
                 {/* Totals */}
-                {fields.length > 0 && (
+                {localLineItems.length > 0 && (
                   <div className="pt-4 border-t space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
@@ -1284,15 +1309,14 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
             form.setValue("description", description);
           }
           
-          // Use replace() to sync useFieldArray fields with new items
-          const currentLineItems = form.getValues("lineItems") || [];
+          // Use setLocalLineItems to add AI-generated items
           const newItems = items.map(item => ({
             description: item.description,
             quantity: item.quantity.toString(),
             unitPrice: item.unitPrice.toString(),
             cost: "",
           }));
-          replace([...currentLineItems, ...newItems]);
+          setLocalLineItems(prev => [...prev, ...newItems]);
           
           toast({
             title: "Items added",

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useSearch, Link } from "wouter";
@@ -234,8 +234,16 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     }
   }, [preloadedJob, preloadedQuote, autoLoaded, clients, form, toast]);
 
+  // Use form.watch() for general form values
   const watchedValues = form.watch();
   const selectedClient = (clients as any[]).find(c => c.id === watchedValues.clientId);
+  
+  // Use useWatch specifically for lineItems to ensure proper re-rendering
+  const lineItems = useWatch({
+    control: form.control,
+    name: "lineItems",
+    defaultValue: []
+  });
 
   // Prefill form from accepted quote - the natural workflow for invoice creation
   const handleSelectQuote = (quote: any) => {
@@ -384,7 +392,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   };
 
   const handleEditLineItem = (index: number) => {
-    const item = watchedValues.lineItems[index];
+    const item = lineItems[index];
     setEditForm({
       description: item.description || "",
       quantity: String(item.quantity || "1"),
@@ -422,15 +430,19 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       unitPrice: String(item.unitPrice || 0),
     };
     
-    // Get current line items and use replace() to ensure proper sync
-    const currentLineItems = form.getValues("lineItems") || [];
-    replace([...currentLineItems, newItem]);
-    
+    // Close the modal first
     setCatalogOpen(false);
-    toast({
-      title: "Item added",
-      description: `"${itemDescription}" added to invoice`,
-    });
+    
+    // Use setTimeout to ensure modal close doesn't interfere with form update
+    setTimeout(() => {
+      // Use append() which directly updates the useFieldArray fields array
+      append(newItem);
+      
+      toast({
+        title: "Item added",
+        description: `"${itemDescription}" added to invoice`,
+      });
+    }, 0);
   };
 
   const formatCurrency = (amount: number) => {
@@ -444,7 +456,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     return (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
   };
 
-  const subtotal = watchedValues.lineItems?.reduce(
+  const subtotal = lineItems?.reduce(
     (sum, item) => sum + calculateTotal(item.quantity, item.unitPrice), 
     0
   ) || 0;
@@ -519,7 +531,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     address: selectedClient.address,
   } : null;
 
-  const previewLineItems = watchedValues.lineItems?.map(item => ({
+  const previewLineItems = lineItems?.map(item => ({
     description: item.description,
     quantity: parseFloat(item.quantity) || 0,
     unitPrice: parseFloat(item.unitPrice) || 0,
@@ -728,19 +740,18 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
                     Line Items
                   </div>
                   <Badge variant="secondary" className="text-xs">
-                    {fields.length} {fields.length === 1 ? 'item' : 'items'}
+                    {lineItems?.length || 0} {(lineItems?.length || 0) === 1 ? 'item' : 'items'}
                   </Badge>
                 </div>
 
-                {/* Item list */}
+                {/* Item list - use lineItems from useWatch for reliable re-rendering */}
                 <div className="space-y-2">
-                  {fields.map((field, index) => {
-                    const item = watchedValues.lineItems[index];
+                  {(lineItems || []).map((item, index) => {
                     const itemTotal = calculateTotal(item?.quantity || "0", item?.unitPrice || "0");
                     
                     return (
                       <div 
-                        key={field.id}
+                        key={`line-item-${index}`}
                         className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover-elevate"
                       >
                         <div className="flex-1 min-w-0">
@@ -807,7 +818,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
                 )}
 
                 {/* Totals */}
-                {fields.length > 0 && (
+                {(lineItems?.length || 0) > 0 && (
                   <div className="pt-4 border-t space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
