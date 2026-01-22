@@ -52,7 +52,7 @@ export default function CatalogModal({ open, onOpenChange, onSelectItem, tradeTy
   
   const handleSelectItem = (item: any) => {
     onSelectItem(item);
-    onOpenChange(false);
+    // Note: Parent component handles closing the modal to avoid React state batching issues
     setSearchTerm("");
     setSelectedCategory("");
   };

@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import { flushSync } from "react-dom";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -108,9 +107,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     cost: string;
   }>>([]);
   
-  // Force update counter for debugging
-  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
-  
   const createClient = useCreateClient();
 
   const { data: userCheck } = useQuery({
@@ -185,8 +181,10 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
 
   // Sync localLineItems with form whenever they change
   useEffect(() => {
+    console.log('[LiveQuoteEditor] localLineItems changed:', localLineItems.length, localLineItems);
     form.setValue("lineItems", localLineItems);
   }, [localLineItems, form]);
+
 
   // Auto-fill form when job is loaded from URL parameter
   useEffect(() => {
@@ -366,16 +364,15 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     };
     
     console.log('[CatalogSelect] Adding item:', itemDescription);
-    console.log('[CatalogSelect] Current items before:', localLineItems.length);
     
-    // Use functional update to ensure we get the latest state
+    // Close the modal
+    setCatalogOpen(false);
+    
+    // Add item directly using functional update
     setLocalLineItems(prevItems => {
-      const updatedItems = [...prevItems, newItem];
-      console.log('[CatalogSelect] Updated items:', updatedItems.length);
-      return updatedItems;
+      console.log('[CatalogSelect] prev items:', prevItems.length);
+      return [...prevItems, newItem];
     });
-    
-    // Note: Don't call setCatalogOpen here - CatalogModal already handles closing
     
     toast({
       title: "Item added",
