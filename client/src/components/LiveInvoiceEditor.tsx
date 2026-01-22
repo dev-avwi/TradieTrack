@@ -21,7 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import type { StylePreset } from "@shared/schema";
-import { TemplateCustomization } from "@/lib/document-templates";
+import { TemplateCustomization, DOCUMENT_TEMPLATES, TemplateId } from "@/lib/document-templates";
 import CatalogModal from "@/components/CatalogModal";
 import CompletedJobPicker from "@/components/CompletedJobPicker";
 import {
@@ -885,14 +885,33 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
               business={businessInfo}
               client={clientInfo}
               gstEnabled={gstEnabled}
-              templateId={(businessSettings as any)?.documentTemplate || 'minimal'}
-              templateCustomization={{
-                // User's saved settings take priority; fall back to default style preset when unset
-                tableStyle: (businessSettings as any)?.documentTemplateSettings?.tableStyle || 
-                  (defaultStylePreset?.alternateRowColors ? 'striped' : defaultStylePreset?.tableBorders ? 'bordered' : 'minimal'),
-                accentColor: (businessSettings as any)?.documentTemplateSettings?.accentColor || defaultStylePreset?.accentColor,
-                showHeaderDivider: (businessSettings as any)?.documentTemplateSettings?.showHeaderDivider ?? true,
-              } as TemplateCustomization}
+              templateId={(() => {
+                // Use headerLayout from style preset (set in Templates Hub)
+                const savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
+                if (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId)) {
+                  return savedTemplateId;
+                }
+                return (businessSettings as any)?.documentTemplate || 'professional';
+              })()}
+              templateCustomization={(() => {
+                // Get template config from the selected template
+                const savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
+                const templateId: TemplateId = (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId))
+                  ? savedTemplateId
+                  : ((businessSettings as any)?.documentTemplate || 'professional');
+                const template = DOCUMENT_TEMPLATES[templateId];
+                
+                // User's saved settings take priority; fall back to template defaults
+                return {
+                  tableStyle: (businessSettings as any)?.documentTemplateSettings?.tableStyle || template.tableStyle,
+                  noteStyle: (businessSettings as any)?.documentTemplateSettings?.noteStyle || template.noteStyle,
+                  accentColor: (businessSettings as any)?.documentTemplateSettings?.accentColor || defaultStylePreset?.accentColor,
+                  showHeaderDivider: (businessSettings as any)?.documentTemplateSettings?.showHeaderDivider ?? template.showHeaderDivider,
+                  headerBorderWidth: template.headerBorderWidth,
+                  bodyWeight: template.bodyWeight,
+                  headingWeight: template.headingWeight,
+                } as TemplateCustomization;
+              })()}
               jobSignatures={jobSignatures?.filter((s: any) => s.documentType === 'job_completion') || []}
             />
           </div>
