@@ -230,6 +230,16 @@ function StylePresetsWithPreview() {
   const defaultPreset = presets.find(p => p.isDefault) || presets[0];
   const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
 
+  // Sync selected template from server when preset loads
+  useEffect(() => {
+    if (defaultPreset?.headerLayout) {
+      const serverTemplateId = defaultPreset.headerLayout as TemplateId;
+      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
+        setSelectedTemplateId(serverTemplateId);
+      }
+    }
+  }, [defaultPreset?.headerLayout]);
+
   // Update customization when template changes
   useEffect(() => {
     const template = DOCUMENT_TEMPLATES[selectedTemplateId];
