@@ -1563,10 +1563,8 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                       data-testid="input-job-search"
                     />
                     {jobSearch && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 scale-75"
+                      <span
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
                         onClick={() => {
                           setJobSearch("");
                           setShowJobSearchResults(false);
@@ -1574,7 +1572,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                         }}
                       >
                         <X className="h-4 w-4" />
-                      </Button>
+                      </span>
                     )}
                   </div>
                   {showJobSearchResults && jobSearchResults.length > 0 && (
