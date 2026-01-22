@@ -554,7 +554,7 @@ export default function TeamOwnerDashboard({
       </section>
 
       {/* Two-column layout for Job Scheduler and Today's Jobs on larger screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 animate-fade-up" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '150ms' }}>
         {/* Job Scheduler - Drag & Drop */}
         {hasActiveTeam && (
           <section ref={schedulerRef} className="space-y-4 lg:h-fit">
@@ -966,7 +966,7 @@ export default function TeamOwnerDashboard({
       />
 
       {/* Two-column layout for AI Schedule Optimizer and Activity Feed on larger screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 animate-fade-up" style={{ animationDelay: '250ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '250ms' }}>
         {/* AI SCHEDULE OPTIMIZER */}
         <section className="lg:h-fit">
           <AIScheduleOptimizer 

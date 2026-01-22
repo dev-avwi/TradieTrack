@@ -604,7 +604,7 @@ export default function OwnerManagerDashboard({
       />
 
       {/* Two-column layout for AI Schedule Optimizer and Activity Feed on larger screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 animate-fade-up" style={{ animationDelay: '200ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '200ms' }}>
         {/* AI SCHEDULE OPTIMIZER */}
         <section className="lg:h-fit">
           <AIScheduleOptimizer 
