@@ -257,33 +257,31 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   };
 
   const handleApplyTemplate = (template: DocumentTemplate) => {
-    // Get current form values
-    const currentValues = form.getValues();
+    // Update scalar form values using setValue
+    if (template.defaults?.title) {
+      form.setValue("title", template.defaults.title);
+    }
+    if (template.defaults?.description) {
+      form.setValue("description", template.defaults.description);
+    }
+    if (template.defaults?.terms) {
+      form.setValue("notes", template.defaults.terms);
+    }
+    if (template.defaults?.depositPct) {
+      form.setValue("depositRequired", true);
+      form.setValue("depositPercent", template.defaults.depositPct);
+    }
     
-    // Build new line items from template
-    let newLineItems = currentValues.lineItems || [];
+    // Build new line items from template and use replace() to sync with useFieldArray
     if (template.defaultLineItems && template.defaultLineItems.length > 0) {
-      newLineItems = template.defaultLineItems.map((item: any) => ({
+      const newLineItems = template.defaultLineItems.map((item: any) => ({
         description: item.description || "",
         quantity: String(item.qty || 1),
         unitPrice: String(item.unitPrice || 0),
+        cost: "",
       }));
+      replace(newLineItems);
     }
-    
-    // Reset form with all values including new line items
-    // This ensures both useFieldArray fields and form.watch() are in sync
-    form.reset({
-      ...currentValues,
-      title: template.defaults?.title || currentValues.title,
-      description: template.defaults?.description || currentValues.description,
-      notes: template.defaults?.terms || currentValues.notes,
-      depositRequired: template.defaults?.depositPct ? true : currentValues.depositRequired,
-      depositPercent: template.defaults?.depositPct || currentValues.depositPercent,
-      lineItems: newLineItems,
-    }, {
-      keepDirty: false,
-      keepDefaultValues: false,
-    });
     
     setTemplateSheetOpen(false);
     toast({
@@ -318,23 +316,16 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       return;
     }
 
-    // Use form.reset() to ensure both useFieldArray.fields and form.watch() stay synchronized
-    const currentValues = form.getValues();
+    // Get current line items
+    const currentLineItems = form.getValues("lineItems") || [];
     
     if (editingLineIndex === -1) {
-      // Adding new item - use form.reset() to sync fields and watched values
-      form.reset({
-        ...currentValues,
-        lineItems: [...(currentValues.lineItems || []), editForm],
-      }, { keepDirty: true });
+      // Adding new item - use replace() to ensure fields array syncs
+      const updatedLineItems = [...currentLineItems, editForm];
+      replace(updatedLineItems);
     } else if (editingLineIndex !== null) {
-      // Editing existing item
-      const updatedLineItems = [...(currentValues.lineItems || [])];
-      updatedLineItems[editingLineIndex] = editForm;
-      form.reset({
-        ...currentValues,
-        lineItems: updatedLineItems,
-      }, { keepDirty: true });
+      // Editing existing item - use update() for single item changes
+      update(editingLineIndex, editForm);
     }
     setEditingLineIndex(null);
   };
@@ -343,9 +334,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     // Use name as the description (what user sees as title), fallback to description if name is empty
     const itemDescription = item.name || item.description || 'Service item';
     
-    // Use form.reset() to ensure both useFieldArray.fields and form.watch() stay synchronized
-    // This fixes the issue where append() alone doesn't properly sync with watched values
-    const currentValues = form.getValues();
+    // Create the new item
     const newItem = {
       description: itemDescription,
       quantity: String(item.defaultQuantity || 1),
@@ -353,10 +342,13 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       cost: "",
     };
     
-    form.reset({
-      ...currentValues,
-      lineItems: [...(currentValues.lineItems || []), newItem],
-    }, { keepDirty: true });
+    // Get current line items and add new item
+    const currentLineItems = form.getValues("lineItems") || [];
+    const updatedLineItems = [...currentLineItems, newItem];
+    
+    // Use replace() to update useFieldArray's fields array
+    // This ensures proper synchronization between fields and form state
+    replace(updatedLineItems);
     
     setCatalogOpen(false);
     toast({
@@ -1282,21 +1274,25 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         onOpenChange={setAiQuoteOpen}
         jobId={selectedJobId}
         onApplyItems={(items, title, description) => {
-          // Use form.reset() to ensure both useFieldArray.fields and form.watch() stay synchronized
-          const currentValues = form.getValues();
+          // Update title and description if provided and not already set
+          const currentTitle = form.getValues("title");
+          const currentDescription = form.getValues("description");
+          if (title && !currentTitle) {
+            form.setValue("title", title);
+          }
+          if (description && !currentDescription) {
+            form.setValue("description", description);
+          }
+          
+          // Use replace() to sync useFieldArray fields with new items
+          const currentLineItems = form.getValues("lineItems") || [];
           const newItems = items.map(item => ({
             description: item.description,
             quantity: item.quantity.toString(),
             unitPrice: item.unitPrice.toString(),
             cost: "",
           }));
-          
-          form.reset({
-            ...currentValues,
-            title: title && !currentValues.title ? title : currentValues.title,
-            description: description && !currentValues.description ? description : currentValues.description,
-            lineItems: [...(currentValues.lineItems || []), ...newItems],
-          }, { keepDirty: true });
+          replace([...currentLineItems, ...newItems]);
           
           toast({
             title: "Items added",

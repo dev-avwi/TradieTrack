@@ -142,7 +142,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove, update, replace } = useFieldArray({
     control: form.control,
     name: "lineItems"
   });
@@ -412,15 +412,24 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   };
 
   const handleCatalogSelect = (item: any) => {
-    append({
-      description: item.description,
+    // Use name as description if available, fallback to description
+    const itemDescription = item.name || item.description || 'Service item';
+    
+    // Create new item
+    const newItem = {
+      description: itemDescription,
       quantity: String(item.defaultQuantity || 1),
       unitPrice: String(item.unitPrice || 0),
-    });
+    };
+    
+    // Get current line items and use replace() to ensure proper sync
+    const currentLineItems = form.getValues("lineItems") || [];
+    replace([...currentLineItems, newItem]);
+    
     setCatalogOpen(false);
     toast({
       title: "Item added",
-      description: `"${item.description}" added to invoice`,
+      description: `"${itemDescription}" added to invoice`,
     });
   };
 
