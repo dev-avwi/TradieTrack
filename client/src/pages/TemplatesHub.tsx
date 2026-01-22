@@ -58,6 +58,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { StylePreset, RateCard, LineItemCatalog, CustomForm } from "@shared/schema";
 import { format } from "date-fns";
 import LiveDocumentPreview from "@/components/LiveDocumentPreview";
+import { FormBuilder } from "@/components/CustomFormBuilder";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { TemplateId, TemplateCustomization, DOCUMENT_TEMPLATES, DOCUMENT_ACCENT_COLOR } from "@/lib/document-templates";
 import { Check, Settings } from "lucide-react";
@@ -648,6 +649,9 @@ function RateCardsSection() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingCard, setEditingCard] = useState<RateCard | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState<RateCard | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     tradeType: "general",
@@ -673,21 +677,89 @@ function RateCardsSection() {
     onSuccess: () => {
       toast({ title: "Rate card created" });
       setDialogOpen(false);
-      setFormData({
-        name: "",
-        tradeType: user?.tradeType || "general",
-        hourlyRate: "100.00",
-        calloutFee: "80.00",
-        materialMarkupPct: "20.00",
-        afterHoursMultiplier: "1.50",
-        gstEnabled: true,
-      });
+      resetFormData();
       queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
     },
     onError: () => {
       toast({ title: "Failed to create rate card", variant: "destructive" });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      return apiRequest("PATCH", `/api/rate-cards/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Rate card updated" });
+      setDialogOpen(false);
+      setEditingCard(null);
+      resetFormData();
+      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update rate card", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/rate-cards/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Rate card deleted" });
+      setDeleteConfirmOpen(false);
+      setCardToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/rate-cards"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete rate card", variant: "destructive" });
+    },
+  });
+
+  const resetFormData = () => {
+    setFormData({
+      name: "",
+      tradeType: user?.tradeType || "general",
+      hourlyRate: "100.00",
+      calloutFee: "80.00",
+      materialMarkupPct: "20.00",
+      afterHoursMultiplier: "1.50",
+      gstEnabled: true,
+    });
+  };
+
+  const handleEditCard = (card: RateCard) => {
+    setEditingCard(card);
+    setFormData({
+      name: card.name,
+      tradeType: card.tradeType || "general",
+      hourlyRate: String(card.hourlyRate || "100.00"),
+      calloutFee: String(card.calloutFee || "80.00"),
+      materialMarkupPct: String(card.materialMarkupPct || "20.00"),
+      afterHoursMultiplier: String(card.afterHoursMultiplier || "1.50"),
+      gstEnabled: card.gstEnabled !== false,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDeleteCard = (card: RateCard) => {
+    setCardToDelete(card);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingCard(null);
+    resetFormData();
+  };
+
+  const handleSubmit = () => {
+    if (editingCard) {
+      updateMutation.mutate({ id: editingCard.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
 
   const filteredCards = rateCards.filter((card) =>
     card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -733,7 +805,7 @@ function RateCardsSection() {
             {filteredCards.map((card) => (
               <div
                 key={card.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 gap-2"
                 data-testid={`rate-card-${card.id}`}
               >
                 <div className="flex-1 min-w-0">
@@ -744,19 +816,38 @@ function RateCardsSection() {
                     <span>{card.afterHoursMultiplier}x after hours</span>
                   </div>
                 </div>
-                <Badge variant="secondary" className="capitalize ml-2">
-                  {card.tradeType}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="capitalize">
+                    {card.tradeType}
+                  </Badge>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    onClick={() => handleEditCard(card)}
+                    data-testid={`button-edit-rate-card-${card.id}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="text-destructive"
+                    onClick={() => handleDeleteCard(card)}
+                    data-testid={`button-delete-rate-card-${card.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </ScrollArea>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Rate Card</DialogTitle>
+            <DialogTitle>{editingCard ? "Edit Rate Card" : "Create Rate Card"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -827,19 +918,40 @@ function RateCardsSection() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={handleCloseDialog}>
               Cancel
             </Button>
             <Button
-              onClick={() => createMutation.mutate(formData)}
-              disabled={!formData.name || createMutation.isPending}
+              onClick={handleSubmit}
+              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create
+              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {editingCard ? "Save Changes" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Rate Card</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{cardToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCardToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cardToDelete && deleteMutation.mutate(cardToDelete.id)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -848,6 +960,9 @@ function LineItemsCatalogSection() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingItem, setEditingItem] = useState<LineItemCatalog | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<LineItemCatalog | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -865,6 +980,17 @@ function LineItemsCatalogSection() {
     queryKey: ["/api/catalog"],
   });
 
+  const resetFormData = () => {
+    setFormData({
+      name: "",
+      description: "",
+      unit: "item",
+      unitPrice: "0.00",
+      tradeType: user?.tradeType || "general",
+      defaultQty: "1.00",
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       return apiRequest("POST", "/api/catalog", data);
@@ -872,20 +998,76 @@ function LineItemsCatalogSection() {
     onSuccess: () => {
       toast({ title: "Catalog item created" });
       setDialogOpen(false);
-      setFormData({
-        name: "",
-        description: "",
-        unit: "item",
-        unitPrice: "0.00",
-        tradeType: user?.tradeType || "general",
-        defaultQty: "1.00",
-      });
+      resetFormData();
       queryClient.invalidateQueries({ queryKey: ["/api/catalog"] });
     },
     onError: () => {
       toast({ title: "Failed to create item", variant: "destructive" });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      return apiRequest("PATCH", `/api/catalog/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Catalog item updated" });
+      setDialogOpen(false);
+      setEditingItem(null);
+      resetFormData();
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update item", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/catalog/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Catalog item deleted" });
+      setDeleteConfirmOpen(false);
+      setItemToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete item", variant: "destructive" });
+    },
+  });
+
+  const handleEditItem = (item: LineItemCatalog) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      description: item.description || "",
+      unit: item.unit || "item",
+      unitPrice: String(item.unitPrice || "0.00"),
+      tradeType: item.tradeType || "general",
+      defaultQty: String(item.defaultQuantity || "1.00"),
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDeleteItem = (item: LineItemCatalog) => {
+    setItemToDelete(item);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingItem(null);
+    resetFormData();
+  };
+
+  const handleSubmit = () => {
+    if (editingItem) {
+      updateMutation.mutate({ id: editingItem.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
 
   const filteredItems = catalogItems.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -931,7 +1113,7 @@ function LineItemsCatalogSection() {
             {filteredItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 gap-2"
                 data-testid={`catalog-item-${item.id}`}
               >
                 <div className="flex-1 min-w-0">
@@ -940,8 +1122,25 @@ function LineItemsCatalogSection() {
                     {item.description}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <Badge variant="outline">${item.unitPrice}/{item.unit}</Badge>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    onClick={() => handleEditItem(item)}
+                    data-testid={`button-edit-catalog-item-${item.id}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="text-destructive"
+                    onClick={() => handleDeleteItem(item)}
+                    data-testid={`button-delete-catalog-item-${item.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -949,10 +1148,10 @@ function LineItemsCatalogSection() {
         </ScrollArea>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Catalog Item</DialogTitle>
+            <DialogTitle>{editingItem ? "Edit Catalog Item" : "Add Catalog Item"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -1009,19 +1208,40 @@ function LineItemsCatalogSection() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={handleCloseDialog}>
               Cancel
             </Button>
             <Button
-              onClick={() => createMutation.mutate(formData)}
-              disabled={!formData.name || !formData.description || createMutation.isPending}
+              onClick={handleSubmit}
+              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Add Item
+              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {editingItem ? "Save Changes" : "Add Item"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Catalog Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{itemToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => itemToDelete && deleteMutation.mutate(itemToDelete.id)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1165,14 +1385,46 @@ function ComponentsTab() {
 
 function FormsTab() {
   const { data: business } = useBusinessSettings();
+  const { toast } = useToast();
   const [safetyFormsOpen, setSafetyFormsOpen] = useState(true);
   const [complianceFormsOpen, setComplianceFormsOpen] = useState(true);
   const [inspectionFormsOpen, setInspectionFormsOpen] = useState(true);
   const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
+  const [editFormId, setEditFormId] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
 
   const { data: forms = [], isLoading } = useQuery<CustomForm[]>({
     queryKey: ["/api/custom-forms"],
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/custom-forms/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Form deleted" });
+      setDeleteConfirmOpen(false);
+      setFormToDelete(null);
+      if (selectedForm?.id === formToDelete?.id) {
+        setSelectedForm(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-forms"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete form", variant: "destructive" });
+    },
+  });
+
+  const handleEditForm = (form: CustomForm) => {
+    setEditFormId(form.id);
+  };
+
+  const handleDeleteForm = (form: CustomForm, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFormToDelete(form);
+    setDeleteConfirmOpen(true);
+  };
 
   const safetyForms = forms.filter(f => f.formType === 'safety' && f.isActive);
   const complianceForms = forms.filter(f => f.formType === 'compliance' && f.isActive);
@@ -1243,6 +1495,28 @@ function FormsTab() {
                 </span>
               </div>
             </div>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditForm(form);
+              }}
+              data-testid={`button-edit-form-${form.id}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="text-destructive"
+              onClick={(e) => handleDeleteForm(form, e)}
+              data-testid={`button-delete-form-${form.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -1486,6 +1760,44 @@ function FormsTab() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Form</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{formToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFormToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => formToDelete && deleteMutation.mutate(formToDelete.id)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {editFormId && (
+        <Dialog open={!!editFormId} onOpenChange={() => setEditFormId(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Form</DialogTitle>
+            </DialogHeader>
+            <FormBuilder
+              formId={editFormId}
+              onBack={() => {
+                setEditFormId(null);
+                queryClient.invalidateQueries({ queryKey: ["/api/custom-forms"] });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

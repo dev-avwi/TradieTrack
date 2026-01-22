@@ -316,19 +316,37 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     try {
       const defaults = template.defaults || {};
       
-      // Apply each field individually with trigger to force UI update
+      // Apply each field with options to force React Hook Form UI update
       if (defaults.title) {
-        form.setValue("title", defaults.title);
+        form.setValue("title", defaults.title, { 
+          shouldValidate: true, 
+          shouldDirty: true, 
+          shouldTouch: true 
+        });
       }
       if (defaults.description) {
-        form.setValue("description", defaults.description);
+        form.setValue("description", defaults.description, { 
+          shouldValidate: true, 
+          shouldDirty: true, 
+          shouldTouch: true 
+        });
       }
       if (defaults.dueTermDays && defaults.dueTermDays > 0) {
-        form.setValue("estimatedHours", String(defaults.dueTermDays));
+        form.setValue("estimatedHours", String(defaults.dueTermDays), { 
+          shouldValidate: true, 
+          shouldDirty: true, 
+          shouldTouch: true 
+        });
       }
       
-      // Force form validation/re-render
-      form.trigger();
+      // Apply template name as title if no title was set
+      if (!defaults.title && template.name) {
+        form.setValue("title", template.name, { 
+          shouldValidate: true, 
+          shouldDirty: true, 
+          shouldTouch: true 
+        });
+      }
       
     } catch (error) {
       toast({
