@@ -10,7 +10,8 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
-  Dimensions
+  Dimensions,
+  Switch
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
-import { TemplateId, DOCUMENT_TEMPLATES, TemplateCustomization } from '../../src/lib/document-templates';
+import { TemplateId, DOCUMENT_TEMPLATES, TemplateCustomization, DOCUMENT_ACCENT_COLOR } from '../../src/lib/document-templates';
 
 interface StylePreset {
   id: string;
@@ -778,6 +779,144 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     textAlign: 'center',
   },
+  customizeSection: {
+    marginBottom: spacing.xl,
+  },
+  customizeSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  customizeSectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  customizeSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  customizeSectionSubtitle: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  customizeCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  templateStyleButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  templateStyleButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.lg,
+    backgroundColor: colors.muted,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  templateStyleButtonActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  templateStyleButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+    textAlign: 'center',
+  },
+  templateStyleButtonTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  customizeOptionRow: {
+    marginBottom: spacing.md,
+  },
+  customizeOptionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: spacing.sm,
+  },
+  customizePickerRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  customizePickerOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  customizePickerOptionActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  customizePickerOptionText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  customizePickerOptionTextActive: {
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  customizeSwitchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  customizeColorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  customizeColorPreview: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  customizeColorPresets: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  customizeColorPreset: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  customizeColorPresetActive: {
+    borderColor: colors.foreground,
+  },
+  customizePreviewContainer: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    height: 220,
+  },
 });
 
 function StatCard({ 
@@ -863,6 +1002,18 @@ export default function TemplatesScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  
+  const [selectedTemplateStyle, setSelectedTemplateStyle] = useState<TemplateId>('professional');
+  const [templateCustomization, setTemplateCustomization] = useState<TemplateCustomization>({
+    tableStyle: 'bordered',
+    noteStyle: 'bordered',
+    headerBorderWidth: 2,
+    showHeaderDivider: true,
+    bodyWeight: '600',
+    headingWeight: '700',
+    accentColor: DOCUMENT_ACCENT_COLOR,
+  });
+  const [isUpdatingPreset, setIsUpdatingPreset] = useState(false);
   const [newTemplate, setNewTemplate] = useState<NewTemplate>({
     name: '',
     type: 'quote',
@@ -934,6 +1085,64 @@ export default function TemplatesScreen() {
   useEffect(() => {
     refreshData();
   }, [typeFilter]);
+
+  useEffect(() => {
+    if (selectedPreset?.headerLayout) {
+      const serverTemplateId = selectedPreset.headerLayout as TemplateId;
+      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
+        setSelectedTemplateStyle(serverTemplateId);
+      }
+    }
+  }, [selectedPreset?.headerLayout]);
+
+  useEffect(() => {
+    const template = DOCUMENT_TEMPLATES[selectedTemplateStyle];
+    if (template) {
+      setTemplateCustomization(prev => ({
+        ...prev,
+        tableStyle: template.tableStyle,
+        noteStyle: template.noteStyle,
+        headerBorderWidth: template.headerBorderWidth,
+        showHeaderDivider: template.showHeaderDivider,
+        bodyWeight: template.bodyWeight,
+        headingWeight: template.headingWeight,
+      }));
+    }
+  }, [selectedTemplateStyle]);
+
+  const updateStylePresetTemplate = useCallback(async (templateId: TemplateId) => {
+    if (!selectedPreset) return;
+    
+    setIsUpdatingPreset(true);
+    try {
+      const response = await fetch(`${API_URL}/api/style-presets/${selectedPreset.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          headerLayout: templateId,
+        }),
+      });
+      
+      if (response.ok) {
+        await fetchStylePresets();
+      }
+    } catch (error) {
+      console.error('Failed to update style preset:', error);
+    }
+    setIsUpdatingPreset(false);
+  }, [selectedPreset, token, fetchStylePresets]);
+
+  const handleSelectTemplateStyle = useCallback((templateId: TemplateId) => {
+    setSelectedTemplateStyle(templateId);
+    updateStylePresetTemplate(templateId);
+  }, [updateStylePresetTemplate]);
+
+  const updateCustomization = useCallback((updates: Partial<TemplateCustomization>) => {
+    setTemplateCustomization(prev => ({ ...prev, ...updates }));
+  }, []);
 
   const resetForm = () => {
     setNewTemplate({
@@ -1716,7 +1925,7 @@ export default function TemplatesScreen() {
                       phone: businessSettings?.phone,
                       email: businessSettings?.email,
                       logoUrl: selectedPreset.showLogo ? businessSettings?.logoUrl : undefined,
-                      brandColor: selectedPreset.primaryColor,
+                      brandColor: templateCustomization.accentColor || DOCUMENT_ACCENT_COLOR,
                       gstEnabled: businessSettings?.gstEnabled ?? true,
                     }}
                     client={{
@@ -1726,14 +1935,236 @@ export default function TemplatesScreen() {
                       address: '123 Sample St, Sydney NSW 2000',
                     }}
                     gstEnabled={businessSettings?.gstEnabled ?? true}
-                    templateId="professional"
-                    templateCustomization={{
-                      accentColor: selectedPreset.accentColor,
-                    }}
+                    templateId={selectedTemplateStyle}
+                    templateCustomization={templateCustomization}
                   />
                 </View>
               </TouchableOpacity>
             ) : null}
+          </View>
+
+          {/* Customise Template Section */}
+          <View style={styles.customizeSection}>
+            <View style={styles.customizeSectionHeader}>
+              <View style={styles.customizeSectionIcon}>
+                <Feather name="sliders" size={20} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={styles.customizeSectionTitle}>Customise Template</Text>
+                <Text style={styles.customizeSectionSubtitle}>
+                  Fine-tune the {DOCUMENT_TEMPLATES[selectedTemplateStyle].name} template
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.customizeCard}>
+              {/* Template Style Selector */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Template Style</Text>
+                <View style={styles.templateStyleButtons}>
+                  {templateStyles.map((style) => (
+                    <TouchableOpacity
+                      key={style.id}
+                      style={[
+                        styles.templateStyleButton,
+                        selectedTemplateStyle === style.id && styles.templateStyleButtonActive
+                      ]}
+                      onPress={() => handleSelectTemplateStyle(style.id)}
+                      activeOpacity={0.7}
+                      disabled={isUpdatingPreset}
+                    >
+                      <Text style={[
+                        styles.templateStyleButtonText,
+                        selectedTemplateStyle === style.id && styles.templateStyleButtonTextActive
+                      ]}>
+                        {style.name}
+                      </Text>
+                      {selectedTemplateStyle === style.id && (
+                        <Feather name="check" size={14} color={colors.primary} style={{ marginTop: 4 }} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Table Style */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Table Style</Text>
+                <View style={styles.customizePickerRow}>
+                  {(['bordered', 'striped', 'minimal'] as const).map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={[
+                        styles.customizePickerOption,
+                        templateCustomization.tableStyle === option && styles.customizePickerOptionActive
+                      ]}
+                      onPress={() => updateCustomization({ tableStyle: option })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.customizePickerOptionText,
+                        templateCustomization.tableStyle === option && styles.customizePickerOptionTextActive
+                      ]}>
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Notes Style */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Notes Style</Text>
+                <View style={styles.customizePickerRow}>
+                  {([
+                    { value: 'bordered', label: 'Boxed' },
+                    { value: 'highlighted', label: 'Highlighted' },
+                    { value: 'simple', label: 'Standard' }
+                  ] as const).map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.customizePickerOption,
+                        templateCustomization.noteStyle === option.value && styles.customizePickerOptionActive
+                      ]}
+                      onPress={() => updateCustomization({ noteStyle: option.value })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.customizePickerOptionText,
+                        templateCustomization.noteStyle === option.value && styles.customizePickerOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Header Border Toggle */}
+              <View style={styles.customizeSwitchRow}>
+                <Text style={styles.customizeOptionLabel}>Header Border</Text>
+                <Switch
+                  value={templateCustomization.showHeaderDivider}
+                  onValueChange={(value) => updateCustomization({ showHeaderDivider: value })}
+                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  thumbColor={colors.card}
+                />
+              </View>
+
+              {/* Heading Weight */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Heading Weight</Text>
+                <View style={styles.customizePickerRow}>
+                  {(['600', '700', '800'] as const).map((weight) => (
+                    <TouchableOpacity
+                      key={weight}
+                      style={[
+                        styles.customizePickerOption,
+                        templateCustomization.headingWeight === weight && styles.customizePickerOptionActive
+                      ]}
+                      onPress={() => updateCustomization({ headingWeight: weight })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.customizePickerOptionText,
+                        templateCustomization.headingWeight === weight && styles.customizePickerOptionTextActive
+                      ]}>
+                        {weight}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Body Weight */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Body Weight</Text>
+                <View style={styles.customizePickerRow}>
+                  {(['400', '500', '600', '700'] as const).map((weight) => (
+                    <TouchableOpacity
+                      key={weight}
+                      style={[
+                        styles.customizePickerOption,
+                        templateCustomization.bodyWeight === weight && styles.customizePickerOptionActive
+                      ]}
+                      onPress={() => updateCustomization({ bodyWeight: weight })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.customizePickerOptionText,
+                        templateCustomization.bodyWeight === weight && styles.customizePickerOptionTextActive
+                      ]}>
+                        {weight}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Accent Color */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Accent Color</Text>
+                <View style={styles.customizeColorRow}>
+                  <View 
+                    style={[
+                      styles.customizeColorPreview, 
+                      { backgroundColor: templateCustomization.accentColor || DOCUMENT_ACCENT_COLOR }
+                    ]} 
+                  />
+                  <View style={styles.customizeColorPresets}>
+                    {colorPresets.map((color) => (
+                      <TouchableOpacity
+                        key={color}
+                        style={[
+                          styles.customizeColorPreset,
+                          { backgroundColor: color },
+                          templateCustomization.accentColor === color && styles.customizeColorPresetActive
+                        ]}
+                        onPress={() => updateCustomization({ accentColor: color })}
+                        activeOpacity={0.7}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              {/* Live Preview */}
+              <View style={styles.customizePreviewContainer}>
+                <LiveDocumentPreview
+                  type="quote"
+                  documentNumber="Q-PREVIEW"
+                  title="Sample Quote"
+                  description="Preview with your customizations"
+                  date={new Date().toISOString()}
+                  validUntil={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()}
+                  lineItems={[
+                    { description: 'Sample Service', quantity: 2, unitPrice: 150 },
+                    { description: 'Materials', quantity: 1, unitPrice: 85 },
+                  ]}
+                  terms="Payment due within 14 days."
+                  business={{
+                    businessName: businessSettings?.businessName || 'Your Business',
+                    abn: businessSettings?.abn,
+                    address: businessSettings?.address,
+                    phone: businessSettings?.phone,
+                    email: businessSettings?.email,
+                    logoUrl: businessSettings?.logoUrl,
+                    brandColor: templateCustomization.accentColor || DOCUMENT_ACCENT_COLOR,
+                    gstEnabled: businessSettings?.gstEnabled ?? true,
+                  }}
+                  client={{
+                    name: 'John Smith',
+                    email: 'john@example.com',
+                    phone: '0400 123 456',
+                    address: '123 Sample St, Sydney NSW 2000',
+                  }}
+                  gstEnabled={businessSettings?.gstEnabled ?? true}
+                  templateId={selectedTemplateStyle}
+                  templateCustomization={templateCustomization}
+                />
+              </View>
+            </View>
           </View>
 
           <View style={styles.filtersRow}>
@@ -2019,7 +2450,7 @@ export default function TemplatesScreen() {
                             phone: businessSettings?.phone,
                             email: businessSettings?.email,
                             logoUrl: preset.showLogo ? businessSettings?.logoUrl : undefined,
-                            brandColor: preset.primaryColor,
+                            brandColor: templateCustomization.accentColor || DOCUMENT_ACCENT_COLOR,
                             gstEnabled: businessSettings?.gstEnabled ?? true,
                           }}
                           client={{
@@ -2029,10 +2460,8 @@ export default function TemplatesScreen() {
                             address: '123 Sample St, Sydney NSW 2000',
                           }}
                           gstEnabled={businessSettings?.gstEnabled ?? true}
-                          templateId="professional"
-                          templateCustomization={{
-                            accentColor: preset.accentColor,
-                          }}
+                          templateId={selectedTemplateStyle}
+                          templateCustomization={templateCustomization}
                         />
                       </View>
                     )}
