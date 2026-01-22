@@ -547,34 +547,36 @@ export default function TeamOwnerDashboard({
         </div>
       </section>
 
-      {/* Job Scheduler - Drag & Drop */}
-      {hasActiveTeam && (
-        <section ref={schedulerRef} className="space-y-4 animate-fade-up" style={{ animationDelay: '150ms' }}>
-          <div className="flex items-center justify-between">
-            <h2 className="ios-section-title flex items-center gap-2.5">
-              <div 
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: 'hsl(217.2 91.2% 59.8% / 0.1)' }}
+      {/* Two-column layout for Job Scheduler and Today's Jobs on larger screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 animate-fade-up" style={{ animationDelay: '150ms' }}>
+        {/* Job Scheduler - Drag & Drop */}
+        {hasActiveTeam && (
+          <section ref={schedulerRef} className="space-y-4 lg:h-fit">
+            <div className="flex items-center justify-between">
+              <h2 className="ios-section-title flex items-center gap-2.5">
+                <div 
+                  className="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'hsl(217.2 91.2% 59.8% / 0.1)' }}
+                >
+                  <Users className="h-4 w-4" style={{ color: 'hsl(217.2, 91.2%, 59.8%)' }} />
+                </div>
+                Job Scheduler
+              </h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs h-8 px-3 rounded-xl press-scale"
+                onClick={() => onNavigate?.('/team')}
+                data-testid="button-manage-team"
               >
-                <Users className="h-4 w-4" style={{ color: 'hsl(217.2, 91.2%, 59.8%)' }} />
-              </div>
-              Job Scheduler
-            </h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-xs h-8 px-3 rounded-xl press-scale"
-              onClick={() => onNavigate?.('/team')}
-              data-testid="button-manage-team"
-            >
-              Manage Team
-              <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </div>
+                Manage Team
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </div>
 
-          <p className="ios-caption">
-            Tap a job, then tap a team member to assign
-          </p>
+            <p className="ios-caption">
+              Tap a job, then tap a team member to assign
+            </p>
 
           {/* Selection Banner */}
           {selectedJob && (
@@ -771,50 +773,50 @@ export default function TeamOwnerDashboard({
             })}
           </div>
 
-          {/* Invite More */}
-          <Button
-            variant="outline"
-            className="w-full h-12 rounded-xl"
-            onClick={() => onNavigate?.('/team?invite=true')}
-            data-testid="button-invite-team-member"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Team Member
-          </Button>
-        </section>
-      )}
+            {/* Invite More */}
+            <Button
+              variant="outline"
+              className="w-full h-12 rounded-xl"
+              onClick={() => onNavigate?.('/team?invite=true')}
+              data-testid="button-invite-team-member"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Team Member
+            </Button>
+          </section>
+        )}
 
-      {/* No Team Members Yet - Prompt to Add */}
-      {!hasActiveTeam && (
-        <section className="animate-fade-up" style={{ animationDelay: '150ms' }}>
-          <Card className="border-dashed" data-testid="add-team-prompt">
-            <CardContent className="py-8 text-center">
-              <div 
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: 'hsl(217.2 91.2% 59.8% / 0.1)' }}
-              >
-                <Users className="h-8 w-8" style={{ color: 'hsl(217.2, 91.2%, 59.8%)' }} />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Build Your Team</h3>
-              <p className="text-muted-foreground text-sm mb-4 max-w-sm mx-auto">
-                Invite team members to assign jobs, track locations, and manage your business together.
-              </p>
-              <Button
-                className="text-white font-medium rounded-xl"
-                style={{ backgroundColor: 'hsl(217.2, 91.2%, 59.8%)' }}
-                onClick={() => onNavigate?.('/team?invite=true')}
-                data-testid="button-invite-first-member"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Invite Your First Team Member
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
+        {/* No Team Members Yet - Prompt to Add */}
+        {!hasActiveTeam && (
+          <section className="lg:h-fit">
+            <Card className="border-dashed" data-testid="add-team-prompt">
+              <CardContent className="py-8 text-center">
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: 'hsl(217.2 91.2% 59.8% / 0.1)' }}
+                >
+                  <Users className="h-8 w-8" style={{ color: 'hsl(217.2, 91.2%, 59.8%)' }} />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Build Your Team</h3>
+                <p className="text-muted-foreground text-sm mb-4 max-w-sm mx-auto">
+                  Invite team members to assign jobs, track locations, and manage your business together.
+                </p>
+                <Button
+                  className="text-white font-medium rounded-xl"
+                  style={{ backgroundColor: 'hsl(217.2, 91.2%, 59.8%)' }}
+                  onClick={() => onNavigate?.('/team?invite=true')}
+                  data-testid="button-invite-first-member"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Invite Your First Team Member
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
-      {/* TODAY'S SCHEDULE */}
-      <section className="space-y-4 animate-fade-up" style={{ animationDelay: '200ms' }}>
+        {/* TODAY'S JOBS */}
+        <section className="space-y-4 lg:h-fit">
         <div className="flex items-center justify-between">
           <h2 className="ios-section-title flex items-center gap-2.5">
             <div 
@@ -917,20 +919,8 @@ export default function TeamOwnerDashboard({
             ))}
           </div>
         )}
-      </section>
-
-      {/* AI SCHEDULE OPTIMIZER - Hero Card for Team Owners */}
-      <section className="animate-fade-up" style={{ animationDelay: '200ms' }}>
-        <AIScheduleOptimizer 
-          className="shadow-lg"
-          onApplySchedule={(schedule) => {
-            toast({
-              title: "Schedule Applied",
-              description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
-            });
-          }}
-        />
-      </section>
+        </section>
+      </div>
 
       <GettingStartedChecklist 
         onNavigate={onNavigate}
@@ -938,10 +928,29 @@ export default function TeamOwnerDashboard({
         onCreateQuote={onCreateQuote}
       />
 
-      <ActivityFeed 
-        limit={5}
-        onViewAll={() => onNavigate?.('/notifications')}
-      />
+      {/* Two-column layout for AI Schedule Optimizer and Activity Feed on larger screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 animate-fade-up" style={{ animationDelay: '250ms' }}>
+        {/* AI SCHEDULE OPTIMIZER */}
+        <section className="lg:h-fit">
+          <AIScheduleOptimizer 
+            className="shadow-lg h-full"
+            onApplySchedule={(schedule) => {
+              toast({
+                title: "Schedule Applied",
+                description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
+              });
+            }}
+          />
+        </section>
+
+        {/* RECENT ACTIVITY */}
+        <section className="lg:h-fit">
+          <ActivityFeed 
+            limit={5}
+            onViewAll={() => onNavigate?.('/notifications')}
+          />
+        </section>
+      </div>
 
       <FloatingActionButton
         onCreateJob={onCreateJob}
