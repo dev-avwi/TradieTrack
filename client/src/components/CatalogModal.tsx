@@ -143,14 +143,13 @@ export default function CatalogModal({ open, onOpenChange, onSelectItem, tradeTy
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-6 w-6 shrink-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelectItem(item);
                         }}
                         data-testid={`button-add-item-${item.id}`}
                       >
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </div>
                     

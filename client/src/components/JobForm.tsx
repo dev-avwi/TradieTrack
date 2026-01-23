@@ -316,21 +316,30 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     try {
       const defaults = template.defaults || {};
       
-      // Apply each field with options to force React Hook Form UI update
-      if (defaults.title) {
-        form.setValue("title", defaults.title, { 
+      console.log('[JobForm] Applying template:', template.name, 'defaults:', defaults);
+      
+      // Always set title - use defaults.title if available, otherwise use template name
+      const titleToSet = defaults.title || template.name || "";
+      if (titleToSet) {
+        console.log('[JobForm] Setting title to:', titleToSet);
+        form.setValue("title", titleToSet, { 
           shouldValidate: true, 
           shouldDirty: true, 
           shouldTouch: true 
         });
       }
+      
+      // Apply description if available
       if (defaults.description) {
+        console.log('[JobForm] Setting description to:', defaults.description);
         form.setValue("description", defaults.description, { 
           shouldValidate: true, 
           shouldDirty: true, 
           shouldTouch: true 
         });
       }
+      
+      // Apply estimated hours from dueTermDays if available
       if (defaults.dueTermDays && defaults.dueTermDays > 0) {
         form.setValue("estimatedHours", String(defaults.dueTermDays), { 
           shouldValidate: true, 
@@ -339,16 +348,8 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         });
       }
       
-      // Apply template name as title if no title was set
-      if (!defaults.title && template.name) {
-        form.setValue("title", template.name, { 
-          shouldValidate: true, 
-          shouldDirty: true, 
-          shouldTouch: true 
-        });
-      }
-      
     } catch (error) {
+      console.error('[JobForm] Error applying template:', error);
       toast({
         title: "Error applying template",
         description: "There was an issue applying the template data",

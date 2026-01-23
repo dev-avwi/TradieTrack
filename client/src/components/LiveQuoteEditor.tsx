@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { flushSync } from "react-dom";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useSearch, Link } from "wouter";
@@ -107,6 +108,12 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     cost: string;
   }>>([]);
   
+  // Use ref to always have access to latest line items (avoids stale closure issues)
+  const localLineItemsRef = useRef(localLineItems);
+  useEffect(() => {
+    localLineItemsRef.current = localLineItems;
+  }, [localLineItems]);
+  
   const createClient = useCreateClient();
 
   const { data: userCheck } = useQuery({
@@ -174,16 +181,13 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     },
   });
 
-  const { fields, append, remove, update, replace } = useFieldArray({
-    control: form.control,
-    name: "lineItems"
-  });
-
   // Sync localLineItems with form whenever they change
+  // Note: form is stable and doesn't need to be in deps - including it causes stale state issues
   useEffect(() => {
-    console.log('[LiveQuoteEditor] localLineItems changed:', localLineItems.length, localLineItems);
+    console.log('[LiveQuoteEditor] localLineItems useEffect:', localLineItems.length, localLineItems);
     form.setValue("lineItems", localLineItems);
-  }, [localLineItems, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localLineItems]);
 
 
   // Auto-fill form when job is loaded from URL parameter
@@ -351,7 +355,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     setEditingLineIndex(null);
   };
 
-  const handleCatalogSelect = (item: any) => {
+  const handleCatalogSelect = useCallback((item: any) => {
     // Use name as the description (what user sees as title), fallback to description if name is empty
     const itemDescription = item.name || item.description || 'Service item';
     
@@ -365,20 +369,29 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     
     console.log('[CatalogSelect] Adding item:', itemDescription);
     
-    // Close the modal
-    setCatalogOpen(false);
+    // Get current form values directly (most reliable source)
+    const currentFormItems = form.getValues("lineItems") || [];
+    const updatedItems = [...currentFormItems, newItem];
+    console.log('[CatalogSelect] Current form items:', currentFormItems.length, 'Adding to get:', updatedItems.length);
     
-    // Add item directly using functional update
-    setLocalLineItems(prevItems => {
-      console.log('[CatalogSelect] prev items:', prevItems.length);
-      return [...prevItems, newItem];
+    // Update both the local state and form in one synchronous block
+    flushSync(() => {
+      // Update local state
+      setLocalLineItems(updatedItems);
+      // Update ref
+      localLineItemsRef.current = updatedItems;
+      // Update form
+      form.setValue("lineItems", updatedItems);
     });
+    
+    // Close the modal after state is committed
+    setCatalogOpen(false);
     
     toast({
       title: "Item added",
       description: `"${itemDescription}" added to quote`,
     });
-  };
+  }, [form, toast]);
 
   const handleQuickAddClient = async () => {
     if (!quickClientName.trim()) {
@@ -852,7 +865,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                 </div>
 
                 {/* Item list - use localLineItems for reliable re-rendering */}
-                <div className="space-y-2" key={`line-items-${localLineItems.length}-${forceUpdateCounter}`}>
+                <div className="space-y-2" key={`line-items-${localLineItems.length}`}>
                   {localLineItems.map((item, index) => {
                     const itemTotal = calculateTotal(item?.quantity || "0", item?.unitPrice || "0");
                     const itemMargin = item?.cost && parseFloat(item.cost) > 0 
