@@ -1115,7 +1115,8 @@ export default function TemplatesScreen() {
     
     setIsUpdatingPreset(true);
     try {
-      const response = await fetch(`${API_URL}/api/style-presets/${selectedPreset.id}`, {
+      // Update style preset
+      const presetResponse = await fetch(`${API_URL}/api/style-presets/${selectedPreset.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1126,7 +1127,19 @@ export default function TemplatesScreen() {
         }),
       });
       
-      if (response.ok) {
+      // Also update business settings for PDF generation sync
+      await fetch(`${API_URL}/api/business-settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          documentTemplate: templateId,
+        }),
+      });
+      
+      if (presetResponse.ok) {
         await fetchStylePresets();
       }
     } catch (error) {
