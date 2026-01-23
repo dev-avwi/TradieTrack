@@ -306,6 +306,9 @@ export async function createDemoUserAndData() {
       // The dates should only be set during initial demo data creation, not on every restart
       // await refreshDemoDates(demoUser.id);
       
+      // Always refresh activity logs to show current data
+      await createDemoActivityLogs(demoUser.id);
+      
       return demoUser;
     }
 
