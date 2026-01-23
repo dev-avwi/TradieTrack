@@ -231,10 +231,10 @@ function StylePresetsWithPreview() {
   const defaultPreset = presets.find(p => p.isDefault) || presets[0];
   const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
 
-  // Sync selected template from server when preset loads
+  // Sync selected template from business settings (primary source for PDF generation)
   useEffect(() => {
-    if (defaultPreset?.headerLayout) {
-      let serverTemplateId = defaultPreset.headerLayout as TemplateId;
+    if (business?.documentTemplate) {
+      let serverTemplateId = business.documentTemplate as TemplateId;
       // Backward compatibility: map legacy 'standard' to 'professional'
       if (serverTemplateId === 'standard' as any) {
         serverTemplateId = 'professional';
@@ -242,8 +242,17 @@ function StylePresetsWithPreview() {
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
       }
+    } else if (defaultPreset?.headerLayout) {
+      // Fallback to style preset if no business setting
+      let serverTemplateId = defaultPreset.headerLayout as TemplateId;
+      if (serverTemplateId === 'standard' as any) {
+        serverTemplateId = 'professional';
+      }
+      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
+        setSelectedTemplateId(serverTemplateId);
+      }
     }
-  }, [defaultPreset?.headerLayout]);
+  }, [business?.documentTemplate, defaultPreset?.headerLayout]);
 
   // Update customization when template changes
   useEffect(() => {
@@ -261,16 +270,24 @@ function StylePresetsWithPreview() {
     }
   }, [selectedTemplateId]);
 
-  // Sync template selection to style preset
+  // Sync template selection to both style preset AND business settings (for PDF generation)
   const updateTemplateMutation = useMutation({
     mutationFn: async (templateId: TemplateId) => {
-      if (!defaultPreset) return;
-      return apiRequest("PATCH", `/api/style-presets/${defaultPreset.id}`, {
-        headerLayout: templateId,
+      // Update business settings for PDF generation
+      await apiRequest("PATCH", "/api/business-settings", {
+        documentTemplate: templateId,
       });
+      
+      // Also update style preset if exists
+      if (defaultPreset) {
+        await apiRequest("PATCH", `/api/style-presets/${defaultPreset.id}`, {
+          headerLayout: templateId,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] });
     },
   });
 
@@ -368,8 +385,8 @@ function StylePresetsWithPreview() {
             </div>
           </div>
 
-          {/* Customise Template Panel */}
-          <Card data-testid="card-customise-template">
+          {/* Customise Template Panel - Coming Soon */}
+          <Card data-testid="card-customise-template" className="relative overflow-hidden">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
                 <div
@@ -387,128 +404,40 @@ function StylePresetsWithPreview() {
               </div>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Table Style */}
-              <div className="space-y-2">
-                <Label>Table Style</Label>
-                <Select
-                  value={customization.tableStyle || 'bordered'}
-                  onValueChange={(value) => updateCustomization({ tableStyle: value as 'bordered' | 'striped' | 'minimal' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bordered">Bordered</SelectItem>
-                    <SelectItem value="striped">Striped</SelectItem>
-                    <SelectItem value="minimal">Minimal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Notes Style */}
-              <div className="space-y-2">
-                <Label>Notes Style</Label>
-                <Select
-                  value={customization.noteStyle || 'bordered'}
-                  onValueChange={(value) => updateCustomization({ noteStyle: value as 'bordered' | 'highlighted' | 'simple' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bordered">Bordered - Left accent bar</SelectItem>
-                    <SelectItem value="highlighted">Highlighted</SelectItem>
-                    <SelectItem value="simple">Simple</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Header Border Width */}
-              <div className="space-y-2">
-                <Label>Header Border Width</Label>
-                <Select
-                  value={customization.headerBorderWidth || '2px'}
-                  onValueChange={(value) => updateCustomization({ headerBorderWidth: value as '1px' | '2px' | '3px' | '4px' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0px">None</SelectItem>
-                    <SelectItem value="1px">Thin (1px)</SelectItem>
-                    <SelectItem value="2px">Medium (2px)</SelectItem>
-                    <SelectItem value="3px">Thick (3px)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Show Header Divider */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="showHeaderDivider">Show Header Divider</Label>
-                  <p className="text-xs text-muted-foreground">Display a line under the header</p>
+              {/* Coming Soon Overlay */}
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <Settings className="h-8 w-8 text-primary" />
                 </div>
-                <Switch
-                  id="showHeaderDivider"
-                  checked={customization.showHeaderDivider ?? true}
-                  onCheckedChange={(checked) => updateCustomization({ showHeaderDivider: checked })}
-                />
+                <h3 className="font-semibold text-lg mb-2">Coming Soon</h3>
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  Advanced template customisation options including table styles, fonts, colours, and more will be available soon.
+                </p>
+                <Badge variant="secondary" className="mt-4">
+                  In Development
+                </Badge>
               </div>
-
-              {/* Body Text Weight */}
-              <div className="space-y-2">
-                <Label>Body Text Weight</Label>
-                <Select
-                  value={String(customization.bodyWeight || 600)}
-                  onValueChange={(value) => updateCustomization({ bodyWeight: parseInt(value) as 400 | 500 | 600 | 700 })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="400">Normal (400)</SelectItem>
-                    <SelectItem value="500">Medium (500)</SelectItem>
-                    <SelectItem value="600">Semibold (600)</SelectItem>
-                    <SelectItem value="700">Bold (700)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Heading Weight */}
-              <div className="space-y-2">
-                <Label>Heading Weight</Label>
-                <Select
-                  value={String(customization.headingWeight || 700)}
-                  onValueChange={(value) => updateCustomization({ headingWeight: parseInt(value) as 600 | 700 | 800 })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="600">Semibold (600)</SelectItem>
-                    <SelectItem value="700">Bold (700)</SelectItem>
-                    <SelectItem value="800">Extrabold (800)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Accent Colour */}
-              <div className="space-y-2">
-                <Label>Accent Colour</Label>
-                <p className="text-xs text-muted-foreground">Used for headers, totals, and emphasis</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
-                    onChange={(e) => updateCustomization({ accentColor: e.target.value })}
-                    className="w-10 h-10 rounded-md border cursor-pointer"
-                  />
-                  <Input
-                    value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
-                    onChange={(e) => updateCustomization({ accentColor: e.target.value })}
-                    placeholder="#1e3a5f"
-                    className="flex-1"
-                  />
+              
+              {/* Preview of what's coming */}
+              <div className="border-t pt-4 space-y-3 opacity-50 pointer-events-none">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Preview of upcoming features:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary/40" />
+                    <span>Table Styles</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary/40" />
+                    <span>Accent Colours</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary/40" />
+                    <span>Font Weights</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary/40" />
+                    <span>Header Styles</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
