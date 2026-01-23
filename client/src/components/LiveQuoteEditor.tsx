@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { flushSync } from "react-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -108,11 +107,43 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     cost: string;
   }>>([]);
   
+  // Debug render - log localLineItems on every render
+  console.log('[LiveQuoteEditor] RENDER - localLineItems:', localLineItems.length);
+  
   // Use ref to always have access to latest line items (avoids stale closure issues)
   const localLineItemsRef = useRef(localLineItems);
   useEffect(() => {
     localLineItemsRef.current = localLineItems;
   }, [localLineItems]);
+  
+  // Ref to store pending catalog item to add - processed after modal closes
+  const pendingCatalogItemRef = useRef<{
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    cost: string;
+  } | null>(null);
+  
+  // Process pending catalog item after modal closes
+  useEffect(() => {
+    if (!catalogOpen && pendingCatalogItemRef.current) {
+      const newItem = pendingCatalogItemRef.current;
+      pendingCatalogItemRef.current = null; // Clear the ref
+      
+      console.log('[CatalogSelect] Processing pending item after modal close:', newItem.description);
+      
+      setLocalLineItems(prev => {
+        const updated = [...prev, newItem];
+        console.log('[CatalogSelect] Items after add:', updated.length);
+        return updated;
+      });
+      
+      toast({
+        title: "Item added",
+        description: `"${newItem.description}" added to quote`,
+      });
+    }
+  }, [catalogOpen, toast]);
   
   const createClient = useCreateClient();
 
@@ -185,6 +216,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   // Note: form is stable and doesn't need to be in deps - including it causes stale state issues
   useEffect(() => {
     console.log('[LiveQuoteEditor] localLineItems useEffect:', localLineItems.length, localLineItems);
+    console.log('[LiveQuoteEditor] Stack trace for useEffect:', new Error().stack?.split('\n').slice(0, 5).join('\n'));
     form.setValue("lineItems", localLineItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localLineItems]);
@@ -367,31 +399,14 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       cost: "",
     };
     
-    console.log('[CatalogSelect] Adding item:', itemDescription);
+    console.log('[CatalogSelect] Storing pending item:', itemDescription);
     
-    // Get current form values directly (most reliable source)
-    const currentFormItems = form.getValues("lineItems") || [];
-    const updatedItems = [...currentFormItems, newItem];
-    console.log('[CatalogSelect] Current form items:', currentFormItems.length, 'Adding to get:', updatedItems.length);
+    // Store item in ref - will be processed by useEffect when modal closes
+    pendingCatalogItemRef.current = newItem;
     
-    // Update both the local state and form in one synchronous block
-    flushSync(() => {
-      // Update local state
-      setLocalLineItems(updatedItems);
-      // Update ref
-      localLineItemsRef.current = updatedItems;
-      // Update form
-      form.setValue("lineItems", updatedItems);
-    });
-    
-    // Close the modal after state is committed
+    // Close modal - this triggers the useEffect that processes the pending item
     setCatalogOpen(false);
-    
-    toast({
-      title: "Item added",
-      description: `"${itemDescription}" added to quote`,
-    });
-  }, [form, toast]);
+  }, []);
 
   const handleQuickAddClient = async () => {
     if (!quickClientName.trim()) {
