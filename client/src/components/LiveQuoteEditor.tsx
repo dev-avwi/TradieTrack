@@ -167,19 +167,30 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     },
   });
 
-  // Use useFieldArray for proper react-hook-form line item management
-  const { append: appendLineItem, remove: removeLineItem, update: updateLineItem, replace: replaceLineItems } = useFieldArray({
-    control: form.control,
-    name: "lineItems",
-  });
+  // Use useState for line items - now that Router is fixed, this should work correctly
+  const [lineItems, setLineItems] = useState<Array<{ description: string; quantity: string; unitPrice: string; cost?: string }>>([]);
   
-  // Use useWatch specifically for lineItems to ensure proper re-rendering
-  // This is the critical pattern that makes LiveInvoiceEditor work
-  const lineItems = useWatch({
-    control: form.control,
-    name: "lineItems",
-    defaultValue: []
-  });
+  // Sync line items to form for submission
+  useEffect(() => {
+    form.setValue("lineItems", lineItems);
+  }, [lineItems, form]);
+  
+  // Line item management functions
+  const appendLineItem = (item: { description: string; quantity: string; unitPrice: string; cost?: string }) => {
+    setLineItems(prev => [...prev, item]);
+  };
+  
+  const removeLineItem = (index: number) => {
+    setLineItems(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const updateLineItem = (index: number, item: any) => {
+    setLineItems(prev => prev.map((existing, i) => i === index ? item : existing));
+  };
+  
+  const replaceLineItems = (items: Array<{ description: string; quantity: string; unitPrice: string; cost?: string }>) => {
+    setLineItems(items);
+  };
   
 
 

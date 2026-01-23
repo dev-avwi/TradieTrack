@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient, clearSessionToken, getSessionToken } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -201,6 +201,28 @@ function JobCompletionWrapper({ jobId, onComplete, onCancel }: {
   );
 }
 
+// Stable wrapper components to prevent remounting when Router re-renders
+// Using memo to ensure stable component identity
+const LiveQuoteEditorWrapper = React.memo(({ 
+  onSave, 
+  onCancel 
+}: { 
+  onSave: (quoteId: string) => void;
+  onCancel: () => void;
+}) => (
+  <LiveQuoteEditor onSave={onSave} onCancel={onCancel} />
+));
+
+const LiveInvoiceEditorWrapper = React.memo(({ 
+  onSave, 
+  onCancel 
+}: { 
+  onSave: (invoiceId: string) => void;
+  onCancel: () => void;
+}) => (
+  <LiveInvoiceEditor onSave={onSave} onCancel={onCancel} />
+));
+
 // Main router component
 function Router({ 
   onNavigate, 
@@ -212,6 +234,25 @@ function Router({
   onShowInvoiceModal: (invoiceId: string) => void;
 }) {
   const [location] = useLocation();
+  
+  // Stable callbacks for quote/invoice editors using useCallback
+  const handleQuoteSave = useCallback((quoteId: string) => {
+    console.log('Quote created:', quoteId);
+    onShowQuoteModal(quoteId);
+  }, [onShowQuoteModal]);
+  
+  const handleQuoteCancel = useCallback(() => {
+    onNavigate('/quotes');
+  }, [onNavigate]);
+  
+  const handleInvoiceSave = useCallback((invoiceId: string) => {
+    console.log('Invoice created:', invoiceId);
+    onShowInvoiceModal(invoiceId);
+  }, [onShowInvoiceModal]);
+  
+  const handleInvoiceCancel = useCallback(() => {
+    onNavigate('/invoices');
+  }, [onNavigate]);
 
   return (
     <Switch location={location}>
@@ -348,15 +389,13 @@ function Router({
       )} />
       
       {/* IMPORTANT: /quotes/new must come BEFORE /quotes redirect to prevent redirect from matching */}
-      <Route path="/quotes/new" component={() => (
-        <LiveQuoteEditor 
-          onSave={(quoteId) => {
-            console.log('Quote created:', quoteId);
-            onShowQuoteModal(quoteId);
-          }}
-          onCancel={() => onNavigate('/quotes')}
+      {/* Using stable wrapper component to prevent remounting when Router re-renders */}
+      <Route path="/quotes/new">
+        <LiveQuoteEditorWrapper 
+          onSave={handleQuoteSave}
+          onCancel={handleQuoteCancel}
         />
-      )} />
+      </Route>
       
       <Route path="/quotes/:id" component={({ params }: { params: { id: string } }) => (
         <QuoteDetailView quoteId={params.id} />
@@ -368,15 +407,13 @@ function Router({
       </Route>
       
       {/* IMPORTANT: /invoices/new must come BEFORE /invoices redirect to prevent redirect from matching */}
-      <Route path="/invoices/new" component={() => (
-        <LiveInvoiceEditor 
-          onSave={(invoiceId) => {
-            console.log('Invoice created:', invoiceId);
-            onShowInvoiceModal(invoiceId);
-          }}
-          onCancel={() => onNavigate('/invoices')}
+      {/* Using stable wrapper component to prevent remounting when Router re-renders */}
+      <Route path="/invoices/new">
+        <LiveInvoiceEditorWrapper 
+          onSave={handleInvoiceSave}
+          onCancel={handleInvoiceCancel}
         />
-      )} />
+      </Route>
       
       <Route path="/invoices/:id" component={({ params }: { params: { id: string } }) => (
         <InvoiceDetailView invoiceId={params.id} />
