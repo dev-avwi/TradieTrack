@@ -194,3 +194,17 @@ export function useAssignJob() {
     },
   });
 }
+
+export function useDeleteJob() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/jobs/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      safeInvalidateQueries({ queryKey: ["/api/jobs"] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
+      safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
+    },
+  });
+}
