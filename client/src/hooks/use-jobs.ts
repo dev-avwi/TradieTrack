@@ -198,8 +198,8 @@ export function useAssignJob() {
 export function useDeleteJob() {
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/jobs/${id}`);
-      return response.json();
+      await apiRequest("DELETE", `/api/jobs/${id}`);
+      return { success: true };
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/jobs"] });

@@ -167,8 +167,8 @@ export function useRecordPayment() {
 export function useDeleteInvoice() {
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/invoices/${id}`);
-      return response.json();
+      await apiRequest("DELETE", `/api/invoices/${id}`);
+      return { success: true };
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });

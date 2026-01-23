@@ -136,8 +136,8 @@ export function useConvertQuoteToInvoice() {
 export function useDeleteQuote() {
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/quotes/${id}`);
-      return response.json();
+      await apiRequest("DELETE", `/api/quotes/${id}`);
+      return { success: true };
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/quotes"] });
