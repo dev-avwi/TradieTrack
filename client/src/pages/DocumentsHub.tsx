@@ -25,7 +25,8 @@ import {
   Link2,
   Briefcase,
   LayoutGrid,
-  List
+  List,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,8 +34,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQuotes, useSendQuote, useConvertQuoteToInvoice } from "@/hooks/use-quotes";
-import { useInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink } from "@/hooks/use-invoices";
+import { useQuotes, useSendQuote, useConvertQuoteToInvoice, useDeleteQuote } from "@/hooks/use-quotes";
+import { useInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useDeleteInvoice } from "@/hooks/use-invoices";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -137,11 +138,12 @@ function StatusFilterPill({
   );
 }
 
-function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onViewInvoice }: { 
+function CompactQuoteCard({ quote, onView, onSend, onConvert, onDelete, linkedInvoice, onViewInvoice }: { 
   quote: any; 
   onView: () => void;
   onSend: () => void;
   onConvert: () => void;
+  onDelete: () => void;
   linkedInvoice?: any;
   onViewInvoice?: () => void;
 }) {
@@ -196,29 +198,34 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, linkedInvoice, onV
               </Badge>
             )}
           </div>
-          {(quote.status === 'draft' || quote.status === 'accepted') && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`quote-menu-${quote.id}`}>
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {quote.status === 'draft' && (
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
-                    <Send className="h-4 w-4 mr-2" />
-                    Mark Sent
-                  </DropdownMenuItem>
-                )}
-                {quote.status === 'accepted' && (
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onConvert(); }}>
-                    <Receipt className="h-4 w-4 mr-2" />
-                    Convert to Invoice
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`quote-menu-${quote.id}`}>
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {quote.status === 'draft' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Mark Sent
+                </DropdownMenuItem>
+              )}
+              {quote.status === 'accepted' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onConvert(); }}>
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Convert to Invoice
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="text-red-600 dark:text-red-400"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
@@ -230,7 +237,8 @@ function CompactInvoiceCard({
   onView, 
   onSend, 
   onMarkPaid, 
-  onCreateLink, 
+  onCreateLink,
+  onDelete,
   linkedReceipt, 
   onViewReceipt,
   onViewJob 
@@ -240,6 +248,7 @@ function CompactInvoiceCard({
   onSend: () => void;
   onMarkPaid: () => void;
   onCreateLink: () => void;
+  onDelete: () => void;
   linkedReceipt?: any;
   onViewReceipt?: () => void;
   onViewJob?: () => void;
@@ -313,35 +322,40 @@ function CompactInvoiceCard({
               </Badge>
             )}
           </div>
-          {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`invoice-menu-${invoice.id}`}>
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {invoice.status === 'draft' && (
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
-                    <Send className="h-4 w-4 mr-2" />
-                    Mark Sent
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`invoice-menu-${invoice.id}`}>
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {invoice.status === 'draft' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSend(); }}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Mark Sent
+                </DropdownMenuItem>
+              )}
+              {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+                <>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkPaid(); }}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark Paid
                   </DropdownMenuItem>
-                )}
-                {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                  <>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkPaid(); }}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Mark Paid
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onCreateLink(); }}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Payment Link
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onCreateLink(); }}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Payment Link
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="text-red-600 dark:text-red-400"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
@@ -515,6 +529,8 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
+  const [deleteQuoteDialogOpen, setDeleteQuoteDialogOpen] = useState(false);
+  const [deleteInvoiceDialogOpen, setDeleteInvoiceDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   
   const { toast } = useToast();
@@ -535,6 +551,8 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const sendInvoiceMutation = useSendInvoice();
   const markPaidMutation = useMarkInvoicePaid();
   const createPaymentLinkMutation = useCreatePaymentLink();
+  const deleteQuoteMutation = useDeleteQuote();
+  const deleteInvoiceMutation = useDeleteInvoice();
 
   const invoicesByQuoteId = useMemo(() => {
     const map = new Map<string, any>();
@@ -735,6 +753,40 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
     }
   };
   
+  const handleDeleteQuote = (quote: any) => {
+    setSelectedDocument(quote);
+    setDeleteQuoteDialogOpen(true);
+  };
+  
+  const handleConfirmDeleteQuote = async () => {
+    if (!selectedDocument) return;
+    try {
+      await deleteQuoteMutation.mutateAsync(selectedDocument.id);
+      toast({ title: "Quote deleted", description: `${selectedDocument.number || 'Quote'} has been deleted` });
+    } catch (error: any) {
+      toast({ title: "Failed to delete quote", description: error.message || "Please try again", variant: "destructive" });
+    }
+    setDeleteQuoteDialogOpen(false);
+    setSelectedDocument(null);
+  };
+  
+  const handleDeleteInvoice = (invoice: any) => {
+    setSelectedDocument(invoice);
+    setDeleteInvoiceDialogOpen(true);
+  };
+  
+  const handleConfirmDeleteInvoice = async () => {
+    if (!selectedDocument) return;
+    try {
+      await deleteInvoiceMutation.mutateAsync(selectedDocument.id);
+      toast({ title: "Invoice deleted", description: `${selectedDocument.number || 'Invoice'} has been deleted` });
+    } catch (error: any) {
+      toast({ title: "Failed to delete invoice", description: error.message || "Please try again", variant: "destructive" });
+    }
+    setDeleteInvoiceDialogOpen(false);
+    setSelectedDocument(null);
+  };
+  
   const handleCreate = () => {
     switch (activeTab) {
       case 'quotes': navigate('/quotes/new'); break;
@@ -819,6 +871,13 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                 Convert to Invoice
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem 
+              onClick={() => handleDeleteQuote(row)}
+              className="text-red-600 dark:text-red-400"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -907,6 +966,13 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuItem 
+              onClick={() => handleDeleteInvoice(row)}
+              className="text-red-600 dark:text-red-400"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -1180,6 +1246,7 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                       onView={() => navigate(`/quotes/${quote.id}`)}
                       onSend={() => handleSendQuote(quote)}
                       onConvert={() => handleConvertToInvoice(quote)}
+                      onDelete={() => handleDeleteQuote(quote)}
                       linkedInvoice={linkedInvoice}
                       onViewInvoice={linkedInvoice ? () => navigate(`/invoices/${linkedInvoice.id}`) : undefined}
                     />
@@ -1229,6 +1296,7 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
                       onSend={() => handleSendInvoice(invoice)}
                       onMarkPaid={() => handleMarkPaid(invoice)}
                       onCreateLink={() => handleCreatePaymentLink(invoice)}
+                      onDelete={() => handleDeleteInvoice(invoice)}
                       linkedReceipt={linkedReceipt}
                       onViewReceipt={linkedReceipt ? () => navigate(`/receipts/${linkedReceipt.id}`) : undefined}
                       onViewJob={invoice.jobId ? () => navigate(`/jobs/${invoice.jobId}`) : undefined}
@@ -1326,6 +1394,28 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         confirmLabel="Mark as Paid"
         onConfirm={handleConfirmMarkPaid}
         isPending={markPaidMutation.isPending}
+      />
+      
+      <ConfirmationDialog
+        open={deleteQuoteDialogOpen}
+        onOpenChange={setDeleteQuoteDialogOpen}
+        title="Delete Quote"
+        description={`Are you sure you want to delete ${selectedDocument?.number || 'this quote'}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleConfirmDeleteQuote}
+        isPending={deleteQuoteMutation.isPending}
+      />
+      
+      <ConfirmationDialog
+        open={deleteInvoiceDialogOpen}
+        onOpenChange={setDeleteInvoiceDialogOpen}
+        title="Delete Invoice"
+        description={`Are you sure you want to delete ${selectedDocument?.number || 'this invoice'}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleConfirmDeleteInvoice}
+        isPending={deleteInvoiceMutation.isPending}
       />
     </Tabs>
   );

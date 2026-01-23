@@ -43,6 +43,7 @@ function InvoiceCard({
   onPress,
   onSend,
   onMarkPaid,
+  onDelete,
 }: { 
   invoice: any;
   clientName: string;
@@ -50,6 +51,7 @@ function InvoiceCard({
   onPress: () => void;
   onSend?: () => void;
   onMarkPaid?: () => void;
+  onDelete?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -147,6 +149,19 @@ function InvoiceCard({
                     styles.actionButtonText,
                     quickAction.variant === 'outline' && { color: colors.foreground }
                   ]}>{quickAction.label}</Text>
+                </TouchableOpacity>
+              )}
+              {onDelete && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ padding: 4 }}
+                >
+                  <Feather name="trash-2" size={16} color={colors.destructive} />
                 </TouchableOpacity>
               )}
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
@@ -377,6 +392,32 @@ export default function InvoicesScreen() {
     );
   };
 
+  const handleDeleteInvoice = (invoiceId: string) => {
+    const invoice = invoices.find(i => i.id === invoiceId);
+    
+    Alert.alert(
+      'Delete Invoice',
+      `Are you sure you want to delete ${invoice?.invoiceNumber || 'this invoice'}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/invoices/${invoiceId}`);
+              await refreshData();
+              Alert.alert('Success', 'Invoice deleted successfully');
+            } catch (error) {
+              console.error('Error deleting invoice:', error);
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete invoice');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -544,6 +585,7 @@ export default function InvoicesScreen() {
                     onPress={() => router.push(`/more/invoice/${invoice.id}`)}
                     onSend={() => handleSendInvoice(invoice.id)}
                     onMarkPaid={() => handleMarkPaid(invoice.id)}
+                    onDelete={() => handleDeleteInvoice(invoice.id)}
                   />
                 ))}
               </View>

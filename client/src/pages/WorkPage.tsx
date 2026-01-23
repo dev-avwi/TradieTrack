@@ -18,7 +18,8 @@ import {
   Hourglass,
   AlertCircle,
   Archive,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,7 +32,7 @@ import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import StatusBadge from "@/components/StatusBadge";
-import { useJobs, useUpdateJob, useUnarchiveJob } from "@/hooks/use-jobs";
+import { useJobs, useUpdateJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useLocation } from "wouter";
@@ -72,6 +73,7 @@ export default function WorkPage({
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [pasteJobOpen, setPasteJobOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
   const [, navigate] = useLocation();
@@ -81,6 +83,7 @@ export default function WorkPage({
   const { toast } = useToast();
   const updateJobMutation = useUpdateJob();
   const unarchiveJobMutation = useUnarchiveJob();
+  const deleteJobMutation = useDeleteJob();
   const { actionPermissions } = useAppMode();
   const canCreateJobs = actionPermissions.canCreateJobs;
 
@@ -159,6 +162,30 @@ export default function WorkPage({
         variant: "destructive",
       });
     }
+  };
+
+  const handleDeleteJob = (job: Job) => {
+    setSelectedJob(job);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDeleteJob = async () => {
+    if (!selectedJob) return;
+    try {
+      await deleteJobMutation.mutateAsync(selectedJob.id);
+      toast({
+        title: "Job Deleted",
+        description: `${selectedJob.title || 'Job'} has been deleted`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete job",
+        variant: "destructive",
+      });
+    }
+    setDeleteDialogOpen(false);
+    setSelectedJob(null);
   };
 
   const getNextAction = (job: Job) => {
@@ -244,6 +271,13 @@ export default function WorkPage({
                   {nextAction.label}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem 
+                onClick={() => handleDeleteJob(row)}
+                className="text-red-600 dark:text-red-400"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -282,10 +316,32 @@ export default function WorkPage({
         <CardContent className="p-3">
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-1">
-              <h4 className="font-semibold text-sm leading-tight line-clamp-2">
+              <h4 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">
                 {job.title || 'Untitled Job'}
               </h4>
-              <StatusBadge status={job.status} />
+              <div className="flex items-center gap-1 shrink-0">
+                <StatusBadge status={job.status} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" data-testid={`job-card-menu-${job.id}`}>
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" style={{ borderRadius: "12px" }}>
+                    <DropdownMenuItem onClick={() => onViewJob?.(job.id)}>
+                      <Briefcase className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteJob(job); }}
+                      className="text-red-600 dark:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             
             <div className="space-y-0.5">
@@ -518,6 +574,17 @@ export default function WorkPage({
         description={`${selectedJob?.title || 'This job'} will be marked as ${statusLabels[pendingStatus || 'pending']}.`}
         confirmLabel={pendingStatus === 'in_progress' ? 'Start Job' : pendingStatus === 'done' ? 'Mark Complete' : 'Update'}
         onConfirm={handleConfirmStatusChange}
+      />
+
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Job"
+        description={`Are you sure you want to delete ${selectedJob?.title || 'this job'}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleConfirmDeleteJob}
+        isPending={deleteJobMutation.isPending}
       />
     </PageShell>
   );
