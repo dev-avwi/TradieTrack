@@ -30,11 +30,14 @@ import {
   CheckCircle,
   MessageCircle,
   Pencil,
-  X
+  X,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import StatusBadge from "./StatusBadge";
 import KPIBox from "./KPIBox";
@@ -64,6 +67,8 @@ export default function ClientDetailView({
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteAssociatedData, setDeleteAssociatedData] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -117,6 +122,40 @@ export default function ClientDetailView({
       return;
     }
     updateClientMutation.mutate(editForm);
+  };
+
+  // Delete client mutation
+  const deleteClientMutation = useMutation({
+    mutationFn: async (deleteAssociated: boolean) => {
+      const url = `/api/clients/${clientId}${deleteAssociated ? '?deleteAssociated=true' : ''}`;
+      await apiRequest('DELETE', url);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      setIsDeleteDialogOpen(false);
+      toast({
+        title: "Client deleted",
+        description: deleteAssociatedData 
+          ? "Client and all associated data have been deleted" 
+          : "Client has been deleted",
+      });
+      if (onBack) {
+        onBack();
+      } else {
+        setLocation('/clients');
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Delete failed",
+        description: "Could not delete client. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleDeleteClient = () => {
+    deleteClientMutation.mutate(deleteAssociatedData);
   };
 
   const { data: client, isLoading: clientLoading } = useQuery({
@@ -450,14 +489,25 @@ export default function ClientDetailView({
                 )}
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={openEditDialog}
-              data-testid="button-edit-client"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={openEditDialog}
+                data-testid="button-edit-client"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setIsDeleteDialogOpen(true)}
+                data-testid="button-delete-client"
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x">
@@ -1250,6 +1300,54 @@ export default function ClientDetailView({
               data-testid="button-save-client"
             >
               {updateClientMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        setIsDeleteDialogOpen(open);
+        if (!open) setDeleteAssociatedData(false);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Client
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{client?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-start space-x-3 p-4 bg-muted rounded-lg">
+              <Checkbox
+                id="delete-associated"
+                checked={deleteAssociatedData}
+                onCheckedChange={(checked) => setDeleteAssociatedData(checked as boolean)}
+                data-testid="checkbox-delete-associated"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="delete-associated" className="text-sm font-medium cursor-pointer">
+                  Also delete all associated data
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  This will delete all jobs ({jobs.length}), quotes ({quotes.length}), and invoices ({invoices.length}) for this client.
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteClient} 
+              disabled={deleteClientMutation.isPending}
+              data-testid="button-confirm-delete-client"
+            >
+              {deleteClientMutation.isPending ? "Deleting..." : "Delete Client"}
             </Button>
           </DialogFooter>
         </DialogContent>

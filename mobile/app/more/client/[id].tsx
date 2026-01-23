@@ -187,25 +187,60 @@ export default function ClientDetailScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Client',
-      'Are you sure you want to delete this client? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            const success = await deleteClient(id!);
-            if (success) {
-              router.back();
-            } else {
-              Alert.alert('Error', 'Failed to delete client');
+    const hasAssociatedData = clientJobs.length > 0 || clientQuotes.length > 0 || clientInvoices.length > 0;
+    
+    if (hasAssociatedData) {
+      Alert.alert(
+        'Delete Client',
+        `This client has ${clientJobs.length} job(s), ${clientQuotes.length} quote(s), and ${clientInvoices.length} invoice(s). How would you like to proceed?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete Client Only', 
+            onPress: async () => {
+              const success = await deleteClient(id!, false);
+              if (success) {
+                router.back();
+              } else {
+                Alert.alert('Error', 'Failed to delete client');
+              }
+            }
+          },
+          { 
+            text: 'Delete All Data', 
+            style: 'destructive',
+            onPress: async () => {
+              const success = await deleteClient(id!, true);
+              if (success) {
+                router.back();
+              } else {
+                Alert.alert('Error', 'Failed to delete client and associated data');
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Delete Client',
+        'Are you sure you want to delete this client? This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: async () => {
+              const success = await deleteClient(id!, false);
+              if (success) {
+                router.back();
+              } else {
+                Alert.alert('Error', 'Failed to delete client');
+              }
+            }
+          }
+        ]
+      );
+    }
   };
 
   const getInitials = (name: string) => {

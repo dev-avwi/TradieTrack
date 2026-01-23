@@ -1251,6 +1251,53 @@ export class PostgresStorage implements IStorage {
     return result.rowCount > 0;
   }
 
+  // Cascade delete methods for client-associated data
+  async deleteReceiptsByClientId(clientId: string, userId: string): Promise<void> {
+    await db.delete(receipts).where(and(eq(receipts.clientId, clientId), eq(receipts.userId, userId)));
+  }
+
+  async deleteInvoicesByClientId(clientId: string, userId: string): Promise<void> {
+    // Get all invoices for this client
+    const clientInvoices = await db.select({ id: invoices.id }).from(invoices)
+      .where(and(eq(invoices.clientId, clientId), eq(invoices.userId, userId)));
+    
+    // Delete line items for each invoice
+    for (const invoice of clientInvoices) {
+      await db.delete(invoiceLineItems).where(eq(invoiceLineItems.invoiceId, invoice.id));
+    }
+    
+    // Delete the invoices
+    await db.delete(invoices).where(and(eq(invoices.clientId, clientId), eq(invoices.userId, userId)));
+  }
+
+  async deleteQuotesByClientId(clientId: string, userId: string): Promise<void> {
+    // Get all quotes for this client
+    const clientQuotes = await db.select({ id: quotes.id }).from(quotes)
+      .where(and(eq(quotes.clientId, clientId), eq(quotes.userId, userId)));
+    
+    // Delete line items for each quote
+    for (const quote of clientQuotes) {
+      await db.delete(quoteLineItems).where(eq(quoteLineItems.quoteId, quote.id));
+    }
+    
+    // Delete the quotes
+    await db.delete(quotes).where(and(eq(quotes.clientId, clientId), eq(quotes.userId, userId)));
+  }
+
+  async deleteJobsByClientId(clientId: string, userId: string): Promise<void> {
+    // Get all jobs for this client
+    const clientJobs = await db.select({ id: jobs.id }).from(jobs)
+      .where(and(eq(jobs.clientId, clientId), eq(jobs.userId, userId)));
+    
+    // Delete photos for each job
+    for (const job of clientJobs) {
+      await db.delete(jobPhotos).where(eq(jobPhotos.jobId, job.id));
+    }
+    
+    // Delete the jobs
+    await db.delete(jobs).where(and(eq(jobs.clientId, clientId), eq(jobs.userId, userId)));
+  }
+
   async getClientSignature(id: string, userId: string): Promise<{ signatureData: string | null; signatureDate: Date | null } | undefined> {
     const result = await db
       .select({

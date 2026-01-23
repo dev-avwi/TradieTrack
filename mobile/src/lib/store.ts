@@ -873,7 +873,7 @@ interface ClientsState {
   getClient: (id: string) => Promise<Client | null>;
   createClient: (client: Partial<Client>) => Promise<Client | null>;
   updateClient: (id: string, client: Partial<Client>) => Promise<boolean>;
-  deleteClient: (id: string) => Promise<boolean>;
+  deleteClient: (id: string, deleteAssociated?: boolean) => Promise<boolean>;
 }
 
 export const useClientsStore = create<ClientsState>((set, get) => ({
@@ -1044,7 +1044,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     return true;
   },
 
-  deleteClient: async (id: string) => {
+  deleteClient: async (id: string, deleteAssociated: boolean = false) => {
     const { clients } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
@@ -1058,7 +1058,8 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     set({ clients: clients.filter(c => c.id !== id) });
     
     try {
-      const response = await api.delete(`/api/clients/${id}`);
+      const url = deleteAssociated ? `/api/clients/${id}?deleteAssociated=true` : `/api/clients/${id}`;
+      const response = await api.delete(url);
       if (response.error) {
         // Revert optimistic update if delete fails
         set({ clients });

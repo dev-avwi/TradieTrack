@@ -7201,10 +7201,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete client (team-aware)
+  // Delete client (team-aware) with optional cascade delete of associated data
   app.delete("/api/clients/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_CLIENTS), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
+      const clientId = req.params.id;
+      const deleteAssociated = req.query.deleteAssociated === 'true';
+      
+      // If cascade delete, remove all associated data first
+      if (deleteAssociated) {
+        // Delete receipts for this client
+        await storage.deleteReceiptsByClientId(clientId, userContext.effectiveUserId);
+        
+        // Delete invoice line items and invoices for this client
+        await storage.deleteInvoicesByClientId(clientId, userContext.effectiveUserId);
+        
+        // Delete quote line items and quotes for this client
+        await storage.deleteQuotesByClientId(clientId, userContext.effectiveUserId);
+        
+        // Delete job photos and jobs for this client
+        await storage.deleteJobsByClientId(clientId, userContext.effectiveUserId);
+      }
+      
       const success = await storage.deleteClient(req.params.id, userContext.effectiveUserId);
       if (!success) {
         return res.status(404).json({ error: "Client not found" });
