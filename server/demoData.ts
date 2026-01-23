@@ -306,8 +306,9 @@ export async function createDemoUserAndData() {
       // The dates should only be set during initial demo data creation, not on every restart
       // await refreshDemoDates(demoUser.id);
       
-      // Always refresh activity logs to show current data
+      // Always refresh activity logs and notifications to show current data
       await createDemoActivityLogs(demoUser.id);
+      await createDemoNotifications(demoUser.id);
       
       return demoUser;
     }
@@ -1389,6 +1390,10 @@ export async function createDemoUserAndData() {
     // CREATE ACTIVITY LOGS for Recent Activity
     // ============================================
     await createDemoActivityLogs(demoUser.id);
+    
+    // CREATE NOTIFICATIONS for "What You Missed" popup
+    // ============================================
+    await createDemoNotifications(demoUser.id);
 
     return demoUser;
   } catch (error) {
@@ -1965,6 +1970,140 @@ export async function createDemoActivityLogs(userId: string): Promise<void> {
     console.log(`[DemoActivity] Created ${topActivities.length} activity logs for Recent Activity`);
   } catch (error) {
     console.error('[DemoActivity] Error creating activity logs:', error);
+  }
+}
+
+// CREATE DEMO NOTIFICATIONS: Generate varied notifications for "What You Missed" popup
+export async function createDemoNotifications(userId: string): Promise<void> {
+  try {
+    console.log('[DemoNotifications] Creating diverse notifications for What You Missed...');
+    
+    // Get recent jobs, quotes, and invoices for realistic notifications
+    const jobs = await storage.getJobs(userId);
+    const quotes = await storage.getQuotes(userId);
+    const invoices = await storage.getInvoices(userId);
+    const clients = await storage.getClients(userId);
+    
+    // Create a client lookup map
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+    
+    // Delete existing notifications first
+    const existingNotifications = await storage.getNotifications(userId);
+    for (const n of existingNotifications) {
+      await storage.deleteNotification(n.id, userId);
+    }
+    
+    const notifications: Array<{
+      userId: string;
+      type: string;
+      title: string;
+      message: string;
+      relatedId?: string;
+      relatedType?: string;
+      priority?: string;
+      actionUrl?: string;
+      actionLabel?: string;
+    }> = [];
+    
+    // Get a variety of jobs/quotes/invoices for notifications
+    const completedJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced').slice(0, 3);
+    const scheduledJobs = jobs.filter(j => j.status === 'scheduled').slice(0, 2);
+    const acceptedQuotes = quotes.filter(q => q.status === 'accepted').slice(0, 2);
+    const paidInvoices = invoices.filter(i => i.status === 'paid').slice(0, 3);
+    const sentInvoices = invoices.filter(i => i.status === 'sent').slice(0, 1);
+    
+    // Add job completed notifications
+    for (const job of completedJobs) {
+      const client = clientMap.get(job.clientId!);
+      notifications.push({
+        userId,
+        type: 'job_completed',
+        title: 'Job Completed',
+        message: `${job.title} for ${client?.name || 'Client'} has been completed`,
+        relatedId: job.id,
+        relatedType: 'job',
+        priority: 'important',
+        actionUrl: `/jobs/${job.id}`,
+        actionLabel: 'View Job',
+      });
+    }
+    
+    // Add job scheduled notifications
+    for (const job of scheduledJobs) {
+      const client = clientMap.get(job.clientId!);
+      notifications.push({
+        userId,
+        type: 'job_scheduled',
+        title: 'Job Scheduled',
+        message: `${job.title} scheduled for ${client?.name || 'Client'}`,
+        relatedId: job.id,
+        relatedType: 'job',
+        priority: 'info',
+        actionUrl: `/jobs/${job.id}`,
+        actionLabel: 'View Job',
+      });
+    }
+    
+    // Add quote accepted notifications
+    for (const quote of acceptedQuotes) {
+      const client = clientMap.get(quote.clientId!);
+      notifications.push({
+        userId,
+        type: 'quote_accepted',
+        title: 'Quote Accepted',
+        message: `Quote ${quote.number || quote.id.slice(0,6)} was accepted by ${client?.name || 'Client'}`,
+        relatedId: quote.id,
+        relatedType: 'quote',
+        priority: 'urgent',
+        actionUrl: `/quotes/${quote.id}`,
+        actionLabel: 'Create Invoice',
+      });
+    }
+    
+    // Add payment received notifications
+    for (const invoice of paidInvoices) {
+      const client = clientMap.get(invoice.clientId!);
+      const total = Number(invoice.total) || 0;
+      notifications.push({
+        userId,
+        type: 'payment_received',
+        title: 'Payment Received',
+        message: `$${total.toFixed(2)} received from ${client?.name || 'Client'}`,
+        relatedId: invoice.id,
+        relatedType: 'invoice',
+        priority: 'urgent',
+        actionUrl: `/invoices/${invoice.id}`,
+        actionLabel: 'View Invoice',
+      });
+    }
+    
+    // Add invoice sent notification
+    for (const invoice of sentInvoices) {
+      const client = clientMap.get(invoice.clientId!);
+      notifications.push({
+        userId,
+        type: 'invoice_sent',
+        title: 'Invoice Sent',
+        message: `Invoice ${invoice.number || invoice.id.slice(0,6)} sent to ${client?.name || 'Client'}`,
+        relatedId: invoice.id,
+        relatedType: 'invoice',
+        priority: 'info',
+        actionUrl: `/invoices/${invoice.id}`,
+        actionLabel: 'View Invoice',
+      });
+    }
+    
+    // Shuffle and take top 10 for variety
+    const shuffled = notifications.sort(() => Math.random() - 0.5).slice(0, 10);
+    
+    // Create notifications
+    for (const notif of shuffled) {
+      await storage.createNotification(notif);
+    }
+    
+    console.log(`[DemoNotifications] Created ${shuffled.length} diverse notifications`);
+  } catch (error) {
+    console.error('[DemoNotifications] Error creating notifications:', error);
   }
 }
 

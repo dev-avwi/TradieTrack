@@ -977,7 +977,7 @@ export default function TeamOwnerDashboard({
         {/* RECENT ACTIVITY - in right column */}
         <ActivityFeed 
           limit={5}
-          onViewAll={() => onNavigate?.('/notifications')}
+          onViewAll={() => onNavigate?.('/communications')}
         />
         </div>
       </div>
