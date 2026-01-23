@@ -860,19 +860,19 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
               View Details
             </DropdownMenuItem>
             {row.status === 'draft' && (
-              <DropdownMenuItem onClick={() => handleSendQuote(row)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendQuote(row); }}>
                 <Send className="h-4 w-4 mr-2" />
                 Mark Sent
               </DropdownMenuItem>
             )}
             {row.status === 'accepted' && (
-              <DropdownMenuItem onClick={() => handleConvertToInvoice(row)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleConvertToInvoice(row); }}>
                 <Receipt className="h-4 w-4 mr-2" />
                 Convert to Invoice
               </DropdownMenuItem>
             )}
             <DropdownMenuItem 
-              onClick={() => handleDeleteQuote(row)}
+              onClick={(e) => { e.stopPropagation(); handleDeleteQuote(row); }}
               className="text-red-600 dark:text-red-400"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -949,25 +949,25 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
               View Details
             </DropdownMenuItem>
             {row.status === 'draft' && (
-              <DropdownMenuItem onClick={() => handleSendInvoice(row)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSendInvoice(row); }}>
                 <Send className="h-4 w-4 mr-2" />
                 Mark Sent
               </DropdownMenuItem>
             )}
             {(row.status === 'sent' || row.status === 'overdue') && (
               <>
-                <DropdownMenuItem onClick={() => handleMarkPaid(row)}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMarkPaid(row); }}>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Mark Paid
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleCreatePaymentLink(row)}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCreatePaymentLink(row); }}>
                   <CreditCard className="h-4 w-4 mr-2" />
                   Payment Link
                 </DropdownMenuItem>
               </>
             )}
             <DropdownMenuItem 
-              onClick={() => handleDeleteInvoice(row)}
+              onClick={(e) => { e.stopPropagation(); handleDeleteInvoice(row); }}
               className="text-red-600 dark:text-red-400"
             >
               <Trash2 className="h-4 w-4 mr-2" />
