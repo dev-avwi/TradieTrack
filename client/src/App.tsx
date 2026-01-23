@@ -223,6 +223,16 @@ const LiveInvoiceEditorWrapper = React.memo(({
   <LiveInvoiceEditor onSave={onSave} onCancel={onCancel} />
 ));
 
+const JobFormWrapper = React.memo(({ 
+  onSubmit, 
+  onCancel 
+}: { 
+  onSubmit: (jobId: string) => void;
+  onCancel: () => void;
+}) => (
+  <JobForm onSubmit={onSubmit} onCancel={onCancel} />
+));
+
 // Main router component
 function Router({ 
   onNavigate, 
@@ -253,6 +263,19 @@ function Router({
   const handleInvoiceCancel = useCallback(() => {
     onNavigate('/invoices');
   }, [onNavigate]);
+  
+  const handleJobSubmit = useCallback((jobId: string) => {
+    console.log('Job created:', jobId);
+    onNavigate(`/jobs/${jobId}`);
+  }, [onNavigate]);
+  
+  const handleJobCancel = useCallback(() => {
+    if (window.history.length > 2) {
+      window.history.back();
+    } else {
+      onNavigate('/jobs');
+    }
+  }, [onNavigate]);
 
   return (
     <Switch location={location}>
@@ -267,23 +290,12 @@ function Router({
       )} />
       
       {/* IMPORTANT: /jobs/new must come BEFORE /jobs/:id to prevent "new" matching as an ID */}
-      <Route path="/jobs/new" component={() => (
-        <JobForm 
-          onSubmit={(jobId) => {
-            console.log('Job created:', jobId);
-            // After creating, go to the job details
-            onNavigate(`/jobs/${jobId}`);
-          }}
-          onCancel={() => {
-            // Smart back: use browser history if available
-            if (window.history.length > 2) {
-              window.history.back();
-            } else {
-              onNavigate('/jobs');
-            }
-          }}
+      <Route path="/jobs/new">
+        <JobFormWrapper 
+          onSubmit={handleJobSubmit}
+          onCancel={handleJobCancel}
         />
-      )} />
+      </Route>
       
       <Route path="/jobs/:id/complete" component={({ params }: any) => (
         <JobCompletionWrapper 
