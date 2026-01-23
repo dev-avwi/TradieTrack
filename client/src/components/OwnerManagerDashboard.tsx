@@ -457,8 +457,25 @@ export default function OwnerManagerDashboard({
         </div>
       </section>
 
-      {/* TODAY'S SCHEDULE - Native Feed Style */}
-      <section className="space-y-4 animate-fade-up" style={{ animationDelay: '150ms' }}>
+      {/* Two-column layout: Left (AI Optimizer), Right (Today + Activity) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '150ms' }}>
+        {/* LEFT COLUMN - AI Optimizer */}
+        <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
+          <AIScheduleOptimizer 
+            className="shadow-lg h-full"
+            onApplySchedule={(schedule) => {
+              toast({
+                title: "Schedule Applied",
+                description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
+              });
+            }}
+          />
+        </div>
+
+        {/* RIGHT COLUMN - Today + Activity stacking */}
+        <div className="space-y-4 lg:space-y-6 order-1 lg:order-2">
+        {/* TODAY'S SCHEDULE - Native Feed Style */}
+        <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="ios-section-title flex items-center gap-2.5">
             <div 
@@ -595,37 +612,21 @@ export default function OwnerManagerDashboard({
             ))}
           </div>
         )}
-      </section>
+        </section>
+
+        {/* RECENT ACTIVITY - in right column */}
+        <ActivityFeed 
+          limit={5}
+          onViewAll={() => onNavigate?.('/notifications')}
+        />
+        </div>
+      </div>
 
       <GettingStartedChecklist 
         onNavigate={onNavigate}
         onCreateClient={() => onNavigate?.('/clients')}
         onCreateQuote={onCreateQuote}
       />
-
-      {/* Two-column layout for AI Schedule Optimizer and Activity Feed on larger screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '200ms' }}>
-        {/* AI SCHEDULE OPTIMIZER */}
-        <section className="lg:h-fit">
-          <AIScheduleOptimizer 
-            className="shadow-lg h-full"
-            onApplySchedule={(schedule) => {
-              toast({
-                title: "Schedule Applied",
-                description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
-              });
-            }}
-          />
-        </section>
-
-        {/* RECENT ACTIVITY */}
-        <section className="lg:h-fit">
-          <ActivityFeed 
-            limit={5}
-            onViewAll={() => onNavigate?.('/notifications')}
-          />
-        </section>
-      </div>
 
       <FloatingActionButton
         onCreateJob={onCreateJob}

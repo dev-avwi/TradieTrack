@@ -553,11 +553,13 @@ export default function TeamOwnerDashboard({
         </div>
       </section>
 
-      {/* Two-column layout for Job Scheduler and Today's Jobs on larger screens */}
+      {/* Two-column layout: Left (Job Scheduler + AI Optimizer), Right (Today's Jobs + Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '150ms' }}>
+        {/* LEFT COLUMN - Job Scheduler + AI Optimizer stacking */}
+        <div className="space-y-4 lg:space-y-6">
         {/* Job Scheduler - Drag & Drop */}
         {hasActiveTeam && (
-          <section ref={schedulerRef} className="space-y-4 lg:h-fit">
+          <section ref={schedulerRef} className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="ios-section-title flex items-center gap-2.5">
                 <div 
@@ -852,8 +854,22 @@ export default function TeamOwnerDashboard({
           </section>
         )}
 
+        {/* AI SCHEDULE OPTIMIZER - in left column */}
+        <AIScheduleOptimizer 
+          className="shadow-lg h-full"
+          onApplySchedule={(schedule) => {
+            toast({
+              title: "Schedule Applied",
+              description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
+            });
+          }}
+        />
+        </div>
+
+        {/* RIGHT COLUMN - Today's Jobs + Activity stacking */}
+        <div className="space-y-4 lg:space-y-6">
         {/* TODAY'S JOBS */}
-        <section className="space-y-4 lg:h-fit">
+        <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="ios-section-title flex items-center gap-2.5">
             <div 
@@ -957,6 +973,13 @@ export default function TeamOwnerDashboard({
           </div>
         )}
         </section>
+
+        {/* RECENT ACTIVITY - in right column */}
+        <ActivityFeed 
+          limit={5}
+          onViewAll={() => onNavigate?.('/notifications')}
+        />
+        </div>
       </div>
 
       <GettingStartedChecklist 
@@ -964,30 +987,6 @@ export default function TeamOwnerDashboard({
         onCreateClient={() => onNavigate?.('/clients')}
         onCreateQuote={onCreateQuote}
       />
-
-      {/* Two-column layout for AI Schedule Optimizer and Activity Feed on larger screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '250ms' }}>
-        {/* AI SCHEDULE OPTIMIZER */}
-        <section className="lg:h-fit">
-          <AIScheduleOptimizer 
-            className="shadow-lg h-full"
-            onApplySchedule={(schedule) => {
-              toast({
-                title: "Schedule Applied",
-                description: `Optimised route with ${schedule.optimizedOrder.length} jobs saved`,
-              });
-            }}
-          />
-        </section>
-
-        {/* RECENT ACTIVITY */}
-        <section className="lg:h-fit">
-          <ActivityFeed 
-            limit={5}
-            onViewAll={() => onNavigate?.('/notifications')}
-          />
-        </section>
-      </div>
 
       <FloatingActionButton
         onCreateJob={onCreateJob}
