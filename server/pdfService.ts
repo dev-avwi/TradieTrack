@@ -793,13 +793,6 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
 <body>
   <div class="document">
     
-    ${warnings.length > 0 ? `
-      <div class="warning-banner">
-        <div class="warning-title">Document Incomplete</div>
-        <div>Please update your business settings: ${warnings.join(', ')}</div>
-      </div>
-    ` : ''}
-    
     <div class="header">
       <div class="company-info">
         ${business.logoUrl ? `<img src="${business.logoUrl}" alt="${business.businessName}" class="logo" />` : ''}
@@ -1089,13 +1082,6 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
 </head>
 <body>
   <div class="document">
-    
-    ${warnings.length > 0 ? `
-      <div class="warning-banner">
-        <div class="warning-title">${total > 82.50 && !business.abn ? 'ABN Required' : 'Document Incomplete'}</div>
-        <div>Please update your business settings: ${warnings.join(', ')}</div>
-      </div>
-    ` : ''}
     
     <div class="header">
       <div class="company-info">

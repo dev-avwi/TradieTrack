@@ -109,8 +109,37 @@ export default function QuoteModal({ quoteId, isOpen, onClose, onViewFullQuote }
     onClose();
   };
 
+  // Check for missing business info before download
+  const getMissingBusinessInfo = (): string[] => {
+    const warnings: string[] = [];
+    if (!businessSettings) return warnings;
+    const total = parseFloat(String(quote?.total || '0'));
+    if (!businessSettings.abn) {
+      if (total > 82.50) {
+        warnings.push('ABN required for tax invoices over $82.50');
+      } else {
+        warnings.push('ABN not set');
+      }
+    }
+    if (!businessSettings.address) warnings.push('Business address not set');
+    if (!businessSettings.phone) warnings.push('Phone number not set');
+    if (!businessSettings.email) warnings.push('Email not set');
+    return warnings;
+  };
+
   const handleDownloadPDF = async () => {
     if (!quote) return;
+    
+    // Show warning if business info is incomplete
+    const warnings = getMissingBusinessInfo();
+    if (warnings.length > 0) {
+      toast({
+        title: "Document Incomplete",
+        description: `Please update your business settings: ${warnings.join(', ')}`,
+        variant: "destructive",
+      });
+      // Still allow download but show the warning first
+    }
     
     setIsLoading(true);
     try {
