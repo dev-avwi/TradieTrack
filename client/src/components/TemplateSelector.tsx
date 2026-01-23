@@ -174,8 +174,8 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
                       </div>
                     </div>
                     
-                    {/* Show estimated total if has line items */}
-                    {totals && (
+                    {/* Show estimated total if has line items with actual prices */}
+                    {totals && totals.total > 0 && (
                       <div className="text-right flex-shrink-0">
                         <span className="text-xs text-muted-foreground">Est. Total</span>
                         <p className="font-semibold text-sm text-primary">
@@ -184,7 +184,7 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
                       </div>
                     )}
                     
-                    {!totals && (
+                    {(!totals || totals.total === 0) && (
                       <ChevronRight className={cn(
                         "h-4 w-4 text-muted-foreground transition-transform",
                         isSelected && "rotate-90"
@@ -236,9 +236,11 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
                       {selectedTemplate.defaultLineItems.map((item, idx) => (
                         <li key={idx} className="flex justify-between text-xs bg-background/50 rounded px-2 py-1">
                           <span className="truncate flex-1">{item.description}</span>
-                          <span className="font-medium text-right ml-2">
-                            {item.qty} × {formatCurrency(item.unitPrice)}
-                          </span>
+                          {item.unitPrice > 0 && (
+                            <span className="font-medium text-right ml-2">
+                              {item.qty} × {formatCurrency(item.unitPrice)}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -265,8 +267,8 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
               )}
             </div>
             
-            {/* Total breakdown */}
-            {calculateTemplateTotal(selectedTemplate) && (
+            {/* Total breakdown - only show if there are actual prices */}
+            {calculateTemplateTotal(selectedTemplate) && calculateTemplateTotal(selectedTemplate)!.total > 0 && (
               <div className="pt-2 border-t space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Subtotal</span>
@@ -284,17 +286,6 @@ export default function TemplateSelector({ type, onApplyTemplate, className, use
             )}
           </div>
         )}
-
-        {/* Apply Button */}
-        <Button 
-          onClick={handleApplyTemplate}
-          disabled={!selectedTemplate}
-          className="w-full h-12"
-          data-testid="button-apply-template"
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          {selectedTemplate ? `Apply "${selectedTemplate.name}"` : "Select a template"}
-        </Button>
       </CardContent>
     </Card>
   );
