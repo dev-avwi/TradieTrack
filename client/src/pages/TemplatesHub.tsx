@@ -254,9 +254,30 @@ function StylePresetsWithPreview() {
     }
   }, [business?.documentTemplate, defaultPreset?.headerLayout]);
 
-  // Update customization when template changes
+  // Track if we've loaded saved settings to prevent template defaults from overwriting
+  const [hasLoadedSavedSettings, setHasLoadedSavedSettings] = useState(false);
+
+  // Load saved customization from business settings (runs once on load)
   useEffect(() => {
-    const template = DOCUMENT_TEMPLATES[selectedTemplateId];
+    const savedSettings = (business as any)?.documentTemplateSettings;
+    if (savedSettings && !hasLoadedSavedSettings) {
+      setCustomization(prev => ({
+        ...prev,
+        tableStyle: savedSettings.tableStyle || prev.tableStyle,
+        noteStyle: savedSettings.noteStyle || prev.noteStyle,
+        headerBorderWidth: savedSettings.headerBorderWidth || prev.headerBorderWidth,
+        showHeaderDivider: savedSettings.showHeaderDivider ?? prev.showHeaderDivider,
+        bodyWeight: savedSettings.bodyWeight || prev.bodyWeight,
+        headingWeight: savedSettings.headingWeight || prev.headingWeight,
+        accentColor: savedSettings.accentColor || prev.accentColor,
+      }));
+      setHasLoadedSavedSettings(true);
+    }
+  }, [(business as any)?.documentTemplateSettings]);
+
+  // Reset customization to template defaults when user explicitly selects a new template
+  const resetToTemplateDefaults = (templateId: TemplateId) => {
+    const template = DOCUMENT_TEMPLATES[templateId];
     if (template) {
       setCustomization(prev => ({
         ...prev,
@@ -268,7 +289,7 @@ function StylePresetsWithPreview() {
         headingWeight: template.headingWeight as 600 | 700 | 800,
       }));
     }
-  }, [selectedTemplateId]);
+  };
 
   // Sync template selection to both style preset AND business settings (for PDF generation)
   const updateTemplateMutation = useMutation({
@@ -293,12 +314,33 @@ function StylePresetsWithPreview() {
 
   const handleSelectTemplate = (templateId: TemplateId) => {
     setSelectedTemplateId(templateId);
+    resetToTemplateDefaults(templateId); // Reset to template defaults when user explicitly selects
     updateTemplateMutation.mutate(templateId);
     toast({ title: `${DOCUMENT_TEMPLATES[templateId].name} template selected` });
   };
 
   const updateCustomization = (updates: Partial<TemplateCustomization>) => {
     setCustomization(prev => ({ ...prev, ...updates }));
+  };
+
+  // Save customization to server
+  const saveCustomizationMutation = useMutation({
+    mutationFn: async (customizationToSave: TemplateCustomization) => {
+      await apiRequest("PATCH", "/api/business-settings", {
+        documentTemplateSettings: customizationToSave,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] });
+      toast({ title: "Template customisation saved" });
+    },
+    onError: () => {
+      toast({ title: "Failed to save customisation", variant: "destructive" });
+    },
+  });
+
+  const handleSaveCustomization = () => {
+    saveCustomizationMutation.mutate(buildTemplateCustomization());
   };
 
   // Build template customization for live preview
@@ -385,7 +427,7 @@ function StylePresetsWithPreview() {
             </div>
           </div>
 
-          {/* Customise Template Panel - Coming Soon */}
+          {/* Customise Template Panel */}
           <Card data-testid="card-customise-template" className="relative overflow-hidden">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
@@ -404,41 +446,138 @@ function StylePresetsWithPreview() {
               </div>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Coming Soon Overlay */}
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Settings className="h-8 w-8 text-primary" />
+              {/* Table Style */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Table Style</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['bordered', 'striped', 'minimal'] as const).map((style) => (
+                    <Button
+                      key={style}
+                      variant={customization.tableStyle === style ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateCustomization({ tableStyle: style })}
+                      className="capitalize"
+                    >
+                      {style}
+                    </Button>
+                  ))}
                 </div>
-                <h3 className="font-semibold text-lg mb-2">Coming Soon</h3>
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Advanced template customisation options including table styles, fonts, colours, and more will be available soon.
-                </p>
-                <Badge variant="secondary" className="mt-4">
-                  In Development
-                </Badge>
               </div>
-              
-              {/* Preview of what's coming */}
-              <div className="border-t pt-4 space-y-3 opacity-50 pointer-events-none">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Preview of upcoming features:</p>
-                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary/40" />
-                    <span>Table Styles</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary/40" />
-                    <span>Accent Colours</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary/40" />
-                    <span>Font Weights</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary/40" />
-                    <span>Header Styles</span>
+
+              {/* Accent Colour */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Accent Colour</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="color"
+                    value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
+                    onChange={(e) => updateCustomization({ accentColor: e.target.value })}
+                    className="w-12 h-9 p-1 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
+                    onChange={(e) => updateCustomization({ accentColor: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#2563eb"
+                  />
+                </div>
+              </div>
+
+              {/* Header Border */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Header Border</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['1px', '2px', '3px', '4px'] as const).map((width) => (
+                    <Button
+                      key={width}
+                      variant={customization.headerBorderWidth === width ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateCustomization({ headerBorderWidth: width })}
+                    >
+                      {width}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Show Header Divider */}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Show Header Divider</Label>
+                <Switch
+                  checked={customization.showHeaderDivider}
+                  onCheckedChange={(checked) => updateCustomization({ showHeaderDivider: checked })}
+                />
+              </div>
+
+              {/* Font Weights */}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Body Font Weight</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {([400, 500, 600, 700] as const).map((weight) => (
+                      <Button
+                        key={weight}
+                        variant={customization.bodyWeight === weight ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateCustomization({ bodyWeight: weight })}
+                      >
+                        {weight}
+                      </Button>
+                    ))}
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Heading Font Weight</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([600, 700, 800] as const).map((weight) => (
+                      <Button
+                        key={weight}
+                        variant={customization.headingWeight === weight ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateCustomization({ headingWeight: weight })}
+                      >
+                        {weight}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Note Style */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Note Style</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['simple', 'bordered', 'filled'] as const).map((style) => (
+                    <Button
+                      key={style}
+                      variant={customization.noteStyle === style ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateCustomization({ noteStyle: style })}
+                      className="capitalize"
+                    >
+                      {style}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-4 border-t">
+                <Button 
+                  onClick={handleSaveCustomization}
+                  disabled={saveCustomizationMutation.isPending}
+                  className="w-full"
+                >
+                  {saveCustomizationMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Customisation"
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
