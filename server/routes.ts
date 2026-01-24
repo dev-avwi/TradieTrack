@@ -20189,12 +20189,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== SMS CONVERSATIONS ROUTES =====
   
-  // Get Twilio status
+  // Get Twilio status with detailed setup info
   app.get("/api/sms/status", requireAuth, async (req: any, res) => {
     try {
       const { getTwilioStatus } = await import('./services/smsService');
-      const status = getTwilioStatus();
-      res.json(status);
+      const { isTwilioAvailable } = await import('./twilioClient');
+      const basicStatus = getTwilioStatus();
+      const availability = await isTwilioAvailable();
+      
+      // Return comprehensive status for UI
+      res.json({
+        configured: availability.configured,
+        connected: availability.connected,
+        hasPhoneNumber: availability.hasPhoneNumber,
+        enabled: basicStatus.enabled,
+        phoneNumber: basicStatus.phoneNumber,
+        // Provide setup instructions when not configured
+        setupRequired: !availability.connected,
+        setupInstructions: !availability.connected ? {
+          title: "Set Up SMS Messaging",
+          description: "To send SMS messages to clients, you need to connect your own Twilio account.",
+          steps: [
+            "Create a free Twilio account at twilio.com/try-twilio",
+            "Get your Account SID and Auth Token from the Twilio Console",
+            "Purchase or verify a phone number in Twilio",
+            "Go to Settings > Integrations and enter your Twilio credentials"
+          ],
+          settingsPath: "/integrations#twilio",
+          learnMoreUrl: "https://www.twilio.com/try-twilio"
+        } : null
+      });
     } catch (error: any) {
       console.error('Error getting Twilio status:', error);
       res.status(500).json({ error: error.message });
