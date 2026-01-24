@@ -274,21 +274,31 @@ export async function createDemoUserAndData() {
 
     if (!demoUser) {
       const hashedPassword = await bcrypt.hash(DEMO_USER.password, 10);
+      const [firstName, ...lastNameParts] = DEMO_USER.name.split(' ');
+      const lastName = lastNameParts.join(' ');
       demoUser = await storage.createUser({
         email: DEMO_USER.email,
         password: hashedPassword,
-        name: DEMO_USER.name,
+        firstName,
+        lastName,
+      } as any);
+      // Update with additional fields that aren't in InsertUser schema
+      await storage.updateUser(demoUser.id, {
         phone: DEMO_USER.phone,
-        emailVerified: true, // Demo user should be pre-verified
-      });
+        emailVerified: true,
+      } as any);
       console.log('✅ Demo user created:', demoUser.email);
     } else {
-      // Ensure demo user has correct password and email verified set
+      // Ensure demo user has correct password, name, and email verified set
       const hashedPassword = await bcrypt.hash(DEMO_USER.password, 10);
+      const [firstName, ...lastNameParts] = DEMO_USER.name.split(' ');
+      const lastName = lastNameParts.join(' ');
       await storage.updateUser(demoUser.id, { 
         password: hashedPassword,
+        firstName,
+        lastName,
         emailVerified: true 
-      });
+      } as any);
       console.log('ℹ️ Demo user already exists:', demoUser.email);
       console.log('✅ Demo user password reset to default');
     }

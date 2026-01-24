@@ -477,7 +477,7 @@ export default function AIAssistantScreen() {
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const userName = user?.name?.split(' ')[0] || user?.username || '';
+  const userName = user?.firstName || (user as any)?.name?.split(' ')[0] || '';
 
   useEffect(() => {
     const loadDismissed = async () => {
