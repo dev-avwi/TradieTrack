@@ -246,6 +246,9 @@ function StylePresetsWithPreview() {
     // Only proceed if we have business data
     if (!business) return;
     
+    // Mark as loaded FIRST to prevent any re-runs
+    hasLoadedInitialTemplateRef.current = true;
+    
     if (business.documentTemplate) {
       let serverTemplateId = business.documentTemplate as TemplateId;
       // Backward compatibility: map legacy 'standard' to 'professional'
@@ -254,13 +257,10 @@ function StylePresetsWithPreview() {
       }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
-        hasLoadedInitialTemplateRef.current = true;
       }
-    } else {
-      // No documentTemplate set - default to 'professional' and mark as loaded
-      setSelectedTemplateId('professional');
-      hasLoadedInitialTemplateRef.current = true;
+      // If template is not recognized, keep the default 'professional'
     }
+    // If no documentTemplate set, keep the default 'professional'
   }, [business]);
 
   // Load saved customization from business settings (runs once on load)
@@ -297,24 +297,17 @@ function StylePresetsWithPreview() {
     }
   };
 
-  // Sync template selection to both style preset AND business settings (for PDF generation)
+  // Sync template selection to business settings (for PDF generation)
+  // Note: We only update business settings - it's the single source of truth
   const updateTemplateMutation = useMutation({
     mutationFn: async (templateId: TemplateId) => {
-      // Update business settings for PDF generation
       await apiRequest("PATCH", "/api/business-settings", {
         documentTemplate: templateId,
       });
-      
-      // Also update style preset if exists
-      if (defaultPreset) {
-        await apiRequest("PATCH", `/api/style-presets/${defaultPreset.id}`, {
-          headerLayout: templateId,
-        });
-      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/style-presets"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] });
+      // Don't invalidate here - we've already updated local state
+      // Invalidating causes unnecessary refetch and potential flicker
     },
   });
 
