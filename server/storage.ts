@@ -4771,6 +4771,23 @@ Thank you for your prompt attention to this matter.`,
         userId,
         family: 'checklist',
         purpose: 'general',
+        name: 'Plumbing Safety Checklist',
+        description: 'WHS safety checklist for plumbing work',
+        isDefault: false,
+        isActive: true,
+        content: 'Plumbing Safety Checklist',
+        sections: [
+          { id: 'ppe', title: 'PPE Requirements', items: ['Safety glasses worn', 'Gloves worn for chemicals', 'Steel cap boots worn', 'Hearing protection if using power tools'] },
+          { id: 'hazards', title: 'Hazard Check', items: ['Hot water system isolated', 'Gas supply checked', 'Confined space assessed', 'Asbestos check completed'] },
+          { id: 'tools', title: 'Tool Safety', items: ['Pipe cutter guards in place', 'Blowtorch area cleared', 'Electrical tools RCD tested', 'Lifting equipment rated'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'plumbing' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
         name: 'Electrical Job Checklist',
         description: 'Job completion checklist for electrical work',
         isDefault: false,
@@ -4780,6 +4797,23 @@ Thank you for your prompt attention to this matter.`,
           { id: 'prep', title: 'Pre-Work', items: ['Power isolated and locked out', 'Circuits identified', 'Voltage tested', 'PPE worn'] },
           { id: 'work', title: 'Work Completed', items: ['Wiring installed to AS/NZS 3000', 'Connections secure', 'Insulation tested', 'Circuit breakers tested'] },
           { id: 'finish', title: 'Sign-off', items: ['Power restored safely', 'Certificate of compliance issued', 'Client briefed on work', 'Photos documented'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'electrical' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
+        name: 'Electrical Safety Checklist',
+        description: 'WHS safety checklist for electrical work',
+        isDefault: false,
+        isActive: true,
+        content: 'Electrical Safety Checklist',
+        sections: [
+          { id: 'isolation', title: 'Isolation Procedures', items: ['Lockout/tagout applied', 'Voltage tested at point of work', 'Adjacent circuits identified', 'Rescue equipment nearby'] },
+          { id: 'ppe', title: 'PPE Requirements', items: ['Insulated gloves worn', 'Safety glasses worn', 'Non-conductive footwear', 'Arc flash protection if required'] },
+          { id: 'tools', title: 'Tool Safety', items: ['Insulated tools used', 'Test equipment calibrated', 'Leads in good condition', 'RCD protection on power tools'] }
         ],
         mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
         metadata: { formType: 'checklist', tradeType: 'electrical' },
@@ -4805,6 +4839,23 @@ Thank you for your prompt attention to this matter.`,
         userId,
         family: 'checklist',
         purpose: 'general',
+        name: 'Carpentry Safety Checklist',
+        description: 'WHS safety checklist for carpentry work',
+        isDefault: false,
+        isActive: true,
+        content: 'Carpentry Safety Checklist',
+        sections: [
+          { id: 'ppe', title: 'PPE Requirements', items: ['Safety glasses worn', 'Hearing protection worn', 'Dust mask worn', 'Steel cap boots worn'] },
+          { id: 'tools', title: 'Tool Safety', items: ['Saw guards in place', 'Blades sharp and undamaged', 'Power leads in good condition', 'Dust extraction connected'] },
+          { id: 'site', title: 'Site Safety', items: ['Work area barricaded', 'Trip hazards removed', 'Ventilation adequate', 'Fire extinguisher nearby'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'carpentry' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
         name: 'Roofing Job Checklist',
         description: 'Job completion checklist for roofing work',
         isDefault: false,
@@ -4814,6 +4865,23 @@ Thank you for your prompt attention to this matter.`,
           { id: 'safety', title: 'Safety Setup', items: ['Edge protection installed', 'Harness and anchor points checked', 'Weather conditions safe', 'Area below secured'] },
           { id: 'work', title: 'Work Completed', items: ['Roof sheets/tiles secured', 'Flashings installed correctly', 'Gutters and downpipes connected', 'No visible gaps or damage'] },
           { id: 'finish', title: 'Final Inspection', items: ['Roof watertight', 'All debris cleared', 'Ground area cleaned', 'Client walkthrough done'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'roofing' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
+        name: 'Roofing Safety Checklist',
+        description: 'WHS safety checklist for roofing work',
+        isDefault: false,
+        isActive: true,
+        content: 'Roofing Safety Checklist',
+        sections: [
+          { id: 'heights', title: 'Working at Heights', items: ['Edge protection installed', 'Harness fitted correctly', 'Anchor points rated and secure', 'Rescue plan in place'] },
+          { id: 'ppe', title: 'PPE Requirements', items: ['Hard hat worn', 'Non-slip footwear worn', 'Hi-vis vest worn', 'Gloves worn for handling materials'] },
+          { id: 'conditions', title: 'Conditions Check', items: ['Weather suitable for work', 'Roof surface not wet/slippery', 'Wind speed acceptable', 'No electrical hazards nearby'] }
         ],
         mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
         metadata: { formType: 'checklist', tradeType: 'roofing' },
@@ -4839,6 +4907,23 @@ Thank you for your prompt attention to this matter.`,
         userId,
         family: 'checklist',
         purpose: 'general',
+        name: 'Painting Safety Checklist',
+        description: 'WHS safety checklist for painting work',
+        isDefault: false,
+        isActive: true,
+        content: 'Painting Safety Checklist',
+        sections: [
+          { id: 'ventilation', title: 'Ventilation', items: ['Adequate ventilation provided', 'Windows/doors open', 'Extraction fan if required', 'Fresh air breaks scheduled'] },
+          { id: 'ppe', title: 'PPE Requirements', items: ['Respirator/mask worn', 'Safety glasses worn', 'Protective clothing worn', 'Gloves worn'] },
+          { id: 'heights', title: 'Working at Heights', items: ['Ladder in good condition', 'Scaffold properly assembled', 'Fall protection if over 2m', 'Area below clear'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'painting' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
         name: 'HVAC Job Checklist',
         description: 'Job completion checklist for HVAC work',
         isDefault: false,
@@ -4848,6 +4933,23 @@ Thank you for your prompt attention to this matter.`,
           { id: 'prep', title: 'Pre-Installation', items: ['Power isolated', 'Refrigerant lines prepared', 'Mounting locations confirmed', 'Condensate drain planned'] },
           { id: 'work', title: 'Installation Completed', items: ['Unit mounted securely', 'Piping connected and leak-tested', 'Electrical connections safe', 'Thermostat programmed'] },
           { id: 'test', title: 'Testing', items: ['Cooling mode tested', 'Heating mode tested', 'Airflow adequate', 'No unusual noises'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'hvac' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
+        name: 'HVAC Safety Checklist',
+        description: 'WHS safety checklist for HVAC work',
+        isDefault: false,
+        isActive: true,
+        content: 'HVAC Safety Checklist',
+        sections: [
+          { id: 'refrigerant', title: 'Refrigerant Handling', items: ['Refrigerant recovery equipment ready', 'Leak detector calibrated', 'Proper ventilation ensured', 'Refrigerant licence current'] },
+          { id: 'electrical', title: 'Electrical Safety', items: ['Power isolated before work', 'Lockout/tagout applied', 'Voltage tested', 'Correct fuse ratings used'] },
+          { id: 'ppe', title: 'PPE Requirements', items: ['Safety glasses worn', 'Gloves worn for refrigerant', 'Hearing protection if needed', 'Steel cap boots worn'] }
         ],
         mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
         metadata: { formType: 'checklist', tradeType: 'hvac' },
@@ -4873,6 +4975,23 @@ Thank you for your prompt attention to this matter.`,
         userId,
         family: 'checklist',
         purpose: 'general',
+        name: 'Tiling Safety Checklist',
+        description: 'WHS safety checklist for tiling work',
+        isDefault: false,
+        isActive: true,
+        content: 'Tiling Safety Checklist',
+        sections: [
+          { id: 'ppe', title: 'PPE Requirements', items: ['Knee pads worn', 'Safety glasses worn', 'Dust mask worn when cutting', 'Gloves worn for adhesives/grout'] },
+          { id: 'cutting', title: 'Tile Cutting Safety', items: ['Wet saw water supply adequate', 'Blade guard in place', 'Cutting area clear', 'Eye and ear protection'] },
+          { id: 'chemicals', title: 'Chemical Safety', items: ['Adhesive SDS available', 'Grout handling precautions', 'Ventilation adequate', 'Clean water for washing'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'tiling' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
         name: 'Landscaping Job Checklist',
         description: 'Job completion checklist for landscaping work',
         isDefault: false,
@@ -4882,6 +5001,23 @@ Thank you for your prompt attention to this matter.`,
           { id: 'prep', title: 'Site Prep', items: ['Area cleared', 'Soil prepared', 'Drainage considered', 'Materials on site'] },
           { id: 'work', title: 'Work Completed', items: ['Plants installed correctly', 'Hardscaping level', 'Irrigation connected', 'Mulch applied'] },
           { id: 'finish', title: 'Clean-up', items: ['Debris removed', 'Watering completed', 'Care instructions provided', 'Photos taken'] }
+        ],
+        mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
+        metadata: { formType: 'checklist', tradeType: 'landscaping' },
+      },
+      {
+        userId,
+        family: 'checklist',
+        purpose: 'general',
+        name: 'Landscaping Safety Checklist',
+        description: 'WHS safety checklist for landscaping work',
+        isDefault: false,
+        isActive: true,
+        content: 'Landscaping Safety Checklist',
+        sections: [
+          { id: 'equipment', title: 'Equipment Safety', items: ['Mower guards in place', 'Chainsaw chain tension correct', 'Fuel stored safely', 'Equipment serviced'] },
+          { id: 'ppe', title: 'PPE Requirements', items: ['Safety glasses/face shield worn', 'Hearing protection worn', 'Steel cap boots worn', 'Gloves worn'] },
+          { id: 'site', title: 'Site Safety', items: ['Underground services located', 'Work area barricaded', 'Sun protection used', 'Hydration available'] }
         ],
         mergeFields: ['job_title', 'job_address', 'date', 'worker_name'],
         metadata: { formType: 'checklist', tradeType: 'landscaping' },
@@ -4939,8 +5075,27 @@ Thank you for your prompt attention to this matter.`,
       },
     ];
 
+    // Get user's trade type from business settings
+    const businessSettings = await this.getBusinessSettings(userId);
+    const userTradeType = businessSettings?.tradeType?.toLowerCase() || 'general';
+    
+    // Filter checklists: keep general ones + trade-specific for user's trade
+    const filteredTemplates = defaultTemplates.filter(template => {
+      // Always include non-checklist templates (email, sms, terms, warranty, safety_form)
+      if (template.family !== 'checklist') return true;
+      
+      // For checklists, check the tradeType in metadata
+      const templateTradeType = (template.metadata as any)?.tradeType?.toLowerCase() || 'general';
+      
+      // Keep general checklists (Pre-Start, End of Day, Tool & Equipment, General Job Completion)
+      if (templateTradeType === 'general') return true;
+      
+      // Keep trade-specific checklists only if they match the user's trade
+      return templateTradeType === userTradeType;
+    });
+
     const created: BusinessTemplate[] = [];
-    for (const template of defaultTemplates) {
+    for (const template of filteredTemplates) {
       const result = await this.createBusinessTemplate(template);
       created.push(result);
     }
