@@ -822,6 +822,18 @@ export default function CollectScreen() {
   const [customAmountValue, setCustomAmountValue] = useState('');
   const [customAmountDescription, setCustomAmountDescription] = useState('');
   
+  // SMS Status and Setup Modal state
+  const [smsStatus, setSmsStatus] = useState<{
+    connected: boolean;
+    setupRequired: boolean;
+    setupInstructions?: {
+      title: string;
+      description: string;
+      steps: string[];
+    };
+  } | null>(null);
+  const [showSmsSetupModal, setShowSmsSetupModal] = useState(false);
+  
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
   const terminal = useStripeTerminal();
@@ -855,11 +867,33 @@ export default function CollectScreen() {
     }
   }, []);
 
+  // Fetch SMS status
+  const fetchSmsStatus = useCallback(async () => {
+    try {
+      const response = await api.get<{
+        connected: boolean;
+        setupRequired: boolean;
+        setupInstructions?: {
+          title: string;
+          description: string;
+          steps: string[];
+        };
+      }>('/api/sms/status');
+      if (response.data) {
+        setSmsStatus(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch SMS status:', error);
+      // Default to not connected if fetch fails
+      setSmsStatus({ connected: false, setupRequired: true });
+    }
+  }, []);
+
   const refreshData = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([fetchInvoices(), fetchClients(), fetchReceipts()]);
+    await Promise.all([fetchInvoices(), fetchClients(), fetchReceipts(), fetchSmsStatus()]);
     setIsLoading(false);
-  }, [fetchInvoices, fetchClients, fetchReceipts]);
+  }, [fetchInvoices, fetchClients, fetchReceipts, fetchSmsStatus]);
 
   useEffect(() => {
     refreshData();
@@ -1137,6 +1171,12 @@ export default function CollectScreen() {
 
   // Send receipt via SMS
   const sendReceiptSMS = async () => {
+    // Check if SMS is configured
+    if (smsStatus?.setupRequired || !smsStatus?.connected) {
+      setShowSmsSetupModal(true);
+      return;
+    }
+    
     setSendingReceipt(true);
     try {
       const recipientPhone = manualPhone || selectedInvoice?.clientPhone;
@@ -1160,7 +1200,9 @@ export default function CollectScreen() {
       handleCloseReceiptModal();
     } catch (error: any) {
       console.error('Failed to send SMS receipt:', error);
-      if (error?.message?.includes('disabled')) {
+      if (error?.message?.includes('disabled') || error?.response?.data?.error?.includes('not configured')) {
+        setShowSmsSetupModal(true);
+      } else if (error?.message?.includes('disabled')) {
         Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead.');
       } else {
         Alert.alert('Error', 'Failed to send SMS. Please try again.');
@@ -1334,6 +1376,12 @@ export default function CollectScreen() {
   };
 
   const sendPaymentLinkViaSMS = async () => {
+    // Check if SMS is configured
+    if (smsStatus?.setupRequired || !smsStatus?.connected) {
+      setShowSmsSetupModal(true);
+      return;
+    }
+    
     if (!paymentLinkRequest?.id) return;
     
     const phone = linkRecipientPhone.trim();
@@ -1352,7 +1400,9 @@ export default function CollectScreen() {
       handleClosePaymentLinkModal();
     } catch (error: any) {
       console.error('Failed to send SMS:', error);
-      if (error?.response?.data?.error?.includes('disabled')) {
+      if (error?.response?.data?.error?.includes('not configured')) {
+        setShowSmsSetupModal(true);
+      } else if (error?.response?.data?.error?.includes('disabled')) {
         Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead, or copy the link to share manually.');
       } else {
         Alert.alert('Error', 'Failed to send payment link via SMS');
@@ -1435,6 +1485,12 @@ export default function CollectScreen() {
 
   // Send payment link via SMS from resend modal
   const handleResendViaSMS = async () => {
+    // Check if SMS is configured
+    if (smsStatus?.setupRequired || !smsStatus?.connected) {
+      setShowSmsSetupModal(true);
+      return;
+    }
+    
     if (!resendRequest?.id) return;
     
     const phone = resendPhone.trim();
@@ -1453,8 +1509,12 @@ export default function CollectScreen() {
       fetchReceipts();
     } catch (error: any) {
       console.error('Failed to send SMS:', error);
-      const errorMsg = error?.response?.data?.error || 'Failed to send payment link via SMS';
-      Alert.alert('Error', errorMsg);
+      if (error?.response?.data?.error?.includes('not configured')) {
+        setShowSmsSetupModal(true);
+      } else {
+        const errorMsg = error?.response?.data?.error || 'Failed to send payment link via SMS';
+        Alert.alert('Error', errorMsg);
+      }
     } finally {
       setResendingLink(false);
     }
@@ -3001,9 +3061,107 @@ export default function CollectScreen() {
         {renderRecordPaymentModal()}
         {renderInvoicePickerModal()}
         {renderCustomAmountModal()}
+        {renderSmsSetupModal()}
       </View>
     </>
   );
+
+  function renderSmsSetupModal() {
+    const instructions = smsStatus?.setupInstructions;
+    
+    return (
+      <Modal
+        visible={showSmsSetupModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSmsSetupModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Set Up SMS Messaging</Text>
+            <TouchableOpacity onPress={() => setShowSmsSetupModal(false)} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+              <View style={[styles.readyIcon, { backgroundColor: colors.warningLight }]}>
+                <Feather name="message-circle" size={48} color={colors.warning} />
+              </View>
+              <Text style={[styles.successTitle, { marginTop: spacing.lg }]}>
+                SMS Not Configured
+              </Text>
+              <Text style={[styles.modalStepSubtitle, { textAlign: 'center', marginTop: spacing.sm }]}>
+                {instructions?.description || "To send SMS messages to your clients, you need to connect your own Twilio account."}
+              </Text>
+            </View>
+
+            <View style={{ 
+              backgroundColor: colors.card, 
+              borderRadius: radius.lg, 
+              padding: spacing.lg,
+              borderWidth: 1,
+              borderColor: colors.border
+            }}>
+              <Text style={[styles.sectionLabel, { marginBottom: spacing.md }]}>
+                Quick Setup Guide
+              </Text>
+              
+              {(instructions?.steps || [
+                "Create a free Twilio account at twilio.com",
+                "Get your Account SID and Auth Token from the Twilio Console",
+                "Purchase or verify a phone number in Twilio",
+                "Go to Settings > Integrations on the web app to enter your credentials"
+              ]).map((step, index) => (
+                <View key={index} style={{ flexDirection: 'row', marginBottom: spacing.sm }}>
+                  <View style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: 12, 
+                    backgroundColor: colors.primary, 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginRight: spacing.sm
+                  }}>
+                    <Text style={{ color: colors.primaryForeground, fontSize: 12, fontWeight: 'bold' }}>
+                      {index + 1}
+                    </Text>
+                  </View>
+                  <Text style={{ flex: 1, color: colors.foreground, fontSize: 14 }}>
+                    {step}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ 
+              backgroundColor: colors.infoLight, 
+              borderRadius: radius.lg, 
+              padding: spacing.lg,
+              marginTop: spacing.lg
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+                <Feather name="info" size={16} color={colors.info} />
+                <Text style={{ marginLeft: spacing.xs, color: colors.info, fontWeight: '600' }}>
+                  Why your own Twilio account?
+                </Text>
+              </View>
+              <Text style={{ color: colors.foreground, fontSize: 13 }}>
+                Each business sets up their own Twilio account to keep your SMS costs separate and give you full control over your messaging. Twilio offers pay-as-you-go pricing with no monthly fees.
+              </Text>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <Button variant="outline" onPress={() => setShowSmsSetupModal(false)} fullWidth>
+              Got It
+            </Button>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   function renderReceiptModal() {
     return (
