@@ -2250,9 +2250,21 @@ export class PostgresStorage implements IStorage {
       return existing.filter(t => t.isDefault);
     }
 
-    // Use balanced templates from tradieTemplates.ts (81 templates: 9 trades × 9 templates each)
+    // Get user's trade type from business settings
+    const businessSettings = await this.getBusinessSettings(userId);
+    const userTradeType = businessSettings?.tradeType?.toLowerCase() || 'general';
+
+    // Filter templates: keep general ones + trade-specific for user's trade
+    const filteredTemplates = tradieQuoteTemplates.filter(template => {
+      const templateTradeType = template.tradeType?.toLowerCase() || 'general';
+      // Keep general templates (always)
+      if (templateTradeType === 'general') return true;
+      // Keep trade-specific templates only if they match the user's trade
+      return templateTradeType === userTradeType;
+    });
+
     const createdTemplates: DocumentTemplate[] = [];
-    for (const template of tradieQuoteTemplates) {
+    for (const template of filteredTemplates) {
       const created = await this.createDocumentTemplate({
         userId,
         type: template.type,
@@ -3704,8 +3716,21 @@ export class PostgresStorage implements IStorage {
       return existing;
     }
 
+    // Get user's trade type from business settings
+    const businessSettings = await this.getBusinessSettings(userId);
+    const userTradeType = businessSettings?.tradeType?.toLowerCase() || 'general';
+
+    // Filter safety forms: keep general ones + trade-specific for user's trade
+    const filteredForms = tradieSafetyForms.filter(formDef => {
+      const formTradeType = formDef.tradeType?.toLowerCase() || 'general';
+      // Keep general forms (always)
+      if (formTradeType === 'general') return true;
+      // Keep trade-specific forms only if they match the user's trade
+      return formTradeType === userTradeType;
+    });
+
     const created: CustomForm[] = [];
-    for (const formDef of tradieSafetyForms) {
+    for (const formDef of filteredForms) {
       try {
         const form = await this.createCustomForm({
           userId,

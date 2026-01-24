@@ -235,7 +235,7 @@ function StylePresetsWithPreview() {
   const [hasLoadedSavedSettings, setHasLoadedSavedSettings] = useState(false);
   
   // Track if initial template has been loaded from server (only sync once on mount)
-  const hasLoadedInitialTemplateRef = React.useRef(false);
+  const hasLoadedInitialTemplateRef = useRef(false);
 
   // Sync selected template from business settings ONLY on initial load
   // Uses a ref to ensure this NEVER runs more than once, preventing all flicker
