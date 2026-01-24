@@ -69,6 +69,24 @@ interface BusinessSettingsChangedEvent {
   timestamp: number;
 }
 
+interface TemplateChangedEvent {
+  type: 'template_changed';
+  action: 'created' | 'updated' | 'deleted';
+  templateId: string;
+  templateType?: string;
+  templateName?: string;
+  timestamp: number;
+}
+
+interface FormChangedEvent {
+  type: 'form_changed';
+  action: 'created' | 'updated' | 'deleted';
+  formId: string;
+  formType?: string;
+  formName?: string;
+  timestamp: number;
+}
+
 type RealtimeEvent = 
   | JobStatusEvent 
   | TimerEvent 
@@ -76,7 +94,9 @@ type RealtimeEvent =
   | PaymentReceivedEvent 
   | SmsNotificationEvent
   | NotificationEvent
-  | BusinessSettingsChangedEvent;
+  | BusinessSettingsChangedEvent
+  | TemplateChangedEvent
+  | FormChangedEvent;
 
 interface UseRealtimeUpdatesOptions {
   businessId: string;
@@ -197,6 +217,18 @@ export function useRealtimeUpdates({
         // with React Query's stale state during refetch.
         // Cross-device sync will still work because TanStack Query has refetchOnWindowFocus.
         break;
+
+      case 'template_changed':
+        // Invalidate template queries for cross-device sync
+        safeInvalidateQueries({ queryKey: ['/api/templates'] });
+        safeInvalidateQueries({ queryKey: ['/api/style-presets'] });
+        safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
+        break;
+
+      case 'form_changed':
+        // Invalidate form queries for cross-device sync
+        safeInvalidateQueries({ queryKey: ['/api/custom-forms'] });
+        break;
     }
   }, [toast]);
 
@@ -233,7 +265,9 @@ export function useRealtimeUpdates({
             'payment_received',
             'sms_notification',
             'notification',
-            'business_settings_changed'
+            'business_settings_changed',
+            'template_changed',
+            'form_changed'
           ].includes(message.type)) {
             handleMessage(message as RealtimeEvent);
           }

@@ -388,3 +388,47 @@ export function broadcastBusinessSettingsChange(
   });
   console.log(`[WebSocket] ⚙️ Business settings changed: ${settingsDetails.updatedFields.join(', ')}`);
 }
+
+/**
+ * Broadcast document template change to all connected business users
+ * Used for syncing document templates (quotes, invoices, jobs) across web and mobile
+ */
+export function broadcastTemplateChange(
+  businessId: string,
+  action: 'created' | 'updated' | 'deleted',
+  templateDetails: {
+    templateId: string;
+    templateType?: string;
+    templateName?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'template_changed',
+    action,
+    ...templateDetails,
+    timestamp: Date.now(),
+  });
+  console.log(`[WebSocket] 📄 Template ${action}: ${templateDetails.templateName || templateDetails.templateId}`);
+}
+
+/**
+ * Broadcast custom form change to all connected business users
+ * Used for syncing safety forms and custom forms across web and mobile
+ */
+export function broadcastFormChange(
+  businessId: string,
+  action: 'created' | 'updated' | 'deleted',
+  formDetails: {
+    formId: string;
+    formType?: string;
+    formName?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'form_changed',
+    action,
+    ...formDetails,
+    timestamp: Date.now(),
+  });
+  console.log(`[WebSocket] 📋 Form ${action}: ${formDetails.formName || formDetails.formId}`);
+}

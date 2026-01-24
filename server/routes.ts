@@ -13377,6 +13377,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = insertDocumentTemplateSchema.parse(req.body);
       const template = await storage.createDocumentTemplate({ ...data, userId: req.userId });
+      
+      // Broadcast template change for cross-device sync
+      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
+      const teamMembership = await storage.getTeamMembershipByMemberId(req.userId);
+      const businessId = teamMembership?.ownerId || req.userId;
+      const { broadcastTemplateChange } = await import('./websocket');
+      broadcastTemplateChange(businessId, 'created', {
+        templateId: template.id,
+        templateType: template.type,
+        templateName: template.name,
+      });
+      
       res.status(201).json(template);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -13391,6 +13403,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = insertDocumentTemplateSchema.partial().parse(req.body);
       const template = await storage.updateDocumentTemplate(req.params.id, data);
+      
+      // Broadcast template change for cross-device sync
+      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
+      const teamMembership = await storage.getTeamMembershipByMemberId(req.userId);
+      const businessId = teamMembership?.ownerId || req.userId;
+      const { broadcastTemplateChange } = await import('./websocket');
+      broadcastTemplateChange(businessId, 'updated', {
+        templateId: template.id,
+        templateType: template.type,
+        templateName: template.name,
+      });
+      
       res.json(template);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -13404,6 +13428,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/templates/:id", requireAuth, async (req: any, res) => {
     try {
       await storage.deleteDocumentTemplate(req.params.id);
+      
+      // Broadcast template change for cross-device sync
+      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
+      const teamMembership = await storage.getTeamMembershipByMemberId(req.userId);
+      const businessId = teamMembership?.ownerId || req.userId;
+      const { broadcastTemplateChange } = await import('./websocket');
+      broadcastTemplateChange(businessId, 'deleted', {
+        templateId: req.params.id,
+      });
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting template:", error);
@@ -22542,6 +22576,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       });
       
+      // Broadcast form change for cross-device sync
+      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessId = teamMembership?.ownerId || userId;
+      const { broadcastFormChange } = await import('./websocket');
+      broadcastFormChange(businessId, 'created', {
+        formId: form.id,
+        formType: form.formType || undefined,
+        formName: form.name,
+      });
+      
       res.status(201).json(form);
     } catch (error: any) {
       console.error('Error creating custom form:', error);
@@ -22561,6 +22606,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Form not found' });
       }
       
+      // Broadcast form change for cross-device sync
+      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessId = teamMembership?.ownerId || userId;
+      const { broadcastFormChange } = await import('./websocket');
+      broadcastFormChange(businessId, 'updated', {
+        formId: form.id,
+        formType: form.formType || undefined,
+        formName: form.name,
+      });
+      
       res.json(form);
     } catch (error: any) {
       console.error('Error updating custom form:', error);
@@ -22579,6 +22635,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) {
         return res.status(404).json({ error: 'Form not found' });
       }
+      
+      // Broadcast form change for cross-device sync
+      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessId = teamMembership?.ownerId || userId;
+      const { broadcastFormChange } = await import('./websocket');
+      broadcastFormChange(businessId, 'deleted', {
+        formId: id,
+      });
       
       res.json({ success: true });
     } catch (error: any) {
