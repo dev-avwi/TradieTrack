@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useLocation, useSearch } from "wouter";
@@ -40,7 +41,8 @@ import {
   Smartphone,
   Building2,
   Info,
-  Send
+  Send,
+  MessageSquare
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
@@ -567,6 +569,14 @@ export default function CollectPayment() {
   // State for SMS sending
   const [isSendingSms, setIsSendingSms] = useState(false);
   
+  // Open SMS app with pre-composed message
+  const openSmsApp = (phone: string, paymentLink: string, description: string, amount: number) => {
+    const formattedAmount = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount / 100);
+    const message = `Hi! Here's your payment link for ${description || 'your payment'} (${formattedAmount}): ${paymentLink}`;
+    const smsUrl = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    window.open(smsUrl, '_self');
+  };
+
   // Handle SMS send with direct error handling
   const handleSendSms = async (id: string, phone: string) => {
     setIsSendingSms(true);
@@ -594,11 +604,24 @@ export default function CollectPayment() {
                               lowerMessage.includes('credentials') ||
                               lowerMessage.includes('invalid username');
       
+      // Get current request details for manual SMS fallback
+      const currentRequest = selectedRequest;
+      const paymentLink = currentRequest?.paymentUrl || `${window.location.origin}/pay/${id}`;
+      
       if (isNotConfigured) {
         toast({
           title: "SMS not set up",
-          description: "Set up Twilio in Settings > Integrations to send SMS.",
+          description: "Tap 'Open SMS App' to send manually, or set up Twilio in Settings.",
           variant: "destructive",
+          action: (
+            <ToastAction
+              altText="Open SMS App"
+              onClick={() => openSmsApp(phone, paymentLink, currentRequest?.description || '', currentRequest?.amount || 0)}
+            >
+              <MessageSquare className="h-3 w-3 mr-1" />
+              Open SMS App
+            </ToastAction>
+          ),
         });
       } else {
         // Try to extract a user-friendly message
@@ -615,8 +638,17 @@ export default function CollectPayment() {
         
         toast({
           title: "Failed to send SMS",
-          description: displayMessage,
+          description: "Tap 'Open SMS App' to send manually.",
           variant: "destructive",
+          action: (
+            <ToastAction
+              altText="Open SMS App"
+              onClick={() => openSmsApp(phone, paymentLink, currentRequest?.description || '', currentRequest?.amount || 0)}
+            >
+              <MessageSquare className="h-3 w-3 mr-1" />
+              Open SMS App
+            </ToastAction>
+          ),
         });
       }
     } finally {
