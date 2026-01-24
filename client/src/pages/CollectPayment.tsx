@@ -39,7 +39,8 @@ import {
   Zap,
   Smartphone,
   Building2,
-  Info
+  Info,
+  Send
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
@@ -560,6 +561,50 @@ export default function CollectPayment() {
         title: "Failed to send email",
         variant: "destructive",
       });
+    },
+  });
+
+  const sendSmsMutation = useMutation({
+    mutationFn: async ({ id, phone }: { id: string; phone: string }) => {
+      await apiRequest('POST', `/api/payment-requests/${id}/send-sms`, { phone });
+    },
+    onSuccess: () => {
+      setSharePhone("");
+      toast({
+        title: "SMS sent",
+        description: "Payment link sent via SMS",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
+    },
+    onError: (error: any) => {
+      let errorMessage = error.message || "Failed to send SMS";
+      if (errorMessage.includes(': ')) {
+        const parts = errorMessage.split(': ');
+        if (!isNaN(parseInt(parts[0]))) {
+          errorMessage = parts.slice(1).join(': ');
+        }
+      }
+      try {
+        const parsed = JSON.parse(errorMessage);
+        errorMessage = parsed.error || errorMessage;
+      } catch {}
+      
+      const isNotConfigured = errorMessage.toLowerCase().includes('not configured') || 
+                              errorMessage.toLowerCase().includes('twilio') ||
+                              errorMessage.toLowerCase().includes('set up');
+      if (isNotConfigured) {
+        toast({
+          title: "SMS not set up",
+          description: "Set up Twilio in Settings > Integrations to send SMS.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to send SMS",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -1479,12 +1524,14 @@ export default function CollectPayment() {
                     <div className="flex gap-2">
                       <Input
                         type="email"
-                        placeholder="customer@email.com"
+                        placeholder="Enter email address"
                         value={shareEmail}
                         onChange={(e) => setShareEmail(e.target.value)}
                         data-testid="input-email"
                       />
                       <Button
+                        size="icon"
+                        variant="ghost"
                         onClick={() => sendEmailMutation.mutate({ id: selectedRequest.id, email: shareEmail })}
                         disabled={!shareEmail || sendEmailMutation.isPending}
                         data-testid="button-send-email"
@@ -1492,11 +1539,46 @@ export default function CollectPayment() {
                         {sendEmailMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          'Send'
+                          <Send className="h-4 w-4" />
                         )}
                       </Button>
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Send via SMS</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="tel"
+                        placeholder="Enter phone number"
+                        value={sharePhone}
+                        onChange={(e) => setSharePhone(e.target.value)}
+                        data-testid="input-phone"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => sendSmsMutation.mutate({ id: selectedRequest.id, phone: sharePhone })}
+                        disabled={!sharePhone || sendSmsMutation.isPending}
+                        data-testid="button-send-sms"
+                      >
+                        {sendSmsMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  {selectedRequest.notificationsSent && (selectedRequest.notificationsSent as any[]).length > 0 && (
+                    <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground font-medium">Previously sent:</p>
+                      {(selectedRequest.notificationsSent as any[]).slice(-3).map((notification: any, idx: number) => (
+                        <p key={idx} className="text-xs text-muted-foreground">
+                          {notification.type === 'sms' ? 'SMS' : 'Email'}: {notification.phone || notification.email} ({new Date(notification.sentAt).toLocaleDateString()} {new Date(notification.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
