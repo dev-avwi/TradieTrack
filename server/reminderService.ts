@@ -1,12 +1,7 @@
 import { storage } from './storage';
 import { sendInvoiceEmail } from './emailService';
 import { notifyInvoiceOverdue } from './pushNotifications';
-
-// SMS disabled for beta - stub function
-const sendSMS = async (options: { to: string; message: string }) => {
-  console.log('[BETA] SMS disabled - would send to:', options.to);
-  return { success: true, simulated: true };
-};
+import { sendSMS } from './twilioClient';
 
 interface ReminderResult {
   invoiceId: string;

@@ -268,18 +268,14 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   await getTwilioClient();
   
   if (!isTwilioInitialized() || !twilioClient || !twilioPhoneNumber) {
-    // Demo mode - log the SMS/MMS
-    console.log(`📱 [DEMO ${isMMS ? 'MMS' : 'SMS'}]`);
+    // SMS not configured - return error instead of pretending success
+    console.log(`⚠️ [SMS NOT SENT - Twilio not configured]`);
     console.log(`   To: ${formattedTo}`);
-    console.log(`   Message: ${message}`);
-    if (isMMS) {
-      console.log(`   Media URLs: ${validMediaUrls.join(', ')}`);
-    }
-    console.log('   (Twilio not configured - message simulated)');
+    console.log(`   Message: ${message.substring(0, 50)}...`);
     return {
-      success: true,
-      simulated: true,
-      messageId: `demo_${Date.now()}`
+      success: false,
+      notConfigured: true,
+      error: 'SMS not configured. Please set up Twilio in Settings > Integrations to send text messages.'
     };
   }
 

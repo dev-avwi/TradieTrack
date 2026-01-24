@@ -2891,19 +2891,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        try {
-          await sendSMS({
-            to: recipientPhone,
-            message: action.data.message
-          });
+        const smsResult = await sendSMS({
+          to: recipientPhone,
+          message: action.data.message
+        });
+        
+        if (smsResult.success) {
           return res.json({ 
             success: true, 
             message: `SMS sent to ${action.data.clientName}!` 
           });
-        } catch (smsError: any) {
+        } else {
           return res.json({ 
             success: false, 
-            message: smsError.message || "Failed to send SMS" 
+            message: smsResult.notConfigured 
+              ? 'SMS not configured. Set up Twilio in Settings > Integrations.'
+              : (smsResult.error || 'Failed to send SMS')
           });
         }
       }
@@ -9237,31 +9240,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: message
       });
 
-      // Log activity - handles both real SMS and demo mode
+      // Log activity
       await logActivity(
         userContext.effectiveUserId,
         'job_started',
         `On My Way - ${job.title || 'Job'}`,
-        smsResult.simulated 
-          ? `On My Way notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`
-          : `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
+        smsResult.success 
+          ? `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`
+          : `On My Way notification failed - SMS not configured`,
         'job',
         job.id,
         { 
           clientName: client.firstName, 
           clientPhone: client.phone,
-          demoMode: smsResult.simulated || false
+          smsSent: smsResult.success
         }
       );
 
-      if (!smsResult.success && !smsResult.simulated) {
-        return res.status(500).json({ error: `Failed to send SMS: ${smsResult.error || 'Unknown error'}` });
+      if (!smsResult.success) {
+        return res.status(400).json({ 
+          error: smsResult.error || 'Failed to send SMS',
+          notConfigured: smsResult.notConfigured || false
+        });
       }
 
       res.json({ 
         success: true, 
-        message: smsResult.simulated ? 'On My Way logged (SMS not configured)' : 'On My Way notification sent',
-        demoMode: smsResult.simulated || false
+        message: 'On My Way notification sent'
       });
     } catch (error: any) {
       console.error("Error sending on-my-way notification:", error);
@@ -9304,31 +9309,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: message
       });
 
-      // Log activity - handles both real SMS and demo mode
+      // Log activity
       await logActivity(
         userContext.effectiveUserId,
         'job_started',
         `Running Late - ${job.title || 'Job'}`,
-        smsResult.simulated 
-          ? `Running Late notification logged (SMS not configured) for ${client.firstName || client.email || 'client'}`
-          : `Running Late SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`,
+        smsResult.success 
+          ? `Running Late SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`
+          : `Running Late notification failed - SMS not configured`,
         'job',
         job.id,
         { 
           clientName: client.firstName, 
           clientPhone: client.phone,
-          demoMode: smsResult.simulated || false
+          smsSent: smsResult.success
         }
       );
 
-      if (!smsResult.success && !smsResult.simulated) {
-        return res.status(500).json({ error: `Failed to send SMS: ${smsResult.error || 'Unknown error'}` });
+      if (!smsResult.success) {
+        return res.status(400).json({ 
+          error: smsResult.error || 'Failed to send SMS',
+          notConfigured: smsResult.notConfigured || false
+        });
       }
 
       res.json({ 
         success: true, 
-        message: smsResult.simulated ? 'Running Late logged (SMS not configured)' : 'Running Late notification sent',
-        demoMode: smsResult.simulated || false
+        message: 'Running Late notification sent'
       });
     } catch (error: any) {
       console.error("Error sending running-late notification:", error);
@@ -17815,21 +17822,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ 
             success: true, 
             method: 'sms', 
-            recipient: phone,
-            simulated: smsResult.simulated || false
-          });
-        } else if (smsResult.simulated) {
-          return res.json({ 
-            success: true, 
-            method: 'sms', 
-            recipient: phone,
-            simulated: true,
-            message: 'SMS simulated (Twilio not configured)'
+            recipient: phone
           });
         } else {
+          // SMS failed - return honest error
           return res.status(400).json({ 
-            error: smsResult.error || 'SMS service not configured. Please use email instead.',
-            disabled: true
+            error: smsResult.error || 'Failed to send SMS. Please use email instead.',
+            notConfigured: smsResult.notConfigured || false
           });
         }
       }
