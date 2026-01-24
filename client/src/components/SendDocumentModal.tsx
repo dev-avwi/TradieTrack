@@ -29,9 +29,9 @@ import {
   FileText,
   MessageSquare,
   Phone,
-  AlertCircle,
-  Info
+  AlertCircle
 } from "lucide-react";
+import { SmsSetupPrompt } from "./SmsSetupPrompt";
 
 type DocumentType = 'quote' | 'invoice' | 'receipt';
 type DeliveryMethod = 'email' | 'sms' | 'both';
@@ -547,10 +547,7 @@ export default function SendDocumentModal({
               </Button>
             </div>
             {!isSmsAvailable && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Info className="h-3 w-3" />
-                SMS requires Twilio integration. Connect in Settings.
-              </p>
+              <SmsSetupPrompt variant="inline" onSetupClick={onClose} />
             )}
           </div>
         </div>
