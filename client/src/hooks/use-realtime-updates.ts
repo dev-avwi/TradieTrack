@@ -219,15 +219,15 @@ export function useRealtimeUpdates({
         break;
 
       case 'template_changed':
-        // Invalidate template queries for cross-device sync
-        safeInvalidateQueries({ queryKey: ['/api/templates'] });
-        safeInvalidateQueries({ queryKey: ['/api/style-presets'] });
-        safeInvalidateQueries({ queryKey: ['/api/business-templates'] });
+        // Note: We intentionally do NOT invalidate cache here for the same reasons as
+        // business_settings_changed - the mutation that triggered the change already handles
+        // cache invalidation, and invalidating here causes flickering due to race conditions.
+        // Cross-device sync works via refetchOnWindowFocus when switching tabs/apps.
         break;
 
       case 'form_changed':
-        // Invalidate form queries for cross-device sync
-        safeInvalidateQueries({ queryKey: ['/api/custom-forms'] });
+        // Note: We intentionally do NOT invalidate cache here for the same reasons as above.
+        // Cross-device sync works via refetchOnWindowFocus when switching tabs/apps.
         break;
     }
   }, [toast]);

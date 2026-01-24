@@ -179,6 +179,7 @@ interface TeamState {
 
 interface AuthState {
   user: User | null;
+  token: string | null;
   businessSettings: BusinessSettings | null;
   roleInfo: RoleInfo | null;
   teamState: TeamState;
@@ -210,6 +211,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
+  token: null,
   businessSettings: null,
   roleInfo: null,
   teamState: { hasActiveTeam: false, activeTeamCount: 0, members: [], isLoading: false, lastFetched: null },
@@ -249,8 +251,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
+    // Sync token from API client to store for components that use direct fetch
+    const currentToken = await api.getToken();
+    
     set({ 
       user: response.data.user, 
+      token: currentToken,
       isAuthenticated: true, 
       isLoading: false,
       isInitialized: true,
@@ -294,6 +300,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await api.logout();
     set({ 
       user: null, 
+      token: null,
       businessSettings: null,
       roleInfo: null,
       teamState: { hasActiveTeam: false, activeTeamCount: 0, members: [], isLoading: false, lastFetched: null },
@@ -326,6 +333,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!api.hasToken()) {
       set({ 
         user: null, 
+        token: null,
         isAuthenticated: false, 
         isLoading: false,
         isInitialized: true 
@@ -348,8 +356,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ...cachedAuth.roleInfo,
           permissions: Array.isArray(cachedAuth.roleInfo.permissions) ? cachedAuth.roleInfo.permissions : []
         } : null;
+        // Sync token from API client
+        const currentToken = await api.getToken();
         set({ 
           user: cachedAuth.userData, 
+          token: currentToken,
           businessSettings: cachedAuth.businessSettings,
           roleInfo: normalizedRoleInfo,
           isAuthenticated: true, 
@@ -367,6 +378,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // No cached data and offline - can't authenticate
         set({ 
           user: null, 
+          token: null,
           isAuthenticated: false, 
           isLoading: false,
           isInitialized: true 
@@ -379,19 +391,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const response = await api.getCurrentUser();
     
     if (response.error) {
-      // Server auth failed - check if we have cached data as fallback
-      // This handles cases where the server is unreachable but we have cached data
+      // Check if this is an authentication failure (token invalid/expired) vs network error
+      const isAuthError = response.error === 'Authentication required' || 
+                          response.error === 'User not found' ||
+                          response.error.includes('401') ||
+                          response.error.includes('Unauthorized');
+      
+      if (isAuthError) {
+        // Token is invalid - clear everything and require re-login
+        console.log('[Auth] Token invalid, clearing auth state');
+        await api.setToken(null);
+        await offlineStorage.clearCachedAuthData();
+        set({ 
+          user: null, 
+          token: null,
+          isAuthenticated: false, 
+          isLoading: false,
+          isInitialized: true 
+        });
+        return;
+      }
+      
+      // Network error or server unreachable - try cached data as fallback
       const cachedAuth = await offlineStorage.getCachedAuthData();
       
       if (cachedAuth && cachedAuth.userData) {
-        console.log('[Auth] Server auth failed, using cached auth data');
+        console.log('[Auth] Network error, using cached auth data for offline mode');
         // Normalize permissions to array to prevent runtime errors from old cache data
         const normalizedRoleInfo = cachedAuth.roleInfo ? {
           ...cachedAuth.roleInfo,
           permissions: Array.isArray(cachedAuth.roleInfo.permissions) ? cachedAuth.roleInfo.permissions : []
         } : null;
+        // Sync token from API client (token may work when network returns)
+        const currentToken = await api.getToken();
         set({ 
           user: cachedAuth.userData, 
+          token: currentToken,
           businessSettings: cachedAuth.businessSettings,
           roleInfo: normalizedRoleInfo,
           isAuthenticated: true, 
@@ -409,6 +444,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await api.setToken(null);
       set({ 
         user: null, 
+        token: null,
         isAuthenticated: false, 
         isLoading: false,
         isInitialized: true 
@@ -420,8 +456,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const workerPerms = response.data?.workerPermissions || [];
     const isWorkerUser = response.data?.isWorker || false;
     
+    // Sync token from API client
+    const currentToken = await api.getToken();
+    
     set({ 
       user: response.data, 
+      token: currentToken,
       workerPermissions: workerPerms,
       isWorker: isWorkerUser,
       isAuthenticated: true, 
