@@ -345,8 +345,9 @@ function StylePresetsWithPreview() {
     accentColor: customization.accentColor || DOCUMENT_ACCENT_COLOR,
   });
 
-  // Show loading until all initial data is loaded and processed to prevent flickering
-  if (isPresetsLoading || !business || !isInitialized) {
+  // Show loading ONLY on initial load - once initialized, keep showing content
+  // This prevents scroll position reset when queries temporarily fail
+  if (!isInitialized && (isPresetsLoading || !business)) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
