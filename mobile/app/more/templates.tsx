@@ -991,7 +991,7 @@ function formatCurrency(amount: number): string {
 export default function TemplatesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { token, businessSettings } = useAuthStore();
+  const { token, businessSettings, fetchBusinessSettings } = useAuthStore();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [stylePresets, setStylePresets] = useState<StylePreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<StylePreset | null>(null);
@@ -1079,12 +1079,22 @@ export default function TemplatesScreen() {
   }, [token, typeFilter]);
 
   useEffect(() => {
+    // Fetch fresh business settings to sync template style from web app
+    fetchBusinessSettings();
     fetchStylePresets();
   }, []);
 
   useEffect(() => {
     refreshData();
   }, [typeFilter]);
+
+  // Sync selected template style from business settings (primary source for cross-platform sync)
+  useEffect(() => {
+    const serverDocumentTemplate = (businessSettings as any)?.documentTemplate;
+    if (serverDocumentTemplate && ['professional', 'modern', 'minimal'].includes(serverDocumentTemplate)) {
+      setSelectedTemplateStyle(serverDocumentTemplate as TemplateId);
+    }
+  }, [(businessSettings as any)?.documentTemplate]);
 
   useEffect(() => {
     if (selectedPreset?.headerLayout) {

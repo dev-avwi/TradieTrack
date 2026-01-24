@@ -20,7 +20,10 @@ export function useBusinessSettings() {
         throw new Error('Failed to fetch business settings');
       }
       return response.json();
-    }
+    },
+    // Ensure fresh data is fetched on mount for cross-platform sync (web/mobile)
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
