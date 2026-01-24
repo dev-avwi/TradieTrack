@@ -395,7 +395,7 @@ export async function createDemoUserAndData() {
 
     // ============================================
     // CREATE 30 JOBS (with varied statuses)
-    // Status distribution: 4 pending, 8 scheduled (4 today + 4 upcoming), 4 in_progress, 6 done, 5 invoiced, 3 cancelled
+    // Status distribution: 4 pending, 8 scheduled (4 today + 4 upcoming), 6 in_progress, 6 done, 5 invoiced, 1 cancelled
     // ============================================
     const createdJobs = [];
 
@@ -527,10 +527,29 @@ export async function createDemoUserAndData() {
       createdJobs.push(createdJob);
     }
 
-    // CANCELLED JOBS (3)
+    // ADDITIONAL IN_PROGRESS JOBS (2) - converted from cancelled for better demo presentation
+    const additionalInProgressJobs = [
+      { clientIdx: 6, title: 'Pool Pump Repair', description: 'Replacing worn pool pump motor and seals', address: clientsData[6].address },
+      { clientIdx: 7, title: 'Solar Hot Water Install', description: 'Installing solar hot water system on north-facing roof', address: clientsData[7].address },
+    ];
+
+    for (const job of additionalInProgressJobs) {
+      const createdJob = await storage.createJob({
+        userId: demoUser.id,
+        clientId: createdClients[job.clientIdx].id,
+        title: job.title,
+        description: job.description,
+        address: job.address,
+        status: 'in_progress',
+        scheduledAt: getDaysAgo(1),
+        startedAt: getDaysAgo(0),
+        estimatedDuration: 180,
+      });
+      createdJobs.push(createdJob);
+    }
+
+    // CANCELLED JOBS (1) - reduced from 3 for better demo presentation
     const cancelledJobs = [
-      { clientIdx: 6, title: 'Pool Pump Repair', description: 'Customer cancelled - sold the house', address: clientsData[6].address, cancellationReason: 'Customer sold property before work could commence' },
-      { clientIdx: 7, title: 'Solar Hot Water Install', description: 'Customer went with competitor quote', address: clientsData[7].address, cancellationReason: 'Customer accepted lower quote from competitor' },
       { clientIdx: 8, title: 'Grease Trap Replacement', description: 'Commercial job - restaurant closed', address: clientsData[8].address, cancellationReason: 'Restaurant permanently closed' },
     ];
 
@@ -548,10 +567,10 @@ export async function createDemoUserAndData() {
       createdJobs.push(createdJob);
     }
 
-    console.log(`✅ ${createdJobs.length} Demo jobs created (4 pending, 8 scheduled [4 today], 4 in_progress, 6 done, 5 invoiced, 3 cancelled)`);
+    console.log(`✅ ${createdJobs.length} Demo jobs created (4 pending, 8 scheduled [4 today], 6 in_progress, 6 done, 5 invoiced, 1 cancelled)`);
 
     // ============================================
-    // CREATE QUOTES (25 total: 4 draft, 9 sent, 7 accepted, 5 rejected)
+    // CREATE QUOTES (25 total: 4 draft, 11 sent, 8 accepted, 2 rejected)
     // With line items for proper preview display
     // ============================================
 
@@ -983,20 +1002,20 @@ export async function createDemoUserAndData() {
       { description: 'Connection to stormwater', quantity: '1', unitPrice: '210.00', total: '210.00' },
     ]);
 
-    // REJECTED QUOTES (5)
-    const rejected1Num = await storage.generateQuoteNumber(demoUser.id);
+    // ADDITIONAL SENT QUOTES (3) - converted from rejected for better demo presentation
+    const extraSent1Num = await storage.generateQuoteNumber(demoUser.id);
     await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[0].id,
       title: 'Whole House Repipe',
       description: 'Replace all copper pipes with PEX throughout house',
-      status: 'rejected' as const,
+      status: 'sent' as const,
       subtotal: '12000.00',
       gstAmount: '1200.00',
       total: '13200.00',
-      validUntil: getDaysAgo(5),
-      sentAt: getDaysAgo(20),
-      number: rejected1Num,
+      validUntil: getDaysFromNow(14),
+      sentAt: getDaysAgo(3),
+      number: extraSent1Num,
     }, [
       { description: 'Remove existing copper piping throughout house', quantity: '1', unitPrice: '2500.00', total: '2500.00' },
       { description: 'Install new PEX piping system (whole house)', quantity: '1', unitPrice: '6500.00', total: '6500.00' },
@@ -1005,19 +1024,19 @@ export async function createDemoUserAndData() {
       { description: 'Make good - patch walls and ceilings', quantity: '1', unitPrice: '2200.00', total: '2200.00' },
     ]);
 
-    const rejected2Num = await storage.generateQuoteNumber(demoUser.id);
+    const extraSent2Num = await storage.generateQuoteNumber(demoUser.id);
     await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[1].id,
       title: 'Solar Hot Water System',
       description: 'Supply and install rooftop solar hot water system',
-      status: 'rejected' as const,
+      status: 'sent' as const,
       subtotal: '8500.00',
       gstAmount: '850.00',
       total: '9350.00',
-      validUntil: getDaysAgo(10),
-      sentAt: getDaysAgo(30),
-      number: rejected2Num,
+      validUntil: getDaysFromNow(21),
+      sentAt: getDaysAgo(5),
+      number: extraSent2Num,
     }, [
       { description: 'Solar collector panels (2 x 2m)', quantity: '2', unitPrice: '1800.00', total: '3600.00' },
       { description: 'Solar storage tank 315L', quantity: '1', unitPrice: '2200.00', total: '2200.00' },
@@ -1026,19 +1045,21 @@ export async function createDemoUserAndData() {
       { description: 'Installation labour (full day)', quantity: '1', unitPrice: '900.00', total: '900.00' },
     ]);
 
-    const rejected3Num = await storage.generateQuoteNumber(demoUser.id);
+    // ADDITIONAL ACCEPTED QUOTE (1) - converted from rejected for better demo presentation
+    const extraAccepted1Num = await storage.generateQuoteNumber(demoUser.id);
     await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[2].id,
       title: 'Sewer Line Replacement',
       description: 'Replace old terracotta sewer line with PVC',
-      status: 'rejected' as const,
+      status: 'accepted' as const,
       subtotal: '6500.00',
       gstAmount: '650.00',
       total: '7150.00',
-      validUntil: getDaysAgo(15),
-      sentAt: getDaysAgo(25),
-      number: rejected3Num,
+      validUntil: getDaysFromNow(30),
+      sentAt: getDaysAgo(10),
+      acceptedAt: getDaysAgo(7),
+      number: extraAccepted1Num,
     }, [
       { description: 'Excavation and trenching (25m)', quantity: '1', unitPrice: '2500.00', total: '2500.00' },
       { description: 'PVC sewer pipe supply and install', quantity: '1', unitPrice: '2200.00', total: '2200.00' },
@@ -1046,7 +1067,8 @@ export async function createDemoUserAndData() {
       { description: 'Backfill and restoration', quantity: '1', unitPrice: '1000.00', total: '1000.00' },
     ]);
 
-    const rejected4Num = await storage.generateQuoteNumber(demoUser.id);
+    // REJECTED QUOTES (2) - reduced from 5 for better demo presentation
+    const rejected1Num = await storage.generateQuoteNumber(demoUser.id);
     await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[3].id,
@@ -1058,7 +1080,7 @@ export async function createDemoUserAndData() {
       total: '20350.00',
       validUntil: getDaysAgo(8),
       sentAt: getDaysAgo(22),
-      number: rejected4Num,
+      number: rejected1Num,
     }, [
       { description: 'Complete strip-out and waterproofing', quantity: '1', unitPrice: '4500.00', total: '4500.00' },
       { description: 'Premium freestanding bath', quantity: '1', unitPrice: '5500.00', total: '5500.00' },
@@ -1066,7 +1088,7 @@ export async function createDemoUserAndData() {
       { description: 'Dual vanity with stone top', quantity: '1', unitPrice: '4000.00', total: '4000.00' },
     ]);
 
-    const rejected5Num = await storage.generateQuoteNumber(demoUser.id);
+    const rejected2Num = await storage.generateQuoteNumber(demoUser.id);
     await createQuoteWithLineItems({
       userId: demoUser.id,
       clientId: createdClients[4].id,
@@ -1078,14 +1100,14 @@ export async function createDemoUserAndData() {
       total: '7920.00',
       validUntil: getDaysAgo(12),
       sentAt: getDaysAgo(28),
-      number: rejected5Num,
+      number: rejected2Num,
     }, [
       { description: 'Grey water treatment system', quantity: '1', unitPrice: '4500.00', total: '4500.00' },
       { description: 'Diversion plumbing from bathroom/laundry', quantity: '1', unitPrice: '1500.00', total: '1500.00' },
       { description: 'Garden irrigation connections', quantity: '1', unitPrice: '1200.00', total: '1200.00' },
     ]);
 
-    console.log('✅ 25 Demo quotes created (4 draft, 9 sent, 7 accepted, 5 rejected)');
+    console.log('✅ 25 Demo quotes created (4 draft, 11 sent, 8 accepted, 2 rejected)');
 
     // ============================================
     // CREATE INVOICES (20 total: 1 draft, 1 sent, 1 overdue, 17 paid)
