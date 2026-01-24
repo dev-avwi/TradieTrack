@@ -369,3 +369,22 @@ export function broadcastNotification(
     timestamp: Date.now(),
   });
 }
+
+/**
+ * Broadcast business settings change to all connected business users
+ * Used for syncing template style preferences across web and mobile
+ */
+export function broadcastBusinessSettingsChange(
+  businessId: string,
+  settingsDetails: {
+    updatedFields: string[];
+    documentTemplate?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'business_settings_changed',
+    ...settingsDetails,
+    timestamp: Date.now(),
+  });
+  console.log(`[WebSocket] ⚙️ Business settings changed: ${settingsDetails.updatedFields.join(', ')}`);
+}

@@ -3974,6 +3974,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
       }
+      
+      // Broadcast business settings change for real-time sync across web and mobile
+      const updatedFields = Object.keys(businessSettingsData);
+      if (updatedFields.length > 0) {
+        const { broadcastBusinessSettingsChange } = await import('./websocket');
+        broadcastBusinessSettingsChange(req.userId, {
+          updatedFields,
+          documentTemplate: businessSettingsData.documentTemplate,
+        });
+      }
+      
       res.json(settings);
     } catch (error) {
       if (error instanceof z.ZodError) {

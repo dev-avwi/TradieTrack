@@ -62,13 +62,21 @@ interface NotificationEvent {
   timestamp: number;
 }
 
+interface BusinessSettingsChangedEvent {
+  type: 'business_settings_changed';
+  updatedFields: string[];
+  documentTemplate?: string;
+  timestamp: number;
+}
+
 type RealtimeEvent = 
   | JobStatusEvent 
   | TimerEvent 
   | DocumentStatusEvent 
   | PaymentReceivedEvent 
   | SmsNotificationEvent
-  | NotificationEvent;
+  | NotificationEvent
+  | BusinessSettingsChangedEvent;
 
 interface UseRealtimeUpdatesOptions {
   businessId: string;
@@ -181,6 +189,11 @@ export function useRealtimeUpdates({
         });
         safeInvalidateQueries({ queryKey: ['/api/notifications'] });
         break;
+
+      case 'business_settings_changed':
+        safeInvalidateQueries({ queryKey: ['/api/business-settings'] });
+        safeInvalidateQueries({ queryKey: ['/api/style-presets'] });
+        break;
     }
   }, [toast]);
 
@@ -216,7 +229,8 @@ export function useRealtimeUpdates({
             'document_status_changed',
             'payment_received',
             'sms_notification',
-            'notification'
+            'notification',
+            'business_settings_changed'
           ].includes(message.type)) {
             handleMessage(message as RealtimeEvent);
           }
