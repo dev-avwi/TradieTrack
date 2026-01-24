@@ -233,10 +233,13 @@ function StylePresetsWithPreview() {
 
   // Track last user interaction to prevent server sync from overwriting active changes
   const lastUserChangeRef = useRef<number>(0);
-  const SYNC_DEBOUNCE_MS = 3000; // Don't sync from server within 3 seconds of user change
+  const SYNC_DEBOUNCE_MS = 5000; // Don't sync from server within 5 seconds of user change
   
-  // Track if initial load has happened
+  // Track if initial load has happened (for template)
   const hasInitialLoadRef = useRef(false);
+  
+  // Track if customization settings have been loaded initially
+  const hasLoadedCustomizationRef = useRef(false);
 
   // Sync selected template from business settings
   // Runs on initial load and allows cross-device sync after user inactivity
@@ -267,17 +270,15 @@ function StylePresetsWithPreview() {
   }, [business?.documentTemplate]);
 
   // Load saved customization from business settings
-  // Runs on initial load and allows cross-device sync after user inactivity
+  // Runs ONLY on initial load - after that, local state is the source of truth
+  // Cross-device sync happens when user navigates away and back (component remounts)
   useEffect(() => {
+    // Only load once per component mount
+    if (hasLoadedCustomizationRef.current) return;
     if (!business) return;
     
-    const now = Date.now();
-    const timeSinceLastChange = now - lastUserChangeRef.current;
-    
-    // Skip sync if user made changes within debounce period (prevents flicker)
-    if (hasInitialLoadRef.current && timeSinceLastChange < SYNC_DEBOUNCE_MS) {
-      return;
-    }
+    // Mark as loaded FIRST to prevent any re-runs
+    hasLoadedCustomizationRef.current = true;
     
     const savedSettings = (business as any)?.documentTemplateSettings;
     if (savedSettings) {
@@ -292,12 +293,14 @@ function StylePresetsWithPreview() {
         accentColor: savedSettings.accentColor || prev.accentColor,
       }));
     }
-  }, [(business as any)?.documentTemplateSettings]);
+  }, [business]);
 
   // Reset customization to template defaults when user explicitly selects a new template
   const resetToTemplateDefaults = (templateId: TemplateId) => {
     const template = DOCUMENT_TEMPLATES[templateId];
     if (template) {
+      // Mark user change to prevent server sync from overwriting
+      lastUserChangeRef.current = Date.now();
       setCustomization(prev => ({
         ...prev,
         tableStyle: template.tableStyle,
