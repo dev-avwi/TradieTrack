@@ -640,6 +640,40 @@ export default function JobDetailView({
     return currentTime > scheduledTime;
   };
 
+  // Helper to parse error messages and detect SMS configuration issues
+  const handleSmsError = (error: any) => {
+    let errorMessage = error.message || "Failed to send notification";
+    // Parse "400: {json}" style errors
+    if (errorMessage.includes(': ')) {
+      const parts = errorMessage.split(': ');
+      if (!isNaN(parseInt(parts[0]))) {
+        errorMessage = parts.slice(1).join(': ');
+      }
+    }
+    // Try to extract error from JSON body
+    try {
+      const parsed = JSON.parse(errorMessage);
+      errorMessage = parsed.error || errorMessage;
+    } catch {}
+    
+    const isNotConfigured = errorMessage.toLowerCase().includes('not configured') || 
+                            errorMessage.toLowerCase().includes('twilio') ||
+                            errorMessage.toLowerCase().includes('set up');
+    if (isNotConfigured) {
+      toast({
+        title: "SMS not set up",
+        description: "Set up Twilio in Settings > Integrations to send SMS notifications.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Couldn't send notification",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   // On My Way mutation - sends SMS to client
   const onMyWayMutation = useMutation({
     mutationFn: async () => {
@@ -650,13 +684,7 @@ export default function JobDetailView({
         title: "On My Way notification sent to client",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send notification",
-        variant: "destructive",
-      });
-    },
+    onError: handleSmsError,
   });
 
   // Running Late mutation - sends SMS to client when past scheduled time
@@ -669,13 +697,7 @@ export default function JobDetailView({
         title: "Running Late notification sent to client",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send notification",
-        variant: "destructive",
-      });
-    },
+    onError: handleSmsError,
   });
 
   const isLoading = jobLoading || clientLoading;

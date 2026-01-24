@@ -359,11 +359,21 @@ export default function SendDocumentModal({
 
       // Check if the response indicates an error (some backends return 200 with error field)
       if (result.error) {
-        toast({
-          title: "Couldn't send SMS",
-          description: result.error || "Please try again.",
-          variant: "destructive"
-        });
+        // If SMS isn't configured, show the setup guide
+        if (result.notConfigured) {
+          setShowSmsSetupGuide(true);
+          toast({
+            title: "SMS not set up",
+            description: "Set up Twilio in Settings to send SMS messages.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Couldn't send SMS",
+            description: result.error || "Please try again.",
+            variant: "destructive"
+          });
+        }
         return false;
       }
 
@@ -385,11 +395,25 @@ export default function SendDocumentModal({
           errorMessage = error.message;
         }
       }
-      toast({
-        title: "Couldn't send SMS",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      
+      // Detect "not configured" errors and show setup guide
+      const isNotConfigured = errorMessage.toLowerCase().includes('not configured') || 
+                              errorMessage.toLowerCase().includes('twilio') ||
+                              errorMessage.toLowerCase().includes('set up');
+      if (isNotConfigured) {
+        setShowSmsSetupGuide(true);
+        toast({
+          title: "SMS not set up",
+          description: "Set up Twilio in Settings to send SMS messages.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Couldn't send SMS",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
       return false;
     }
   };
