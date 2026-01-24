@@ -241,59 +241,58 @@ function StylePresetsWithPreview() {
   // Track if customization settings have been loaded initially
   const hasLoadedCustomizationRef = useRef(false);
 
-  // Sync selected template from business settings
-  // Runs on initial load and allows cross-device sync after user inactivity
-  useEffect(() => {
-    if (!business) return;
-    
-    const now = Date.now();
-    const timeSinceLastChange = now - lastUserChangeRef.current;
-    
-    // Skip sync if user made changes within debounce period (prevents flicker)
-    if (hasInitialLoadRef.current && timeSinceLastChange < SYNC_DEBOUNCE_MS) {
-      return;
-    }
-    
-    hasInitialLoadRef.current = true;
-    
-    if (business.documentTemplate) {
-      let serverTemplateId = business.documentTemplate as TemplateId;
-      // Backward compatibility: map legacy 'standard' to 'professional'
-      if (serverTemplateId === 'standard' as any) {
-        serverTemplateId = 'professional';
-      }
-      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
-        // Only update if different from current (prevents unnecessary re-renders)
-        setSelectedTemplateId(prev => prev !== serverTemplateId ? serverTemplateId : prev);
-      }
-    }
-  }, [business?.documentTemplate]);
-
-  // Load saved customization from business settings
-  // Runs ONLY on initial load - after that, local state is the source of truth
-  // Cross-device sync happens when user navigates away and back (component remounts)
+  // Sync selected template from business settings ONCE on mount
+  // After initial load, local state is the single source of truth during the session
   useEffect(() => {
     // Only load once per component mount
-    if (hasLoadedCustomizationRef.current) return;
-    if (!business) return;
+    if (hasInitialLoadRef.current) return;
+    if (!business?.documentTemplate) return;
     
-    // Mark as loaded FIRST to prevent any re-runs
+    // Mark as loaded IMMEDIATELY to prevent any race conditions
+    hasInitialLoadRef.current = true;
+    
+    let serverTemplateId = business.documentTemplate as TemplateId;
+    // Backward compatibility: map legacy 'standard' to 'professional'
+    if (serverTemplateId === 'standard' as any) {
+      serverTemplateId = 'professional';
+    }
+    if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
+      setSelectedTemplateId(serverTemplateId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!business?.documentTemplate]); // Only depend on truthiness, not the value itself
+
+  // Load saved customization from business settings ONCE on mount
+  // After initial load, local state is the single source of truth during the session
+  // Cross-device sync happens when user navigates away and back (component remounts)
+  const businessRef = useRef(business);
+  businessRef.current = business;
+  
+  useEffect(() => {
+    // Only load once per component mount - this runs on initial mount only
+    if (hasLoadedCustomizationRef.current) return;
+    
+    // Check if business data is ready
+    const businessData = businessRef.current;
+    if (!businessData) return;
+    
+    // Mark as loaded IMMEDIATELY to prevent any race conditions
     hasLoadedCustomizationRef.current = true;
     
-    const savedSettings = (business as any)?.documentTemplateSettings;
+    const savedSettings = (businessData as any)?.documentTemplateSettings;
     if (savedSettings) {
-      setCustomization(prev => ({
-        ...prev,
-        tableStyle: savedSettings.tableStyle || prev.tableStyle,
-        noteStyle: savedSettings.noteStyle || prev.noteStyle,
-        headerBorderWidth: savedSettings.headerBorderWidth || prev.headerBorderWidth,
-        showHeaderDivider: savedSettings.showHeaderDivider ?? prev.showHeaderDivider,
-        bodyWeight: savedSettings.bodyWeight || prev.bodyWeight,
-        headingWeight: savedSettings.headingWeight || prev.headingWeight,
-        accentColor: savedSettings.accentColor || prev.accentColor,
-      }));
+      setCustomization({
+        tableStyle: savedSettings.tableStyle || 'bordered',
+        noteStyle: savedSettings.noteStyle || 'bordered',
+        headerBorderWidth: savedSettings.headerBorderWidth || '2px',
+        showHeaderDivider: savedSettings.showHeaderDivider ?? true,
+        bodyWeight: savedSettings.bodyWeight || 600,
+        headingWeight: savedSettings.headingWeight || 700,
+        accentColor: savedSettings.accentColor || DOCUMENT_ACCENT_COLOR,
+      });
     }
-  }, [business]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!business]); // Only depend on business truthiness, not the object itself
 
   // Reset customization to template defaults when user explicitly selects a new template
   const resetToTemplateDefaults = (templateId: TemplateId) => {
