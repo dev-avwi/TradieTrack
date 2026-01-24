@@ -12176,11 +12176,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Share payment request via SMS - Disabled for beta
-  app.post("/api/payment-requests/:id/send-sms", requireAuth, async (req: any, res) => {
-    res.status(501).json({ 
-      error: "SMS notifications are disabled in beta. Use email instead, or copy the payment link to share manually." 
-    });
+  // Share payment request via SMS
+  app.post("/api/payment-requests/:id/send-sms", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ error: "Phone number is required" });
+      }
+      
+      const request = await storage.getPaymentRequest(req.params.id, userContext.effectiveUserId);
+      if (!request) {
+        return res.status(404).json({ error: "Payment request not found" });
+      }
+      
+      const settings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const businessName = settings?.businessName || 'Your tradie';
+      
+      // Use production-ready base URL detection
+      const paymentUrl = `${getProductionBaseUrl(req)}/pay/${request.token}`;
+      
+      // Format the amount
+      const amount = `$${parseFloat(request.amount).toFixed(2)}`;
+      
+      // Build SMS message using consistent pattern
+      const message = `Hi${request.clientName ? ` ${request.clientName.split(' ')[0]}` : ''}, ${businessName} has sent you a payment request for ${amount}${request.description ? ` (${request.description})` : ''}. Pay securely here: ${paymentUrl}`;
+      
+      // Import and use SMS service (pass raw phone, service handles formatting)
+      const { sendSmsToClient } = await import('./services/smsService');
+      
+      await sendSmsToClient({
+        businessOwnerId: userContext.effectiveUserId,
+        clientId: request.clientId || undefined,
+        clientPhone: phone, // Let smsService handle formatting
+        clientName: request.clientName || undefined,
+        message,
+        senderUserId: req.userId,
+      });
+      
+      // Update notifications sent
+      const notificationsSent = (request.notificationsSent as any[] || []);
+      notificationsSent.push({ type: 'sms', phone, sentAt: new Date().toISOString() });
+      
+      await storage.updatePaymentRequest(req.params.id, userContext.effectiveUserId, {
+        notificationsSent
+      } as any);
+      
+      // Log activity for SMS sent (using invoice_sent type since payment requests relate to invoices)
+      if (request.invoiceId) {
+        await logActivity(
+          userContext.effectiveUserId,
+          'invoice_sent',
+          `Payment link sent via SMS`,
+          `SMS sent to ${request.clientName || 'client'} (${phone}) for ${amount}`,
+          'invoice',
+          request.invoiceId,
+          { paymentRequestId: request.id, senderUserId: req.userId }
+        );
+      }
+      
+      res.json({ success: true, message: "SMS sent successfully" });
+    } catch (error: any) {
+      console.error("Error sending payment request SMS:", error);
+      // Check if it's a Twilio-specific error
+      if (error.message?.includes('Twilio') || error.message?.includes('SMS')) {
+        return res.status(400).json({ error: error.message || "SMS service unavailable. Please check your Twilio configuration." });
+      }
+      res.status(500).json({ error: "Failed to send SMS" });
+    }
   });
 
   // Share payment request via email
