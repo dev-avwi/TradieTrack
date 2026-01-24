@@ -223,7 +223,7 @@ function StylePresetsWithPreview() {
 
   const { data: business } = useBusinessSettings();
 
-  const { data: presets = [], isLoading } = useQuery<StylePreset[]>({
+  const { data: presets = [], isLoading: isPresetsLoading } = useQuery<StylePreset[]>({
     queryKey: ["/api/style-presets"],
   });
 
@@ -231,55 +231,37 @@ function StylePresetsWithPreview() {
   const defaultPreset = presets.find(p => p.isDefault) || presets[0];
   const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
 
-  // Track last user interaction to prevent server sync from overwriting active changes
-  const lastUserChangeRef = useRef<number>(0);
-  const SYNC_DEBOUNCE_MS = 5000; // Don't sync from server within 5 seconds of user change
+  // Track if initial data has been loaded (uses state so we can show loading)
+  const [isInitialized, setIsInitialized] = useState(false);
   
-  // Track if initial load has happened (for template)
+  // Refs to prevent useEffects from running multiple times
   const hasInitialLoadRef = useRef(false);
-  
-  // Track if customization settings have been loaded initially
   const hasLoadedCustomizationRef = useRef(false);
 
-  // Sync selected template from business settings ONCE on mount
+  // Initialize component from server data ONCE on mount
   // After initial load, local state is the single source of truth during the session
   useEffect(() => {
-    // Only load once per component mount
-    if (hasInitialLoadRef.current) return;
-    if (!business?.documentTemplate) return;
+    // Only initialize once per component mount
+    if (hasInitialLoadRef.current || hasLoadedCustomizationRef.current) return;
+    if (!business) return;
     
     // Mark as loaded IMMEDIATELY to prevent any race conditions
     hasInitialLoadRef.current = true;
-    
-    let serverTemplateId = business.documentTemplate as TemplateId;
-    // Backward compatibility: map legacy 'standard' to 'professional'
-    if (serverTemplateId === 'standard' as any) {
-      serverTemplateId = 'professional';
-    }
-    if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
-      setSelectedTemplateId(serverTemplateId);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!business?.documentTemplate]); // Only depend on truthiness, not the value itself
-
-  // Load saved customization from business settings ONCE on mount
-  // After initial load, local state is the single source of truth during the session
-  // Cross-device sync happens when user navigates away and back (component remounts)
-  const businessRef = useRef(business);
-  businessRef.current = business;
-  
-  useEffect(() => {
-    // Only load once per component mount - this runs on initial mount only
-    if (hasLoadedCustomizationRef.current) return;
-    
-    // Check if business data is ready
-    const businessData = businessRef.current;
-    if (!businessData) return;
-    
-    // Mark as loaded IMMEDIATELY to prevent any race conditions
     hasLoadedCustomizationRef.current = true;
     
-    const savedSettings = (businessData as any)?.documentTemplateSettings;
+    // Load template selection
+    if (business.documentTemplate) {
+      let serverTemplateId = business.documentTemplate as TemplateId;
+      if (serverTemplateId === 'standard' as any) {
+        serverTemplateId = 'professional';
+      }
+      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
+        setSelectedTemplateId(serverTemplateId);
+      }
+    }
+    
+    // Load customization settings
+    const savedSettings = (business as any)?.documentTemplateSettings;
     if (savedSettings) {
       setCustomization({
         tableStyle: savedSettings.tableStyle || 'bordered',
@@ -291,15 +273,16 @@ function StylePresetsWithPreview() {
         accentColor: savedSettings.accentColor || DOCUMENT_ACCENT_COLOR,
       });
     }
+    
+    // Mark initialization complete - this triggers re-render to show content
+    setIsInitialized(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!business]); // Only depend on business truthiness, not the object itself
+  }, [!!business]); // Only depend on business truthiness
 
   // Reset customization to template defaults when user explicitly selects a new template
   const resetToTemplateDefaults = (templateId: TemplateId) => {
     const template = DOCUMENT_TEMPLATES[templateId];
     if (template) {
-      // Mark user change to prevent server sync from overwriting
-      lastUserChangeRef.current = Date.now();
       setCustomization(prev => ({
         ...prev,
         tableStyle: template.tableStyle,
@@ -327,17 +310,13 @@ function StylePresetsWithPreview() {
   });
 
   const handleSelectTemplate = (templateId: TemplateId) => {
-    // Mark user change timestamp to prevent server sync from overwriting
-    lastUserChangeRef.current = Date.now();
     setSelectedTemplateId(templateId);
-    resetToTemplateDefaults(templateId); // Reset to template defaults when user explicitly selects
+    resetToTemplateDefaults(templateId);
     updateTemplateMutation.mutate(templateId);
     toast({ title: `${DOCUMENT_TEMPLATES[templateId].name} template selected` });
   };
 
   const updateCustomization = (updates: Partial<TemplateCustomization>) => {
-    // Mark user change timestamp to prevent server sync from overwriting
-    lastUserChangeRef.current = Date.now();
     setCustomization(prev => ({ ...prev, ...updates }));
   };
 
@@ -349,8 +328,6 @@ function StylePresetsWithPreview() {
       });
     },
     onSuccess: () => {
-      // Don't invalidate - local state is already correct
-      // This prevents unnecessary refetch and flicker
       toast({ title: "Template customisation saved" });
     },
     onError: () => {
@@ -359,8 +336,6 @@ function StylePresetsWithPreview() {
   });
 
   const handleSaveCustomization = () => {
-    // Mark user change timestamp to prevent server sync from overwriting
-    lastUserChangeRef.current = Date.now();
     saveCustomizationMutation.mutate(buildTemplateCustomization());
   };
 
@@ -370,7 +345,8 @@ function StylePresetsWithPreview() {
     accentColor: customization.accentColor || DOCUMENT_ACCENT_COLOR,
   });
 
-  if (isLoading) {
+  // Show loading until all initial data is loaded and processed to prevent flickering
+  if (isPresetsLoading || !business || !isInitialized) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
