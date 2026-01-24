@@ -232,7 +232,7 @@ function StylePresetsWithPreview() {
   const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
 
   // Track if we've loaded saved settings to prevent template defaults from overwriting
-  const [hasLoadedSavedSettings, setHasLoadedSavedSettings] = useState(false);
+  const hasLoadedSavedSettingsRef = useRef(false);
   
   // Track if initial template has been loaded from server (only sync once on mount)
   const hasLoadedInitialTemplateRef = useRef(false);
@@ -265,8 +265,17 @@ function StylePresetsWithPreview() {
 
   // Load saved customization from business settings (runs once on load)
   useEffect(() => {
+    // Only load once - use ref to be completely stable
+    if (hasLoadedSavedSettingsRef.current) return;
+    
+    // Only proceed if we have business data
+    if (!business) return;
+    
+    // Mark as loaded FIRST to prevent any re-runs
+    hasLoadedSavedSettingsRef.current = true;
+    
     const savedSettings = (business as any)?.documentTemplateSettings;
-    if (savedSettings && !hasLoadedSavedSettings) {
+    if (savedSettings) {
       setCustomization(prev => ({
         ...prev,
         tableStyle: savedSettings.tableStyle || prev.tableStyle,
@@ -277,9 +286,8 @@ function StylePresetsWithPreview() {
         headingWeight: savedSettings.headingWeight || prev.headingWeight,
         accentColor: savedSettings.accentColor || prev.accentColor,
       }));
-      setHasLoadedSavedSettings(true);
     }
-  }, [(business as any)?.documentTemplateSettings]);
+  }, [business]);
 
   // Reset customization to template defaults when user explicitly selects a new template
   const resetToTemplateDefaults = (templateId: TemplateId) => {
@@ -330,7 +338,8 @@ function StylePresetsWithPreview() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] });
+      // Don't invalidate - local state is already correct
+      // This prevents unnecessary refetch and flicker
       toast({ title: "Template customisation saved" });
     },
     onError: () => {
