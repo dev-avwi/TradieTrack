@@ -130,6 +130,7 @@ export default function SendDocumentModal({
   const [isSending, setIsSending] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [phoneInput, setPhoneInput] = useState(clientPhone || "");
+  const [showSmsSetupGuide, setShowSmsSetupGuide] = useState(false);
 
   const clientFirstName = clientName?.split(' ')[0] || 'there';
 
@@ -204,6 +205,7 @@ export default function SendDocumentModal({
       setMessage(defaultMessage);
       setSmsMessage(generateSmsMessage());
       setPhoneInput(clientPhone || "");
+      setShowSmsSetupGuide(false);
       
       if (!hasClientEmail && isSmsAvailable && hasClientPhone) {
         setDeliveryMethod('sms');
@@ -523,30 +525,46 @@ export default function SendDocumentModal({
               <Button
                 variant={deliveryMethod === 'sms' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setDeliveryMethod('sms')}
-                disabled={!isSmsAvailable}
+                onClick={() => {
+                  if (!isSmsAvailable) {
+                    setShowSmsSetupGuide(true);
+                  } else {
+                    setDeliveryMethod('sms');
+                    setShowSmsSetupGuide(false);
+                  }
+                }}
                 className="flex items-center gap-2"
                 data-testid="button-delivery-sms"
               >
                 <MessageSquare className="h-4 w-4" />
                 SMS
                 {!isSmsAvailable && (
-                  <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                  <AlertCircle className="h-3 w-3 text-amber-500" />
                 )}
               </Button>
               <Button
                 variant={deliveryMethod === 'both' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setDeliveryMethod('both')}
-                disabled={!hasClientEmail || !isSmsAvailable}
+                onClick={() => {
+                  if (!isSmsAvailable) {
+                    setShowSmsSetupGuide(true);
+                  } else if (hasClientEmail) {
+                    setDeliveryMethod('both');
+                    setShowSmsSetupGuide(false);
+                  }
+                }}
+                disabled={!hasClientEmail}
                 className="flex items-center gap-2"
                 data-testid="button-delivery-both"
               >
                 <Send className="h-4 w-4" />
                 Both
+                {!isSmsAvailable && (
+                  <AlertCircle className="h-3 w-3 text-amber-500" />
+                )}
               </Button>
             </div>
-            {!isSmsAvailable && (
+            {showSmsSetupGuide && !isSmsAvailable && (
               <SmsSetupPrompt variant="inline" onSetupClick={onClose} />
             )}
           </div>
