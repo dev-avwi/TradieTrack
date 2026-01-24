@@ -564,34 +564,36 @@ export default function CollectPayment() {
     },
   });
 
-  const sendSmsMutation = useMutation({
-    mutationFn: async ({ id, phone }: { id: string; phone: string }) => {
-      await apiRequest('POST', `/api/payment-requests/${id}/send-sms`, { phone });
-    },
-    onSuccess: () => {
+  // State for SMS sending
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  
+  // Handle SMS send with direct error handling
+  const handleSendSms = async (id: string, phone: string) => {
+    setIsSendingSms(true);
+    try {
+      const response = await apiRequest('POST', `/api/payment-requests/${id}/send-sms`, { phone });
+      const data = await response.json();
+      
+      // Success!
       setSharePhone("");
       toast({
         title: "SMS sent",
         description: "Payment link sent via SMS",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
-    },
-    onError: (error: any) => {
-      let errorMessage = error.message || "Failed to send SMS";
-      if (errorMessage.includes(': ')) {
-        const parts = errorMessage.split(': ');
-        if (!isNaN(parseInt(parts[0]))) {
-          errorMessage = parts.slice(1).join(': ');
-        }
-      }
-      try {
-        const parsed = JSON.parse(errorMessage);
-        errorMessage = parsed.error || errorMessage;
-      } catch {}
+    } catch (error: any) {
+      // Always show error toast
+      const rawMessage = error?.message || "Failed to send SMS";
+      const lowerMessage = rawMessage.toLowerCase();
       
-      const isNotConfigured = errorMessage.toLowerCase().includes('not configured') || 
-                              errorMessage.toLowerCase().includes('twilio') ||
-                              errorMessage.toLowerCase().includes('set up');
+      // Check if it's a "not configured" type error
+      const isNotConfigured = lowerMessage.includes('not configured') || 
+                              lowerMessage.includes('twilio') ||
+                              lowerMessage.includes('set up') ||
+                              lowerMessage.includes('authentication') ||
+                              lowerMessage.includes('credentials') ||
+                              lowerMessage.includes('invalid username');
+      
       if (isNotConfigured) {
         toast({
           title: "SMS not set up",
@@ -599,14 +601,28 @@ export default function CollectPayment() {
           variant: "destructive",
         });
       } else {
+        // Try to extract a user-friendly message
+        let displayMessage = rawMessage;
+        try {
+          if (rawMessage.includes(': {')) {
+            const jsonPart = rawMessage.substring(rawMessage.indexOf(': ') + 2);
+            const parsed = JSON.parse(jsonPart);
+            displayMessage = parsed.error || parsed.message || displayMessage;
+          }
+        } catch {
+          // Keep original message
+        }
+        
         toast({
           title: "Failed to send SMS",
-          description: errorMessage,
+          description: displayMessage,
           variant: "destructive",
         });
       }
-    },
-  });
+    } finally {
+      setIsSendingSms(false);
+    }
+  };
 
   const receiptMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1557,11 +1573,11 @@ export default function CollectPayment() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => sendSmsMutation.mutate({ id: selectedRequest.id, phone: sharePhone })}
-                        disabled={!sharePhone || sendSmsMutation.isPending}
+                        onClick={() => handleSendSms(selectedRequest.id, sharePhone)}
+                        disabled={!sharePhone || isSendingSms}
                         data-testid="button-send-sms"
                       >
-                        {sendSmsMutation.isPending ? (
+                        {isSendingSms ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Send className="h-4 w-4" />
