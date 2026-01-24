@@ -314,7 +314,7 @@ export default function TeamOwnerDashboard({
   return (
     <div className="w-full px-4 sm:px-5 py-5 sm:py-6 pb-28 section-gap" data-testid="team-owner-dashboard">
       {/* iOS-Style Header */}
-      <div className="space-y-1 animate-fade-up">
+      <div className="space-y-1">
         <h1 className="ios-title">
           {getGreeting()}, {userName}
         </h1>
@@ -329,7 +329,7 @@ export default function TeamOwnerDashboard({
 
       {/* MONEY OWED - Most important metric for tradies */}
       {(kpis?.unpaidInvoicesTotal ?? 0) > 0 && (
-        <section className="animate-fade-up" style={{ animationDelay: '50ms' }}>
+        <section>
           <div 
             className="feed-card card-press cursor-pointer border-2"
             style={{ borderColor: 'hsl(var(--destructive) / 0.3)' }}
@@ -365,7 +365,7 @@ export default function TeamOwnerDashboard({
       )}
 
       {/* Quick Stats - KPIs */}
-      <section className="animate-fade-up" style={{ animationDelay: '75ms' }}>
+      <section>
         <h2 className="ios-label mb-3">Quick Stats</h2>
         <div className="grid grid-cols-2 gap-3">
           <div 
@@ -463,7 +463,7 @@ export default function TeamOwnerDashboard({
       </section>
 
       {/* Quick Actions */}
-      <section className="animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <section>
         <h2 className="ios-label mb-3">Quick Actions</h2>
         <div className="feed-card" data-testid="quick-actions-section">
           <div className="card-padding space-y-2">
@@ -554,7 +554,7 @@ export default function TeamOwnerDashboard({
       </section>
 
       {/* Two-column layout: Left (Job Scheduler + AI Optimizer), Right (Today's Jobs + Activity) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
         {/* LEFT COLUMN - Job Scheduler + AI Optimizer stacking */}
         <div className="space-y-4 lg:space-y-6">
         {/* Job Scheduler - Drag & Drop */}

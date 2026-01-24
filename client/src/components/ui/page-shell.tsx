@@ -52,7 +52,7 @@ export function PageHeader({
   size = "default"
 }: PageHeaderProps) {
   return (
-    <div className={cn("space-y-1 animate-fade-up", className)}>
+    <div className={cn("space-y-1", className)}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           {leading && (

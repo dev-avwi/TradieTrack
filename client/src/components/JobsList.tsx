@@ -457,7 +457,7 @@ export default function JobsList({
       </div>
 
       {/* Recent Activity - Native Feed */}
-      <section className="animate-fade-up" style={{ animationDelay: '50ms' }}>
+      <section>
         <SectionTitle icon={<Clock className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />}>
           Recent Activity
         </SectionTitle>
@@ -477,8 +477,7 @@ export default function JobsList({
                       {recentJobs.slice(0, 4).map((job: any, index: number) => (
                         <div 
                           key={job.id}
-                          className={`flex items-center gap-3 p-2.5 rounded-xl hover-elevate cursor-pointer animate-slide-in stagger-delay-${Math.min(index + 1, 8)}`}
-                          style={{ opacity: 0 }}
+                          className="flex items-center gap-3 p-2.5 rounded-xl hover-elevate cursor-pointer"
                           onClick={() => onViewJob?.(job.id)}
                         >
                           <div 
@@ -550,7 +549,7 @@ export default function JobsList({
       </section>
 
       {/* Jobs List - Table or Card View */}
-      <section className="animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <section>
         <SectionTitle icon={<Briefcase className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />}>
           All Jobs
         </SectionTitle>
@@ -719,8 +718,7 @@ export default function JobsList({
               {filteredJobs.map((job: any, index: number) => (
                 <div 
                   key={job.id} 
-                  className={`feed-card card-press cursor-pointer animate-slide-in stagger-delay-${Math.min(index + 1, 8)} relative overflow-hidden`}
-                  style={{ opacity: 0 }}
+                  className="feed-card card-press cursor-pointer relative overflow-hidden"
                   onClick={() => onViewJob?.(job.id)}
                   data-testid={`job-item-${job.id}`}
                 >

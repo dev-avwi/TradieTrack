@@ -202,7 +202,7 @@ export default function OwnerManagerDashboard({
   return (
     <div className="w-full px-4 sm:px-5 py-5 sm:py-6 pb-28 section-gap" data-testid="owner-manager-dashboard">
       {/* iOS-Style Header */}
-      <div className="space-y-1 animate-fade-up">
+      <div className="space-y-1">
         <h1 className="ios-title">
           {getGreeting()}, {userName}
         </h1>
@@ -217,7 +217,7 @@ export default function OwnerManagerDashboard({
 
       {/* MONEY OWED - Most important metric for tradies */}
       {(kpis?.unpaidInvoicesTotal ?? 0) > 0 && (
-        <section className="animate-fade-up" style={{ animationDelay: '50ms' }}>
+        <section>
           <div 
             className="feed-card card-press cursor-pointer border-2"
             style={{ borderColor: 'hsl(var(--destructive) / 0.3)' }}
@@ -253,7 +253,7 @@ export default function OwnerManagerDashboard({
       )}
 
       {/* Quick Stats - Native Grid */}
-      <section className="animate-fade-up" style={{ animationDelay: '75ms' }}>
+      <section>
         <h2 className="ios-label mb-3">Quick Stats</h2>
         <div className="grid grid-cols-2 gap-3">
           <div 
@@ -349,8 +349,6 @@ export default function OwnerManagerDashboard({
 
       {/* AI Assistant - Collapsible Section */}
       <section 
-        className="animate-fade-up" 
-        style={{ animationDelay: '75ms' }}
         data-testid="ai-assistant-section"
       >
         <Collapsible open={isAIAssistantOpen} onOpenChange={setIsAIAssistantOpen}>
@@ -389,7 +387,7 @@ export default function OwnerManagerDashboard({
       </section>
 
       {/* Quick Actions - Native Style - MOVED TO TOP for quick access */}
-      <section className="animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <section>
         <h2 className="ios-label mb-3">Quick Actions</h2>
         <div className="feed-card" data-testid="quick-actions-section">
           <div className="card-padding space-y-2">
@@ -458,7 +456,7 @@ export default function OwnerManagerDashboard({
       </section>
 
       {/* Two-column layout: Left (AI Optimizer), Right (Today + Activity) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start animate-fade-up" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
         {/* LEFT COLUMN - AI Optimizer */}
         <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
           <AIScheduleOptimizer 
@@ -527,8 +525,7 @@ export default function OwnerManagerDashboard({
             {todaysJobs.map((job: any, index: number) => (
               <div 
                 key={job.id}
-                className={`${index === 0 ? 'card-accent' : 'feed-card border'} card-press cursor-pointer animate-slide-in stagger-delay-${Math.min(index + 1, 8)}`}
-                style={{ opacity: 0 }}
+                className={`${index === 0 ? 'card-accent' : 'feed-card border'} card-press cursor-pointer`}
                 onClick={() => onNavigate?.(`/jobs/${job.id}`)}
                 data-testid={`job-card-${job.id}`}
               >

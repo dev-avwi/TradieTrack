@@ -152,7 +152,7 @@ export default function ActivityFeed({
   }
 
   return (
-    <section className="animate-fade-up" style={{ animationDelay: '200ms' }} data-testid="activity-feed">
+    <section data-testid="activity-feed">
       {/* Section Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -222,8 +222,7 @@ export default function ActivityFeed({
                   return (
                     <div 
                       key={activity.id}
-                      className={`relative flex items-start gap-3 p-3 rounded-xl hover-elevate animate-slide-in stagger-delay-${Math.min(index + 1, 8)} ${isClickable ? 'cursor-pointer' : ''}`}
-                      style={{ opacity: 0 }}
+                      className={`relative flex items-start gap-3 p-3 rounded-xl hover-elevate ${isClickable ? 'cursor-pointer' : ''}`}
                       onClick={() => handleActivityClick(activity)}
                       data-testid={`activity-item-${activity.id}`}
                     >
