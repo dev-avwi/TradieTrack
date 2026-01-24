@@ -191,8 +191,11 @@ export function useRealtimeUpdates({
         break;
 
       case 'business_settings_changed':
-        safeInvalidateQueries({ queryKey: ['/api/business-settings'] });
-        safeInvalidateQueries({ queryKey: ['/api/style-presets'] });
+        // Note: We intentionally do NOT invalidate the cache here.
+        // The mutation that triggered the change already handles cache invalidation.
+        // Invalidating here causes flickering on the same device due to race conditions
+        // with React Query's stale state during refetch.
+        // Cross-device sync will still work because TanStack Query has refetchOnWindowFocus.
         break;
     }
   }, [toast]);

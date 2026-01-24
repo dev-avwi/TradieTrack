@@ -21,9 +21,10 @@ export function useBusinessSettings() {
       }
       return response.json();
     },
-    // Ensure fresh data is fetched on mount for cross-platform sync (web/mobile)
-    staleTime: 0,
-    refetchOnMount: 'always',
+    // Use a reasonable stale time to prevent constant refetching while still enabling sync
+    staleTime: 30000, // 30 seconds - balances freshness with stability
+    refetchOnMount: true,
+    refetchOnWindowFocus: true, // Enables cross-platform sync when switching tabs/apps
   });
 }
 
