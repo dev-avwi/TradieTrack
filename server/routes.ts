@@ -12212,7 +12212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import and use SMS service (pass raw phone, service handles formatting)
       const { sendSmsToClient } = await import('./services/smsService');
       
-      await sendSmsToClient({
+      const smsResult = await sendSmsToClient({
         businessOwnerId: userContext.effectiveUserId,
         clientId: request.clientId || undefined,
         clientPhone: phone, // Let smsService handle formatting
@@ -12220,6 +12220,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message,
         senderUserId: req.userId,
       });
+      
+      // Check if SMS actually sent - the service returns message with status
+      if (smsResult.status === 'failed') {
+        const errorMsg = smsResult.errorMessage || 'SMS service unavailable';
+        // Check for "not configured" type errors
+        if (errorMsg.toLowerCase().includes('not configured') || 
+            errorMsg.toLowerCase().includes('twilio') ||
+            errorMsg.toLowerCase().includes('credentials')) {
+          return res.status(400).json({ error: "SMS not configured. Set up Twilio in Settings > Integrations to send SMS." });
+        }
+        return res.status(400).json({ error: errorMsg });
+      }
       
       // Update notifications sent
       const notificationsSent = (request.notificationsSent as any[] || []);
