@@ -235,15 +235,18 @@ function StylePresetsWithPreview() {
   const [hasLoadedSavedSettings, setHasLoadedSavedSettings] = useState(false);
   
   // Track if initial template has been loaded from server (only sync once on mount)
-  const [hasLoadedInitialTemplate, setHasLoadedInitialTemplate] = useState(false);
+  const hasLoadedInitialTemplateRef = React.useRef(false);
 
   // Sync selected template from business settings ONLY on initial load
-  // This prevents flickering when user selects a template and mutation invalidates queries
+  // Uses a ref to ensure this NEVER runs more than once, preventing all flicker
   useEffect(() => {
-    // Only sync from server once on initial mount
-    if (hasLoadedInitialTemplate) return;
+    // Only sync from server once - use ref to be completely stable
+    if (hasLoadedInitialTemplateRef.current) return;
     
-    if (business?.documentTemplate) {
+    // Only proceed if we have business data
+    if (!business) return;
+    
+    if (business.documentTemplate) {
       let serverTemplateId = business.documentTemplate as TemplateId;
       // Backward compatibility: map legacy 'standard' to 'professional'
       if (serverTemplateId === 'standard' as any) {
@@ -251,20 +254,14 @@ function StylePresetsWithPreview() {
       }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
-        setHasLoadedInitialTemplate(true);
+        hasLoadedInitialTemplateRef.current = true;
       }
-    } else if (defaultPreset?.headerLayout) {
-      // Fallback to style preset if no business setting
-      let serverTemplateId = defaultPreset.headerLayout as TemplateId;
-      if (serverTemplateId === 'standard' as any) {
-        serverTemplateId = 'professional';
-      }
-      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
-        setSelectedTemplateId(serverTemplateId);
-        setHasLoadedInitialTemplate(true);
-      }
+    } else {
+      // No documentTemplate set - default to 'professional' and mark as loaded
+      setSelectedTemplateId('professional');
+      hasLoadedInitialTemplateRef.current = true;
     }
-  }, [business?.documentTemplate, defaultPreset?.headerLayout, hasLoadedInitialTemplate]);
+  }, [business]);
 
   // Load saved customization from business settings (runs once on load)
   useEffect(() => {
