@@ -800,6 +800,14 @@ export default function CollectScreen() {
   const [linkRecipientPhone, setLinkRecipientPhone] = useState('');
   const [sendingLink, setSendingLink] = useState(false);
   
+  // Resend Payment Link Modal state
+  const [showResendModal, setShowResendModal] = useState(false);
+  const [resendRequest, setResendRequest] = useState<any>(null);
+  const [resendClientName, setResendClientName] = useState('');
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendPhone, setResendPhone] = useState('');
+  const [resendingLink, setResendingLink] = useState(false);
+  
   // Ongoing Payments state (includes pending payment requests + recent receipts)
   const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
@@ -1387,6 +1395,78 @@ export default function CollectScreen() {
     setAmount('');
     setDescription('');
     setSelectedInvoice(null);
+  };
+
+  // Open resend modal for a payment request
+  const handleResendPaymentRequest = (request: any, clientName: string) => {
+    const client = request.clientId ? clients.find(c => c.id === request.clientId) : null;
+    setResendRequest(request);
+    setResendClientName(clientName);
+    setResendEmail(client?.email || '');
+    setResendPhone(client?.phone || '');
+    setShowResendModal(true);
+  };
+
+  // Send payment link via email from resend modal
+  const handleResendViaEmail = async () => {
+    if (!resendRequest?.id) return;
+    
+    const email = resendEmail.trim();
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter an email address');
+      return;
+    }
+    
+    setResendingLink(true);
+    try {
+      await api.post(`/api/payment-requests/${resendRequest.id}/send-email`, { email });
+      Alert.alert('Success', `Payment link sent to ${email}`);
+      setShowResendModal(false);
+      setResendRequest(null);
+      // Refresh using the existing pattern
+      fetchReceipts();
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      Alert.alert('Error', 'Failed to send payment link via email');
+    } finally {
+      setResendingLink(false);
+    }
+  };
+
+  // Send payment link via SMS from resend modal
+  const handleResendViaSMS = async () => {
+    if (!resendRequest?.id) return;
+    
+    const phone = resendPhone.trim();
+    if (!phone) {
+      Alert.alert('Phone Required', 'Please enter a phone number');
+      return;
+    }
+    
+    setResendingLink(true);
+    try {
+      await api.post(`/api/payment-requests/${resendRequest.id}/send-sms`, { phone });
+      Alert.alert('Success', `Payment link sent to ${phone}`);
+      setShowResendModal(false);
+      setResendRequest(null);
+      // Refresh using the existing pattern
+      fetchReceipts();
+    } catch (error: any) {
+      console.error('Failed to send SMS:', error);
+      const errorMsg = error?.response?.data?.error || 'Failed to send payment link via SMS';
+      Alert.alert('Error', errorMsg);
+    } finally {
+      setResendingLink(false);
+    }
+  };
+
+  // Close resend modal
+  const handleCloseResendModal = () => {
+    setShowResendModal(false);
+    setResendRequest(null);
+    setResendClientName('');
+    setResendEmail('');
+    setResendPhone('');
   };
 
   // Record Payment handlers
@@ -2011,6 +2091,117 @@ export default function CollectScreen() {
     </Modal>
   );
 
+  const renderResendModal = () => {
+    const requestAmount = resendRequest ? (typeof resendRequest.amount === 'string' ? parseFloat(resendRequest.amount) : (resendRequest.amount || 0)) : 0;
+    const notifications = resendRequest?.notificationsSent || [];
+    const hasSent = notifications.length > 0;
+    
+    return (
+      <Modal
+        visible={showResendModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseResendModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{hasSent ? 'Resend' : 'Send'} Payment Link</Text>
+            <TouchableOpacity onPress={handleCloseResendModal} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+              <View style={styles.readyIcon}>
+                <Feather name="link" size={64} color={colors.primary} />
+              </View>
+              <Text style={styles.qrAmountDisplay}>
+                {formatCurrency(requestAmount)}
+              </Text>
+              <Text style={styles.modalStepSubtitle}>
+                {resendClientName}
+              </Text>
+            </View>
+
+            <View style={styles.paymentLinkInputContainer}>
+              <View>
+                <Text style={styles.paymentLinkLabel}>Send via Email</Text>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <TextInput
+                    style={[styles.descriptionInput, { flex: 1, marginTop: 0 }]}
+                    placeholder="Enter email address"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={resendEmail}
+                    onChangeText={setResendEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <Button 
+                    variant="default" 
+                    onPress={handleResendViaEmail}
+                    disabled={resendingLink || !resendEmail.trim()}
+                  >
+                    {resendingLink ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : (
+                      <Feather name="send" size={18} color={colors.primaryForeground} />
+                    )}
+                  </Button>
+                </View>
+              </View>
+
+              <View>
+                <Text style={styles.paymentLinkLabel}>Send via SMS</Text>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <TextInput
+                    style={[styles.descriptionInput, { flex: 1, marginTop: 0 }]}
+                    placeholder="Enter phone number"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={resendPhone}
+                    onChangeText={setResendPhone}
+                    keyboardType="phone-pad"
+                  />
+                  <Button 
+                    variant="default" 
+                    onPress={handleResendViaSMS}
+                    disabled={resendingLink || !resendPhone.trim()}
+                  >
+                    {resendingLink ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : (
+                      <Feather name="send" size={18} color={colors.primaryForeground} />
+                    )}
+                  </Button>
+                </View>
+              </View>
+
+              {hasSent && (
+                <View style={{ marginTop: spacing.lg, padding: spacing.md, backgroundColor: colors.muted, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: spacing.xs }}>
+                    Previously sent:
+                  </Text>
+                  {notifications.map((n: any, i: number) => (
+                    <Text key={i} style={{ fontSize: 12, color: colors.foreground }}>
+                      {n.type === 'email' ? 'Email' : 'SMS'}: {n.email || n.phone}{n.sentAt ? ` (${format(parseISO(n.sentAt), 'MMM d, h:mm a')})` : ''}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <Button variant="outline" onPress={handleCloseResendModal} fullWidth>
+              Done
+            </Button>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   const renderRecordPaymentModal = () => {
     const paymentMethods: Array<{ id: 'cash' | 'card' | 'bank_transfer'; label: string; icon: string }> = [
       { id: 'cash', label: 'Cash', icon: 'dollar-sign' },
@@ -2614,8 +2805,8 @@ export default function CollectScreen() {
                             `${clientName}\n${formatCurrency(requestAmount)}\n\nStatus: Awaiting Payment${createdDate ? `\nCreated: ${createdDate}` : ''}${expiresDate ? `\nExpires: ${expiresDate}` : ''}${deliveryStatus}`,
                             [
                               { text: 'Close', style: 'cancel' },
-                              paymentUrl ? { text: 'Share', onPress: () => Share.share({ message: `Please pay ${formatCurrency(requestAmount)} using this link: ${paymentUrl}` }) } : null,
-                              paymentUrl ? { text: 'Copy Link', onPress: () => Clipboard.setStringAsync(paymentUrl).then(() => Alert.alert('Copied!', 'Payment link copied to clipboard')) } : null,
+                              { text: notifications.length > 0 ? 'Resend' : 'Send', onPress: () => handleResendPaymentRequest(request, clientName) },
+                              paymentUrl ? { text: 'Copy', onPress: () => Clipboard.setStringAsync(paymentUrl).then(() => Alert.alert('Copied!', 'Payment link copied to clipboard')) } : null,
                             ].filter(Boolean) as any
                           );
                         }}
@@ -2806,6 +2997,7 @@ export default function CollectScreen() {
         {renderReceiptModal()}
         {renderQRModal()}
         {renderPaymentLinkModal()}
+        {renderResendModal()}
         {renderRecordPaymentModal()}
         {renderInvoicePickerModal()}
         {renderCustomAmountModal()}
