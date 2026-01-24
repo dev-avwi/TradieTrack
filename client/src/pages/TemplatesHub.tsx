@@ -231,23 +231,27 @@ function StylePresetsWithPreview() {
   const defaultPreset = presets.find(p => p.isDefault) || presets[0];
   const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
 
-  // Track if we've loaded saved settings to prevent template defaults from overwriting
-  const hasLoadedSavedSettingsRef = useRef(false);
+  // Track last user interaction to prevent server sync from overwriting active changes
+  const lastUserChangeRef = useRef<number>(0);
+  const SYNC_DEBOUNCE_MS = 3000; // Don't sync from server within 3 seconds of user change
   
-  // Track if initial template has been loaded from server (only sync once on mount)
-  const hasLoadedInitialTemplateRef = useRef(false);
+  // Track if initial load has happened
+  const hasInitialLoadRef = useRef(false);
 
-  // Sync selected template from business settings ONLY on initial load
-  // Uses a ref to ensure this NEVER runs more than once, preventing all flicker
+  // Sync selected template from business settings
+  // Runs on initial load and allows cross-device sync after user inactivity
   useEffect(() => {
-    // Only sync from server once - use ref to be completely stable
-    if (hasLoadedInitialTemplateRef.current) return;
-    
-    // Only proceed if we have business data
     if (!business) return;
     
-    // Mark as loaded FIRST to prevent any re-runs
-    hasLoadedInitialTemplateRef.current = true;
+    const now = Date.now();
+    const timeSinceLastChange = now - lastUserChangeRef.current;
+    
+    // Skip sync if user made changes within debounce period (prevents flicker)
+    if (hasInitialLoadRef.current && timeSinceLastChange < SYNC_DEBOUNCE_MS) {
+      return;
+    }
+    
+    hasInitialLoadRef.current = true;
     
     if (business.documentTemplate) {
       let serverTemplateId = business.documentTemplate as TemplateId;
@@ -256,23 +260,24 @@ function StylePresetsWithPreview() {
         serverTemplateId = 'professional';
       }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
-        setSelectedTemplateId(serverTemplateId);
+        // Only update if different from current (prevents unnecessary re-renders)
+        setSelectedTemplateId(prev => prev !== serverTemplateId ? serverTemplateId : prev);
       }
-      // If template is not recognized, keep the default 'professional'
     }
-    // If no documentTemplate set, keep the default 'professional'
-  }, [business]);
+  }, [business?.documentTemplate]);
 
-  // Load saved customization from business settings (runs once on load)
+  // Load saved customization from business settings
+  // Runs on initial load and allows cross-device sync after user inactivity
   useEffect(() => {
-    // Only load once - use ref to be completely stable
-    if (hasLoadedSavedSettingsRef.current) return;
-    
-    // Only proceed if we have business data
     if (!business) return;
     
-    // Mark as loaded FIRST to prevent any re-runs
-    hasLoadedSavedSettingsRef.current = true;
+    const now = Date.now();
+    const timeSinceLastChange = now - lastUserChangeRef.current;
+    
+    // Skip sync if user made changes within debounce period (prevents flicker)
+    if (hasInitialLoadRef.current && timeSinceLastChange < SYNC_DEBOUNCE_MS) {
+      return;
+    }
     
     const savedSettings = (business as any)?.documentTemplateSettings;
     if (savedSettings) {
@@ -287,7 +292,7 @@ function StylePresetsWithPreview() {
         accentColor: savedSettings.accentColor || prev.accentColor,
       }));
     }
-  }, [business]);
+  }, [(business as any)?.documentTemplateSettings]);
 
   // Reset customization to template defaults when user explicitly selects a new template
   const resetToTemplateDefaults = (templateId: TemplateId) => {
@@ -320,6 +325,8 @@ function StylePresetsWithPreview() {
   });
 
   const handleSelectTemplate = (templateId: TemplateId) => {
+    // Mark user change timestamp to prevent server sync from overwriting
+    lastUserChangeRef.current = Date.now();
     setSelectedTemplateId(templateId);
     resetToTemplateDefaults(templateId); // Reset to template defaults when user explicitly selects
     updateTemplateMutation.mutate(templateId);
@@ -327,6 +334,8 @@ function StylePresetsWithPreview() {
   };
 
   const updateCustomization = (updates: Partial<TemplateCustomization>) => {
+    // Mark user change timestamp to prevent server sync from overwriting
+    lastUserChangeRef.current = Date.now();
     setCustomization(prev => ({ ...prev, ...updates }));
   };
 
@@ -348,6 +357,8 @@ function StylePresetsWithPreview() {
   });
 
   const handleSaveCustomization = () => {
+    // Mark user change timestamp to prevent server sync from overwriting
+    lastUserChangeRef.current = Date.now();
     saveCustomizationMutation.mutate(buildTemplateCustomization());
   };
 
