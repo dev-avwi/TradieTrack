@@ -231,8 +231,18 @@ function StylePresetsWithPreview() {
   const defaultPreset = presets.find(p => p.isDefault) || presets[0];
   const accentColor = customization.accentColor || defaultPreset?.accentColor || DOCUMENT_ACCENT_COLOR;
 
-  // Sync selected template from business settings (primary source for PDF generation)
+  // Track if we've loaded saved settings to prevent template defaults from overwriting
+  const [hasLoadedSavedSettings, setHasLoadedSavedSettings] = useState(false);
+  
+  // Track if initial template has been loaded from server (only sync once on mount)
+  const [hasLoadedInitialTemplate, setHasLoadedInitialTemplate] = useState(false);
+
+  // Sync selected template from business settings ONLY on initial load
+  // This prevents flickering when user selects a template and mutation invalidates queries
   useEffect(() => {
+    // Only sync from server once on initial mount
+    if (hasLoadedInitialTemplate) return;
+    
     if (business?.documentTemplate) {
       let serverTemplateId = business.documentTemplate as TemplateId;
       // Backward compatibility: map legacy 'standard' to 'professional'
@@ -241,6 +251,7 @@ function StylePresetsWithPreview() {
       }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
+        setHasLoadedInitialTemplate(true);
       }
     } else if (defaultPreset?.headerLayout) {
       // Fallback to style preset if no business setting
@@ -250,12 +261,10 @@ function StylePresetsWithPreview() {
       }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
+        setHasLoadedInitialTemplate(true);
       }
     }
-  }, [business?.documentTemplate, defaultPreset?.headerLayout]);
-
-  // Track if we've loaded saved settings to prevent template defaults from overwriting
-  const [hasLoadedSavedSettings, setHasLoadedSavedSettings] = useState(false);
+  }, [business?.documentTemplate, defaultPreset?.headerLayout, hasLoadedInitialTemplate]);
 
   // Load saved customization from business settings (runs once on load)
   useEffect(() => {
