@@ -1049,7 +1049,7 @@ export interface EmailResult {
   success: boolean;
   messageId?: string;
   error?: string;
-  simulated?: boolean;
+  notConfigured?: boolean;
 }
 
 // Send a generic email - used by notification service
@@ -1075,14 +1075,22 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
     replyTo: replyTo || undefined
   };
 
+  // Return honest error if SendGrid is not configured
+  if (!sendGridEnabled) {
+    const errorMsg = 'Email service not configured. Please set up SendGrid in Settings > Integrations.';
+    console.error(`❌ EMAIL NOT SENT: ${errorMsg}`);
+    console.error(`   Would have sent to: ${to}`);
+    console.error(`   Subject: ${subject}`);
+    return { 
+      success: false, 
+      error: errorMsg,
+      notConfigured: true 
+    };
+  }
+
   try {
-    if (sendGridEnabled) {
-      await sgMail.send(emailData);
-      return { success: true, messageId: `sg_${Date.now()}` };
-    } else {
-      await mockEmailService.send(emailData);
-      return { success: true, simulated: true, messageId: `mock_${Date.now()}` };
-    }
+    await sgMail.send(emailData);
+    return { success: true, messageId: `sg_${Date.now()}` };
   } catch (error: any) {
     // Log detailed SendGrid error response
     if (error.response) {
