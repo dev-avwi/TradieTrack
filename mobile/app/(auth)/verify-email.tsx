@@ -10,7 +10,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react-native';
 import api from '../../src/lib/api';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { useAuth } from '../../src/lib/auth';
+import { useAuthStore } from '../../src/lib/store';
 
 export default function VerifyEmailScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -19,7 +19,7 @@ export default function VerifyEmailScreen() {
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const { setUser, setSessionToken } = useAuth();
+  const { checkAuth } = useAuthStore();
 
   useEffect(() => {
     if (token) {
@@ -35,7 +35,7 @@ export default function VerifyEmailScreen() {
       setVerifying(true);
       setError(null);
       
-      const response = await api.post('/api/auth/verify-email', { token });
+      const response = await api.post<{ sessionToken?: string; isNewUser?: boolean }>('/api/auth/verify-email', { token });
       
       if (response.error) {
         setError(response.error || 'Verification failed');
@@ -43,19 +43,14 @@ export default function VerifyEmailScreen() {
       } else {
         setSuccess(true);
         
-        if (response.user) {
-          setUser(response.user);
-        }
-        if (response.sessionToken) {
-          setSessionToken(response.sessionToken);
+        if (response.data?.sessionToken) {
+          await api.setToken(response.data.sessionToken);
         }
         
+        await checkAuth();
+        
         setTimeout(() => {
-          if (response.isNewUser) {
-            router.replace('/(main)/dashboard');
-          } else {
-            router.replace('/(main)/dashboard');
-          }
+          router.replace('/(main)/dashboard');
         }, 2000);
       }
     } catch (err: any) {
