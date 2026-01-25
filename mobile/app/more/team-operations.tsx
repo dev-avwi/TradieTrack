@@ -734,6 +734,12 @@ export default function TeamOperationsScreen() {
           >
             {membersWithLocations.map(member => {
               const statusConfig = STATUS_CONFIG[member.presence?.status || 'offline'];
+              const firstName = member.firstName || '';
+              const lastName = member.lastName || '';
+              const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
+              const shortName = firstName || member.email?.split('@')[0] || 'Team';
+              const memberColor = member.themeColor || statusConfig?.color || '#3b82f6';
+              
               return (
                 <Marker
                   key={member.id}
@@ -741,10 +747,19 @@ export default function TeamOperationsScreen() {
                     latitude: member.presence!.lastLocationLat!,
                     longitude: member.presence!.lastLocationLng!,
                   }}
-                  title={`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email}
-                  description={statusConfig?.label}
-                  pinColor={statusConfig?.color}
-                />
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  tracksViewChanges={false}
+                >
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={[styles.teamMarkerOuter, { backgroundColor: memberColor }]}>
+                      <Text style={styles.teamMarkerText}>{initials}</Text>
+                      <View style={[styles.activityDot, { backgroundColor: statusConfig?.color || '#9ca3af' }]} />
+                    </View>
+                    <View style={styles.nameLabel}>
+                      <Text style={styles.nameLabelText} numberOfLines={1}>{shortName}</Text>
+                    </View>
+                  </View>
+                </Marker>
               );
             })}
           </MapView>
@@ -1811,6 +1826,64 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   mapEmptyText: {
     ...typography.caption,
     color: colors.mutedForeground,
+    textAlign: 'center',
+  },
+  // Life360-style team marker styles
+  teamMarkerOuter: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: colors.card,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  teamMarkerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  activityDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    borderWidth: 2,
+    borderColor: colors.card,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  nameLabel: {
+    marginTop: spacing.xs,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 8,
+    minWidth: 64,
+    alignItems: 'center' as const,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  nameLabelText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.foreground,
     textAlign: 'center',
   },
   emptyState: {
