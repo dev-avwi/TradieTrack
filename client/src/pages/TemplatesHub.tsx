@@ -296,27 +296,43 @@ function StylePresetsWithPreview() {
     if (serverTemplate && serverTemplate !== lastServerTemplateRef.current) {
       // Check if this is a remote change (not from this device)
       if (isRemoteChange('/api/business-settings', Date.now())) {
-        console.log('[TemplatesHub] Remote template change detected, syncing to:', serverTemplate);
         if (['professional', 'modern', 'minimal'].includes(serverTemplate)) {
           setSelectedTemplateId(serverTemplate);
+          // Also sync the template customization settings from server
+          const serverSettings = (business as any)?.documentTemplateSettings;
+          if (serverSettings) {
+            setCustomization({
+              tableStyle: serverSettings.tableStyle || 'bordered',
+              noteStyle: serverSettings.noteStyle || 'bordered',
+              headerBorderWidth: serverSettings.headerBorderWidth || '2px',
+              showHeaderDivider: serverSettings.showHeaderDivider ?? true,
+              bodyWeight: serverSettings.bodyWeight || 600,
+              headingWeight: serverSettings.headingWeight || 700,
+              accentColor: serverSettings.accentColor || DOCUMENT_ACCENT_COLOR,
+            });
+          }
         }
       }
       lastServerTemplateRef.current = serverTemplate;
     }
   }, [isInitialized, business?.documentTemplate]);
-
+  
   // Reset customization to template defaults when user explicitly selects a new template
+  // Note: This is only called from handleSelectTemplate (user-initiated), not for remote changes
   const resetToTemplateDefaults = (templateId: TemplateId) => {
     const template = DOCUMENT_TEMPLATES[templateId];
     if (template) {
-      setCustomization(prev => ({
-        ...prev,
+      const newCustomization = {
         tableStyle: template.tableStyle,
         noteStyle: template.noteStyle,
         headerBorderWidth: template.headerBorderWidth as '1px' | '2px' | '3px' | '4px',
         showHeaderDivider: template.showHeaderDivider,
         bodyWeight: template.bodyWeight as 400 | 500 | 600 | 700,
         headingWeight: template.headingWeight as 600 | 700 | 800,
+      };
+      setCustomization(prev => ({
+        ...prev,
+        ...newCustomization,
       }));
     }
   };
@@ -338,9 +354,7 @@ function StylePresetsWithPreview() {
   });
 
   const handleSelectTemplate = (newTemplateId: TemplateId) => {
-    console.log('[TemplatesHub] handleSelectTemplate called with:', newTemplateId, 'current state:', selectedTemplateId);
     setSelectedTemplateId(newTemplateId);
-    console.log('[TemplatesHub] setSelectedTemplateId called with:', newTemplateId);
     resetToTemplateDefaults(newTemplateId);
     updateTemplateMutation.mutate(newTemplateId);
     toast({ title: `${DOCUMENT_TEMPLATES[newTemplateId].name} template selected` });
@@ -372,6 +386,7 @@ function StylePresetsWithPreview() {
   };
 
   // Build template customization for live preview
+  // Uses the current customization state (which reflects either template defaults or user overrides)
   const buildTemplateCustomization = (): TemplateCustomization => ({
     ...customization,
     accentColor: customization.accentColor || DOCUMENT_ACCENT_COLOR,
@@ -638,7 +653,6 @@ function StylePresetsWithPreview() {
             <CardContent className="p-0">
               {business ? (
                 <div className="bg-muted/30 p-4">
-                  {console.log('[TemplatesHub] Rendering preview section with selectedTemplateId:', selectedTemplateId)}
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '700px', overflow: 'auto' }}>
                     <LiveDocumentPreview
                       key={`${selectedTemplateId}-${JSON.stringify(customization)}`}

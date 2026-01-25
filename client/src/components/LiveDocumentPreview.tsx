@@ -175,11 +175,6 @@ export default function LiveDocumentPreview({
     >
       {/* Document Container */}
       <div className="p-6 sm:p-10">
-        {/* DEBUG: Template indicator - temporary to diagnose template switching */}
-        <div className="mb-4 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs font-mono text-yellow-800">
-          DEBUG: templateId={templateId} | tableStyle={template.tableStyle} | headerBg={tableHeaderStyle.backgroundColor}
-        </div>
-        
         {/* Header - matches PDF .header */}
         <div 
           className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-10 pb-5"
