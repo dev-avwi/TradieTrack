@@ -1115,21 +1115,22 @@ export default function TemplatesScreen() {
   }, [selectedTemplateStyle]);
 
   const updateStylePresetTemplate = useCallback(async (templateId: TemplateId) => {
-    if (!selectedPreset) return;
-    
     setIsUpdatingPreset(true);
     try {
-      // Update style preset
-      const presetResponse = await fetch(`${API_URL}/api/style-presets/${selectedPreset.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          headerLayout: templateId,
-        }),
-      });
+      // Update style preset if one is selected
+      let presetResponse: Response | null = null;
+      if (selectedPreset) {
+        presetResponse = await fetch(`${API_URL}/api/style-presets/${selectedPreset.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            headerLayout: templateId,
+          }),
+        });
+      }
       
       // Get the template's default customization values
       const template = DOCUMENT_TEMPLATES[templateId];
@@ -1143,7 +1144,7 @@ export default function TemplatesScreen() {
         accentColor: templateCustomization.accentColor || DOCUMENT_ACCENT_COLOR,
       } : undefined;
       
-      // Also update business settings with BOTH template ID and reset customization
+      // Always update business settings with BOTH template ID and reset customization
       await fetch(`${API_URL}/api/business-settings`, {
         method: 'PATCH',
         headers: {
@@ -1159,7 +1160,7 @@ export default function TemplatesScreen() {
       // Update local state
       await fetchBusinessSettings();
       
-      if (presetResponse.ok) {
+      if (presetResponse?.ok) {
         await fetchStylePresets();
       }
     } catch (error) {

@@ -696,6 +696,8 @@ ${businessName}`;
                   notes: quote.notes,
                   includesGst: quote.includesGst,
                   status: 'draft',
+                  documentTemplate: (quote as any).documentTemplate || businessSettings?.documentTemplate || 'professional',
+                  documentTemplateSettings: (quote as any).documentTemplateSettings || businessSettings?.documentTemplateSettings || null,
                 }),
               });
 

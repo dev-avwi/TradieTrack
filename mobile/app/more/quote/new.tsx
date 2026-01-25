@@ -800,6 +800,8 @@ export default function NewQuoteScreen() {
       depositRequired: form.requireDeposit,
       depositPercent: form.requireDeposit ? parseInt(form.depositPercent) : 0,
       depositAmount: form.requireDeposit ? parseFloat((total * (parseInt(form.depositPercent) / 100)).toFixed(2)) : 0,
+      documentTemplate: (businessSettings as any)?.documentTemplate || 'professional',
+      documentTemplateSettings: (businessSettings as any)?.documentTemplateSettings || null,
       lineItems: lineItems.map(item => ({
         description: item.description,
         quantity: parseFloat(item.quantity),

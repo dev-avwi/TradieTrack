@@ -956,6 +956,8 @@ export default function NewInvoiceScreen() {
       subtotal: parseFloat(subtotal.toFixed(2)),
       gstAmount: parseFloat(gst.toFixed(2)),
       total: parseFloat(total.toFixed(2)),
+      documentTemplate: (businessSettings as any)?.documentTemplate || 'professional',
+      documentTemplateSettings: (businessSettings as any)?.documentTemplateSettings || null,
       lineItems: lineItems.map(item => ({
         description: item.description,
         quantity: parseFloat(item.quantity),
