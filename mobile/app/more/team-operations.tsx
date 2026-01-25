@@ -552,6 +552,8 @@ export default function TeamOperationsScreen() {
     );
   };
 
+  const tabIconSize = IS_TABLET ? 18 : 16;
+  
   const renderTabs = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
       <TouchableOpacity
@@ -559,7 +561,7 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('live')}
         activeOpacity={0.7}
       >
-        <Feather name="activity" size={16} color={activeTab === 'live' ? colors.primary : colors.mutedForeground} />
+        <Feather name="activity" size={tabIconSize} color={activeTab === 'live' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.tabButtonText, activeTab === 'live' && styles.tabButtonTextActive]}>Live Ops</Text>
       </TouchableOpacity>
 
@@ -569,7 +571,7 @@ export default function TeamOperationsScreen() {
           onPress={() => setActiveTab('admin')}
           activeOpacity={0.7}
         >
-          <Feather name="users" size={16} color={activeTab === 'admin' ? colors.primary : colors.mutedForeground} />
+          <Feather name="users" size={tabIconSize} color={activeTab === 'admin' ? colors.primary : colors.mutedForeground} />
           <Text style={[styles.tabButtonText, activeTab === 'admin' && styles.tabButtonTextActive]}>Team Admin</Text>
         </TouchableOpacity>
       )}
@@ -579,7 +581,7 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('scheduling')}
         activeOpacity={0.7}
       >
-        <Feather name="calendar" size={16} color={activeTab === 'scheduling' ? colors.primary : colors.mutedForeground} />
+        <Feather name="calendar" size={tabIconSize} color={activeTab === 'scheduling' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.tabButtonText, activeTab === 'scheduling' && styles.tabButtonTextActive]}>Scheduling</Text>
       </TouchableOpacity>
 
@@ -588,7 +590,7 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('skills')}
         activeOpacity={0.7}
       >
-        <Feather name="award" size={16} color={activeTab === 'skills' ? colors.primary : colors.mutedForeground} />
+        <Feather name="award" size={tabIconSize} color={activeTab === 'skills' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.tabButtonText, activeTab === 'skills' && styles.tabButtonTextActive]}>Skills & Certs</Text>
       </TouchableOpacity>
 
@@ -597,7 +599,7 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('performance')}
         activeOpacity={0.7}
       >
-        <Feather name="trending-up" size={16} color={activeTab === 'performance' ? colors.primary : colors.mutedForeground} />
+        <Feather name="trending-up" size={tabIconSize} color={activeTab === 'performance' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.tabButtonText, activeTab === 'performance' && styles.tabButtonTextActive]}>Performance</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -1552,24 +1554,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: IS_TABLET ? spacing.lg : 0,
+    paddingHorizontal: IS_TABLET ? spacing.xl : 0,
   },
   tabletHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingTop: spacing.xl,
   },
   tabletTitle: {
-    ...typography.h2,
+    fontSize: IS_TABLET ? 28 : 24,
     color: colors.foreground,
     fontWeight: '700',
   },
   refreshButton: {
-    padding: spacing.sm,
+    padding: spacing.sm + 2,
     borderRadius: radius.md,
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   loadingContainer: {
     flex: 1,
@@ -1582,23 +1587,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
+    borderTopWidth: IS_TABLET ? 1 : 0,
+    borderTopColor: colors.border,
+    borderRadius: IS_TABLET ? radius.lg : 0,
+    paddingHorizontal: IS_TABLET ? spacing.lg : spacing.md,
+    marginBottom: IS_TABLET ? spacing.md : 0,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 2,
+    gap: IS_TABLET ? spacing.sm : spacing.xs,
+    paddingVertical: IS_TABLET ? spacing.lg : spacing.md,
+    paddingHorizontal: IS_TABLET ? spacing.lg : spacing.md,
+    borderBottomWidth: IS_TABLET ? 3 : 2,
     borderBottomColor: 'transparent',
-    marginRight: spacing.sm,
+    marginRight: IS_TABLET ? spacing.md : spacing.sm,
   },
   tabButtonActive: {
     borderBottomColor: colors.primary,
   },
   tabButtonText: {
-    ...typography.caption,
+    fontSize: IS_TABLET ? 15 : 12,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
