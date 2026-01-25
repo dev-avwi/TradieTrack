@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, safeInvalidateQueries } from "@/lib/queryClient";
+import { apiRequest, safeInvalidateQueries, recordLocalChange } from "@/lib/queryClient";
 
 export function useBusinessSettings() {
   return useQuery({
@@ -31,6 +31,9 @@ export function useBusinessSettings() {
 export function useUpdateBusinessSettings() {
   return useMutation({
     mutationFn: async (data: Record<string, any>) => {
+      // Record that this device is making a change
+      // This prevents the WebSocket event from causing a re-fetch on this device
+      recordLocalChange('/api/business-settings');
       const response = await apiRequest('PATCH', '/api/business-settings', data);
       return response.json();
     },

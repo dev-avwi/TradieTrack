@@ -54,6 +54,42 @@ async function getItemFromEndpoint(endpoint: string, id: string): Promise<any> {
 // Session token storage key for iOS/Safari fallback
 const SESSION_TOKEN_KEY = 'tradietrack_session_token';
 
+// Track local changes to prevent WebSocket invalidation flicker
+// Maps query key patterns to their last local change timestamp
+const localChangeTimestamps = new Map<string, number>();
+
+/**
+ * Record a local change timestamp for a query key pattern.
+ * This prevents WebSocket events from re-invalidating data we just changed.
+ */
+export function recordLocalChange(queryKeyPattern: string): void {
+  localChangeTimestamps.set(queryKeyPattern, Date.now());
+}
+
+/**
+ * Check if a WebSocket event timestamp is from a remote device.
+ * Returns true if we should invalidate (remote change), false if local (already have data).
+ * Uses a 5-second window to account for network latency.
+ */
+export function isRemoteChange(queryKeyPattern: string, eventTimestamp: number): boolean {
+  const localTimestamp = localChangeTimestamps.get(queryKeyPattern);
+  if (!localTimestamp) {
+    // No local change recorded - this is a remote change
+    return true;
+  }
+  
+  // If the event timestamp is within 5 seconds of our local change, it's likely our own change
+  const timeDiff = Math.abs(eventTimestamp - localTimestamp);
+  const isLocal = timeDiff < 5000;
+  
+  // Clean up old entries after 10 seconds
+  if (Date.now() - localTimestamp > 10000) {
+    localChangeTimestamps.delete(queryKeyPattern);
+  }
+  
+  return !isLocal;
+}
+
 // Get session token from localStorage
 export function getSessionToken(): string | null {
   try {

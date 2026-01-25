@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { safeInvalidateQueries } from '@/lib/queryClient';
+import { safeInvalidateQueries, isRemoteChange } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface JobStatusEvent {
@@ -211,23 +211,31 @@ export function useRealtimeUpdates({
         break;
 
       case 'business_settings_changed':
-        // Note: We intentionally do NOT invalidate the cache here.
-        // The mutation that triggered the change already handles cache invalidation.
-        // Invalidating here causes flickering on the same device due to race conditions
-        // with React Query's stale state during refetch.
-        // Cross-device sync will still work because TanStack Query has refetchOnWindowFocus.
+        // Only invalidate if this is a change from another device
+        // The isRemoteChange function checks if we recently made a local change
+        // If we did, we already have the data and don't need to refetch
+        if (isRemoteChange('/api/business-settings', event.timestamp)) {
+          console.log('[RealtimeUpdates] Remote business settings change detected, syncing...');
+          safeInvalidateQueries({ queryKey: ['/api/business-settings'] });
+        }
         break;
 
       case 'template_changed':
-        // Note: We intentionally do NOT invalidate cache here for the same reasons as
-        // business_settings_changed - the mutation that triggered the change already handles
-        // cache invalidation, and invalidating here causes flickering due to race conditions.
-        // Cross-device sync works via refetchOnWindowFocus when switching tabs/apps.
+        // Only invalidate if this is a change from another device
+        if (isRemoteChange('/api/templates', event.timestamp)) {
+          console.log('[RealtimeUpdates] Remote template change detected, syncing...');
+          safeInvalidateQueries({ queryKey: ['/api/templates'] });
+          safeInvalidateQueries({ queryKey: ['/api/business-settings'] });
+        }
         break;
 
       case 'form_changed':
-        // Note: We intentionally do NOT invalidate cache here for the same reasons as above.
-        // Cross-device sync works via refetchOnWindowFocus when switching tabs/apps.
+        // Only invalidate if this is a change from another device
+        if (isRemoteChange('/api/forms', event.timestamp)) {
+          console.log('[RealtimeUpdates] Remote form change detected, syncing...');
+          safeInvalidateQueries({ queryKey: ['/api/custom-forms'] });
+          safeInvalidateQueries({ queryKey: ['/api/safety-forms'] });
+        }
         break;
     }
   }, [toast]);

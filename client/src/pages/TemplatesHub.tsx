@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, recordLocalChange } from "@/lib/queryClient";
 import {
   Palette,
   Plus,
@@ -323,6 +323,8 @@ function StylePresetsWithPreview() {
   // Save customization to server
   const saveCustomizationMutation = useMutation({
     mutationFn: async (customizationToSave: TemplateCustomization) => {
+      // Record that this device is making a change to prevent WebSocket flicker
+      recordLocalChange('/api/business-settings');
       await apiRequest("PATCH", "/api/business-settings", {
         documentTemplateSettings: customizationToSave,
       });
