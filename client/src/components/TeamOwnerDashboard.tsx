@@ -520,7 +520,7 @@ export default function TeamOwnerDashboard({
                   size="sm"
                   className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
                   onClick={() => onNavigate?.('/team-operations')}
-                  data-testid="button-team-hub"
+                  data-testid="button-team-operations"
                 >
                   <Users className="h-4 w-4 mr-1.5" />
                   <span className="truncate">Team</span>
