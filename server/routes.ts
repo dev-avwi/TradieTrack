@@ -1285,6 +1285,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Auth providers config endpoint - returns available auth methods
+  app.get("/api/auth/config", async (req: any, res) => {
+    const config = {
+      google: {
+        enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      },
+      apple: {
+        enabled: !!(process.env.APPLE_WEB_SERVICE_ID && process.env.APPLE_WEB_CLIENT_ID),
+        clientId: process.env.APPLE_WEB_SERVICE_ID || null,
+        redirectUri: process.env.REPLIT_DOMAINS 
+          ? `https://${process.env.REPLIT_DOMAINS}/api/auth/apple/callback`
+          : null,
+      },
+      emailPassword: {
+        enabled: true,
+      },
+      emailCode: {
+        enabled: true,
+      },
+    };
+    res.json(config);
+  });
+
   // Auth check endpoint (supports both cookies and Authorization header for iOS/Safari)
   app.get("/api/auth/me", async (req: any, res) => {
     let userId = req.session?.userId;
@@ -1411,6 +1434,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Email verification routes (public - no auth required)
+  // GET endpoint for clicking email link - supports mobile deep linking
+  app.get("/api/auth/verify-email", async (req: any, res) => {
+    try {
+      const { token, platform } = req.query;
+      
+      if (!token) {
+        return res.redirect('/auth?error=missing_token');
+      }
+
+      // Check if request is from mobile device (via User-Agent or explicit platform param)
+      const userAgent = req.headers['user-agent'] || '';
+      const isMobile = platform === 'mobile' || 
+                       /iPhone|iPad|iPod|Android/i.test(userAgent);
+
+      if (isMobile) {
+        // Redirect to mobile app using deep link
+        // The mobile app will handle the verification via the POST endpoint
+        const deepLink = `tradietrack://verify-email?token=${encodeURIComponent(token as string)}`;
+        
+        // For iOS, also provide universal link fallback
+        const universalLink = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : ''}/mobile/verify-email?token=${encodeURIComponent(token as string)}`;
+        
+        // Serve a simple HTML page that attempts deep link with fallback
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Verify Email - TradieTrack</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                     display: flex; flex-direction: column; align-items: center; justify-content: center;
+                     min-height: 100vh; margin: 0; padding: 20px; background: linear-gradient(135deg, #f97316 0%, #2563eb 100%); }
+              .card { background: white; border-radius: 16px; padding: 32px; max-width: 400px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+              h1 { color: #1f2937; margin-bottom: 8px; }
+              p { color: #6b7280; margin-bottom: 24px; }
+              .btn { display: inline-block; background: #f97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+              .btn:hover { background: #ea580c; }
+              .secondary { margin-top: 16px; font-size: 14px; color: #6b7280; }
+              .secondary a { color: #2563eb; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Opening TradieTrack...</h1>
+              <p>If the app doesn't open automatically, tap the button below.</p>
+              <a href="${deepLink}" class="btn">Open in App</a>
+              <div class="secondary">
+                <p>Don't have the app? <a href="/verify-email?token=${encodeURIComponent(token as string)}">Verify on web instead</a></p>
+              </div>
+            </div>
+            <script>
+              // Try to open the app immediately
+              window.location.href = "${deepLink}";
+              
+              // Fallback after 2 seconds if app didn't open
+              setTimeout(function() {
+                // If we're still here, app didn't open - show the page content
+              }, 2000);
+            </script>
+          </body>
+          </html>
+        `);
+        return;
+      }
+
+      // For web, redirect to verification page which will call the POST endpoint
+      res.redirect(`/verify-email?token=${encodeURIComponent(token as string)}`);
+    } catch (error) {
+      console.error("Email verification redirect error:", error);
+      res.redirect('/auth?error=verification_failed');
+    }
+  });
+
+  // POST endpoint for actual verification (used by both web and mobile)
   app.post("/api/auth/verify-email", async (req: any, res) => {
     try {
       const { token } = req.body;
@@ -1633,12 +1732,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid token issuer" });
       }
       
-      // Basic validation: check audience matches our app's bundle ID
+      // Basic validation: check audience matches our app's bundle ID or web service ID
       const expectedBundleId = process.env.APPLE_BUNDLE_ID || 'com.tradietrack.app';
-      if (decoded.aud !== expectedBundleId) {
-        console.error('Apple auth: Invalid audience:', decoded.aud, 'expected:', expectedBundleId);
+      const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.tradietrack.web';
+      const validAudiences = [expectedBundleId, expectedWebServiceId];
+      
+      if (!validAudiences.includes(decoded.aud || '')) {
+        console.error('Apple auth: Invalid audience:', decoded.aud, 'expected one of:', validAudiences);
         return res.status(400).json({ error: "Invalid token audience" });
       }
+      
+      // Determine if this is a web or mobile request
+      const isWebRequest = decoded.aud === expectedWebServiceId;
       
       const appleUserId = decoded.sub;
       const userEmail = email || decoded.email;

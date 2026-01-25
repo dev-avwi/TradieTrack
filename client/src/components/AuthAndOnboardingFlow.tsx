@@ -79,7 +79,25 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showGoogleAccountPicker, setShowGoogleAccountPicker] = useState(false);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const { toast } = useToast();
+
+  // Check if Apple Sign-In is available for web
+  useEffect(() => {
+    const checkAppleAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/config');
+        if (res.ok) {
+          const config = await res.json();
+          setAppleAuthAvailable(config.apple?.enabled === true);
+        }
+      } catch (err) {
+        // Apple auth not available
+      }
+    };
+    checkAppleAuth();
+  }, []);
 
   // Check if user is already authenticated and determine onboarding state
   useEffect(() => {
@@ -231,6 +249,41 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     setShowGoogleAccountPicker(true);
   };
 
+  const handleAppleSignIn = async () => {
+    // Apple Sign in with Apple on web requires the Apple JS SDK
+    // For now, we'll show a message that it's coming soon or redirect to popup
+    setAppleLoading(true);
+    try {
+      // Check if Apple auth is properly configured
+      const configRes = await fetch('/api/auth/config');
+      const config = await configRes.json();
+      
+      if (!config.apple?.enabled) {
+        toast({
+          variant: "destructive",
+          title: "Apple Sign-In Not Available",
+          description: "Apple Sign-In is currently being set up. Please use Google or email/password instead."
+        });
+        return;
+      }
+
+      // For web Apple Sign-In, we would load Apple's JS SDK and initiate the flow
+      // This requires Apple Developer credentials to be configured
+      toast({
+        title: "Apple Sign-In",
+        description: "Apple Sign-In for web is being configured. Please use Google or email for now."
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not connect to authentication service."
+      });
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   const handleSelectGoogleAccount = (accountIndex: number) => {
     setShowGoogleAccountPicker(false);
     // In production, the prompt=select_account parameter handles this
@@ -307,6 +360,8 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     }
   };
 
+  const [duplicateEmail, setDuplicateEmail] = useState(false);
+
   const handleRegister = async () => {
     if (!accountData.email || !accountData.password || !accountData.firstName) {
       setError('Please fill in all required fields');
@@ -325,6 +380,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
 
     setIsLoading(true);
     setError('');
+    setDuplicateEmail(false);
 
     try {
       const response = await apiRequest('POST', '/api/auth/register', accountData);
@@ -337,17 +393,40 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         });
         setCurrentStep('business');
       } else {
-        setError(result.error || 'Registration failed');
+        // Check for duplicate email error and offer login option
+        if (result.error?.toLowerCase().includes('already exists') || 
+            result.error?.toLowerCase().includes('already registered')) {
+          setDuplicateEmail(true);
+          setError(`An account with ${accountData.email} already exists.`);
+          // Pre-fill login form with the email
+          setLoginData(prev => ({ ...prev, email: accountData.email }));
+        } else {
+          setError(result.error || 'Registration failed');
+        }
       }
     } catch (error: any) {
       // Don't show "session_expired" error on registration page
       const errorMsg = error.message || 'Registration failed';
       if (!errorMsg.includes('session_expired')) {
-        setError(errorMsg);
+        // Check for duplicate email in catch block too
+        if (errorMsg.toLowerCase().includes('already exists') || 
+            errorMsg.toLowerCase().includes('already registered')) {
+          setDuplicateEmail(true);
+          setError(`An account with ${accountData.email} already exists.`);
+          setLoginData(prev => ({ ...prev, email: accountData.email }));
+        } else {
+          setError(errorMsg);
+        }
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSwitchToLogin = () => {
+    setDuplicateEmail(false);
+    setError('');
+    handleModeChange('login');
   };
 
   const handleBusinessSetup = async () => {
@@ -389,9 +468,21 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       // Mark that settings now exist for future updates
       setSettingsExist(true);
 
+      // Auto-seed trade-specific templates based on selected trade type
+      try {
+        await apiRequest('POST', '/api/seed-tradie-templates', { 
+          tradeType: businessData.tradeType 
+        });
+        await apiRequest('POST', '/api/business-templates/seed');
+      } catch (templateError) {
+        console.error('Failed to seed templates:', templateError);
+      }
+
       // Invalidate cached data so dashboard will have fresh data for the checklist
       await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/business-templates'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/message-templates'] });
 
       toast({
         title: "Business setup complete!",
@@ -546,22 +637,44 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         <TabsContent value="login" className="space-y-4">
           <Card className="border-none shadow-lg">
             <CardContent className="space-y-4 pt-6">
-              {/* Google Sign-In Button */}
-              <Button 
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                variant="outline"
-                className="w-full h-12 text-base font-medium"
-                data-testid="button-google-signin"
-              >
-                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continue with Google
-              </Button>
+              {/* Social Sign-In Buttons */}
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium"
+                  data-testid="button-google-signin"
+                >
+                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Continue with Google
+                </Button>
+
+                {/* Apple Sign-In Button - Only shown when Apple auth is available */}
+                {appleAuthAvailable && (
+                  <Button 
+                    onClick={handleAppleSignIn}
+                    disabled={isLoading || appleLoading}
+                    variant="default"
+                    className="w-full h-12 text-base font-medium bg-black text-white border-black"
+                    data-testid="button-apple-signin"
+                  >
+                    {appleLoading ? (
+                      <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                    ) : (
+                      <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                      </svg>
+                    )}
+                    Continue with Apple
+                  </Button>
+                )}
+              </div>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -643,22 +756,44 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         <TabsContent value="register" className="space-y-4">
           <Card className="border-none shadow-lg">
             <CardContent className="space-y-4 pt-6">
-              {/* Google Sign-In Button */}
-              <Button 
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                variant="outline"
-                className="w-full h-12 text-base font-medium"
-                data-testid="button-google-signup"
-              >
-                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continue with Google
-              </Button>
+              {/* Social Sign-Up Buttons */}
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium"
+                  data-testid="button-google-signup"
+                >
+                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Continue with Google
+                </Button>
+
+                {/* Apple Sign-Up Button - Only shown when Apple auth is available */}
+                {appleAuthAvailable && (
+                  <Button 
+                    onClick={handleAppleSignIn}
+                    disabled={isLoading || appleLoading}
+                    variant="default"
+                    className="w-full h-12 text-base font-medium bg-black text-white border-black"
+                    data-testid="button-apple-signup"
+                  >
+                    {appleLoading ? (
+                      <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                    ) : (
+                      <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                      </svg>
+                    )}
+                    Continue with Apple
+                  </Button>
+                )}
+              </div>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -777,7 +912,20 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-2">
+            <span>{error}</span>
+            {duplicateEmail && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSwitchToLogin}
+                className="w-fit mt-2"
+                data-testid="button-login-instead"
+              >
+                Log in instead
+              </Button>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 

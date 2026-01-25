@@ -975,7 +975,8 @@ export const createJobConfirmationEmailHtml = (job: any, client: any, business: 
 // Email template for email verification
 const createEmailVerificationEmail = (user: any, verificationToken: string) => {
   const baseUrl = getBaseUrl();
-  const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+  // Use API endpoint which supports mobile deep linking detection
+  const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
   const logoUrl = `${baseUrl}/tradietrack-logo.png`;
 
   return {
