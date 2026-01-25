@@ -138,8 +138,9 @@ export default function LiveDocumentPreview({
   const isAccepted = status === 'accepted';
   
   // Get template styles - pass customization for accent color and other overrides
-  console.log('[LiveDocumentPreview] Rendering with templateId:', templateId);
+  console.log('[LiveDocumentPreview] Rendering with templateId:', templateId, 'customization:', templateCustomization?.tableStyle);
   const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
+  console.log('[LiveDocumentPreview] Template styles - tableHeaderBg:', templateStyles.tableHeaderStyle.backgroundColor);
   const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
   // Keep title clean - the status badge shows "Paid" separately
@@ -174,6 +175,11 @@ export default function LiveDocumentPreview({
     >
       {/* Document Container */}
       <div className="p-6 sm:p-10">
+        {/* DEBUG: Template indicator - temporary to diagnose template switching */}
+        <div className="mb-4 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs font-mono text-yellow-800">
+          DEBUG: templateId={templateId} | tableStyle={template.tableStyle} | headerBg={tableHeaderStyle.backgroundColor}
+        </div>
+        
         {/* Header - matches PDF .header */}
         <div 
           className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-10 pb-5"

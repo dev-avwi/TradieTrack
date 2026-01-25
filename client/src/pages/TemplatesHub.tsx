@@ -337,12 +337,13 @@ function StylePresetsWithPreview() {
     },
   });
 
-  const handleSelectTemplate = (templateId: TemplateId) => {
-    console.log('[TemplatesHub] Selecting template:', templateId, 'current:', selectedTemplateId);
-    setSelectedTemplateId(templateId);
-    resetToTemplateDefaults(templateId);
-    updateTemplateMutation.mutate(templateId);
-    toast({ title: `${DOCUMENT_TEMPLATES[templateId].name} template selected` });
+  const handleSelectTemplate = (newTemplateId: TemplateId) => {
+    console.log('[TemplatesHub] handleSelectTemplate called with:', newTemplateId, 'current state:', selectedTemplateId);
+    setSelectedTemplateId(newTemplateId);
+    console.log('[TemplatesHub] setSelectedTemplateId called with:', newTemplateId);
+    resetToTemplateDefaults(newTemplateId);
+    updateTemplateMutation.mutate(newTemplateId);
+    toast({ title: `${DOCUMENT_TEMPLATES[newTemplateId].name} template selected` });
   };
 
   const updateCustomization = (updates: Partial<TemplateCustomization>) => {
@@ -637,6 +638,7 @@ function StylePresetsWithPreview() {
             <CardContent className="p-0">
               {business ? (
                 <div className="bg-muted/30 p-4">
+                  {console.log('[TemplatesHub] Rendering preview section with selectedTemplateId:', selectedTemplateId)}
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '700px', overflow: 'auto' }}>
                     <LiveDocumentPreview
                       key={`${selectedTemplateId}-${JSON.stringify(customization)}`}
