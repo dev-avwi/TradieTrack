@@ -1088,7 +1088,9 @@ export default function TemplatesScreen() {
     refreshData();
   }, [typeFilter]);
 
-  // Sync selected template style from business settings (primary source for cross-platform sync)
+  // Sync selected template style from business settings (SINGLE source of truth for cross-platform sync)
+  // Note: We intentionally do NOT sync from selectedPreset.headerLayout to prevent race conditions
+  // where stale preset data overwrites the correct template from businessSettings
   useEffect(() => {
     const serverDocumentTemplate = (businessSettings as any)?.documentTemplate;
     if (serverDocumentTemplate && ['professional', 'modern', 'minimal'].includes(serverDocumentTemplate)) {
@@ -1096,15 +1098,7 @@ export default function TemplatesScreen() {
     }
   }, [(businessSettings as any)?.documentTemplate]);
 
-  useEffect(() => {
-    if (selectedPreset?.headerLayout) {
-      const serverTemplateId = selectedPreset.headerLayout as TemplateId;
-      if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
-        setSelectedTemplateStyle(serverTemplateId);
-      }
-    }
-  }, [selectedPreset?.headerLayout]);
-
+  // Sync customization when template style changes
   useEffect(() => {
     const template = DOCUMENT_TEMPLATES[selectedTemplateStyle];
     if (template) {
