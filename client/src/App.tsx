@@ -537,9 +537,7 @@ function Router({
         <Redirect to="/templates?tab=jobs_safety" />
       </Route>
       
-      <Route path="/templates" component={() => (
-        <TemplatesHub />
-      )} />
+      <Route path="/templates" component={TemplatesHub} />
       
       <Route path="/communications" component={() => (
         <CommunicationsHub />
