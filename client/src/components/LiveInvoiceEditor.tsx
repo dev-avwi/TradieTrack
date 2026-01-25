@@ -906,19 +906,36 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
               client={clientInfo}
               gstEnabled={gstEnabled}
               templateId={(() => {
-                // Use headerLayout from style preset (set in Templates Hub)
-                const savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
-                if (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId)) {
-                  return savedTemplateId;
+                // Primary source: businessSettings.documentTemplate (set in Templates Hub)
+                const savedTemplate = (businessSettings as any)?.documentTemplate as TemplateId | undefined;
+                if (savedTemplate && ['professional', 'modern', 'minimal'].includes(savedTemplate)) {
+                  return savedTemplate;
                 }
-                return (businessSettings as any)?.documentTemplate || 'professional';
+                // Fallback: check style preset headerLayout
+                let presetLayout = defaultStylePreset?.headerLayout as string | undefined;
+                // Map legacy 'standard' or 'classic' to 'professional'
+                if (presetLayout === 'standard' || presetLayout === 'classic') {
+                  presetLayout = 'professional';
+                }
+                if (presetLayout && ['professional', 'modern', 'minimal'].includes(presetLayout)) {
+                  return presetLayout as TemplateId;
+                }
+                return 'professional';
               })()}
               templateCustomization={(() => {
                 // Get template config from the selected template
-                const savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
-                const templateId: TemplateId = (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId))
-                  ? savedTemplateId
-                  : ((businessSettings as any)?.documentTemplate || 'professional');
+                // Primary source: businessSettings.documentTemplate
+                let templateId: TemplateId = (businessSettings as any)?.documentTemplate as TemplateId;
+                if (!templateId || !['professional', 'modern', 'minimal'].includes(templateId)) {
+                  // Fallback: check style preset headerLayout
+                  let presetLayout = defaultStylePreset?.headerLayout as string | undefined;
+                  if (presetLayout === 'standard' || presetLayout === 'classic') {
+                    presetLayout = 'professional';
+                  }
+                  templateId = (presetLayout && ['professional', 'modern', 'minimal'].includes(presetLayout))
+                    ? presetLayout as TemplateId
+                    : 'professional';
+                }
                 const template = DOCUMENT_TEMPLATES[templateId];
                 
                 // User's saved settings take priority; fall back to template defaults

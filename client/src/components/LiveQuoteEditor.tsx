@@ -1138,27 +1138,36 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
               depositPercent={watchedValues.depositPercent}
               gstEnabled={gstEnabled}
               templateId={(() => {
-                // Use headerLayout from style preset (set in Templates Hub)
-                let savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
-                // Backward compatibility: map legacy 'standard' to 'professional'
-                if (savedTemplateId === 'standard') {
-                  savedTemplateId = 'professional';
+                // Primary source: businessSettings.documentTemplate (set in Templates Hub)
+                const savedTemplate = (businessSettings as any)?.documentTemplate as TemplateId | undefined;
+                if (savedTemplate && ['professional', 'modern', 'minimal'].includes(savedTemplate)) {
+                  return savedTemplate;
                 }
-                if (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId)) {
-                  return savedTemplateId;
+                // Fallback: check style preset headerLayout
+                let presetLayout = defaultStylePreset?.headerLayout as string | undefined;
+                // Map legacy 'standard' or 'classic' to 'professional'
+                if (presetLayout === 'standard' || presetLayout === 'classic') {
+                  presetLayout = 'professional';
                 }
-                return (businessSettings as any)?.documentTemplate || 'professional';
+                if (presetLayout && ['professional', 'modern', 'minimal'].includes(presetLayout)) {
+                  return presetLayout as TemplateId;
+                }
+                return 'professional';
               })()}
               templateCustomization={(() => {
                 // Get template config from the selected template
-                let savedTemplateId = defaultStylePreset?.headerLayout as TemplateId | undefined;
-                // Backward compatibility: map legacy 'standard' to 'professional'
-                if (savedTemplateId === 'standard') {
-                  savedTemplateId = 'professional';
+                // Primary source: businessSettings.documentTemplate
+                let templateId: TemplateId = (businessSettings as any)?.documentTemplate as TemplateId;
+                if (!templateId || !['professional', 'modern', 'minimal'].includes(templateId)) {
+                  // Fallback: check style preset headerLayout
+                  let presetLayout = defaultStylePreset?.headerLayout as string | undefined;
+                  if (presetLayout === 'standard' || presetLayout === 'classic') {
+                    presetLayout = 'professional';
+                  }
+                  templateId = (presetLayout && ['professional', 'modern', 'minimal'].includes(presetLayout))
+                    ? presetLayout as TemplateId
+                    : 'professional';
                 }
-                const templateId: TemplateId = (savedTemplateId && ['professional', 'modern', 'minimal'].includes(savedTemplateId))
-                  ? savedTemplateId
-                  : ((businessSettings as any)?.documentTemplate || 'professional');
                 const template = DOCUMENT_TEMPLATES[templateId];
                 
                 // User's saved settings take priority; fall back to template defaults

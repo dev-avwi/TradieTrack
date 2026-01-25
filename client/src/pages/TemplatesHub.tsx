@@ -355,8 +355,36 @@ function StylePresetsWithPreview() {
 
   const handleSelectTemplate = (newTemplateId: TemplateId) => {
     setSelectedTemplateId(newTemplateId);
-    resetToTemplateDefaults(newTemplateId);
-    updateTemplateMutation.mutate(newTemplateId);
+    
+    // Reset customization to template defaults and save both template + customization to server
+    const template = DOCUMENT_TEMPLATES[newTemplateId];
+    if (template) {
+      const resetCustomization = {
+        tableStyle: template.tableStyle,
+        noteStyle: template.noteStyle,
+        headerBorderWidth: template.headerBorderWidth as '1px' | '2px' | '3px' | '4px',
+        showHeaderDivider: template.showHeaderDivider,
+        bodyWeight: template.bodyWeight as 400 | 500 | 600 | 700,
+        headingWeight: template.headingWeight as 600 | 700 | 800,
+        accentColor: customization.accentColor || DOCUMENT_ACCENT_COLOR,
+      };
+      setCustomization(prev => ({
+        ...prev,
+        ...resetCustomization,
+      }));
+      
+      // Save both template and reset customization to server in one request
+      recordLocalChange('/api/business-settings');
+      apiRequest("PATCH", "/api/business-settings", {
+        documentTemplate: newTemplateId,
+        documentTemplateSettings: resetCustomization,
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+      });
+    } else {
+      updateTemplateMutation.mutate(newTemplateId);
+    }
+    
     toast({ title: `${DOCUMENT_TEMPLATES[newTemplateId].name} template selected` });
   };
 
