@@ -22,8 +22,10 @@ import { spacing, radius, shadows, typography, sizes, iconSizes } from '../../sr
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow, format, isAfter, isBefore, addDays, parseISO } from 'date-fns';
+import { isTablet } from '../../src/lib/device';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const IS_TABLET = isTablet();
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
   { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
@@ -1285,7 +1287,7 @@ export default function TeamOperationsScreen() {
       <Stack.Screen
         options={{
           title: 'Team Operations',
-          headerShown: true,
+          headerShown: !IS_TABLET,
           headerStyle: { backgroundColor: colors.card },
           headerTintColor: colors.foreground,
           headerRight: () => (
@@ -1295,7 +1297,15 @@ export default function TeamOperationsScreen() {
           ),
         }}
       />
-      <View style={[styles.container, { paddingTop: 0 }]}>
+      <View style={[styles.container, { paddingTop: IS_TABLET ? spacing.md : 0 }]}>
+        {IS_TABLET && (
+          <View style={styles.tabletHeader}>
+            <Text style={styles.tabletTitle}>Team Operations</Text>
+            <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+              <Feather name="refresh-cw" size={20} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+        )}
         {renderTabs()}
         {activeTab === 'live' && renderLiveOpsTab()}
         {activeTab === 'admin' && isOwnerOrManager && renderTeamAdminTab()}
@@ -1542,6 +1552,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingHorizontal: IS_TABLET ? spacing.lg : 0,
+  },
+  tabletHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  tabletTitle: {
+    ...typography.h2,
+    color: colors.foreground,
+    fontWeight: '700',
+  },
+  refreshButton: {
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
   },
   loadingContainer: {
     flex: 1,
@@ -2122,12 +2150,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.md,
-    gap: spacing.xs,
+    gap: IS_TABLET ? spacing.md : spacing.xs,
   },
   kpiStatItem: {
     flex: 1,
     alignItems: 'center',
-    padding: spacing.sm,
+    padding: IS_TABLET ? spacing.lg : spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
