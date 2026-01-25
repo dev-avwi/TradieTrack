@@ -694,32 +694,184 @@ export default function TeamOperationsScreen() {
   };
 
   const renderLiveOpsTab = () => {
-    if (liveViewMode === 'map') {
-      // Calculate region based on team members with locations
-      const membersWithLocations = membersWithDetails.filter(
-        m => m.presence?.lastLocationLat && m.presence?.lastLocationLng
+    // Calculate region based on team members with locations
+    const membersWithLocations = membersWithDetails.filter(
+      m => m.presence?.lastLocationLat && m.presence?.lastLocationLng
+    );
+    
+    let mapRegion = DEFAULT_REGION;
+    if (membersWithLocations.length > 0) {
+      const lats = membersWithLocations.map(m => m.presence!.lastLocationLat!);
+      const lngs = membersWithLocations.map(m => m.presence!.lastLocationLng!);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+      const latDelta = Math.max(0.05, (maxLat - minLat) * 1.5);
+      const lngDelta = Math.max(0.05, (maxLng - minLng) * 1.5);
+      mapRegion = {
+        latitude: centerLat,
+        longitude: centerLng,
+        latitudeDelta: latDelta,
+        longitudeDelta: lngDelta,
+      };
+    }
+
+    // iPad: Show 2-column layout with Team Status + Map side by side (like web)
+    if (IS_TABLET) {
+      return (
+        <View style={styles.tabletLiveOpsContainer}>
+          {/* KPI Stats Row */}
+          <View style={styles.kpiStatsRow}>
+            <View style={styles.kpiStatItem}>
+              <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+                <Feather name="users" size={18} color="#3b82f6" />
+              </View>
+              <Text style={styles.kpiStatValue}>{acceptedMembers.length}</Text>
+              <Text style={styles.kpiStatLabel}>Team Members</Text>
+            </View>
+            <View style={styles.kpiStatItem}>
+              <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+                <Feather name="circle" size={18} color="#22c55e" />
+              </View>
+              <Text style={styles.kpiStatValue}>{onlineCount}</Text>
+              <Text style={styles.kpiStatLabel}>Online Now</Text>
+            </View>
+            <View style={styles.kpiStatItem}>
+              <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+                <Feather name="tool" size={18} color="#3b82f6" />
+              </View>
+              <Text style={styles.kpiStatValue}>{onJobCount}</Text>
+              <Text style={styles.kpiStatLabel}>On Job</Text>
+            </View>
+            <View style={styles.kpiStatItem}>
+              <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
+                <Feather name="briefcase" size={18} color="#f97316" />
+              </View>
+              <Text style={styles.kpiStatValue}>{unassignedJobs.length}</Text>
+              <Text style={styles.kpiStatLabel}>Unassigned</Text>
+            </View>
+          </View>
+
+          {/* Two-column layout: Team Status + Map */}
+          <View style={styles.tabletTwoColumnLayout}>
+            {/* Left Column: Team Status */}
+            <View style={styles.tabletLeftColumn}>
+              <View style={styles.tabletSectionHeader}>
+                <Feather name="users" size={18} color={colors.foreground} />
+                <Text style={styles.tabletSectionTitle}>Team Status</Text>
+                <View style={styles.tabletBadge}>
+                  <Text style={styles.tabletBadgeText}>{membersWithDetails.length}</Text>
+                </View>
+              </View>
+              <ScrollView 
+                style={styles.tabletTeamList}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              >
+                {membersWithDetails.map(renderMemberCard)}
+                {membersWithDetails.length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Feather name="users" size={32} color={colors.mutedForeground} />
+                    <Text style={styles.emptyStateText}>No team members</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Right Column: Map */}
+            <View style={styles.tabletRightColumn}>
+              <View style={styles.tabletSectionHeader}>
+                <Feather name="map-pin" size={18} color={colors.foreground} />
+                <Text style={styles.tabletSectionTitle}>Team Map</Text>
+                <View style={styles.tabletBadge}>
+                  <Text style={styles.tabletBadgeText}>{membersWithLocations.length} locations</Text>
+                </View>
+              </View>
+              <View style={styles.tabletMapWrapper}>
+                <MapView
+                  ref={mapRef}
+                  style={styles.tabletMap}
+                  provider={PROVIDER_DEFAULT}
+                  initialRegion={mapRegion}
+                  region={mapRegion}
+                  customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
+                >
+                  {membersWithLocations.map(member => {
+                    const statusConfig = STATUS_CONFIG[member.presence?.status || 'offline'];
+                    return (
+                      <Marker
+                        key={member.id}
+                        coordinate={{
+                          latitude: member.presence!.lastLocationLat!,
+                          longitude: member.presence!.lastLocationLng!,
+                        }}
+                        title={`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email}
+                        description={statusConfig?.label}
+                        pinColor={statusConfig?.color}
+                      />
+                    );
+                  })}
+                </MapView>
+                {membersWithLocations.length === 0 && (
+                  <View style={styles.mapEmptyState}>
+                    <View style={styles.mapEmptyIcon}>
+                      <Feather name="map-pin" size={32} color={colors.mutedForeground} />
+                    </View>
+                    <Text style={styles.mapEmptyTitle}>No Team Locations</Text>
+                    <Text style={styles.mapEmptyText}>
+                      Team members will appear here when they share their location
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Activity Feed Section */}
+          <View style={styles.tabletActivitySection}>
+            <View style={styles.tabletSectionHeader}>
+              <Feather name="activity" size={18} color={colors.foreground} />
+              <Text style={styles.tabletSectionTitle}>Recent Activity</Text>
+            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.tabletActivityScroll}
+            >
+              {activityFeed.length === 0 ? (
+                <View style={styles.tabletActivityEmpty}>
+                  <Text style={styles.emptyStateText}>No recent activity</Text>
+                </View>
+              ) : (
+                activityFeed.slice(0, 10).map((item) => (
+                  <View key={item.id} style={styles.tabletActivityCard}>
+                    <View style={styles.activityIconCircle}>
+                      <Feather 
+                        name={item.activityType === 'job_status_changed' ? 'briefcase' : 
+                              item.activityType === 'invoice_created' ? 'file-text' :
+                              item.activityType === 'quote_created' ? 'edit' : 'activity'} 
+                        size={14} 
+                        color={colors.primary} 
+                      />
+                    </View>
+                    <Text style={styles.tabletActivityTitle} numberOfLines={2}>{item.description || item.activityType}</Text>
+                    <Text style={styles.tabletActivityTime}>
+                      {item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) : ''}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
       );
-      
-      let mapRegion = DEFAULT_REGION;
-      if (membersWithLocations.length > 0) {
-        const lats = membersWithLocations.map(m => m.presence!.lastLocationLat!);
-        const lngs = membersWithLocations.map(m => m.presence!.lastLocationLng!);
-        const minLat = Math.min(...lats);
-        const maxLat = Math.max(...lats);
-        const minLng = Math.min(...lngs);
-        const maxLng = Math.max(...lngs);
-        const centerLat = (minLat + maxLat) / 2;
-        const centerLng = (minLng + maxLng) / 2;
-        const latDelta = Math.max(0.05, (maxLat - minLat) * 1.5);
-        const lngDelta = Math.max(0.05, (maxLng - minLng) * 1.5);
-        mapRegion = {
-          latitude: centerLat,
-          longitude: centerLng,
-          latitudeDelta: latDelta,
-          longitudeDelta: lngDelta,
-        };
-      }
-      
+    }
+
+    // Phone: Original toggle-based layout
+    if (liveViewMode === 'map') {
       return (
         <View style={styles.mapContainer}>
           <MapView
@@ -2176,6 +2328,113 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiStatLabel: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
+  },
+  tabletLiveOpsContainer: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  tabletTwoColumnLayout: {
+    flexDirection: 'row',
+    flex: 1,
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  tabletLeftColumn: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    maxHeight: 400,
+  },
+  tabletRightColumn: {
+    flex: 1.2,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  tabletSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabletSectionTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    fontWeight: '600',
+    flex: 1,
+  },
+  tabletBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.lg,
+  },
+  tabletBadgeText: {
+    ...typography.captionSmall,
+    color: colors.primaryForeground,
+    fontWeight: '600',
+  },
+  tabletTeamList: {
+    flex: 1,
+  },
+  tabletMapWrapper: {
+    flex: 1,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    minHeight: 280,
+  },
+  tabletMap: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  tabletActivitySection: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  tabletActivityScroll: {
+    flexDirection: 'row',
+  },
+  tabletActivityCard: {
+    width: 160,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginRight: spacing.sm,
+  },
+  tabletActivityTitle: {
+    ...typography.caption,
+    color: colors.foreground,
+    marginTop: spacing.xs,
+  },
+  tabletActivityTime: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  tabletActivityEmpty: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+  },
+  activityIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   skillsHeader: {
     flexDirection: 'row',
