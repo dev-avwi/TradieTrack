@@ -2,19 +2,29 @@ import { X, Briefcase, FileText, DollarSign, Star, Users, CreditCard } from "luc
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
-// Detect if device is a touch device (mobile/tablet) - not just based on screen size
+// Detect if device is a mobile/tablet - not just based on screen size
 function useIsTouchDevice() {
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   
   useEffect(() => {
-    // Check for touch capability and coarse pointer (excludes desktop with touchscreen monitors)
+    // Check for touch capability
     const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
-    const hasNoHover = window.matchMedia('(hover: none)').matches;
     
-    // A touch device typically has touch capability AND coarse pointer AND no hover
-    // This excludes desktop browsers even if they have touch screens
-    setIsTouchDevice(isTouchCapable && hasCoarsePointer && hasNoHover);
+    // Check user agent for mobile/tablet devices
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/.test(userAgent);
+    // iPad with iPadOS 13+ reports as Macintosh, so check for touch + Mac combination
+    const isIPad = /macintosh/.test(userAgent) && isTouchCapable && navigator.maxTouchPoints > 1;
+    
+    // Device is mobile/tablet if:
+    // - Has mobile/tablet user agent, OR
+    // - Is an iPad with iPadOS 13+, OR
+    // - Has touch + coarse pointer (but not desktop with touchscreen - those have fine pointer too)
+    const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+    const isMobileDevice = isMobileUA || isIPad || (isTouchCapable && hasCoarsePointer && !hasFinePointer);
+    
+    setIsTouchDevice(isMobileDevice);
   }, []);
   
   return isTouchDevice;
