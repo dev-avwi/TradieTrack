@@ -2550,57 +2550,10 @@ export default function TeamOperations() {
         </Button>
       </div>
 
-      {/* Tabs with minimal spacing */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <div className="border-b px-2 shrink-0">
-          <TabsList className="h-9 bg-transparent p-0 gap-0">
-            <TabsTrigger value="live" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-live-ops">
-              <Activity className="h-3.5 w-3.5" />
-              Live
-            </TabsTrigger>
-            {canManageTeam && (
-              <TabsTrigger value="admin" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-team-admin">
-                <Users className="h-3.5 w-3.5" />
-                Admin
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="scheduling" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-scheduling">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Schedule
-            </TabsTrigger>
-            <TabsTrigger value="skills" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-skills">
-              <Award className="h-3.5 w-3.5" />
-              Skills
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-performance">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Stats
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="live" className="flex-1 m-0 overflow-auto">
-          <LiveOpsTab />
-        </TabsContent>
-
-        {canManageTeam && (
-          <TabsContent value="admin" className="flex-1 m-0 overflow-auto">
-            <TeamAdminTab />
-          </TabsContent>
-        )}
-
-        <TabsContent value="scheduling" className="flex-1 m-0 overflow-auto">
-          <SchedulingTab />
-        </TabsContent>
-
-        <TabsContent value="skills" className="flex-1 m-0 overflow-auto">
-          <SkillsTab />
-        </TabsContent>
-
-        <TabsContent value="performance" className="flex-1 m-0 overflow-auto">
-          <PerformanceTab />
-        </TabsContent>
-      </Tabs>
+      {/* Simple Check Team view - Status/Activity/Map toggles */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-auto">
+        <LiveOpsTab />
+      </div>
     </div>
   );
 }
