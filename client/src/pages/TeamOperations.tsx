@@ -2506,6 +2506,7 @@ function PerformanceTab() {
 export default function TeamOperations() {
   const { isOwner, isManager } = useAppMode();
   const canManageTeam = isOwner || isManager;
+  const [activeTab, setActiveTab] = useState("live");
 
   return (
     <div className="flex flex-col h-full">
@@ -2528,7 +2529,7 @@ export default function TeamOperations() {
         </Button>
       </header>
 
-      <Tabs defaultValue="live" className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="border-b px-2 sm:px-4 overflow-x-auto">
           <TabsList className="h-10 sm:h-12">
             <TabsTrigger value="live" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-live-ops">
