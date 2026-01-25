@@ -141,7 +141,7 @@ export default function LiveDocumentPreview({
   console.log('[LiveDocumentPreview] Rendering with templateId:', templateId, 'customization:', templateCustomization?.tableStyle);
   const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
   console.log('[LiveDocumentPreview] Template styles - tableHeaderBg:', templateStyles.tableHeaderStyle.backgroundColor);
-  const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
+  const { template, primaryColor, headingStyle, tableHeaderStyle, tableHeaderRadius, getTableRowStyle, getNoteStyle } = templateStyles;
 
   // Keep title clean - the status badge shows "Paid" separately
   const documentTitle = type === 'quote' 
@@ -333,18 +333,37 @@ export default function LiveDocumentPreview({
             <tr style={{ 
               backgroundColor: tableHeaderStyle.backgroundColor,
               borderBottom: tableHeaderStyle.borderBottom,
-              borderRadius: template.borderRadius,
             }}>
-              <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '50%', color: tableHeaderStyle.color }}>
+              <th className="px-3 py-3 text-left font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ 
+                width: '50%', 
+                color: tableHeaderStyle.color,
+                backgroundColor: tableHeaderStyle.backgroundColor,
+                borderTopLeftRadius: tableHeaderRadius,
+                borderBottomLeftRadius: tableHeaderRadius,
+              }}>
                 Description
               </th>
-              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '15%', color: tableHeaderStyle.color }}>
+              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ 
+                width: '15%', 
+                color: tableHeaderStyle.color,
+                backgroundColor: tableHeaderStyle.backgroundColor,
+              }}>
                 Qty
               </th>
-              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '17%', color: tableHeaderStyle.color }}>
+              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ 
+                width: '17%', 
+                color: tableHeaderStyle.color,
+                backgroundColor: tableHeaderStyle.backgroundColor,
+              }}>
                 Unit Price
               </th>
-              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ width: '18%', color: tableHeaderStyle.color }}>
+              <th className="px-3 py-3 text-right font-semibold text-[10px] uppercase tracking-[0.5px]" style={{ 
+                width: '18%', 
+                color: tableHeaderStyle.color,
+                backgroundColor: tableHeaderStyle.backgroundColor,
+                borderTopRightRadius: tableHeaderRadius,
+                borderBottomRightRadius: tableHeaderRadius,
+              }}>
                 Amount
               </th>
             </tr>

@@ -333,6 +333,9 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     ? `background: transparent; color: #1a1a1a; border-bottom: 2px solid ${brandColor};`
     : `background: ${brandColor}; color: white;`;
   
+  // Rounded corners for Modern template header row
+  const headerRadius = template.headerLayout === 'modern' ? template.borderRadius : '0';
+  
   // Table row styles based on template
   const getTableRowStyles = () => {
     switch (template.tableStyle) {
@@ -523,6 +526,17 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+    
+    /* Rounded corners for Modern template header */
+    .line-items-table th:first-child {
+      border-top-left-radius: ${headerRadius};
+      border-bottom-left-radius: ${headerRadius};
+    }
+    
+    .line-items-table th:last-child {
+      border-top-right-radius: ${headerRadius};
+      border-bottom-right-radius: ${headerRadius};
     }
     
     .line-items-table th:nth-child(2),

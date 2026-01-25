@@ -112,6 +112,7 @@ export interface TemplateStyles {
     borderBottomWidth: number;
     borderBottomColor: string;
   };
+  tableHeaderRadius: number;
   getTableRowStyle: (index: number, isLast: boolean) => {
     borderBottomWidth: number;
     borderBottomColor: string;
@@ -166,6 +167,7 @@ export function getTemplateStyles(
       borderBottomWidth: template.tableStyle === 'minimal' ? 2 : 0,
       borderBottomColor: template.tableStyle === 'minimal' ? primaryColor : 'transparent',
     },
+    tableHeaderRadius: template.headerLayout === 'modern' ? template.borderRadius : 0,
     getTableRowStyle: (index: number, isLast: boolean) => {
       return {
         borderBottomWidth: isLast ? 2 : template.tableStyle === 'striped' ? 0 : 1,

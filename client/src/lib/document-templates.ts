@@ -153,6 +153,8 @@ export function getTemplateStyles(
       color: template.tableStyle === 'minimal' ? '#1a1a1a' : '#ffffff',
       borderBottom: template.tableStyle === 'minimal' ? `2px solid ${primaryColor}` : 'none',
     },
+    // Rounded corners for Modern template header cells
+    tableHeaderRadius: template.headerLayout === 'modern' ? template.borderRadius : '0',
     // Table row styles - matches server/pdfService.ts generateDocumentStyles()
     getTableRowStyle: (index: number, isLast: boolean) => {
       // Server uses: striped rows have no border, minimal uses #e5e7eb, bordered uses #eee
