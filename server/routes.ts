@@ -15363,12 +15363,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        const role = roleMap.get(member.roleId);
+        const roleData = roleMap.get(member.roleId);
+        const roleName = roleData?.name || 'Team Member';
+        const roleNormalized = roleName.toLowerCase().replace(/\s+/g, '_');
         return {
           ...member,
           userId: member.memberId, // Mobile app expects userId, database stores memberId
-          roleName: role?.name || 'Team Member',
-          roleDescription: role?.description || '',
+          role: roleNormalized, // Normalized role for filtering: 'owner', 'admin', 'staff', 'supervisor'
+          roleName: roleName,
+          roleDescription: roleData?.description || '',
           themeColor,
         };
       });

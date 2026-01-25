@@ -1253,11 +1253,53 @@ export default function TeamManagementScreen() {
       icon: 'user-check',
       description: 'Manage team and all operations' 
     },
+    administrator: { 
+      label: 'Administrator', 
+      color: colors.success, 
+      icon: 'user-check',
+      description: 'Full access to all features' 
+    },
+    manager: { 
+      label: 'Manager', 
+      color: colors.success, 
+      icon: 'users',
+      description: 'Manages jobs, team, quotes and invoices' 
+    },
+    office_manager: { 
+      label: 'Office Manager', 
+      color: colors.success, 
+      icon: 'briefcase',
+      description: 'Manages scheduling and invoicing' 
+    },
     supervisor: { 
       label: 'Supervisor', 
       color: colors.warning, 
       icon: 'users',
       description: 'Manage assigned workers' 
+    },
+    worker: { 
+      label: 'Worker', 
+      color: colors.info, 
+      icon: 'user',
+      description: 'Field worker - works on assigned jobs' 
+    },
+    technician: { 
+      label: 'Technician', 
+      color: colors.info, 
+      icon: 'tool',
+      description: 'Field technician who performs job work' 
+    },
+    apprentice: { 
+      label: 'Apprentice', 
+      color: colors.info, 
+      icon: 'user',
+      description: 'Junior technician with limited permissions' 
+    },
+    team_member: { 
+      label: 'Team Member', 
+      color: colors.info, 
+      icon: 'user',
+      description: 'Basic team member access' 
     },
     staff: { 
       label: 'Staff', 
@@ -1558,13 +1600,26 @@ export default function TeamManagementScreen() {
     
     setIsSending(true);
     try {
-      const roleObj = roles.find(r => r.name.toLowerCase() === inviteRole.toLowerCase());
+      const roleNameMapping: Record<string, string[]> = {
+        'admin': ['administrator', 'admin'],
+        'supervisor': ['manager', 'supervisor', 'office manager'],
+        'staff': ['worker', 'staff', 'technician', 'apprentice', 'team member'],
+      };
+      
+      const possibleNames = roleNameMapping[inviteRole.toLowerCase()] || [inviteRole.toLowerCase()];
+      const roleObj = roles.find(r => possibleNames.includes(r.name.toLowerCase()));
+      
+      if (!roleObj) {
+        Alert.alert('Error', `No matching role found for ${inviteRole}. Please try again.`);
+        setIsSending(false);
+        return;
+      }
       
       await api.post('/api/team/members/invite', {
         email: inviteEmail,
         firstName: inviteFirstName,
         lastName: inviteLastName,
-        roleId: roleObj?.id,
+        roleId: roleObj.id,
         hourlyRate: inviteHourlyRate ? parseFloat(inviteHourlyRate) : undefined,
       });
       Alert.alert('Invite Sent', `Invitation sent to ${inviteEmail}`);
@@ -1741,9 +1796,17 @@ export default function TeamManagementScreen() {
     setIsAssigningJob(false);
   };
 
-  const ownerCount = teamMembers.filter(m => m.role === 'owner').length;
-  const adminCount = teamMembers.filter(m => m.role === 'admin').length;
-  const staffCount = teamMembers.filter(m => m.role === 'staff' || m.role === 'supervisor').length;
+  const getRoleCategory = (role: string | undefined): 'owner' | 'admin' | 'staff' => {
+    if (!role) return 'staff';
+    const r = role.toLowerCase();
+    if (r === 'owner') return 'owner';
+    if (r === 'admin' || r === 'administrator' || r === 'manager' || r === 'office_manager') return 'admin';
+    return 'staff';
+  };
+  
+  const ownerCount = teamMembers.filter(m => getRoleCategory(m.role) === 'owner').length;
+  const adminCount = teamMembers.filter(m => getRoleCategory(m.role) === 'admin').length;
+  const staffCount = teamMembers.filter(m => getRoleCategory(m.role) === 'staff').length;
 
   const renderMemberCard = (member: TeamMember) => {
     const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.staff;
