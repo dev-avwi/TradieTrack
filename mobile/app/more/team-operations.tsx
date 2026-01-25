@@ -1299,7 +1299,7 @@ export default function TeamOperationsScreen() {
           ),
         }}
       />
-      <View style={[styles.container, { paddingTop: IS_TABLET ? spacing.md : 0 }]}>
+      <View style={[styles.container, { paddingTop: IS_TABLET ? spacing.xs : 0 }]}>
         {IS_TABLET && (
           <View style={styles.tabletHeader}>
             <Text style={styles.tabletTitle}>Team Operations</Text>
@@ -1554,23 +1554,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: IS_TABLET ? spacing.xl : 0,
+    paddingHorizontal: IS_TABLET ? spacing.lg : 0,
   },
   tabletHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   tabletTitle: {
-    fontSize: IS_TABLET ? 28 : 24,
+    fontSize: IS_TABLET ? 24 : 20,
     color: colors.foreground,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   refreshButton: {
-    padding: spacing.sm + 2,
+    padding: spacing.sm,
     borderRadius: radius.md,
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -1585,29 +1585,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    borderTopWidth: IS_TABLET ? 1 : 0,
-    borderTopColor: colors.border,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: IS_TABLET ? radius.lg : 0,
-    paddingHorizontal: IS_TABLET ? spacing.lg : spacing.md,
-    marginBottom: IS_TABLET ? spacing.md : 0,
+    paddingHorizontal: IS_TABLET ? spacing.sm : spacing.xs,
+    marginBottom: spacing.sm,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: IS_TABLET ? spacing.sm : spacing.xs,
-    paddingVertical: IS_TABLET ? spacing.lg : spacing.md,
-    paddingHorizontal: IS_TABLET ? spacing.lg : spacing.md,
-    borderBottomWidth: IS_TABLET ? 3 : 2,
+    gap: IS_TABLET ? spacing.xs : 4,
+    paddingVertical: IS_TABLET ? spacing.md : spacing.sm,
+    paddingHorizontal: IS_TABLET ? spacing.md : spacing.sm,
+    borderBottomWidth: 2,
     borderBottomColor: 'transparent',
-    marginRight: IS_TABLET ? spacing.md : spacing.sm,
+    marginRight: IS_TABLET ? spacing.xs : 4,
   },
   tabButtonActive: {
     borderBottomColor: colors.primary,
   },
   tabButtonText: {
-    fontSize: IS_TABLET ? 15 : 12,
+    fontSize: IS_TABLET ? 14 : 12,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
@@ -1617,7 +1615,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: IS_TABLET ? spacing.sm : spacing.lg,
   },
   liveViewToggle: {
     flexDirection: 'row',
@@ -2158,32 +2156,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    gap: IS_TABLET ? spacing.md : spacing.xs,
+    paddingVertical: spacing.sm,
+    gap: IS_TABLET ? spacing.sm : spacing.xs,
   },
   kpiStatItem: {
     flex: 1,
     alignItems: 'center',
-    padding: IS_TABLET ? spacing.lg : spacing.sm,
+    padding: IS_TABLET ? spacing.md : spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   kpiStatIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: IS_TABLET ? 36 : 32,
+    height: IS_TABLET ? 36 : 32,
+    borderRadius: IS_TABLET ? 18 : 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
   kpiStatValue: {
-    ...typography.headline,
+    fontSize: IS_TABLET ? 22 : 18,
+    fontWeight: '600',
     color: colors.foreground,
   },
   kpiStatLabel: {
-    ...typography.captionSmall,
+    fontSize: IS_TABLET ? 13 : 11,
     color: colors.mutedForeground,
   },
   skillsHeader: {
