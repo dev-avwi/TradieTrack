@@ -173,6 +173,8 @@ export default function JobDetailView({
   const [showUnifiedSendModal, setShowUnifiedSendModal] = useState(false);
   const [showManualSms, setShowManualSms] = useState(false);
   const [pendingTimerStart, setPendingTimerStart] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [newJobTitle, setNewJobTitle] = useState('');
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -601,6 +603,40 @@ export default function JobDetailView({
     saveNotesMutation.mutate(editedNotes);
   };
 
+  // Rename job mutation
+  const renameJobMutation = useMutation({
+    mutationFn: async (title: string) => {
+      return await apiRequest("PATCH", `/api/jobs/${jobId}`, { title });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      setShowRenameDialog(false);
+      toast({
+        title: "Job Renamed",
+        description: "Job title has been updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to rename job",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenRenameDialog = () => {
+    setNewJobTitle(job?.title || '');
+    setShowRenameDialog(true);
+  };
+
+  const handleRenameJob = () => {
+    if (newJobTitle.trim()) {
+      renameJobMutation.mutate(newJobTitle.trim());
+    }
+  };
+
   // Delete job mutation
   const deleteJobMutation = useMutation({
     mutationFn: async () => {
@@ -843,11 +879,21 @@ export default function JobDetailView({
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-lg font-semibold">{job.title}</h1>
+            <div 
+              className="flex items-center gap-2 group cursor-pointer"
+              onClick={handleOpenRenameDialog}
+              title="Click to rename job"
+            >
+              <h1 className="text-lg font-semibold">{job.title}</h1>
+              <Edit className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             {client?.name && (
               <span 
                 className="text-sm text-muted-foreground hover:underline cursor-pointer"
-                onClick={() => job.clientId && onViewClient?.(job.clientId)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  job.clientId && onViewClient?.(job.clientId);
+                }}
                 data-testid="link-client"
               >
                 {client.name}
@@ -2012,6 +2058,51 @@ export default function JobDetailView({
                 </>
               ) : (
                 'Save Notes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Job Dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent className="sm:max-w-[400px]" data-testid="dialog-rename-job">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-primary" />
+              Rename Job
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <input
+              type="text"
+              value={newJobTitle}
+              onChange={(e) => setNewJobTitle(e.target.value)}
+              placeholder="Enter job title..."
+              className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newJobTitle.trim()) {
+                  handleRenameJob();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRenameJob}
+              disabled={renameJobMutation.isPending || !newJobTitle.trim()}
+            >
+              {renameJobMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save'
               )}
             </Button>
           </DialogFooter>

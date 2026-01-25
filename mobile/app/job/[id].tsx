@@ -248,12 +248,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: colors.foreground,
     letterSpacing: -0.5,
-    marginBottom: spacing.xs,
+    flex: 1,
   },
   description: {
     fontSize: 15,
@@ -1695,6 +1700,9 @@ export default function JobDetailScreen() {
   const [showPhotosModal, setShowPhotosModal] = useState(false);
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [newJobTitle, setNewJobTitle] = useState('');
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
@@ -3142,6 +3150,31 @@ export default function JobDetailScreen() {
         setShowScheduleModal(true);
         Alert.alert('Error', 'Failed to schedule job. Please try again.');
       }
+    }
+  };
+
+  const handleRenameJob = async () => {
+    if (!job || !newJobTitle.trim()) return;
+    
+    setIsSavingTitle(true);
+    const previousTitle = job.title;
+    
+    // Optimistic UI update
+    setJob({ ...job, title: newJobTitle.trim() });
+    setShowRenameModal(false);
+    
+    try {
+      const response = await api.patch(`/api/jobs/${job.id}`, { title: newJobTitle.trim() });
+      if (response.data) {
+        setJob(response.data);
+        Alert.alert('Success', 'Job title updated');
+      }
+    } catch (error) {
+      // Revert on error
+      setJob({ ...job, title: previousTitle });
+      Alert.alert('Error', 'Failed to update job title');
+    } finally {
+      setIsSavingTitle(false);
     }
   };
 
@@ -5235,7 +5268,17 @@ export default function JobDetailScreen() {
             );
           })()}
         </View>
-        <Text style={styles.title}>{job.title}</Text>
+        <TouchableOpacity 
+          style={styles.titleRow}
+          onPress={() => {
+            setNewJobTitle(job.title);
+            setShowRenameModal(true);
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.title}>{job.title}</Text>
+          <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
         {job.description && (
           <Text style={styles.description}>{job.description}</Text>
         )}
@@ -5280,6 +5323,51 @@ export default function JobDetailScreen() {
         {activeTab === 'notes' && renderNotesTab()}
       </ScrollView>
       </View>
+
+      {/* Rename Job Modal */}
+      <Modal visible={showRenameModal} animationType="fade" transparent>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { maxHeight: 200 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Rename Job</Text>
+                <TouchableOpacity onPress={() => setShowRenameModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalContent}>
+                <TextInput
+                  style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                  value={newJobTitle}
+                  onChangeText={setNewJobTitle}
+                  placeholder="Enter job title..."
+                  placeholderTextColor={colors.mutedForeground}
+                  autoFocus
+                />
+              </View>
+              <View style={styles.modalFooter}>
+                <Button
+                  variant="outline"
+                  onPress={() => setShowRenameModal(false)}
+                  style={{ flex: 1, marginRight: 8 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onPress={handleRenameJob}
+                  disabled={isSavingTitle || !newJobTitle.trim()}
+                  style={{ flex: 1 }}
+                >
+                  {isSavingTitle ? 'Saving...' : 'Save'}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Notes Modal */}
       <Modal visible={showNotesModal} animationType="slide" transparent>
