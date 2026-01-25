@@ -255,15 +255,21 @@ export function useRealtimeUpdates({
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[RealtimeUpdates] Connected');
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
+        console.log('[RealtimeUpdates] Socket opened, waiting for auth...');
         isConnectingRef.current = false;
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          
+          // Handle successful authentication - only now are we truly connected
+          if (message.type === 'connected') {
+            console.log('[RealtimeUpdates] Authenticated successfully');
+            setIsConnected(true);
+            reconnectAttempts.current = 0;
+            return;
+          }
           
           // Handle all known event types
           if (message.type && [
@@ -284,10 +290,17 @@ export function useRealtimeUpdates({
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setIsConnected(false);
         wsRef.current = null;
         isConnectingRef.current = false;
+
+        // Don't reconnect if authentication failed (4001) or access denied (4003)
+        // These are permanent failures that won't resolve with retries
+        if (event.code === 4001 || event.code === 4003) {
+          console.log(`[RealtimeUpdates] Authentication failed (${event.code}), not reconnecting`);
+          return;
+        }
 
         if (reconnectAttempts.current < maxReconnectAttempts && enabled) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);

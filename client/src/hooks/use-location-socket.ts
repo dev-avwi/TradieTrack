@@ -47,14 +47,20 @@ export function useLocationSocket({
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[LocationSocket] Connected');
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
+        console.log('[LocationSocket] Socket opened, waiting for auth...');
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          
+          // Handle successful authentication - only now are we truly connected
+          if (message.type === 'connected') {
+            console.log('[LocationSocket] Authenticated successfully');
+            setIsConnected(true);
+            reconnectAttempts.current = 0;
+            return;
+          }
           
           if (message.type === 'team_location_update') {
             const update: LocationUpdate = {
@@ -76,10 +82,17 @@ export function useLocationSocket({
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         console.log('[LocationSocket] Disconnected');
         setIsConnected(false);
         wsRef.current = null;
+
+        // Don't reconnect if authentication failed (4001) or access denied (4003)
+        // These are permanent failures that won't resolve with retries
+        if (event.code === 4001 || event.code === 4003) {
+          console.log(`[LocationSocket] Authentication failed (${event.code}), not reconnecting`);
+          return;
+        }
 
         if (reconnectAttempts.current < maxReconnectAttempts && enabled) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
