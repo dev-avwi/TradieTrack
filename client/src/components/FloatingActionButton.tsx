@@ -2,6 +2,24 @@ import { X, Briefcase, FileText, DollarSign, Star, Users, CreditCard } from "luc
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
+// Detect if device is a touch device (mobile/tablet) - not just based on screen size
+function useIsTouchDevice() {
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  
+  useEffect(() => {
+    // Check for touch capability and coarse pointer (excludes desktop with touchscreen monitors)
+    const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const hasNoHover = window.matchMedia('(hover: none)').matches;
+    
+    // A touch device typically has touch capability AND coarse pointer AND no hover
+    // This excludes desktop browsers even if they have touch screens
+    setIsTouchDevice(isTouchCapable && hasCoarsePointer && hasNoHover);
+  }, []);
+  
+  return isTouchDevice;
+}
+
 interface FloatingActionButtonProps {
   onCreateJob?: () => void;
   onCreateQuote?: () => void;
@@ -20,6 +38,7 @@ export default function FloatingActionButton({
 }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
+  const isTouchDevice = useIsTouchDevice();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -38,6 +57,11 @@ export default function FloatingActionButton({
       document.removeEventListener("touchstart", handleClickOutside as any);
     };
   }, [isOpen]);
+  
+  // Don't render on desktop browsers - only show on actual touch devices (phones/tablets)
+  if (!isTouchDevice) {
+    return null;
+  }
 
   const quickActions = [
     { label: "New Job", icon: Briefcase, onClick: onCreateJob, color: 'hsl(var(--trade))', bgColor: 'hsl(var(--trade) / 0.12)' },
