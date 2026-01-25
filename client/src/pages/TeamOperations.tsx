@@ -408,103 +408,87 @@ function LiveOpsTab() {
         </Card>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        {/* Desktop: 2-column layout with Team Status + Map on left, Activity on right */}
-        {/* Mobile: stacked layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {/* Left column: Team Status + Map */}
-          <div className="space-y-4">
-            <Collapsible open={statusBoardOpen} onOpenChange={setStatusBoardOpen}>
-              <Card>
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover-elevate py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Team Status
-                    </CardTitle>
-                    {statusBoardOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </div>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <ScrollArea className="h-[300px]">
-                    <div className="space-y-2">
-                      {sortedAcceptedMembers.map((member) => {
-                        const memberPresence = presence.find(p => p.userId === member.userId);
-                        const status = memberPresence?.status || 'offline';
-                        const statusDisplay = getStatusDisplay(status);
-                        const StatusIcon = statusDisplay.icon;
+      <div className="flex-1 overflow-hidden p-4">
+        {/* iPad-style 2-column layout: Team Status on left, Map on right */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
+          {/* Left column: Team Status */}
+          <Card className="flex flex-col h-full min-h-0">
+            <CardHeader className="py-3 flex-shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Team Status
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  {acceptedMembers.length}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="space-y-2 pr-2">
+                  {sortedAcceptedMembers.map((member) => {
+                    const memberPresence = presence.find(p => p.userId === member.userId);
+                    const status = memberPresence?.status || 'offline';
+                    const statusDisplay = getStatusDisplay(status);
+                    const StatusIcon = statusDisplay.icon;
 
-                        return (
-                          <div
-                            key={member.id}
-                            className="flex items-center gap-3 p-2 rounded-lg hover-elevate cursor-pointer"
-                            onClick={() => handleMemberClick(member)}
-                            data-testid={`member-status-${member.id}`}
-                          >
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={member.profileImageUrl} />
-                              <AvatarFallback>
-                                {getInitials(member.firstName, member.lastName, member.email)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
-                                {member.firstName} {member.lastName}
-                              </p>
-                              <div className="flex items-center gap-1">
-                                <StatusIcon className={`h-3 w-3 ${statusDisplay.text} ${status === 'online' || status === 'on_job' ? 'fill-current' : ''}`} />
-                                <span className={`text-xs ${statusDisplay.text}`}>
-                                  {statusDisplay.label}
-                                </span>
-                              </div>
-                            </div>
-                            {memberPresence?.currentJob && (
-                              <Badge variant="secondary" className="text-xs truncate max-w-[100px]">
-                                {memberPresence.currentJob.title}
-                              </Badge>
-                            )}
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover-elevate cursor-pointer"
+                        onClick={() => handleMemberClick(member)}
+                        data-testid={`member-status-${member.id}`}
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={member.profileImageUrl} />
+                          <AvatarFallback>
+                            {getInitials(member.firstName, member.lastName, member.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {member.firstName} {member.lastName}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <StatusIcon className={`h-3 w-3 ${statusDisplay.text} ${status === 'online' || status === 'on_job' ? 'fill-current' : ''}`} />
+                            <span className={`text-xs ${statusDisplay.text}`}>
+                              {statusDisplay.label}
+                            </span>
                           </div>
-                        );
-                      })}
-                      {sortedAcceptedMembers.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          No team members yet
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+                        </div>
+                        {memberPresence?.currentJob && (
+                          <Badge variant="secondary" className="text-xs truncate max-w-[100px]">
+                            {memberPresence.currentJob.title}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {sortedAcceptedMembers.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">
+                      No team members yet
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-            {/* Team Map - shows team member locations */}
-            <Collapsible open={mapOpen} onOpenChange={setMapOpen}>
-              <Card>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover-elevate py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Team Map
-                      </CardTitle>
-                      {mapOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
+          {/* Right column: Team Map */}
+          <Card className="flex flex-col h-full min-h-0">
+            <CardHeader className="py-3 flex-shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Team Map
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  {presence.filter(p => p.lastLocationLat && p.lastLocationLng).length} locations
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 flex-1 min-h-0 overflow-hidden">
                     <div className="h-[300px] rounded-lg overflow-hidden border" data-testid="team-map-container">
                       {presence.some(p => p.lastLocationLat && p.lastLocationLng) ? (
                         <MapContainer
@@ -680,84 +664,11 @@ function LiveOpsTab() {
                           </div>
                         </div>
                       )}
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-          </div>
-
-          {/* Right column: Activity Feed */}
-          <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
-            <Card className="h-full">
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover-elevate py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      Recent Activity
-                    </CardTitle>
-                    {activityOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </div>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
-                  <ScrollArea className="h-[300px]">
-                    <div className="space-y-3">
-                      {activities.slice(0, 15).map((activity) => (
-                        <div
-                          key={activity.id}
-                          className={`flex items-start gap-3 p-2 rounded-lg ${
-                            activity.isImportant ? 'bg-primary/5' : ''
-                          }`}
-                          data-testid={`activity-${activity.id}`}
-                        >
-                          <div className="flex-shrink-0 mt-1">
-                            <div className={`p-1.5 rounded-full ${
-                              activity.activityType === 'job_completed' ? 'bg-green-100 dark:bg-green-900/30' :
-                              activity.activityType === 'invoice_sent' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                              'bg-muted'
-                            }`}>
-                              {activity.activityType === 'job_completed' ? (
-                                <CheckCircle2 className="h-3 w-3 text-green-600" />
-                              ) : activity.activityType === 'invoice_sent' ? (
-                                <Send className="h-3 w-3 text-blue-600" />
-                              ) : (
-                                <Activity className="h-3 w-3 text-muted-foreground" />
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm">
-                              <span className="font-medium">{activity.actorName || 'System'}</span>
-                              {' '}
-                              <span className="text-muted-foreground">{activity.description}</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {activities.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          No recent activity
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
       <Sheet open={!!selectedMember} onOpenChange={(open) => !open && setSelectedMember(null)}>
         <SheetContent className="w-[400px] sm:w-[540px]">
           {selectedMember && (
