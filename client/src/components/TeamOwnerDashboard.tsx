@@ -428,7 +428,7 @@ export default function TeamOwnerDashboard({
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{teamMembers.length}</p>
-                  <p className="ios-caption">{onlineTeamCount > 0 ? `${onlineTeamCount} online` : 'Team'}</p>
+                  <p className="ios-caption">{onlineTeamCount > 0 ? `${onlineTeamCount} online` : 'Team Hub'}</p>
                 </div>
               </div>
             </div>
@@ -519,8 +519,8 @@ export default function TeamOwnerDashboard({
                   variant="outline"
                   size="sm"
                   className="flex-1 h-10 px-3 rounded-xl press-scale min-w-[80px]"
-                  onClick={() => onNavigate?.('/team-operations')}
-                  data-testid="button-team-operations"
+                  onClick={() => onNavigate?.('/team-dashboard')}
+                  data-testid="button-team-hub"
                 >
                   <Users className="h-4 w-4 mr-1.5" />
                   <span className="truncate">Team</span>

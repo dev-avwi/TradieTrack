@@ -93,7 +93,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Team Operations - consolidated team management
   // Legacy routes redirect to /team-operations (keep in permissions for RouteGuard to allow access before redirect)
   { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/team-dashboard', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/team-operations', label: 'Team Operations', allowedRoles: ['owner', 'manager'], showInNav: true },
   
