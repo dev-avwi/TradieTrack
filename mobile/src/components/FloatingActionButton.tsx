@@ -298,13 +298,21 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
         onPress={() => setIsOpen(true)}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        style={[
+          styles.fabButton, 
+          isOpen && styles.fabButtonActive,
+          fabPositionStyle,
+        ]}
       >
         <Animated.View 
           style={[
-            styles.fabButton, 
-            isOpen && styles.fabButtonActive,
-            fabPositionStyle,
-            { transform: [{ scale: scaleAnim }] }
+            { 
+              width: 56, 
+              height: 56, 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              transform: [{ scale: scaleAnim }] 
+            }
           ]}
         >
           <Feather 
