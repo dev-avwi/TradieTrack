@@ -1003,7 +1003,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
           <div style="font-weight: 600; color: #166534; font-size: 12px; margin-bottom: 6px;">Quote Accepted</div>
           <div style="font-size: 10px; color: #166534; line-height: 1.5;">
             Accepted by: ${quote.acceptedBy}<br/>
-            Date: ${formatDate(quote.acceptedAt)}${(quote as any).acceptanceIp ? `<br/>IP Address: ${(quote as any).acceptanceIp}` : ''}
+            Date: ${formatDate(quote.acceptedAt)}
           </div>
         </div>
         ${data.signature?.signatureData ? `

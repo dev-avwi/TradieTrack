@@ -986,9 +986,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                   <div className="text-sm" style={{ color: '#166534' }}>
                     <p>Accepted by: {quote.acceptedBy}</p>
                     <p>Date: {formatDate(quote.acceptedAt)}</p>
-                    {quote.signature?.ipAddress && (
-                      <p className="text-xs mt-1 opacity-75">IP Address: {quote.signature.ipAddress}</p>
-                    )}
                   </div>
                   {quote.signature?.signatureData && (
                     <div className="mt-3 pt-3 border-t border-green-300">
