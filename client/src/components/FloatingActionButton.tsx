@@ -7,24 +7,21 @@ function useIsTouchDevice() {
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   
   useEffect(() => {
-    // Check for touch capability
-    const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
-    
-    // Check user agent for mobile/tablet devices
     const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Check for mobile/tablet user agents
     const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/.test(userAgent);
-    // iPad with iPadOS 13+ reports as Macintosh, so check for touch + Mac combination
-    const isIPad = /macintosh/.test(userAgent) && isTouchCapable && navigator.maxTouchPoints > 1;
     
-    // Device is mobile/tablet if:
-    // - Has mobile/tablet user agent, OR
-    // - Is an iPad with iPadOS 13+, OR
-    // - Has touch + coarse pointer (but not desktop with touchscreen - those have fine pointer too)
-    const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
-    const isMobileDevice = isMobileUA || isIPad || (isTouchCapable && hasCoarsePointer && !hasFinePointer);
+    // iPad with iPadOS 13+ reports as "Macintosh" but has multi-touch (5+ touch points)
+    // MacBooks have 0-1 touch points, iPads have 5+
+    const isIPadOS = /macintosh/.test(userAgent) && navigator.maxTouchPoints >= 2;
     
-    setIsTouchDevice(isMobileDevice);
+    // Check if running in standalone mode (installed as PWA on mobile)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    
+    // Show FAB on: mobile UA, iPadOS tablets, or PWA standalone mode
+    setIsTouchDevice(isMobileUA || isIPadOS || isStandalone);
   }, []);
   
   return isTouchDevice;
