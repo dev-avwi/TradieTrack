@@ -1102,8 +1102,8 @@ function AppLayout() {
             <main className="flex-1 relative flex flex-col min-h-0 overflow-hidden z-[10]" data-scroll-container>
               {/* RouteGuard checks permissions before rendering content */}
               <RouteGuard>
-                {/* Map page renders directly in the flex container, other pages get scroll wrapper */}
-                {location.startsWith('/map') ? (
+                {/* Map and Team Operations pages render directly in the flex container for proper height */}
+                {location.startsWith('/map') || location.startsWith('/team-operations') ? (
                   <Router 
                     onNavigate={handleNavigation}
                     onShowQuoteModal={(quoteId) => setQuoteModal({ isOpen: true, quoteId })}

@@ -201,6 +201,8 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; icon: any; marke
   on_job: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: Wrench, markerBg: "#3b82f6", markerText: "#fff" },
   busy: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", icon: Clock, markerBg: "#f59e0b", markerText: "#fff" },
   break: { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", icon: Coffee, markerBg: "#eab308", markerText: "#000" },
+  driving: { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-400", icon: Car, markerBg: "#8b5cf6", markerText: "#fff" },
+  traveling: { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-400", icon: Navigation2, markerBg: "#8b5cf6", markerText: "#fff" },
   offline: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-500 dark:text-gray-400", icon: Circle, markerBg: "#9ca3af", markerText: "#fff" },
 };
 
@@ -211,6 +213,8 @@ function getStatusDisplay(status: string) {
     on_job: "On Job",
     busy: "Busy",
     break: "On Break",
+    driving: "Driving",
+    traveling: "Traveling",
     offline: "Offline",
   };
   return {
@@ -2509,15 +2513,14 @@ export default function TeamOperations() {
   const [activeTab, setActiveTab] = useState("live");
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 border-b bg-background">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold truncate">Team Operations</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Manage your team, schedules, and performance</p>
-        </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Compact header */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background shrink-0">
+        <h1 className="text-base sm:text-lg font-semibold">Team Operations</h1>
         <Button
           variant="ghost"
           size="icon"
+          className="h-8 w-8"
           onClick={() => {
             queryClient.invalidateQueries({ queryKey: ["/api/team/presence"] });
             queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
@@ -2527,51 +2530,56 @@ export default function TeamOperations() {
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
-      </header>
+      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="border-b px-2 sm:px-4 overflow-x-auto">
-          <TabsList className="h-10 sm:h-12">
-            <TabsTrigger value="live" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-live-ops">
-              <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Live Ops</span>
-              <span className="sm:hidden">Live</span>
+      {/* Tabs with minimal spacing */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <div className="border-b px-2 shrink-0">
+          <TabsList className="h-9 bg-transparent p-0 gap-0">
+            <TabsTrigger value="live" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-live-ops">
+              <Activity className="h-3.5 w-3.5" />
+              Live
             </TabsTrigger>
             {canManageTeam && (
-              <TabsTrigger value="admin" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-team-admin">
-                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Team Admin</span>
-                <span className="sm:hidden">Admin</span>
+              <TabsTrigger value="admin" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-team-admin">
+                <Users className="h-3.5 w-3.5" />
+                Admin
               </TabsTrigger>
             )}
-            <TabsTrigger value="scheduling" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-scheduling">
-              <CalendarDays className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Scheduling</span>
-              <span className="sm:hidden">Schedule</span>
+            <TabsTrigger value="scheduling" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-scheduling">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Schedule
             </TabsTrigger>
-            <TabsTrigger value="performance" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-performance">
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Performance</span>
-              <span className="sm:hidden">Stats</span>
+            <TabsTrigger value="skills" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-skills">
+              <Award className="h-3.5 w-3.5" />
+              Skills
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="gap-1.5 text-xs px-3 py-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none" data-testid="tab-performance">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Stats
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="live" className="flex-1 m-0">
+        <TabsContent value="live" className="flex-1 m-0 overflow-auto">
           <LiveOpsTab />
         </TabsContent>
 
         {canManageTeam && (
-          <TabsContent value="admin" className="flex-1 m-0">
+          <TabsContent value="admin" className="flex-1 m-0 overflow-auto">
             <TeamAdminTab />
           </TabsContent>
         )}
 
-        <TabsContent value="scheduling" className="flex-1 m-0">
+        <TabsContent value="scheduling" className="flex-1 m-0 overflow-auto">
           <SchedulingTab />
         </TabsContent>
 
-        <TabsContent value="performance" className="flex-1 m-0">
+        <TabsContent value="skills" className="flex-1 m-0 overflow-auto">
+          <SkillsTab />
+        </TabsContent>
+
+        <TabsContent value="performance" className="flex-1 m-0 overflow-auto">
           <PerformanceTab />
         </TabsContent>
       </Tabs>
