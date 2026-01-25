@@ -559,8 +559,8 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('live')}
         activeOpacity={0.7}
       >
-        <Feather name="activity" size={16} color={activeTab === 'live' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'live' && styles.tabButtonTextActive]}>Live Ops</Text>
+        <Feather name="activity" size={14} color={activeTab === 'live' ? colors.primary : colors.mutedForeground} />
+        <Text style={[styles.tabButtonText, activeTab === 'live' && styles.tabButtonTextActive]}>Live</Text>
       </TouchableOpacity>
 
       {isOwnerOrManager && (
@@ -569,8 +569,8 @@ export default function TeamOperationsScreen() {
           onPress={() => setActiveTab('admin')}
           activeOpacity={0.7}
         >
-          <Feather name="users" size={16} color={activeTab === 'admin' ? colors.primary : colors.mutedForeground} />
-          <Text style={[styles.tabButtonText, activeTab === 'admin' && styles.tabButtonTextActive]}>Team Admin</Text>
+          <Feather name="users" size={14} color={activeTab === 'admin' ? colors.primary : colors.mutedForeground} />
+          <Text style={[styles.tabButtonText, activeTab === 'admin' && styles.tabButtonTextActive]}>Admin</Text>
         </TouchableOpacity>
       )}
 
@@ -579,8 +579,8 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('scheduling')}
         activeOpacity={0.7}
       >
-        <Feather name="calendar" size={16} color={activeTab === 'scheduling' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'scheduling' && styles.tabButtonTextActive]}>Scheduling</Text>
+        <Feather name="calendar" size={14} color={activeTab === 'scheduling' ? colors.primary : colors.mutedForeground} />
+        <Text style={[styles.tabButtonText, activeTab === 'scheduling' && styles.tabButtonTextActive]}>Schedule</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -588,8 +588,8 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('skills')}
         activeOpacity={0.7}
       >
-        <Feather name="award" size={16} color={activeTab === 'skills' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'skills' && styles.tabButtonTextActive]}>Skills & Certs</Text>
+        <Feather name="award" size={14} color={activeTab === 'skills' ? colors.primary : colors.mutedForeground} />
+        <Text style={[styles.tabButtonText, activeTab === 'skills' && styles.tabButtonTextActive]}>Skills</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -597,8 +597,8 @@ export default function TeamOperationsScreen() {
         onPress={() => setActiveTab('performance')}
         activeOpacity={0.7}
       >
-        <Feather name="trending-up" size={16} color={activeTab === 'performance' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'performance' && styles.tabButtonTextActive]}>Performance</Text>
+        <Feather name="trending-up" size={14} color={activeTab === 'performance' ? colors.primary : colors.mutedForeground} />
+        <Text style={[styles.tabButtonText, activeTab === 'performance' && styles.tabButtonTextActive]}>Stats</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -1734,23 +1734,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    gap: 4,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
-    marginRight: spacing.sm,
+    marginRight: 2,
   },
   tabButtonActive: {
     borderBottomColor: colors.primary,
   },
   tabButtonText: {
-    ...typography.caption,
+    fontSize: 11,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
