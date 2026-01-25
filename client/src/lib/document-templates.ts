@@ -208,4 +208,4 @@ export function getTemplateStyles(
 }
 
 // Default template if none selected
-export const DEFAULT_TEMPLATE: TemplateId = 'minimal';
+export const DEFAULT_TEMPLATE: TemplateId = 'professional';
