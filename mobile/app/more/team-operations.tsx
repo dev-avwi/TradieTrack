@@ -1598,13 +1598,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   tabBar: {
-    flexDirection: 'row',
+    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: IS_TABLET ? radius.md : 0,
     paddingHorizontal: IS_TABLET ? spacing.xs : 2,
     marginBottom: spacing.xs,
+    alignSelf: IS_TABLET ? 'flex-start' : 'stretch',
   },
   tabButton: {
     flexDirection: 'row',
