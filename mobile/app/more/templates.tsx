@@ -1131,7 +1131,19 @@ export default function TemplatesScreen() {
         }),
       });
       
-      // Also update business settings for PDF generation sync
+      // Get the template's default customization values
+      const template = DOCUMENT_TEMPLATES[templateId];
+      const resetCustomization = template ? {
+        tableStyle: template.tableStyle,
+        noteStyle: template.noteStyle,
+        headerBorderWidth: template.headerBorderWidth,
+        showHeaderDivider: template.showHeaderDivider,
+        bodyWeight: template.bodyWeight,
+        headingWeight: template.headingWeight,
+        accentColor: templateCustomization.accentColor || DOCUMENT_ACCENT_COLOR,
+      } : undefined;
+      
+      // Also update business settings with BOTH template ID and reset customization
       await fetch(`${API_URL}/api/business-settings`, {
         method: 'PATCH',
         headers: {
@@ -1140,8 +1152,12 @@ export default function TemplatesScreen() {
         },
         body: JSON.stringify({
           documentTemplate: templateId,
+          documentTemplateSettings: resetCustomization,
         }),
       });
+      
+      // Update local state
+      await fetchBusinessSettings();
       
       if (presetResponse.ok) {
         await fetchStylePresets();
@@ -1150,7 +1166,7 @@ export default function TemplatesScreen() {
       console.error('Failed to update style preset:', error);
     }
     setIsUpdatingPreset(false);
-  }, [selectedPreset, token, fetchStylePresets]);
+  }, [selectedPreset, token, fetchStylePresets, fetchBusinessSettings, templateCustomization.accentColor]);
 
   const handleSelectTemplateStyle = useCallback((templateId: TemplateId) => {
     setSelectedTemplateStyle(templateId);
