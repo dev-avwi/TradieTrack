@@ -1953,7 +1953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subscriptionTier,
           betaUser: true,
           // Set trial end date far in future for beta users
-          trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month
         });
         
         console.log(`[BETA] Granted ${tier} access to user ${userId} without payment`);
@@ -11579,7 +11579,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (stripe) {
         const sessionConfig: any = {
-          payment_method_types: ['card'],
           line_items: [
             {
               price_data: {
@@ -11670,7 +11669,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (stripe) {
         const sessionConfig: any = {
-          payment_method_types: ['card'],
           line_items: [
             {
               price_data: {

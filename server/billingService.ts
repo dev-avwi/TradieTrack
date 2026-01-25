@@ -198,7 +198,6 @@ export async function createSubscriptionCheckout(
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card'],
       payment_method_collection: 'always',
       line_items: [
         {
@@ -285,7 +284,6 @@ export async function createTeamSubscriptionCheckout(
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card'],
       payment_method_collection: 'always',
       line_items: lineItems,
       mode: 'subscription',
