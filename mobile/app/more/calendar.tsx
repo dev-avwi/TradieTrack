@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
-  Alert
+  Alert,
+  Dimensions,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -14,6 +15,10 @@ import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
+import { isTablet } from '../../src/lib/device';
+
+const IS_TABLET = isTablet();
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type ViewMode = 'week' | 'month' | 'today';
 
@@ -42,6 +47,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   contentContainer: {
     padding: spacing.lg,
     paddingBottom: 100,
+    paddingHorizontal: IS_TABLET ? spacing.xl : spacing.lg,
   },
   header: {
     flexDirection: 'row',
@@ -180,48 +186,58 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   monthView: {
     marginBottom: spacing.xl,
+    flex: IS_TABLET ? 1 : undefined,
   },
   monthHeader: {
     marginBottom: spacing.md,
   },
   monthJobsCount: {
-    fontSize: 14,
+    fontSize: IS_TABLET ? 16 : 14,
     color: colors.mutedForeground,
   },
   monthDaysHeader: {
     flexDirection: 'row',
     marginBottom: spacing.sm,
+    paddingHorizontal: IS_TABLET ? spacing.sm : 0,
   },
   monthDayHeader: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: IS_TABLET ? 14 : 12,
+    fontWeight: '600',
     color: colors.mutedForeground,
   },
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    backgroundColor: IS_TABLET ? colors.card : undefined,
+    borderRadius: IS_TABLET ? radius.xl : 0,
+    borderWidth: IS_TABLET ? 1 : 0,
+    borderColor: colors.border,
+    padding: IS_TABLET ? spacing.sm : 0,
   },
   monthDay: {
     width: '14.28%',
-    aspectRatio: 1,
-    padding: 2,
+    minHeight: IS_TABLET ? 80 : 50,
+    padding: IS_TABLET ? spacing.sm : 2,
     alignItems: 'center',
+    borderRadius: radius.md,
   },
   monthDayToday: {
     borderWidth: 2,
     borderColor: colors.primary,
     borderRadius: radius.md,
+    backgroundColor: IS_TABLET ? colors.primaryLight : undefined,
   },
   monthDaySelected: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.md,
   },
   monthDayNumber: {
-    fontSize: 14,
+    fontSize: IS_TABLET ? 16 : 14,
+    fontWeight: IS_TABLET ? '500' : undefined,
     color: colors.foreground,
-    marginBottom: 2,
+    marginBottom: IS_TABLET ? spacing.xs : 2,
   },
   monthDayNumberToday: {
     fontWeight: '700',
@@ -232,17 +248,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   monthJobIndicator: {
     width: '100%',
-    gap: 1,
+    gap: IS_TABLET ? 2 : 1,
+    alignItems: 'center',
   },
   monthJobText: {
-    fontSize: 8,
+    fontSize: IS_TABLET ? 10 : 8,
     color: colors.primary,
     backgroundColor: colors.primaryLight,
-    paddingHorizontal: 2,
-    borderRadius: 2,
+    paddingHorizontal: IS_TABLET ? 4 : 2,
+    paddingVertical: IS_TABLET ? 1 : 0,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    maxWidth: '100%',
   },
   monthJobMore: {
-    fontSize: 8,
+    fontSize: IS_TABLET ? 10 : 8,
     color: colors.mutedForeground,
   },
   selectedDayContainer: {
