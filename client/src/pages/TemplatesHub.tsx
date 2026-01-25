@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, recordLocalChange } from "@/lib/queryClient";
+import { apiRequest, queryClient, recordLocalChange, isRemoteChange } from "@/lib/queryClient";
 import {
   Palette,
   Plus,
@@ -237,6 +237,8 @@ function StylePresetsWithPreview() {
   // Refs to prevent useEffects from running multiple times
   const hasInitialLoadRef = useRef(false);
   const hasLoadedCustomizationRef = useRef(false);
+  // Track server template for detecting remote changes
+  const lastServerTemplateRef = useRef<string | null>(null);
 
   // Initialize component from server data ONCE on mount
   // After initial load, local state is the single source of truth during the session
@@ -257,6 +259,8 @@ function StylePresetsWithPreview() {
       }
       if (['professional', 'modern', 'minimal'].includes(serverTemplateId)) {
         setSelectedTemplateId(serverTemplateId);
+        // Track this as the initial server value for change detection
+        lastServerTemplateRef.current = serverTemplateId;
       }
     }
     
@@ -278,6 +282,28 @@ function StylePresetsWithPreview() {
     setIsInitialized(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!business]); // Only depend on business truthiness
+  
+  // Sync remote changes AFTER initialization
+  // This allows changes from mobile to propagate to web
+  useEffect(() => {
+    // Skip if not initialized yet (let the first effect handle initial load)
+    if (!isInitialized) return;
+    if (!business) return;
+    
+    const serverTemplate = business.documentTemplate as TemplateId | undefined;
+    
+    // Only sync if the server template has changed AND it's a remote change
+    if (serverTemplate && serverTemplate !== lastServerTemplateRef.current) {
+      // Check if this is a remote change (not from this device)
+      if (isRemoteChange('/api/business-settings', Date.now())) {
+        console.log('[TemplatesHub] Remote template change detected, syncing to:', serverTemplate);
+        if (['professional', 'modern', 'minimal'].includes(serverTemplate)) {
+          setSelectedTemplateId(serverTemplate);
+        }
+      }
+      lastServerTemplateRef.current = serverTemplate;
+    }
+  }, [isInitialized, business?.documentTemplate]);
 
   // Reset customization to template defaults when user explicitly selects a new template
   const resetToTemplateDefaults = (templateId: TemplateId) => {
@@ -299,6 +325,8 @@ function StylePresetsWithPreview() {
   // Note: We only update business settings - it's the single source of truth
   const updateTemplateMutation = useMutation({
     mutationFn: async (templateId: TemplateId) => {
+      // Record that this device is making a change to prevent sync from resetting
+      recordLocalChange('/api/business-settings');
       await apiRequest("PATCH", "/api/business-settings", {
         documentTemplate: templateId,
       });
