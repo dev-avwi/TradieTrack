@@ -732,6 +732,22 @@ ${businessName}`;
             <Feather name="message-circle" size={18} color={client?.phone ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.actionButtonText, !client?.phone && styles.actionButtonTextDisabled]}>SMS</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleDeleteReceipt}
+            disabled={isDeleting}
+            data-testid="button-delete-receipt-content"
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={colors.destructive} />
+            ) : (
+              <>
+                <Feather name="trash-2" size={18} color={colors.destructive} />
+                <Text style={[styles.actionButtonText, { color: colors.destructive }]}>Delete</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {(invoice || job) && (

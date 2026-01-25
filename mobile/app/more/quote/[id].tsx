@@ -1135,6 +1135,18 @@ ${businessName}`;
               <Feather name="layout" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Template</Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={handleDeleteQuote}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color={colors.destructive} />
+              ) : (
+                <Feather name="trash-2" size={20} color={colors.destructive} />
+              )}
+              <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
+            </TouchableOpacity>
           </View>
           
           {/* Quick Actions Row 2 - Draft status: Mark as Sent */}

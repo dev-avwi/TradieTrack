@@ -1801,6 +1801,18 @@ ${businessName}`;
                 <Text style={styles.quickActionText}>Edit</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={handleDeleteInvoice}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color={colors.destructive} />
+              ) : (
+                <Feather name="trash-2" size={20} color={colors.destructive} />
+              )}
+              <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Payment Options - Only show if not paid - MOVED TO TOP for tradie visibility */}
