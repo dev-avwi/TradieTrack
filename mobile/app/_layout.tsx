@@ -485,11 +485,11 @@ function RootLayoutContent() {
   useEffect(() => {
     checkAuth();
     
-    // Minimum loading screen display time (2 seconds)
-    // This gives the dashboard time to fully load before appearing
+    // Minimum loading screen display time (3.5 seconds)
+    // This gives the dashboard and all data time to fully load before appearing
     const timer = setTimeout(() => {
       setMinLoadingComplete(true);
-    }, 2000);
+    }, 3500);
     
     return () => clearTimeout(timer);
   }, []);

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Linking,
+  Alert,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -71,6 +72,7 @@ function ClientCard({
   onEmail,
   onSms,
   onCreateJob,
+  onDelete,
 }: { 
   client: any; 
   onPress: () => void;
@@ -78,6 +80,7 @@ function ClientCard({
   onEmail?: () => void;
   onSms?: () => void;
   onCreateJob?: () => void;
+  onDelete?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -171,13 +174,19 @@ function ClientCard({
           <Feather name="briefcase" size={14} color={colors.white} />
           <Text style={[styles.cardActionText, styles.cardActionTextPrimary]}>Job</Text>
         </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.cardActionButton, styles.cardActionButtonDestructive]}
+          onPress={(e) => { e.stopPropagation(); onDelete?.(); }}
+        >
+          <Feather name="trash-2" size={14} color={colors.destructive} />
+        </TouchableOpacity>
       </View>
     </AnimatedCardPressable>
   );
 }
 
 export default function ClientsScreen() {
-  const { clients, fetchClients, isLoading } = useClientsStore();
+  const { clients, fetchClients, isLoading, deleteClient } = useClientsStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const { colors } = useTheme();
@@ -237,6 +246,28 @@ export default function ClientsScreen() {
     router.push(`/more/create-job?clientId=${clientId}`);
   };
 
+  const handleDeleteClient = (client: any) => {
+    Alert.alert(
+      'Delete Client',
+      `Are you sure you want to delete "${client.name}"? This will also delete all associated jobs, quotes, and invoices.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteClient(client.id, true);
+            if (success) {
+              Alert.alert('Success', 'Client deleted successfully');
+            } else {
+              Alert.alert('Error', 'Failed to delete client');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderClientList = () => {
     return (
       <View style={styles.clientsList}>
@@ -249,6 +280,7 @@ export default function ClientsScreen() {
             onEmail={() => client.email && handleEmail(client.email)}
             onSms={() => client.phone && handleSms(client.phone)}
             onCreateJob={() => handleCreateJob(client.id)}
+            onDelete={() => handleDeleteClient(client)}
           />
         ))}
       </View>
@@ -687,6 +719,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   cardActionButtonPrimary: {
     backgroundColor: colors.primary,
     marginLeft: 'auto',
+  },
+  cardActionButtonDestructive: {
+    backgroundColor: colors.destructive + '15',
+    paddingHorizontal: spacing.sm,
   },
   cardActionText: {
     fontSize: 12,
