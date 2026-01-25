@@ -2632,8 +2632,8 @@ ${businessName}`;
             } : null}
             gstEnabled={user?.gstEnabled !== false}
             status={invoice.status}
-            templateId={businessSettings?.documentTemplate}
-            templateCustomization={businessSettings?.documentTemplateSettings}
+            templateId={(invoice as any).documentTemplate || businessSettings?.documentTemplate}
+            templateCustomization={(invoice as any).documentTemplateSettings || businessSettings?.documentTemplateSettings}
             jobSignatures={allSignatures.map(sig => ({
               id: sig.id,
               signerName: sig.signerName || 'Client',

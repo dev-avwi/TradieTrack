@@ -2,19 +2,31 @@ import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle } from "lucide-react";
+import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import KPIBox from "./KPIBox";
-import { useClients } from "@/hooks/use-clients";
+import { useClients, useDeleteClient } from "@/hooks/use-clients";
+import { useToast } from "@/hooks/use-toast";
 import ClientCard from "./ClientCard";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +52,38 @@ export default function ClientsList({
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
   const { data = [], isLoading = true } = useClients() ?? {};
   const clients = Array.isArray(data) ? data : [];
+  const deleteClient = useDeleteClient();
+  const { toast } = useToast();
+
+  const handleDeleteClick = (client: { id: string; name: string }) => {
+    setClientToDelete(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!clientToDelete) return;
+    
+    try {
+      await deleteClient.mutateAsync(clientToDelete.id);
+      toast({
+        title: "Client deleted",
+        description: `${clientToDelete.name} has been removed.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to delete client",
+        description: error.message || "An error occurred while deleting the client.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+    }
+  };
 
   const tableColumns: ColumnDef<any>[] = [
     {
@@ -143,6 +185,14 @@ export default function ClientsList({
                 Email
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={() => handleDeleteClick({ id: row.id, name: row.name })}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -396,10 +446,33 @@ export default function ClientsList({
               onCreateJob={() => onCreateJobForClient?.(client.id)}
               onCall={() => onCallClient?.(client.phone)}
               onEmail={() => onEmailClient?.(client.email)}
+              onDelete={() => handleDeleteClick({ id: client.id, name: client.name })}
             />
           ))}
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent style={{ borderRadius: '14px' }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Client</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{clientToDelete?.name}</strong>? This action cannot be undone. Any associated jobs, quotes, and invoices will remain but will no longer be linked to this client.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel style={{ borderRadius: '10px' }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              style={{ borderRadius: '10px' }}
+              disabled={deleteClient.isPending}
+            >
+              {deleteClient.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }

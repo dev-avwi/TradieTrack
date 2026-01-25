@@ -1,7 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, MapPin, Phone, Mail, Briefcase, ChevronRight } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { User, MapPin, Phone, Mail, Briefcase, ChevronRight, MoreVertical, Trash2 } from "lucide-react";
 
 interface ClientCardProps {
   id: string;
@@ -15,6 +22,7 @@ interface ClientCardProps {
   onCreateJob?: () => void;
   onCall?: () => void;
   onEmail?: () => void;
+  onDelete?: () => void;
 }
 
 export default function ClientCard({ 
@@ -28,7 +36,8 @@ export default function ClientCard({
   onView, 
   onCreateJob,
   onCall,
-  onEmail 
+  onEmail,
+  onDelete
 }: ClientCardProps) {
   return (
     <Card 
@@ -105,7 +114,52 @@ export default function ClientCard({
               <Briefcase className="h-4 w-4 mr-1.5" />
               Job
             </Button>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => e.stopPropagation()}
+                  data-testid={`button-client-card-actions-${id}`}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" style={{ borderRadius: "12px" }}>
+                <DropdownMenuItem onClick={() => onView?.()}>
+                  <User className="h-4 w-4 mr-2" />
+                  View Details
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onCreateJob?.()}>
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Create Job
+                </DropdownMenuItem>
+                {phone && (
+                  <DropdownMenuItem onClick={() => onCall?.()}>
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call
+                  </DropdownMenuItem>
+                )}
+                {email && (
+                  <DropdownMenuItem onClick={() => onEmail?.()}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => onDelete?.()}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardContent>

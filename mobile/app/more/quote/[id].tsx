@@ -1614,8 +1614,8 @@ ${businessName}`;
             depositPercent={quote.depositAmount && quote.total ? Math.round((quote.depositAmount / quote.total) * 100) : 0}
             gstEnabled={user?.gstEnabled !== false}
             status={quote.status}
-            templateId={businessSettings?.documentTemplate}
-            templateCustomization={businessSettings?.documentTemplateSettings}
+            templateId={(quote as any).documentTemplate || businessSettings?.documentTemplate}
+            templateCustomization={(quote as any).documentTemplateSettings || businessSettings?.documentTemplateSettings}
             jobSignatures={allSignatures.map(sig => ({
               id: sig.id,
               signerName: sig.signerName || 'Client',
