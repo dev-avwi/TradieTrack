@@ -338,6 +338,7 @@ function StylePresetsWithPreview() {
   });
 
   const handleSelectTemplate = (templateId: TemplateId) => {
+    console.log('[TemplatesHub] Selecting template:', templateId, 'current:', selectedTemplateId);
     setSelectedTemplateId(templateId);
     resetToTemplateDefaults(templateId);
     updateTemplateMutation.mutate(templateId);
@@ -638,6 +639,7 @@ function StylePresetsWithPreview() {
                 <div className="bg-muted/30 p-4">
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '700px', overflow: 'auto' }}>
                     <LiveDocumentPreview
+                      key={`${selectedTemplateId}-${JSON.stringify(customization)}`}
                       type={previewType}
                       documentNumber={previewType === 'quote' ? 'Q-2024-001' : 'INV-2024-001'}
                       title={previewType === 'quote' ? 'Quote' : 'Invoice'}

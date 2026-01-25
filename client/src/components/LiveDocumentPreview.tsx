@@ -138,6 +138,7 @@ export default function LiveDocumentPreview({
   const isAccepted = status === 'accepted';
   
   // Get template styles - pass customization for accent color and other overrides
+  console.log('[LiveDocumentPreview] Rendering with templateId:', templateId);
   const templateStyles = getTemplateStyles(templateId, brandColor, templateCustomization);
   const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;
 
