@@ -201,6 +201,34 @@ function getTemplateFromBusinessSettings(business: BusinessSettings): { template
   return getCustomizedTemplate(baseTemplateId, Object.keys(customization).length > 0 ? customization : undefined);
 }
 
+// Document-level template interface (saved when document is created)
+interface DocumentTemplateData {
+  documentTemplate?: string | null;
+  documentTemplateSettings?: TemplateCustomization | null;
+}
+
+// Get template from document first (saved at creation time), falling back to business settings
+// This ensures PDFs use the template the document was created with, not the current business template
+function getTemplateForDocument(
+  document: DocumentTemplateData,
+  business: BusinessSettings
+): { template: DocumentTemplate; accentColor: string } {
+  // Check if document has its own template settings (saved at creation time)
+  if (document.documentTemplate) {
+    const docTemplateId = document.documentTemplate as string;
+    if (docTemplateId === 'modern' || docTemplateId === 'professional' || docTemplateId === 'minimal') {
+      // Use document's own template settings
+      const docSettings = document.documentTemplateSettings as TemplateCustomization | null;
+      console.log(`[PDF] Using document-level template: ${docTemplateId}`, docSettings ? 'with customization' : 'no customization');
+      return getCustomizedTemplate(docTemplateId as TemplateId, docSettings || undefined);
+    }
+  }
+  
+  // Fall back to business settings
+  console.log('[PDF] Document has no template settings, falling back to business settings');
+  return getTemplateFromBusinessSettings(business);
+}
+
 // All templates use Inter font for consistent modern appearance
 const INTER_FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
@@ -783,8 +811,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
 
 export const generateQuotePDF = (data: QuoteWithDetails): string => {
   const { quote, lineItems, client, business, job, acceptanceUrl } = data;
-  // Use new unified template extraction that supports both predefined and custom AI-analyzed templates
-  const { template, accentColor } = getTemplateFromBusinessSettings(business);
+  // Use document-level template if saved, otherwise fall back to business settings
+  const { template, accentColor } = getTemplateForDocument(quote, business);
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
   const gstAmount = parseFloat(quote.gstAmount as unknown as string);
@@ -1055,8 +1083,8 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
     throw new Error('Business settings are missing');
   }
   
-  // Use new unified template extraction that supports both predefined and custom AI-analyzed templates
-  const { template, accentColor } = getTemplateFromBusinessSettings(business);
+  // Use document-level template if saved, otherwise fall back to business settings
+  const { template, accentColor } = getTemplateForDocument(invoice, business);
   
   // Calculate time tracking totals if present
   const totalMinutes = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
@@ -2896,8 +2924,10 @@ const formatCentsToAUD = (cents: number): string => {
 export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
   const { payment, client, business, invoice, job } = data;
   
-  // Use the SAME template extraction as quotes/invoices for consistency
-  const { template, accentColor } = getTemplateFromBusinessSettings(business);
+  // Use invoice's template if linked, otherwise fall back to business settings
+  const { template, accentColor } = invoice 
+    ? getTemplateForDocument(invoice, business)
+    : getTemplateFromBusinessSettings(business);
   
   // Amounts are already in dollars (not cents) - no conversion needed
   const amountDollars = payment.amount;

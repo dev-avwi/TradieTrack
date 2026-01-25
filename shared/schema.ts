@@ -718,6 +718,9 @@ export const quotes = pgTable("quotes", {
   xeroSyncedAt: timestamp("xero_synced_at"), // When quote was last synced with Xero
   // Trade-specific custom fields (stored as JSON object keyed by field ID)
   customFields: jsonb("custom_fields").default({}),
+  // Document-level template settings (locked at creation time - won't change if business template changes later)
+  documentTemplate: text("document_template"), // modern, professional, minimal - copied from business settings at creation
+  documentTemplateSettings: json("document_template_settings"), // Custom overrides for template - copied from business settings at creation
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -799,6 +802,9 @@ export const invoices = pgTable("invoices", {
   xeroSyncedAt: timestamp("xero_synced_at"), // When invoice was last synced to Xero
   // Trade-specific custom fields (stored as JSON object keyed by field ID)
   customFields: jsonb("custom_fields").default({}),
+  // Document-level template settings (locked at creation time - won't change if business template changes later)
+  documentTemplate: text("document_template"), // modern, professional, minimal - copied from business settings at creation
+  documentTemplateSettings: json("document_template_settings"), // Custom overrides for template - copied from business settings at creation
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

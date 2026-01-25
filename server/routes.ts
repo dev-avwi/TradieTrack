@@ -9965,6 +9965,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data.number = await storage.generateQuoteNumber(userContext.effectiveUserId);
       }
       
+      // Copy document template settings from business settings (locked at creation time)
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      if (businessSettings && !data.documentTemplate) {
+        (data as any).documentTemplate = businessSettings.documentTemplate || 'professional';
+        (data as any).documentTemplateSettings = businessSettings.documentTemplateSettings || null;
+      }
+      
       const quote = await storage.createQuote({ ...data, userId: userContext.effectiveUserId });
       
       // Add line items if provided
@@ -10700,6 +10707,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentToken += chars[bytes[i] % chars.length];
         }
         data.paymentToken = paymentToken;
+      }
+      
+      // Copy document template settings from business settings (locked at creation time)
+      if (business && !data.documentTemplate) {
+        (data as any).documentTemplate = business.documentTemplate || 'professional';
+        (data as any).documentTemplateSettings = business.documentTemplateSettings || null;
       }
       
       const invoice = await storage.createInvoice({ ...data, userId: userContext.effectiveUserId });
@@ -11738,7 +11751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate invoice number
       const invoiceNumber = await storage.generateInvoiceNumber(req.userId);
 
-      // Create invoice from quote
+      // Create invoice from quote (preserve template settings from the quote)
       const invoice = await storage.createInvoice({
         userId: req.userId,
         clientId: quote.clientId,
@@ -11751,7 +11764,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gstAmount: quote.gstAmount,
         total: quote.total,
         notes: quote.notes,
-        status: 'draft'
+        status: 'draft',
+        // Preserve template settings from the original quote
+        documentTemplate: (quote as any).documentTemplate || null,
+        documentTemplateSettings: (quote as any).documentTemplateSettings || null,
       });
 
       // Copy line items
