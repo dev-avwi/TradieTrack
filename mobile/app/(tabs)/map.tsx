@@ -55,7 +55,7 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserRole } from '../../src/hooks/use-user-role';
-import { api } from '../../src/lib/api';
+import { api, API_URL } from '../../src/lib/api';
 import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 
@@ -1033,6 +1033,62 @@ export default function MapScreen() {
     };
   }, [showTeamMembers, fetchTeamLocations, canViewTeamMode, isLive]);
 
+  // WebSocket for real-time location updates - Life360 style instant updates
+  useEffect(() => {
+    if (!showTeamMembers || !canViewTeamMode || !isLive) return;
+    
+    let ws: WebSocket | null = null;
+    
+    try {
+      // Construct WebSocket URL from API base URL (React Native compatible)
+      // Convert http(s) protocol to ws(s) protocol
+      const wsProtocol = API_URL.startsWith('https') ? 'wss:' : 'ws:';
+      const wsHost = API_URL.replace(/^https?:\/\//, '');
+      const wsUrl = `${wsProtocol}//${wsHost}/ws/location?businessId=${user?.id}&isTradie=false`;
+      
+      console.log('[Map] WebSocket connecting to:', wsUrl.replace(/businessId=[^&]*/, 'businessId=***'));
+      
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('[Map] WebSocket connected for real-time location updates');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'team_location_update') {
+            console.log('[Map] Real-time location update received:', data.userId);
+            // Refresh team locations on any update
+            fetchTeamLocations();
+          }
+        } catch (e) {
+          console.error('[Map] WebSocket message parse error:', e);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('[Map] WebSocket error (falling back to polling):', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('[Map] WebSocket closed');
+      };
+    } catch (error) {
+      console.error('[Map] WebSocket connection failed (using polling):', error instanceof Error ? error.message : String(error));
+    }
+    
+    return () => {
+      if (ws) {
+        try {
+          ws.close();
+        } catch (e) {
+          console.error('[Map] Error closing WebSocket:', e);
+        }
+      }
+    };
+  }, [showTeamMembers, canViewTeamMode, isLive, user?.id, fetchTeamLocations]);
+
   // Fetch geofence alerts for owners/managers
   useEffect(() => {
     if (canViewTeamMode) {
@@ -1100,6 +1156,20 @@ export default function MapScreen() {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  const formatLastSeen = (dateStr?: string) => {
+    if (!dateStr) return 'Unknown';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   };
 
   // Convert zoom level to region deltas (iOS uses deltas, not zoom)
@@ -2088,9 +2158,7 @@ export default function MapScreen() {
                         ? `${Math.round(speed * 3.6)} km/h`
                         : isWorking 
                           ? 'Working' 
-                          : isOnline 
-                            ? 'Online' 
-                            : 'Offline'}
+                          : formatLastSeen(member.lastLocation?.timestamp)}
                     </Text>
                   </View>
                 </TouchableOpacity>

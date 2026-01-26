@@ -162,6 +162,20 @@ function getInitials(firstName?: string, lastName?: string, email?: string): str
   return '?';
 }
 
+function formatLastSeen(dateStr?: string): string {
+  if (!dateStr) return 'Unknown';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
 export default function TeamOperationsScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -527,7 +541,9 @@ export default function TeamOperationsScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.memberStatus}>{statusConfig.label}</Text>
+          <Text style={styles.memberStatus}>
+            {statusConfig.label} · {formatLastSeen(member.presence?.lastSeenAt)}
+          </Text>
         </View>
         <TouchableOpacity
           style={styles.messageButton}
