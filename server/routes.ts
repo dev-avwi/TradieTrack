@@ -1896,12 +1896,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/subscription/status", requireAuth, async (req: any, res) => {
     try {
       const { getSubscriptionStatus, getPaymentMethodDetails } = await import('./billingService');
+      const { IS_BETA } = await import('./freemiumService');
       const userId = req.userId!;
       
       const status = await getSubscriptionStatus(userId);
       const paymentMethod = await getPaymentMethodDetails(userId);
       const user = await storage.getUser(userId);
       const businessSettings = await storage.getBusinessSettings(userId);
+      
+      // Get actual team member count for billing purposes
+      // Count includes team members only (owner is included in base plan)
+      const teamMembers = await storage.getTeamMembers(userId);
+      const activeTeamMembers = teamMembers.filter(m => m.status === 'active' || m.status === 'accepted');
+      const teamMemberCount = activeTeamMembers.length;
+      // Total billable users = owner (1) + team members
+      const totalBillableUsers = 1 + teamMemberCount;
       
       // Determine upgrade/downgrade eligibility
       const canUpgrade = status.tier === 'free' || status.tier === 'trial' || status.tier === 'pro';
@@ -1918,6 +1927,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           brand: paymentMethod.brand,
         } : null,
         seats: status.tier === 'team' ? status.seatCount : undefined,
+        teamMemberCount,
+        totalBillableUsers,
+        isBeta: IS_BETA,
+        betaUser: user?.betaUser || false,
         canUpgrade,
         canDowngrade,
       });

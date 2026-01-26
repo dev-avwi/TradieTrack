@@ -37,6 +37,10 @@ interface SubscriptionStatus {
     brand: string;
   } | null;
   seats?: number;
+  teamMemberCount?: number;
+  totalBillableUsers?: number;
+  isBeta?: boolean;
+  betaUser?: boolean;
   canUpgrade: boolean;
   canDowngrade: boolean;
 }
@@ -241,10 +245,11 @@ export default function SubscriptionPage() {
                     )}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-lg capitalize">{status?.tier === 'trial' ? 'Pro' : status?.tier} Plan</h3>
-                      {status?.tier === 'trial' && (
+                      {status?.isBeta && (
                         <Badge variant="outline" className="border-green-400 text-green-600 bg-green-50">
+                          <Gift className="w-3 h-3 mr-1" />
                           Beta Access
                         </Badge>
                       )}
@@ -255,28 +260,40 @@ export default function SubscriptionPage() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {status?.tier === 'trial' && status.trialEndsAt ? (
-                        <>Beta access active - all Pro features unlocked</>
+                      {status?.isBeta ? (
+                        <>All features free during beta - no billing</>
                       ) : status?.nextBillingDate ? (
                         <>Next billing date: {formatDate(status.nextBillingDate)}</>
                       ) : (
                         <>Active subscription</>
                       )}
                     </p>
+                    {/* Team member count for billing info */}
+                    {(status?.tier === 'team' || (status?.teamMemberCount && status.teamMemberCount > 0)) && (
+                      <div className="flex items-center gap-2 mt-2 text-sm">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {status.totalBillableUsers} billable user{status.totalBillableUsers !== 1 ? 's' : ''} 
+                          <span className="text-xs ml-1">(1 owner + {status.teamMemberCount} team member{status.teamMemberCount !== 1 ? 's' : ''})</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button 
-                  variant="outline"
-                  onClick={() => manageSubscriptionMutation.mutate()}
-                  disabled={manageSubscriptionMutation.isPending}
-                  data-testid="button-manage-subscription"
-                >
-                  {manageSubscriptionMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  Manage Subscription
-                  <ExternalLink className="w-4 h-4 ml-2" />
-                </Button>
+                {!status?.isBeta && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => manageSubscriptionMutation.mutate()}
+                    disabled={manageSubscriptionMutation.isPending}
+                    data-testid="button-manage-subscription"
+                  >
+                    {manageSubscriptionMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
+                    Manage Subscription
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
