@@ -1906,8 +1906,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get actual team member count for billing purposes
       // Count includes team members only (owner is included in base plan)
-      const teamMembers = await storage.getTeamMembers(userId);
-      const activeTeamMembers = teamMembers.filter(m => m.status === 'active' || m.status === 'accepted');
+      // Check if user is a team member first - if so, use owner's ID for team count
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
+      const teamMembers = await storage.getTeamMembers(businessOwnerId);
+      // Filter for accepted team members only (not pending invites) for billing purposes
+      const activeTeamMembers = teamMembers.filter(m => m.inviteStatus === 'accepted');
       const teamMemberCount = activeTeamMembers.length;
       // Total billable users = owner (1) + team members
       const totalBillableUsers = 1 + teamMemberCount;

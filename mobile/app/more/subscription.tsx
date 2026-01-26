@@ -27,6 +27,10 @@ interface SubscriptionStatus {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   seats?: number;
+  teamMemberCount?: number;
+  totalBillableUsers?: number;
+  isBeta?: boolean;
+  betaUser?: boolean;
   paymentMethod?: {
     last4: string;
     brand: string;
@@ -587,10 +591,20 @@ export default function SubscriptionScreen() {
   const handleStartTrial = async (tierId: string) => {
     setCheckoutLoading(tierId);
     try {
-      const response = await api.post<CheckoutResponse>('/api/subscription/create-checkout', {
+      const response = await api.post<CheckoutResponse & { success?: boolean; betaAccess?: boolean; message?: string }>('/api/subscription/create-checkout', {
         tier: tierId,
         seats: tierId === 'team' ? teamSeats : undefined,
       });
+
+      // Beta mode: instant access without Stripe
+      if (response.data?.betaAccess && response.data?.success) {
+        Alert.alert(
+          'Beta Access Granted!',
+          response.data.message || `You now have ${tierId} access - free during beta!`,
+          [{ text: 'OK', onPress: () => fetchSubscriptionStatus() }]
+        );
+        return;
+      }
 
       const checkoutUrl = response.data?.url || response.data?.sessionUrl;
       
@@ -869,7 +883,7 @@ export default function SubscriptionScreen() {
                           <Text style={styles.currentPlanName}>
                             {subscriptionStatus?.tier === 'trial' ? 'Pro' : subscriptionStatus?.tier} Plan
                           </Text>
-                          {subscriptionStatus?.tier === 'trial' && (
+                          {subscriptionStatus?.isBeta && (
                             <View style={[styles.currentPlanBadge, { backgroundColor: colors.success + '20' }]}>
                               <Text style={[styles.currentPlanBadgeText, { color: colors.success }]}>
                                 Beta Access
@@ -885,8 +899,8 @@ export default function SubscriptionScreen() {
                           )}
                         </View>
                         <Text style={styles.currentPlanSubtext}>
-                          {subscriptionStatus?.tier === 'trial' && subscriptionStatus.trialEndsAt ? (
-                            `Beta access active - all Pro features unlocked`
+                          {subscriptionStatus?.isBeta ? (
+                            `All features free during beta - no billing`
                           ) : subscriptionStatus?.nextBillingDate ? (
                             `Next billing: ${formatDate(subscriptionStatus.nextBillingDate)}`
                           ) : subscriptionStatus?.currentPeriodEnd ? (
@@ -895,23 +909,34 @@ export default function SubscriptionScreen() {
                             'Active subscription'
                           )}
                         </Text>
+                        {/* Team member count for billing info */}
+                        {(subscriptionStatus?.tier === 'team' || (subscriptionStatus?.teamMemberCount && subscriptionStatus.teamMemberCount > 0)) && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
+                            <Feather name="users" size={12} color={colors.mutedForeground} />
+                            <Text style={[styles.currentPlanSubtext, { marginTop: 0 }]}>
+                              {subscriptionStatus.totalBillableUsers} billable user{subscriptionStatus.totalBillableUsers !== 1 ? 's' : ''} (1 owner + {subscriptionStatus.teamMemberCount} team)
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </View>
-                    <TouchableOpacity 
-                      style={styles.manageButton}
-                      onPress={handleManageSubscription}
-                      disabled={managingSubscription}
-                      activeOpacity={0.7}
-                    >
-                      {managingSubscription ? (
-                        <ActivityIndicator size="small" color={colors.foreground} />
-                      ) : (
-                        <>
-                          <Text style={styles.manageButtonText}>Manage</Text>
-                          <Feather name="external-link" size={14} color={colors.foreground} />
-                        </>
-                      )}
-                    </TouchableOpacity>
+                    {!subscriptionStatus?.isBeta && (
+                      <TouchableOpacity 
+                        style={styles.manageButton}
+                        onPress={handleManageSubscription}
+                        disabled={managingSubscription}
+                        activeOpacity={0.7}
+                      >
+                        {managingSubscription ? (
+                          <ActivityIndicator size="small" color={colors.foreground} />
+                        ) : (
+                          <>
+                            <Text style={styles.manageButtonText}>Manage</Text>
+                            <Feather name="external-link" size={14} color={colors.foreground} />
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               )}
