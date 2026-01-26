@@ -1804,7 +1804,8 @@ export default function TeamManagementScreen() {
     return 'staff';
   };
   
-  const ownerCount = teamMembers.filter(m => getRoleCategory(m.role) === 'owner').length;
+  const teamOwnerCount = teamMembers.filter(m => getRoleCategory(m.role) === 'owner').length;
+  const ownerCount = currentUserRole === 'owner' ? teamOwnerCount + 1 : teamOwnerCount;
   const adminCount = teamMembers.filter(m => getRoleCategory(m.role) === 'admin').length;
   const staffCount = teamMembers.filter(m => getRoleCategory(m.role) === 'staff').length;
 
