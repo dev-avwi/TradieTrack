@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Smartphone, Globe, Apple, Download } from "lucide-react";
+import { Loader2, Smartphone, Globe, Apple, Download, Beaker } from "lucide-react";
 
 const APP_STORE_URL = "https://apps.apple.com/app/tradietrack/id123456789";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.tradietrack.app";
+
+// For Expo Go testing - uses exp:// scheme which works in development
+const EXPO_PROJECT_SLUG = "tradietrack";
 
 export default function OpenApp() {
   const [, params] = useRoute("/open-app/:action/:token");
@@ -15,6 +18,7 @@ export default function OpenApp() {
   
   const [status, setStatus] = useState<'trying' | 'fallback'>('trying');
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
+  const [showExpoOption, setShowExpoOption] = useState(false);
   
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -160,6 +164,32 @@ export default function OpenApp() {
               Try opening again
             </button>
           </p>
+          
+          {/* Development testing option for Expo Go */}
+          {!showExpoOption ? (
+            <button 
+              onClick={() => setShowExpoOption(true)}
+              className="text-xs text-muted-foreground/50 mt-4 block mx-auto"
+            >
+              Developer options
+            </button>
+          ) : (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-dashed">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Beaker className="w-3.5 h-3.5" />
+                <span className="font-medium">Expo Go Testing</span>
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Deep links only work with standalone builds. For Expo Go, copy this token and enter it manually in the app:
+              </p>
+              <code className="text-xs bg-background p-2 rounded block break-all select-all">
+                {token}
+              </code>
+              <p className="text-xs text-muted-foreground mt-2">
+                Or navigate to: <span className="font-mono">/{action}/{token}</span>
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
