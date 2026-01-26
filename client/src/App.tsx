@@ -51,6 +51,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import VerifyEmailPending from "@/pages/VerifyEmailPending";
 import ResetPassword from "@/pages/ResetPassword";
 import AcceptInvite from "@/pages/AcceptInvite";
+import OpenApp from "@/pages/OpenApp";
 import QuoteModal from "@/components/QuoteModal";
 import InvoiceModal from "@/components/InvoiceModal";
 import TimeTrackingPage from "@/pages/TimeTracking";
@@ -558,6 +559,7 @@ function Router({
       <Route path="/verify-email-pending" component={VerifyEmailPending} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/accept-invite/:token" component={AcceptInvite} />
+      <Route path="/open-app/:action/:token" component={OpenApp} />
       
       <Route path="/more" component={More} />
       
@@ -978,6 +980,10 @@ function AppLayout() {
     // Show accept-invite page without authentication (team members accepting invitations)
     if (location.startsWith('/accept-invite/')) {
       return <AcceptInvite />;
+    }
+    // Show smart app redirect page (tries to open app, falls back to web/store)
+    if (location.startsWith('/open-app/')) {
+      return <OpenApp />;
     }
     // Show password reset page without authentication
     if (location.startsWith('/reset-password')) {

@@ -1665,7 +1665,7 @@ export async function sendTeamInviteEmail(
   const emailService = isSendGridConfigured ? sgMail : mockEmailService;
   const displayName = inviteeName || inviteeEmail.split('@')[0];
   const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
-  const mobileDeepLink = `tradietrack://accept-invite?token=${inviteToken}`;
+  const smartAppLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
   const logoUrl = `${baseUrl}/tradietrack-logo.png`;
 
   const emailData = {
@@ -1707,11 +1707,11 @@ export async function sendTeamInviteEmail(
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${mobileDeepLink}" style="background-color: #22c55e; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold; margin-bottom: 12px;">
-              Open in TradieTrack App
+            <a href="${smartAppLink}" style="background-color: #22c55e; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold; margin-bottom: 12px;">
+              Accept Invitation
             </a>
             <p style="color: #666; font-size: 13px; margin: 12px 0 8px 0;">
-              Don't have the app? <a href="${acceptUrl}" style="color: #2563eb; text-decoration: underline;">Accept via web browser</a>
+              Opens in the TradieTrack app, or browser if app not installed
             </p>
           </div>
           
