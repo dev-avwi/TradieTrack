@@ -61,6 +61,12 @@ interface BusinessSettings {
   tradeName?: string;
   aiEnabled?: boolean;
   aiPhotoAnalysisEnabled?: boolean;
+  tradeType?: string;
+  gstEnabled?: boolean;
+  defaultHourlyRate?: number;
+  calloutFee?: number;
+  onboardingCompleted?: boolean;
+  onboardingUrl?: string;
 }
 
 interface Job {
@@ -73,6 +79,9 @@ interface Job {
   clientId?: string;
   assignedTo?: string;
   clientName?: string;
+  latitude?: number;
+  longitude?: number;
+  estimatedDuration?: number;
 }
 
 interface Client {
@@ -146,6 +155,9 @@ interface TimeEntry {
   endTime?: string;
   notes?: string;
   isBreak?: boolean;
+  isPaused?: boolean;
+  pausedDuration?: number;
+  jobTitle?: string;
 }
 
 // ============ AUTH STORE ============

@@ -12,7 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
 
-export type ActionStatus = 'suggested' | 'queued' | 'running' | 'completed' | 'skipped';
+export type ActionStatus = 'suggested' | 'queued' | 'running' | 'completed' | 'skipped' | 'pending';
 
 export interface SmartAction {
   id: string;

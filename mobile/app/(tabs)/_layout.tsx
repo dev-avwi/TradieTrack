@@ -11,9 +11,6 @@ export default function TabLayout() {
         tabBarStyle: { display: 'none' },
         animation: 'shift',
       }}
-      sceneContainerStyle={{
-        backgroundColor: colors.background,
-      }}
     >
       <Tabs.Screen
         name="index"
