@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-nativ
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
 
@@ -59,6 +60,7 @@ function NavButton({
   const opacity = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.parallel([
       Animated.timing(scale, {
         toValue: 0.95,

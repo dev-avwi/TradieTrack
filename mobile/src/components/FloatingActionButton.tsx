@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors, colorWithOpacity } from '../lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../lib/design-tokens';
 import { SIDEBAR_WIDTH } from '../lib/device';
@@ -213,6 +214,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
     : { bottom: bottomOffset + 16, right: 20 };
 
   const handlePressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.timing(scaleAnim, {
       toValue: 0.92,
       duration: 100,

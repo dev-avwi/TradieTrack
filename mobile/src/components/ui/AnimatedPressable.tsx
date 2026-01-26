@@ -1,5 +1,30 @@
-import { ReactNode, useRef } from 'react';
+import { ReactNode, useRef, useCallback } from 'react';
 import { Pressable, Animated, Easing, ViewStyle, PressableProps } from 'react-native';
+import * as Haptics from 'expo-haptics';
+
+type HapticType = 'light' | 'medium' | 'selection' | 'success' | 'none';
+
+const triggerHaptic = async (type: HapticType) => {
+  if (type === 'none') return;
+  try {
+    switch (type) {
+      case 'light':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        break;
+      case 'medium':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
+      case 'selection':
+        await Haptics.selectionAsync();
+        break;
+      case 'success':
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        break;
+    }
+  } catch {
+    // Haptics not available
+  }
+};
 
 interface AnimatedPressableProps extends Omit<PressableProps, 'style'> {
   children: ReactNode;
@@ -7,6 +32,7 @@ interface AnimatedPressableProps extends Omit<PressableProps, 'style'> {
   scaleValue?: number;
   opacityValue?: number;
   duration?: number;
+  haptic?: HapticType;
 }
 
 export function AnimatedPressable({
@@ -15,6 +41,7 @@ export function AnimatedPressable({
   scaleValue = 0.97,
   opacityValue = 0.85,
   duration = 100,
+  haptic = 'light',
   onPress,
   disabled,
   ...rest
@@ -22,7 +49,7 @@ export function AnimatedPressable({
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     Animated.parallel([
       Animated.timing(scale, {
         toValue: scaleValue,
@@ -37,9 +64,9 @@ export function AnimatedPressable({
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [scale, opacity, scaleValue, opacityValue, duration]);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     Animated.parallel([
       Animated.spring(scale, {
         toValue: 1,
@@ -54,11 +81,18 @@ export function AnimatedPressable({
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [scale, opacity]);
+
+  const handlePress = useCallback((e: any) => {
+    if (haptic !== 'none') {
+      triggerHaptic(haptic);
+    }
+    onPress?.(e);
+  }, [haptic, onPress]);
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
@@ -115,4 +149,5 @@ export function AnimatedListItemPressable({
   );
 }
 
+export { triggerHaptic };
 export default AnimatedPressable;
