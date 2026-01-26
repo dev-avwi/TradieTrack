@@ -238,6 +238,11 @@ function LiveOpsTab() {
   const [selectedMemberIdForMap, setSelectedMemberIdForMap] = useState<string | null>(null);
   const [assignJobDialogOpen, setAssignJobDialogOpen] = useState(false);
   const [selectedJobToAssign, setSelectedJobToAssign] = useState<string>("");
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
+  const [inviteRoleId, setInviteRoleId] = useState("");
 
   const { data: presence = [], isLoading: presenceLoading } = useQuery<TeamPresenceData[]>({
     queryKey: ["/api/team/presence"],
@@ -255,6 +260,29 @@ function LiveOpsTab() {
 
   const { data: allJobs = [] } = useQuery<JobData[]>({
     queryKey: ["/api/jobs"],
+  });
+
+  const { data: roles = [] } = useQuery<UserRole[]>({
+    queryKey: ['/api/team/roles'],
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async (data: { email: string; firstName: string; lastName: string; roleId: string }) => {
+      const response = await apiRequest('POST', '/api/team/members/invite', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      toast({ title: "Invite sent", description: "Team member invitation has been sent." });
+      setInviteDialogOpen(false);
+      setInviteEmail("");
+      setInviteFirstName("");
+      setInviteLastName("");
+      setInviteRoleId("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to send invite", description: error.message, variant: "destructive" });
+    },
   });
 
   const acceptedMembers = useMemo(() => {
@@ -357,51 +385,58 @@ function LiveOpsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-4 border-b">
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{acceptedMembers.length}</p>
-              <p className="text-xs text-muted-foreground truncate">Team Members</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
-              <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 fill-green-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{onlineCount}</p>
-              <p className="text-xs text-muted-foreground truncate">Online Now</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-              <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
-              <p className="text-xs text-muted-foreground truncate">On Job</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
-              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{unassignedJobs.length}</p>
-              <p className="text-xs text-muted-foreground truncate">Unassigned</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center gap-2 sm:gap-4 p-4 border-b">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 flex-1">
+          <Card>
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{acceptedMembers.length}</p>
+                <p className="text-xs text-muted-foreground truncate">Team Members</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
+                <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 fill-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{onlineCount}</p>
+                <p className="text-xs text-muted-foreground truncate">Online Now</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
+                <p className="text-xs text-muted-foreground truncate">On Job</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
+                <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{unassignedJobs.length}</p>
+                <p className="text-xs text-muted-foreground truncate">Unassigned</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <Button onClick={() => setInviteDialogOpen(true)} className="shrink-0" data-testid="button-add-team-member">
+          <UserPlus className="h-4 w-4 mr-2" />
+          <span className="hidden sm:inline">Add Member</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -961,6 +996,88 @@ function LiveOpsTab() {
               data-testid="button-confirm-assign-job"
             >
               {assignJobMutation.isPending ? "Assigning..." : "Assign Job"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite Team Member</DialogTitle>
+            <DialogDescription>
+              Send an invitation to join your team
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={inviteFirstName}
+                  onChange={(e) => setInviteFirstName(e.target.value)}
+                  placeholder="John"
+                  data-testid="input-invite-first-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={inviteLastName}
+                  onChange={(e) => setInviteLastName(e.target.value)}
+                  placeholder="Smith"
+                  data-testid="input-invite-last-name"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="john@example.com"
+                data-testid="input-invite-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
+                <SelectTrigger data-testid="select-invite-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id} data-testid={`option-role-${role.name.toLowerCase()}`}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (inviteEmail && inviteFirstName && inviteLastName && inviteRoleId) {
+                  inviteMutation.mutate({
+                    email: inviteEmail,
+                    firstName: inviteFirstName,
+                    lastName: inviteLastName,
+                    roleId: inviteRoleId,
+                  });
+                }
+              }}
+              disabled={!inviteEmail || !inviteFirstName || !inviteLastName || !inviteRoleId || inviteMutation.isPending}
+              data-testid="button-send-invite"
+            >
+              {inviteMutation.isPending ? "Sending..." : "Send Invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
