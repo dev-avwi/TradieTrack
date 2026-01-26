@@ -1,12 +1,13 @@
-const CACHE_NAME = 'tradietrack-v2';
+const CACHE_NAME = 'tradietrack-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/attached_assets/generated_images/Clean_pin_hard_hat_icon_eae36170.png'
+  '/favicon-32.png',
+  '/favicon-192.png'
 ];
 
-const API_CACHE_NAME = 'tradietrack-api-v2';
-const IMAGE_CACHE_NAME = 'tradietrack-images-v1';
+const API_CACHE_NAME = 'tradietrack-api-v3';
+const IMAGE_CACHE_NAME = 'tradietrack-images-v3';
 const MAX_IMAGE_CACHE_SIZE = 50;
 
 self.addEventListener('install', (event) => {
@@ -121,7 +122,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         } catch (error) {
-          return caches.match('/attached_assets/generated_images/Clean_pin_hard_hat_icon_eae36170.png')
+          return caches.match('/favicon-192.png')
             .then(fallback => fallback || new Response('', { status: 404 }));
         }
       })
