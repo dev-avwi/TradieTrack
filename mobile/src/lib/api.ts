@@ -264,8 +264,9 @@ class ApiClient {
     firstName: string;
     lastName: string;
     businessName: string;
-    tradeType: string;
+    tradeType?: string;
     phone?: string;
+    inviteToken?: string;
   }): Promise<ApiResponse<LoginResponse>> {
     const response = await this.post<LoginResponse>('/api/auth/register', data);
     

@@ -86,9 +86,8 @@ function DeepLinkHandler() {
       } else if (hostname === 'accept-invite' || path === '/accept-invite') {
         const token = queryParams?.token as string;
         if (token) {
-          // Defer navigation until interactions complete for safety
           InteractionManager.runAfterInteractions(() => {
-            router.push(`/(auth)/register?inviteToken=${token}`);
+            router.push(`/(auth)/accept-invite?token=${token}`);
           });
         }
       } else if (hostname === 'reset-password' || path === '/reset-password') {
