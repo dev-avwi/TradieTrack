@@ -103,19 +103,13 @@ const ROLE_PERMISSION_SUMMARY = {
     'Manage payments & billing',
     'View all reports',
   ],
-  admin: [
+  manager: [
     'Manage jobs, quotes & invoices',
     'Manage clients & team',
     'View reports & templates',
     'Access time tracking',
   ],
-  supervisor: [
-    'Manage jobs & time entries',
-    'View quotes & invoices',
-    'View clients & reports',
-    'Limited write access',
-  ],
-  staff: [
+  worker: [
     'View assigned jobs',
     'Add photos, notes & voice memos',
     'Manage own time entries',
@@ -1247,65 +1241,17 @@ export default function TeamManagementScreen() {
       icon: 'shield',
       description: 'Full access to everything' 
     },
-    admin: { 
-      label: 'Admin', 
-      color: colors.success, 
-      icon: 'user-check',
-      description: 'Manage team and all operations' 
-    },
-    administrator: { 
-      label: 'Administrator', 
-      color: colors.success, 
-      icon: 'user-check',
-      description: 'Full access to all features' 
-    },
     manager: { 
       label: 'Manager', 
       color: colors.success, 
       icon: 'users',
       description: 'Manages jobs, team, quotes and invoices' 
     },
-    office_manager: { 
-      label: 'Office Manager', 
-      color: colors.success, 
-      icon: 'briefcase',
-      description: 'Manages scheduling and invoicing' 
-    },
-    supervisor: { 
-      label: 'Supervisor', 
-      color: colors.warning, 
-      icon: 'users',
-      description: 'Manage assigned workers' 
-    },
     worker: { 
       label: 'Worker', 
       color: colors.info, 
       icon: 'user',
       description: 'Field worker - works on assigned jobs' 
-    },
-    technician: { 
-      label: 'Technician', 
-      color: colors.info, 
-      icon: 'tool',
-      description: 'Field technician who performs job work' 
-    },
-    apprentice: { 
-      label: 'Apprentice', 
-      color: colors.info, 
-      icon: 'user',
-      description: 'Junior technician with limited permissions' 
-    },
-    team_member: { 
-      label: 'Team Member', 
-      color: colors.info, 
-      icon: 'user',
-      description: 'Basic team member access' 
-    },
-    staff: { 
-      label: 'Staff', 
-      color: colors.info, 
-      icon: 'user',
-      description: 'Access own jobs and time tracking' 
     },
   }), [colors]);
 
@@ -1796,21 +1742,21 @@ export default function TeamManagementScreen() {
     setIsAssigningJob(false);
   };
 
-  const getRoleCategory = (role: string | undefined): 'owner' | 'admin' | 'staff' => {
-    if (!role) return 'staff';
+  const getRoleCategory = (role: string | undefined): 'owner' | 'manager' | 'worker' => {
+    if (!role) return 'worker';
     const r = role.toLowerCase();
     if (r === 'owner') return 'owner';
-    if (r === 'admin' || r === 'administrator' || r === 'manager' || r === 'office_manager') return 'admin';
-    return 'staff';
+    if (r === 'admin' || r === 'administrator' || r === 'manager' || r === 'office_manager' || r === 'supervisor') return 'manager';
+    return 'worker';
   };
   
   const teamOwnerCount = teamMembers.filter(m => getRoleCategory(m.role) === 'owner').length;
   const ownerCount = currentUserRole === 'owner' ? teamOwnerCount + 1 : teamOwnerCount;
-  const adminCount = teamMembers.filter(m => getRoleCategory(m.role) === 'admin').length;
-  const staffCount = teamMembers.filter(m => getRoleCategory(m.role) === 'staff').length;
+  const managerCount = teamMembers.filter(m => getRoleCategory(m.role) === 'manager').length;
+  const workerCount = teamMembers.filter(m => getRoleCategory(m.role) === 'worker').length;
 
   const renderMemberCard = (member: TeamMember) => {
-    const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.staff;
+    const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.worker;
     const statusConfig = STATUS_CONFIG[member.inviteStatus] || STATUS_CONFIG.pending;
     const userName = member.firstName && member.lastName 
       ? `${member.firstName} ${member.lastName}`
@@ -1935,9 +1881,8 @@ export default function TeamManagementScreen() {
                       'Change Role',
                       `Select new role for ${member.firstName || member.user?.firstName || 'this member'}`,
                       [
-                        { text: 'Admin', onPress: () => handleRoleChange(member.id, 'admin') },
-                        { text: 'Supervisor', onPress: () => handleRoleChange(member.id, 'supervisor') },
-                        { text: 'Staff', onPress: () => handleRoleChange(member.id, 'staff') },
+                        { text: 'Manager', onPress: () => handleRoleChange(member.id, 'Manager') },
+                        { text: 'Worker', onPress: () => handleRoleChange(member.id, 'Worker') },
                         { text: 'Cancel', style: 'cancel' },
                       ]
                     );
@@ -2191,7 +2136,7 @@ export default function TeamManagementScreen() {
               </TouchableOpacity>
               <View style={styles.headerContent}>
                 <Text style={styles.headerTitle}>Team Management</Text>
-                <Text testID="text-member-count" style={styles.headerSubtitle}>{teamMembers.length} team members</Text>
+                <Text testID="text-member-count" style={styles.headerSubtitle}>{currentUserRole === 'owner' ? teamMembers.length + 1 : teamMembers.length} team members</Text>
               </View>
               {currentUserIsOwner && (
                 <TouchableOpacity 
@@ -2213,18 +2158,18 @@ export default function TeamManagementScreen() {
               <Text style={styles.statLabel}>Owners</Text>
             </View>
             <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: ROLE_CONFIG.admin.color + '20' }]}>
-                <Feather name="user-check" size={16} color={ROLE_CONFIG.admin.color} />
+              <View style={[styles.statIcon, { backgroundColor: ROLE_CONFIG.manager.color + '20' }]}>
+                <Feather name="user-check" size={16} color={ROLE_CONFIG.manager.color} />
               </View>
-              <Text style={styles.statValue}>{adminCount}</Text>
-              <Text style={styles.statLabel}>Admins</Text>
+              <Text style={styles.statValue}>{managerCount}</Text>
+              <Text style={styles.statLabel}>Managers</Text>
             </View>
             <View style={styles.statItem}>
-              <View style={[styles.statIcon, { backgroundColor: ROLE_CONFIG.staff.color + '20' }]}>
-                <Feather name="users" size={16} color={ROLE_CONFIG.staff.color} />
+              <View style={[styles.statIcon, { backgroundColor: ROLE_CONFIG.worker.color + '20' }]}>
+                <Feather name="users" size={16} color={ROLE_CONFIG.worker.color} />
               </View>
-              <Text style={styles.statValue}>{staffCount}</Text>
-              <Text style={styles.statLabel}>Staff</Text>
+              <Text style={styles.statValue}>{workerCount}</Text>
+              <Text style={styles.statLabel}>Workers</Text>
             </View>
           </View>
 
@@ -2334,7 +2279,7 @@ export default function TeamManagementScreen() {
 
                 <Text style={styles.inputLabel}>Select Role</Text>
                 <View style={styles.roleOptions}>
-                  {['admin', 'supervisor', 'staff'].map(renderRoleOption)}
+                  {['manager', 'worker'].map(renderRoleOption)}
                 </View>
               </ScrollView>
 
@@ -2409,7 +2354,7 @@ export default function TeamManagementScreen() {
                           color="#FFFFFF" 
                         />
                         <Text style={styles.memberDetailRoleText}>
-                          {ROLE_CONFIG[selectedMember.role]?.label || 'Staff'}
+                          {ROLE_CONFIG[selectedMember.role]?.label || 'Worker'}
                         </Text>
                       </View>
                     </View>
@@ -2567,9 +2512,8 @@ export default function TeamManagementScreen() {
                           'Change Role',
                           `Select new role for ${getMemberName(selectedMember)}`,
                           [
-                            { text: 'Admin', onPress: () => handleRoleChange(selectedMember.id, 'admin') },
-                            { text: 'Supervisor', onPress: () => handleRoleChange(selectedMember.id, 'supervisor') },
-                            { text: 'Staff', onPress: () => handleRoleChange(selectedMember.id, 'staff') },
+                            { text: 'Manager', onPress: () => handleRoleChange(selectedMember.id, 'Manager') },
+                            { text: 'Worker', onPress: () => handleRoleChange(selectedMember.id, 'Worker') },
                             { text: 'Cancel', style: 'cancel' },
                           ]
                         );
