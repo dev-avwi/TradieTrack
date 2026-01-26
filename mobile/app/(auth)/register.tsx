@@ -127,9 +127,10 @@ export default function RegisterScreen() {
           router.replace('/(onboarding)/setup');
         } else if (auth === 'success' || auth === 'google_success') {
           // No token but auth success - try checkAuth anyway
-          const isLoggedIn = await checkAuth();
-          if (isLoggedIn) {
-            router.replace('/(onboarding)/setup');
+          await checkAuth();
+          const { isAuthenticated } = useAuthStore.getState();
+          if (isAuthenticated) {
+            router.replace('/(onboarding)/setup' as const);
           } else {
             Alert.alert('Error', 'Failed to complete sign-up. Please try again.');
           }

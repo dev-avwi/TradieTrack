@@ -122,7 +122,7 @@ export default function AcceptInviteScreen() {
         inviteToken: token,
       });
       
-      if (response.success) {
+      if (response.data?.success) {
         await checkAuth();
         await acceptInvite();
       } else {
@@ -145,12 +145,9 @@ export default function AcceptInviteScreen() {
     setError(null);
     
     try {
-      const response = await api.login({
-        email: email.trim(),
-        password,
-      });
+      const response = await api.login(email.trim(), password);
       
-      if (response.success) {
+      if (response.data?.success) {
         await checkAuth();
         await acceptInvite();
       } else {

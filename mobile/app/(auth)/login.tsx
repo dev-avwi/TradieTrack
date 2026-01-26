@@ -58,13 +58,13 @@ export default function LoginScreen() {
   }, []);
 
   // Helper function to determine redirect path based on user type
-  const getRedirectPath = (isNewUser: boolean, isPlatformAdmin: boolean): string => {
+  const getRedirectPath = (isNewUser: boolean, isPlatformAdmin: boolean) => {
     // Platform admins go directly to admin dashboard
     if (isPlatformAdmin) {
-      return '/more/admin';
+      return '/more/admin' as const;
     }
     // New users go to onboarding, existing users go to dashboard
-    return isNewUser ? '/(onboarding)/setup' : '/(tabs)';
+    return isNewUser ? '/(onboarding)/setup' as const : '/(tabs)' as const;
   };
 
   // Handle Google OAuth callback via deep link

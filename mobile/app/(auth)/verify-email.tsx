@@ -50,7 +50,7 @@ export default function VerifyEmailScreen() {
         await checkAuth();
         
         setTimeout(() => {
-          router.replace('/(main)/dashboard');
+          router.replace('/(tabs)' as const);
         }, 2000);
       }
     } catch (err: any) {
