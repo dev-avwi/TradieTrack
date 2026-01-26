@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tradietrack-v3';
+const CACHE_NAME = 'tradietrack-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
