@@ -38,7 +38,10 @@ export type NotificationType =
   | 'quote_accepted'
   | 'quote_rejected'
   | 'team_message'
+  | 'team_location'
   | 'invoice_overdue'
+  | 'daily_summary'
+  | 'weekly_summary'
   | 'general';
 
 interface SendNotificationOptions {
@@ -78,6 +81,12 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
         return settings.notifyJobReminders !== false;
       case 'team_message':
         return settings.notifyTeamMessages !== false;
+      case 'team_location':
+        return settings.notifyTeamLocations !== false;
+      case 'daily_summary':
+        return settings.notifyDailySummary === true; // Opt-in, default false
+      case 'weekly_summary':
+        return settings.notifyWeeklySummary === true; // Opt-in, default false
       case 'general':
       default:
         return true; // Default to sending for unknown types
