@@ -22031,7 +22031,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const publishableKey = await getPublishableKey();
       res.json({ 
+        success: true,
         sessionId: result.sessionId, 
+        sessionUrl: result.sessionUrl,
         url: result.sessionUrl,
         publishableKey 
       });

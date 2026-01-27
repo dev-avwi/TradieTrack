@@ -1050,8 +1050,8 @@ export default function CollectScreen() {
 
   const handleTapToPay = async () => {
     const amountCents = getAmountInCents();
-    if (amountCents < 500) {
-      Alert.alert('Minimum Amount', 'Tap to Pay requires a minimum of $5.00');
+    if (amountCents < 50) {
+      Alert.alert('Minimum Amount', 'Tap to Pay requires a minimum of $0.50');
       return;
     }
 
@@ -1235,8 +1235,8 @@ export default function CollectScreen() {
 
   const handleQRCodeDirect = async () => {
     const amountCents = getAmountInCents();
-    if (amountCents < 500) {
-      Alert.alert('Minimum Amount', 'Payments require a minimum of $5.00');
+    if (amountCents <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
       return;
     }
 
@@ -1311,8 +1311,8 @@ export default function CollectScreen() {
 
   const handlePaymentLinkDirect = async () => {
     const amountCents = getAmountInCents();
-    if (amountCents < 500) {
-      Alert.alert('Minimum Amount', 'Payments require a minimum of $5.00');
+    if (amountCents <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
       return;
     }
 
@@ -1708,8 +1708,8 @@ export default function CollectScreen() {
   
   const handleSubmitCustomAmount = () => {
     const amountNum = parseFloat(customAmountValue);
-    if (isNaN(amountNum) || amountNum < 5) {
-      Alert.alert('Minimum Amount', 'Please enter an amount of at least $5.00');
+    if (isNaN(amountNum) || amountNum <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
       return;
     }
     
