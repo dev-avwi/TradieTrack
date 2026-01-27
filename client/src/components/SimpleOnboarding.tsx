@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import tradietrackLogo from "/tradietrack-logo.png";
+import tradietrackLogo from "/logo.png";
 import { tradeCatalog } from "@shared/tradeCatalog";
 
 interface SimpleOnboardingProps {

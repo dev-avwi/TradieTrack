@@ -24,7 +24,7 @@ import {
   type NavItem 
 } from "@/lib/navigation-config";
 // TradieTrack logo from public folder
-const tradietrackLogo = '/tradietrack-logo.png';
+const tradietrackLogo = '/logo.png';
 
 interface UnreadCounts {
   teamChat: number;

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut, Sparkles, Wrench, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import tradietrackLogo from "/tradietrack-logo.png";
+import tradietrackLogo from "/logo.png";
 
 // Import step components
 import TeamSizeStep from "./onboarding/TeamSizeStep";

@@ -89,7 +89,7 @@ const emailHeader = (
 ) => {
   // Compute absolute fallback URL for TradieTrack logo (relative URLs don't work in email clients)
   const baseUrl = getProductionBaseUrl();
-  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const defaultLogoUrl = `${baseUrl}/logo.png`;
   const resolvedLogoUrl = logoUrl || defaultLogoUrl;
   
   return `

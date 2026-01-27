@@ -13,7 +13,7 @@ import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceip
 function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string, actionUrl?: string | null, actionLabel?: string): string {
   // Compute absolute fallback URL for TradieTrack logo (relative URLs don't work in email clients)
   const baseUrl = getProductionBaseUrl();
-  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const defaultLogoUrl = `${baseUrl}/logo.png`;
   const resolvedLogoUrl = business.logoUrl || defaultLogoUrl;
   
   return `
@@ -176,7 +176,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     }
     // Apply TradieTrack logo fallback if no business logo
     if (!businessSettings.logoUrl) {
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
 
     // 6. Validate business email for sending
@@ -505,7 +505,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
     }
     // Apply TradieTrack logo fallback if no business logo
     if (!businessSettings.logoUrl) {
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
 
     // 6. Validate business email for sending
@@ -1010,7 +1010,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     }
     // Apply TradieTrack logo fallback if no business logo
     if (!businessSettings.logoUrl) {
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';
@@ -1287,7 +1287,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     }
     // Apply TradieTrack logo fallback if no business logo
     if (!businessSettings.logoUrl) {
-      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/tradietrack-logo.png` };
+      businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
     
     const emailSendingMode = businessSettings.emailSendingMode || 'manual';

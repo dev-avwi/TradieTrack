@@ -80,7 +80,7 @@ import {
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
-import tradietrackLogo from "/tradietrack-logo.png";
+import tradietrackLogo from "/logo.png";
 
 // App screenshots for phone mockups
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";

@@ -97,7 +97,7 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
   
   // Get logo URL - use business logo if available, otherwise TradieTrack logo
   const baseUrl = getBaseUrl();
-  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
 
   // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
@@ -247,7 +247,7 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
   
   // Get logo URL - use business logo if available, otherwise TradieTrack logo
   const baseUrl = getBaseUrl();
-  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
 
   // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
@@ -407,7 +407,7 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
   
   // Get logo URL - use business logo if available, otherwise TradieTrack logo
   const baseUrl = getBaseUrl();
-  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
 
   // Platform sends from mail@avwebinnovation.com, but reply-to goes to the tradie's business email
@@ -848,7 +848,7 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
 
   // Get logo URL - use business logo if available, otherwise TradieTrack logo
   const baseUrl = getBaseUrl();
-  const defaultLogoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
 
   return {
@@ -977,7 +977,7 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
   const baseUrl = getBaseUrl();
   // Use API endpoint which supports mobile deep linking detection
   const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
-  const logoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = `${baseUrl}/logo.png`;
 
   return {
     to: user.email,
@@ -1195,7 +1195,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
 
   const baseUrl = getBaseUrl();
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
-  const logoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = `${baseUrl}/logo.png`;
 
   const emailData = {
     to: user.email,
@@ -1460,7 +1460,7 @@ export async function sendWelcomeEmail(
   const userName = user.firstName || user.email.split('@')[0];
   const displayBusinessName = businessName || 'your business';
   const effectiveBaseUrl = baseUrl || getBaseUrl();
-  const logoUrl = `${effectiveBaseUrl}/tradietrack-logo.png`;
+  const logoUrl = `${effectiveBaseUrl}/logo.png`;
 
   const emailData = {
     to: user.email,
@@ -1666,7 +1666,7 @@ export async function sendTeamInviteEmail(
   const displayName = inviteeName || inviteeEmail.split('@')[0];
   const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
   const smartAppLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
-  const logoUrl = `${baseUrl}/tradietrack-logo.png`;
+  const logoUrl = `${baseUrl}/logo.png`;
 
   const emailData = {
     to: inviteeEmail,
