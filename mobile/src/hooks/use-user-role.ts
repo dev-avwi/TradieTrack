@@ -296,6 +296,8 @@ export function useUserRole() {
     // If cached, use cache
     if (cache) {
       if (cache.role === 'owner' || cache.role === 'solo_owner') return true;
+      // Handle wildcard "*" permission (Administrator and other full-access roles)
+      if (cache.permissions.includes('*')) return true;
       return cache.permissions.includes(key);
     }
     

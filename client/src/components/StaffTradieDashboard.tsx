@@ -74,6 +74,8 @@ export default function StaffTradieDashboard({
   // Helper function to check if user has a specific permission
   const hasPermission = (permission: string): boolean => {
     if (!userSession?.workerPermissions) return false;
+    // Handle wildcard "*" permission (Administrator and other full-access roles)
+    if (userSession.workerPermissions.includes('*')) return true;
     return userSession.workerPermissions.includes(permission);
   };
 

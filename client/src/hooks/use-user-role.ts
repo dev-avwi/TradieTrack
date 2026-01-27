@@ -103,6 +103,8 @@ export function useUserRole() {
 
   const hasPermission = useCallback((key: string): boolean => {
     if (isOwner) return true;
+    // Handle wildcard "*" permission (Administrator and other full-access roles)
+    if (permissions.includes('*')) return true;
     return permissions.includes(key);
   }, [permissions, isOwner]);
 
