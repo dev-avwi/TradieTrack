@@ -14142,6 +14142,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Re-seed templates for current user (fixes missing templates for old accounts)
+  app.post("/api/reseed-my-templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userTradeType = req.user.tradeType || 'general';
+      
+      console.log(`🔄 Re-seeding templates for user ${userId} (trade: ${userTradeType})...`);
+      
+      const results = {
+        templates: 0,
+        lineItems: 0,
+        rateCards: 0
+      };
+
+      // Get existing templates for this user
+      const existingTemplates = await storage.getDocumentTemplates(userId);
+      const existingFamilyKeys = new Set(existingTemplates.map(t => `${t.type}-${t.familyKey}`));
+      
+      // Import template data
+      const { tradieQuoteTemplates, tradieLineItems, tradieRateCards } = await import('./tradieTemplates');
+      
+      // Filter templates by user's trade type or general templates
+      const relevantTemplates = tradieQuoteTemplates.filter(t => 
+        t.tradeType === userTradeType || t.tradeType === 'general' || !t.tradeType
+      );
+      
+      // Create templates that don't exist yet
+      for (const template of relevantTemplates) {
+        const key = `${template.type}-${template.familyKey}`;
+        if (existingFamilyKeys.has(key)) continue;
+        
+        try {
+          await storage.createDocumentTemplate({
+            type: template.type,
+            familyKey: template.familyKey,
+            name: template.name,
+            tradeType: template.tradeType,
+            userId: userId,
+            styling: template.styling,
+            sections: template.sections,
+            defaults: template.defaults,
+            defaultLineItems: template.defaultLineItems,
+          });
+          results.templates++;
+        } catch (error) {
+          // Template might already exist
+        }
+      }
+
+      // Get existing line items
+      const existingLineItems = await storage.getLineItemCatalogItems(userId);
+      const existingItemNames = new Set(existingLineItems.map(i => i.name));
+      
+      // Create line items that don't exist yet
+      const relevantLineItems = tradieLineItems.filter(i => 
+        i.tradeType === userTradeType || i.tradeType === 'general' || !i.tradeType
+      );
+      
+      for (const item of relevantLineItems) {
+        if (existingItemNames.has(item.name)) continue;
+        
+        try {
+          await storage.createLineItemCatalogItem({
+            tradeType: item.tradeType,
+            name: item.name,
+            description: item.description,
+            unit: item.unit,
+            unitPrice: item.unitPrice.toString(),
+            defaultQty: item.defaultQty.toString(),
+            userId: userId,
+            tags: []
+          });
+          results.lineItems++;
+        } catch (error) {
+          // Item might already exist
+        }
+      }
+
+      // Get existing rate cards
+      const existingRateCards = await storage.getRateCards(userId);
+      const existingRateCardNames = new Set(existingRateCards.map(r => r.name));
+      
+      // Create rate cards that don't exist yet
+      const relevantRateCards = tradieRateCards.filter(r => 
+        r.tradeType === userTradeType || r.tradeType === 'general' || !r.tradeType
+      );
+      
+      for (const rateCard of relevantRateCards) {
+        if (existingRateCardNames.has(rateCard.name)) continue;
+        
+        try {
+          await storage.createRateCard({
+            name: rateCard.name,
+            tradeType: rateCard.tradeType,
+            hourlyRate: rateCard.hourlyRate.toString(),
+            calloutFee: rateCard.calloutFee.toString(),
+            materialMarkupPct: rateCard.materialMarkupPct.toString(),
+            afterHoursMultiplier: rateCard.afterHoursMultiplier.toString(),
+            gstEnabled: rateCard.gstEnabled,
+            userId: userId
+          });
+          results.rateCards++;
+        } catch (error) {
+          // Rate card might already exist
+        }
+      }
+
+      console.log(`✅ Re-seeded for user: ${results.templates} templates, ${results.lineItems} line items, ${results.rateCards} rate cards`);
+      
+      res.json({
+        message: "Templates re-seeded successfully",
+        created: results
+      });
+    } catch (error) {
+      console.error("Error re-seeding templates:", error);
+      res.status(500).json({ error: "Failed to re-seed templates" });
+    }
+  });
+
   // Object Storage Routes for logo uploads
   app.get("/objects/:objectPath(*)", async (req, res) => {
     const objectStorageService = new ObjectStorageService();

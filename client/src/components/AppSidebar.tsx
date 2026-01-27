@@ -87,7 +87,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 flex items-center justify-center p-1 shadow-sm">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-transparent flex-shrink-0 flex items-center justify-center">
               <img 
                 src={tradietrackLogo} 
                 alt="TradieTrack" 

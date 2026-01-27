@@ -1,11 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import GettingStartedChecklist from "./GettingStartedChecklist";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
-import AIAssistant from "./AIAssistant";
 import FloatingActionButton from "./FloatingActionButton";
 import AIScheduleOptimizer from "./AIScheduleOptimizer";
 import { useDashboardKPIs, useTodaysJobs } from "@/hooks/use-dashboard-data";
@@ -21,7 +19,6 @@ import {
   MapPin,
   Plus,
   ChevronRight,
-  ChevronDown,
   CalendarDays,
   TrendingUp,
   AlertCircle,
@@ -31,7 +28,6 @@ import {
   MessageSquare,
   Navigation,
   Zap,
-  Sparkles,
   Timer,
   Receipt,
   CreditCard
@@ -62,7 +58,6 @@ export default function OwnerManagerDashboard({
   const { data: todaysJobs = [] } = useTodaysJobs();
   const updateJob = useUpdateJob();
   const { toast } = useToast();
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(true);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -347,44 +342,6 @@ export default function OwnerManagerDashboard({
         </div>
       </section>
 
-      {/* AI Assistant - Collapsible Section */}
-      <section 
-        data-testid="ai-assistant-section"
-      >
-        <Collapsible open={isAIAssistantOpen} onOpenChange={setIsAIAssistantOpen}>
-          <Card className="overflow-hidden">
-            <CollapsibleTrigger asChild>
-              <div 
-                className="flex items-center justify-between p-4 cursor-pointer hover-elevate"
-                style={{ 
-                  background: 'linear-gradient(135deg, hsl(var(--trade) / 0.1) 0%, hsl(var(--trade) / 0.05) 100%)'
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
-                  >
-                    <Sparkles className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-base">AI Assistant</h2>
-                    <p className="text-xs text-muted-foreground">Ask me anything about your business</p>
-                  </div>
-                </div>
-                <ChevronDown 
-                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isAIAssistantOpen ? 'rotate-180' : ''}`} 
-                />
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="p-0">
-                <AIAssistant onNavigate={onNavigate} embedded={true} />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-      </section>
 
       {/* Quick Actions - Native Style - MOVED TO TOP for quick access */}
       <section>
