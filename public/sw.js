@@ -1,9 +1,9 @@
-const CACHE_NAME = 'tradietrack-v4';
+const CACHE_NAME = 'tradietrack-v7';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/favicon-32.png',
-  '/favicon-192.png'
+  '/tt-icon-v7-32.png',
+  '/tt-icon-v7-192.png'
 ];
 
 const API_CACHE_NAME = 'tradietrack-api-v3';
