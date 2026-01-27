@@ -465,11 +465,18 @@ export const integrationSettings = pgTable("integration_settings", {
   autoGeneratePaymentLinks: boolean("auto_generate_payment_links").default(false),
   emailTemplate: text("email_template"),
   paymentTerms: text("payment_terms").default('Net 30'),
-  // Notification preferences
+  // Notification preferences - Push notifications
   notifyQuoteResponses: boolean("notify_quote_responses").default(true),
   notifyPaymentConfirmations: boolean("notify_payment_confirmations").default(true),
   notifyOverdueInvoices: boolean("notify_overdue_invoices").default(true),
   notifyWeeklySummary: boolean("notify_weekly_summary").default(false),
+  notifyJobAssigned: boolean("notify_job_assigned").default(true),
+  notifyJobUpdates: boolean("notify_job_updates").default(true),
+  notifyJobReminders: boolean("notify_job_reminders").default(true),
+  notifyTeamMessages: boolean("notify_team_messages").default(true),
+  notifyTeamLocations: boolean("notify_team_locations").default(true),
+  notifyDailySummary: boolean("notify_daily_summary").default(false),
+  pushNotificationsEnabled: boolean("push_notifications_enabled").default(true),
   // Google Calendar Integration
   googleCalendarConnected: boolean("google_calendar_connected").default(false),
   googleCalendarAccessToken: text("google_calendar_access_token"),

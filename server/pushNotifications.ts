@@ -56,6 +56,11 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
   try {
     const settings = await storage.getIntegrationSettings(userId);
     if (!settings) return true; // Default to enabled if no settings
+    
+    // Check master toggle first
+    if (settings.pushNotificationsEnabled === false) {
+      return false;
+    }
 
     switch (type) {
       case 'quote_accepted':
@@ -66,12 +71,16 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
       case 'invoice_overdue':
         return settings.notifyOverdueInvoices !== false;
       case 'job_assigned':
+        return settings.notifyJobAssigned !== false;
       case 'job_update':
+        return settings.notifyJobUpdates !== false;
       case 'job_reminder':
+        return settings.notifyJobReminders !== false;
       case 'team_message':
+        return settings.notifyTeamMessages !== false;
       case 'general':
       default:
-        return true; // Always send job and team notifications
+        return true; // Default to sending for unknown types
     }
   } catch (error) {
     console.error('[PushNotification] Error checking preferences:', error);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, iconSizes } from '../../src/lib/design-tokens';
 import haptics from '../../src/lib/haptics';
+import { apiClient } from '../../src/lib/api';
 
 interface NotificationPreference {
   key: string;
@@ -251,20 +252,57 @@ export default function NotificationPreferencesScreen() {
   
   const loadPreferences = async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setPreferences(parsed.preferences || {});
-        setMasterEnabled(parsed.masterEnabled !== false);
-      } else {
-        const defaultPrefs: Record<string, boolean> = {};
-        NOTIFICATION_PREFERENCES.forEach(pref => {
-          defaultPrefs[pref.key] = true;
-        });
-        setPreferences(defaultPrefs);
+      // First try to load from server
+      try {
+        const response = await apiClient.get<Record<string, boolean>>('/api/notification-preferences');
+        const serverPrefs = response.data;
+        
+        // Map server preferences to local preference keys
+        const mappedPrefs: Record<string, boolean> = {
+          job_assigned: serverPrefs.notifyJobAssigned ?? true,
+          job_updated: serverPrefs.notifyJobUpdates ?? true,
+          job_reminder: serverPrefs.notifyJobReminders ?? true,
+          quote_accepted: serverPrefs.notifyQuoteResponses ?? true,
+          quote_rejected: serverPrefs.notifyQuoteResponses ?? true,
+          payment_received: serverPrefs.notifyPaymentConfirmations ?? true,
+          invoice_overdue: serverPrefs.notifyOverdueInvoices ?? true,
+          team_message: serverPrefs.notifyTeamMessages ?? true,
+          team_location: serverPrefs.notifyTeamLocations ?? true,
+          daily_summary: serverPrefs.notifyDailySummary ?? false,
+          weekly_report: serverPrefs.notifyWeeklySummary ?? false,
+        };
+        
+        setPreferences(mappedPrefs);
+        setMasterEnabled(serverPrefs.pushNotificationsEnabled !== false);
+        
+        // Also cache locally
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
+          preferences: mappedPrefs,
+          masterEnabled: serverPrefs.pushNotificationsEnabled !== false,
+        }));
+      } catch (serverError) {
+        console.log('[Notifications] Server fetch failed, using local cache');
+        // Fallback to local storage if server fails
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setPreferences(parsed.preferences || {});
+          setMasterEnabled(parsed.masterEnabled !== false);
+        } else {
+          const defaultPrefs: Record<string, boolean> = {};
+          NOTIFICATION_PREFERENCES.forEach(pref => {
+            defaultPrefs[pref.key] = true;
+          });
+          setPreferences(defaultPrefs);
+        }
       }
     } catch (error) {
       console.error('Failed to load notification preferences:', error);
+      const defaultPrefs: Record<string, boolean> = {};
+      NOTIFICATION_PREFERENCES.forEach(pref => {
+        defaultPrefs[pref.key] = true;
+      });
+      setPreferences(defaultPrefs);
     } finally {
       setIsLoading(false);
     }
@@ -272,14 +310,42 @@ export default function NotificationPreferencesScreen() {
   
   const savePreferences = async (newPrefs: Record<string, boolean>, newMaster: boolean) => {
     try {
+      // Save locally first
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
         preferences: newPrefs,
         masterEnabled: newMaster,
       }));
+      
+      // Then sync to server (non-blocking)
+      syncToServer(newPrefs, newMaster);
     } catch (error) {
       console.error('Failed to save notification preferences:', error);
     }
   };
+  
+  const syncToServer = useCallback(async (prefs: Record<string, boolean>, masterEnabled: boolean) => {
+    try {
+      // Map local preference keys to server keys
+      const serverPrefs = {
+        pushNotificationsEnabled: masterEnabled,
+        notifyJobAssigned: prefs.job_assigned ?? true,
+        notifyJobUpdates: prefs.job_updated ?? true,
+        notifyJobReminders: prefs.job_reminder ?? true,
+        notifyQuoteResponses: (prefs.quote_accepted ?? true) && (prefs.quote_rejected ?? true),
+        notifyPaymentConfirmations: prefs.payment_received ?? true,
+        notifyOverdueInvoices: prefs.invoice_overdue ?? true,
+        notifyTeamMessages: prefs.team_message ?? true,
+        notifyTeamLocations: prefs.team_location ?? true,
+        notifyDailySummary: prefs.daily_summary ?? false,
+        notifyWeeklySummary: prefs.weekly_report ?? false,
+      };
+      
+      await apiClient.patch('/api/notification-preferences', serverPrefs);
+      console.log('[Notifications] Synced preferences to server');
+    } catch (error) {
+      console.error('[Notifications] Failed to sync to server:', error);
+    }
+  }, []);
   
   const toggleMaster = (value: boolean) => {
     haptics.toggle(value);

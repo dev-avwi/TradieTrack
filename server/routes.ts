@@ -5084,6 +5084,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification Preferences API
+  app.get("/api/notification-preferences", requireAuth, async (req: any, res) => {
+    try {
+      const settings = await storage.getIntegrationSettings(req.userId);
+      
+      // Return notification-related settings only
+      res.json({
+        pushNotificationsEnabled: settings?.pushNotificationsEnabled ?? true,
+        notifyJobAssigned: settings?.notifyJobAssigned ?? true,
+        notifyJobUpdates: settings?.notifyJobUpdates ?? true,
+        notifyJobReminders: settings?.notifyJobReminders ?? true,
+        notifyQuoteResponses: settings?.notifyQuoteResponses ?? true,
+        notifyPaymentConfirmations: settings?.notifyPaymentConfirmations ?? true,
+        notifyOverdueInvoices: settings?.notifyOverdueInvoices ?? true,
+        notifyTeamMessages: settings?.notifyTeamMessages ?? true,
+        notifyTeamLocations: settings?.notifyTeamLocations ?? true,
+        notifyDailySummary: settings?.notifyDailySummary ?? false,
+        notifyWeeklySummary: settings?.notifyWeeklySummary ?? false,
+      });
+    } catch (error) {
+      console.error("Error getting notification preferences:", error);
+      res.status(500).json({ error: "Failed to get notification preferences" });
+    }
+  });
+
+  app.patch("/api/notification-preferences", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const updates = req.body;
+      
+      // Validate only notification preference fields are being updated
+      const allowedFields = [
+        'pushNotificationsEnabled',
+        'notifyJobAssigned', 
+        'notifyJobUpdates',
+        'notifyJobReminders',
+        'notifyQuoteResponses',
+        'notifyPaymentConfirmations',
+        'notifyOverdueInvoices',
+        'notifyTeamMessages',
+        'notifyTeamLocations',
+        'notifyDailySummary',
+        'notifyWeeklySummary',
+      ];
+      
+      const filteredUpdates: Record<string, boolean> = {};
+      for (const key of allowedFields) {
+        if (key in updates && typeof updates[key] === 'boolean') {
+          filteredUpdates[key] = updates[key];
+        }
+      }
+      
+      if (Object.keys(filteredUpdates).length === 0) {
+        return res.status(400).json({ error: "No valid notification preferences provided" });
+      }
+      
+      // Check if user has integration settings, create if not
+      let settings = await storage.getIntegrationSettings(userId);
+      if (!settings) {
+        settings = await storage.createIntegrationSettings({ userId, ...filteredUpdates });
+      } else {
+        settings = await storage.updateIntegrationSettings(userId, filteredUpdates);
+      }
+      
+      console.log(`[Notifications] Updated preferences for user ${userId}:`, filteredUpdates);
+      
+      res.json({
+        success: true,
+        pushNotificationsEnabled: settings?.pushNotificationsEnabled ?? true,
+        notifyJobAssigned: settings?.notifyJobAssigned ?? true,
+        notifyJobUpdates: settings?.notifyJobUpdates ?? true,
+        notifyJobReminders: settings?.notifyJobReminders ?? true,
+        notifyQuoteResponses: settings?.notifyQuoteResponses ?? true,
+        notifyPaymentConfirmations: settings?.notifyPaymentConfirmations ?? true,
+        notifyOverdueInvoices: settings?.notifyOverdueInvoices ?? true,
+        notifyTeamMessages: settings?.notifyTeamMessages ?? true,
+        notifyTeamLocations: settings?.notifyTeamLocations ?? true,
+        notifyDailySummary: settings?.notifyDailySummary ?? false,
+        notifyWeeklySummary: settings?.notifyWeeklySummary ?? false,
+      });
+    } catch (error) {
+      console.error("Error updating notification preferences:", error);
+      res.status(500).json({ error: "Failed to update notification preferences" });
+    }
+  });
+
   app.post("/api/integrations/test-stripe", requireAuth, async (req: any, res) => {
     try {
       const stripe = await getUncachableStripeClient();
@@ -18165,10 +18251,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Token and platform required' });
       }
 
-      // Store push token (would need to add to schema in production)
+      // Actually save the push token to the database
+      const pushToken = await storage.registerPushToken({
+        userId,
+        token,
+        platform: platform as 'ios' | 'android',
+        deviceId: deviceName || null
+      });
+      
       console.log(`[Push] Registered token for user ${userId}: ${token.substring(0, 20)}... (${platform})`);
       
-      res.json({ success: true });
+      res.json({ success: true, tokenId: pushToken.id });
     } catch (error: any) {
       console.error('Error registering push token:', error);
       res.status(500).json({ error: 'Failed to register push token' });
