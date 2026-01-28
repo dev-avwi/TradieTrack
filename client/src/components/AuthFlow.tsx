@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { trackEvent } from "@/lib/analytics";
 import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
 
 // App screenshots for carousel
@@ -89,6 +90,11 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     // Update URL without page reload
     const newUrl = mode === 'login' ? '/auth' : '/auth?mode=signup';
     window.history.replaceState({}, '', newUrl);
+    
+    // Track signup tab click
+    if (mode === 'register') {
+      trackEvent('signup_clicked', { source: 'auth_tab' });
+    }
   };
 
   // Start/restart auto-rotate timer
@@ -158,6 +164,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setError('');
+    trackEvent('signup_clicked', { source: 'google_oauth' });
     sessionStorage.setItem('oauth-in-progress', 'true');
     window.location.href = '/api/auth/google';
   };
@@ -234,6 +241,9 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       const result = await response.json();
 
       if (result.success) {
+        // Track successful signup
+        trackEvent('signup_completed', { method: 'email' });
+        
         // Registration successful - redirect to verify email pending page
         // (Session is NOT created until email is verified)
         toast({
