@@ -4050,6 +4050,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If tradeType is provided, update the user's trade type
       if (tradeType) {
         await storage.updateUser(req.userId, { tradeType });
+        
+        // Seed trade-specific templates now that trade type is set
+        // General templates were seeded at registration; this adds trade-specific ones
+        try {
+          console.log(`[Onboarding] Seeding trade-specific templates for: ${tradeType}`);
+          await storage.seedBusinessTemplatesForUser(req.userId, tradeType);
+          console.log(`[Onboarding] Trade-specific templates seeded successfully for ${tradeType}`);
+        } catch (templateError) {
+          console.error('[Onboarding] Failed to seed trade-specific templates:', templateError);
+          // Don't fail the request if template seeding fails
+        }
       }
       
       // Convert numeric fields to strings (mobile app sends numbers, schema expects strings for decimal columns)

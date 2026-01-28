@@ -668,6 +668,7 @@ export interface IStorage {
   deleteBusinessTemplate(id: string, userId: string): Promise<boolean>;
   setActiveBusinessTemplate(id: string, userId: string): Promise<void>;
   seedDefaultBusinessTemplates(userId: string): Promise<BusinessTemplate[]>;
+  seedBusinessTemplatesForUser(userId: string, tradeType: string): Promise<DocumentTemplate[]>;
   getBusinessTemplateFamilies(userId: string): Promise<{ family: string; name: string; description: string; count: number; hasActive: boolean }[]>;
 
   // Account Deletion (Apple App Store Compliance)
@@ -5125,6 +5126,52 @@ Thank you for your prompt attention to this matter.`,
       created.push(result);
     }
     return created;
+  }
+
+  async seedBusinessTemplatesForUser(userId: string, tradeType: string): Promise<DocumentTemplate[]> {
+    // This method seeds trade-specific document templates (quotes, invoices, jobs)
+    // from tradieQuoteTemplates for the user's specific trade type
+    const normalizedTradeType = tradeType.toLowerCase();
+    
+    // Get existing templates to avoid duplicates
+    const existingTemplates = await this.getDocumentTemplates(userId);
+    const existingFamilyKeys = new Set(existingTemplates.map(t => t.familyKey));
+    
+    // Filter tradieQuoteTemplates for this trade type and general templates
+    const tradeTemplates = tradieQuoteTemplates.filter(template => {
+      const templateTradeType = template.tradeType?.toLowerCase() || 'general';
+      // Skip if already exists
+      if (existingFamilyKeys.has(template.familyKey)) return false;
+      // Include trade-specific templates for user's trade
+      if (templateTradeType === normalizedTradeType) return true;
+      // Include general templates only if no templates exist yet
+      if (templateTradeType === 'general' && existingTemplates.length === 0) return true;
+      return false;
+    });
+
+    const createdTemplates: DocumentTemplate[] = [];
+    for (const template of tradeTemplates) {
+      try {
+        const created = await this.createDocumentTemplate({
+          userId,
+          type: template.type,
+          familyKey: template.familyKey,
+          name: template.name,
+          tradeType: template.tradeType,
+          styling: template.styling,
+          sections: template.sections,
+          defaults: template.defaults,
+          defaultLineItems: template.defaultLineItems,
+          isDefault: false,
+        });
+        createdTemplates.push(created);
+      } catch (error) {
+        console.error(`Error creating template ${template.familyKey}:`, error);
+      }
+    }
+
+    console.log(`[Templates] Seeded ${createdTemplates.length} trade-specific templates for ${tradeType}`);
+    return createdTemplates;
   }
 
   async getBusinessTemplateFamilies(userId: string): Promise<{ family: string; name: string; description: string; count: number; hasActive: boolean }[]> {

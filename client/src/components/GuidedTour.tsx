@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
@@ -31,6 +31,7 @@ interface TourStep {
   waitForClick?: boolean;
   clickTargetSelector?: string;
   clickTargetLabel?: string;
+  mobileOnly?: boolean;
 }
 
 const TOUR_STEPS: TourStep[] = [
@@ -57,7 +58,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: MoreHorizontal,
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
-    clickTargetLabel: "More"
+    clickTargetLabel: "More",
+    mobileOnly: true
   },
   {
     id: "nav-clients",
@@ -113,7 +115,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: MoreHorizontal,
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
-    clickTargetLabel: "More"
+    clickTargetLabel: "More",
+    mobileOnly: true
   },
   {
     id: "nav-quotes",
@@ -141,7 +144,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: MoreHorizontal,
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
-    clickTargetLabel: "More"
+    clickTargetLabel: "More",
+    mobileOnly: true
   },
   {
     id: "nav-invoices",
@@ -215,10 +219,27 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   const [location, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  const step = TOUR_STEPS[currentStep];
-  const isLastStep = currentStep === TOUR_STEPS.length - 1;
-  const isFirstStep = currentStep === 0;
+  
+  // Filter out mobile-only steps on desktop (>= 768px)
+  const [isMobileView, setIsMobileView] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Filter steps based on screen size - skip mobile-only steps on desktop (memoized for stability)
+  const filteredSteps = useMemo(() => 
+    TOUR_STEPS.filter(s => !s.mobileOnly || isMobileView),
+    [isMobileView]
+  );
+  
+  // Guard currentStep to stay within bounds when filteredSteps changes
+  const safeCurrentStep = Math.min(currentStep, filteredSteps.length - 1);
+  const step = filteredSteps[safeCurrentStep];
+  const isLastStep = safeCurrentStep === filteredSteps.length - 1;
+  const isFirstStep = safeCurrentStep === 0;
   const isInteractive = step.waitForClick && step.clickTargetSelector;
   const StepIcon = step.icon;
 
@@ -421,7 +442,7 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
     const handleClick = () => {
       setTimeout(() => {
-        setCurrentStep(prev => Math.min(prev + 1, TOUR_STEPS.length - 1));
+        setCurrentStep(prev => Math.min(prev + 1, filteredSteps.length - 1));
       }, 200);
     };
 
@@ -434,14 +455,14 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   useEffect(() => {
     if (!isOpen || !isInteractive) return;
     
-    const nextStep = TOUR_STEPS[currentStep + 1];
+    const nextStep = filteredSteps[safeCurrentStep + 1];
     if (!nextStep) return;
     
     // If we're now at the next step's route, advance
     if (location === nextStep.route && step.route !== nextStep.route) {
-      setCurrentStep(prev => Math.min(prev + 1, TOUR_STEPS.length - 1));
+      setCurrentStep(prev => Math.min(prev + 1, filteredSteps.length - 1));
     }
-  }, [isOpen, isInteractive, location, currentStep, step.route]);
+  }, [isOpen, isInteractive, location, safeCurrentStep, step.route, filteredSteps]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -660,7 +681,7 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground font-medium">
-                  Step {currentStep + 1} of {TOUR_STEPS.length}
+                  Step {safeCurrentStep + 1} of {filteredSteps.length}
                 </p>
                 <h3 className="font-semibold text-base truncate">{step.title}</h3>
               </div>

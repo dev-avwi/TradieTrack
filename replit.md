@@ -4,6 +4,11 @@ TradieTrack is a mobile-first web application designed for Australian tradespeop
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
+### Recent Changes (January 2026)
+*   **Template Seeding Fix**: Fixed critical bug where new users were missing trade-specific templates. Templates are now seeded after the user selects their trade type during onboarding (in POST /api/business-settings), ensuring electricians get electrical templates, plumbers get plumbing templates, etc.
+*   **SimpleOnboarding UI Fix**: Fixed dark card appearing on gradient background by using translucent white with proper text contrast.
+*   **GuidedTour Responsive Fix**: Added mobileOnly flag system to skip mobile-specific steps (like "Open the More Menu") when viewing on desktop. Includes proper bounds checking when screen size changes.
+
 ### System Architecture
 TradieTrack employs an event-driven architecture built with TypeScript. The frontend leverages React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile responsiveness. The backend is an Express.js and TypeScript REST API, utilizing Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A companion React Native/Expo mobile application integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
 
