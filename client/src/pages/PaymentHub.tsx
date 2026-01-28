@@ -620,8 +620,16 @@ export default function PaymentHub() {
     try {
       const response = await apiRequest('POST', '/api/stripe-connect/onboard');
       const data = await response.json();
-      if (data.url) {
-        window.open(data.url, '_blank');
+      // API returns onboardingUrl, not url
+      const redirectUrl = data.onboardingUrl || data.url;
+      if (redirectUrl) {
+        window.open(redirectUrl, '_blank');
+      } else {
+        toast({
+          title: "Setup Started",
+          description: "Please check if a new window opened for Stripe setup",
+          variant: "default",
+        });
       }
     } catch (error: any) {
       toast({

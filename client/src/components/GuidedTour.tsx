@@ -32,6 +32,13 @@ interface TourStep {
   clickTargetSelector?: string;
   clickTargetLabel?: string;
   mobileOnly?: boolean;
+  // Desktop alternative - shown instead of this step on desktop
+  desktopAlternative?: {
+    title: string;
+    description: string;
+    clickTargetSelector?: string;
+    clickTargetLabel?: string;
+  };
 }
 
 const TOUR_STEPS: TourStep[] = [
@@ -59,7 +66,13 @@ const TOUR_STEPS: TourStep[] = [
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
     clickTargetLabel: "More",
-    mobileOnly: true
+    mobileOnly: true,
+    desktopAlternative: {
+      title: "Navigate to Clients",
+      description: "On desktop, all navigation is in the sidebar. Click 'Clients' in the sidebar to see your customer list.",
+      clickTargetSelector: '[data-testid="sidebar-clients"], a[href="/clients"]',
+      clickTargetLabel: "Clients"
+    }
   },
   {
     id: "nav-clients",
@@ -116,7 +129,13 @@ const TOUR_STEPS: TourStep[] = [
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
     clickTargetLabel: "More",
-    mobileOnly: true
+    mobileOnly: true,
+    desktopAlternative: {
+      title: "Navigate to Quotes",
+      description: "Click 'Quotes' in the sidebar to see how you create professional quotes for your clients.",
+      clickTargetSelector: '[data-testid="sidebar-quotes"], a[href="/quotes"]',
+      clickTargetLabel: "Quotes"
+    }
   },
   {
     id: "nav-quotes",
@@ -145,7 +164,13 @@ const TOUR_STEPS: TourStep[] = [
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
     clickTargetLabel: "More",
-    mobileOnly: true
+    mobileOnly: true,
+    desktopAlternative: {
+      title: "Navigate to Invoices",
+      description: "Click 'Invoices' in the sidebar to see how you get paid.",
+      clickTargetSelector: '[data-testid="sidebar-invoices"], a[href="/invoices"]',
+      clickTargetLabel: "Invoices"
+    }
   },
   {
     id: "nav-invoices",
@@ -173,7 +198,14 @@ const TOUR_STEPS: TourStep[] = [
     icon: MoreHorizontal,
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
-    clickTargetLabel: "More"
+    clickTargetLabel: "More",
+    mobileOnly: true,
+    desktopAlternative: {
+      title: "Navigate to Settings",
+      description: "Click 'Settings' in the sidebar to customise your business profile, logo, and preferences.",
+      clickTargetSelector: '[data-testid="sidebar-settings"], a[href="/settings"]',
+      clickTargetLabel: "Settings"
+    }
   },
   {
     id: "nav-settings",
@@ -229,9 +261,23 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Filter steps based on screen size - skip mobile-only steps on desktop (memoized for stability)
+  // Transform steps based on screen size - apply desktop alternatives for mobile-only steps (memoized for stability)
   const filteredSteps = useMemo(() => 
-    TOUR_STEPS.filter(s => !s.mobileOnly || isMobileView),
+    TOUR_STEPS.map(s => {
+      // If this is a mobile-only step and we're on desktop, use the desktop alternative
+      if (s.mobileOnly && !isMobileView && s.desktopAlternative) {
+        return {
+          ...s,
+          title: s.desktopAlternative.title,
+          description: s.desktopAlternative.description,
+          clickTargetSelector: s.desktopAlternative.clickTargetSelector || s.clickTargetSelector,
+          clickTargetLabel: s.desktopAlternative.clickTargetLabel || s.clickTargetLabel,
+          // Keep the step - don't filter it out
+          mobileOnly: false
+        };
+      }
+      return s;
+    }).filter(s => !s.mobileOnly || isMobileView),
     [isMobileView]
   );
   

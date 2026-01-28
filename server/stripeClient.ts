@@ -5,6 +5,7 @@ let connectionSettings: any;
 let stripeSync: StripeSync | null = null;
 let stripeInitialized = false;
 let cachedCredentials: { publishableKey: string; secretKey: string } | null = null;
+let isTestMode: boolean | null = null;
 
 /**
  * Get Stripe credentials from multiple sources (standalone deployment support)
@@ -24,6 +25,15 @@ async function getCredentials() {
   const directPublishableKey = process.env.VITE_STRIPE_PUBLIC_KEY;
   
   if (directSecretKey && directPublishableKey) {
+    // Detect if we're using test mode keys
+    const usingTestKeys = directSecretKey.startsWith('sk_test_') || directPublishableKey.startsWith('pk_test_');
+    isTestMode = usingTestKeys;
+    
+    if (usingTestKeys) {
+      console.log('⚠️ Using Stripe TEST MODE keys - payments will be simulated');
+    } else {
+      console.log('✅ Using Stripe LIVE MODE keys');
+    }
     console.log('✅ Using direct Stripe environment variables');
     cachedCredentials = {
       publishableKey: directPublishableKey,
@@ -62,10 +72,21 @@ async function getCredentials() {
       connectionSettings = data.items?.[0];
 
       if (connectionSettings?.settings?.publishable && connectionSettings?.settings?.secret) {
+        // Detect test mode for connector keys
+        const connectorPublishable = connectionSettings.settings.publishable;
+        const connectorSecret = connectionSettings.settings.secret;
+        const usingTestKeys = connectorSecret.startsWith('sk_test_') || connectorPublishable.startsWith('pk_test_');
+        isTestMode = usingTestKeys;
+        
+        if (usingTestKeys) {
+          console.log('⚠️ Replit connector returning TEST MODE keys');
+        } else {
+          console.log('✅ Replit connector returning LIVE MODE keys');
+        }
         console.log('✅ Using Replit managed Stripe connector');
         cachedCredentials = {
-          publishableKey: connectionSettings.settings.publishable,
-          secretKey: connectionSettings.settings.secret,
+          publishableKey: connectorPublishable,
+          secretKey: connectorSecret,
         };
         return cachedCredentials;
       } else {
@@ -83,7 +104,9 @@ async function getCredentials() {
   if (testingSecretKey && testingPublishableKey) {
     // Validate that testing keys are correct type (secret should start with sk_, publishable with pk_)
     if (testingSecretKey.startsWith('sk_') && testingPublishableKey.startsWith('pk_')) {
-      console.log('✅ Using testing Stripe keys (fallback)');
+      // Testing keys are always test mode
+      isTestMode = testingSecretKey.startsWith('sk_test_') || testingPublishableKey.startsWith('pk_test_');
+      console.log(`⚠️ Using testing Stripe keys (${isTestMode ? 'TEST MODE' : 'LIVE MODE'}) - fallback`);
       cachedCredentials = {
         publishableKey: testingPublishableKey,
         secretKey: testingSecretKey,
@@ -194,4 +217,16 @@ export async function initializeStripe(): Promise<{ stripe: Stripe | null; webho
 
 export function isStripeInitialized(): boolean {
   return stripeInitialized;
+}
+
+/**
+ * Check if Stripe is running in test mode based on the API keys
+ * Returns null if credentials haven't been loaded yet
+ */
+export async function isStripeInTestMode(): Promise<boolean> {
+  // If we haven't determined yet, trigger credential loading
+  if (isTestMode === null) {
+    await getCredentials();
+  }
+  return isTestMode === true;
 }

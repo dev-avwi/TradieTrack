@@ -43,8 +43,14 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-54KEQ75F8P', {
-        send_page_view: true
+        send_page_view: true,
+        // Debug mode - remove in production after confirming GA works
+        debug_mode: window.location.hostname !== 'tradietrack.com'
       });
+      // Log GA initialization
+      if (typeof console !== 'undefined') {
+        console.log('[GA4] Initialized for', window.location.hostname);
+      }
     </script>
   </head>
   <body>
