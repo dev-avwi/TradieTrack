@@ -58,6 +58,70 @@ Core architectural and design decisions include:
 *   **Unified Communication Components**: Features for graceful SMS fallback, unified send modals for documents, before-photo prompts, and client contact cards with automatic Twilio/manual fallback detection.
 *   **Unified Chat Hub with Job-Centric Design**: Jobs are primary navigation items in the conversation list, with filtering options for team, jobs, and unassigned enquiries.
 
+### Product Roadmap
+
+#### Current Status (January 2026)
+- **Apple App Store**: Build 1.1.0 (22) ready for submission. All 3 rejection issues fixed.
+- **Google Play**: Ready for Android release.
+- **Web App**: Live at tradietrack.com
+
+#### Phase 1: Launch (Current Priority)
+- Complete Apple App Store approval
+- Launch iOS app
+- Get first real users
+- Gather feedback
+
+#### Phase 2: Client Portal MVP (Post-Launch)
+Build a lean client portal to improve client communication without overcomplicating the system.
+
+**What's Included:**
+- Single chat per job (no separate Direct Messages for clients)
+- Simple client portal (web-only, no app download required)
+- 3 auto-SMS triggers only: Quote Sent, On My Way, Invoice Sent
+- Client photo upload → auto-attach to Job Photos as "Client Upload"
+- Basic ETA text (no live GPS tracking yet)
+- Magic link access (no login required)
+- View and pay invoices through portal
+
+**What's NOT Included (Delayed to Phase 3+):**
+- Live GPS tracking (battery, permissions, legal complexity)
+- SMS toggles (cognitive overload for tradies)
+- Direct Messages with clients
+- Reminder automations (appointment reminders, overdue notices)
+- Worker visibility controls
+- SMS credits dashboard
+- Contact cards in portal
+- Worker profiles in portal
+
+**Technical Requirements:**
+- New fields: jobs.portal_token, job_photos.source (tradie/client), messages.delivery_method (portal/sms)
+- New endpoints: GET/POST /portal/:token for client access
+- New components: ClientPortal.tsx, PortalChat.tsx, PortalPhotoUpload.tsx
+
+#### Phase 3: Enhanced Communication (Future)
+- Appointment reminders (2 days before, morning of)
+- SMS credits dashboard and usage tracking
+- Overdue invoice reminders
+- Worker profile visibility toggle
+- Live GPS tracking with ETA
+- Team chat integration with client context
+
+#### Phase 4: Advanced Features (Future)
+- AI automation for message suggestions
+- Predictive scheduling
+- Fleet insights and analytics
+- Client ratings after job completion
+- Warranty claim submission through portal
+
+#### Long-Term Vision
+Full chat/SMS/portal ecosystem with:
+- Live GPS tracking (Uber-style)
+- Two-way SMS via reply-link method (ServiceM8 style)
+- Contact cards showing owner and assigned worker details
+- Pre-photos from clients auto-tagged in Job Journey
+- Advanced automation rules for reminders and follow-ups
+- SMS credit management and billing
+
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
 *   **Email Service**: User SMTP, Gmail Connector, Outlook/Microsoft 365, SendGrid Platform
