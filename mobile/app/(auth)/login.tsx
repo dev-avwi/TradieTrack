@@ -230,7 +230,8 @@ export default function LoginScreen() {
         return;
       }
       console.error('Apple Sign-In error:', err);
-      Alert.alert('Error', 'Failed to sign in with Apple. Please try again.');
+      const errorMessage = err.message || 'Failed to sign in with Apple. Please try again.';
+      Alert.alert('Sign In Error', errorMessage);
     } finally {
       setAppleLoading(false);
     }

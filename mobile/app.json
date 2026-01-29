@@ -2,7 +2,7 @@
   "expo": {
     "name": "TradieTrack",
     "slug": "tradietrack",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "tradietrack",
@@ -21,7 +21,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tradietrack.app",
-      "buildNumber": "1",
+      "buildNumber": "22",
+      "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
       },
