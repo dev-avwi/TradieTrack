@@ -113,6 +113,43 @@ Build a lean client portal to improve client communication without overcomplicat
 - Client ratings after job completion
 - Warranty claim submission through portal
 
+#### Phase 5: Website Add-on (Future)
+Build a "Generate Website" feature that creates professional tradie websites integrated with TradieTrack.
+
+**Core Features:**
+- AI Website Generator: One-click website creation from business profile
+- Trade-Optimized Templates: 5-8 Relume-inspired React component layouts
+- Auto-Sync: Gallery from job photos, testimonials from reviews, contact from settings
+- Lead Integration: Contact form → creates Lead in TradieTrack CRM
+- SEO Optimization: AI-generated suburb-specific content for local rankings
+- Custom Domains: subdomain.tradietrack.site or bring your own domain
+
+**Technical Architecture:**
+- Website renderer as public routes within TradieTrack
+- React component library (HeroSection, ServicesGrid, PhotoGallery, ContactForm, etc.)
+- New tables: websites, website_leads
+- Static generation where possible for fast loading
+- Domain routing via Cloudflare/Vercel
+
+**Pricing Model:**
+- Website Basic: $29/month (subdomain, 1 template, contact form, gallery sync)
+- Website Pro: $49/month (custom domain, all templates, lead analytics, priority SEO)
+
+**Competitive Advantage:**
+- ServiceM8/Tradify don't offer integrated websites
+- Leads flow directly into CRM pipeline
+- Auto-updating content (no stale websites)
+- Trade-specific design and SEO
+- 1/100th the cost of agency websites
+
+**Build Strategy:**
+1. Design Relume-style component library
+2. Build website CMS tables and admin UI
+3. Create public website renderer
+4. Implement AI content generation
+5. Add domain routing (subdomain first, custom domains later)
+6. Launch as paid add-on
+
 #### Long-Term Vision
 Full chat/SMS/portal ecosystem with:
 - Live GPS tracking (Uber-style)
