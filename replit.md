@@ -71,32 +71,42 @@ Core architectural and design decisions include:
 - Get first real users
 - Gather feedback
 
-#### Phase 2: Client Portal MVP (Post-Launch)
-Build a lean client portal to improve client communication without overcomplicating the system.
+#### Phase 2: Client Communication MVP (Post-Launch)
+Improve client communication through polished email/SMS workflows - no complex portal needed.
+
+**Core Approach:**
+- Email-first communication (clients trust email, understand PDFs)
+- SMS for urgent updates only (On My Way, Job Complete)
+- Stripe Payment Links for invoices (already works, no "portal" needed)
+- Skip magic link portal - adds complexity without enough value
 
 **What's Included:**
-- Single chat per job (no separate Direct Messages for clients)
-- Simple client portal (web-only, no app download required)
-- 3 auto-SMS triggers only: Quote Sent, On My Way, Invoice Sent
-- Client photo upload → auto-attach to Job Photos as "Client Upload"
-- Basic ETA text (no live GPS tracking yet)
-- Magic link access (no login required)
-- View and pay invoices through portal
+- Professional email templates: Quote sent, Invoice sent, Job complete
+- PDF attachments with embedded "Pay Now" button (Stripe link)
+- QR code on PDF invoices for scan-to-pay
+- 2 auto-SMS triggers: Quote Sent, On My Way
+- Photo galleries sent as email attachments or links
+- Client can reply to email for questions (goes to tradie's inbox)
 
-**What's NOT Included (Delayed to Phase 3+):**
-- Live GPS tracking (battery, permissions, legal complexity)
-- SMS toggles (cognitive overload for tradies)
-- Direct Messages with clients
-- Reminder automations (appointment reminders, overdue notices)
-- Worker visibility controls
-- SMS credits dashboard
-- Contact cards in portal
-- Worker profiles in portal
+**What's NOT Included (Reconsidered):**
+- Full client portal (overkill for most tradie clients)
+- Magic link authentication (confusing for clients)
+- In-portal chat (email works fine)
+- Client photo upload (nice-to-have, not essential)
+- Live GPS tracking (complex, battery drain, privacy concerns)
+
+**Why This Is Better:**
+- Clients already understand email + "Pay Now" buttons
+- No "what's this link?" confusion
+- Works for all ages (older clients especially)
+- Faster to build, fewer support issues
+- Stripe handles all payment security
 
 **Technical Requirements:**
-- New fields: jobs.portal_token, job_photos.source (tradie/client), messages.delivery_method (portal/sms)
-- New endpoints: GET/POST /portal/:token for client access
-- New components: ClientPortal.tsx, PortalChat.tsx, PortalPhotoUpload.tsx
+- Email templates with Stripe payment link embedding
+- QR code generation on PDF invoices
+- job_photos.source field for future client uploads
+- SendGrid templates for professional look
 
 #### Phase 3: Enhanced Communication (Future)
 - Appointment reminders (2 days before, morning of)
