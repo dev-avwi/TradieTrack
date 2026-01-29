@@ -114,41 +114,49 @@ Build a lean client portal to improve client communication without overcomplicat
 - Warranty claim submission through portal
 
 #### Phase 5: Website Add-on (Future)
-Build a "Generate Website" feature that creates professional tradie websites integrated with TradieTrack.
+Offer professional tradie websites as a "Done-For-You" service, built using Relume and integrated with TradieTrack.
+
+**Service Model (Not Self-Service):**
+- User clicks "Request a Website" in TradieTrack
+- Fills out brief form (business info, style preferences, photos)
+- You (the developer) build the site using Relume components
+- Site goes live within 3-5 business days
+- More credible and higher quality than AI-generated
 
 **Core Features:**
-- AI Website Generator: One-click website creation from business profile
-- Trade-Optimized Templates: 5-8 Relume-inspired React component layouts
+- Relume-Designed Templates: Professional component library you control
 - Auto-Sync: Gallery from job photos, testimonials from reviews, contact from settings
 - Lead Integration: Contact form → creates Lead in TradieTrack CRM
-- SEO Optimization: AI-generated suburb-specific content for local rankings
+- SEO Optimization: Hand-crafted suburb-specific content for local rankings
 - Custom Domains: subdomain.tradietrack.site or bring your own domain
 
 **Technical Architecture:**
 - Website renderer as public routes within TradieTrack
-- React component library (HeroSection, ServicesGrid, PhotoGallery, ContactForm, etc.)
-- New tables: websites, website_leads
+- Relume component library exported to React
+- New tables: websites, website_leads, website_requests
 - Static generation where possible for fast loading
 - Domain routing via Cloudflare/Vercel
 
 **Pricing Model:**
-- Website Basic: $29/month (subdomain, 1 template, contact form, gallery sync)
-- Website Pro: $49/month (custom domain, all templates, lead analytics, priority SEO)
+- Setup Fee: $499-999 one-time (covers your build time)
+- Hosting + Sync: $29-49/month (ongoing, includes updates)
+- Premium Package: $1,499 setup + $49/month (custom design, priority support)
 
 **Competitive Advantage:**
+- Human-crafted quality, not generic AI output
 - ServiceM8/Tradify don't offer integrated websites
 - Leads flow directly into CRM pipeline
 - Auto-updating content (no stale websites)
 - Trade-specific design and SEO
-- 1/100th the cost of agency websites
+- Still 1/10th the cost of typical agency websites
 
 **Build Strategy:**
-1. Design Relume-style component library
-2. Build website CMS tables and admin UI
-3. Create public website renderer
-4. Implement AI content generation
+1. Create website request form in TradieTrack
+2. Build Relume component library for tradies
+3. Create public website renderer in TradieTrack
+4. Build admin panel for managing client websites
 5. Add domain routing (subdomain first, custom domains later)
-6. Launch as paid add-on
+6. Launch as premium add-on service
 
 #### Long-Term Vision
 Full chat/SMS/portal ecosystem with:
