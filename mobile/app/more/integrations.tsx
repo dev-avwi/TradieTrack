@@ -575,16 +575,16 @@ export default function IntegrationsScreen() {
         setShowSmsPreview(true);
         Alert.alert(
           'SMS Preview',
-          `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: In demo mode, SMS messages are logged but not actually sent.`,
+          `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: Connect your Twilio account to send real SMS messages.`,
           [{ text: 'Got it', onPress: () => setShowSmsPreview(false) }]
         );
       } else {
-        Alert.alert('Demo Mode', response.data?.message || 'SMS preview shown in demo mode');
+        Alert.alert('SMS Preview', response.data?.message || 'SMS preview shown');
       }
     } catch (error: any) {
       Alert.alert(
-        'SMS Demo Preview',
-        `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: SMS is currently in demo mode. Connect Twilio credentials to send real messages.`
+        'SMS Preview',
+        `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: Connect your Twilio credentials to send real messages.`
       );
     } finally {
       setIsSendingTestSms(false);
@@ -889,7 +889,7 @@ export default function IntegrationsScreen() {
                   </View>
                   <View style={styles.integrationBadgeBuiltIn}>
                     <Text style={styles.integrationBadgeBuiltInText}>
-                      {hasEmailService ? 'Active' : 'Demo Mode'}
+                      {hasEmailService ? 'Active' : 'Not Configured'}
                     </Text>
                   </View>
                 </View>
@@ -916,7 +916,7 @@ export default function IntegrationsScreen() {
                   ) : (
                     <>
                       <Text style={styles.detailSubtext}>
-                        Running in demo mode - emails are logged to console. Contact support to enable email sending.
+                        Email sending is not yet configured. Contact support to enable email sending.
                       </Text>
                       <View style={styles.builtInInfo}>
                         <Feather name="info" size={16} color={colors.mutedForeground} />
@@ -1088,7 +1088,7 @@ export default function IntegrationsScreen() {
                           ? colors.success 
                           : colors.warning }
                     ]}>
-                      {integrationHealth?.services?.twilio?.status === 'ready' ? 'Connected' : 'Demo Mode'}
+                      {integrationHealth?.services?.twilio?.status === 'ready' ? 'Connected' : 'Not Configured'}
                     </Text>
                   </View>
                 </View>
@@ -1098,7 +1098,7 @@ export default function IntegrationsScreen() {
                     <View style={styles.warningBanner}>
                       <Feather name="info" size={18} color={colors.warning} />
                       <Text style={styles.warningText}>
-                        SMS is in demo mode during beta. Messages are logged but not sent.
+                        SMS is not configured. Connect your Twilio account to send messages.
                       </Text>
                     </View>
                   )}

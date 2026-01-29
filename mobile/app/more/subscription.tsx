@@ -95,7 +95,7 @@ const tiers: Tier[] = [
       { text: 'Team management', included: false },
       { text: 'Team seats', included: false },
     ],
-    cta: 'Free During Beta',
+    cta: 'Start Free Trial',
     popular: true,
   },
   {
@@ -114,7 +114,7 @@ const tiers: Tier[] = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Free During Beta',
+    cta: 'Start Free Trial',
     popular: false,
   },
 ];
@@ -596,11 +596,11 @@ export default function SubscriptionScreen() {
         seats: tierId === 'team' ? teamSeats : undefined,
       });
 
-      // Beta mode: instant access without Stripe
+      // Free trial mode: instant access without Stripe
       if (response.data?.betaAccess && response.data?.success) {
         Alert.alert(
-          'Beta Access Granted!',
-          response.data.message || `You now have ${tierId} access - free during beta!`,
+          'Trial Activated!',
+          response.data.message || `You now have ${tierId} access - enjoy your free trial!`,
           [{ text: 'OK', onPress: () => fetchSubscriptionStatus() }]
         );
         return;
@@ -787,8 +787,8 @@ export default function SubscriptionScreen() {
         {tier.id !== 'free' && !isCurrentTier(tier.id) && (
           <Text style={styles.ctaSubtext}>
             {tier.id === 'team' 
-              ? `$${teamTotal} AUD/month after beta ends`
-              : `$${tier.price} AUD/month after beta ends`
+              ? `$${teamTotal} AUD/month after trial`
+              : `$${tier.price} AUD/month after trial`
             }
           </Text>
         )}
@@ -842,13 +842,13 @@ export default function SubscriptionScreen() {
               <View style={styles.heroSection}>
                 <View style={styles.trialBadge}>
                   <Feather name="star" size={14} color={colors.primary} />
-                  <Text style={styles.trialBadgeText}>Beta Access</Text>
+                  <Text style={styles.trialBadgeText}>14-Day Free Trial</Text>
                 </View>
                 <Text style={styles.heroTitle}>
-                  All features free during beta
+                  Choose Your Plan
                 </Text>
                 <Text style={styles.heroSubtitle}>
-                  First 10 users get lifetime free access in exchange for a testimonial.
+                  Start with a 14-day free trial. No credit card required.
                 </Text>
                 
                 <View style={styles.trustBadges}>
@@ -862,7 +862,7 @@ export default function SubscriptionScreen() {
                   </View>
                   <View style={styles.trustBadge}>
                     <Feather name="clock" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>Lifetime access for early adopters</Text>
+                    <Text style={styles.trustBadgeText}>Cancel anytime</Text>
                   </View>
                 </View>
               </View>
@@ -886,7 +886,7 @@ export default function SubscriptionScreen() {
                           {subscriptionStatus?.isBeta && (
                             <View style={[styles.currentPlanBadge, { backgroundColor: colors.success + '20' }]}>
                               <Text style={[styles.currentPlanBadgeText, { color: colors.success }]}>
-                                Beta Access
+                                Active
                               </Text>
                             </View>
                           )}
@@ -900,7 +900,7 @@ export default function SubscriptionScreen() {
                         </View>
                         <Text style={styles.currentPlanSubtext}>
                           {subscriptionStatus?.isBeta ? (
-                            `All features free during beta - no billing`
+                            `All features included - active subscription`
                           ) : subscriptionStatus?.nextBillingDate ? (
                             `Next billing: ${formatDate(subscriptionStatus.nextBillingDate)}`
                           ) : subscriptionStatus?.currentPeriodEnd ? (

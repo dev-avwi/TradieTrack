@@ -646,7 +646,7 @@ export default function SupportScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>TradieTrack Mobile</Text>
-            <Text style={styles.versionText}>Version 1.0.0 (Beta)</Text>
+            <Text style={styles.versionText}>Version 1.0.0</Text>
           </View>
         </View>
       </ScrollView>

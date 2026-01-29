@@ -871,7 +871,7 @@ export default function AppSettingsScreen() {
             </View>
             <Text style={styles.footerTitle}>TradieTrack</Text>
             <Text style={styles.footerSubtitle}>Made in Australia for Australian Tradies</Text>
-            <Text style={styles.footerVersion}>Version 1.0.0 (Beta)</Text>
+            <Text style={styles.footerVersion}>Version 1.0.0</Text>
           </View>
         </ScrollView>
       </View>

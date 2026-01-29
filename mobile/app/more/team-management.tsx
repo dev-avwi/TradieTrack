@@ -25,6 +25,7 @@ interface SubscriptionStatus {
   seatCount?: number;
 }
 
+// Production mode - no beta features
 const BETA_MODE = false;
 const TEAM_BASE_PRICE = 59;
 const TEAM_SEAT_PRICE = 29;
@@ -2125,7 +2126,7 @@ export default function TeamManagementScreen() {
               <View style={styles.betaBanner}>
                 <Feather name="gift" size={24} color={colors.success} />
                 <Text style={styles.betaBannerText}>
-                  Beta: Team features are free! Invite your team now.
+                  Team features included with your plan!
                 </Text>
               </View>
             )}

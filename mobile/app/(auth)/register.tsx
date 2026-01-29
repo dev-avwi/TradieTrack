@@ -211,17 +211,17 @@ export default function RegisterScreen() {
               <Text style={styles.appNameBlue}>Tradie</Text>
               <Text style={styles.appNameOrange}>Track</Text>
             </View>
-            <Text style={styles.title}>Join the Beta</Text>
-            <Text style={styles.subtitle}>First 10 users get lifetime free access!</Text>
+            <Text style={styles.title}>Get Started Free</Text>
+            <Text style={styles.subtitle}>Manage your trade business from your pocket</Text>
           </View>
 
           <View style={styles.trialInfoCard}>
-            <Text style={styles.trialInfoTitle}>Beta Access - All Features Free</Text>
+            <Text style={styles.trialInfoTitle}>Start Your Free Trial</Text>
             <Text style={styles.trialInfoText}>
-              No credit card required. Full Pro access during beta.
+              No credit card required. Full access for 14 days.
             </Text>
             <Text style={styles.trialInfoSubtext}>
-              Provide a testimonial for lifetime free access
+              Upgrade anytime for unlimited features
             </Text>
           </View>
 

@@ -1203,7 +1203,7 @@ export default function CollectScreen() {
       if (error?.message?.includes('disabled') || error?.response?.data?.error?.includes('not configured')) {
         setShowSmsSetupModal(true);
       } else if (error?.message?.includes('disabled')) {
-        Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead.');
+        Alert.alert('SMS Unavailable', 'SMS is not configured. Use email instead.');
       } else {
         Alert.alert('Error', 'Failed to send SMS. Please try again.');
       }
@@ -1403,7 +1403,7 @@ export default function CollectScreen() {
       if (error?.response?.data?.error?.includes('not configured')) {
         setShowSmsSetupModal(true);
       } else if (error?.response?.data?.error?.includes('disabled')) {
-        Alert.alert('SMS Disabled', 'SMS is disabled during beta. Use email instead, or copy the link to share manually.');
+        Alert.alert('SMS Unavailable', 'SMS is not configured. Use email instead, or copy the link to share manually.');
       } else {
         Alert.alert('Error', 'Failed to send payment link via SMS');
       }
@@ -2102,7 +2102,7 @@ export default function CollectScreen() {
                 </Button>
               </View>
               <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: spacing.xs }}>
-                Note: SMS may be disabled during beta
+                SMS requires Twilio configuration in settings
               </Text>
             </View>
 
