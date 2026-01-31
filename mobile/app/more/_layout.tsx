@@ -27,6 +27,10 @@ export default function MoreLayout() {
         presentation: 'card',
         freezeOnBlur: true,
       }}
-    />
+    >
+      {/* Hide header for screens with custom headers */}
+      <Stack.Screen name="quote" options={{ headerShown: false }} />
+      <Stack.Screen name="invoice" options={{ headerShown: false }} />
+    </Stack>
   );
 }

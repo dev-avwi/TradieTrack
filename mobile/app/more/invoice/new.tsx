@@ -1160,7 +1160,7 @@ export default function NewInvoiceScreen() {
 
         {/* Preview Mode */}
         {activeTab === 'preview' && (
-          <View style={[styles.previewContainer, { paddingBottom: bottomNavHeight }]}>
+          <View style={styles.previewContainer}>
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -1196,6 +1196,7 @@ export default function NewInvoiceScreen() {
               </View>
             </View>
             <LiveDocumentPreview
+              bottomPadding={bottomNavHeight}
               type="invoice"
               title={form.title}
               description={form.description}
