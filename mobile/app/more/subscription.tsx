@@ -570,6 +570,10 @@ export default function SubscriptionScreen() {
       const response = await api.get<SubscriptionStatus>('/api/subscription/status');
       if (response.data) {
         setSubscriptionStatus(response.data);
+        // Pre-fill team seats with actual team member count if available
+        if (response.data.teamMemberCount && response.data.teamMemberCount > 0) {
+          setTeamSeats(response.data.teamMemberCount);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
