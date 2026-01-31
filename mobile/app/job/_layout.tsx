@@ -1,6 +1,9 @@
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { useTheme } from '../../src/lib/theme';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
+
+const isIOS = Platform.OS === 'ios';
 
 export default function JobLayout() {
   const { colors } = useTheme();
@@ -27,8 +30,8 @@ export default function JobLayout() {
         freezeOnBlur: true,
       }}
     >
-      {/* Hide header for chat screen - uses custom header */}
-      <Stack.Screen name="chat" options={{ headerShown: false }} />
+      {/* iOS: Show native header with IOSBackButton, Android: Hide header and use custom back button */}
+      <Stack.Screen name="chat" options={{ headerShown: isIOS }} />
     </Stack>
   );
 }

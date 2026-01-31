@@ -739,9 +739,11 @@ export default function JobChatScreen() {
     );
   }
 
+  const isIOS = Platform.OS === 'ios';
+
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: isIOS }} />
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -749,12 +751,15 @@ export default function JobChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.headerCard}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => router.back()}
-          >
-            <Feather name="chevron-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          {/* Android: Show custom back button in header card */}
+          {!isIOS && (
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => router.back()}
+            >
+              <Feather name="chevron-left" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          )}
           <View style={styles.headerIconContainer}>
             <Feather name="message-circle" size={20} color={colors.primary} />
           </View>
