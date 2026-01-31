@@ -1858,16 +1858,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginBottom: 24,
   },
   quickAction: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
@@ -1878,9 +1879,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.primary,
   },
   quickActionText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.primary,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 13,

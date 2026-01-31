@@ -26,6 +26,9 @@ export default function JobLayout() {
         presentation: 'card',
         freezeOnBlur: true,
       }}
-    />
+    >
+      {/* Hide header for chat screen - uses custom header */}
+      <Stack.Screen name="chat" options={{ headerShown: false }} />
+    </Stack>
   );
 }

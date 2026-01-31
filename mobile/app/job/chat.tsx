@@ -92,6 +92,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
   headerIconContainer: {
     width: 40,
     height: 40,
@@ -732,7 +741,7 @@ export default function JobChatScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Job Discussion' }} />
+      <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -740,6 +749,12 @@ export default function JobChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.headerCard}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+          >
+            <Feather name="chevron-left" size={24} color={colors.foreground} />
+          </TouchableOpacity>
           <View style={styles.headerIconContainer}>
             <Feather name="message-circle" size={20} color={colors.primary} />
           </View>
