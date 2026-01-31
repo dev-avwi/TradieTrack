@@ -3,6 +3,8 @@
 // Based on web's index.css and design_guidelines.md
 
 import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { useMemo } from 'react';
+import { isIPad, useOrientation } from './device';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isIOS = Platform.OS === 'ios';
@@ -32,6 +34,37 @@ export const pageShell = {
   paddingBottom: spacing['2xl'], // 24px - section gap
   sectionGap: spacing['2xl'],    // 24px - web's space-y-6
 } as const;
+
+// iPad-responsive page shell hook
+// Returns larger padding for iPad portrait to center content
+export function usePageShell() {
+  const isPad = isIPad();
+  const orientation = useOrientation();
+  const screenWidth = Dimensions.get('window').width;
+  
+  return useMemo(() => {
+    const isIPadPortrait = isPad && orientation === 'portrait';
+    
+    // iPad portrait: center content with larger horizontal padding
+    // Target max content width of ~600px for readability
+    const maxContentWidth = 600;
+    const idealPadding = isIPadPortrait 
+      ? Math.max(spacing['2xl'], (screenWidth - maxContentWidth) / 2)
+      : spacing.lg;
+    
+    return {
+      paddingHorizontal: idealPadding,
+      paddingTop: isPad ? spacing.xl : spacing.lg,
+      paddingBottom: isPad ? spacing['3xl'] : spacing['2xl'],
+      sectionGap: isPad ? spacing['3xl'] : spacing['2xl'],
+      // For card grids on iPad
+      cardGap: isPad ? spacing.lg : spacing.md,
+      // Whether we should use iPad-optimized layout
+      isIPadPortrait,
+      isPad,
+    };
+  }, [isPad, orientation, screenWidth]);
+}
 
 // Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible
 export const bottomTabClearance = 90; // 64px nav + 26px safe area

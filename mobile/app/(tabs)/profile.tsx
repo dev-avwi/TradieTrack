@@ -12,7 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useUserRole, type UserRoleType } from '../../src/hooks/use-user-role';
-import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, sizes, usePageShell } from '../../src/lib/design-tokens';
 import { 
   getMorePageItemsByCategory, 
   categoryLabels, 
@@ -252,6 +252,7 @@ function mapRoleToFilterRole(role: UserRoleType): UserRole {
 export default function MoreScreen() {
   const { user, businessSettings, logout } = useAuthStore();
   const { colors } = useTheme();
+  const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
@@ -348,11 +349,16 @@ export default function MoreScreen() {
     );
   };
 
+  // Dynamic content container style for iPad-responsive padding
+  const responsiveContentStyle = useMemo(() => ({
+    padding: responsiveShell.paddingHorizontal,
+  }), [responsiveShell]);
+
   return (
     <ScrollView 
       ref={scrollRef}
       style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={responsiveContentStyle}
       showsVerticalScrollIndicator={false}
     >
       {/* Profile Header */}

@@ -16,7 +16,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format, isAfter, isBefore, subDays, differenceInDays } from 'date-fns';
 import { XeroRibbon } from '../../src/components/XeroRibbon';
@@ -101,6 +101,7 @@ const formatCurrency = (amount: number | string) => {
 
 export default function MoneyHubScreen() {
   const { colors } = useTheme();
+  const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -963,6 +964,13 @@ export default function MoneyHubScreen() {
     );
   }
 
+  // Dynamic content container style for iPad-responsive padding
+  const responsiveContentStyle = useMemo(() => ({
+    paddingHorizontal: responsiveShell.paddingHorizontal,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing['2xl'],
+  }), [responsiveShell]);
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -983,7 +991,7 @@ export default function MoneyHubScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={responsiveContentStyle}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

@@ -20,7 +20,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 
@@ -311,6 +311,7 @@ export default function JobsScreen() {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
   const isTabletDevice = isTablet();
+  const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
@@ -530,12 +531,19 @@ export default function JobsScreen() {
     });
   }, [filteredJobs, viewMode, sortField, sortDirection]);
 
+  // Dynamic content container style for iPad-responsive padding
+  const responsiveContentStyle = useMemo(() => ({
+    paddingHorizontal: responsiveShell.paddingHorizontal,
+    paddingTop: responsiveShell.paddingTop,
+    paddingBottom: responsiveShell.paddingBottom,
+  }), [responsiveShell]);
+
   return (
     <View style={styles.container}>
       <ScrollView 
         ref={scrollRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={responsiveContentStyle}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

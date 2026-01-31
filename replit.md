@@ -1,181 +1,54 @@
 ### Overview
-TradieTrack is a mobile-first web application designed for Australian tradespeople. Its primary purpose is to centralize and streamline business operations, including job management, quoting, invoicing, and payment collection. The platform offers specific support for Australian GST and AUD currency, aiming to enhance productivity, financial management, and client communication for solo tradespeople and small businesses. Key capabilities include AI-driven scheduling optimization, multi-option quote generation, and comprehensive financial tracking.
+TradieTrack is a mobile-first web application for Australian tradespeople, aiming to centralize and streamline business operations like job management, quoting, invoicing, and payment collection. It supports Australian GST and AUD currency, and seeks to improve productivity, financial management, and client communication for solo tradespeople and small businesses. Key capabilities include AI-driven scheduling, multi-option quote generation, and comprehensive financial tracking. The business vision is to offer a comprehensive solution for trades, with future potential for integrated websites and advanced communication features, positioning TradieTrack as a market leader in trade business management software.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
-### Recent Changes (January 2026)
-*   **Template Seeding Fix**: Fixed critical bug where new users were missing trade-specific templates. Templates are now seeded after the user selects their trade type during onboarding (in POST /api/business-settings), ensuring electricians get electrical templates, plumbers get plumbing templates, etc.
-*   **SimpleOnboarding UI Fix**: Fixed dark card appearing on gradient background by using translucent white with proper text contrast.
-*   **GuidedTour Responsive Fix**: Added mobileOnly flag system to skip mobile-specific steps (like "Open the More Menu") when viewing on desktop. Includes proper bounds checking when screen size changes.
-
 ### System Architecture
-TradieTrack employs an event-driven architecture built with TypeScript. The frontend leverages React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile responsiveness. The backend is an Express.js and TypeScript REST API, utilizing Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A companion React Native/Expo mobile application integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
+TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API, using Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A React Native/Expo mobile app integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
 
 Core architectural and design decisions include:
-
-*   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and customizable theming. Key features include a "Today's Schedule" dashboard, Quick Add Client, Enhanced Template Selector, Smart Address Auto-fill, and Contextual Quote/Invoice Creation.
+*   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and customizable theming, including a "Today's Schedule" dashboard, Quick Add Client, and Smart Address Auto-fill. iPad support includes orientation-aware navigation with dynamic layouts.
 *   **Authentication**: Supports Email/password, Google OAuth, and secure password reset with cross-platform session tokens.
-*   **AI Integration**: GPT-4o-mini is used for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision enables AI Photo Analysis, and the system includes an AI Schedule Optimizer and AI-powered voice note transcription.
-*   **Role-Aware AI Assistant**: The AI assistant adapts to user roles with filtered context and permission-gated actions, providing role-specific prompts and action confirmations for sensitive operations.
-*   **PDF Generation**: Server-side PDF generation for quotes and invoices is handled via Puppeteer, supporting customizable templates.
+*   **AI Integration**: GPT-4o-mini is used for business suggestions, Australian English phrasing, proactive notifications, and quote generation. GPT-4o vision enables AI Photo Analysis, and the system includes an AI Schedule Optimizer and AI-powered voice note transcription. A Role-Aware AI Assistant adapts to user roles with filtered context and permission-gated actions.
+*   **PDF Generation**: Server-side PDF generation for quotes and invoices via Puppeteer, with customizable templates.
 *   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional confirmation emails.
-*   **Live Quote/Invoice Editor**: Provides real-time preview, catalog item integration, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
-*   **Payment Collection**: Features Stripe Payment Links, "Tap to Pay Request Flow" for in-person payments, QR code support, comprehensive receipt generation, and Quick Collect Payment.
-*   **Subscription & Billing System**: A three-tier pricing model (Free, Pro, Team) with smooth upgrade/downgrade flows and granular team member access control.
+*   **Live Quote/Invoice Editor**: Real-time preview, catalog item integration, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
+*   **Payment Collection**: Stripe Payment Links, "Tap to Pay Request Flow" for in-person payments, QR code support, comprehensive receipt generation, and Quick Collect Payment.
+*   **Subscription & Billing System**: Three-tier pricing (Free, Pro, Team) with upgrade/downgrade flows and granular team member access control.
 *   **Email Automation**: SendGrid integration for customizable emails with AI suggestions.
-*   **PWA Support**: Offline capabilities are provided via web manifest and service worker.
-*   **Real-time Communication**: Includes Job Chat, Team Chat, and Direct Messages with file attachments and two-way Twilio SMS integration with AI analysis, unified in a Microsoft Teams-style Chat Hub.
-*   **Real-time WebSocket Updates**: Live UI synchronization for job status changes, timer events, document updates, payment records, and notifications. React Query caches auto-invalidate on WebSocket messages.
-*   **Team Operations Center**: A centralized hub for live operations, administration, scheduling, skills/certifications, and performance monitoring.
-*   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization. Includes job search with autocomplete to quickly find and zoom to specific jobs on the map.
-*   **Role-Based Access Control (RBAC)**: Granular permissions are enforced through middleware and a dual-permission system with offline caching.
-*   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization across web and mobile via IndexedDB and SQLite, including time tracking, payment drafts, and subscription caching.
+*   **PWA Support**: Offline capabilities via web manifest and service worker.
+*   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments and two-way Twilio SMS integration, unified in a Microsoft Teams-style Chat Hub. Real-time WebSocket updates synchronize UI for job status, timers, documents, payments, and notifications.
+*   **Team Operations Center**: Centralized hub for live operations, administration, scheduling, and performance monitoring.
+*   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization and job search.
+*   **Role-Based Access Control (RBAC)**: Granular permissions enforced through middleware and a dual-permission system with offline caching.
+*   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization across web and mobile (IndexedDB and SQLite), including time tracking and payment drafts.
 *   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web, including photo markup.
 *   **Recurring Invoices & Jobs**: Functionality for setting up recurring invoices and jobs.
-*   **Financial Management**: A unified dashboard with key performance indicators.
+*   **Financial Management**: Unified dashboard with key performance indicators.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with KPI headers and document relationship links.
 *   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
-*   **Integrations**: Enhanced two-way Xero integration, MYOB AccountRight, and Google Calendar integrations.
+*   **Integrations**: Enhanced two-way Xero, MYOB AccountRight, and Google Calendar integrations.
 *   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signatures.
-*   **Templates Hub**: Simplified to focus on Document Styles with integrated live preview for quotes, invoices, and jobs.
+*   **Templates Hub**: Focuses on Document Styles with integrated live preview for quotes, invoices, and jobs.
 *   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
 *   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
 *   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
 *   **Timesheet Approvals**: Workflow for crew timesheet approval.
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
-*   **Immersive Onboarding**: Full-screen onboarding with a 7-step "Life of a Job" walkthrough and an 18-step GuidedTour highlighting UI elements.
+*   **Immersive Onboarding**: Full-screen onboarding with a 7-step "Life of a Job" walkthrough and an 18-step GuidedTour.
 *   **Demo Data Management**: Demo data is preserved across server restarts and includes safe deletion mechanisms.
-*   **Unified Notifications**: A single endpoint combines system, SMS, and chat notifications for both web and mobile.
+*   **Unified Notifications**: Single endpoint for system, SMS, and chat notifications across web and mobile.
 *   **Document Template System**: 81 balanced templates (9 trades × 9 templates each) are seeded for new users, adhering to Australian standards, with trade filtering and general fallback templates.
-*   **Trade-Specific Customization System**: A comprehensive trade catalog supports 13 priority trades with trade-specific terminology, custom job stages, custom fields, material catalogs, rate cards, safety checklists, and quote categories.
-*   **QuickCreateFAB Component**: Replaces the full-width bottom sheet with a centered floating widget popup for quick actions.
+*   **Trade-Specific Customization System**: Supports 13 priority trades with trade-specific terminology, custom job stages, custom fields, material catalogs, rate cards, safety checklists, and quote categories.
+*   **QuickCreateFAB Component**: Replaces full-width bottom sheet with a centered floating widget popup for quick actions.
 *   **Mobile Collect Payment Redesign**: Overhauled mobile payment flow to include "Record Payment" and QR code generation, with receipt generation and optional linking.
 *   **Job Assignment Request System**: Team members can request assignment to available unassigned jobs, with owner approval/rejection.
-*   **Time Tracking Enhancements**: Includes break/pause functionality, separate tracking for work vs. break time, auto job status updates, and a job costing widget with variance display.
+*   **Time Tracking Enhancements**: Includes break/pause functionality, separate tracking for work vs. break time, auto job status updates, and a job costing widget.
 *   **Trade-Type Aware Templates**: Business templates are filterable by trade type with a fallback hierarchy.
 *   **Trade-Specific Safety Forms System**: 18 Australian WHS-compliant safety checklists are auto-seeded, including pre-work and post-work forms with trade-specific items and digital signatures.
 *   **Unified Communication Components**: Features for graceful SMS fallback, unified send modals for documents, before-photo prompts, and client contact cards with automatic Twilio/manual fallback detection.
 *   **Unified Chat Hub with Job-Centric Design**: Jobs are primary navigation items in the conversation list, with filtering options for team, jobs, and unassigned enquiries.
-
-### Product Roadmap
-
-#### Current Status (January 2026)
-- **Apple App Store**: Build 1.1.0 (22) ready for submission. All 3 rejection issues fixed.
-- **Google Play**: Ready for Android release.
-- **Web App**: Live at tradietrack.com
-
-#### Phase 1: Launch (Current Priority)
-- Complete Apple App Store approval
-- Launch iOS app
-- Get first real users
-- Gather feedback
-
-#### Phase 2: Client Communication MVP (Post-Launch)
-Improve client communication through polished email/SMS workflows - no complex portal needed.
-
-**Core Approach:**
-- Email-first communication (clients trust email, understand PDFs)
-- SMS for urgent updates only (On My Way, Job Complete)
-- Stripe Payment Links for invoices (already works, no "portal" needed)
-- Skip magic link portal - adds complexity without enough value
-
-**What's Included:**
-- Professional email templates: Quote sent, Invoice sent, Job complete
-- PDF attachments with embedded "Pay Now" button (Stripe link)
-- QR code on PDF invoices for scan-to-pay
-- 2 auto-SMS triggers: Quote Sent, On My Way
-- Photo galleries sent as email attachments or links
-- Client can reply to email for questions (goes to tradie's inbox)
-
-**What's NOT Included (Reconsidered):**
-- Full client portal (overkill for most tradie clients)
-- Magic link authentication (confusing for clients)
-- In-portal chat (email works fine)
-- Client photo upload (nice-to-have, not essential)
-- Live GPS tracking (complex, battery drain, privacy concerns)
-
-**Why This Is Better:**
-- Clients already understand email + "Pay Now" buttons
-- No "what's this link?" confusion
-- Works for all ages (older clients especially)
-- Faster to build, fewer support issues
-- Stripe handles all payment security
-
-**Technical Requirements:**
-- Email templates with Stripe payment link embedding
-- QR code generation on PDF invoices
-- job_photos.source field for future client uploads
-- SendGrid templates for professional look
-
-#### Phase 3: Enhanced Communication (Future)
-- Appointment reminders (2 days before, morning of)
-- SMS credits dashboard and usage tracking
-- Overdue invoice reminders
-- Worker profile visibility toggle
-- Live GPS tracking with ETA
-- Team chat integration with client context
-
-#### Phase 4: Advanced Features (Future)
-- AI automation for message suggestions
-- Predictive scheduling
-- Fleet insights and analytics
-- Client ratings after job completion
-- Warranty claim submission through portal
-
-#### Phase 5: Website Add-on (Future)
-Offer professional tradie websites as a "Done-For-You" service, built using Relume and integrated with TradieTrack.
-
-**Service Model (Not Self-Service):**
-- User clicks "Request a Website" in TradieTrack
-- Fills out brief form (business info, style preferences, photos)
-- You (the developer) build the site using Relume components
-- Site goes live within 3-5 business days
-- More credible and higher quality than AI-generated
-
-**Core Features:**
-- Relume-Designed Templates: Professional component library you control
-- Auto-Sync: Gallery from job photos, testimonials from reviews, contact from settings
-- Lead Integration: Contact form → creates Lead in TradieTrack CRM
-- SEO Optimization: Hand-crafted suburb-specific content for local rankings
-- Custom Domains: subdomain.tradietrack.site or bring your own domain
-
-**Technical Architecture:**
-- Website renderer as public routes within TradieTrack
-- Relume component library exported to React
-- New tables: websites, website_leads, website_requests
-- Static generation where possible for fast loading
-- Domain routing via Cloudflare/Vercel
-
-**Pricing Model:**
-- Setup Fee: $499-999 one-time (covers your build time)
-- Hosting + Sync: $29-49/month (ongoing, includes updates)
-- Premium Package: $1,499 setup + $49/month (custom design, priority support)
-
-**Competitive Advantage:**
-- Human-crafted quality, not generic AI output
-- ServiceM8/Tradify don't offer integrated websites
-- Leads flow directly into CRM pipeline
-- Auto-updating content (no stale websites)
-- Trade-specific design and SEO
-- Still 1/10th the cost of typical agency websites
-
-**Build Strategy:**
-1. Create website request form in TradieTrack
-2. Build Relume component library for tradies
-3. Create public website renderer in TradieTrack
-4. Build admin panel for managing client websites
-5. Add domain routing (subdomain first, custom domains later)
-6. Launch as premium add-on service
-
-#### Long-Term Vision
-Full chat/SMS/portal ecosystem with:
-- Live GPS tracking (Uber-style)
-- Two-way SMS via reply-link method (ServiceM8 style)
-- Contact cards showing owner and assigned worker details
-- Pre-photos from clients auto-tagged in Job Journey
-- Advanced automation rules for reminders and follow-ups
-- SMS credit management and billing
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)

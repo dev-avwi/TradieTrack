@@ -12,7 +12,7 @@ import {
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useContentWidth, isTablet } from '../../src/lib/device';
@@ -137,6 +137,7 @@ export default function DocumentsScreen() {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
   const isTabletDevice = isTablet();
+  const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
   
   const params = useLocalSearchParams<{ tab?: string; filter?: string }>();
@@ -1006,12 +1007,19 @@ export default function DocumentsScreen() {
     }
   };
 
+  // Dynamic content container style for iPad-responsive padding
+  const responsiveContentStyle = useMemo(() => ({
+    paddingHorizontal: responsiveShell.paddingHorizontal,
+    paddingTop: responsiveShell.paddingTop,
+    paddingBottom: responsiveShell.paddingBottom,
+  }), [responsiveShell]);
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={responsiveContentStyle}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

@@ -16,7 +16,7 @@ import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, usePageShell } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 
 type FilterKey = 'all' | 'with_email' | 'with_phone' | 'with_address';
@@ -190,6 +190,7 @@ export default function ClientsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const { colors } = useTheme();
+  const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const refreshData = useCallback(async () => {
@@ -287,13 +288,20 @@ export default function ClientsScreen() {
     );
   };
 
+  // Dynamic content container style for iPad-responsive padding
+  const responsiveContentStyle = useMemo(() => ({
+    paddingHorizontal: responsiveShell.paddingHorizontal,
+    paddingTop: responsiveShell.paddingTop,
+    paddingBottom: responsiveShell.paddingBottom,
+  }), [responsiveShell]);
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={responsiveContentStyle}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
