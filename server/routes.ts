@@ -1810,6 +1810,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apple Sign In server-to-server notifications endpoint
+  // This receives notifications when users revoke access, delete their account, etc.
+  app.post("/api/auth/apple/notifications", async (req: any, res) => {
+    try {
+      const { payload } = req.body;
+      
+      if (payload) {
+        // Decode the JWT payload from Apple
+        const decoded = jwt.decode(payload) as {
+          iss?: string;
+          aud?: string;
+          iat?: number;
+          jti?: string;
+          events?: string;
+        } | null;
+        
+        if (decoded?.events) {
+          const events = JSON.parse(decoded.events);
+          const eventType = Object.keys(events)[0];
+          const eventData = events[eventType];
+          
+          console.log(`🍎 Apple notification received: ${eventType}`);
+          
+          // Handle different event types
+          switch (eventType) {
+            case 'consent-revoked':
+              // User revoked consent - optionally disable their account or unlink Apple ID
+              console.log(`🍎 User revoked Apple Sign In consent: ${eventData?.sub}`);
+              break;
+            case 'account-delete':
+              // User deleted their Apple account
+              console.log(`🍎 User deleted Apple account: ${eventData?.sub}`);
+              break;
+            case 'email-disabled':
+              // Apple's private email relay was disabled
+              console.log(`🍎 Apple email relay disabled: ${eventData?.sub}`);
+              break;
+            case 'email-enabled':
+              // Apple's private email relay was re-enabled
+              console.log(`🍎 Apple email relay enabled: ${eventData?.sub}`);
+              break;
+            default:
+              console.log(`🍎 Unknown Apple event type: ${eventType}`);
+          }
+        }
+      }
+      
+      // Always respond with 200 OK to acknowledge receipt
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error("Apple notification error:", error);
+      // Still return 200 to prevent Apple from retrying
+      res.status(200).send('OK');
+    }
+  });
+
   // Middleware for user authentication (supports both cookies and Authorization header for iOS/Safari)
   const requireAuth = async (req: any, res: any, next: any) => {
     let userId = req.session?.userId;
