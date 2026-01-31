@@ -1026,7 +1026,7 @@ export default function NewQuoteScreen() {
 
         {/* Preview Mode */}
         {activeTab === 'preview' && (
-          <View style={[styles.previewContainer, { paddingBottom: bottomNavHeight }]}>
+          <View style={styles.previewContainer}>
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -1062,6 +1062,7 @@ export default function NewQuoteScreen() {
               </View>
             </View>
             <LiveDocumentPreview
+              bottomPadding={bottomNavHeight}
               type="quote"
               title={form.title}
               description={form.description}

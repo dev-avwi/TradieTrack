@@ -81,6 +81,7 @@ interface LiveDocumentPreviewProps {
   acceptedAt?: string | Date | null;
   acceptedBy?: string | null;
   clientSignatureData?: string | null;
+  bottomPadding?: number;
 }
 
 function formatCurrency(amount: number): string {
@@ -127,6 +128,7 @@ export default function LiveDocumentPreview({
   acceptedAt,
   acceptedBy,
   clientSignatureData,
+  bottomPadding = 0,
 }: LiveDocumentPreviewProps) {
   const { colors: themeColors } = useTheme();
   
@@ -719,7 +721,7 @@ export default function LiveDocumentPreview({
   return (
     <ScrollView 
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.documentCard}>
