@@ -43,14 +43,20 @@ export default function LoginScreen() {
   const params = useLocalSearchParams();
 
   // Check if Apple Authentication is available
+  // On iOS, always show the button - we'll handle errors when pressed
   useEffect(() => {
     const checkAppleAuth = async () => {
       if (Platform.OS === 'ios' && AppleAuthentication) {
         try {
           const isAvailable = await AppleAuthentication.isAvailableAsync();
-          setAppleAuthAvailable(isAvailable);
+          console.log('🍎 Apple Sign In availability check:', isAvailable);
+          // Always show button on iOS, even if isAvailableAsync returns false
+          // Some iPad models may report false incorrectly
+          setAppleAuthAvailable(true);
         } catch (e) {
-          setAppleAuthAvailable(false);
+          console.log('🍎 Apple Sign In availability check error:', e);
+          // Still show button on iOS - let the error happen on press
+          setAppleAuthAvailable(true);
         }
       }
     };
@@ -194,12 +200,37 @@ export default function LoginScreen() {
     try {
       setAppleLoading(true);
       
+      // Check if Apple Authentication is available before attempting
+      if (!AppleAuthentication) {
+        Alert.alert('Not Available', 'Sign in with Apple is not available on this device.');
+        return;
+      }
+      
+      // Double-check availability
+      try {
+        const isAvailable = await AppleAuthentication.isAvailableAsync();
+        console.log('🍎 Apple Sign In isAvailableAsync (on press):', isAvailable);
+        if (!isAvailable) {
+          Alert.alert(
+            'Sign in with Apple Unavailable',
+            'Sign in with Apple is not available on this device. Please ensure you are signed in to iCloud in Settings, and that your Apple ID has two-factor authentication enabled.'
+          );
+          return;
+        }
+      } catch (availErr) {
+        console.log('🍎 Apple Sign In availability check failed on press:', availErr);
+        // Continue anyway - let signInAsync fail if needed
+      }
+      
+      console.log('🍎 Starting Apple Sign In...');
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
+      
+      console.log('🍎 Apple credential received, has token:', !!credential.identityToken);
       
       if (credential.identityToken) {
         const response = await api.post<{ success: boolean; sessionToken: string; isNewUser: boolean }>('/api/auth/apple', {
@@ -209,6 +240,7 @@ export default function LoginScreen() {
         });
         
         if (response.error) {
+          console.log('🍎 Server error:', response.error);
           Alert.alert('Error', response.error);
           return;
         }
@@ -224,13 +256,31 @@ export default function LoginScreen() {
         const isNewUser = response.data?.isNewUser === true;
         const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
         router.replace(redirectPath);
+      } else {
+        console.log('🍎 No identity token received from Apple');
+        Alert.alert('Error', 'No identity token received from Apple. Please try again.');
       }
     } catch (err: any) {
-      if (err.code === 'ERR_REQUEST_CANCELED') {
+      // User canceled the sign-in
+      if (err.code === 'ERR_REQUEST_CANCELED' || err.code === 'ERR_CANCELED') {
+        console.log('🍎 Apple Sign In canceled by user');
         return;
       }
-      console.error('Apple Sign-In error:', err);
-      const errorMessage = err.message || 'Failed to sign in with Apple. Please try again.';
+      
+      console.error('🍎 Apple Sign-In error:', err);
+      console.error('🍎 Error code:', err.code);
+      console.error('🍎 Error message:', err.message);
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to sign in with Apple. Please try again.';
+      if (err.code === 'ERR_REQUEST_NOT_HANDLED') {
+        errorMessage = 'Sign in with Apple request was not handled. Please check your device settings and try again.';
+      } else if (err.code === 'ERR_INVALID_OPERATION') {
+        errorMessage = 'Invalid operation. Please ensure you are signed in to iCloud and try again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       Alert.alert('Sign In Error', errorMessage);
     } finally {
       setAppleLoading(false);
