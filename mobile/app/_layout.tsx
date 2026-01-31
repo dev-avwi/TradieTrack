@@ -24,7 +24,7 @@ import offlineStorage from '../src/lib/offline-storage';
 import { ScrollProvider } from '../src/contexts/ScrollContext';
 import api from '../src/lib/api';
 import { FloatingActionButton } from '../src/components/FloatingActionButton';
-import { isTablet } from '../src/lib/device';
+import { isTablet, useShouldUseSidebar, isIPad, useOrientation } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 
@@ -266,6 +266,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
   const isTabletDevice = useIsTablet();
+  const shouldUseSidebar = useShouldUseSidebar();
+  const orientation = useOrientation();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -295,8 +297,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // iPad: Sidebar layout with header in content area
-  if (isTabletDevice) {
+  // iPad Landscape / Tablet: Sidebar layout with header in content area
+  if (shouldUseSidebar) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, position: 'relative', overflow: 'visible' }]}>
         <View style={styles.tabletLayout}>
@@ -331,7 +333,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // iPhone: Bottom nav layout (default)
+  // iPhone / iPad Portrait: Bottom nav layout
   return (
     <View style={[styles.container, { backgroundColor: colors.background, position: 'relative', overflow: 'visible' }]}>
       {/* Header at top in normal flow */}

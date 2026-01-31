@@ -26,8 +26,60 @@ export function isTablet(): boolean {
   return isLargeScreen;
 }
 
+export function isIPad(): boolean {
+  return Platform.OS === 'ios' && Platform.isPad;
+}
+
+export function getOrientation(): 'portrait' | 'landscape' {
+  const { width, height } = Dimensions.get('window');
+  return width > height ? 'landscape' : 'portrait';
+}
+
+export function useOrientation(): 'portrait' | 'landscape' {
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(() => getOrientation());
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      const newOrientation = window.width > window.height ? 'landscape' : 'portrait';
+      setOrientation(newOrientation);
+    });
+    return () => subscription.remove();
+  }, []);
+  
+  return orientation;
+}
+
 export function useDeviceType(): 'phone' | 'tablet' {
   return isTablet() ? 'tablet' : 'phone';
+}
+
+// Determines if we should use sidebar navigation
+// iPad uses sidebar only in landscape mode
+// Phones always use bottom nav
+export function useShouldUseSidebar(): boolean {
+  const [shouldUseSidebar, setShouldUseSidebar] = useState(() => {
+    const isPad = isIPad();
+    if (isPad) {
+      return getOrientation() === 'landscape';
+    }
+    // Non-iPad tablets always use sidebar
+    return isTablet();
+  });
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      const isPad = isIPad();
+      if (isPad) {
+        const orientation = window.width > window.height ? 'landscape' : 'portrait';
+        setShouldUseSidebar(orientation === 'landscape');
+      } else {
+        setShouldUseSidebar(isTablet());
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+  
+  return shouldUseSidebar;
 }
 
 export const SIDEBAR_WIDTH = 280;

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
+import { isIPad } from '../lib/device';
 
 interface NavItem {
   title: string;
@@ -41,7 +42,9 @@ const navItems: NavItem[] = [
   },
 ];
 
+// iPad uses a taller bottom nav for better touch targets
 export const BOTTOM_NAV_HEIGHT = 64;
+export const BOTTOM_NAV_HEIGHT_IPAD = 80;
 
 function NavButton({ 
   item, 
@@ -49,12 +52,14 @@ function NavButton({
   onPress,
   colors,
   styles,
+  isPad,
 }: { 
   item: NavItem; 
   active: boolean; 
   onPress: () => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
+  isPad: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -109,7 +114,7 @@ function NavButton({
       >
         <Feather 
           name={item.icon} 
-          size={20}
+          size={isPad ? 24 : 20}
           color={active ? colors.primary : colors.mutedForeground}
         />
         <Text style={[
@@ -127,7 +132,8 @@ export function BottomNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const isPadDevice = isIPad();
+  const styles = useMemo(() => createStyles(colors, isPadDevice), [colors, isPadDevice]);
   const { triggerScrollToTop } = useScrollToTop();
 
   const isActive = (item: NavItem) => {
@@ -178,6 +184,7 @@ export function BottomNav() {
             onPress={() => handlePress(item)}
             colors={colors}
             styles={styles}
+            isPad={isPadDevice}
           />
         ))}
       </View>
@@ -186,10 +193,11 @@ export function BottomNav() {
 }
 
 export function getBottomNavHeight(bottomInset: number): number {
-  return BOTTOM_NAV_HEIGHT + Math.max(bottomInset, 8);
+  const navHeight = isIPad() ? BOTTOM_NAV_HEIGHT_IPAD : BOTTOM_NAV_HEIGHT;
+  return navHeight + Math.max(bottomInset, 8);
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
@@ -205,25 +213,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-evenly',
-    height: BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: 12,
+    height: isPad ? BOTTOM_NAV_HEIGHT_IPAD : BOTTOM_NAV_HEIGHT,
+    paddingHorizontal: isPad ? 24 : 12,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: isPad ? 12 : 8,
+    paddingHorizontal: isPad ? 32 : 20,
     borderRadius: 9999,
-    gap: 2,
+    gap: isPad ? 4 : 2,
   },
   navButtonActive: {
     backgroundColor: colors.primaryLight,
   },
   navLabel: {
-    fontSize: 11,
+    fontSize: isPad ? 13 : 11,
     fontWeight: '500',
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: isPad ? 4 : 2,
     letterSpacing: 0.1,
   },
   navLabelActive: {
