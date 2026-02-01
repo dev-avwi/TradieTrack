@@ -572,13 +572,15 @@ export const activityFeed = pgTable("activity_feed", {
   businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   actorUserId: varchar("actor_user_id").references(() => users.id),
   actorName: varchar("actor_name", { length: 255 }),
-  activityType: varchar("activity_type", { length: 100 }).notNull(), // job_started, job_completed, check_in, check_out, message_sent, quote_sent, invoice_paid, client_added, etc.
+  teamMemberId: varchar("team_member_id").references(() => teamMembers.id), // If team member action
+  activityType: varchar("activity_type", { length: 100 }).notNull(), // team_join, job_completed, check_in, check_out, message_sent, quote_sent, invoice_paid, client_added, milestone, etc.
   entityType: varchar("entity_type", { length: 50 }), // job, quote, invoice, client, team_member
   entityId: varchar("entity_id"),
   entityTitle: varchar("entity_title", { length: 255 }),
   description: text("description"),
   metadata: jsonb("metadata"), // Additional context data
   isImportant: boolean("is_important").default(false), // For highlighting key events
+  isRead: boolean("is_read").default(false), // Mark as read functionality
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3483,3 +3485,63 @@ export const paymentInstallments = pgTable("payment_installments", {
 export const insertPaymentInstallmentSchema = createInsertSchema(paymentInstallments).omit({ id: true, createdAt: true });
 export type InsertPaymentInstallment = z.infer<typeof insertPaymentInstallmentSchema>;
 export type PaymentInstallment = typeof paymentInstallments.$inferSelect;
+
+// Team Groups - Custom named crew groups for organizing team members
+export const teamGroups = pgTable("team_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 20 }).default("#3b82f6"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTeamGroupSchema = createInsertSchema(teamGroups).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTeamGroup = z.infer<typeof insertTeamGroupSchema>;
+export type TeamGroup = typeof teamGroups.$inferSelect;
+
+// Team Group Members - Junction table for team members in groups
+export const teamGroupMembers = pgTable("team_group_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull().references(() => teamGroups.id, { onDelete: 'cascade' }),
+  teamMemberId: varchar("team_member_id").notNull().references(() => teamMembers.id, { onDelete: 'cascade' }),
+  role: varchar("role", { length: 20 }).default("member"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+export const insertTeamGroupMemberSchema = createInsertSchema(teamGroupMembers).omit({ id: true, joinedAt: true });
+export type InsertTeamGroupMember = z.infer<typeof insertTeamGroupMemberSchema>;
+export type TeamGroupMember = typeof teamGroupMembers.$inferSelect;
+
+// ========================
+// Job Invites (Shareable magic links for subcontractors)
+// ========================
+
+export const JOB_INVITE_ROLES = ['subcontractor', 'viewer'] as const;
+export type JobInviteRole = typeof JOB_INVITE_ROLES[number];
+
+export const JOB_INVITE_STATUSES = ['pending', 'accepted', 'expired', 'revoked'] as const;
+export type JobInviteStatus = typeof JOB_INVITE_STATUSES[number];
+
+export const JOB_INVITE_PERMISSIONS = ['view_job', 'add_notes', 'add_photos', 'update_status', 'view_client'] as const;
+export type JobInvitePermission = typeof JOB_INVITE_PERMISSIONS[number];
+
+export const jobInvites = pgTable("job_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  inviteCode: varchar("invite_code", { length: 64 }).notNull().unique(),
+  email: varchar("email", { length: 255 }),
+  role: varchar("role", { length: 50 }).default("subcontractor"),
+  permissions: jsonb("permissions").default(['view_job', 'add_notes']),
+  expiresAt: timestamp("expires_at"),
+  usedAt: timestamp("used_at"),
+  usedBy: varchar("used_by").references(() => users.id),
+  status: varchar("status", { length: 20 }).default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobInviteSchema = createInsertSchema(jobInvites).omit({ id: true, createdAt: true, usedAt: true, usedBy: true });
+export type InsertJobInvite = z.infer<typeof insertJobInviteSchema>;
+export type JobInvite = typeof jobInvites.$inferSelect;

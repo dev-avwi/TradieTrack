@@ -70,6 +70,11 @@ import {
   insertServiceReminderSchema,
   // Rebates schema
   insertRebateSchema,
+  // Team Groups schema
+  insertTeamGroupSchema,
+  // Job Invites schema
+  insertJobInviteSchema,
+  type JobInvite,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -8258,6 +8263,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error receiving rebate:", error);
       res.status(500).json({ error: "Failed to receive rebate" });
+    }
+  });
+
+  // Team Groups Routes
+  app.get("/api/team-groups", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const groups = await storage.getTeamGroups(userContext.effectiveUserId);
+      
+      const groupsWithMembers = await Promise.all(
+        groups.map(async (group) => {
+          const members = await storage.getGroupMembers(group.id);
+          return { ...group, memberCount: members.length };
+        })
+      );
+      
+      res.json(groupsWithMembers);
+    } catch (error) {
+      console.error("Error fetching team groups:", error);
+      res.status(500).json({ error: "Failed to fetch team groups" });
+    }
+  });
+
+  app.get("/api/team-groups/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const group = await storage.getTeamGroupById(req.params.id, userContext.effectiveUserId);
+      if (!group) {
+        return res.status(404).json({ error: "Team group not found" });
+      }
+      
+      const members = await storage.getGroupMembers(group.id);
+      const teamMembersList = await storage.getTeamMembers(userContext.effectiveUserId);
+      
+      const membersWithDetails = members.map((m) => {
+        const member = teamMembersList.find((tm: any) => tm.id === m.teamMemberId);
+        return { ...m, member };
+      });
+      
+      res.json({ ...group, members: membersWithDetails });
+    } catch (error) {
+      console.error("Error fetching team group:", error);
+      res.status(500).json({ error: "Failed to fetch team group" });
+    }
+  });
+
+  app.post("/api/team-groups", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const validatedData = insertTeamGroupSchema.parse({
+        ...req.body,
+        userId: userContext.effectiveUserId,
+      });
+      const group = await storage.createTeamGroup(validatedData);
+      res.status(201).json(group);
+    } catch (error) {
+      console.error("Error creating team group:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create team group" });
+    }
+  });
+
+  app.patch("/api/team-groups/:id", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const group = await storage.updateTeamGroup(req.params.id, userContext.effectiveUserId, req.body);
+      if (!group) {
+        return res.status(404).json({ error: "Team group not found" });
+      }
+      res.json(group);
+    } catch (error) {
+      console.error("Error updating team group:", error);
+      res.status(500).json({ error: "Failed to update team group" });
+    }
+  });
+
+  app.delete("/api/team-groups/:id", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteTeamGroup(req.params.id, userContext.effectiveUserId);
+      if (!success) {
+        return res.status(404).json({ error: "Team group not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting team group:", error);
+      res.status(500).json({ error: "Failed to delete team group" });
+    }
+  });
+
+  app.post("/api/team-groups/:id/members", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const group = await storage.getTeamGroupById(req.params.id, userContext.effectiveUserId);
+      if (!group) {
+        return res.status(404).json({ error: "Team group not found" });
+      }
+      
+      const { teamMemberId, role } = req.body;
+      if (!teamMemberId) {
+        return res.status(400).json({ error: "Team member ID is required" });
+      }
+      
+      const member = await storage.addMemberToGroup(req.params.id, teamMemberId, role || 'member');
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Error adding member to group:", error);
+      res.status(500).json({ error: "Failed to add member to group" });
+    }
+  });
+
+  app.delete("/api/team-groups/:id/members/:memberId", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const group = await storage.getTeamGroupById(req.params.id, userContext.effectiveUserId);
+      if (!group) {
+        return res.status(404).json({ error: "Team group not found" });
+      }
+      
+      const success = await storage.removeMemberFromGroup(req.params.id, req.params.memberId);
+      if (!success) {
+        return res.status(404).json({ error: "Member not found in group" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing member from group:", error);
+      res.status(500).json({ error: "Failed to remove member from group" });
     }
   });
 
@@ -25237,6 +25371,47 @@ Respond with JSON in this format:
     }
   });
 
+  // Mark single activity as read
+  app.post("/api/activity-feed/:id/read", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
+      
+      const activity = await storage.markActivityRead(id, businessOwnerId);
+      
+      if (!activity) {
+        return res.status(404).json({ error: 'Activity not found' });
+      }
+      
+      res.json(activity);
+    } catch (error: any) {
+      console.error('Error marking activity as read:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Mark all activities as read
+  app.post("/api/activity-feed/read-all", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      
+      // Get team membership to find business owner
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
+      
+      const count = await storage.markAllActivitiesRead(businessOwnerId);
+      
+      res.json({ success: true, markedCount: count });
+    } catch (error: any) {
+      console.error('Error marking all activities as read:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================
   // MOCK DATA SEEDING (Development/Testing)
   // ============================================
@@ -26465,6 +26640,189 @@ Respond with JSON in this format:
       });
     } catch (error: any) {
       console.error('Error getting missed notifications:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // JOB INVITES (Shareable magic links for subcontractors)
+  // ============================================
+
+  // List invites for a job (owner only)
+  app.get("/api/jobs/:jobId/invites", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.params.jobId;
+
+      // Verify job exists and belongs to user
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const invites = await storage.getJobInvites(jobId, userId);
+      res.json(invites);
+    } catch (error: any) {
+      console.error('Error getting job invites:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new job invite (owner only)
+  app.post("/api/jobs/:jobId/invites", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.params.jobId;
+
+      // Verify job exists and belongs to user
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const { email, role, permissions, expiresAt } = req.body;
+
+      const inviteData = {
+        jobId,
+        userId,
+        email: email || null,
+        role: role || 'subcontractor',
+        permissions: permissions || ['view_job', 'add_notes'],
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        status: 'pending' as const,
+        inviteCode: '', // Will be generated by storage
+      };
+
+      const invite = await storage.createJobInvite(inviteData);
+      
+      // Build invite link
+      const baseUrl = getProductionBaseUrl(req);
+      const inviteLink = `${baseUrl}/invite/${invite.inviteCode}`;
+
+      res.json({
+        ...invite,
+        inviteLink,
+      });
+    } catch (error: any) {
+      console.error('Error creating job invite:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Revoke a job invite (owner only)
+  app.delete("/api/jobs/:jobId/invites/:inviteId", requireAuth, ownerOnly, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, inviteId } = req.params;
+
+      // Verify job exists and belongs to user
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const revokedInvite = await storage.revokeJobInvite(inviteId, userId);
+      if (!revokedInvite) {
+        return res.status(404).json({ error: 'Invite not found' });
+      }
+
+      res.json({ success: true, invite: revokedInvite });
+    } catch (error: any) {
+      console.error('Error revoking job invite:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get invite details by code (public - for invite acceptance page)
+  app.get("/api/invite/:code", async (req: any, res) => {
+    try {
+      const { code } = req.params;
+
+      const invite = await storage.getJobInviteByCode(code);
+      if (!invite) {
+        return res.status(404).json({ error: 'Invite not found' });
+      }
+
+      // Check if invite is expired
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+        return res.status(410).json({ error: 'Invite has expired', status: 'expired' });
+      }
+
+      // Check if invite is already used or revoked
+      if (invite.status !== 'pending') {
+        return res.status(410).json({ error: `Invite is ${invite.status}`, status: invite.status });
+      }
+
+      // Get job and business info for display
+      const job = await storage.getJobPublic(invite.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const businessSettings = await storage.getBusinessSettings(invite.userId);
+
+      res.json({
+        invite: {
+          id: invite.id,
+          role: invite.role,
+          permissions: invite.permissions,
+          status: invite.status,
+          createdAt: invite.createdAt,
+        },
+        job: {
+          title: job.title,
+          address: job.address,
+        },
+        business: {
+          companyName: businessSettings?.companyName || 'Business',
+        },
+      });
+    } catch (error: any) {
+      console.error('Error getting invite details:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Accept a job invite (requires auth)
+  app.post("/api/invite/:code/accept", requireAuth, async (req: any, res) => {
+    try {
+      const acceptingUserId = req.userId!;
+      const { code } = req.params;
+
+      const invite = await storage.getJobInviteByCode(code);
+      if (!invite) {
+        return res.status(404).json({ error: 'Invite not found' });
+      }
+
+      // Check if invite is expired
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+        return res.status(410).json({ error: 'Invite has expired' });
+      }
+
+      // Check if invite is already used or revoked
+      if (invite.status !== 'pending') {
+        return res.status(410).json({ error: `Invite is ${invite.status}` });
+      }
+
+      // Cannot accept own invite
+      if (invite.userId === acceptingUserId) {
+        return res.status(400).json({ error: 'Cannot accept your own invite' });
+      }
+
+      // Accept the invite
+      const acceptedInvite = await storage.acceptJobInvite(code, acceptingUserId);
+      if (!acceptedInvite) {
+        return res.status(500).json({ error: 'Failed to accept invite' });
+      }
+
+      res.json({
+        success: true,
+        jobId: invite.jobId,
+        role: invite.role,
+        permissions: invite.permissions,
+      });
+    } catch (error: any) {
+      console.error('Error accepting job invite:', error);
       res.status(500).json({ error: error.message });
     }
   });

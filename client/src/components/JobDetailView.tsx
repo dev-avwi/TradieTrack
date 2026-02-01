@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
 import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
@@ -176,6 +176,12 @@ export default function JobDetailView({
   const [pendingTimerStart, setPendingTimerStart] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [newJobTitle, setNewJobTitle] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteRole, setInviteRole] = useState<'subcontractor' | 'viewer'>('subcontractor');
+  const [invitePermissions, setInvitePermissions] = useState<string[]>(['view_job', 'add_notes']);
+  const [inviteExpiry, setInviteExpiry] = useState<'never' | '7days' | '30days'>('never');
+  const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -709,6 +715,102 @@ export default function JobDetailView({
     deleteJobMutation.mutate();
   };
 
+  // Job Invites
+  interface JobInviteData {
+    id: string;
+    inviteCode: string;
+    email: string | null;
+    role: string;
+    permissions: string[];
+    expiresAt: string | null;
+    usedAt: string | null;
+    usedBy: number | null;
+    status: string;
+    createdAt: string;
+    inviteLink?: string;
+  }
+
+  const { data: jobInvites, refetch: refetchInvites } = useQuery<JobInviteData[]>({
+    queryKey: ['/api/jobs', jobId, 'invites'],
+    enabled: !!jobId && !isTradie,
+  });
+
+  const createInviteMutation = useMutation({
+    mutationFn: async () => {
+      const expiresAt = inviteExpiry === 'never' 
+        ? null 
+        : inviteExpiry === '7days' 
+          ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const response = await apiRequest("POST", `/api/jobs/${jobId}/invites`, {
+        role: inviteRole,
+        permissions: invitePermissions,
+        expiresAt,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedInviteLink(data.inviteLink);
+      refetchInvites();
+      toast({
+        title: "Invite Created",
+        description: "Share the link with your subcontractor",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create invite",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
+      return await apiRequest("DELETE", `/api/jobs/${jobId}/invites/${inviteId}`);
+    },
+    onSuccess: () => {
+      refetchInvites();
+      toast({
+        title: "Invite Revoked",
+        description: "The invite link is no longer valid",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to revoke invite",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopyInviteLink = async () => {
+    if (generatedInviteLink) {
+      await navigator.clipboard.writeText(generatedInviteLink);
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2000);
+    }
+  };
+
+  const handleOpenInviteModal = () => {
+    setGeneratedInviteLink(null);
+    setInviteRole('subcontractor');
+    setInvitePermissions(['view_job', 'add_notes']);
+    setInviteExpiry('never');
+    setShowInviteModal(true);
+  };
+
+  const togglePermission = (perm: string) => {
+    if (invitePermissions.includes(perm)) {
+      setInvitePermissions(invitePermissions.filter(p => p !== perm));
+    } else {
+      setInvitePermissions([...invitePermissions, perm]);
+    }
+  };
+
   // Helper to check if job is overdue (past scheduled time)
   const isJobOverdue = (): boolean => {
     if (!job?.scheduledAt) return false;
@@ -943,6 +1045,11 @@ export default function JobDetailView({
         </div>
 
         <div className="flex items-center gap-2">
+          {!isTradie && (
+            <Button variant="outline" size="icon" onClick={handleOpenInviteModal} data-testid="button-invite">
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          )}
           {onEditJob && (
             <Button variant="outline" size="icon" onClick={() => onEditJob(jobId)} data-testid="button-edit-job">
               <Edit className="h-4 w-4" />
@@ -2251,6 +2358,155 @@ export default function JobDetailView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Job Invite Modal */}
+      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
+        <DialogContent className="sm:max-w-[500px]" data-testid="dialog-job-invite">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Invite to Job
+            </DialogTitle>
+          </DialogHeader>
+          
+          {generatedInviteLink ? (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">Share this link:</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={generatedInviteLink}
+                    className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                  />
+                  <Button size="icon" onClick={handleCopyInviteLink}>
+                    {copiedInvite ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p><strong>Role:</strong> {inviteRole === 'subcontractor' ? 'Subcontractor' : 'Viewer'}</p>
+                <p><strong>Expires:</strong> {inviteExpiry === 'never' ? 'Never' : inviteExpiry === '7days' ? 'In 7 days' : 'In 30 days'}</p>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setGeneratedInviteLink(null)}
+              >
+                Create Another Invite
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Role</label>
+                <Select value={inviteRole} onValueChange={(v: 'subcontractor' | 'viewer') => setInviteRole(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="subcontractor">Subcontractor</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Permissions</label>
+                <div className="space-y-2">
+                  {[
+                    { id: 'view_job', label: 'View Job Details' },
+                    { id: 'add_notes', label: 'Add Notes' },
+                    { id: 'add_photos', label: 'Add Photos' },
+                    { id: 'update_status', label: 'Update Status' },
+                    { id: 'view_client', label: 'View Client Info' },
+                  ].map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={invitePermissions.includes(perm.id)}
+                        onChange={() => togglePermission(perm.id)}
+                        className="rounded border-input"
+                      />
+                      <span className="text-sm">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Expires</label>
+                <Select value={inviteExpiry} onValueChange={(v: 'never' | '7days' | '30days') => setInviteExpiry(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="never">Never</SelectItem>
+                    <SelectItem value="7days">In 7 days</SelectItem>
+                    <SelectItem value="30days">In 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Existing invites list */}
+          {jobInvites && jobInvites.length > 0 && !generatedInviteLink && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-2">Active Invites</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {jobInvites.filter(i => i.status === 'pending').map((invite) => (
+                  <div key={invite.id} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
+                    <div>
+                      <span className="font-medium capitalize">{invite.role}</span>
+                      <span className="text-muted-foreground ml-2">
+                        {invite.expiresAt 
+                          ? `Expires ${format(new Date(invite.expiresAt), 'MMM d')}`
+                          : 'No expiry'}
+                      </span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => revokeInviteMutation.mutate(invite.id)}
+                      disabled={revokeInviteMutation.isPending}
+                    >
+                      <X className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteModal(false)}>
+              {generatedInviteLink ? 'Done' : 'Cancel'}
+            </Button>
+            {!generatedInviteLink && (
+              <Button 
+                onClick={() => createInviteMutation.mutate()}
+                disabled={createInviteMutation.isPending || invitePermissions.length === 0}
+              >
+                {createInviteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Generate Link
+                  </>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Safety Check Dialog - prompts before starting work */}
       <SafetyCheckDialog

@@ -7,6 +7,7 @@ import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
 import UsageLimitBanner from "./UsageLimitBanner";
 import TodayWidget from "./TodayWidget";
+import ActivityFeed from "./ActivityFeed";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -871,6 +872,15 @@ export default function TradieDashboard({
 
       {/* Upgrade to Team Mode (for solo tradies) */}
       <UpgradeToTeamCard onNavigate={onNavigate} />
+
+      {/* Team Activity Feed */}
+      {isTeam && (
+        <ActivityFeed 
+          limit={5}
+          compact={false}
+          onViewAll={() => onNavigate?.('/activity')}
+        />
+      )}
 
       {/* This Week's Jobs (Optional) */}
       {weekJobs.length > 0 && (

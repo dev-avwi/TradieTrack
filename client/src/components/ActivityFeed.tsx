@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   Mail,
   MessageSquare,
@@ -13,27 +14,37 @@ import {
   AlertCircle,
   ChevronRight,
   Briefcase,
-  Plus
+  Plus,
+  UserPlus,
+  UserMinus,
+  Target,
+  MapPin,
+  MapPinOff,
+  Users,
+  Trophy,
+  UserCheck
 } from "lucide-react";
 import { formatHistoryDate } from "@shared/dateUtils";
-import { Button } from "@/components/ui/button";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface ActivityFeedProps {
   limit?: number;
   onViewAll?: () => void;
   compact?: boolean;
+  showTeamActivity?: boolean;
 }
 
 interface ActivityItem {
   id: string;
-  type: string;
-  title: string;
-  description: string;
-  timestamp: string;
-  status: 'success' | 'pending' | 'failed';
-  entityType?: 'job' | 'quote' | 'invoice' | null;
+  activityType: string;
+  actorName?: string | null;
+  entityTitle?: string | null;
+  description?: string | null;
+  createdAt: string;
+  isRead?: boolean;
+  isImportant?: boolean;
+  entityType?: 'job' | 'quote' | 'invoice' | 'client' | 'team_member' | null;
   entityId?: string | null;
-  navigationPath?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -45,14 +56,23 @@ const activityIcons: Record<string, typeof Mail> = {
   invoice_sent: Send,
   reminder_sent: Bell,
   quote_accepted: CheckCircle2,
+  quote_created: Plus,
+  invoice_created: Plus,
+  invoice_paid: CreditCard,
   job_scheduled: Clock,
   job_started: Clock,
   job_completed: CheckCircle2,
   job_created: Briefcase,
+  job_assigned: UserCheck,
   job_status_change: Briefcase,
-  quote_created: Plus,
-  invoice_created: Plus,
-  invoice_paid: CreditCard,
+  team_join: UserPlus,
+  team_invite: Users,
+  team_leave: UserMinus,
+  client_added: Plus,
+  check_in: MapPin,
+  check_out: MapPinOff,
+  milestone: Trophy,
+  message_sent: MessageSquare,
 };
 
 const activityColors: Record<string, { bg: string; icon: string }> = {
@@ -63,26 +83,75 @@ const activityColors: Record<string, { bg: string; icon: string }> = {
   invoice_sent: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
   reminder_sent: { bg: 'hsl(25 90% 55% / 0.1)', icon: 'hsl(25 90% 55%)' },
   quote_accepted: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+  quote_created: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+  invoice_created: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
+  invoice_paid: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
   job_scheduled: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
   job_started: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
   job_completed: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
   job_created: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+  job_assigned: { bg: 'hsl(280 65% 60% / 0.1)', icon: 'hsl(280 65% 60%)' },
   job_status_change: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
-  quote_created: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
-  invoice_created: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
-  invoice_paid: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+  team_join: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+  team_invite: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+  team_leave: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
+  client_added: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+  check_in: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+  check_out: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
+  milestone: { bg: 'hsl(45 100% 50% / 0.15)', icon: 'hsl(45 100% 45%)' },
+  message_sent: { bg: 'hsl(280 65% 60% / 0.1)', icon: 'hsl(280 65% 60%)' },
 };
+
+function getNavigationPath(activity: ActivityItem): string | null {
+  if (!activity.entityType || !activity.entityId) return null;
+  switch (activity.entityType) {
+    case 'job':
+      return `/jobs/${activity.entityId}`;
+    case 'quote':
+      return `/quotes/${activity.entityId}`;
+    case 'invoice':
+      return `/invoices/${activity.entityId}`;
+    case 'client':
+      return `/clients/${activity.entityId}`;
+    default:
+      return null;
+  }
+}
 
 export default function ActivityFeed({ 
   limit = 5, 
   onViewAll,
-  compact = false 
+  compact = false,
+  showTeamActivity = true
 }: ActivityFeedProps) {
   const [, setLocation] = useLocation();
   
   const { data: activities = [], isLoading } = useQuery<ActivityItem[]>({
-    queryKey: [`/api/activity/recent/${limit}`],
+    queryKey: ['/api/activity-feed', { limit }],
+    queryFn: async () => {
+      const response = await fetch(`/api/activity-feed?limit=${limit}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch activities');
+      return response.json();
+    },
     staleTime: 30 * 1000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/activity-feed/${id}/read`, { method: 'POST' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/activity-feed'] });
+    },
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('/api/activity-feed/read-all', { method: 'POST' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/activity-feed'] });
+    },
   });
 
   const { data: systemStatus } = useQuery({
@@ -93,10 +162,16 @@ export default function ActivityFeed({
   const health = systemStatus as any;
   const emailWorking = health?.services?.email?.status === 'ready';
   const smsWorking = health?.services?.sms?.status === 'ready';
+
+  const unreadCount = activities.filter(a => !a.isRead).length;
   
   const handleActivityClick = (activity: ActivityItem) => {
-    if (activity.navigationPath) {
-      setLocation(activity.navigationPath);
+    const path = getNavigationPath(activity);
+    if (path) {
+      if (!activity.isRead) {
+        markReadMutation.mutate(activity.id);
+      }
+      setLocation(path);
     }
   };
 
@@ -106,7 +181,12 @@ export default function ActivityFeed({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 ios-caption">
             <Clock className="h-3 w-3" />
-            <span>System Activity</span>
+            <span>Team Activity</span>
+            {unreadCount > 0 && (
+              <Badge variant="default" className="h-4 min-w-4 text-[10px] px-1.5 rounded-full">
+                {unreadCount}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {emailWorking && (
@@ -126,21 +206,25 @@ export default function ActivityFeed({
         
         {activities.length === 0 ? (
           <p className="ios-caption py-2">
-            No recent activity. Your automations will show here.
+            No recent activity. Team events will show here.
           </p>
         ) : (
           <div className="space-y-1">
             {activities.slice(0, 3).map((activity) => {
-              const Icon = activityIcons[activity.type] || Mail;
+              const Icon = activityIcons[activity.activityType] || Bell;
               return (
                 <div 
                   key={activity.id}
-                  className="flex items-center gap-2 text-xs py-1"
+                  className={`flex items-center gap-2 text-xs py-1 ${!activity.isRead ? 'font-medium' : ''}`}
+                  onClick={() => handleActivityClick(activity)}
+                  role="button"
                 >
                   <Icon className="h-3 w-3 text-muted-foreground" />
-                  <span className="truncate flex-1">{activity.title}</span>
+                  <span className="truncate flex-1">
+                    {activity.description || activity.entityTitle || activity.activityType}
+                  </span>
                   <span className="text-muted-foreground shrink-0">
-                    {formatHistoryDate(activity.timestamp)}
+                    {formatHistoryDate(activity.createdAt)}
                   </span>
                 </div>
               );
@@ -153,10 +237,14 @@ export default function ActivityFeed({
 
   return (
     <section data-testid="activity-feed">
-      {/* Section Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <h2 className="ios-label">Activity</h2>
+          <h2 className="ios-label">Team Activity</h2>
+          {unreadCount > 0 && (
+            <Badge variant="default" className="h-5 min-w-5 text-xs px-2 rounded-full">
+              {unreadCount} new
+            </Badge>
+          )}
           <div className="flex items-center gap-1.5">
             {emailWorking && (
               <Badge variant="outline" className="text-[10px] py-0.5 px-2 border-green-300/50 text-green-600 rounded-full bg-green-50/50 dark:bg-green-950/30">
@@ -172,21 +260,33 @@ export default function ActivityFeed({
             )}
           </div>
         </div>
-        {onViewAll && activities.length > 0 && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onViewAll}
-            className="text-xs h-8 px-3 rounded-xl press-scale"
-            data-testid="button-view-all-activity"
-          >
-            View All
-            <ChevronRight className="h-3.5 w-3.5 ml-1" />
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+              className="text-xs h-8 px-3 rounded-xl"
+            >
+              Mark all read
+            </Button>
+          )}
+          {onViewAll && activities.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onViewAll}
+              className="text-xs h-8 px-3 rounded-xl press-scale"
+              data-testid="button-view-all-activity"
+            >
+              See All
+              <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Activity Feed Card */}
       <div className="feed-card">
         <div className="card-padding">
           {isLoading ? (
@@ -200,33 +300,31 @@ export default function ActivityFeed({
                 className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
                 style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
               >
-                <Bell className="h-7 w-7 text-muted-foreground/40" />
+                <Users className="h-7 w-7 text-muted-foreground/40" />
               </div>
-              <p className="ios-card-title mb-1">No activity yet</p>
+              <p className="ios-card-title mb-1">No team activity yet</p>
               <p className="ios-caption max-w-[250px] mx-auto">
-                When you send quotes, invoices, or receive payments, you'll see it here.
+                When team members join, complete jobs, or hit milestones, you'll see it here.
               </p>
             </div>
           ) : (
             <div className="relative">
-              {/* Timeline connector */}
               <div className="absolute left-[18px] top-8 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
               
-              {/* Activity Items */}
               <div className="space-y-1">
-                {activities.slice(0, limit).map((activity, index) => {
-                  const Icon = activityIcons[activity.type] || Mail;
-                  const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
-                  const isClickable = !!activity.navigationPath;
+                {activities.slice(0, limit).map((activity) => {
+                  const Icon = activityIcons[activity.activityType] || Bell;
+                  const colors = activityColors[activity.activityType] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+                  const navigationPath = getNavigationPath(activity);
+                  const isClickable = !!navigationPath;
                   
                   return (
                     <div 
                       key={activity.id}
-                      className={`relative flex items-start gap-3 p-3 rounded-xl hover-elevate ${isClickable ? 'cursor-pointer' : ''}`}
+                      className={`relative flex items-start gap-3 p-3 rounded-xl hover-elevate ${isClickable ? 'cursor-pointer' : ''} ${!activity.isRead ? 'bg-accent/30' : ''}`}
                       onClick={() => handleActivityClick(activity)}
                       data-testid={`activity-item-${activity.id}`}
                     >
-                      {/* Icon with status indicator */}
                       <div className="relative z-10">
                         <div 
                           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -234,34 +332,30 @@ export default function ActivityFeed({
                         >
                           <Icon className="h-4 w-4" style={{ color: colors.icon }} />
                         </div>
-                        {/* Status dot */}
-                        {activity.status === 'success' && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
-                            <CheckCircle2 className="h-2 w-2 text-white" />
-                          </div>
-                        )}
-                        {activity.status === 'pending' && (
+                        {activity.isImportant && (
                           <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-card flex items-center justify-center">
-                            <Clock className="h-2 w-2 text-white" />
+                            <Trophy className="h-2 w-2 text-white" />
                           </div>
                         )}
-                        {activity.status === 'failed' && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-500 border-2 border-card flex items-center justify-center">
-                            <AlertCircle className="h-2 w-2 text-white" />
-                          </div>
+                        {!activity.isRead && !activity.isImportant && (
+                          <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-card" />
                         )}
                       </div>
                       
-                      {/* Content */}
                       <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="ios-body font-medium truncate">{activity.title}</p>
-                        <p className="ios-caption truncate mt-0.5">{activity.description}</p>
+                        <p className={`ios-body truncate ${!activity.isRead ? 'font-semibold' : 'font-medium'}`}>
+                          {activity.description || activity.entityTitle || activity.activityType.replace(/_/g, ' ')}
+                        </p>
+                        {activity.actorName && (
+                          <p className="ios-caption truncate mt-0.5">
+                            by {activity.actorName}
+                          </p>
+                        )}
                         <p className="ios-label mt-1.5" style={{ fontSize: '10px' }}>
-                          {formatHistoryDate(activity.timestamp)}
+                          {formatHistoryDate(activity.createdAt)}
                         </p>
                       </div>
                       
-                      {/* Navigation indicator */}
                       {isClickable && (
                         <div className="flex items-center self-center">
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />

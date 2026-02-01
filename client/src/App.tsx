@@ -51,6 +51,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import VerifyEmailPending from "@/pages/VerifyEmailPending";
 import ResetPassword from "@/pages/ResetPassword";
 import AcceptInvite from "@/pages/AcceptInvite";
+import JobInvite from "@/pages/JobInvite";
 import OpenApp from "@/pages/OpenApp";
 import QuoteModal from "@/components/QuoteModal";
 import InvoiceModal from "@/components/InvoiceModal";
@@ -73,6 +74,7 @@ import RecurringJobs from "@/pages/RecurringJobs";
 import ServiceRemindersPage from "@/pages/ServiceReminders";
 import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
+import TeamGroups from "@/pages/TeamGroups";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -544,6 +546,10 @@ function Router({
         <Leads />
       )} />
       
+      <Route path="/team-groups" component={() => (
+        <TeamGroups />
+      )} />
+      
       <Route path="/custom-forms">
         <Redirect to="/templates?tab=jobs_safety" />
       </Route>
@@ -569,6 +575,9 @@ function Router({
       <Route path="/verify-email-pending" component={VerifyEmailPending} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/accept-invite/:token" component={AcceptInvite} />
+      <Route path="/invite/:code">
+        {(params: { code: string }) => <JobInvite code={params.code} />}
+      </Route>
       <Route path="/open-app/:action/:token" component={OpenApp} />
       
       <Route path="/more" component={More} />

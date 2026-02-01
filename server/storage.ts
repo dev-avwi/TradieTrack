@@ -247,6 +247,15 @@ import {
   rebates,
   type Rebate,
   type InsertRebate,
+  teamGroups,
+  teamGroupMembers,
+  type TeamGroup,
+  type InsertTeamGroup,
+  type TeamGroupMember,
+  type InsertTeamGroupMember,
+  jobInvites,
+  type JobInvite,
+  type InsertJobInvite,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -547,6 +556,16 @@ export interface IStorage {
   suspendTeamMembersByOwner(ownerId: string): Promise<number>;
   reactivateTeamMembersByOwner(ownerId: string): Promise<number>;
   
+  // Team Groups
+  getTeamGroups(userId: string): Promise<TeamGroup[]>;
+  getTeamGroupById(id: string, userId: string): Promise<TeamGroup | undefined>;
+  createTeamGroup(group: InsertTeamGroup): Promise<TeamGroup>;
+  updateTeamGroup(id: string, userId: string, data: Partial<InsertTeamGroup>): Promise<TeamGroup | undefined>;
+  deleteTeamGroup(id: string, userId: string): Promise<boolean>;
+  addMemberToGroup(groupId: string, teamMemberId: string, role?: string): Promise<TeamGroupMember>;
+  removeMemberFromGroup(groupId: string, teamMemberId: string): Promise<boolean>;
+  getGroupMembers(groupId: string): Promise<TeamGroupMember[]>;
+  
   // Permission Requests
   getPermissionRequests(businessOwnerId: string): Promise<PermissionRequest[]>;
   getPermissionRequestsByMember(teamMemberId: string): Promise<PermissionRequest[]>;
@@ -725,6 +744,8 @@ export interface IStorage {
   // Activity Feed
   getActivityFeed(businessOwnerId: string, limit?: number, before?: Date): Promise<ActivityFeed[]>;
   createActivity(activity: InsertActivityFeed): Promise<ActivityFeed>;
+  markActivityRead(id: string, businessOwnerId: string): Promise<ActivityFeed | undefined>;
+  markAllActivitiesRead(businessOwnerId: string): Promise<number>;
 
   // Recurring Contracts
   getRecurringContracts(userId: string): Promise<RecurringContract[]>;
@@ -765,6 +786,13 @@ export interface IStorage {
   updateTapToPayTermsAcceptance(userId: string, updates: Partial<TapToPayTermsAcceptance>): Promise<TapToPayTermsAcceptance | undefined>;
   markTapToPaySplashShown(userId: string): Promise<void>;
   getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
+
+  // Job Invites (Shareable magic links for subcontractors)
+  getJobInvites(jobId: string, userId: string): Promise<JobInvite[]>;
+  getJobInviteByCode(code: string): Promise<JobInvite | undefined>;
+  createJobInvite(invite: InsertJobInvite): Promise<JobInvite>;
+  revokeJobInvite(id: string, userId: string): Promise<JobInvite | undefined>;
+  acceptJobInvite(code: string, acceptingUserId: string): Promise<JobInvite | undefined>;
 }
 
 // Initialize database connection
@@ -3141,6 +3169,63 @@ export class PostgresStorage implements IStorage {
       .where(eq(teamMembers.businessOwnerId, ownerId))
       .returning();
     return result.length;
+  }
+
+  // Team Groups Methods
+  async getTeamGroups(userId: string): Promise<TeamGroup[]> {
+    return await db.select().from(teamGroups)
+      .where(eq(teamGroups.userId, userId))
+      .orderBy(desc(teamGroups.createdAt));
+  }
+
+  async getTeamGroupById(id: string, userId: string): Promise<TeamGroup | undefined> {
+    const result = await db.select().from(teamGroups)
+      .where(and(eq(teamGroups.id, id), eq(teamGroups.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createTeamGroup(group: InsertTeamGroup): Promise<TeamGroup> {
+    const result = await db.insert(teamGroups).values(group).returning();
+    return result[0];
+  }
+
+  async updateTeamGroup(id: string, userId: string, data: Partial<InsertTeamGroup>): Promise<TeamGroup | undefined> {
+    const result = await db.update(teamGroups)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(teamGroups.id, id), eq(teamGroups.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTeamGroup(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(teamGroups)
+      .where(and(eq(teamGroups.id, id), eq(teamGroups.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async addMemberToGroup(groupId: string, teamMemberId: string, role: string = 'member'): Promise<TeamGroupMember> {
+    const result = await db.insert(teamGroupMembers)
+      .values({ groupId, teamMemberId, role })
+      .returning();
+    return result[0];
+  }
+
+  async removeMemberFromGroup(groupId: string, teamMemberId: string): Promise<boolean> {
+    const result = await db.delete(teamGroupMembers)
+      .where(and(
+        eq(teamGroupMembers.groupId, groupId),
+        eq(teamGroupMembers.teamMemberId, teamMemberId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getGroupMembers(groupId: string): Promise<TeamGroupMember[]> {
+    return await db.select().from(teamGroupMembers)
+      .where(eq(teamGroupMembers.groupId, groupId))
+      .orderBy(teamGroupMembers.joinedAt);
   }
 
   // Permission Request Methods
@@ -5787,6 +5872,29 @@ Thank you for your prompt attention to this matter.`,
     return created;
   }
 
+  async markActivityRead(id: string, businessOwnerId: string): Promise<ActivityFeed | undefined> {
+    const [updated] = await db
+      .update(activityFeed)
+      .set({ isRead: true })
+      .where(and(
+        eq(activityFeed.id, id),
+        eq(activityFeed.businessOwnerId, businessOwnerId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async markAllActivitiesRead(businessOwnerId: string): Promise<number> {
+    const result = await db
+      .update(activityFeed)
+      .set({ isRead: true })
+      .where(and(
+        eq(activityFeed.businessOwnerId, businessOwnerId),
+        eq(activityFeed.isRead, false)
+      ));
+    return result.rowCount || 0;
+  }
+
   // Automation Settings
   async getAutomationSettings(userId: string): Promise<AutomationSettings | undefined> {
     const [settings] = await db
@@ -6406,6 +6514,63 @@ Thank you for your prompt attention to this matter.`,
         paymentMethod,
       })
       .where(eq(paymentInstallments.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Job Invites (Shareable magic links for subcontractors)
+  async getJobInvites(jobId: string, userId: string): Promise<JobInvite[]> {
+    return await db
+      .select()
+      .from(jobInvites)
+      .where(and(eq(jobInvites.jobId, jobId), eq(jobInvites.userId, userId)))
+      .orderBy(desc(jobInvites.createdAt));
+  }
+
+  async getJobInviteByCode(code: string): Promise<JobInvite | undefined> {
+    const result = await db
+      .select()
+      .from(jobInvites)
+      .where(eq(jobInvites.inviteCode, code))
+      .limit(1);
+    return result[0];
+  }
+
+  async createJobInvite(invite: InsertJobInvite): Promise<JobInvite> {
+    const inviteCode = crypto.randomBytes(32).toString('hex');
+    const [created] = await db
+      .insert(jobInvites)
+      .values({
+        id: randomUUID(),
+        ...invite,
+        inviteCode,
+        status: 'pending',
+      })
+      .returning();
+    return created;
+  }
+
+  async revokeJobInvite(id: string, userId: string): Promise<JobInvite | undefined> {
+    const [updated] = await db
+      .update(jobInvites)
+      .set({ status: 'revoked' })
+      .where(and(eq(jobInvites.id, id), eq(jobInvites.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async acceptJobInvite(code: string, acceptingUserId: string): Promise<JobInvite | undefined> {
+    const [updated] = await db
+      .update(jobInvites)
+      .set({
+        status: 'accepted',
+        usedAt: new Date(),
+        usedBy: acceptingUserId,
+      })
+      .where(and(
+        eq(jobInvites.inviteCode, code),
+        eq(jobInvites.status, 'pending')
+      ))
       .returning();
     return updated;
   }
