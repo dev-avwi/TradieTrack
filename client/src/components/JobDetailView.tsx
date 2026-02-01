@@ -357,6 +357,9 @@ export default function JobDetailView({
     quote_created: Plus,
     invoice_created: Plus,
     invoice_paid: CreditCard,
+    photo_added: Camera,
+    voice_note_added: Mic,
+    note_updated: PenLine,
   };
 
   const activityColors: Record<string, { bg: string; icon: string }> = {
@@ -375,6 +378,9 @@ export default function JobDetailView({
     quote_created: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
     invoice_created: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
     invoice_paid: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+    photo_added: { bg: 'hsl(180 60% 45% / 0.1)', icon: 'hsl(180 60% 45%)' },
+    voice_note_added: { bg: 'hsl(320 70% 55% / 0.1)', icon: 'hsl(320 70% 55%)' },
+    note_updated: { bg: 'hsl(45 85% 50% / 0.1)', icon: 'hsl(45 85% 50%)' },
   };
 
   // Fetch job-specific activity history

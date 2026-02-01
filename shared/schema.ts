@@ -2387,6 +2387,24 @@ export const insertVoiceNoteSchema = createInsertSchema(voiceNotes).omit({
 export type InsertVoiceNote = z.infer<typeof insertVoiceNoteSchema>;
 export type VoiceNote = typeof voiceNotes.$inferSelect;
 
+// Job Notes - Timestamped notes attached to jobs ("notes tied to the moment")
+export const jobNotes = pgTable("job_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  content: text("content").notNull(),
+  createdBy: varchar("created_by").references(() => users.id), // Team member who created the note
+  createdByName: text("created_by_name"), // Denormalized for quick display
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobNoteSchema = createInsertSchema(jobNotes).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertJobNote = z.infer<typeof insertJobNoteSchema>;
+export type JobNote = typeof jobNotes.$inferSelect;
+
 // Job Documents - External PDF files (quotes/invoices from other sources)
 export const jobDocuments = pgTable("job_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

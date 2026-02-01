@@ -9158,6 +9158,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found" });
       }
 
+      // Log activity for note changes
+      if (data.notes !== undefined && existingJob && data.notes !== existingJob.notes) {
+        try {
+          const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
+          const clientName = client?.name || 'Unknown client';
+          const notePreview = (data.notes || '').substring(0, 50) + ((data.notes || '').length > 50 ? '...' : '');
+          await logActivity(
+            effectiveUserId, 
+            'note_updated', 
+            `Job notes updated: ${job.title}`, 
+            notePreview || 'Notes cleared',
+            'job', 
+            job.id, 
+            { jobTitle: job.title, clientName, hasContent: !!data.notes }
+          );
+        } catch (activityError) {
+          console.error('Failed to log note update activity:', activityError);
+        }
+      }
+
       // Create notifications and log activity for status changes
       if (data.status && existingJob && data.status !== existingJob.status) {
         const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
@@ -18936,6 +18956,24 @@ Respond with JSON in this format:
         return res.status(500).json({ error: result.error });
       }
       
+      // Create activity log for photo upload
+      try {
+        const categoryLabel = category === 'before' ? 'Before photo' : 
+                             category === 'after' ? 'After photo' : 
+                             category === 'progress' ? 'Progress photo' : 'Photo';
+        await logActivity(
+          userContext.effectiveUserId,
+          'photo_added',
+          `${categoryLabel} added to job`,
+          caption || `${file.originalname}`,
+          'job',
+          jobId,
+          { photoId: result.photoId, category: category || 'general', fileName: file.originalname }
+        );
+      } catch (activityError) {
+        console.error('Failed to log photo activity:', activityError);
+      }
+      
       res.json({ photoId: result.photoId, success: true });
     } catch (error: any) {
       console.error('Error uploading media via multipart:', error);
@@ -19121,6 +19159,21 @@ Respond with JSON in this format:
       
       if (!result.success) {
         return res.status(500).json({ error: result.error });
+      }
+      
+      // Create activity log for voice note upload
+      try {
+        await logActivity(
+          userContext.effectiveUserId,
+          'voice_note_added',
+          'Voice note recorded',
+          title || 'New voice note',
+          'job',
+          jobId,
+          { voiceNoteId: result.voiceNoteId, duration, fileName: fileName || 'voice-note.webm' }
+        );
+      } catch (activityError) {
+        console.error('Failed to log voice note activity:', activityError);
       }
       
       res.json({ 
