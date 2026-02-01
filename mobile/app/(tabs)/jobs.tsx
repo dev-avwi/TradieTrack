@@ -53,7 +53,8 @@ function JobListRow({
 }) {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
-  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
+  const responsiveShell = usePageShell();
+  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   
   const urgency = getJobUrgency(job.scheduledAt, job.status);
   
@@ -159,7 +160,8 @@ function JobCard({
 }) {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
-  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
+  const responsiveShell = usePageShell();
+  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -312,7 +314,7 @@ export default function JobsScreen() {
   const contentWidth = useContentWidth();
   const isTabletDevice = isTablet();
   const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
+  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
@@ -779,7 +781,7 @@ export default function JobsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, contentWidth: number, horizontalPadding: number = pageShell.paddingHorizontal) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -788,7 +790,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingHorizontal: horizontalPadding,
     paddingTop: pageShell.paddingTop,
     paddingBottom: pageShell.paddingBottom,
   },
@@ -1057,7 +1059,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     padding: spacing.xs,
   },
   jobCard: {
-    width: (contentWidth - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
+    width: (contentWidth - horizontalPadding * 2 - spacing.sm) / 2,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -1168,7 +1170,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number) => StyleSheet.c
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: spacing.sm,
-    width: (contentWidth - pageShell.paddingHorizontal * 2 - spacing.sm) / 2,
+    width: (contentWidth - horizontalPadding * 2 - spacing.sm) / 2,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
