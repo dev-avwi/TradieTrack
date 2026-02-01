@@ -830,6 +830,9 @@ export const invoices = pgTable("invoices", {
   xeroInvoiceId: varchar("xero_invoice_id"), // Xero invoice ID to prevent duplicate pushes
   xeroContactId: varchar("xero_contact_id"), // Xero contact ID for client mapping
   xeroSyncedAt: timestamp("xero_synced_at"), // When invoice was last synced to Xero
+  // QuickBooks integration tracking
+  quickbooksInvoiceId: varchar("quickbooks_invoice_id"), // QuickBooks invoice ID to prevent duplicate pushes
+  quickbooksSyncedAt: timestamp("quickbooks_synced_at"), // When invoice was last synced to QuickBooks
   // Trade-specific custom fields (stored as JSON object keyed by field ID)
   customFields: jsonb("custom_fields").default({}),
   // Document-level template settings (locked at creation time - won't change if business template changes later)
@@ -3108,6 +3111,34 @@ export const insertMyobConnectionSchema = createInsertSchema(myobConnections).om
 });
 export type InsertMyobConnection = z.infer<typeof insertMyobConnectionSchema>;
 export type MyobConnection = typeof myobConnections.$inferSelect;
+
+// ========================
+// QuickBooks Integration Tables
+// ========================
+
+// QuickBooks Connections - OAuth tokens and connection info for QuickBooks Online
+export const quickbooksConnections = pgTable("quickbooks_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  realmId: varchar("realm_id").notNull(), // QuickBooks company ID
+  companyName: varchar("company_name"),
+  accessToken: text("access_token").notNull(), // Encrypted
+  refreshToken: text("refresh_token").notNull(), // Encrypted
+  tokenExpiresAt: timestamp("token_expires_at").notNull(),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"), // QB refresh tokens also expire
+  scope: varchar("scope"),
+  connectedAt: timestamp("connected_at").defaultNow(),
+  lastSyncAt: timestamp("last_sync_at"),
+  status: varchar("status").default('active'),
+});
+
+export const insertQuickbooksConnectionSchema = createInsertSchema(quickbooksConnections).omit({
+  id: true,
+  connectedAt: true,
+  lastSyncAt: true,
+});
+export type InsertQuickbooksConnection = z.infer<typeof insertQuickbooksConnectionSchema>;
+export type QuickbooksConnection = typeof quickbooksConnections.$inferSelect;
 
 // ========================
 // Australian WHS Safety Form Templates

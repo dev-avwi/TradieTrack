@@ -12,6 +12,7 @@ import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-busi
 import StripeSetupGuide from "@/components/StripeSetupGuide";
 import XeroSetupGuide from "@/components/XeroSetupGuide";
 import GoogleCalendarSetupGuide from "@/components/GoogleCalendarSetupGuide";
+import QuickBooksIntegration from "@/components/QuickBooksIntegration";
 // MYOB integration removed per user request - focusing on Xero
 // import MyobSetupGuide from "@/components/MyobSetupGuide";
 import { 
@@ -101,6 +102,14 @@ interface MyobStatus {
   status?: string;
   message?: string;
   cfCredentialsSet?: boolean;
+}
+
+interface QuickBooksStatus {
+  configured: boolean;
+  connected: boolean;
+  companyName?: string;
+  lastSyncAt?: string;
+  message?: string;
 }
 
 interface ServiceHealth {
@@ -545,6 +554,77 @@ export default function Integrations() {
     },
   });
 
+  // QuickBooks integration queries and mutations
+  const [quickbooksSyncError, setQuickbooksSyncError] = useState<string | undefined>();
+  const { data: quickbooksStatus, refetch: refetchQuickbooks } = useQuery<QuickBooksStatus>({
+    queryKey: ['/api/integrations/quickbooks/status'],
+  });
+
+  const connectQuickbooksMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/connect');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to start QuickBooks connection",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectQuickbooksMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/disconnect');
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Disconnected",
+        description: "QuickBooks has been disconnected successfully",
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect QuickBooks",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncQuickbooksMutation = useMutation({
+    mutationFn: async () => {
+      setQuickbooksSyncError(undefined);
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/sync');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      const contactsSync = data.contacts?.synced || 0;
+      const invoicesSync = data.invoices?.synced || 0;
+      toast({
+        title: "Sync Complete",
+        description: `Synced ${contactsSync} contact${contactsSync !== 1 ? 's' : ''} and ${invoicesSync} invoice${invoicesSync !== 1 ? 's' : ''} with QuickBooks`,
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      setQuickbooksSyncError(error.message || "Sync failed");
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync with QuickBooks",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Google Calendar integration queries and mutations
   const { data: googleCalendarStatus, refetch: refetchGoogleCalendar } = useQuery<GoogleCalendarStatus>({
     queryKey: ['/api/integrations/google-calendar/status'],
@@ -732,6 +812,14 @@ export default function Integrations() {
       });
       refetchXero();
       window.history.replaceState({}, '', '/integrations');
+    } else if (success === 'quickbooks_connected' || urlParams.get('quickbooks') === 'connected') {
+      setUrlParamsHandled(true);
+      toast({
+        title: "QuickBooks Connected",
+        description: "Your QuickBooks account has been successfully linked.",
+      });
+      refetchQuickbooks();
+      window.history.replaceState({}, '', '/integrations');
     } else if (success === 'outlook_connected') {
       setUrlParamsHandled(true);
       toast({
@@ -739,6 +827,15 @@ export default function Integrations() {
         description: "Your Outlook account has been successfully linked. Emails will now send from your account.",
       });
       refetchOutlook();
+      window.history.replaceState({}, '', '/integrations');
+    } else if (urlParams.get('quickbooks') === 'error') {
+      setUrlParamsHandled(true);
+      const message = urlParams.get('message');
+      toast({
+        title: "QuickBooks Connection Failed",
+        description: message || "Failed to connect to QuickBooks. Please try again.",
+        variant: "destructive",
+      });
       window.history.replaceState({}, '', '/integrations');
     } else if (error) {
       setUrlParamsHandled(true);
@@ -755,7 +852,7 @@ export default function Integrations() {
       });
       window.history.replaceState({}, '', '/integrations');
     }
-  }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero, refetchOutlook]);
+  }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero, refetchQuickbooks, refetchOutlook]);
 
   // Handle hash scroll (e.g., /integrations#twilio)
   useEffect(() => {
@@ -1697,6 +1794,20 @@ export default function Integrations() {
             )}
           </CardContent>
         </Card>
+
+        {/* QuickBooks Integration */}
+        <QuickBooksIntegration
+          isConnected={quickbooksStatus?.connected || false}
+          isConfigured={quickbooksStatus?.configured || false}
+          companyName={quickbooksStatus?.companyName}
+          lastSyncAt={quickbooksStatus?.lastSyncAt}
+          onConnect={() => connectQuickbooksMutation.mutate()}
+          onDisconnect={() => disconnectQuickbooksMutation.mutate()}
+          onSync={() => syncQuickbooksMutation.mutate()}
+          isConnecting={connectQuickbooksMutation.isPending}
+          isSyncing={syncQuickbooksMutation.isPending}
+          syncError={quickbooksSyncError}
+        />
 
         {/* Google Calendar Integration */}
         <Card data-testid="card-google-calendar-integration">

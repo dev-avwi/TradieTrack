@@ -13,7 +13,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check, ArrowLeftRight } from "lucide-react";
+import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check, ArrowLeftRight, Wand2 } from "lucide-react";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -50,6 +51,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUploaded, existingNotes, onNotesUpdated }: JobPhotoGalleryProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -341,16 +343,28 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
               </Button>
             )}
             {canUseAI && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsAIDialogOpen(true)}
-                className="text-primary"
-                data-testid="button-ai-analysis"
-              >
-                <Sparkles className="h-4 w-4 mr-1" />
-                AI
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLocation(`/ai-visualization?jobId=${jobId}`)}
+                  className="text-primary"
+                  data-testid="button-ai-visualize"
+                >
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  Visualize
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsAIDialogOpen(true)}
+                  className="text-primary"
+                  data-testid="button-ai-analysis"
+                >
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  AI
+                </Button>
+              </>
             )}
             {canUpload && (
               <Button

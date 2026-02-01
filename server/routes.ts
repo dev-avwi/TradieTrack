@@ -123,6 +123,7 @@ import { geocodeAddress, haversineDistance } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
 import * as myobService from "./myobService";
+import * as quickbooksService from "./quickbooksService";
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 
 // Environment check for development-only endpoints
@@ -3786,6 +3787,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Visualization - Generate before/after concept images using DALL-E 3
+  app.post("/api/ai/visualization", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { beforeImageUrl, prompt, style, roomType, jobId } = req.body;
+      
+      if (!beforeImageUrl) {
+        return res.status(400).json({ error: "Before image is required" });
+      }
+      
+      if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 5) {
+        return res.status(400).json({ error: "Please provide a description of what you want to visualize" });
+      }
+      
+      const validStyles = ['modern', 'traditional', 'industrial', 'minimalist', 'contemporary', 'rustic'];
+      const validRoomTypes = ['bathroom', 'kitchen', 'living_room', 'bedroom', 'exterior', 'laundry', 'garage', 'office'];
+      
+      if (!validStyles.includes(style)) {
+        return res.status(400).json({ error: "Invalid style selected" });
+      }
+      
+      if (!validRoomTypes.includes(roomType)) {
+        return res.status(400).json({ error: "Invalid room type selected" });
+      }
+      
+      // Get business settings for context
+      const businessSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const tradeName = businessSettings?.tradeName || 'renovation';
+      
+      // Build a comprehensive prompt for DALL-E 3
+      const roomLabel = roomType.replace('_', ' ');
+      const styleDescriptions: Record<string, string> = {
+        modern: 'clean lines, minimalist aesthetic, contemporary fixtures, neutral colors with bold accents',
+        traditional: 'classic design, timeless elegance, ornate details, warm wood tones',
+        industrial: 'exposed materials, raw textures, metal accents, urban loft aesthetic',
+        minimalist: 'simple uncluttered spaces, functional design, neutral palette, hidden storage',
+        contemporary: 'current design trends, fresh modern look, mixed materials, statement pieces',
+        rustic: 'natural materials, warm cozy atmosphere, reclaimed wood, earthy tones',
+      };
+      
+      const styleDesc = styleDescriptions[style] || styleDescriptions.modern;
+      
+      const dallePrompt = `Professional architectural visualization of a beautifully renovated ${roomLabel}. 
+Style: ${style} - ${styleDesc}. 
+Project: ${prompt}. 
+High-quality photorealistic interior design render, professional ${tradeName} renovation, 
+natural lighting, high-end finishes, magazine-quality composition. 
+No text, no watermarks, no people.`;
+      
+      // Use OpenAI DALL-E 3 to generate the after image
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+      });
+      
+      // Generate image with DALL-E 3
+      const imageResponse = await openai.images.generate({
+        model: "dall-e-3",
+        prompt: dallePrompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "standard",
+        style: "natural",
+      });
+      
+      const generatedImageUrl = imageResponse.data[0]?.url;
+      
+      if (!generatedImageUrl) {
+        throw new Error("Failed to generate visualization image");
+      }
+      
+      // Download the generated image and upload to object storage
+      const fetch = (await import('node-fetch')).default;
+      const imageBuffer = await fetch(generatedImageUrl).then(r => r.buffer());
+      
+      const objectStorage = new ObjectStorageService();
+      const fileName = `visualizations/${userContext.effectiveUserId}/${Date.now()}.png`;
+      const storedPath = await objectStorage.uploadFile(fileName, imageBuffer, 'image/png');
+      
+      // Generate a description of the changes using GPT-4
+      const descriptionResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert interior designer and renovation consultant. Describe renovation concepts in clear, professional language suitable for client presentations."
+          },
+          {
+            role: "user",
+            content: `Describe this ${style} ${roomLabel} renovation concept: "${prompt}". 
+Write 2-3 sentences explaining the key design elements and benefits of this renovation. 
+Be specific about materials, colors, and features that would be included.`
+          }
+        ],
+        max_tokens: 200,
+      });
+      
+      const description = descriptionResponse.choices[0]?.message?.content || 
+        `A ${style} ${roomLabel} renovation featuring ${prompt}. This design incorporates modern finishes and functional improvements.`;
+      
+      // Store the visualization record
+      const visualizationId = `viz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // If linked to a job, we could store this reference
+      // For now, return the result
+      res.json({
+        id: visualizationId,
+        afterImageUrl: storedPath,
+        description: description.trim(),
+        prompt,
+        style,
+        roomType,
+        jobId: jobId || null,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Error generating AI visualization:", error);
+      
+      // Handle specific OpenAI errors
+      if (error?.error?.code === 'content_policy_violation') {
+        return res.status(400).json({ 
+          error: "The image could not be generated due to content policy. Please try a different description." 
+        });
+      }
+      
+      if (error?.status === 429) {
+        return res.status(429).json({ 
+          error: "Too many requests. Please wait a moment and try again." 
+        });
+      }
+      
+      res.status(500).json({ 
+        error: "Failed to generate visualization. Please try again." 
+      });
+    }
+  });
+
+  // Get recent AI visualizations for the user
+  app.get("/api/ai/visualizations", requireAuth, async (req: any, res) => {
+    try {
+      // For now, return an empty array as we haven't implemented storage for visualization history
+      // In a full implementation, this would query a visualizations table
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching visualizations:", error);
+      res.status(500).json({ error: "Failed to fetch visualizations" });
+    }
+  });
+
   // Streaming AI Photo Analysis - Analyse job photos with GPT-4o vision
   app.get("/api/jobs/:jobId/photos/analyze", requireAuth, async (req: any, res) => {
     try {
@@ -6378,6 +6529,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // QuickBooks Integration Routes
+  app.post("/api/integrations/quickbooks/connect", requireAuth, async (req: any, res) => {
+    try {
+      if (!quickbooksService.isQuickbooksConfigured()) {
+        return res.status(400).json({ 
+          error: "QuickBooks integration not configured. Please add QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET environment variables." 
+        });
+      }
+      const state = randomBytes(32).toString('hex');
+      req.session.quickbooksOAuthState = state;
+      const authUrl = await quickbooksService.getAuthUrl(state);
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error getting QuickBooks auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate QuickBooks auth URL" });
+    }
+  });
+
+  app.get("/api/integrations/quickbooks/auth-url", requireAuth, async (req: any, res) => {
+    try {
+      if (!quickbooksService.isQuickbooksConfigured()) {
+        return res.status(400).json({ 
+          error: "QuickBooks integration not configured. Please add QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET environment variables." 
+        });
+      }
+      const state = randomBytes(32).toString('hex');
+      req.session.quickbooksOAuthState = state;
+      const authUrl = await quickbooksService.getAuthUrl(state);
+      res.json({ authUrl });
+    } catch (error: any) {
+      console.error("Error getting QuickBooks auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate QuickBooks auth URL" });
+    }
+  });
+
+  app.get("/api/integrations/quickbooks/callback", async (req: any, res) => {
+    try {
+      const stateFromQuery = req.query.state as string;
+      const code = req.query.code as string;
+      const realmId = req.query.realmId as string;
+      
+      if (!req.userId) {
+        return res.redirect('/integrations?quickbooks=error&message=' + encodeURIComponent('Please log in first.'));
+      }
+      
+      const storedState = req.session.quickbooksOAuthState;
+      delete req.session.quickbooksOAuthState;
+      
+      if (!stateFromQuery || !storedState || stateFromQuery !== storedState) {
+        console.error("OAuth state mismatch - potential CSRF attack");
+        return res.redirect('/integrations?quickbooks=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
+      }
+      
+      if (!code) {
+        return res.redirect('/integrations?quickbooks=error&message=' + encodeURIComponent('Missing authorization code.'));
+      }
+
+      if (!realmId) {
+        return res.redirect('/integrations?quickbooks=error&message=' + encodeURIComponent('Missing company ID (realmId).'));
+      }
+      
+      await quickbooksService.handleCallback(code, realmId, req.userId);
+      res.redirect('/integrations?quickbooks=connected');
+    } catch (error: any) {
+      console.error("Error handling QuickBooks callback:", error);
+      res.redirect('/integrations?quickbooks=error&message=' + encodeURIComponent(error.message || 'Connection failed'));
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/disconnect", requireAuth, async (req: any, res) => {
+    try {
+      const success = await quickbooksService.disconnect(req.userId);
+      res.json({ success });
+    } catch (error: any) {
+      console.error("Error disconnecting QuickBooks:", error);
+      res.status(500).json({ error: error.message || "Failed to disconnect QuickBooks" });
+    }
+  });
+
+  app.get("/api/integrations/quickbooks/status", requireAuth, async (req: any, res) => {
+    try {
+      const configured = quickbooksService.isQuickbooksConfigured();
+      if (!configured) {
+        return res.json({ 
+          configured: false,
+          connected: false,
+          message: "QuickBooks integration not configured" 
+        });
+      }
+      const status = await quickbooksService.getConnectionStatus(req.userId);
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error getting QuickBooks status:", error);
+      res.status(500).json({ error: error.message || "Failed to get QuickBooks status" });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync", requireAuth, async (req: any, res) => {
+    try {
+      const [contactsResult, invoicesResult, paymentsResult] = await Promise.all([
+        quickbooksService.syncContactsToQuickbooks(req.userId),
+        quickbooksService.syncInvoicesToQuickbooks(req.userId),
+        quickbooksService.syncPaymentsFromQuickbooks(req.userId),
+      ]);
+      
+      res.json({
+        success: true,
+        contacts: contactsResult,
+        invoices: invoicesResult,
+        payments: paymentsResult,
+      });
+    } catch (error: any) {
+      console.error("Error syncing with QuickBooks:", error);
+      res.status(500).json({ error: error.message || "Failed to sync with QuickBooks" });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync-invoices", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncInvoicesToQuickbooks(req.userId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Error syncing invoices to QuickBooks:", error);
+      res.status(500).json({ error: error.message || "Failed to sync invoices to QuickBooks" });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync-contacts", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncContactsToQuickbooks(req.userId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("Error syncing contacts to QuickBooks:", error);
+      res.status(500).json({ error: error.message || "Failed to sync contacts to QuickBooks" });
+    }
+  });
+
   // Google Calendar Integration Routes (per-user OAuth)
   app.get("/api/integrations/google-calendar/status", requireAuth, async (req: any, res) => {
     try {
@@ -7005,6 +7293,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Xero not connected
       }
       
+      // QuickBooks status
+      let quickbooksStatus = {
+        configured: quickbooksService.isQuickbooksConfigured(),
+        connected: false,
+        companyName: undefined as string | undefined,
+        lastSyncAt: undefined as string | undefined
+      };
+      try {
+        const qbStatus = await quickbooksService.getConnectionStatus(userContext.effectiveUserId);
+        quickbooksStatus.connected = qbStatus.connected;
+        quickbooksStatus.companyName = qbStatus.companyName;
+        quickbooksStatus.lastSyncAt = qbStatus.lastSyncAt;
+      } catch (e) {
+        // QuickBooks not connected
+      }
+      
       // Stripe status
       const stripeStatus = {
         configured: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY),
@@ -7021,6 +7325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         googleCalendar: googleCalendarStatus,
         xero: xeroStatus,
+        quickbooks: quickbooksStatus,
         stripe: stripeStatus,
         twilio: twilioStatus
       });

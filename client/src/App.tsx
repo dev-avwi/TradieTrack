@@ -62,6 +62,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import TrackArrival from "@/pages/TrackArrival";
 import Reports from "@/pages/Reports";
+import Calculators from "@/pages/Calculators";
 import CollectPayment from "@/pages/CollectPayment";
 import TeamChatPage from "@/pages/TeamChat";
 import ChatHub from "@/pages/ChatHub";
@@ -74,6 +75,7 @@ import RecurringJobs from "@/pages/RecurringJobs";
 import ServiceRemindersPage from "@/pages/ServiceReminders";
 import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
+import AIVisualizationPage from "@/pages/AIVisualization";
 import TeamGroups from "@/pages/TeamGroups";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
@@ -518,6 +520,8 @@ function Router({
         <Reports />
       )} />
       
+      <Route path="/calculators" component={Calculators} />
+      
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/users" component={AdminDashboard} />
       <Route path="/admin/activity" component={AdminDashboard} />
@@ -579,6 +583,8 @@ function Router({
         {(params: { code: string }) => <JobInvite code={params.code} />}
       </Route>
       <Route path="/open-app/:action/:token" component={OpenApp} />
+      
+      <Route path="/ai-visualization" component={AIVisualizationPage} />
       
       <Route path="/more" component={More} />
       

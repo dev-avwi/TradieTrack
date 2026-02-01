@@ -175,6 +175,9 @@ import {
   myobConnections,
   type MyobConnection,
   type InsertMyobConnection,
+  quickbooksConnections,
+  type QuickbooksConnection,
+  type InsertQuickbooksConnection,
   activityLogs,
   type ActivityLog,
   type InsertActivityLog,
@@ -703,6 +706,12 @@ export interface IStorage {
   createMyobConnection(data: InsertMyobConnection): Promise<MyobConnection>;
   updateMyobConnection(id: string, data: Partial<MyobConnection>): Promise<MyobConnection | undefined>;
   deleteMyobConnection(userId: string): Promise<boolean>;
+
+  // QuickBooks Integration
+  getQuickbooksConnection(userId: string): Promise<QuickbooksConnection | undefined>;
+  createQuickbooksConnection(data: InsertQuickbooksConnection): Promise<QuickbooksConnection>;
+  updateQuickbooksConnection(id: string, data: Partial<QuickbooksConnection>): Promise<QuickbooksConnection | undefined>;
+  deleteQuickbooksConnection(userId: string): Promise<boolean>;
 
   // Job Documents (uploaded PDFs, external quotes/invoices)
   getJobDocuments(jobId: string, userId: string): Promise<JobDocument[]>;
@@ -4503,6 +4512,34 @@ export class PostgresStorage implements IStorage {
   async deleteMyobConnection(userId: string): Promise<boolean> {
     const result = await db.delete(myobConnections)
       .where(eq(myobConnections.userId, userId))
+      .returning();
+    return result.length > 0;
+  }
+
+  // QuickBooks Integration
+  async getQuickbooksConnection(userId: string): Promise<QuickbooksConnection | undefined> {
+    const result = await db.select().from(quickbooksConnections)
+      .where(eq(quickbooksConnections.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createQuickbooksConnection(data: InsertQuickbooksConnection): Promise<QuickbooksConnection> {
+    const [result] = await db.insert(quickbooksConnections).values(data).returning();
+    return result;
+  }
+
+  async updateQuickbooksConnection(id: string, data: Partial<QuickbooksConnection>): Promise<QuickbooksConnection | undefined> {
+    const [result] = await db.update(quickbooksConnections)
+      .set(data)
+      .where(eq(quickbooksConnections.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteQuickbooksConnection(userId: string): Promise<boolean> {
+    const result = await db.delete(quickbooksConnections)
+      .where(eq(quickbooksConnections.userId, userId))
       .returning();
     return result.length > 0;
   }
