@@ -23,6 +23,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
+import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -587,6 +588,9 @@ export default function JobsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Usage Limit Warning - Free Plan Users */}
+        <UsageLimitBanner />
 
         {/* Search Bar */}
         <View style={styles.searchBar}>

@@ -26,6 +26,7 @@ import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, useP
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ 
@@ -1693,6 +1694,9 @@ export default function DashboardScreen() {
 
       {/* Trust Banner - Dismissible */}
       <TrustBanner />
+
+      {/* Usage Limit Warning - Free Plan Users */}
+      <UsageLimitBanner />
 
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (
