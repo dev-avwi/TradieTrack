@@ -1,5 +1,14 @@
 ### Overview
-TradieTrack is a mobile-first web application for Australian tradespeople, aiming to centralize and streamline business operations like job management, quoting, invoicing, and payment collection. It supports Australian GST and AUD currency, and seeks to improve productivity, financial management, and client communication for solo tradespeople and small businesses. Key capabilities include AI-driven scheduling, multi-option quote generation, and comprehensive financial tracking. The business vision is to offer a comprehensive solution for trades, with future potential for integrated websites and advanced communication features, positioning TradieTrack as a market leader in trade business management software.
+TradieTrack is a mobile-first web application for Australian tradespeople. The core positioning is: **"Built for how jobs actually run — not how paperwork pretends they do."** 
+
+TradieTrack keeps a clear record of what was known, done, and agreed — so tradies don't wear someone else's mistake. It centralizes job management, quoting, invoicing, and payment collection with full Australian GST and AUD support. Key capabilities include Job Scope Checklists (to catch commonly missed quote items), comprehensive change tracking with photos and notes tied to timeline, and flexible workflows that support both architect/builder referrals AND direct customer calls.
+
+**Product Truth**: TradieTrack doesn't try to control the job — it records it clearly as it changes.
+
+**Positioning Strategy** (avoid "smart/AI-powered" marketing):
+- Focus on "documenting reality as jobs change" rather than "intelligent automation"
+- Address tradie skepticism with practical record-keeping benefits
+- Emphasize: Photos tied to jobs, notes tied to moments, changes tracked as they happen, clear history of what was agreed
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.

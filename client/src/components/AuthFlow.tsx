@@ -41,15 +41,15 @@ interface AuthFlowProps {
 const screenshots = [
   { src: dashboardScreenshot, title: "Your Dashboard", desc: "See your day at a glance" },
   { src: jobsListScreenshot, title: "Manage Jobs", desc: "Track every job easily" },
-  { src: scheduleScreenshot, title: "Smart Schedule", desc: "Never miss an appointment" },
-  { src: quotePreviewScreenshot, title: "Professional Quotes", desc: "Win more work" },
+  { src: scheduleScreenshot, title: "Your Schedule", desc: "Know where you need to be" },
+  { src: quotePreviewScreenshot, title: "Professional Quotes", desc: "Clear records, no disputes" },
 ];
 
 const features = [
-  { icon: FileText, text: "Create quotes & invoices in seconds" },
-  { icon: Clock, text: "Track time on every job" },
-  { icon: CreditCard, text: "Get paid faster with online payments" },
-  { icon: Users, text: "Manage your team effortlessly" },
+  { icon: FileText, text: "Keep clear records of every job" },
+  { icon: Clock, text: "Track time and changes as they happen" },
+  { icon: CreditCard, text: "Quote, invoice, and get paid on-site" },
+  { icon: Users, text: "Know what was agreed, and when" },
 ];
 
 export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowProps) {

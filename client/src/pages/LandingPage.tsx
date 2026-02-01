@@ -368,13 +368,13 @@ export default function LandingPage() {
 
               {/* Main Headline */}
               <h1 className="text-[2.5rem] sm:text-5xl lg:text-[3.25rem] font-extrabold leading-[1.1] tracking-tight mb-6">
-                Run your trade business{" "}
-                <span className="text-blue-600">smarter, not harder.</span>
+                Built for how jobs{" "}
+                <span className="text-blue-600">actually run.</span>
               </h1>
 
               {/* Subheadline */}
               <p className="text-lg lg:text-xl text-gray-600 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-                The all-in-one app for Australian tradies. Schedule jobs, send quotes, invoice clients, and get paid faster — all from your phone.
+                Keep a clear record of what was known, done, and agreed — so you don't wear someone else's mistake. Jobs, quotes, invoices, and payments all in one place.
               </p>
 
               {/* CTA Buttons */}
@@ -594,10 +594,10 @@ export default function LandingPage() {
                 <Calendar className="w-6 h-6 text-blue-600" />
               </div>
               <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-                Smart scheduling that saves hours
+                Your schedule. Your way.
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                See your whole week at a glance. Drag and drop jobs, check team availability, and send automatic reminders to clients.
+                See your whole week at a glance. Drag and drop jobs, check team availability, and send reminders to clients — no surprises.
               </p>
               <ul className="space-y-3">
                 <FeatureItem text="Drag & drop job scheduling" />
@@ -956,7 +956,7 @@ export default function LandingPage() {
                 </span>
               </button>
               <p className="text-sm leading-relaxed">
-                Job management software built for Australian tradies. Simple. Powerful. Mobile-first.
+                Built for how jobs actually run. Keep a clear record of what was known, done, and agreed.
               </p>
             </div>
             <div>
