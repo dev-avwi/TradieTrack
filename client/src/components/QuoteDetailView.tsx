@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useConvertQuoteToInvoice } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
@@ -29,10 +34,26 @@ interface QuoteDetailViewProps {
   onSend?: (id: string) => void;
 }
 
+interface JobPhoto {
+  id: string;
+  url: string;
+  category?: string;
+  caption?: string;
+  createdAt: string;
+}
+
+interface JobNote {
+  id: string;
+  content: string;
+  createdByName?: string;
+  createdAt: string;
+}
+
 export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [jobContextOpen, setJobContextOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { data: integrationHealth } = useIntegrationHealth();
@@ -93,6 +114,32 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const { data: warrantyTemplate } = useQuery<BusinessTemplate>({
     queryKey: ["/api/business-templates/active/warranty"],
     enabled: !!quote,
+  });
+
+  const { data: jobPhotos = [], isLoading: photosLoading } = useQuery<JobPhoto[]>({
+    queryKey: ['/api/jobs', quote?.jobId, 'photos'],
+    queryFn: async () => {
+      const response = await fetch(`/api/jobs/${quote!.jobId}/photos`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!quote?.jobId && jobContextOpen,
+  });
+
+  const { data: jobNotes = [], isLoading: notesLoading } = useQuery<JobNote[]>({
+    queryKey: ['/api/jobs', quote?.jobId, 'notes'],
+    queryFn: async () => {
+      const response = await fetch(`/api/jobs/${quote!.jobId}/notes`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!quote?.jobId && jobContextOpen,
   });
 
   const handlePrint = () => {
@@ -842,6 +889,134 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                   </div>
                 </div>
               </div>
+
+              {/* Job Context Section - shows photos and notes from linked job */}
+              {quote.jobId && (
+                <Collapsible
+                  open={jobContextOpen}
+                  onOpenChange={setJobContextOpen}
+                  className="mb-8 no-print"
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className="flex items-center justify-between w-full p-4 rounded-lg transition-colors hover-elevate"
+                      style={{ 
+                        backgroundColor: template.sectionBackground,
+                        borderRadius: template.borderRadius 
+                      }}
+                      data-testid="job-context-trigger"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Camera className="h-5 w-5" style={{ color: primaryColor }} />
+                        <span className="font-semibold text-gray-800">Job Context</span>
+                        {job?.title && (
+                          <span className="text-sm text-muted-foreground">({job.title})</span>
+                        )}
+                      </div>
+                      <ChevronDown 
+                        className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
+                          jobContextOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="overflow-hidden">
+                    <div 
+                      className="p-4 mt-2 rounded-lg space-y-6"
+                      style={{ 
+                        backgroundColor: template.sectionBackground,
+                        borderRadius: template.borderRadius 
+                      }}
+                    >
+                      {/* Job Photos Section */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Image className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="font-medium text-sm text-gray-700">Photos</h4>
+                        </div>
+                        {photosLoading ? (
+                          <div className="flex items-center justify-center py-6">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                          </div>
+                        ) : jobPhotos.length > 0 ? (
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                            {jobPhotos.map((photo) => (
+                              <div
+                                key={photo.id}
+                                className="relative aspect-square rounded-md overflow-hidden bg-muted group"
+                                title={photo.caption || photo.category || 'Job photo'}
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={photo.caption || 'Job photo'}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                                {photo.category && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-1.5 py-0.5 truncate">
+                                    {photo.category}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-muted-foreground text-sm">
+                            <Image className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No photos attached to this job</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Job Notes Section */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <StickyNote className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="font-medium text-sm text-gray-700">Notes</h4>
+                        </div>
+                        {notesLoading ? (
+                          <div className="flex items-center justify-center py-6">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                          </div>
+                        ) : jobNotes.length > 0 ? (
+                          <div className="space-y-3">
+                            {jobNotes.map((note) => (
+                              <div
+                                key={note.id}
+                                className="p-3 rounded-md bg-background border border-border"
+                              >
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                  {note.createdByName && (
+                                    <>
+                                      <span>{note.createdByName}</span>
+                                      <span>•</span>
+                                    </>
+                                  )}
+                                  <span>
+                                    {new Date(note.createdAt).toLocaleDateString('en-AU', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-muted-foreground text-sm">
+                            <StickyNote className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No notes attached to this job</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               {/* Bank Transfer Details - show when bank details are configured and quote not accepted/declined */}
               {quote.status !== 'accepted' && quote.status !== 'declined' && (businessSettings?.bankBsb || businessSettings?.bankAccountNumber || businessSettings?.bankAccountName) && (
