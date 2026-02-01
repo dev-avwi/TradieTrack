@@ -51,6 +51,29 @@ export interface TradeSafetyChecklist {
   items: string[];
 }
 
+export interface JobScopeItem {
+  id: string;
+  label: string;
+  category: 'labour' | 'materials' | 'compliance' | 'safety' | 'disposal';
+  description?: string;
+  defaultQty?: number;
+  unit?: string;
+  estimatedPrice?: number;
+  required?: boolean;
+  tags?: string[];
+}
+
+export interface JobScopeTemplate {
+  id: string;
+  tradeId: string;
+  jobType: string;
+  description: string;
+  icon?: string;
+  estimatedDuration?: string;
+  items: JobScopeItem[];
+  commonlyMissed?: string[];
+}
+
 export interface TradeDefinition {
   id: string;
   name: string;
@@ -899,4 +922,466 @@ export const getTradeDefaultRateCard = (tradeId: string): TradeRateCard => {
 export const getTradeSafetyChecklists = (tradeId: string): TradeSafetyChecklist[] => {
   const trade = tradeCatalog[tradeId];
   return trade?.safetyChecklists || [];
+};
+
+// Job Scope Templates - Comprehensive checklists for common job types
+export const jobScopeTemplates: JobScopeTemplate[] = [
+  // PLUMBING TEMPLATES
+  {
+    id: 'plumbing-hot-water-replacement',
+    tradeId: 'plumbing',
+    jobType: 'Hot Water System Replacement',
+    description: 'Complete hot water system replacement including removal of old unit',
+    icon: 'Flame',
+    estimatedDuration: '3-4 hours',
+    items: [
+      { id: 'hwp-1', label: 'Site inspection & assessment', category: 'labour', required: true, tags: ['inspection', 'assessment'] },
+      { id: 'hwp-2', label: 'Isolate water mains', category: 'safety', required: true, tags: ['isolation', 'safety'] },
+      { id: 'hwp-3', label: 'Isolate power/gas supply', category: 'safety', required: true, tags: ['isolation', 'electrical', 'gas'] },
+      { id: 'hwp-4', label: 'Drain existing system', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'hwp-5', label: 'Disconnect old unit', category: 'labour', required: true, tags: ['removal', 'disconnect'] },
+      { id: 'hwp-6', label: 'Remove old hot water system', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'hwp-7', label: 'Disposal of old unit', category: 'disposal', estimatedPrice: 85, tags: ['disposal', 'waste'] },
+      { id: 'hwp-8', label: 'New hot water unit', category: 'materials', unit: 'each', tags: ['equipment', 'hot water'] },
+      { id: 'hwp-9', label: 'Install new unit', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'hwp-10', label: 'Connect water supply', category: 'labour', required: true, tags: ['connection', 'plumbing'] },
+      { id: 'hwp-11', label: 'Connect power/gas', category: 'labour', required: true, tags: ['connection', 'electrical', 'gas'] },
+      { id: 'hwp-12', label: 'Pressure relief valve', category: 'materials', unit: 'each', estimatedPrice: 45, tags: ['valve', 'safety'] },
+      { id: 'hwp-13', label: 'Tempering valve (if required)', category: 'materials', unit: 'each', estimatedPrice: 120, tags: ['valve', 'compliance'] },
+      { id: 'hwp-14', label: 'Flexi connectors', category: 'materials', defaultQty: 2, unit: 'each', estimatedPrice: 25, tags: ['fittings', 'connection'] },
+      { id: 'hwp-15', label: 'Test system & check for leaks', category: 'labour', required: true, tags: ['testing', 'quality'] },
+      { id: 'hwp-16', label: 'Set temperature', category: 'labour', required: true, tags: ['commissioning'] },
+      { id: 'hwp-17', label: 'Certificate of Compliance', category: 'compliance', required: true, estimatedPrice: 0, tags: ['compliance', 'certificate', 'paperwork'] },
+      { id: 'hwp-18', label: 'Customer handover & instructions', category: 'labour', tags: ['handover', 'training'] },
+    ],
+    commonlyMissed: ['Tempering valve', 'Certificate of Compliance', 'Disposal of old unit', 'Pressure relief valve'],
+  },
+  {
+    id: 'plumbing-toilet-replacement',
+    tradeId: 'plumbing',
+    jobType: 'Toilet Suite Replacement',
+    description: 'Remove and replace toilet suite with new unit',
+    icon: 'Droplets',
+    estimatedDuration: '1.5-2 hours',
+    items: [
+      { id: 'tr-1', label: 'Isolate water supply', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'tr-2', label: 'Disconnect cistern', category: 'labour', required: true, tags: ['disconnect'] },
+      { id: 'tr-3', label: 'Remove old toilet pan', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'tr-4', label: 'Remove old pan collar', category: 'labour', tags: ['removal'] },
+      { id: 'tr-5', label: 'Clean and prepare floor', category: 'labour', required: true, tags: ['preparation'] },
+      { id: 'tr-6', label: 'New toilet suite', category: 'materials', unit: 'each', tags: ['fixture', 'toilet'] },
+      { id: 'tr-7', label: 'New pan collar', category: 'materials', unit: 'each', estimatedPrice: 35, tags: ['fitting'] },
+      { id: 'tr-8', label: 'Toilet seat (if not included)', category: 'materials', unit: 'each', estimatedPrice: 65, tags: ['fixture'] },
+      { id: 'tr-9', label: 'Install pan & cistern', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'tr-10', label: 'Connect water supply', category: 'labour', required: true, tags: ['connection'] },
+      { id: 'tr-11', label: 'Silicone seal around base', category: 'materials', unit: 'tube', estimatedPrice: 15, tags: ['sealant'] },
+      { id: 'tr-12', label: 'Test flush & check for leaks', category: 'labour', required: true, tags: ['testing'] },
+      { id: 'tr-13', label: 'Dispose of old toilet', category: 'disposal', estimatedPrice: 45, tags: ['disposal'] },
+    ],
+    commonlyMissed: ['Pan collar', 'Silicone seal', 'Disposal of old toilet'],
+  },
+  {
+    id: 'plumbing-tap-replacement',
+    tradeId: 'plumbing',
+    jobType: 'Tap/Mixer Replacement',
+    description: 'Replace kitchen or bathroom tap/mixer',
+    icon: 'Droplets',
+    estimatedDuration: '45 mins - 1.5 hours',
+    items: [
+      { id: 'tap-1', label: 'Isolate water supply', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'tap-2', label: 'Remove old tap/mixer', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'tap-3', label: 'Clean mounting surface', category: 'labour', tags: ['preparation'] },
+      { id: 'tap-4', label: 'New tap/mixer', category: 'materials', unit: 'each', tags: ['tapware'] },
+      { id: 'tap-5', label: 'Install new tap', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'tap-6', label: 'New flexi hoses', category: 'materials', defaultQty: 2, unit: 'each', estimatedPrice: 25, tags: ['fittings', 'hoses'] },
+      { id: 'tap-7', label: 'Test operation & leaks', category: 'labour', required: true, tags: ['testing'] },
+      { id: 'tap-8', label: 'Silicone seal (if required)', category: 'materials', unit: 'tube', estimatedPrice: 15, tags: ['sealant'] },
+    ],
+    commonlyMissed: ['New flexi hoses', 'Silicone seal'],
+  },
+  {
+    id: 'plumbing-drain-blocked',
+    tradeId: 'plumbing',
+    jobType: 'Blocked Drain - Clear',
+    description: 'Clear blocked drain using various methods',
+    icon: 'Droplets',
+    estimatedDuration: '1-3 hours',
+    items: [
+      { id: 'bd-1', label: 'Diagnose blockage location', category: 'labour', required: true, tags: ['diagnosis', 'inspection'] },
+      { id: 'bd-2', label: 'CCTV drain camera inspection', category: 'labour', estimatedPrice: 195, tags: ['camera', 'inspection'] },
+      { id: 'bd-3', label: 'Electric eel/drain snake', category: 'labour', estimatedPrice: 195, tags: ['clearing', 'equipment'] },
+      { id: 'bd-4', label: 'High pressure water jetter', category: 'labour', estimatedPrice: 295, tags: ['jetting', 'clearing'] },
+      { id: 'bd-5', label: 'Access pit/grate removal', category: 'labour', tags: ['access'] },
+      { id: 'bd-6', label: 'Clear blockage', category: 'labour', required: true, tags: ['clearing'] },
+      { id: 'bd-7', label: 'Test flow after clearing', category: 'labour', required: true, tags: ['testing'] },
+      { id: 'bd-8', label: 'Provide CCTV footage report', category: 'compliance', tags: ['report', 'documentation'] },
+      { id: 'bd-9', label: 'Recommendations for repairs (if needed)', category: 'compliance', tags: ['report'] },
+    ],
+    commonlyMissed: ['CCTV inspection', 'Footage report for client'],
+  },
+  {
+    id: 'plumbing-gas-appliance-install',
+    tradeId: 'plumbing',
+    jobType: 'Gas Appliance Installation',
+    description: 'Install gas cooktop, heater or BBQ point',
+    icon: 'Flame',
+    estimatedDuration: '2-4 hours',
+    items: [
+      { id: 'gas-1', label: 'Isolate gas supply', category: 'safety', required: true, tags: ['isolation', 'gas'] },
+      { id: 'gas-2', label: 'Test for existing leaks', category: 'safety', required: true, tags: ['testing', 'safety'] },
+      { id: 'gas-3', label: 'Run new gas line (if required)', category: 'labour', tags: ['installation', 'pipe'] },
+      { id: 'gas-4', label: 'Gas pipe & fittings', category: 'materials', unit: 'lot', tags: ['materials', 'pipe'] },
+      { id: 'gas-5', label: 'Install isolation valve', category: 'labour', required: true, tags: ['valve', 'isolation'] },
+      { id: 'gas-6', label: 'Gas bayonet/connector', category: 'materials', unit: 'each', estimatedPrice: 85, tags: ['fitting', 'connection'] },
+      { id: 'gas-7', label: 'Connect appliance', category: 'labour', required: true, tags: ['connection'] },
+      { id: 'gas-8', label: 'Pressure test gas line', category: 'compliance', required: true, tags: ['testing', 'compliance'] },
+      { id: 'gas-9', label: 'Leak test with soap solution', category: 'compliance', required: true, tags: ['testing', 'safety'] },
+      { id: 'gas-10', label: 'Test appliance operation', category: 'labour', required: true, tags: ['testing', 'commissioning'] },
+      { id: 'gas-11', label: 'Gas Certificate of Compliance', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate', 'compliance', 'paperwork'] },
+    ],
+    commonlyMissed: ['Gas Certificate of Compliance', 'Pressure test', 'Isolation valve'],
+  },
+
+  // ELECTRICAL TEMPLATES
+  {
+    id: 'electrical-powerpoint-install',
+    tradeId: 'electrical',
+    jobType: 'Power Point Installation',
+    description: 'Install new power point (GPO) including cabling',
+    icon: 'Zap',
+    estimatedDuration: '1-2 hours',
+    items: [
+      { id: 'pp-1', label: 'Isolate circuit at switchboard', category: 'safety', required: true, tags: ['isolation', 'safety'] },
+      { id: 'pp-2', label: 'Test for dead', category: 'safety', required: true, tags: ['testing', 'safety'] },
+      { id: 'pp-3', label: 'Mark out position', category: 'labour', required: true, tags: ['preparation'] },
+      { id: 'pp-4', label: 'Cut hole for back box', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'pp-5', label: 'Run cable from switchboard/junction', category: 'labour', required: true, tags: ['cabling'] },
+      { id: 'pp-6', label: 'TPS Cable 2.5mm', category: 'materials', unit: 'm', estimatedPrice: 4.50, tags: ['cable', 'wiring'] },
+      { id: 'pp-7', label: 'Power point (double GPO)', category: 'materials', unit: 'each', estimatedPrice: 35, tags: ['outlet', 'GPO'] },
+      { id: 'pp-8', label: 'Back box', category: 'materials', unit: 'each', estimatedPrice: 8, tags: ['fitting'] },
+      { id: 'pp-9', label: 'Cable clips', category: 'materials', unit: 'pack', estimatedPrice: 12, tags: ['fixings'] },
+      { id: 'pp-10', label: 'Install & wire power point', category: 'labour', required: true, tags: ['installation', 'wiring'] },
+      { id: 'pp-11', label: 'Connect at source', category: 'labour', required: true, tags: ['connection'] },
+      { id: 'pp-12', label: 'Test circuit - polarity check', category: 'compliance', required: true, tags: ['testing', 'compliance'] },
+      { id: 'pp-13', label: 'Test RCD operation', category: 'compliance', required: true, tags: ['testing', 'safety'] },
+      { id: 'pp-14', label: 'Certificate of Compliance (EWOQ)', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate', 'compliance', 'paperwork'] },
+      { id: 'pp-15', label: 'Patch any wall holes', category: 'labour', tags: ['finishing', 'repair'] },
+    ],
+    commonlyMissed: ['Certificate of Compliance', 'RCD test', 'Cable clips', 'Wall patching'],
+  },
+  {
+    id: 'electrical-downlight-install',
+    tradeId: 'electrical',
+    jobType: 'LED Downlight Installation',
+    description: 'Install LED downlights including cutting holes',
+    icon: 'Lightbulb',
+    estimatedDuration: '30-45 mins per light',
+    items: [
+      { id: 'dl-1', label: 'Isolate lighting circuit', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'dl-2', label: 'Test for dead', category: 'safety', required: true, tags: ['testing', 'safety'] },
+      { id: 'dl-3', label: 'Locate ceiling joists', category: 'labour', required: true, tags: ['preparation'] },
+      { id: 'dl-4', label: 'Mark out light positions', category: 'labour', required: true, tags: ['preparation', 'layout'] },
+      { id: 'dl-5', label: 'Cut holes for downlights', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'dl-6', label: 'LED Downlight', category: 'materials', unit: 'each', estimatedPrice: 45, tags: ['light', 'LED', 'fixture'] },
+      { id: 'dl-7', label: 'Run cables to each light', category: 'labour', required: true, tags: ['cabling'] },
+      { id: 'dl-8', label: 'TPS Cable 1.5mm', category: 'materials', unit: 'm', estimatedPrice: 3.50, tags: ['cable'] },
+      { id: 'dl-9', label: 'Connect driver/transformer', category: 'labour', required: true, tags: ['connection'] },
+      { id: 'dl-10', label: 'Install & connect lights', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'dl-11', label: 'Check insulation clearance', category: 'compliance', required: true, tags: ['safety', 'insulation'] },
+      { id: 'dl-12', label: 'Test all lights', category: 'compliance', required: true, tags: ['testing'] },
+      { id: 'dl-13', label: 'Certificate of Compliance', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate', 'paperwork'] },
+    ],
+    commonlyMissed: ['Insulation clearance check', 'Certificate of Compliance', 'Locating joists'],
+  },
+  {
+    id: 'electrical-switchboard-upgrade',
+    tradeId: 'electrical',
+    jobType: 'Switchboard Upgrade',
+    description: 'Upgrade old switchboard to modern safety switch board',
+    icon: 'Zap',
+    estimatedDuration: '4-6 hours',
+    items: [
+      { id: 'sb-1', label: 'Pre-inspection of existing board', category: 'labour', required: true, tags: ['inspection'] },
+      { id: 'sb-2', label: 'Notify power company (if required)', category: 'compliance', tags: ['notification', 'coordination'] },
+      { id: 'sb-3', label: 'Isolate main supply', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'sb-4', label: 'Remove old switchboard', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'sb-5', label: 'Install new enclosure', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'sb-6', label: 'Switchboard enclosure', category: 'materials', unit: 'each', estimatedPrice: 250, tags: ['equipment'] },
+      { id: 'sb-7', label: 'Main switch', category: 'materials', unit: 'each', estimatedPrice: 85, tags: ['switch'] },
+      { id: 'sb-8', label: 'RCD Safety switch (30mA)', category: 'materials', unit: 'each', estimatedPrice: 95, tags: ['RCD', 'safety'] },
+      { id: 'sb-9', label: 'Circuit breakers', category: 'materials', unit: 'each', estimatedPrice: 25, tags: ['breaker', 'protection'] },
+      { id: 'sb-10', label: 'Surge protector (optional)', category: 'materials', unit: 'each', estimatedPrice: 180, tags: ['protection', 'surge'] },
+      { id: 'sb-11', label: 'Neutral bar & earth bar', category: 'materials', unit: 'set', estimatedPrice: 45, tags: ['components'] },
+      { id: 'sb-12', label: 'Rewire & connect all circuits', category: 'labour', required: true, tags: ['wiring'] },
+      { id: 'sb-13', label: 'Label all circuits', category: 'compliance', required: true, tags: ['labelling', 'compliance'] },
+      { id: 'sb-14', label: 'Test all RCDs', category: 'compliance', required: true, tags: ['testing', 'safety'] },
+      { id: 'sb-15', label: 'Insulation resistance test', category: 'compliance', required: true, tags: ['testing'] },
+      { id: 'sb-16', label: 'Earth continuity test', category: 'compliance', required: true, tags: ['testing', 'earth'] },
+      { id: 'sb-17', label: 'Form 4 Certificate of Testing', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate', 'paperwork'] },
+      { id: 'sb-18', label: 'Dispose of old switchboard', category: 'disposal', estimatedPrice: 45, tags: ['disposal'] },
+    ],
+    commonlyMissed: ['Form 4 Certificate', 'Circuit labelling', 'Surge protector', 'Earth continuity test'],
+  },
+  {
+    id: 'electrical-ceiling-fan-install',
+    tradeId: 'electrical',
+    jobType: 'Ceiling Fan Installation',
+    description: 'Install ceiling fan (replace light or new location)',
+    icon: 'Fan',
+    estimatedDuration: '1-2 hours',
+    items: [
+      { id: 'cf-1', label: 'Isolate circuit', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'cf-2', label: 'Test for dead', category: 'safety', required: true, tags: ['testing', 'safety'] },
+      { id: 'cf-3', label: 'Check ceiling joist/structure', category: 'labour', required: true, tags: ['inspection', 'structure'] },
+      { id: 'cf-4', label: 'Install fan brace (if needed)', category: 'labour', tags: ['installation', 'support'] },
+      { id: 'cf-5', label: 'Ceiling fan brace kit', category: 'materials', unit: 'each', estimatedPrice: 45, tags: ['support', 'brace'] },
+      { id: 'cf-6', label: 'Ceiling fan', category: 'materials', unit: 'each', estimatedPrice: 180, tags: ['fan', 'fixture'] },
+      { id: 'cf-7', label: 'Remove old fitting', category: 'labour', tags: ['removal'] },
+      { id: 'cf-8', label: 'Install mounting bracket', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'cf-9', label: 'Assemble fan', category: 'labour', required: true, tags: ['assembly'] },
+      { id: 'cf-10', label: 'Wire & connect', category: 'labour', required: true, tags: ['wiring', 'connection'] },
+      { id: 'cf-11', label: 'Balance fan blades', category: 'labour', required: true, tags: ['commissioning', 'balance'] },
+      { id: 'cf-12', label: 'Test all speeds', category: 'compliance', required: true, tags: ['testing'] },
+      { id: 'cf-13', label: 'Test light (if fitted)', category: 'compliance', tags: ['testing'] },
+      { id: 'cf-14', label: 'Certificate of Compliance', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate'] },
+    ],
+    commonlyMissed: ['Fan brace kit', 'Balance blades', 'Certificate of Compliance'],
+  },
+  {
+    id: 'electrical-smoke-alarm-install',
+    tradeId: 'electrical',
+    jobType: 'Smoke Alarm Installation',
+    description: 'Install interconnected 240V smoke alarms (QLD compliance)',
+    icon: 'Bell',
+    estimatedDuration: '2-4 hours for full house',
+    items: [
+      { id: 'sa-1', label: 'Assess current compliance status', category: 'labour', required: true, tags: ['inspection', 'assessment'] },
+      { id: 'sa-2', label: 'Determine alarm locations', category: 'labour', required: true, tags: ['planning', 'layout'] },
+      { id: 'sa-3', label: 'Isolate circuit', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'sa-4', label: 'Run interconnect cable', category: 'labour', required: true, tags: ['cabling'] },
+      { id: 'sa-5', label: 'TPS Cable 1.5mm', category: 'materials', unit: 'm', estimatedPrice: 3.50, tags: ['cable'] },
+      { id: 'sa-6', label: 'Smoke alarm 240V (photoelectric)', category: 'materials', unit: 'each', estimatedPrice: 85, tags: ['alarm', 'smoke'] },
+      { id: 'sa-7', label: 'Cut holes & install bases', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'sa-8', label: 'Wire all alarms', category: 'labour', required: true, tags: ['wiring'] },
+      { id: 'sa-9', label: 'Test interconnection (all trigger together)', category: 'compliance', required: true, tags: ['testing', 'interconnect'] },
+      { id: 'sa-10', label: 'Record serial numbers', category: 'compliance', required: true, tags: ['documentation'] },
+      { id: 'sa-11', label: 'Certificate of Compliance', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate'] },
+      { id: 'sa-12', label: 'Smoke alarm compliance statement', category: 'compliance', required: true, tags: ['compliance', 'documentation'] },
+    ],
+    commonlyMissed: ['Interconnection test', 'Compliance statement', 'Serial number recording'],
+  },
+
+  // HVAC TEMPLATES
+  {
+    id: 'hvac-split-system-install',
+    tradeId: 'hvac',
+    jobType: 'Split System AC Installation',
+    description: 'Install split system air conditioner (supply & install)',
+    icon: 'Wind',
+    estimatedDuration: '4-6 hours',
+    items: [
+      { id: 'ac-1', label: 'Site inspection & placement planning', category: 'labour', required: true, tags: ['inspection', 'planning'] },
+      { id: 'ac-2', label: 'Check electrical supply capacity', category: 'labour', required: true, tags: ['electrical', 'assessment'] },
+      { id: 'ac-3', label: 'Split system unit', category: 'materials', unit: 'each', tags: ['equipment', 'AC'] },
+      { id: 'ac-4', label: 'Install indoor unit bracket', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'ac-5', label: 'Cut hole through wall', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'ac-6', label: 'Mount indoor unit', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'ac-7', label: 'Install outdoor unit pad/bracket', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'ac-8', label: 'Outdoor unit bracket/pad', category: 'materials', unit: 'each', estimatedPrice: 85, tags: ['mounting'] },
+      { id: 'ac-9', label: 'Run refrigerant lines', category: 'labour', required: true, tags: ['piping', 'refrigerant'] },
+      { id: 'ac-10', label: 'Copper pipe pair coil', category: 'materials', unit: 'm', estimatedPrice: 28, tags: ['pipe', 'copper'] },
+      { id: 'ac-11', label: 'Pipe insulation', category: 'materials', unit: 'm', estimatedPrice: 8, tags: ['insulation'] },
+      { id: 'ac-12', label: 'Drain line', category: 'materials', unit: 'm', estimatedPrice: 5, tags: ['drainage'] },
+      { id: 'ac-13', label: 'Install drain to appropriate location', category: 'labour', required: true, tags: ['drainage'] },
+      { id: 'ac-14', label: 'Run electrical cable', category: 'labour', required: true, tags: ['electrical'] },
+      { id: 'ac-15', label: 'Electrical cable 2.5mm', category: 'materials', unit: 'm', estimatedPrice: 6, tags: ['cable'] },
+      { id: 'ac-16', label: 'Install isolator switch', category: 'labour', required: true, tags: ['electrical', 'isolation'] },
+      { id: 'ac-17', label: 'Isolator switch', category: 'materials', unit: 'each', estimatedPrice: 45, tags: ['electrical'] },
+      { id: 'ac-18', label: 'Vacuum refrigerant lines', category: 'labour', required: true, tags: ['commissioning'] },
+      { id: 'ac-19', label: 'Release refrigerant & commission', category: 'labour', required: true, tags: ['commissioning', 'refrigerant'] },
+      { id: 'ac-20', label: 'Test heating & cooling', category: 'compliance', required: true, tags: ['testing'] },
+      { id: 'ac-21', label: 'Customer handover & operation training', category: 'labour', tags: ['handover'] },
+      { id: 'ac-22', label: 'Certificate of Compliance (electrical)', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate'] },
+      { id: 'ac-23', label: 'Pipe cover/duct (external)', category: 'materials', unit: 'm', estimatedPrice: 25, tags: ['finishing', 'cover'] },
+    ],
+    commonlyMissed: ['Isolator switch', 'Pipe cover', 'Electrical certificate', 'Vacuum lines'],
+  },
+  {
+    id: 'hvac-service',
+    tradeId: 'hvac',
+    jobType: 'AC System Service',
+    description: 'Standard service and clean of split system AC',
+    icon: 'Wind',
+    estimatedDuration: '45-60 mins per unit',
+    items: [
+      { id: 'sv-1', label: 'Isolate power', category: 'safety', required: true, tags: ['isolation'] },
+      { id: 'sv-2', label: 'Remove and clean filters', category: 'labour', required: true, tags: ['cleaning', 'filter'] },
+      { id: 'sv-3', label: 'Clean indoor coil', category: 'labour', required: true, tags: ['cleaning', 'coil'] },
+      { id: 'sv-4', label: 'Coil cleaning solution', category: 'materials', unit: 'application', estimatedPrice: 25, tags: ['chemicals', 'cleaning'] },
+      { id: 'sv-5', label: 'Clean fan barrel/blade', category: 'labour', required: true, tags: ['cleaning'] },
+      { id: 'sv-6', label: 'Check drain line clear', category: 'labour', required: true, tags: ['inspection', 'drainage'] },
+      { id: 'sv-7', label: 'Clean outdoor unit coil', category: 'labour', required: true, tags: ['cleaning', 'outdoor'] },
+      { id: 'sv-8', label: 'Check refrigerant pressure', category: 'compliance', required: true, tags: ['testing', 'refrigerant'] },
+      { id: 'sv-9', label: 'Check electrical connections', category: 'compliance', required: true, tags: ['inspection', 'electrical'] },
+      { id: 'sv-10', label: 'Test operation all modes', category: 'compliance', required: true, tags: ['testing'] },
+      { id: 'sv-11', label: 'Service report/sticker', category: 'compliance', required: true, tags: ['documentation'] },
+      { id: 'sv-12', label: 'Replacement filter (if needed)', category: 'materials', unit: 'each', estimatedPrice: 35, tags: ['filter', 'replacement'] },
+    ],
+    commonlyMissed: ['Check refrigerant pressure', 'Clean outdoor coil', 'Service sticker'],
+  },
+
+  // BUILDING TEMPLATES
+  {
+    id: 'building-deck-construction',
+    tradeId: 'building',
+    jobType: 'Timber Deck Construction',
+    description: 'Build timber deck including substructure and decking',
+    icon: 'Hammer',
+    estimatedDuration: '2-5 days depending on size',
+    items: [
+      { id: 'deck-1', label: 'Site measure & design', category: 'labour', required: true, tags: ['planning', 'design'] },
+      { id: 'deck-2', label: 'Council/body corp approval (if required)', category: 'compliance', tags: ['approval', 'council'] },
+      { id: 'deck-3', label: 'Call Before You Dig', category: 'safety', required: true, tags: ['safety', 'services'] },
+      { id: 'deck-4', label: 'Set out & excavate footings', category: 'labour', required: true, tags: ['foundation'] },
+      { id: 'deck-5', label: 'Concrete footings', category: 'materials', unit: 'each', estimatedPrice: 45, tags: ['concrete', 'foundation'] },
+      { id: 'deck-6', label: 'Stirrups/post brackets', category: 'materials', unit: 'each', estimatedPrice: 25, tags: ['brackets', 'fixings'] },
+      { id: 'deck-7', label: 'Posts (treated pine/hardwood)', category: 'materials', unit: 'each', tags: ['timber', 'structure'] },
+      { id: 'deck-8', label: 'Bearers', category: 'materials', unit: 'm', tags: ['timber', 'structure'] },
+      { id: 'deck-9', label: 'Joists', category: 'materials', unit: 'm', tags: ['timber', 'structure'] },
+      { id: 'deck-10', label: 'Joist hangers', category: 'materials', unit: 'each', estimatedPrice: 8, tags: ['fixings'] },
+      { id: 'deck-11', label: 'Decking boards', category: 'materials', unit: 'm²', tags: ['decking', 'finish'] },
+      { id: 'deck-12', label: 'Deck screws', category: 'materials', unit: 'box', estimatedPrice: 65, tags: ['fixings'] },
+      { id: 'deck-13', label: 'Install substructure', category: 'labour', required: true, tags: ['construction'] },
+      { id: 'deck-14', label: 'Install decking', category: 'labour', required: true, tags: ['construction'] },
+      { id: 'deck-15', label: 'Sand & finish (if hardwood)', category: 'labour', tags: ['finishing'] },
+      { id: 'deck-16', label: 'Deck oil/stain', category: 'materials', unit: 'L', estimatedPrice: 45, tags: ['finishing', 'oil'] },
+      { id: 'deck-17', label: 'Stairs (if required)', category: 'materials', unit: 'set', tags: ['stairs'] },
+      { id: 'deck-18', label: 'Handrail (if required)', category: 'materials', unit: 'm', tags: ['balustrade', 'safety'] },
+      { id: 'deck-19', label: 'Form 15/16 (if applicable)', category: 'compliance', tags: ['certificate', 'building'] },
+    ],
+    commonlyMissed: ['Council approval', 'Dial Before You Dig', 'Joist hangers', 'Deck oil', 'Building form'],
+  },
+
+  // ROOFING TEMPLATES
+  {
+    id: 'roofing-gutter-replacement',
+    tradeId: 'roofing',
+    jobType: 'Gutter & Fascia Replacement',
+    description: 'Replace gutters and fascia boards',
+    icon: 'Home',
+    estimatedDuration: '1-2 days',
+    items: [
+      { id: 'gr-1', label: 'Access equipment setup', category: 'labour', required: true, tags: ['access', 'safety'] },
+      { id: 'gr-2', label: 'Remove old gutters', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'gr-3', label: 'Remove old fascia (if required)', category: 'labour', tags: ['removal'] },
+      { id: 'gr-4', label: 'Inspect/replace rotten timber', category: 'labour', tags: ['inspection', 'repair'] },
+      { id: 'gr-5', label: 'Fascia board replacement', category: 'materials', unit: 'm', tags: ['fascia', 'timber'] },
+      { id: 'gr-6', label: 'New gutter (Colorbond)', category: 'materials', unit: 'm', estimatedPrice: 28, tags: ['gutter'] },
+      { id: 'gr-7', label: 'Internal/external corners', category: 'materials', unit: 'each', estimatedPrice: 18, tags: ['fittings'] },
+      { id: 'gr-8', label: 'Stop ends', category: 'materials', unit: 'each', estimatedPrice: 12, tags: ['fittings'] },
+      { id: 'gr-9', label: 'Downpipe', category: 'materials', unit: 'm', estimatedPrice: 22, tags: ['downpipe'] },
+      { id: 'gr-10', label: 'Downpipe brackets', category: 'materials', unit: 'each', estimatedPrice: 8, tags: ['fixings'] },
+      { id: 'gr-11', label: 'Install new gutters', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'gr-12', label: 'Install downpipes', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'gr-13', label: 'Seal all joints', category: 'labour', required: true, tags: ['sealing'] },
+      { id: 'gr-14', label: 'Gutter sealant', category: 'materials', unit: 'tube', estimatedPrice: 18, tags: ['sealant'] },
+      { id: 'gr-15', label: 'Test water flow', category: 'compliance', required: true, tags: ['testing'] },
+      { id: 'gr-16', label: 'Disposal of old gutters', category: 'disposal', estimatedPrice: 65, tags: ['disposal'] },
+      { id: 'gr-17', label: 'Gutter guard (optional)', category: 'materials', unit: 'm', estimatedPrice: 25, tags: ['guard', 'optional'] },
+    ],
+    commonlyMissed: ['Stop ends', 'Gutter sealant', 'Disposal', 'Check rotten fascia'],
+  },
+
+  // TILING TEMPLATES
+  {
+    id: 'tiling-bathroom-floor',
+    tradeId: 'tiling',
+    jobType: 'Bathroom Floor Tiling',
+    description: 'Tile bathroom floor including waterproofing',
+    icon: 'Grid3x3',
+    estimatedDuration: '1-2 days',
+    items: [
+      { id: 'bf-1', label: 'Remove existing floor covering', category: 'labour', required: true, tags: ['removal'] },
+      { id: 'bf-2', label: 'Prepare substrate', category: 'labour', required: true, tags: ['preparation'] },
+      { id: 'bf-3', label: 'Waterproofing membrane', category: 'materials', unit: 'L', estimatedPrice: 85, tags: ['waterproofing'] },
+      { id: 'bf-4', label: 'Apply waterproofing', category: 'labour', required: true, tags: ['waterproofing'] },
+      { id: 'bf-5', label: 'Waterproof corners & shower base', category: 'labour', required: true, tags: ['waterproofing'] },
+      { id: 'bf-6', label: 'Bond breaker tape', category: 'materials', unit: 'roll', estimatedPrice: 25, tags: ['waterproofing'] },
+      { id: 'bf-7', label: 'Floor tiles', category: 'materials', unit: 'm²', tags: ['tiles'] },
+      { id: 'bf-8', label: 'Tile adhesive', category: 'materials', unit: 'bag', estimatedPrice: 45, tags: ['adhesive'] },
+      { id: 'bf-9', label: 'Lay tiles', category: 'labour', required: true, tags: ['installation'] },
+      { id: 'bf-10', label: 'Tile spacers', category: 'materials', unit: 'pack', estimatedPrice: 8, tags: ['accessories'] },
+      { id: 'bf-11', label: 'Grout', category: 'materials', unit: 'bag', estimatedPrice: 35, tags: ['grout'] },
+      { id: 'bf-12', label: 'Grout tiles', category: 'labour', required: true, tags: ['grouting'] },
+      { id: 'bf-13', label: 'Silicone all edges', category: 'labour', required: true, tags: ['sealing'] },
+      { id: 'bf-14', label: 'Silicone', category: 'materials', unit: 'tube', estimatedPrice: 18, tags: ['sealant'] },
+      { id: 'bf-15', label: 'Tile trim', category: 'materials', unit: 'm', estimatedPrice: 18, tags: ['trim', 'finishing'] },
+      { id: 'bf-16', label: 'Disposal of old tiles', category: 'disposal', estimatedPrice: 85, tags: ['disposal'] },
+      { id: 'bf-17', label: 'Waterproofing certificate', category: 'compliance', required: true, estimatedPrice: 0, tags: ['certificate', 'compliance'] },
+    ],
+    commonlyMissed: ['Waterproofing certificate', 'Bond breaker tape', 'Tile trim', 'Silicone edges'],
+  },
+];
+
+// Search function for materials across all trades
+export const searchCatalogItems = (
+  query: string,
+  tradeId?: string,
+  category?: string
+): { trade: string; material: TradeMaterial }[] => {
+  const results: { trade: string; material: TradeMaterial }[] = [];
+  const searchLower = query.toLowerCase();
+  
+  const tradesToSearch = tradeId ? [tradeCatalog[tradeId]].filter(Boolean) : Object.values(tradeCatalog);
+  
+  for (const trade of tradesToSearch) {
+    for (const material of trade.defaultMaterials) {
+      const matchesQuery = material.name.toLowerCase().includes(searchLower) ||
+        material.category.toLowerCase().includes(searchLower);
+      const matchesCategory = !category || material.category.toLowerCase() === category.toLowerCase();
+      
+      if (matchesQuery && matchesCategory) {
+        results.push({ trade: trade.id, material });
+      }
+    }
+  }
+  
+  return results;
+};
+
+// Get all categories for a trade
+export const getTradeCategories = (tradeId: string): string[] => {
+  const trade = tradeCatalog[tradeId];
+  if (!trade) return [];
+  
+  const categories = new Set<string>();
+  for (const material of trade.defaultMaterials) {
+    categories.add(material.category);
+  }
+  return Array.from(categories).sort();
+};
+
+// Get job scope templates for a trade
+export const getJobScopeTemplates = (tradeId: string): JobScopeTemplate[] => {
+  return jobScopeTemplates.filter(t => t.tradeId === tradeId);
+};
+
+// Get a specific job scope template
+export const getJobScopeTemplate = (templateId: string): JobScopeTemplate | undefined => {
+  return jobScopeTemplates.find(t => t.id === templateId);
+};
+
+// Search job scope templates
+export const searchJobScopeTemplates = (query: string, tradeId?: string): JobScopeTemplate[] => {
+  const searchLower = query.toLowerCase();
+  return jobScopeTemplates.filter(t => {
+    const matchesTrade = !tradeId || t.tradeId === tradeId;
+    const matchesQuery = t.jobType.toLowerCase().includes(searchLower) ||
+      t.description.toLowerCase().includes(searchLower) ||
+      t.items.some(item => 
+        item.label.toLowerCase().includes(searchLower) ||
+        item.tags?.some(tag => tag.includes(searchLower))
+      );
+    return matchesTrade && matchesQuery;
+  });
 };

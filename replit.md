@@ -56,6 +56,14 @@ Core architectural and design decisions include:
 *   **Unified Notifications**: Single endpoint for system, SMS, and chat notifications across web and mobile.
 *   **Document Template System**: 81 balanced templates (9 trades × 9 templates each) are seeded for new users, adhering to Australian standards, with trade filtering and general fallback templates.
 *   **Trade-Specific Customization System**: Supports 13 priority trades with trade-specific terminology, custom job stages, custom fields, material catalogs, rate cards, safety checklists, and quote categories.
+*   **Job Scope Checklist System**: Comprehensive job templates with detailed checklists to prevent missing items in quotes. Features:
+    - 15+ job scope templates covering plumbing (hot water, toilet, tap, blocked drain, gas appliance), electrical (powerpoint, downlights, switchboard, ceiling fan, smoke alarms), HVAC (split system, service), building (deck construction), roofing (gutter replacement), and tiling (bathroom floor)
+    - Each template includes categorized items: labour, materials, compliance, safety, and disposal
+    - "Commonly Missed" warnings highlight items tradies often forget (compliance certificates, disposal costs, safety isolation)
+    - Searchable checklist with category filtering
+    - AI-powered missing item detection analyzes current quote items and suggests forgotten items
+    - API routes: `/api/job-scope-templates`, `/api/job-scope-templates/:templateId`, `/api/catalog/search`, `/api/catalog/categories/:tradeId`, `/api/quotes/check-missing-items`
+    - Integrated into LiveQuoteEditor for seamless quote creation workflow
 *   **QuickCreateFAB Component**: Replaces full-width bottom sheet with a centered floating widget popup for quick actions.
 *   **Mobile Collect Payment Redesign**: Overhauled mobile payment flow to include "Record Payment" and QR code generation, with receipt generation and optional linking.
 *   **Job Assignment Request System**: Team members can request assignment to available unassigned jobs, with owner approval/rejection.

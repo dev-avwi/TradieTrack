@@ -14252,6 +14252,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Job Scope Templates Routes
+  app.get("/api/job-scope-templates", requireAuth, async (req: any, res) => {
+    try {
+      const { tradeId, search } = req.query;
+      const { getJobScopeTemplates, searchJobScopeTemplates } = await import("@shared/tradeCatalog");
+      
+      let templates;
+      if (search) {
+        templates = searchJobScopeTemplates(search as string, tradeId as string | undefined);
+      } else if (tradeId) {
+        templates = getJobScopeTemplates(tradeId as string);
+      } else {
+        const { jobScopeTemplates } = await import("@shared/tradeCatalog");
+        templates = jobScopeTemplates;
+      }
+      
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching job scope templates:", error);
+      res.status(500).json({ error: "Failed to fetch job scope templates" });
+    }
+  });
+
+  app.get("/api/job-scope-templates/:templateId", requireAuth, async (req: any, res) => {
+    try {
+      const { templateId } = req.params;
+      const { getJobScopeTemplate } = await import("@shared/tradeCatalog");
+      
+      const template = getJobScopeTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching job scope template:", error);
+      res.status(500).json({ error: "Failed to fetch job scope template" });
+    }
+  });
+
+  // Catalog Search Route
+  app.get("/api/catalog/search", requireAuth, async (req: any, res) => {
+    try {
+      const { q, tradeId, category } = req.query;
+      const { searchCatalogItems, getTradeCategories } = await import("@shared/tradeCatalog");
+      
+      if (!q) {
+        return res.status(400).json({ error: "Search query 'q' is required" });
+      }
+      
+      const results = searchCatalogItems(q as string, tradeId as string | undefined, category as string | undefined);
+      const categories = tradeId ? getTradeCategories(tradeId as string) : [];
+      
+      res.json({ results, categories });
+    } catch (error) {
+      console.error("Error searching catalog:", error);
+      res.status(500).json({ error: "Failed to search catalog" });
+    }
+  });
+
+  // Get categories for a trade
+  app.get("/api/catalog/categories/:tradeId", requireAuth, async (req: any, res) => {
+    try {
+      const { tradeId } = req.params;
+      const { getTradeCategories } = await import("@shared/tradeCatalog");
+      
+      const categories = getTradeCategories(tradeId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  // AI Missing Items Check (supports both existing quotes and new quotes without ID)
+  app.post("/api/quotes/check-missing-items", requireAuth, async (req: any, res) => {
+    try {
+      const { jobType, templateId, currentItems } = req.body;
+      
+      // Get business settings for trade type
+      const businessSettings = await storage.getBusinessSettings(req.userId);
+      const tradeType = businessSettings?.tradeType || 'general';
+      
+      // Get template if provided
+      let template = null;
+      if (templateId) {
+        const { getJobScopeTemplate } = await import("@shared/tradeCatalog");
+        template = getJobScopeTemplate(templateId);
+      }
+      
+      // Prepare context for AI
+      const itemDescriptions = currentItems?.map((item: any) => item.description || item.label) || [];
+      
+      const prompt = `You are an experienced Australian ${tradeType} helping check a quote for missing items.
+
+Job Type: ${jobType || 'General work'}
+Trade: ${tradeType}
+${template ? `Template: ${template.jobType}\nCommonly Missed: ${template.commonlyMissed?.join(', ')}` : ''}
+
+Current items in quote:
+${itemDescriptions.length > 0 ? itemDescriptions.map((d: string, i: number) => `${i+1}. ${d}`).join('\n') : 'No items yet'}
+
+Based on the job type and trade, identify 2-4 items that are commonly forgotten or missed when quoting this type of work. Focus on:
+- Compliance certificates and paperwork
+- Disposal of old materials
+- Safety isolation requirements
+- Common fittings or consumables
+- Testing and commissioning
+
+Respond with JSON in this format:
+{
+  "missingItems": [
+    { "label": "Item name", "reason": "Why it's often missed", "category": "materials|labour|compliance|disposal|safety", "priority": "high|medium|low" }
+  ],
+  "overallAdvice": "Brief advice for this quote"
+}`;
+
+      const openai = new (await import("openai")).default({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+      });
+      
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+      
+      const responseText = completion.choices[0]?.message?.content || '{}';
+      const result = JSON.parse(responseText);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking missing items:", error);
+      res.status(500).json({ error: "Failed to check for missing items" });
+    }
+  });
+
   // Rate Cards Routes
   app.get("/api/rate-cards", requireAuth, async (req: any, res) => {
     try {

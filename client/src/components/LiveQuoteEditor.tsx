@@ -48,6 +48,7 @@ import {
   UserPlus
 } from "lucide-react";
 import AIQuoteGenerator from "@/components/AIQuoteGenerator";
+import JobScopeChecklist from "@/components/JobScopeChecklist";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
@@ -942,9 +943,21 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     onClick={() => setCatalogOpen(true)}
                     className="h-12 w-12 rounded-xl press-scale"
                     data-testid="button-from-catalog"
+                    title="Browse catalog"
                   >
                     <BookOpen className="h-4 w-4" />
                   </Button>
+                  <JobScopeChecklist
+                    onAddItems={(items) => {
+                      items.forEach(item => appendLineItem(item));
+                    }}
+                    currentItems={lineItems.map(item => ({
+                      description: item.description,
+                      quantity: item.quantity,
+                      unitPrice: item.unitPrice,
+                    }))}
+                    jobType={form.getValues("title")}
+                  />
                 </div>
 
                 {form.formState.errors.lineItems && (
