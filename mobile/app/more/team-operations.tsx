@@ -17,14 +17,11 @@ import { Feather } from '@expo/vector-icons';
 import MapView, { Marker, Region, PROVIDER_DEFAULT, MapStyleElement } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes, iconSizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, sizes, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow, format, isAfter } from 'date-fns';
-import { isTablet } from '../../src/lib/device';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const IS_TABLET = isTablet();
+import { isTablet, useContentWidth } from '../../src/lib/device';
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
   { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
@@ -179,7 +176,10 @@ function formatLastSeen(dateStr?: string): string {
 export default function TeamOperationsScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const responsiveShell = usePageShell();
+  const contentWidth = useContentWidth();
+  const isTabletDevice = isTablet();
+  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice), [colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice]);
   const { user } = useAuthStore();
   const mapRef = useRef<MapView>(null);
 
@@ -442,7 +442,7 @@ export default function TeamOperationsScreen() {
     }
   };
 
-  const tabIconSize = IS_TABLET ? 18 : 16;
+  const tabIconSize = isTabletDevice ? 18 : 16;
   
   const renderTabs = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
@@ -990,7 +990,7 @@ export default function TeamOperationsScreen() {
       <Stack.Screen
         options={{
           title: 'Team Operations',
-          headerShown: !IS_TABLET,
+          headerShown: !isTabletDevice,
           headerStyle: { backgroundColor: colors.card },
           headerTintColor: colors.foreground,
           headerRight: () => (
@@ -1000,8 +1000,8 @@ export default function TeamOperationsScreen() {
           ),
         }}
       />
-      <View style={[styles.container, { paddingTop: IS_TABLET ? spacing.xs : 0 }]}>
-        {IS_TABLET && (
+      <View style={[styles.container, { paddingTop: isTabletDevice ? spacing.xs : 0 }]}>
+        {isTabletDevice && (
           <View style={styles.tabletHeader}>
             <Text style={styles.tabletTitle}>Team Operations</Text>
             <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
@@ -1106,11 +1106,11 @@ export default function TeamOperationsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, contentWidth: number, responsivePadding: number, isTabletDevice: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: IS_TABLET ? spacing.lg : 0,
+    paddingHorizontal: isTabletDevice ? spacing.lg : 0,
   },
   tabletHeader: {
     flexDirection: 'row',
@@ -1121,7 +1121,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   tabletTitle: {
-    fontSize: IS_TABLET ? 24 : 20,
+    fontSize: isTabletDevice ? 24 : 20,
     color: colors.foreground,
     fontWeight: '600',
   },
@@ -1144,17 +1144,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: IS_TABLET ? radius.md : 0,
-    paddingHorizontal: IS_TABLET ? spacing.xs : 2,
+    borderRadius: isTabletDevice ? radius.md : 0,
+    paddingHorizontal: isTabletDevice ? spacing.xs : 2,
     marginBottom: spacing.xs,
-    alignSelf: IS_TABLET ? 'flex-start' : 'stretch',
+    alignSelf: isTabletDevice ? 'flex-start' : 'stretch',
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingVertical: IS_TABLET ? 6 : spacing.xs,
-    paddingHorizontal: IS_TABLET ? spacing.sm : spacing.xs,
+    paddingVertical: isTabletDevice ? 6 : spacing.xs,
+    paddingHorizontal: isTabletDevice ? spacing.sm : spacing.xs,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
     marginRight: 2,
@@ -1163,7 +1163,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomColor: colors.primary,
   },
   tabButtonText: {
-    fontSize: IS_TABLET ? 12 : 11,
+    fontSize: isTabletDevice ? 12 : 11,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
@@ -1173,7 +1173,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
-    paddingHorizontal: IS_TABLET ? spacing.sm : spacing.lg,
+    paddingHorizontal: isTabletDevice ? spacing.sm : spacing.lg,
   },
   liveViewToggle: {
     flexDirection: 'row',
@@ -1631,7 +1631,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.md,
   },
   statCard: {
-    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
+    width: (contentWidth - responsivePadding * 2 - spacing.sm) / 2,
     padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -1773,32 +1773,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
-    gap: IS_TABLET ? spacing.sm : spacing.xs,
+    gap: isTabletDevice ? spacing.sm : spacing.xs,
   },
   kpiStatItem: {
     flex: 1,
     alignItems: 'center',
-    padding: IS_TABLET ? spacing.md : spacing.sm,
+    padding: isTabletDevice ? spacing.md : spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   kpiStatIcon: {
-    width: IS_TABLET ? 36 : 32,
-    height: IS_TABLET ? 36 : 32,
-    borderRadius: IS_TABLET ? 18 : 16,
+    width: isTabletDevice ? 36 : 32,
+    height: isTabletDevice ? 36 : 32,
+    borderRadius: isTabletDevice ? 18 : 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
   kpiStatValue: {
-    fontSize: IS_TABLET ? 22 : 18,
+    fontSize: isTabletDevice ? 22 : 18,
     fontWeight: '600',
     color: colors.foreground,
   },
   kpiStatLabel: {
-    fontSize: IS_TABLET ? 13 : 11,
+    fontSize: isTabletDevice ? 13 : 11,
     color: colors.mutedForeground,
   },
 });
