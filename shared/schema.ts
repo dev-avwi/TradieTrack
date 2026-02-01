@@ -652,6 +652,27 @@ export const jobs = pgTable("jobs", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Service Reminders - for recurring maintenance and service tracking
+export const serviceReminders = pgTable("service_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  serviceType: varchar("service_type", { length: 100 }).notNull(),
+  nextDueDate: timestamp("next_due_date").notNull(),
+  intervalMonths: integer("interval_months"),
+  reminderDays: integer("reminder_days").default(14),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  status: varchar("status", { length: 20 }).default("pending"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ServiceReminder = typeof serviceReminders.$inferSelect;
+export const insertServiceReminderSchema = createInsertSchema(serviceReminders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertServiceReminder = z.infer<typeof insertServiceReminderSchema>;
+
 // Job Checklist Items
 export const checklistItems = pgTable("checklist_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -893,6 +914,32 @@ export const receipts = pgTable("receipts", {
 export const insertReceiptSchema = createInsertSchema(receipts).omit({ id: true, createdAt: true });
 export type InsertReceipt = z.infer<typeof insertReceiptSchema>;
 export type Receipt = typeof receipts.$inferSelect;
+
+// Rebates / Credits (manufacturer rebates, government incentives, etc.)
+export const rebates = pgTable("rebates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'set null' }),
+  rebateType: varchar("rebate_type", { length: 50 }).notNull(), // manufacturer, government, other
+  name: varchar("name", { length: 255 }).notNull(), // "Daikin Cashback", "Solar Rebate VIC"
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, submitted, approved, received, rejected
+  submittedAt: timestamp("submitted_at"),
+  approvedAt: timestamp("approved_at"),
+  receivedAt: timestamp("received_at"),
+  expiryDate: timestamp("expiry_date"),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRebateSchema = createInsertSchema(rebates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRebate = z.infer<typeof insertRebateSchema>;
+export type Rebate = typeof rebates.$inferSelect;
 
 // Document Templates  
 export const documentTemplates = pgTable("document_templates", {

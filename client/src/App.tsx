@@ -70,6 +70,8 @@ import DispatchBoard from "@/pages/DispatchBoard";
 import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
 import RecurringJobs from "@/pages/RecurringJobs";
+import ServiceRemindersPage from "@/pages/ServiceReminders";
+import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
@@ -528,6 +530,14 @@ function Router({
       
       <Route path="/recurring-jobs" component={() => (
         <RecurringJobs />
+      )} />
+      
+      <Route path="/service-reminders" component={() => (
+        <ServiceRemindersPage />
+      )} />
+      
+      <Route path="/rebates" component={() => (
+        <RebatesPage />
       )} />
       
       <Route path="/leads" component={() => (

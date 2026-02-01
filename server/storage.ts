@@ -241,6 +241,12 @@ import {
   jobVariations,
   type JobVariation,
   type InsertJobVariation,
+  serviceReminders,
+  type ServiceReminder,
+  type InsertServiceReminder,
+  rebates,
+  type Rebate,
+  type InsertRebate,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -318,6 +324,22 @@ export interface IStorage {
   updateJobVariation(id: string, userId: string, updates: Partial<InsertJobVariation>): Promise<JobVariation | undefined>;
   deleteJobVariation(id: string, userId: string): Promise<boolean>;
   getNextVariationNumber(jobId: string, userId: string): Promise<string>;
+
+  // Service Reminders
+  getServiceReminders(userId: string): Promise<ServiceReminder[]>;
+  getServiceReminderById(id: string, userId: string): Promise<ServiceReminder | undefined>;
+  getUpcomingServiceReminders(userId: string, days: number): Promise<ServiceReminder[]>;
+  createServiceReminder(reminder: InsertServiceReminder): Promise<ServiceReminder>;
+  updateServiceReminder(id: string, userId: string, updates: Partial<InsertServiceReminder>): Promise<ServiceReminder | undefined>;
+  deleteServiceReminder(id: string, userId: string): Promise<boolean>;
+
+  // Rebates / Credits
+  getRebates(userId: string): Promise<Rebate[]>;
+  getRebateById(id: string, userId: string): Promise<Rebate | undefined>;
+  createRebate(rebate: InsertRebate): Promise<Rebate>;
+  updateRebate(id: string, userId: string, updates: Partial<InsertRebate>): Promise<Rebate | undefined>;
+  deleteRebate(id: string, userId: string): Promise<boolean>;
+  getRebatesSummary(userId: string): Promise<{ pending: number; submitted: number; approved: number; received: number; rejected: number }>;
 
   // Platform Stats (for trust signals)
   getPlatformStats(): Promise<{ userCount: number; quotesCount: number; paidInvoicesCount: number }>;
@@ -1274,6 +1296,118 @@ export class PostgresStorage implements IStorage {
     const variations = await this.getJobVariations(jobId, userId);
     const nextNum = variations.length + 1;
     return `V${String(nextNum).padStart(3, '0')}`;
+  }
+
+  // Service Reminders
+  async getServiceReminders(userId: string): Promise<ServiceReminder[]> {
+    return await db.select().from(serviceReminders).where(eq(serviceReminders.userId, userId)).orderBy(asc(serviceReminders.nextDueDate));
+  }
+
+  async getServiceReminderById(id: string, userId: string): Promise<ServiceReminder | undefined> {
+    const result = await db
+      .select()
+      .from(serviceReminders)
+      .where(and(eq(serviceReminders.id, id), eq(serviceReminders.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getUpcomingServiceReminders(userId: string, days: number): Promise<ServiceReminder[]> {
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+    
+    return await db
+      .select()
+      .from(serviceReminders)
+      .where(
+        and(
+          eq(serviceReminders.userId, userId),
+          gte(serviceReminders.nextDueDate, now),
+          lte(serviceReminders.nextDueDate, futureDate),
+          or(eq(serviceReminders.status, 'pending'), eq(serviceReminders.status, 'sent'))
+        )
+      )
+      .orderBy(asc(serviceReminders.nextDueDate));
+  }
+
+  async createServiceReminder(reminder: InsertServiceReminder): Promise<ServiceReminder> {
+    const result = await db.insert(serviceReminders).values(reminder).returning();
+    return result[0];
+  }
+
+  async updateServiceReminder(id: string, userId: string, updates: Partial<InsertServiceReminder>): Promise<ServiceReminder | undefined> {
+    const existing = await this.getServiceReminderById(id, userId);
+    if (!existing) return undefined;
+    
+    const result = await db
+      .update(serviceReminders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(serviceReminders.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteServiceReminder(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getServiceReminderById(id, userId);
+    if (!existing) return false;
+    
+    const result = await db.delete(serviceReminders).where(eq(serviceReminders.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Rebates / Credits
+  async getRebates(userId: string): Promise<Rebate[]> {
+    return await db.select().from(rebates).where(eq(rebates.userId, userId)).orderBy(desc(rebates.createdAt));
+  }
+
+  async getRebateById(id: string, userId: string): Promise<Rebate | undefined> {
+    const result = await db
+      .select()
+      .from(rebates)
+      .where(and(eq(rebates.id, id), eq(rebates.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createRebate(rebate: InsertRebate): Promise<Rebate> {
+    const result = await db.insert(rebates).values(rebate).returning();
+    return result[0];
+  }
+
+  async updateRebate(id: string, userId: string, updates: Partial<InsertRebate>): Promise<Rebate | undefined> {
+    const existing = await this.getRebateById(id, userId);
+    if (!existing) return undefined;
+    
+    const result = await db
+      .update(rebates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(rebates.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteRebate(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getRebateById(id, userId);
+    if (!existing) return false;
+    
+    const result = await db.delete(rebates).where(eq(rebates.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getRebatesSummary(userId: string): Promise<{ pending: number; submitted: number; approved: number; received: number; rejected: number }> {
+    const allRebates = await this.getRebates(userId);
+    const summary = { pending: 0, submitted: 0, approved: 0, received: 0, rejected: 0 };
+    
+    for (const rebate of allRebates) {
+      const amount = parseFloat(rebate.amount || '0');
+      const status = rebate.status as keyof typeof summary;
+      if (status in summary) {
+        summary[status] += amount;
+      }
+    }
+    
+    return summary;
   }
 
   // Platform Stats (for trust signals)
