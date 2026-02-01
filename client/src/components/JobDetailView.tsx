@@ -7,6 +7,7 @@ import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
 import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobDocuments } from "./JobDocuments";
+import { JobVariations } from "./JobVariations";
 import { JobSignature } from "./JobSignature";
 import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
 import { JobForms } from "./CustomFormRenderer";
@@ -1801,6 +1802,9 @@ export default function JobDetailView({
 
         {/* Uploaded Documents - external quotes, invoices, PDFs */}
         <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
+        {/* Job Variations / Change Orders - for tracking scope changes */}
+        <JobVariations jobId={jobId} canEdit={job.status !== 'invoiced' && !isTradie} />
 
         {/* Custom Forms - available for in_progress, done, invoiced jobs */}
         {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (

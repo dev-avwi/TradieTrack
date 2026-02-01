@@ -19585,6 +19585,313 @@ Respond with JSON in this format:
     }
   });
 
+  // ===== JOB VARIATIONS / CHANGE ORDERS ROUTES =====
+  
+  // Get all variations for a job
+  app.get("/api/jobs/:jobId/variations", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const variations = await storage.getJobVariations(jobId, userContext.effectiveUserId);
+      
+      res.json(variations);
+    } catch (error: any) {
+      console.error('Error getting job variations:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get a single variation
+  app.get("/api/variations/:variationId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { variationId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const variation = await storage.getJobVariation(variationId, userContext.effectiveUserId);
+      
+      if (!variation) {
+        return res.status(404).json({ error: 'Variation not found' });
+      }
+      
+      res.json(variation);
+    } catch (error: any) {
+      console.error('Error getting variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a new variation
+  app.post("/api/jobs/:jobId/variations", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const user = await storage.getUser(userId);
+      const nextNumber = await storage.getNextVariationNumber(jobId, userContext.effectiveUserId);
+      
+      // Calculate GST (10% for Australia)
+      const additionalAmount = parseFloat(req.body.additionalAmount || '0');
+      const gstAmount = additionalAmount * 0.10;
+      const totalAmount = additionalAmount + gstAmount;
+      
+      const variation = await storage.createJobVariation({
+        userId: userContext.effectiveUserId,
+        jobId,
+        number: nextNumber,
+        title: req.body.title || 'Untitled Variation',
+        description: req.body.description,
+        reason: req.body.reason,
+        additionalAmount: String(additionalAmount),
+        gstAmount: String(gstAmount.toFixed(2)),
+        totalAmount: String(totalAmount.toFixed(2)),
+        status: 'draft',
+        photos: req.body.photos || [],
+        createdBy: userId,
+        createdByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : undefined,
+      });
+      
+      // Log activity
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'variation_created',
+        entityType: 'job',
+        entityId: jobId,
+        description: `Created variation ${nextNumber}: ${variation.title}`,
+      });
+      
+      res.json(variation);
+    } catch (error: any) {
+      console.error('Error creating job variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a variation
+  app.patch("/api/variations/:variationId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { variationId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const existing = await storage.getJobVariation(variationId, userContext.effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Variation not found' });
+      }
+      
+      // Only allow editing draft variations
+      if (existing.status !== 'draft') {
+        return res.status(400).json({ error: 'Cannot edit a variation that has been sent' });
+      }
+      
+      // Recalculate GST if amount changed
+      let updates = { ...req.body };
+      if (req.body.additionalAmount !== undefined) {
+        const additionalAmount = parseFloat(req.body.additionalAmount || '0');
+        const gstAmount = additionalAmount * 0.10;
+        const totalAmount = additionalAmount + gstAmount;
+        updates = {
+          ...updates,
+          additionalAmount: String(additionalAmount),
+          gstAmount: String(gstAmount.toFixed(2)),
+          totalAmount: String(totalAmount.toFixed(2)),
+        };
+      }
+      
+      const variation = await storage.updateJobVariation(variationId, userContext.effectiveUserId, updates);
+      
+      res.json(variation);
+    } catch (error: any) {
+      console.error('Error updating job variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a variation
+  app.delete("/api/variations/:variationId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { variationId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const existing = await storage.getJobVariation(variationId, userContext.effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Variation not found' });
+      }
+      
+      // Only allow deleting draft variations
+      if (existing.status !== 'draft') {
+        return res.status(400).json({ error: 'Cannot delete a variation that has been sent' });
+      }
+      
+      const deleted = await storage.deleteJobVariation(variationId, userContext.effectiveUserId);
+      
+      if (deleted) {
+        await storage.createActivityLog({
+          userId: userContext.effectiveUserId,
+          type: 'variation_deleted',
+          entityType: 'job',
+          entityId: existing.jobId,
+          description: `Deleted variation ${existing.number}`,
+        });
+      }
+      
+      res.json({ success: deleted });
+    } catch (error: any) {
+      console.error('Error deleting job variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send a variation to client for approval
+  app.post("/api/variations/:variationId/send", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { variationId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const existing = await storage.getJobVariation(variationId, userContext.effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Variation not found' });
+      }
+      
+      if (existing.status !== 'draft') {
+        return res.status(400).json({ error: 'Variation has already been sent' });
+      }
+      
+      const variation = await storage.updateJobVariation(variationId, userContext.effectiveUserId, {
+        status: 'sent',
+        sentAt: new Date(),
+      });
+      
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'variation_sent',
+        entityType: 'job',
+        entityId: existing.jobId,
+        description: `Sent variation ${existing.number} to client for approval`,
+      });
+      
+      res.json(variation);
+    } catch (error: any) {
+      console.error('Error sending variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Approve a variation (can be done by tradie on behalf of client)
+  app.post("/api/variations/:variationId/approve", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { variationId } = req.params;
+      const { approvedByName, approvedBySignature } = req.body;
+      
+      const userContext = await getUserContext(userId);
+      const existing = await storage.getJobVariation(variationId, userContext.effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Variation not found' });
+      }
+      
+      if (existing.status !== 'sent') {
+        return res.status(400).json({ error: 'Variation must be sent before it can be approved' });
+      }
+      
+      const variation = await storage.updateJobVariation(variationId, userContext.effectiveUserId, {
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedByName: approvedByName || 'Client',
+        approvedBySignature: approvedBySignature,
+      });
+      
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'variation_approved',
+        entityType: 'job',
+        entityId: existing.jobId,
+        description: `Variation ${existing.number} approved by ${approvedByName || 'client'}`,
+      });
+      
+      res.json(variation);
+    } catch (error: any) {
+      console.error('Error approving variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Reject a variation
+  app.post("/api/variations/:variationId/reject", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { variationId } = req.params;
+      const { rejectionReason } = req.body;
+      
+      const userContext = await getUserContext(userId);
+      const existing = await storage.getJobVariation(variationId, userContext.effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: 'Variation not found' });
+      }
+      
+      if (existing.status !== 'sent') {
+        return res.status(400).json({ error: 'Variation must be sent before it can be rejected' });
+      }
+      
+      const variation = await storage.updateJobVariation(variationId, userContext.effectiveUserId, {
+        status: 'rejected',
+        rejectedAt: new Date(),
+        rejectionReason: rejectionReason,
+      });
+      
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'variation_rejected',
+        entityType: 'job',
+        entityId: existing.jobId,
+        description: `Variation ${existing.number} rejected${rejectionReason ? `: ${rejectionReason}` : ''}`,
+      });
+      
+      res.json(variation);
+    } catch (error: any) {
+      console.error('Error rejecting variation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get variation summary for a job (total approved amount)
+  app.get("/api/jobs/:jobId/variations/summary", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const variations = await storage.getJobVariations(jobId, userContext.effectiveUserId);
+      
+      const approvedVariations = variations.filter(v => v.status === 'approved');
+      const pendingVariations = variations.filter(v => v.status === 'sent');
+      
+      const approvedTotal = approvedVariations.reduce((sum, v) => sum + parseFloat(v.totalAmount || '0'), 0);
+      const pendingTotal = pendingVariations.reduce((sum, v) => sum + parseFloat(v.totalAmount || '0'), 0);
+      
+      res.json({
+        totalVariations: variations.length,
+        approvedCount: approvedVariations.length,
+        pendingCount: pendingVariations.length,
+        approvedTotal: approvedTotal.toFixed(2),
+        pendingTotal: pendingTotal.toFixed(2),
+      });
+    } catch (error: any) {
+      console.error('Error getting variation summary:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== JOB DOCUMENTS ROUTES (uploaded PDFs, external quotes/invoices) =====
   
   // Get documents for a job (team-aware: shows all documents for the job)
