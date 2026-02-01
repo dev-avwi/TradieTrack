@@ -238,6 +238,9 @@ import {
   jobNotes,
   type JobNote,
   type InsertJobNote,
+  jobVariations,
+  type JobVariation,
+  type InsertJobVariation,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -307,6 +310,14 @@ export interface IStorage {
   createJobNote(note: InsertJobNote): Promise<JobNote>;
   updateJobNote(id: string, userId: string, updates: Partial<InsertJobNote>): Promise<JobNote | undefined>;
   deleteJobNote(id: string, userId: string): Promise<boolean>;
+
+  // Job Variations / Change Orders
+  getJobVariations(jobId: string, userId: string): Promise<JobVariation[]>;
+  getJobVariation(id: string, userId: string): Promise<JobVariation | undefined>;
+  createJobVariation(variation: InsertJobVariation): Promise<JobVariation>;
+  updateJobVariation(id: string, userId: string, updates: Partial<InsertJobVariation>): Promise<JobVariation | undefined>;
+  deleteJobVariation(id: string, userId: string): Promise<boolean>;
+  getNextVariationNumber(jobId: string, userId: string): Promise<string>;
 
   // Platform Stats (for trust signals)
   getPlatformStats(): Promise<{ userCount: number; quotesCount: number; paidInvoicesCount: number }>;
@@ -1207,6 +1218,62 @@ export class PostgresStorage implements IStorage {
     
     const result = await db.delete(jobNotes).where(eq(jobNotes.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Job Variations / Change Orders
+  async getJobVariations(jobId: string, userId: string): Promise<JobVariation[]> {
+    const job = await this.getJob(jobId, userId);
+    if (!job) return [];
+    
+    return await db
+      .select()
+      .from(jobVariations)
+      .where(eq(jobVariations.jobId, jobId))
+      .orderBy(desc(jobVariations.createdAt));
+  }
+
+  async getJobVariation(id: string, userId: string): Promise<JobVariation | undefined> {
+    const result = await db.select().from(jobVariations).where(eq(jobVariations.id, id)).limit(1);
+    if (!result[0]) return undefined;
+    
+    const job = await this.getJob(result[0].jobId, userId);
+    if (!job) return undefined;
+    
+    return result[0];
+  }
+
+  async createJobVariation(variation: InsertJobVariation): Promise<JobVariation> {
+    const result = await db.insert(jobVariations).values({
+      ...variation,
+      id: randomUUID(),
+    }).returning();
+    return result[0];
+  }
+
+  async updateJobVariation(id: string, userId: string, updates: Partial<InsertJobVariation>): Promise<JobVariation | undefined> {
+    const existing = await this.getJobVariation(id, userId);
+    if (!existing) return undefined;
+    
+    const result = await db
+      .update(jobVariations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(jobVariations.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteJobVariation(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getJobVariation(id, userId);
+    if (!existing) return false;
+    
+    const result = await db.delete(jobVariations).where(eq(jobVariations.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getNextVariationNumber(jobId: string, userId: string): Promise<string> {
+    const variations = await this.getJobVariations(jobId, userId);
+    const nextNum = variations.length + 1;
+    return `V${String(nextNum).padStart(3, '0')}`;
   }
 
   // Platform Stats (for trust signals)

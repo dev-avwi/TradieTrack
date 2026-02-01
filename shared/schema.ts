@@ -2405,6 +2405,41 @@ export const insertJobNoteSchema = createInsertSchema(jobNotes).omit({
 export type InsertJobNote = z.infer<typeof insertJobNoteSchema>;
 export type JobNote = typeof jobNotes.$inferSelect;
 
+// Job Variations / Change Orders - Track scope changes with approvals
+export const jobVariations = pgTable("job_variations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  number: text("number").notNull(), // e.g., "V001", "V002"
+  title: text("title").notNull(),
+  description: text("description"),
+  reason: text("reason"), // Why the change is needed
+  additionalAmount: decimal("additional_amount", { precision: 10, scale: 2 }).notNull().default('0.00'), // Can be negative for credits
+  gstAmount: decimal("gst_amount", { precision: 10, scale: 2 }).notNull().default('0.00'),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default('0.00'),
+  status: text("status").notNull().default('draft'), // draft, sent, approved, rejected
+  photos: jsonb("photos").default([]), // Array of photo URLs with timestamps
+  createdBy: varchar("created_by").references(() => users.id),
+  createdByName: text("created_by_name"),
+  sentAt: timestamp("sent_at"),
+  approvedAt: timestamp("approved_at"),
+  approvedByName: text("approved_by_name"), // Client name who approved
+  approvedBySignature: text("approved_by_signature"), // Base64 signature data
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"), // Additional notes from client or tradie
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobVariationSchema = createInsertSchema(jobVariations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertJobVariation = z.infer<typeof insertJobVariationSchema>;
+export type JobVariation = typeof jobVariations.$inferSelect;
+
 // Job Documents - External PDF files (quotes/invoices from other sources)
 export const jobDocuments = pgTable("job_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
