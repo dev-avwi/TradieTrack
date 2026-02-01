@@ -57,6 +57,7 @@ Core architectural and design decisions include:
 *   **Templates Hub**: Focuses on Document Styles with integrated live preview for quotes, invoices, and jobs.
 *   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
 *   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
+*   **Feature Implementation Roadmap**: 11-feature roadmap in `docs/FEATURE_IMPLEMENTATION_PLAN.md` covering all competitor gaps (Weather Widget, Service Reminders, Billable Time, Trade Calculators, Team Groups, Rebate Tracking, QuickBooks, Site Photos, Activity Feed, Invite Links, AI Visualization).
 *   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
 *   **Timesheet Approvals**: Workflow for crew timesheet approval.
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
