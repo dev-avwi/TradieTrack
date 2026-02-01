@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics";
 
 // Custom hook for scroll-triggered animations
 function useScrollAnimation(options?: IntersectionObserverInit) {
@@ -238,7 +239,11 @@ export default function LandingPage() {
                   </Button>
                 </Link>
                 <Link href="/auth?mode=signup">
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-9 px-5 rounded-md shadow-sm transition-all" data-testid="nav-get-started">
+                  <Button 
+                    className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-9 px-5 rounded-md shadow-sm transition-all" 
+                    data-testid="nav-get-started"
+                    onClick={() => trackEvent('cta_click', { location: 'nav', button: 'get_started_free' })}
+                  >
                     Get Started Free
                   </Button>
                 </Link>
@@ -340,7 +345,11 @@ export default function LandingPage() {
             {/* Bottom CTAs - Grouped together */}
             <div className="p-5 border-t border-gray-100 space-y-3">
               <Link href="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-[15px] font-semibold rounded-lg" data-testid="mobile-get-started">
+                <Button 
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-[15px] font-semibold rounded-lg" 
+                  data-testid="mobile-get-started"
+                  onClick={() => trackEvent('cta_click', { location: 'mobile_menu', button: 'get_started_free' })}
+                >
                   Get Started Free
                 </Button>
               </Link>
@@ -380,7 +389,12 @@ export default function LandingPage() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
                 <Link href="/auth?mode=signup">
-                  <Button size="lg" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" data-testid="hero-start-trial">
+                  <Button 
+                    size="lg" 
+                    className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
+                    data-testid="hero-start-trial"
+                    onClick={() => trackEvent('cta_click', { location: 'hero', button: 'start_using_free' })}
+                  >
                     Start Using Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -925,7 +939,12 @@ export default function LandingPage() {
             Join our growing community of Australian tradies. Free during beta - first 10 users get lifetime access!
           </p>
           <Link href="/auth?mode=signup">
-            <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" data-testid="cta-start-trial">
+            <Button 
+              size="lg" 
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" 
+              data-testid="cta-start-trial"
+              onClick={() => trackEvent('cta_click', { location: 'footer_cta', button: 'join_the_beta' })}
+            >
               Join the Beta
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -1344,7 +1363,10 @@ function PricingCard({
       {isContactSales ? (
         <Button 
           variant={buttonVariant as any}
-          onClick={handleContactSales}
+          onClick={() => {
+            trackEvent('cta_click', { location: 'pricing', button: 'contact_sales', plan: name });
+            handleContactSales();
+          }}
           className="w-full h-12 font-semibold rounded-lg"
           data-testid={`pricing-${name.toLowerCase()}-cta`}
         >
@@ -1360,6 +1382,7 @@ function PricingCard({
                 : ""
             }`}
             data-testid={`pricing-${name.toLowerCase()}-cta`}
+            onClick={() => trackEvent('cta_click', { location: 'pricing', button: buttonText.toLowerCase().replace(/\s+/g, '_'), plan: name })}
           >
             {buttonText}
           </Button>

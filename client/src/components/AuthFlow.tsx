@@ -243,6 +243,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       if (result.success) {
         // Track successful signup
         trackEvent('signup_completed', { method: 'email' });
+        trackEvent('form_submit', { form: 'signup', method: 'email' });
         
         // Registration successful - redirect to verify email pending page
         // (Session is NOT created until email is verified)
