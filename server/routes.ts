@@ -5835,6 +5835,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // SERVICEM8/TRADIFY FEATURE PARITY - Bidirectional Sync FROM Xero
+  // ============================================================================
+
+  // Sync payments FROM Xero - Mark invoices paid when Xero shows payment received
+  // This matches ServiceM8 and Tradify's bidirectional payment sync
+  app.post("/api/integrations/xero/sync-payments-from-xero", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.syncPaymentsFromXero(req.userId);
+      res.json({ 
+        success: true, 
+        updated: result.updated,
+        details: result.details,
+        errors: result.errors,
+        message: result.updated > 0 
+          ? `${result.updated} invoice(s) marked as paid from Xero payments` 
+          : "No new payments found in Xero"
+      });
+    } catch (error: any) {
+      console.error("Error syncing payments from Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync payments from Xero" });
+    }
+  });
+
+  // Sync invoice status FROM Xero - Detect voided/cancelled invoices
+  // Matches Tradify: Void invoice in Xero → Cancelled in TradieTrack
+  app.post("/api/integrations/xero/sync-invoice-status", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.syncInvoiceStatusFromXero(req.userId);
+      res.json({ 
+        success: true,
+        voided: result.voided,
+        updated: result.updated,
+        errors: result.errors,
+        message: `Synced: ${result.voided} voided, ${result.updated} status updates`
+      });
+    } catch (error: any) {
+      console.error("Error syncing invoice status from Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync invoice status from Xero" });
+    }
+  });
+
+  // Void invoice in Xero when cancelled in TradieTrack
+  // Tradify feature: Cancel invoice → Voided in Xero
+  app.post("/api/integrations/xero/void-invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const result = await xeroService.voidInvoiceInXero(req.userId, invoiceId);
+      
+      if (result.success) {
+        res.json({ success: true, message: "Invoice voided in Xero" });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error: any) {
+      console.error("Error voiding invoice in Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to void invoice in Xero" });
+    }
+  });
+
+  // Sync credit notes FROM Xero
+  // Tradify feature: Credit notes applied in Xero sync back
+  app.post("/api/integrations/xero/sync-credit-notes", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.syncCreditNotesFromXero(req.userId);
+      res.json({ 
+        success: true,
+        synced: result.synced,
+        appliedToInvoices: result.appliedToInvoices,
+        errors: result.errors,
+        message: `${result.synced} credit notes synced, ${result.appliedToInvoices} applied to invoices`
+      });
+    } catch (error: any) {
+      console.error("Error syncing credit notes from Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync credit notes from Xero" });
+    }
+  });
+
+  // Sync inventory items FROM Xero to TradieTrack catalog
+  // ServiceM8 & Tradify feature: Inventory items sync from Xero
+  app.post("/api/integrations/xero/sync-inventory", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.syncInventoryFromXero(req.userId);
+      res.json({ 
+        success: true,
+        synced: result.synced,
+        updated: result.updated,
+        errors: result.errors,
+        message: `${result.synced} new items imported, ${result.updated} items updated from Xero`
+      });
+    } catch (error: any) {
+      console.error("Error syncing inventory from Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to sync inventory from Xero" });
+    }
+  });
+
+  // Run full bidirectional Xero sync - All sync operations in one call
+  // This is the main endpoint for periodic sync (every 5-30 minutes)
+  app.post("/api/integrations/xero/full-sync", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.runFullXeroSync(req.userId);
+      res.json({ 
+        success: result.success,
+        summary: {
+          paymentsUpdated: result.paymentsUpdated,
+          invoicesUpdated: result.invoicesUpdated,
+          invoicesVoided: result.invoicesVoided,
+          creditNotesApplied: result.creditNotesApplied,
+          inventorySynced: result.inventorySynced,
+        },
+        errors: result.errors,
+        message: result.success 
+          ? `Full sync completed: ${result.paymentsUpdated} payments, ${result.invoicesUpdated} invoice updates, ${result.invoicesVoided} voided, ${result.creditNotesApplied} credit notes, ${result.inventorySynced} inventory items`
+          : "Sync completed with some errors"
+      });
+    } catch (error: any) {
+      console.error("Error running full Xero sync:", error);
+      res.status(500).json({ error: error.message || "Failed to run full Xero sync" });
+    }
+  });
+
+  // Get detailed sync status with feature flags
+  app.get("/api/integrations/xero/detailed-status", requireAuth, async (req: any, res) => {
+    try {
+      const status = await xeroService.getDetailedSyncStatus(req.userId);
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error getting detailed Xero status:", error);
+      res.status(500).json({ error: error.message || "Failed to get detailed Xero status" });
+    }
+  });
+
   // Seed mock Xero jobs for testing (development only)
   app.post("/api/integrations/xero/seed-mock-jobs", requireAuth, async (req: any, res) => {
     // Block this endpoint in production to prevent data pollution
