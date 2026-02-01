@@ -893,8 +893,7 @@ export default function LandingPage() {
                   </div>
                 </a>
                 
-                <a 
-                  href="#"
+                <div 
                   className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 opacity-50 cursor-not-allowed"
                   data-testid="download-google-play"
                   title="Coming Soon"
@@ -904,7 +903,7 @@ export default function LandingPage() {
                     <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
                     <div className="text-base font-semibold -mt-0.5">Google Play</div>
                   </div>
-                </a>
+                </div>
               </div>
               </div>
             </AnimatedSection>
@@ -1008,9 +1007,9 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-5">Company</h3>
               <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors" data-testid="link-about">About</a></li>
+                <li><a href="#how-it-works" onClick={(e) => scrollToSection(e, "how-it-works")} className="hover:text-white transition-colors" data-testid="link-about">About</a></li>
                 <li><a href="mailto:admin@avwebinnovation.com" className="hover:text-white transition-colors" data-testid="link-contact">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
+                <li><a href="mailto:support@tradietrack.com.au" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
               </ul>
             </div>
             <div>
@@ -1174,7 +1173,9 @@ export default function LandingPage() {
               {/* App Store Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <a 
-                  href="#" 
+                  href="https://apps.apple.com/app/tradietrack/id6756844699" 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
                   data-testid="popup-app-store"
                 >
@@ -1184,17 +1185,17 @@ export default function LandingPage() {
                     <div className="text-sm font-semibold -mt-0.5">App Store</div>
                   </div>
                 </a>
-                <a 
-                  href="#" 
-                  className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
+                <div 
+                  className="flex-1 flex items-center justify-center gap-2 bg-black/50 text-white/70 rounded-lg py-3 px-4 cursor-not-allowed"
+                  title="Coming Soon"
                   data-testid="popup-google-play"
                 >
                   <SiGoogleplay className="w-5 h-5" />
                   <div className="text-left">
-                    <div className="text-[9px] uppercase tracking-wider opacity-80">Get it on</div>
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
                     <div className="text-sm font-semibold -mt-0.5">Google Play</div>
                   </div>
-                </a>
+                </div>
               </div>
 
               {/* Dismiss link */}
