@@ -19639,7 +19639,9 @@ Respond with JSON in this format:
       const nextNumber = await storage.getNextVariationNumber(jobId, userContext.effectiveUserId);
       
       // Calculate GST (10% for Australia)
+      console.log('[Variation] Creating variation with body:', JSON.stringify(req.body));
       const additionalAmount = parseFloat(req.body.additionalAmount || '0');
+      console.log('[Variation] Parsed additionalAmount:', additionalAmount);
       const gstAmount = additionalAmount * 0.10;
       const totalAmount = additionalAmount + gstAmount;
       
@@ -19663,6 +19665,7 @@ Respond with JSON in this format:
       await storage.createActivityLog({
         userId: userContext.effectiveUserId,
         type: 'variation_created',
+        title: 'Variation Created',
         entityType: 'job',
         entityId: jobId,
         description: `Created variation ${nextNumber}: ${variation.title}`,
@@ -19738,6 +19741,7 @@ Respond with JSON in this format:
         await storage.createActivityLog({
           userId: userContext.effectiveUserId,
           type: 'variation_deleted',
+          title: 'Variation Deleted',
           entityType: 'job',
           entityId: existing.jobId,
           description: `Deleted variation ${existing.number}`,
@@ -19775,6 +19779,7 @@ Respond with JSON in this format:
       await storage.createActivityLog({
         userId: userContext.effectiveUserId,
         type: 'variation_sent',
+        title: 'Variation Sent',
         entityType: 'job',
         entityId: existing.jobId,
         description: `Sent variation ${existing.number} to client for approval`,
@@ -19814,6 +19819,7 @@ Respond with JSON in this format:
       await storage.createActivityLog({
         userId: userContext.effectiveUserId,
         type: 'variation_approved',
+        title: 'Variation Approved',
         entityType: 'job',
         entityId: existing.jobId,
         description: `Variation ${existing.number} approved by ${approvedByName || 'client'}`,
@@ -19852,6 +19858,7 @@ Respond with JSON in this format:
       await storage.createActivityLog({
         userId: userContext.effectiveUserId,
         type: 'variation_rejected',
+        title: 'Variation Rejected',
         entityType: 'job',
         entityId: existing.jobId,
         description: `Variation ${existing.number} rejected${rejectionReason ? `: ${rejectionReason}` : ''}`,
