@@ -19639,9 +19639,7 @@ Respond with JSON in this format:
       const nextNumber = await storage.getNextVariationNumber(jobId, userContext.effectiveUserId);
       
       // Calculate GST (10% for Australia)
-      console.log('[Variation] Creating variation with body:', JSON.stringify(req.body));
       const additionalAmount = parseFloat(req.body.additionalAmount || '0');
-      console.log('[Variation] Parsed additionalAmount:', additionalAmount);
       const gstAmount = additionalAmount * 0.10;
       const totalAmount = additionalAmount + gstAmount;
       
