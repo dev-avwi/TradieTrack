@@ -235,6 +235,9 @@ import {
   recurringSchedules,
   type RecurringSchedule,
   type InsertRecurringSchedule,
+  jobNotes,
+  type JobNote,
+  type InsertJobNote,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -298,6 +301,12 @@ export interface IStorage {
   getActivityLogs(userId: string, limit?: number): Promise<ActivityLog[]>;
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   deleteActivityLogs(userId: string): Promise<number>;
+
+  // Job Notes (Timestamped notes tied to moments)
+  getJobNotes(jobId: string, userId: string): Promise<JobNote[]>;
+  createJobNote(note: InsertJobNote): Promise<JobNote>;
+  updateJobNote(id: string, userId: string, updates: Partial<InsertJobNote>): Promise<JobNote | undefined>;
+  deleteJobNote(id: string, userId: string): Promise<boolean>;
 
   // Platform Stats (for trust signals)
   getPlatformStats(): Promise<{ userCount: number; quotesCount: number; paidInvoicesCount: number }>;
@@ -1152,6 +1161,52 @@ export class PostgresStorage implements IStorage {
   async deleteActivityLogs(userId: string): Promise<number> {
     const result = await db.delete(activityLogs).where(eq(activityLogs.userId, userId)).returning();
     return result.length;
+  }
+
+  // Job Notes (Timestamped notes tied to moments)
+  async getJobNotes(jobId: string, userId: string): Promise<JobNote[]> {
+    const job = await this.getJob(jobId, userId);
+    if (!job) return [];
+    
+    return await db
+      .select()
+      .from(jobNotes)
+      .where(eq(jobNotes.jobId, jobId))
+      .orderBy(desc(jobNotes.createdAt));
+  }
+
+  async createJobNote(note: InsertJobNote): Promise<JobNote> {
+    const result = await db.insert(jobNotes).values({
+      ...note,
+      id: randomUUID(),
+    }).returning();
+    return result[0];
+  }
+
+  async updateJobNote(id: string, userId: string, updates: Partial<InsertJobNote>): Promise<JobNote | undefined> {
+    const existingNote = await db.select().from(jobNotes).where(eq(jobNotes.id, id)).limit(1);
+    if (!existingNote[0]) return undefined;
+    
+    const job = await this.getJob(existingNote[0].jobId, userId);
+    if (!job) return undefined;
+    
+    const result = await db
+      .update(jobNotes)
+      .set(updates)
+      .where(eq(jobNotes.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteJobNote(id: string, userId: string): Promise<boolean> {
+    const existingNote = await db.select().from(jobNotes).where(eq(jobNotes.id, id)).limit(1);
+    if (!existingNote[0]) return false;
+    
+    const job = await this.getJob(existingNote[0].jobId, userId);
+    if (!job) return false;
+    
+    const result = await db.delete(jobNotes).where(eq(jobNotes.id, id)).returning();
+    return result.length > 0;
   }
 
   // Platform Stats (for trust signals)

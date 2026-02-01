@@ -64,6 +64,8 @@ import {
   insertRecurringContractSchema,
   // Leads schema
   insertLeadSchema,
+  // Job notes schema
+  insertJobNoteSchema,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -19426,6 +19428,159 @@ Respond with JSON in this format:
       res.send(Buffer.from(arrayBuffer));
     } catch (error: any) {
       console.error('Error streaming voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== JOB NOTES ROUTES (Timestamped notes tied to moments) =====
+  
+  app.get("/api/jobs/:jobId/notes", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const notes = await storage.getJobNotes(jobId, userContext.effectiveUserId);
+      
+      res.json(notes);
+    } catch (error: any) {
+      console.error('Error fetching job notes:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/jobs/:jobId/notes", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      // Validate request body with Zod schema - enforce non-empty trimmed content
+      const contentSchema = z.object({ content: z.string().trim().min(1, 'Note content cannot be empty') });
+      const parseResult = contentSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: 'Note content is required', details: parseResult.error.errors });
+      }
+      const { content } = parseResult.data;
+      
+      const userContext = await getUserContext(userId);
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const user = await storage.getUser(userId);
+      
+      const note = await storage.createJobNote({
+        userId: userContext.effectiveUserId,
+        jobId,
+        content,
+        createdBy: userId,
+        createdByName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : undefined,
+      });
+      
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'note_added',
+        entityType: 'job',
+        entityId: jobId,
+        description: 'Added a note to job',
+      });
+      
+      res.json(note);
+    } catch (error: any) {
+      console.error('Error creating job note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/jobs/:jobId/notes/:noteId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, noteId } = req.params;
+      
+      // Validate request body with Zod schema - enforce non-empty trimmed content
+      const contentSchema = z.object({ content: z.string().trim().min(1, 'Note content cannot be empty') });
+      const parseResult = contentSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: 'Note content is required', details: parseResult.error.errors });
+      }
+      const { content } = parseResult.data;
+      
+      const userContext = await getUserContext(userId);
+      
+      // Verify job access
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      // Verify note exists and belongs to this job BEFORE updating
+      const existingNotes = await storage.getJobNotes(jobId, userContext.effectiveUserId);
+      const noteToUpdate = existingNotes.find(n => n.id === noteId);
+      if (!noteToUpdate) {
+        return res.status(404).json({ error: 'Note not found or does not belong to this job' });
+      }
+      
+      const note = await storage.updateJobNote(noteId, userContext.effectiveUserId, { content });
+      
+      if (!note) {
+        return res.status(404).json({ error: 'Failed to update note' });
+      }
+      
+      // Log activity for note update
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'note_edited',
+        entityType: 'job',
+        entityId: jobId,
+        description: 'Edited a note on job',
+      });
+      
+      res.json(note);
+    } catch (error: any) {
+      console.error('Error updating job note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/jobs/:jobId/notes/:noteId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, noteId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      
+      // Verify job access first
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      // Get the note before deleting to verify it belongs to this job
+      const existingNotes = await storage.getJobNotes(jobId, userContext.effectiveUserId);
+      const noteToDelete = existingNotes.find(n => n.id === noteId);
+      if (!noteToDelete) {
+        return res.status(404).json({ error: 'Note not found or does not belong to this job' });
+      }
+      
+      const deleted = await storage.deleteJobNote(noteId, userContext.effectiveUserId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+      
+      // Log activity for note deletion
+      await storage.createActivityLog({
+        userId: userContext.effectiveUserId,
+        type: 'note_deleted',
+        entityType: 'job',
+        entityId: jobId,
+        description: 'Removed a note from job',
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting job note:', error);
       res.status(500).json({ error: error.message });
     }
   });

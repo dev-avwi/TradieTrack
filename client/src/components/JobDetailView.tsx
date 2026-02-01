@@ -266,6 +266,19 @@ export default function JobDetailView({
     enabled: !!jobId,
   });
 
+  // Fetch job notes - timestamped notes tied to moments
+  interface JobNote {
+    id: string;
+    content: string;
+    createdBy?: string;
+    createdByName?: string;
+    createdAt: string;
+  }
+  const { data: jobNotesData = [] } = useQuery<JobNote[]>({
+    queryKey: ['/api/jobs', jobId, 'notes'],
+    enabled: !!jobId,
+  });
+
   // Time entry interface for calculating actual hours
   interface TimeEntryForCosting {
     id: string;
@@ -360,6 +373,9 @@ export default function JobDetailView({
     photo_added: Camera,
     voice_note_added: Mic,
     note_updated: PenLine,
+    note_added: Plus,
+    note_edited: PenLine,
+    note_deleted: Trash2,
   };
 
   const activityColors: Record<string, { bg: string; icon: string }> = {
@@ -381,6 +397,9 @@ export default function JobDetailView({
     photo_added: { bg: 'hsl(180 60% 45% / 0.1)', icon: 'hsl(180 60% 45%)' },
     voice_note_added: { bg: 'hsl(320 70% 55% / 0.1)', icon: 'hsl(320 70% 55%)' },
     note_updated: { bg: 'hsl(45 85% 50% / 0.1)', icon: 'hsl(45 85% 50%)' },
+    note_added: { bg: 'hsl(145 65% 45% / 0.1)', icon: 'hsl(145 65% 45%)' },
+    note_edited: { bg: 'hsl(45 85% 50% / 0.1)', icon: 'hsl(45 85% 50%)' },
+    note_deleted: { bg: 'hsl(5 85% 55% / 0.1)', icon: 'hsl(5 85% 55%)' },
   };
 
   // Fetch job-specific activity history
@@ -501,7 +520,7 @@ export default function JobDetailView({
   // Check if job is "empty" (no documentation)
   const isEmptyJob = () => {
     const hasPhotos = jobPhotos.length > 0;
-    const hasNotes = job?.notes && job.notes.trim().length > 0;
+    const hasNotes = jobNotesData.length > 0 || (job?.notes && job.notes.trim().length > 0);
     // Count ANY time entries (active or completed) - not just completed ones
     const hasTimeTracked = timeEntries.length > 0;
     const hasSignatures = signatures.length > 0;
@@ -578,35 +597,39 @@ export default function JobDetailView({
     },
   });
 
-  // Save notes mutation - allows tradies to update notes during job
-  const saveNotesMutation = useMutation({
-    mutationFn: async (notes: string) => {
-      return await apiRequest("PATCH", `/api/jobs/${jobId}`, { notes });
+  // Add new note mutation - creates timestamped note tied to the moment
+  const addNoteMutation = useMutation({
+    mutationFn: async (content: string) => {
+      return await apiRequest("POST", `/api/jobs/${jobId}/notes`, { content });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'notes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/activity-logs'] });
       setShowNotesModal(false);
+      setEditedNotes('');
       toast({
-        title: "Notes Saved",
-        description: "Your notes have been updated",
+        title: "Note Added",
+        description: "Your note has been recorded with timestamp",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to save notes",
+        description: "Failed to add note",
         variant: "destructive",
       });
     },
   });
 
   const handleOpenNotesModal = () => {
-    setEditedNotes(job?.notes || '');
+    setEditedNotes('');
     setShowNotesModal(true);
   };
 
   const handleSaveNotes = () => {
-    saveNotesMutation.mutate(editedNotes);
+    if (editedNotes.trim()) {
+      addNoteMutation.mutate(editedNotes.trim());
+    }
   };
 
   // Rename job mutation
@@ -1573,16 +1596,48 @@ export default function JobDetailView({
               <span className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Notes
+                {jobNotesData.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{jobNotesData.length}</Badge>
+                )}
               </span>
-              <PenLine className="h-4 w-4 text-muted-foreground" />
+              <Plus className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {job.notes ? (
-              <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+            {jobNotesData.length > 0 ? (
+              <div className="space-y-3">
+                {jobNotesData.slice(0, 3).map((note) => (
+                  <div key={note.id} className="p-3 rounded-lg bg-muted/50 border border-border">
+                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatHistoryDate(note.createdAt)}</span>
+                      {note.createdByName && (
+                        <>
+                          <span>•</span>
+                          <span>{note.createdByName}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {jobNotesData.length > 3 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    +{jobNotesData.length - 3} more notes
+                  </p>
+                )}
+              </div>
+            ) : job.notes ? (
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>Legacy note</span>
+                </div>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">
-                Tap to add notes about this job...
+                Tap to add a note tied to this moment...
               </p>
             )}
           </CardContent>
@@ -1593,7 +1648,7 @@ export default function JobDetailView({
           <AIPhotoAnalysis
             jobId={jobId}
             photoCount={jobPhotos.length}
-            existingNotes={job.notes}
+            existingNotes={jobNotesData.length > 0 ? jobNotesData.map(n => n.content).join('\n') : job.notes}
           />
         )}
 
@@ -2025,21 +2080,24 @@ export default function JobDetailView({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Notes Edit Modal - Like mobile app */}
+      {/* Add Note Modal - Timestamped notes tied to moments */}
       <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-edit-notes">
+        <DialogContent className="sm:max-w-md" data-testid="dialog-add-note">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Job Notes
+              <PenLine className="h-5 w-5" />
+              Add Note
             </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              This note will be timestamped and tied to this moment.
+            </p>
           </DialogHeader>
           <div className="py-4">
             <Textarea
               value={editedNotes}
               onChange={(e) => setEditedNotes(e.target.value)}
-              placeholder="Add notes about this job..."
-              className="min-h-[200px] resize-none"
+              placeholder="What's happening right now..."
+              className="min-h-[150px] resize-none"
               autoFocus
               data-testid="textarea-job-notes"
             />
@@ -2054,16 +2112,16 @@ export default function JobDetailView({
             </Button>
             <Button
               onClick={handleSaveNotes}
-              disabled={saveNotesMutation.isPending}
+              disabled={addNoteMutation.isPending || !editedNotes.trim()}
               data-testid="button-save-notes"
             >
-              {saveNotesMutation.isPending ? (
+              {addNoteMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  Adding...
                 </>
               ) : (
-                'Save Notes'
+                'Add Note'
               )}
             </Button>
           </DialogFooter>
