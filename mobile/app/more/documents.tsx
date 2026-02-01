@@ -138,7 +138,7 @@ export default function DocumentsScreen() {
   const contentWidth = useContentWidth();
   const isTabletDevice = isTablet();
   const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth), [colors, contentWidth]);
+  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   
   const params = useLocalSearchParams<{ tab?: string; filter?: string }>();
   const initialTab = (params.tab as TabType) || 'quotes';
@@ -1041,8 +1041,8 @@ export default function DocumentsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors, contentWidth: number) => {
-  const GRID_CARD_WIDTH = (contentWidth - spacing.lg * 2 - CARD_GAP) / 2;
+const createStyles = (colors: ThemeColors, contentWidth: number, responsivePadding: number = spacing.lg) => {
+  const GRID_CARD_WIDTH = (contentWidth - responsivePadding * 2 - CARD_GAP) / 2;
   return StyleSheet.create({
   container: {
     flex: 1,

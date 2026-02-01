@@ -14,10 +14,9 @@ import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, usePageShell } from '../../src/lib/design-tokens';
 import { isTablet } from '../../src/lib/device';
 
-const IS_TABLET = isTablet();
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type ViewMode = 'week' | 'month' | 'today';
@@ -36,7 +35,7 @@ const handleScheduleJob = () => {
   router.push('/more/create-job');
 };
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, responsivePadding: number = spacing.lg) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -47,7 +46,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   contentContainer: {
     padding: spacing.lg,
     paddingBottom: 100,
-    paddingHorizontal: IS_TABLET ? spacing.xl : spacing.lg,
+    paddingHorizontal: responsivePadding,
   },
   header: {
     flexDirection: 'row',
@@ -186,40 +185,40 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   monthView: {
     marginBottom: spacing.xl,
-    flex: IS_TABLET ? 1 : undefined,
+    flex: isTabletDevice ? 1 : undefined,
   },
   monthHeader: {
     marginBottom: spacing.md,
   },
   monthJobsCount: {
-    fontSize: IS_TABLET ? 16 : 14,
+    fontSize: isTabletDevice ? 16 : 14,
     color: colors.mutedForeground,
   },
   monthDaysHeader: {
     flexDirection: 'row',
     marginBottom: spacing.sm,
-    paddingHorizontal: IS_TABLET ? spacing.sm : 0,
+    paddingHorizontal: isTabletDevice ? spacing.sm : 0,
   },
   monthDayHeader: {
     flex: 1,
     textAlign: 'center',
-    fontSize: IS_TABLET ? 14 : 12,
+    fontSize: isTabletDevice ? 14 : 12,
     fontWeight: '600',
     color: colors.mutedForeground,
   },
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: IS_TABLET ? colors.card : undefined,
-    borderRadius: IS_TABLET ? radius.xl : 0,
-    borderWidth: IS_TABLET ? 1 : 0,
+    backgroundColor: isTabletDevice ? colors.card : undefined,
+    borderRadius: isTabletDevice ? radius.xl : 0,
+    borderWidth: isTabletDevice ? 1 : 0,
     borderColor: colors.border,
-    padding: IS_TABLET ? spacing.sm : 0,
+    padding: isTabletDevice ? spacing.sm : 0,
   },
   monthDay: {
     width: '14.28%',
-    minHeight: IS_TABLET ? 80 : 50,
-    padding: IS_TABLET ? spacing.sm : 2,
+    minHeight: isTabletDevice ? 80 : 50,
+    padding: isTabletDevice ? spacing.sm : 2,
     alignItems: 'center',
     borderRadius: radius.md,
   },
@@ -227,17 +226,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
     borderRadius: radius.md,
-    backgroundColor: IS_TABLET ? colors.primaryLight : undefined,
+    backgroundColor: isTabletDevice ? colors.primaryLight : undefined,
   },
   monthDaySelected: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.md,
   },
   monthDayNumber: {
-    fontSize: IS_TABLET ? 16 : 14,
-    fontWeight: IS_TABLET ? '500' : undefined,
+    fontSize: isTabletDevice ? 16 : 14,
+    fontWeight: isTabletDevice ? '500' : undefined,
     color: colors.foreground,
-    marginBottom: IS_TABLET ? spacing.xs : 2,
+    marginBottom: isTabletDevice ? spacing.xs : 2,
   },
   monthDayNumberToday: {
     fontWeight: '700',
@@ -248,21 +247,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   monthJobIndicator: {
     width: '100%',
-    gap: IS_TABLET ? 2 : 1,
+    gap: isTabletDevice ? 2 : 1,
     alignItems: 'center',
   },
   monthJobText: {
-    fontSize: IS_TABLET ? 10 : 8,
+    fontSize: isTabletDevice ? 10 : 8,
     color: colors.primary,
     backgroundColor: colors.primaryLight,
-    paddingHorizontal: IS_TABLET ? 4 : 2,
-    paddingVertical: IS_TABLET ? 1 : 0,
+    paddingHorizontal: isTabletDevice ? 4 : 2,
+    paddingVertical: isTabletDevice ? 1 : 0,
     borderRadius: radius.sm,
     overflow: 'hidden',
     maxWidth: '100%',
   },
   monthJobMore: {
-    fontSize: IS_TABLET ? 10 : 8,
+    fontSize: isTabletDevice ? 10 : 8,
     color: colors.mutedForeground,
   },
   selectedDayContainer: {
@@ -403,7 +402,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const isTabletDevice = isTablet();
+  const responsiveShell = usePageShell();
+  const styles = useMemo(() => createStyles(colors, isTabletDevice, responsiveShell.paddingHorizontal), [colors, isTabletDevice, responsiveShell.paddingHorizontal]);
   
   const { jobs, fetchJobs, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
