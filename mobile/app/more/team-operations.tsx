@@ -22,6 +22,7 @@ import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow, format, isAfter } from 'date-fns';
 import { isTablet, useContentWidth } from '../../src/lib/device';
+import { useUserRole } from '../../src/hooks/use-user-role';
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
   { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
@@ -182,6 +183,10 @@ export default function TeamOperationsScreen() {
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice), [colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice]);
   const { user } = useAuthStore();
   const mapRef = useRef<MapView>(null);
+  
+  // Subscription-aware access control
+  const { hasTeamSubscription, hasProSubscription, subscriptionTier } = useUserRole();
+  const needsUpgrade = !hasTeamSubscription && (subscriptionTier === 'pro' || subscriptionTier === 'free' || subscriptionTier === 'trial');
 
   const [activeTab, setActiveTab] = useState<TabType>('live');
   const [liveViewMode, setLiveViewMode] = useState<LiveViewMode>('status');
@@ -1009,6 +1014,27 @@ export default function TeamOperationsScreen() {
             </TouchableOpacity>
           </View>
         )}
+        
+        {/* Upgrade banner for non-team subscribers */}
+        {needsUpgrade && (
+          <TouchableOpacity 
+            style={[styles.upgradeBanner, { backgroundColor: colors.primary + '15' }]}
+            onPress={() => router.push('/more/subscription')}
+            activeOpacity={0.8}
+          >
+            <Feather name="star" size={18} color={colors.primary} />
+            <View style={styles.upgradeBannerContent}>
+              <Text style={[styles.upgradeBannerTitle, { color: colors.foreground }]}>
+                Upgrade to Team Plan
+              </Text>
+              <Text style={[styles.upgradeBannerText, { color: colors.mutedForeground }]}>
+                Unlock team management, live tracking, and dispatch features
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+        
         {renderTabs()}
         {activeTab === 'live' && renderLiveOpsTab()}
         {activeTab === 'admin' && isOwnerOrManager && renderTeamAdminTab()}
@@ -1800,5 +1826,25 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   kpiStatLabel: {
     fontSize: isTabletDevice ? 13 : 11,
     color: colors.mutedForeground,
+  },
+  upgradeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    marginHorizontal: isTabletDevice ? spacing.sm : spacing.md,
+    marginVertical: spacing.sm,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+  },
+  upgradeBannerContent: {
+    flex: 1,
+  },
+  upgradeBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  upgradeBannerText: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

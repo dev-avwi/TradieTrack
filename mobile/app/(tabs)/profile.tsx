@@ -268,20 +268,24 @@ export default function MoreScreen() {
     isStaff, 
     isSolo,
     hasTeamAccess,
+    canAccessTeamPages,
+    hasTeamSubscription,
     isOwner,
     isManager,
     canAccessBilling,
   } = useUserRole();
 
+  // For navigation visibility: use canAccessTeamPages (shows team items to owners/managers)
+  // For feature access: use hasTeamAccess (requires team subscription)
   const filterOptions: FilterOptions = useMemo(() => ({
-    isTeam: hasTeamAccess && !isSolo,
+    isTeam: canAccessTeamPages && !isSolo,
     isTradie: isStaff,
     isOwner,
     isManager,
     isSolo,
     userRole: mapRoleToFilterRole(role),
     isPlatformAdmin: user?.isPlatformAdmin || false,
-  }), [hasTeamAccess, isSolo, isStaff, isOwner, isManager, role, user?.isPlatformAdmin]);
+  }), [canAccessTeamPages, isSolo, isStaff, isOwner, isManager, role, user?.isPlatformAdmin]);
 
   const categorizedItems = useMemo(() => 
     getMorePageItemsByCategory(filterOptions), 

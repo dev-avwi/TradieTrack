@@ -313,7 +313,18 @@ export function useUserRole() {
   const isManager = role === 'manager';
   const isStaff = role === 'staff';
   const isSolo = role === 'solo_owner';
-  const hasTeamAccess = isOwner || isManager;
+  
+  // Subscription tier checks
+  const subscriptionTier = user?.subscriptionTier || 'free';
+  const hasTeamSubscription = subscriptionTier === 'team';
+  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team';
+  
+  // Team access requires both role permission AND team subscription
+  // Pro users can see team features but should get upgrade prompts
+  const hasTeamAccess = (isOwner || isManager) && hasTeamSubscription;
+  
+  // Can access team pages (for visibility) - shows pages but may block features
+  const canAccessTeamPages = isOwner || isManager;
 
   return {
     role,
@@ -322,6 +333,10 @@ export function useUserRole() {
     isStaff,
     isSolo,
     hasTeamAccess,
+    canAccessTeamPages,
+    subscriptionTier,
+    hasTeamSubscription,
+    hasProSubscription,
     isLoading,
     permissions,
     hasPermission,
