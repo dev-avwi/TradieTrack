@@ -34,14 +34,16 @@ Core architectural and design decisions include:
     - Two-way contact sync (TradieTrack ↔ Xero)
     - Invoice sync TO Xero (with duplicate prevention)
     - Payment sync TO Xero (when invoice marked paid)
-    - **Payment sync FROM Xero** (mark invoices paid when Xero shows payment received)
-    - **Invoice status sync FROM Xero** (detect voided/cancelled invoices)
+    - **Payment sync FROM Xero** (mark invoices paid when Xero shows payment received) - uses batch retrieval (50 invoices/batch) with If-Modified-Since for efficient incremental polling
+    - **Invoice status sync FROM Xero** (detect voided/cancelled invoices) - incremental sync only checks recently modified invoices
     - **Credit notes sync FROM Xero** (apply credits to invoices)
     - **Inventory items sync FROM Xero** (sync to catalog)
     - Quote sync TO Xero (as draft invoice)
     - Chart of accounts, bank accounts, and tax rates mapping
     - Full bidirectional sync endpoint for polling (every 5-30 minutes)
-    - API routes: `/api/integrations/xero/full-sync`, `/api/integrations/xero/sync-payments-from-xero`, `/api/integrations/xero/sync-invoice-status`, `/api/integrations/xero/sync-credit-notes`, `/api/integrations/xero/sync-inventory`, `/api/integrations/xero/void-invoice/:invoiceId`
+    - Proper error handling for 304 Not Modified and 404 responses
+    - API routes: `/api/integrations/xero/full-sync`, `/api/integrations/xero/sync-payments-from-xero`, `/api/integrations/xero/sync-invoice-status`, `/api/integrations/xero/sync-credit-notes`, `/api/integrations/xero/sync-inventory`, `/api/integrations/xero/void-invoice/:invoiceId`, `/api/integrations/xero/detailed-status`
+    - **Future Enhancements**: Persistent Xero payment ID tracking for partial payment reconciliation, response paging for very large datasets
 *   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signatures.
 *   **Templates Hub**: Focuses on Document Styles with integrated live preview for quotes, invoices, and jobs.
 *   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
