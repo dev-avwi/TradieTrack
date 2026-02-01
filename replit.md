@@ -57,7 +57,18 @@ Core architectural and design decisions include:
 *   **Templates Hub**: Focuses on Document Styles with integrated live preview for quotes, invoices, and jobs.
 *   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
 *   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
-*   **Feature Implementation Roadmap**: 11-feature roadmap in `docs/FEATURE_IMPLEMENTATION_PLAN.md` covering all competitor gaps (Weather Widget, Service Reminders, Billable Time, Trade Calculators, Team Groups, Rebate Tracking, QuickBooks, Site Photos, Activity Feed, Invite Links, AI Visualization).
+*   **Feature Implementation Roadmap**: 11-feature roadmap in `docs/FEATURE_IMPLEMENTATION_PLAN.md` - ALL 11 FEATURES NOW IMPLEMENTED:
+    - ✅ **Today Widget**: Weather forecast + today's jobs + quick stats on dashboard
+    - ✅ **Service Reminders**: Recurring maintenance tracking with auto-reminders (`/service-reminders`)
+    - ✅ **Billable Time Toggle**: Visual indicators (green $ billable, grey clock non-billable) with time categories
+    - ✅ **Trade Calculators Module**: 5+ calculators (Concrete Volume, Tile Quantity, Paint Coverage, Roof Pitch, Baluster Spacing) with "Add to Quote" (`/calculators`)
+    - ✅ **Custom Team Groups**: Named crew groups like "The Plumblords" with member management (`/team-groups`)
+    - ✅ **Rebate/Credit Tracking**: Track manufacturer rebates, government incentives (`/rebates`)
+    - ✅ **QuickBooks Integration**: OAuth 2.0 flow, contact/invoice sync alongside Xero (`/integrations`)
+    - ✅ **Site Photos in Chat**: Job photos as thumbnails in chat conversation list and headers
+    - ✅ **Team Activity Feed**: Job completions, team joins, milestones on dashboard
+    - ✅ **Shareable Job Invite Links**: Magic links to invite subcontractors to specific jobs
+    - ✅ **AI Visualization**: Before/after concept generation using DALL-E 3 (`/ai-visualization`)
 *   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
 *   **Timesheet Approvals**: Workflow for crew timesheet approval.
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
@@ -96,5 +107,5 @@ Core architectural and design decisions include:
 *   **SMS Notifications**: Twilio
 *   **Object Storage**: Google Cloud Storage (GCS)
 *   **Maps**: Leaflet with react-leaflet
-*   **Accounting Integration**: Xero, MYOB AccountRight
+*   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online
 *   **Calendar Integration**: Google Calendar
