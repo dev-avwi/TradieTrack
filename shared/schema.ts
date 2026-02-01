@@ -1248,6 +1248,18 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
 });
 
 // Time Tracking
+// Time entry categories for billable/non-billable tracking
+export const TIME_ENTRY_CATEGORIES = {
+  work: 'work',           // Client-billable work (default)
+  travel: 'travel',       // Travel time to/from job sites
+  admin: 'admin',         // Paperwork, phone calls, emails
+  training: 'training',   // Courses, certifications, learning
+  meeting: 'meeting',     // Team meetings, client meetings
+  materials: 'materials', // Picking up materials/supplies
+} as const;
+
+export type TimeEntryCategory = typeof TIME_ENTRY_CATEGORIES[keyof typeof TIME_ENTRY_CATEGORIES];
+
 export const timeEntries = pgTable("time_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -1259,6 +1271,9 @@ export const timeEntries = pgTable("time_entries", {
   description: text("description"),
   isBreak: boolean("is_break").default(false),
   isOvertime: boolean("is_overtime").default(false),
+  // Billable/Non-Billable time tracking (competitor feature from Tradify)
+  isBillable: boolean("is_billable").default(true),
+  timeCategory: text("time_category").default('work'), // work, travel, admin, training, meeting, materials
   approved: boolean("approved").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
   // Origin tracking for geofence-triggered entries

@@ -24,10 +24,24 @@ import {
   Timer,
   Coffee,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  CircleDollarSign,
+  Car,
+  Clipboard,
+  GraduationCap
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+
+// Time entry categories for billable/non-billable tracking
+const TIME_CATEGORY_LABELS: Record<string, { label: string; icon: typeof Clock }> = {
+  work: { label: 'Work', icon: Briefcase },
+  travel: { label: 'Travel', icon: Car },
+  admin: { label: 'Admin', icon: Clipboard },
+  training: { label: 'Training', icon: GraduationCap },
+  meeting: { label: 'Meeting', icon: Users },
+  materials: { label: 'Materials', icon: Clock },
+};
 
 // Types for time tracking
 interface TimeEntry {
@@ -39,6 +53,8 @@ interface TimeEntry {
   hourlyRate?: number;
   breakTime?: number;
   isBreak?: boolean;
+  isBillable?: boolean;
+  timeCategory?: string;
   userId: string;
   jobTitle?: string;
   clientName?: string;
@@ -731,12 +747,21 @@ export function TimerWidget({
               {todaysJobEntries.slice(0, 3).map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    {entry.isBreak && (
+                    {entry.isBreak ? (
                       <Coffee className="h-3 w-3 text-amber-500" />
+                    ) : entry.isBillable !== false ? (
+                      <CircleDollarSign className="h-3 w-3 text-green-500" title="Billable" />
+                    ) : (
+                      <Clock className="h-3 w-3 text-muted-foreground" title="Non-billable" />
                     )}
                     <span className={entry.isBreak ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
                       {format(new Date(entry.startTime), 'h:mm a')} - {entry.endTime ? format(new Date(entry.endTime), 'h:mm a') : 'Now'}
                     </span>
+                    {!entry.isBreak && entry.timeCategory && entry.timeCategory !== 'work' && TIME_CATEGORY_LABELS[entry.timeCategory] && (
+                      <Badge variant="outline" className="h-4 text-[10px] px-1">
+                        {TIME_CATEGORY_LABELS[entry.timeCategory].label}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`font-medium ${entry.isBreak ? 'text-amber-600 dark:text-amber-400' : ''}`}>

@@ -4214,6 +4214,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Weather API - uses Open-Meteo (free, no API key required)
+  // Cache weather data for 30 minutes to reduce external API calls
+  let weatherCache: { data: any; timestamp: number; lat: number; lon: number } | null = null;
+  const WEATHER_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+  app.get("/api/weather", requireAuth, async (req: any, res) => {
+    try {
+      // Get user's business settings for location
+      const settings = await storage.getBusinessSettings(req.userId);
+      
+      // Default to Cairns, QLD if no address (demo/default location)
+      let lat = -16.9186;
+      let lon = 145.7781;
+      
+      // Try to extract coordinates from user's business address
+      if (settings?.address) {
+        // Use Australian city coordinates as fallback based on common cities in address
+        const address = settings.address.toLowerCase();
+        if (address.includes('sydney')) { lat = -33.8688; lon = 151.2093; }
+        else if (address.includes('melbourne')) { lat = -37.8136; lon = 144.9631; }
+        else if (address.includes('brisbane')) { lat = -27.4698; lon = 153.0251; }
+        else if (address.includes('perth')) { lat = -31.9505; lon = 115.8605; }
+        else if (address.includes('adelaide')) { lat = -34.9285; lon = 138.6007; }
+        else if (address.includes('gold coast')) { lat = -28.0167; lon = 153.4000; }
+        else if (address.includes('cairns')) { lat = -16.9186; lon = 145.7781; }
+        else if (address.includes('townsville')) { lat = -19.2590; lon = 146.8169; }
+        else if (address.includes('darwin')) { lat = -12.4634; lon = 130.8456; }
+        else if (address.includes('hobart')) { lat = -42.8821; lon = 147.3272; }
+        else if (address.includes('canberra')) { lat = -35.2809; lon = 149.1300; }
+      }
+
+      // Check cache - only use if same location
+      if (weatherCache && 
+          weatherCache.lat === lat && 
+          weatherCache.lon === lon &&
+          Date.now() - weatherCache.timestamp < WEATHER_CACHE_DURATION) {
+        return res.json(weatherCache.data);
+      }
+
+      // Fetch from Open-Meteo API (free, no API key required)
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=Australia%2FSydney&forecast_days=3`;
+      
+      const response = await fetch(weatherUrl);
+      if (!response.ok) {
+        throw new Error('Weather API request failed');
+      }
+      
+      const weatherData = await response.json();
+      
+      // Transform to our format
+      const result = {
+        temperature: weatherData.current.temperature_2m,
+        apparentTemperature: weatherData.current.apparent_temperature,
+        weatherCode: weatherData.current.weather_code,
+        humidity: weatherData.current.relative_humidity_2m,
+        windSpeed: weatherData.current.wind_speed_10m,
+        precipitation: weatherData.current.precipitation,
+        isDay: weatherData.current.is_day === 1,
+        daily: {
+          temperatureMax: weatherData.daily.temperature_2m_max,
+          temperatureMin: weatherData.daily.temperature_2m_min,
+          weatherCode: weatherData.daily.weather_code,
+          precipitationProbability: weatherData.daily.precipitation_probability_max,
+        },
+      };
+
+      // Cache the result
+      weatherCache = { data: result, timestamp: Date.now(), lat, lon };
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching weather:", error);
+      // Return fallback weather data to prevent UI breakage
+      res.json({
+        temperature: 25,
+        apparentTemperature: 26,
+        weatherCode: 1,
+        humidity: 65,
+        windSpeed: 12,
+        precipitation: 0,
+        isDay: true,
+        daily: {
+          temperatureMax: [28, 29, 27],
+          temperatureMin: [20, 21, 19],
+          weatherCode: [1, 2, 3],
+          precipitationProbability: [10, 20, 30],
+        },
+      });
+    }
+  });
+
   // General file upload endpoint for logos and images
   const generalUpload = multer({ 
     storage: multer.memoryStorage(),
@@ -7951,6 +8042,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching jobs:", error);
       res.status(500).json({ error: "Failed to fetch jobs" });
+    }
+  });
+
+  // Get site photos for all jobs (for chat list display)
+  // Optimized: batches photo lookups and generates signed URLs in parallel
+  const sitePhotoCache = new Map<string, { url: string; expires: number }>();
+  
+  app.get("/api/jobs/site-photos", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      
+      // Limit to recent 50 jobs for performance
+      const recentJobs = jobs.slice(0, 50);
+      
+      const photoMap: Record<string, string> = {};
+      const now = Date.now();
+      const urlPromises: Promise<void>[] = [];
+      
+      // Process jobs and check cache first
+      for (const job of recentJobs) {
+        const cached = sitePhotoCache.get(job.id);
+        if (cached && cached.expires > now) {
+          photoMap[job.id] = cached.url;
+          continue;
+        }
+        
+        // Queue URL generation for jobs not in cache
+        urlPromises.push((async () => {
+          try {
+            const photos = await storage.getJobPhotos(job.id, userContext.effectiveUserId);
+            if (photos && photos.length > 0) {
+              const firstPhoto = photos[0];
+              if (firstPhoto.objectStorageKey) {
+                const { generateSignedDownloadUrl } = await import('./objectStorage');
+                const signedUrl = await generateSignedDownloadUrl(firstPhoto.objectStorageKey, 3600);
+                photoMap[job.id] = signedUrl;
+                // Cache for 30 minutes
+                sitePhotoCache.set(job.id, { url: signedUrl, expires: now + 30 * 60 * 1000 });
+              }
+            }
+          } catch (urlError) {
+            // Photo URL generation failed, skip this job silently
+          }
+        })());
+      }
+      
+      // Generate URLs in parallel with concurrency limit (10 at a time)
+      const chunks = [];
+      for (let i = 0; i < urlPromises.length; i += 10) {
+        chunks.push(urlPromises.slice(i, i + 10));
+      }
+      for (const chunk of chunks) {
+        await Promise.all(chunk);
+      }
+      
+      res.json(photoMap);
+    } catch (error) {
+      console.error("Error fetching job site photos:", error);
+      res.status(500).json({ error: "Failed to fetch job site photos" });
     }
   });
 

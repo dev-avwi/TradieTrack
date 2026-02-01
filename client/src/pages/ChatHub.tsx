@@ -92,6 +92,17 @@ interface Job {
   address?: string;
   scheduledAt?: string;
   assignedTo?: string;
+  sitePhoto?: string;
+}
+
+interface JobPhoto {
+  id: string;
+  jobId: string;
+  objectStorageKey: string;
+  fileName: string;
+  category?: string;
+  caption?: string;
+  sortOrder?: number;
 }
 
 interface User {
@@ -378,6 +389,17 @@ export default function ChatHub() {
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
+  });
+
+  // Fetch job photos to display site photos in chat list
+  const { data: jobPhotosMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['/api/jobs/site-photos'],
+    queryFn: async () => {
+      const res = await fetch('/api/jobs/site-photos', { credentials: 'include' });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const { data: smsConversations = [], isLoading: smsLoading } = useQuery<SmsConversation[]>({
@@ -854,11 +876,15 @@ export default function ChatHub() {
         const clientSms = job.clientId ? clientSmsMap.get(job.clientId) : undefined;
         const smsConvo = directSms || clientSms;
         
+        // Get site photo for this job if available
+        const sitePhotoUrl = jobPhotosMap[job.id];
+        
         items.push({
           id: `job-${job.id}`,
           type: 'job',
           title: job.title,
           subtitle: smsConvo?.clientName || smsConvo?.clientPhone || job.address,
+          avatar: sitePhotoUrl || null,
           avatarFallback: job.title.slice(0, 2).toUpperCase(),
           lastMessage: undefined, // Will show job status instead
           lastMessageTime: smsConvo?.lastMessageAt || job.scheduledAt || undefined,
@@ -931,7 +957,7 @@ export default function ChatHub() {
     }
     
     return items;
-  }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm]);
+  }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm, jobPhotosMap]);
 
   // State for active job context when viewing client conversations
   const [activeJobContext, setActiveJobContext] = useState<Job | null>(null);
@@ -1625,9 +1651,17 @@ export default function ChatHub() {
             
             {isJobView && job ? (
               <>
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
+                {jobPhotosMap[job.id] ? (
+                  <img 
+                    src={jobPhotosMap[job.id]} 
+                    alt={job.title}
+                    className="w-10 h-10 rounded-lg object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="font-medium text-sm truncate">{job.title}</h2>

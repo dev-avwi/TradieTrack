@@ -6,6 +6,7 @@ import { useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
 import UsageLimitBanner from "./UsageLimitBanner";
+import TodayWidget from "./TodayWidget";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -500,9 +501,11 @@ export default function TradieDashboard({
 
   return (
     <PageShell data-testid="tradie-dashboard">
-      <PageHeader
-        title={`${getGreeting()}, ${userName}`}
-        subtitle="Here's what you have today"
+      {/* Today Widget - Weather + Schedule + Stats */}
+      <TodayWidget 
+        userName={userName}
+        onViewSchedule={onViewJobs}
+        onViewJob={(id) => onViewJob?.(id)}
       />
 
       {/* Usage limit warning banner - only shows when nearing limits */}

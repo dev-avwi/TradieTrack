@@ -77,11 +77,12 @@ Core architectural and design decisions include:
 *   **QuickCreateFAB Component**: Replaces full-width bottom sheet with a centered floating widget popup for quick actions.
 *   **Mobile Collect Payment Redesign**: Overhauled mobile payment flow to include "Record Payment" and QR code generation, with receipt generation and optional linking.
 *   **Job Assignment Request System**: Team members can request assignment to available unassigned jobs, with owner approval/rejection.
-*   **Time Tracking Enhancements**: Includes break/pause functionality, separate tracking for work vs. break time, auto job status updates, and a job costing widget.
+*   **Time Tracking Enhancements**: Includes break/pause functionality, separate tracking for work vs. break time, auto job status updates, job costing widget, and billable/non-billable time toggle with visual indicators (green $ for billable, grey clock for non-billable). Time entries can be categorized: work, travel, admin, training, meeting, materials.
 *   **Trade-Type Aware Templates**: Business templates are filterable by trade type with a fallback hierarchy.
 *   **Trade-Specific Safety Forms System**: 18 Australian WHS-compliant safety checklists are auto-seeded, including pre-work and post-work forms with trade-specific items and digital signatures.
 *   **Unified Communication Components**: Features for graceful SMS fallback, unified send modals for documents, before-photo prompts, and client contact cards with automatic Twilio/manual fallback detection.
-*   **Unified Chat Hub with Job-Centric Design**: Jobs are primary navigation items in the conversation list, with filtering options for team, jobs, and unassigned enquiries.
+*   **Unified Chat Hub with Job-Centric Design**: Jobs are primary navigation items in the conversation list, with filtering options for team, jobs, and unassigned enquiries. Site photos are displayed as thumbnails in job conversation list and chat headers via `/api/jobs/site-photos` endpoint.
+*   **Today Widget**: Dashboard combines weather forecast (via Open-Meteo API with 30-minute caching), today's job schedule, and quick stats including job counts by status, outstanding invoice total, and weekly revenue.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)
