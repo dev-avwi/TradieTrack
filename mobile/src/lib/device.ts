@@ -85,9 +85,6 @@ export function useShouldUseSidebar(): boolean {
 export const SIDEBAR_WIDTH = 280;
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
 
-// iPad portrait max content width for better readability
-export const IPAD_PORTRAIT_MAX_CONTENT_WIDTH = 600;
-
 // Get the actual content width accounting for sidebar presence
 export function getContentWidth(hasSidebar: boolean = false): number {
   const { width } = Dimensions.get('window');
@@ -117,33 +114,24 @@ export function useContentWidth(): number {
 }
 
 // Hook for responsive layout values on iPad
-// Returns scaling factors and max widths for iPad-optimized layouts
+// Returns scaling factors for iPad-optimized layouts - uses FULL WIDTH
 export function useResponsiveLayout() {
   const isPad = isIPad();
   const orientation = useOrientation();
   const contentWidth = useContentWidth();
-  const { width: screenWidth } = Dimensions.get('window');
   
-  // iPad portrait should constrain content width for better readability
   const isIPadPortrait = isPad && orientation === 'portrait';
   
-  // Calculate optimal content width for iPad portrait
-  // Cards and content should be centered with max width
-  const optimalContentWidth = isIPadPortrait 
-    ? Math.min(contentWidth, IPAD_PORTRAIT_MAX_CONTENT_WIDTH)
-    : contentWidth;
-  
-  // Horizontal padding to center content on iPad portrait
-  const horizontalPadding = isIPadPortrait
-    ? Math.max(24, (screenWidth - optimalContentWidth) / 2)
-    : 16;
+  // Use FULL content width - no max width constraint on iPad portrait
+  // Only applies slightly larger padding for better touch targets
+  const horizontalPadding = isPad ? 20 : 16;
   
   return {
     isPad,
     isIPadPortrait,
     orientation,
     contentWidth,
-    optimalContentWidth,
+    optimalContentWidth: contentWidth, // Full width, no constraint
     horizontalPadding,
     // Scale factor for larger touch targets on iPad
     touchScale: isPad ? 1.15 : 1,

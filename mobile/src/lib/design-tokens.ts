@@ -36,24 +36,21 @@ export const pageShell = {
 } as const;
 
 // iPad-responsive page shell hook
-// Returns larger padding for iPad portrait to center content
+// Returns appropriate padding - uses FULL WIDTH on iPad portrait (edge-to-edge)
 export function usePageShell() {
   const isPad = isIPad();
   const orientation = useOrientation();
-  const screenWidth = Dimensions.get('window').width;
   
   return useMemo(() => {
     const isIPadPortrait = isPad && orientation === 'portrait';
     
-    // iPad portrait: center content with larger horizontal padding
-    // Target max content width of ~600px for readability
-    const maxContentWidth = 600;
-    const idealPadding = isIPadPortrait 
-      ? Math.max(spacing['2xl'], (screenWidth - maxContentWidth) / 2)
-      : spacing.lg;
+    // iPad portrait: use FULL screen width with slightly larger padding for better touch targets
+    // iPad landscape with sidebar: normal padding
+    // Phone: standard phone padding
+    const horizontalPadding = isPad ? spacing.xl : spacing.lg; // 20px on iPad, 16px on phone
     
     return {
-      paddingHorizontal: idealPadding,
+      paddingHorizontal: horizontalPadding,
       paddingTop: isPad ? spacing.xl : spacing.lg,
       paddingBottom: isPad ? spacing['3xl'] : spacing['2xl'],
       sectionGap: isPad ? spacing['3xl'] : spacing['2xl'],
@@ -63,7 +60,7 @@ export function usePageShell() {
       isIPadPortrait,
       isPad,
     };
-  }, [isPad, orientation, screenWidth]);
+  }, [isPad, orientation]);
 }
 
 // Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible
