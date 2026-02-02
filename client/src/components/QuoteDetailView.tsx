@@ -473,7 +473,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       return;
     }
     
-    const publicUrl = `${window.location.origin}/q/${acceptanceToken}`;
+    const publicUrl = `${window.location.origin}/portal/quote/${acceptanceToken}`;
     
     const shareData = {
       title: `Quote ${quote?.number || quoteId}`,
@@ -534,7 +534,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   // Generate the public quote URL for email
   const getPublicQuoteUrl = () => {
     return quote?.acceptanceToken 
-      ? `${window.location.origin}/q/${quote.acceptanceToken}`
+      ? `${window.location.origin}/portal/quote/${quote.acceptanceToken}`
       : undefined;
   };
 

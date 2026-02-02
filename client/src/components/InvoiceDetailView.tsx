@@ -283,7 +283,7 @@ export default function InvoiceDetailView({
 
   const handleCopyPaymentLink = () => {
     if (invoice?.paymentToken) {
-      const paymentUrl = `${window.location.origin}/pay/${invoice.paymentToken}`;
+      const paymentUrl = `${window.location.origin}/portal/invoice/${invoice.paymentToken}`;
       navigator.clipboard.writeText(paymentUrl);
       toast({
         title: "Link copied",
@@ -295,7 +295,7 @@ export default function InvoiceDetailView({
   const handleEmailPaymentLink = () => {
     if (!invoice || !client || !businessSettings) return;
     
-    const paymentUrl = `${window.location.origin}/pay/${invoice.paymentToken}`;
+    const paymentUrl = `${window.location.origin}/portal/invoice/${invoice.paymentToken}`;
     const businessName = businessSettings.businessName || 'Your Tradie';
     const invoiceNumber = invoice.number || invoice.id?.substring(0, 8).toUpperCase();
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
@@ -721,7 +721,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
   const handleShare = async () => {
     // Use the public payment URL with the payment token - NOT the dashboard URL
     const publicUrl = invoice?.stripePaymentLink 
-      || (invoice?.paymentToken ? `${window.location.origin}/pay/${invoice.paymentToken}` : null);
+      || (invoice?.paymentToken ? `${window.location.origin}/portal/invoice/${invoice.paymentToken}` : null);
     
     if (!publicUrl) {
       toast({
@@ -791,7 +791,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
   // Generate the public invoice payment URL
   const getPublicPaymentUrl = () => {
     return invoice?.paymentToken 
-      ? `${window.location.origin}/pay/${invoice.paymentToken}`
+      ? `${window.location.origin}/portal/invoice/${invoice.paymentToken}`
       : undefined;
   };
 
@@ -1015,7 +1015,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                       <Label className="text-sm font-medium">Payment Link:</Label>
                       <div className="flex-1 flex items-center gap-2">
                         <code className="text-xs bg-background p-2 rounded flex-1 overflow-x-auto">
-                          {`${window.location.origin}/pay/${invoice.paymentToken}`}
+                          {`${window.location.origin}/portal/invoice/${invoice.paymentToken}`}
                         </code>
                         <Button
                           size="icon"
@@ -1028,7 +1028,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                         <Button
                           size="icon"
                           variant="outline"
-                          onClick={() => window.open(`/pay/${invoice.paymentToken}`, '_blank')}
+                          onClick={() => window.open(`/portal/invoice/${invoice.paymentToken}`, '_blank')}
                           data-testid="button-open-payment-link"
                         >
                           <ExternalLink className="h-4 w-4" />
