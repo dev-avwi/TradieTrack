@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
-import { queryClient, clearSessionToken, getSessionToken } from "./lib/queryClient";
+import { queryClient, clearSessionToken, getSessionToken, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import OfflineIndicator from "@/components/OfflineIndicator";
@@ -917,6 +917,24 @@ function AppLayout() {
   const handleOnboardingComplete = async (onboardingData: OnboardingData) => {
     try {
       await completeOnboarding(onboardingData);
+      
+      // If user chose to start with demo data, seed it now
+      if (onboardingData.demoData?.useDemoData) {
+        try {
+          await apiRequest('POST', '/api/demo/seed');
+          // Invalidate all data queries so demo data appears
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["/api/clients"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/jobs"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/quotes"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }),
+          ]);
+        } catch (demoError) {
+          console.error('Failed to seed demo data:', demoError);
+          // Don't block onboarding completion if demo data fails
+        }
+      }
+      
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] }),
