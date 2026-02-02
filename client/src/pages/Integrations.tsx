@@ -212,6 +212,7 @@ export default function Integrations() {
   const [twilioAccountSid, setTwilioAccountSid] = useState('');
   const [twilioAuthToken, setTwilioAuthToken] = useState('');
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState('');
+  const [twilioSenderId, setTwilioSenderId] = useState('');
   const [showAuthToken, setShowAuthToken] = useState(false);
   const { toast } = useToast();
   
@@ -745,7 +746,7 @@ export default function Integrations() {
   });
 
   const saveTwilioMutation = useMutation({
-    mutationFn: async (data: { twilioAccountSid: string; twilioAuthToken: string; twilioPhoneNumber: string }) => {
+    mutationFn: async (data: { twilioAccountSid: string; twilioAuthToken: string; twilioPhoneNumber: string; twilioSenderId?: string }) => {
       const response = await apiRequest('PUT', '/api/settings/sms-branding', data);
       return response;
     },
@@ -878,6 +879,7 @@ export default function Integrations() {
     setTwilioAccountSid('');
     setTwilioAuthToken('');
     setTwilioPhoneNumber(twilioSettings?.twilioPhoneNumber || '');
+    setTwilioSenderId(twilioSettings?.twilioSenderId || '');
     setShowAuthToken(false);
     setTwilioDialogOpen(true);
   };
@@ -903,7 +905,12 @@ export default function Integrations() {
       });
       return;
     }
-    saveTwilioMutation.mutate({ twilioAccountSid, twilioAuthToken, twilioPhoneNumber });
+    saveTwilioMutation.mutate({ 
+      twilioAccountSid, 
+      twilioAuthToken, 
+      twilioPhoneNumber,
+      twilioSenderId: twilioSenderId || undefined
+    });
   };
 
   // Twilio is only considered connected when either:
@@ -2447,6 +2454,25 @@ export default function Integrations() {
               />
               <p className="text-xs text-muted-foreground">
                 Use E.164 format (e.g., +61412345678 for Australian numbers)
+              </p>
+            </div>
+
+            {/* SMS Sender Name (Alphanumeric Sender ID) */}
+            <div className="space-y-2">
+              <Label htmlFor="twilio-sender-id">SMS Sender Name (Optional)</Label>
+              <Input
+                id="twilio-sender-id"
+                placeholder="MikesElec"
+                value={twilioSenderId}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 11);
+                  setTwilioSenderId(value);
+                }}
+                maxLength={11}
+                data-testid="input-twilio-sender-id"
+              />
+              <p className="text-xs text-muted-foreground">
+                Shows your business name instead of phone number. Max 11 characters, letters and numbers only. Clients can't reply to these messages.
               </p>
             </div>
 
