@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut, Sparkles, Wrench, Zap } from "lucide-react";
+import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut, Sparkles, Wrench, Zap, Rocket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import tradietrackLogo from "/logo.png";
@@ -14,6 +14,7 @@ import BusinessProfileStep from "./onboarding/BusinessProfileStep";
 import BrandingStep from "./onboarding/BrandingStep";
 import DefaultRatesStep from "./onboarding/DefaultRatesStep";
 import TeamInvitationStep from "./onboarding/TeamInvitationStep";
+import DemoDataStep from "./onboarding/DemoDataStep";
 
 export interface OnboardingData {
   // Team Size - FIRST QUESTION
@@ -60,6 +61,11 @@ export interface OnboardingData {
       email: string;
       role: 'admin' | 'employee';
     }>;
+  };
+  
+  // Demo Data Choice (final step)
+  demoData: {
+    useDemoData: boolean;
   };
 }
 
@@ -135,6 +141,19 @@ const ALL_STEPS = [
     borderColor: 'border-purple-200',
     showForSolo: false, // Only show for teams
   },
+  {
+    id: 'demo-data',
+    title: 'Get Started',
+    description: 'Explore with sample data or start fresh',
+    icon: Rocket,
+    required: false,
+    color: 'green',
+    bgColor: 'bg-green-500',
+    lightBg: 'bg-green-50',
+    textColor: 'text-green-600',
+    borderColor: 'border-green-200',
+    showForSolo: true, // Show for everyone
+  },
 ];
 
 export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: OnboardingWizardProps) {
@@ -176,6 +195,9 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
       inviteTeamMembers: false,
       invitations: [],
     },
+    demoData: {
+      useDemoData: false,
+    },
   });
 
   // Filter steps based on team size - solo users skip team invitation
@@ -192,6 +214,7 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
     'branding': 'branding', 
     'default-rates': 'defaultRates',
     'team-invitation': 'teamInvitation',
+    'demo-data': 'demoData',
   };
 
   const handleStepComplete = (stepIndex: number, stepData: any) => {
@@ -330,7 +353,16 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
             data={onboardingData.teamInvitation}
             onComplete={(data) => handleStepComplete(currentStep, data)}
             onPrevious={handlePrevious}
-            isLast={currentStep === STEPS.length - 1}
+            isLast={false}
+          />
+        );
+      
+      case 'demo-data':
+        return (
+          <DemoDataStep
+            onComplete={(data) => handleStepComplete(currentStep, data)}
+            onPrevious={handlePrevious}
+            isSubmitting={isSubmitting}
           />
         );
       
