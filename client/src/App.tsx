@@ -921,7 +921,7 @@ function AppLayout() {
       // If user chose to start with demo data, seed it now
       if (onboardingData.demoData?.useDemoData) {
         try {
-          await apiRequest('POST', '/api/demo/seed');
+          await apiRequest('POST', '/api/onboarding/seed-demo-data');
           // Invalidate all data queries so demo data appears
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: ["/api/clients"] }),
