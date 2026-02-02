@@ -1,11 +1,11 @@
-import { useParams } from "wouter";
+import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen } from "lucide-react";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -496,6 +496,26 @@ export default function ClientPortal() {
               <Download className="w-4 h-4 mr-2" />
               Download PDF
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Client Portal Hub Link */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-3">
+              <FolderOpen className="w-10 h-10 mx-auto text-primary" />
+              <div>
+                <p className="font-medium">View All Your Documents</p>
+                <p className="text-sm text-muted-foreground">
+                  Access all your quotes, invoices, receipts and job history in one place
+                </p>
+              </div>
+              <Link href="/portal">
+                <Button className="w-full">
+                  Open Client Portal
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
 
