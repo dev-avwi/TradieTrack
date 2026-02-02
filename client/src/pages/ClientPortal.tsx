@@ -1,11 +1,11 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen } from "lucide-react";
+import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -221,230 +221,321 @@ export default function ClientPortal() {
   }
 
   const docTypeLabel = type === 'quote' ? 'Quote' : type === 'invoice' ? 'Invoice' : 'Receipt';
-  const showAcceptButtons = type === 'quote' && data.status === 'sent';
+  // Show accept buttons for quotes that are sent or draft (for testing)
+  const showAcceptButtons = type === 'quote' && (data.status === 'sent' || data.status === 'draft');
   const showPayButton = type === 'invoice' && data.status !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
   const isAccepted = data.status === 'accepted';
   const isPaid = data.status === 'paid';
 
   return (
     <div className="min-h-screen bg-muted/30 dark:bg-background">
-      <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-3">
-        {/* Business Header - Compact */}
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex items-center gap-3">
-              {data.business.logoUrl && (
-                <img 
-                  src={data.business.logoUrl} 
-                  alt={data.business.name}
-                  className="w-10 h-10 object-contain rounded"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <h1 className="text-base font-bold truncate">{data.business.name}</h1>
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  {data.business.phone && (
-                    <a href={`tel:${data.business.phone}`} className="flex items-center gap-1 hover:text-foreground">
-                      <Phone className="w-3 h-3" /> {data.business.phone}
-                    </a>
-                  )}
-                  {data.business.email && (
-                    <a href={`mailto:${data.business.email}`} className="flex items-center gap-1 hover:text-foreground">
-                      <Mail className="w-3 h-3" /> {data.business.email}
-                    </a>
-                  )}
+      {/* Document Container - Full page feel */}
+      <div className="min-h-screen flex flex-col">
+        {/* Sticky Header with Business Info */}
+        <header className="bg-card border-b sticky top-0 z-20 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {data.business.logoUrl ? (
+                  <img 
+                    src={data.business.logoUrl} 
+                    alt={data.business.name}
+                    className="w-10 h-10 object-contain rounded border"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded border bg-primary/10 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h1 className="font-bold text-base truncate">{data.business.name}</h1>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    {data.business.phone && (
+                      <a href={`tel:${data.business.phone}`} className="hover:text-primary flex items-center gap-1">
+                        <Phone className="w-3 h-3" /> {data.business.phone}
+                      </a>
+                    )}
+                    {data.business.email && (
+                      <a href={`mailto:${data.business.email}`} className="hover:text-primary flex items-center gap-1 hidden sm:flex">
+                        <Mail className="w-3 h-3" /> {data.business.email}
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
+              <Link href="/portal">
+                <Button variant="outline" size="sm">
+                  <FolderOpen className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">All Documents</span>
+                </Button>
+              </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </header>
 
-        {/* Document Header - Compact */}
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span className="font-semibold truncate">{docTypeLabel} #{data.number}</span>
+        {/* Document Title Bar */}
+        <div className="bg-primary text-primary-foreground py-4 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6" />
+                <div>
+                  <h2 className="text-xl font-bold">{docTypeLabel} #{data.number}</h2>
+                  <p className="text-sm opacity-90">{data.title}</p>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{data.title}</p>
               </div>
-              <Badge className={getStatusColor(data.status, type || '')}>
+              <Badge className={`${getStatusColor(data.status, type || '')} text-sm px-3 py-1`}>
                 {data.status.charAt(0).toUpperCase() + data.status.slice(1)}
               </Badge>
             </div>
-            
-            {/* Key Info - Inline */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2">
-              <span>Date: <span className="text-foreground">{formatDate(data.createdAt)}</span></span>
-              {data.validUntil && <span>Valid: <span className="text-foreground">{formatDate(data.validUntil)}</span></span>}
-              {data.dueDate && <span>Due: <span className="text-foreground">{formatDate(data.dueDate)}</span></span>}
-              {data.paidAt && <span className="text-green-600">Paid: {formatDate(data.paidAt)}</span>}
-              {data.acceptedAt && <span className="text-green-600">Accepted: {formatDate(data.acceptedAt)}</span>}
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <main className="flex-1 px-4 py-6">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Document Info Card */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Client Details */}
+              <Card>
+                <CardContent className="pt-4">
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Bill To</h3>
+                  <p className="font-semibold">{data.client.name}</p>
+                  {data.client.address && (
+                    <p className="text-sm text-muted-foreground flex items-start gap-1 mt-1">
+                      <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" /> {data.client.address}
+                    </p>
+                  )}
+                  {data.client.email && (
+                    <p className="text-sm text-muted-foreground mt-1">{data.client.email}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Document Details */}
+              <Card>
+                <CardContent className="pt-4">
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Details</h3>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Date:</span>
+                      <span className="font-medium">{formatDate(data.createdAt)}</span>
+                    </div>
+                    {data.validUntil && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Valid Until:</span>
+                        <span className="font-medium">{formatDate(data.validUntil)}</span>
+                      </div>
+                    )}
+                    {data.dueDate && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Due Date:</span>
+                        <span className="font-medium">{formatDate(data.dueDate)}</span>
+                      </div>
+                    )}
+                    {data.paidAt && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Paid:</span>
+                        <span className="font-medium">{formatDate(data.paidAt)}</span>
+                      </div>
+                    )}
+                    {data.acceptedAt && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Accepted:</span>
+                        <span className="font-medium">{formatDate(data.acceptedAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Client Info - Inline */}
-            <div className="text-sm">
-              <span className="text-muted-foreground">For: </span>
-              <span className="font-medium">{data.client.name}</span>
-              {data.client.address && (
-                <span className="text-muted-foreground text-xs ml-2">
-                  <MapPin className="w-3 h-3 inline" /> {data.client.address}
-                </span>
-              )}
-            </div>
-
-            {/* Job Site - Only if different from client */}
+            {/* Job Site if different */}
             {data.job?.address && data.job.address !== data.client.address && (
-              <div className="text-xs text-muted-foreground mt-1">
-                <Building2 className="w-3 h-3 inline" /> Job: {data.job.address}
-              </div>
+              <Card className="border-primary/20">
+                <CardContent className="py-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Building2 className="w-4 h-4 text-primary" />
+                    <span className="text-muted-foreground">Job Site:</span>
+                    <span className="font-medium">{data.job.address}</span>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {data.description && (
-              <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{data.description}</p>
+              <Card>
+                <CardContent className="py-3">
+                  <p className="text-sm text-muted-foreground">{data.description}</p>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Line Items - Compact */}
-        <Card>
-          <CardContent className="py-3">
-            <p className="font-semibold text-sm mb-2">Items</p>
-            <div className="space-y-2">
-              {data.lineItems.map((item, idx) => (
-                <div key={item.id || idx} className="flex justify-between items-start gap-2 pb-2 border-b last:border-0 last:pb-0">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">{item.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {parseFloat(item.quantity).toFixed(2)} × {formatCurrency(item.unitPrice)}
-                    </p>
-                  </div>
-                  <p className="text-sm font-medium whitespace-nowrap">{formatCurrency(item.total)}</p>
+            {/* Line Items Table */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Items</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Table Header */}
+                <div className="hidden sm:grid sm:grid-cols-12 text-xs font-medium text-muted-foreground uppercase tracking-wider pb-2 border-b">
+                  <div className="col-span-6">Description</div>
+                  <div className="col-span-2 text-right">Qty</div>
+                  <div className="col-span-2 text-right">Rate</div>
+                  <div className="col-span-2 text-right">Amount</div>
                 </div>
-              ))}
-            </div>
-
-            <Separator className="my-2" />
-
-            {/* Totals - Compact */}
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between gap-2 text-xs">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatCurrency(data.subtotal)}</span>
-              </div>
-              <div className="flex justify-between gap-2 text-xs">
-                <span className="text-muted-foreground">GST (10%)</span>
-                <span>{formatCurrency(data.gstAmount)}</span>
-              </div>
-              <div className="flex justify-between gap-2 font-bold text-base pt-1 border-t">
-                <span>Total</span>
-                <span>{formatCurrency(data.total)}</span>
-              </div>
-              {data.depositRequired && data.depositAmount && (
-                <div className="flex justify-between gap-2 text-primary text-xs">
-                  <span>Deposit Required</span>
-                  <span className="flex items-center gap-1">
-                    {formatCurrency(data.depositAmount)}
-                    {data.depositPaid && <CheckCircle2 className="w-3 h-3 text-green-500" />}
-                  </span>
+                
+                {/* Items */}
+                <div className="divide-y">
+                  {data.lineItems.map((item, idx) => (
+                    <div key={item.id || idx} className="py-3 sm:grid sm:grid-cols-12 sm:gap-2 space-y-1 sm:space-y-0">
+                      <div className="col-span-6 font-medium">{item.description}</div>
+                      <div className="col-span-2 text-right text-muted-foreground sm:text-foreground">
+                        <span className="sm:hidden text-xs">Qty: </span>{parseFloat(item.quantity).toFixed(2)}
+                      </div>
+                      <div className="col-span-2 text-right text-muted-foreground sm:text-foreground">
+                        <span className="sm:hidden text-xs">Rate: </span>{formatCurrency(item.unitPrice)}
+                      </div>
+                      <div className="col-span-2 text-right font-medium">{formatCurrency(item.total)}</div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Acceptance Status - Compact */}
-        {isAccepted && data.acceptedBy && (
-          <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 text-sm">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Accepted by {data.acceptedBy} on {formatDate(data.acceptedAt)}</span>
-          </div>
-        )}
-
-        {/* Payment Status - Compact */}
-        {isPaid && type === 'invoice' && (
-          <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 text-sm">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Paid on {formatDate(data.paidAt)}</span>
-          </div>
-        )}
-
-        {/* Action Buttons - Compact */}
-        {(showAcceptButtons || showPayButton) && (
-          <Card>
-            <CardContent className="py-3">
-              {showAcceptButtons && (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Your name to accept"
-                      value={acceptedName}
-                      onChange={(e) => setAcceptedName(e.target.value)}
-                      className="flex-1 px-3 py-2 border rounded-md text-sm"
-                    />
+                {/* Totals */}
+                <div className="border-t pt-4 mt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatCurrency(data.subtotal)}</span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleAcceptQuote}
-                      disabled={isAccepting || !acceptedName.trim()}
-                      className="flex-1"
-                      size="sm"
-                    >
-                      <Check className="w-3 h-3 mr-1" />
-                      {isAccepting ? 'Accepting...' : 'Accept'}
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={handleDeclineQuote}
-                      disabled={isDeclining}
-                      size="sm"
-                    >
-                      <X className="w-3 h-3 mr-1" />
-                      Decline
-                    </Button>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">GST (10%)</span>
+                    <span>{formatCurrency(data.gstAmount)}</span>
                   </div>
+                  <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                    <span>Total (AUD)</span>
+                    <span>{formatCurrency(data.total)}</span>
+                  </div>
+                  {data.depositRequired && data.depositAmount && (
+                    <div className="flex justify-between text-primary text-sm pt-1">
+                      <span>Deposit Required</span>
+                      <span className="flex items-center gap-1">
+                        {formatCurrency(data.depositAmount)}
+                        {data.depositPaid && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              {showPayButton && (
-                <Button 
-                  onClick={handlePayNow}
-                  className="w-full"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Pay {formatCurrency(data.total)} Now
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
 
-        {/* Actions Row - Combined PDF & Portal */}
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handleDownloadPdf}
-            className="flex-1"
-            size="sm"
-          >
-            <Download className="w-3 h-3 mr-1" />
-            PDF
-          </Button>
-          <Link href="/portal" className="flex-1">
-            <Button className="w-full" size="sm">
-              <FolderOpen className="w-3 h-3 mr-1" />
-              All Documents
+            {/* Acceptance Status */}
+            {isAccepted && data.acceptedBy && (
+              <Card className="border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-800 dark:text-green-200">Quote Accepted</p>
+                      <p className="text-sm text-green-700 dark:text-green-400">
+                        Accepted by {data.acceptedBy} on {formatDate(data.acceptedAt)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Payment Status */}
+            {isPaid && type === 'invoice' && (
+              <Card className="border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-800 dark:text-green-200">Payment Received</p>
+                      <p className="text-sm text-green-700 dark:text-green-400">
+                        Paid on {formatDate(data.paidAt)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Action Buttons - Prominent */}
+            {(showAcceptButtons || showPayButton) && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="pt-4 pb-4">
+                  {showAcceptButtons && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-center">Ready to accept this quote?</h3>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter your name to accept"
+                          value={acceptedName}
+                          onChange={(e) => setAcceptedName(e.target.value)}
+                          className="flex-1 px-4 py-3 border rounded-md"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleAcceptQuote}
+                          disabled={isAccepting || !acceptedName.trim()}
+                          className="flex-1"
+                          size="lg"
+                        >
+                          <Check className="w-5 h-5 mr-2" />
+                          {isAccepting ? 'Accepting...' : 'Accept Quote'}
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={handleDeclineQuote}
+                          disabled={isDeclining}
+                          size="lg"
+                        >
+                          <X className="w-5 h-5 mr-2" />
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {showPayButton && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-center">Pay securely online</h3>
+                      <Button 
+                        onClick={handlePayNow}
+                        className="w-full"
+                        size="lg"
+                      >
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        Pay {formatCurrency(data.total)} Now
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Download PDF */}
+            <Button 
+              variant="outline" 
+              onClick={handleDownloadPdf}
+              className="w-full"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
             </Button>
-          </Link>
-        </div>
+          </div>
+        </main>
 
-        {/* Footer - Compact */}
-        <div className="text-center text-xs text-muted-foreground py-2">
-          <p>Powered by TradieTrack • <a href={`tel:${data.business.phone}`} className="hover:underline">{data.business.name}</a></p>
-        </div>
+        {/* Footer */}
+        <footer className="border-t bg-card py-4 px-4 mt-auto">
+          <div className="max-w-4xl mx-auto text-center text-xs text-muted-foreground">
+            <p>Powered by TradieTrack • Questions? Contact <a href={`tel:${data.business.phone}`} className="hover:underline text-foreground">{data.business.name}</a></p>
+          </div>
+        </footer>
       </div>
     </div>
   );
