@@ -988,6 +988,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // PUBLIC: Unified document view endpoint for client portal
+  app.get("/api/public/document/:type/:token", async (req, res) => {
+    try {
+      const { type, token } = req.params;
+      
+      if (type === 'quote') {
+        const quote = await storage.getQuoteByToken(token);
+        if (!quote) {
+          return res.status(404).json({ error: 'Quote not found' });
+        }
+        
+        const client = await storage.getClientById(quote.clientId);
+        const settings = await storage.getBusinessSettingsByUserId(quote.userId);
+        const lineItems = await storage.getQuoteLineItems(quote.id);
+        let job = null;
+        if (quote.jobId) {
+          job = await storage.getJob(quote.jobId, quote.userId);
+        }
+        
+        return res.json({
+          type: 'quote',
+          id: quote.id,
+          number: quote.number,
+          title: quote.title,
+          description: quote.description,
+          status: quote.status,
+          subtotal: quote.subtotal,
+          gstAmount: quote.gstAmount,
+          total: quote.total,
+          createdAt: quote.createdAt,
+          validUntil: quote.validUntil,
+          acceptedAt: quote.acceptedAt,
+          acceptedBy: quote.acceptedBy,
+          depositRequired: quote.depositRequired,
+          depositAmount: quote.depositAmount,
+          depositPaid: quote.depositPaid,
+          lineItems: lineItems.map(item => ({
+            id: item.id,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.total
+          })),
+          client: {
+            name: client?.name,
+            email: client?.email,
+            phone: client?.phone,
+            address: client?.address
+          },
+          business: {
+            name: settings?.businessName,
+            email: settings?.businessEmail,
+            phone: settings?.businessPhone,
+            address: settings?.businessAddress,
+            abn: settings?.abn,
+            logoUrl: settings?.logoUrl
+          },
+          job: job ? { title: job.title, address: job.address } : null
+        });
+      }
+      
+      if (type === 'invoice') {
+        const invoice = await storage.getInvoiceByPaymentToken(token);
+        if (!invoice) {
+          return res.status(404).json({ error: 'Invoice not found' });
+        }
+        
+        const client = await storage.getClientById(invoice.clientId);
+        const settings = await storage.getBusinessSettingsByUserId(invoice.userId);
+        const lineItems = await storage.getInvoiceLineItems(invoice.id);
+        let job = null;
+        if (invoice.jobId) {
+          job = await storage.getJob(invoice.jobId, invoice.userId);
+        }
+        
+        return res.json({
+          type: 'invoice',
+          id: invoice.id,
+          number: invoice.number,
+          title: invoice.title,
+          description: invoice.description,
+          status: invoice.status,
+          subtotal: invoice.subtotal,
+          gstAmount: invoice.gstAmount,
+          total: invoice.total,
+          createdAt: invoice.createdAt,
+          dueDate: invoice.dueDate,
+          paidAt: invoice.paidAt,
+          allowOnlinePayment: invoice.allowOnlinePayment,
+          stripePaymentLink: invoice.stripePaymentLink,
+          lineItems: lineItems.map(item => ({
+            id: item.id,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.total
+          })),
+          client: {
+            name: client?.name,
+            email: client?.email,
+            phone: client?.phone,
+            address: client?.address
+          },
+          business: {
+            name: settings?.businessName,
+            email: settings?.businessEmail,
+            phone: settings?.businessPhone,
+            address: settings?.businessAddress,
+            abn: settings?.abn,
+            logoUrl: settings?.logoUrl
+          },
+          job: job ? { title: job.title, address: job.address } : null
+        });
+      }
+      
+      if (type === 'receipt') {
+        const receipt = await storage.getReceiptByViewToken(token);
+        if (!receipt) {
+          return res.status(404).json({ error: 'Receipt not found' });
+        }
+        
+        const client = await storage.getClientById(receipt.clientId);
+        const settings = await storage.getBusinessSettingsByUserId(receipt.userId);
+        
+        return res.json({
+          type: 'receipt',
+          id: receipt.id,
+          number: receipt.receiptNumber,
+          title: 'Payment Receipt',
+          description: receipt.notes,
+          status: 'paid',
+          subtotal: receipt.subtotal,
+          gstAmount: receipt.gstAmount,
+          total: receipt.total,
+          createdAt: receipt.createdAt,
+          paidAt: receipt.paymentDate,
+          lineItems: [],
+          client: {
+            name: client?.name,
+            email: client?.email,
+            phone: client?.phone,
+            address: client?.address
+          },
+          business: {
+            name: settings?.businessName,
+            email: settings?.businessEmail,
+            phone: settings?.businessPhone,
+            address: settings?.businessAddress,
+            abn: settings?.abn,
+            logoUrl: settings?.logoUrl
+          },
+          job: null
+        });
+      }
+      
+      return res.status(400).json({ error: 'Invalid document type' });
+    } catch (error: any) {
+      console.error('Error fetching public document:', error);
+      res.status(500).json({ error: 'Failed to load document' });
+    }
+  });
+
+  // PUBLIC: Accept a quote
+  app.post("/api/public/quote/:token/accept", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { acceptedBy } = req.body;
+      
+      const quote = await storage.getQuoteByToken(token);
+      if (!quote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+      
+      if (quote.status === 'accepted') {
+        return res.status(400).json({ error: 'Quote already accepted' });
+      }
+      
+      if (quote.status === 'declined') {
+        return res.status(400).json({ error: 'Quote was declined' });
+      }
+      
+      const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+      
+      await storage.updateQuote(quote.id, {
+        status: 'accepted',
+        acceptedAt: new Date(),
+        acceptedBy: acceptedBy || 'Client',
+        acceptanceIp: typeof clientIp === 'string' ? clientIp : clientIp[0]
+      });
+      
+      res.json({ success: true, message: 'Quote accepted successfully' });
+    } catch (error: any) {
+      console.error('Error accepting quote:', error);
+      res.status(500).json({ error: 'Failed to accept quote' });
+    }
+  });
+
+  // PUBLIC: Decline a quote
+  app.post("/api/public/quote/:token/decline", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { reason } = req.body;
+      
+      const quote = await storage.getQuoteByToken(token);
+      if (!quote) {
+        return res.status(404).json({ error: 'Quote not found' });
+      }
+      
+      if (quote.status === 'accepted') {
+        return res.status(400).json({ error: 'Quote already accepted' });
+      }
+      
+      if (quote.status === 'declined') {
+        return res.status(400).json({ error: 'Quote already declined' });
+      }
+      
+      await storage.updateQuote(quote.id, {
+        status: 'declined',
+        rejectedAt: new Date(),
+        declineReason: reason || null
+      });
+      
+      res.json({ success: true, message: 'Quote declined' });
+    } catch (error: any) {
+      console.error('Error declining quote:', error);
+      res.status(500).json({ error: 'Failed to decline quote' });
+    }
+  });
+
   // Create payment intent for quote deposit
   app.post("/api/public/quote/:token/pay", async (req: any, res) => {
     try {
