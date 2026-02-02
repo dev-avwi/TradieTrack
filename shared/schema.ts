@@ -3576,3 +3576,31 @@ export const jobInvites = pgTable("job_invites", {
 export const insertJobInviteSchema = createInsertSchema(jobInvites).omit({ id: true, createdAt: true, usedAt: true, usedBy: true });
 export type InsertJobInvite = z.infer<typeof insertJobInviteSchema>;
 export type JobInvite = typeof jobInvites.$inferSelect;
+
+// Client Portal Verification Codes - OTP codes for client portal access
+export const portalVerificationCodes = pgTable("portal_verification_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  code: varchar("code", { length: 6 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verified: boolean("verified").default(false),
+  attempts: integer("attempts").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPortalVerificationCodeSchema = createInsertSchema(portalVerificationCodes).omit({ id: true, createdAt: true });
+export type InsertPortalVerificationCode = z.infer<typeof insertPortalVerificationCodeSchema>;
+export type PortalVerificationCode = typeof portalVerificationCodes.$inferSelect;
+
+// Client Portal Sessions - Authenticated portal sessions
+export const portalSessions = pgTable("portal_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  sessionToken: varchar("session_token", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPortalSessionSchema = createInsertSchema(portalSessions).omit({ id: true, createdAt: true });
+export type InsertPortalSession = z.infer<typeof insertPortalSessionSchema>;
+export type PortalSession = typeof portalSessions.$inferSelect;
