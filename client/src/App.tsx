@@ -77,6 +77,7 @@ import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
 import AIVisualizationPage from "@/pages/AIVisualization";
 import ClientPortal from "@/pages/ClientPortal";
+import ClientPortalHub from "@/pages/ClientPortalHub";
 import TeamGroups from "@/pages/TeamGroups";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
@@ -1243,6 +1244,7 @@ function App() {
             <Switch>
               {/* Public routes - no auth required */}
               <Route path="/pay/:token" component={PaymentPage} />
+              <Route path="/portal" component={ClientPortalHub} />
               <Route path="/portal/:type/:token" component={ClientPortal} />
               <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
               <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
