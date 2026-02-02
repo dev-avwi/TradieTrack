@@ -228,24 +228,21 @@ export default function ClientPortal() {
 
   return (
     <div className="min-h-screen bg-muted/30 dark:bg-background">
-      <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Business Header */}
+      <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-3">
+        {/* Business Header - Compact */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-3">
               {data.business.logoUrl && (
                 <img 
                   src={data.business.logoUrl} 
                   alt={data.business.name}
-                  className="w-16 h-16 object-contain rounded-lg"
+                  className="w-10 h-10 object-contain rounded"
                 />
               )}
-              <div className="flex-1">
-                <h1 className="text-xl font-bold">{data.business.name}</h1>
-                {data.business.abn && (
-                  <p className="text-sm text-muted-foreground">ABN: {data.business.abn}</p>
-                )}
-                <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold truncate">{data.business.name}</h1>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                   {data.business.phone && (
                     <a href={`tel:${data.business.phone}`} className="flex items-center gap-1 hover:text-foreground">
                       <Phone className="w-3 h-3" /> {data.business.phone}
@@ -262,128 +259,95 @@ export default function ClientPortal() {
           </CardContent>
         </Card>
 
-        {/* Document Header */}
+        {/* Document Header - Compact */}
         <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-lg">{docTypeLabel} #{data.number}</CardTitle>
+          <CardContent className="py-3">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-semibold truncate">{docTypeLabel} #{data.number}</span>
                 </div>
-                <CardDescription>{data.title}</CardDescription>
+                <p className="text-sm text-muted-foreground truncate">{data.title}</p>
               </div>
               <Badge className={getStatusColor(data.status, type || '')}>
                 {data.status.charAt(0).toUpperCase() + data.status.slice(1)}
               </Badge>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Key Info Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Date</p>
-                <p className="font-medium">{formatDate(data.createdAt)}</p>
-              </div>
-              {data.validUntil && (
-                <div>
-                  <p className="text-muted-foreground">Valid Until</p>
-                  <p className="font-medium">{formatDate(data.validUntil)}</p>
-                </div>
-              )}
-              {data.dueDate && (
-                <div>
-                  <p className="text-muted-foreground">Due Date</p>
-                  <p className="font-medium">{formatDate(data.dueDate)}</p>
-                </div>
-              )}
-              {data.paidAt && (
-                <div>
-                  <p className="text-muted-foreground">Paid On</p>
-                  <p className="font-medium text-green-600">{formatDate(data.paidAt)}</p>
-                </div>
-              )}
-              {data.acceptedAt && (
-                <div>
-                  <p className="text-muted-foreground">Accepted</p>
-                  <p className="font-medium text-green-600">{formatDate(data.acceptedAt)}</p>
-                </div>
-              )}
+            
+            {/* Key Info - Inline */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2">
+              <span>Date: <span className="text-foreground">{formatDate(data.createdAt)}</span></span>
+              {data.validUntil && <span>Valid: <span className="text-foreground">{formatDate(data.validUntil)}</span></span>}
+              {data.dueDate && <span>Due: <span className="text-foreground">{formatDate(data.dueDate)}</span></span>}
+              {data.paidAt && <span className="text-green-600">Paid: {formatDate(data.paidAt)}</span>}
+              {data.acceptedAt && <span className="text-green-600">Accepted: {formatDate(data.acceptedAt)}</span>}
             </div>
 
-            {/* Client Info */}
-            <div className="pt-2">
-              <p className="text-sm text-muted-foreground mb-1">For</p>
-              <p className="font-medium">{data.client.name}</p>
+            {/* Client Info - Inline */}
+            <div className="text-sm">
+              <span className="text-muted-foreground">For: </span>
+              <span className="font-medium">{data.client.name}</span>
               {data.client.address && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                  <MapPin className="w-3 h-3" /> {data.client.address}
-                </p>
+                <span className="text-muted-foreground text-xs ml-2">
+                  <MapPin className="w-3 h-3 inline" /> {data.client.address}
+                </span>
               )}
             </div>
 
-            {/* Job Site */}
-            {data.job?.address && (
-              <div className="pt-2">
-                <p className="text-sm text-muted-foreground mb-1">Job Site</p>
-                <p className="text-sm flex items-center gap-1">
-                  <Building2 className="w-3 h-3" /> {data.job.address}
-                </p>
+            {/* Job Site - Only if different from client */}
+            {data.job?.address && data.job.address !== data.client.address && (
+              <div className="text-xs text-muted-foreground mt-1">
+                <Building2 className="w-3 h-3 inline" /> Job: {data.job.address}
               </div>
             )}
 
             {data.description && (
-              <div className="pt-2">
-                <p className="text-sm text-muted-foreground mb-1">Description</p>
-                <p className="text-sm">{data.description}</p>
-              </div>
+              <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{data.description}</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Line Items */}
+        {/* Line Items - Compact */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="py-3">
+            <p className="font-semibold text-sm mb-2">Items</p>
+            <div className="space-y-2">
               {data.lineItems.map((item, idx) => (
-                <div key={item.id || idx} className="flex justify-between items-start gap-4 pb-3 border-b last:border-0 last:pb-0">
+                <div key={item.id || idx} className="flex justify-between items-start gap-2 pb-2 border-b last:border-0 last:pb-0">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{item.description}</p>
+                    <p className="text-sm">{item.description}</p>
                     <p className="text-xs text-muted-foreground">
                       {parseFloat(item.quantity).toFixed(2)} × {formatCurrency(item.unitPrice)}
                     </p>
                   </div>
-                  <p className="font-medium text-sm whitespace-nowrap">{formatCurrency(item.total)}</p>
+                  <p className="text-sm font-medium whitespace-nowrap">{formatCurrency(item.total)}</p>
                 </div>
               ))}
             </div>
 
-            <Separator className="my-4" />
+            <Separator className="my-2" />
 
-            {/* Totals */}
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
+            {/* Totals - Compact */}
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between gap-2 text-xs">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrency(data.subtotal)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-2 text-xs">
                 <span className="text-muted-foreground">GST (10%)</span>
                 <span>{formatCurrency(data.gstAmount)}</span>
               </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-lg">
+              <div className="flex justify-between gap-2 font-bold text-base pt-1 border-t">
                 <span>Total</span>
                 <span>{formatCurrency(data.total)}</span>
               </div>
               {data.depositRequired && data.depositAmount && (
-                <div className="flex justify-between text-primary">
+                <div className="flex justify-between gap-2 text-primary text-xs">
                   <span>Deposit Required</span>
                   <span className="flex items-center gap-1">
                     {formatCurrency(data.depositAmount)}
-                    {data.depositPaid && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                    {data.depositPaid && <CheckCircle2 className="w-3 h-3 text-green-500" />}
                   </span>
                 </div>
               )}
@@ -391,138 +355,95 @@ export default function ClientPortal() {
           </CardContent>
         </Card>
 
-        {/* Acceptance Status for Accepted Quotes */}
+        {/* Acceptance Status - Compact */}
         {isAccepted && data.acceptedBy && (
-          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="font-medium">Quote Accepted</p>
-                  <p className="text-sm text-muted-foreground">
-                    Accepted by {data.acceptedBy} on {formatDate(data.acceptedAt)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 text-sm">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Accepted by {data.acceptedBy} on {formatDate(data.acceptedAt)}</span>
+          </div>
         )}
 
-        {/* Payment Received for Paid Invoices */}
+        {/* Payment Status - Compact */}
         {isPaid && type === 'invoice' && (
-          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="font-medium">Payment Received</p>
-                  <p className="text-sm text-muted-foreground">
-                    Paid on {formatDate(data.paidAt)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 text-sm">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Paid on {formatDate(data.paidAt)}</span>
+          </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Compact */}
         {(showAcceptButtons || showPayButton) && (
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="py-3">
               {showAcceptButtons && (
-                <div className="space-y-4">
-                  <p className="text-center text-sm text-muted-foreground mb-4">
-                    Ready to proceed? Accept this quote to confirm.
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Your name"
-                        value={acceptedName}
-                        onChange={(e) => setAcceptedName(e.target.value)}
-                        className="flex-1 px-3 py-2 border rounded-md text-sm"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleAcceptQuote}
-                        disabled={isAccepting || !acceptedName.trim()}
-                        className="flex-1"
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        {isAccepting ? 'Accepting...' : 'Accept Quote'}
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={handleDeclineQuote}
-                        disabled={isDeclining}
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        {isDeclining ? 'Declining...' : 'Decline'}
-                      </Button>
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Your name to accept"
+                      value={acceptedName}
+                      onChange={(e) => setAcceptedName(e.target.value)}
+                      className="flex-1 px-3 py-2 border rounded-md text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleAcceptQuote}
+                      disabled={isAccepting || !acceptedName.trim()}
+                      className="flex-1"
+                      size="sm"
+                    >
+                      <Check className="w-3 h-3 mr-1" />
+                      {isAccepting ? 'Accepting...' : 'Accept'}
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={handleDeclineQuote}
+                      disabled={isDeclining}
+                      size="sm"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Decline
+                    </Button>
                   </div>
                 </div>
               )}
               
               {showPayButton && (
-                <div className="space-y-4">
-                  <p className="text-center text-sm text-muted-foreground">
-                    Pay securely with credit card or bank transfer.
-                  </p>
-                  <Button 
-                    onClick={handlePayNow}
-                    size="lg"
-                    className="w-full"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Pay {formatCurrency(data.total)} Now
-                  </Button>
-                </div>
+                <Button 
+                  onClick={handlePayNow}
+                  className="w-full"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Pay {formatCurrency(data.total)} Now
+                </Button>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Download PDF */}
-        <Card>
-          <CardContent className="pt-6">
-            <Button 
-              variant="outline" 
-              onClick={handleDownloadPdf}
-              className="w-full"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
+        {/* Actions Row - Combined PDF & Portal */}
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadPdf}
+            className="flex-1"
+            size="sm"
+          >
+            <Download className="w-3 h-3 mr-1" />
+            PDF
+          </Button>
+          <Link href="/portal" className="flex-1">
+            <Button className="w-full" size="sm">
+              <FolderOpen className="w-3 h-3 mr-1" />
+              All Documents
             </Button>
-          </CardContent>
-        </Card>
+          </Link>
+        </div>
 
-        {/* Client Portal Hub Link */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-3">
-              <FolderOpen className="w-10 h-10 mx-auto text-primary" />
-              <div>
-                <p className="font-medium">View All Your Documents</p>
-                <p className="text-sm text-muted-foreground">
-                  Access all your quotes, invoices, receipts and job history in one place
-                </p>
-              </div>
-              <Link href="/portal">
-                <Button className="w-full">
-                  Open Client Portal
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center text-xs text-muted-foreground py-4">
-          <p>Powered by TradieTrack</p>
-          <p className="mt-1">Questions? Contact {data.business.name} directly.</p>
+        {/* Footer - Compact */}
+        <div className="text-center text-xs text-muted-foreground py-2">
+          <p>Powered by TradieTrack • <a href={`tel:${data.business.phone}`} className="hover:underline">{data.business.name}</a></p>
         </div>
       </div>
     </div>
