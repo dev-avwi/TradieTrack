@@ -988,6 +988,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CLIENT PORTAL: Request verification code via SMS
+  app.post("/api/portal/request-code", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      
+      if (!phone || typeof phone !== 'string') {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
+      
+      // Normalize phone number to E.164 format
+      const { formatPhoneNumber } = await import('./services/smsService');
+      const normalizedPhone = formatPhoneNumber(phone);
+      
+      // Generate 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Calculate expiry (10 minutes from now)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      // Create verification code record
+      await storage.createPortalVerificationCode(normalizedPhone, code, expiresAt);
+      
+      // Try to send SMS with code
+      try {
+        const { sendSMS } = await import('./services/smsService');
+        await sendSMS({
+          to: normalizedPhone,
+          message: `Your TradieTrack verification code is: ${code}. This code will expire in 10 minutes.`,
+        });
+        console.log(`✅ Portal verification code SMS sent to ${normalizedPhone}`);
+      } catch (smsError: any) {
+        console.error('Failed to send portal verification SMS:', smsError);
+        // Continue anyway - code is stored and can be used
+      }
+      
+      // Always return generic success message for security (don't reveal if phone exists)
+      return res.json({
+        success: true,
+        message: 'If this number is in our system, you will receive a verification code.',
+      });
+    } catch (error: any) {
+      console.error('Error requesting portal code:', error);
+      res.status(500).json({ error: 'Failed to request code' });
+    }
+  });
+
+  // CLIENT PORTAL: Verify code and create session
+  app.post("/api/portal/verify-code", async (req, res) => {
+    try {
+      const { phone, code } = req.body;
+      
+      if (!phone || typeof phone !== 'string') {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
+      
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ error: 'Code is required' });
+      }
+      
+      // Normalize phone number to E.164 format
+      const { formatPhoneNumber } = await import('./services/smsService');
+      const normalizedPhone = formatPhoneNumber(phone);
+      
+      // Get verification code record
+      const verificationRecord = await storage.getPortalVerificationCode(normalizedPhone, code);
+      
+      if (!verificationRecord) {
+        return res.status(400).json({ error: 'Invalid code' });
+      }
+      
+      // Check if code is already used
+      if (verificationRecord.verified) {
+        return res.status(400).json({ error: 'Code has already been used' });
+      }
+      
+      // Check if code is expired
+      if (new Date() > verificationRecord.expiresAt) {
+        return res.status(400).json({ error: 'Code has expired' });
+      }
+      
+      // Check attempt count
+      if (verificationRecord.attempts >= 5) {
+        return res.status(429).json({ error: 'Too many attempts. Please request a new code.' });
+      }
+      
+      // Increment attempts
+      await storage.incrementVerificationAttempts(verificationRecord.id);
+      
+      // Mark code as used
+      await storage.markVerificationCodeUsed(verificationRecord.id);
+      
+      // Create session token (32 bytes hex = 64 character string)
+      const sessionToken = randomBytes(32).toString('hex');
+      
+      // Calculate expiry (24 hours from now)
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      // Create portal session
+      await storage.createPortalSession(normalizedPhone, sessionToken, expiresAt);
+      
+      return res.json({
+        success: true,
+        sessionToken,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error: any) {
+      console.error('Error verifying portal code:', error);
+      res.status(500).json({ error: 'Failed to verify code' });
+    }
+  });
+
+  // CLIENT PORTAL: Get client data using session token
+  app.get("/api/portal/data", async (req, res) => {
+    try {
+      // Extract session token from Authorization header
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid authorization header' });
+      }
+      
+      const sessionToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+      
+      // Validate session token
+      const session = await storage.getPortalSessionByToken(sessionToken);
+      
+      if (!session) {
+        return res.status(401).json({ error: 'Invalid session token' });
+      }
+      
+      // Check if session is expired
+      if (new Date() > session.expiresAt) {
+        await storage.deletePortalSession(sessionToken);
+        return res.status(401).json({ error: 'Session has expired' });
+      }
+      
+      // Get all clients with this phone number
+      const clients = await storage.getClientsByPhone(session.phone);
+      
+      if (clients.length === 0) {
+        return res.json({
+          phone: session.phone,
+          clients: [],
+          quotes: [],
+          invoices: [],
+          receipts: [],
+          jobs: [],
+        });
+      }
+      
+      // Get client IDs
+      const clientIds = clients.map(c => c.id);
+      
+      // Fetch all documents for these clients in parallel
+      const [quotes, invoices, receipts, jobs] = await Promise.all([
+        storage.getQuotesForClientIds(clientIds),
+        storage.getInvoicesForClientIds(clientIds),
+        storage.getReceiptsForClientIds(clientIds),
+        storage.getJobsForClientIds(clientIds),
+      ]);
+      
+      // Fetch business info for each document
+      // Collect unique owner IDs
+      const ownerIds = new Set<string>();
+      quotes.forEach(q => ownerIds.add(q.userId));
+      invoices.forEach(i => ownerIds.add(i.userId));
+      receipts.forEach(r => ownerIds.add(r.userId));
+      jobs.forEach(j => ownerIds.add(j.userId));
+      
+      // Fetch business settings for all owners
+      const businessInfoMap = new Map<string, any>();
+      for (const ownerId of ownerIds) {
+        const settings = await storage.getBusinessSettings(ownerId);
+        if (settings) {
+          businessInfoMap.set(ownerId, {
+            businessName: settings.businessName,
+            businessPhone: settings.businessPhone,
+            businessEmail: settings.businessEmail,
+            businessAddress: settings.businessAddress,
+            businessLogo: settings.businessLogo,
+            abn: settings.abn,
+          });
+        }
+      }
+      
+      // Add business info to each document
+      const quotesWithBusiness = quotes.map(q => ({
+        ...q,
+        businessInfo: businessInfoMap.get(q.userId),
+      }));
+      
+      const invoicesWithBusiness = invoices.map(i => ({
+        ...i,
+        businessInfo: businessInfoMap.get(i.userId),
+      }));
+      
+      const receiptsWithBusiness = receipts.map(r => ({
+        ...r,
+        businessInfo: businessInfoMap.get(r.userId),
+      }));
+      
+      const jobsWithBusiness = jobs.map(j => ({
+        ...j,
+        businessInfo: businessInfoMap.get(j.userId),
+      }));
+      
+      return res.json({
+        phone: session.phone,
+        clients,
+        quotes: quotesWithBusiness,
+        invoices: invoicesWithBusiness,
+        receipts: receiptsWithBusiness,
+        jobs: jobsWithBusiness,
+      });
+    } catch (error: any) {
+      console.error('Error fetching portal data:', error);
+      res.status(500).json({ error: 'Failed to fetch data' });
+    }
+  });
+
+  // CLIENT PORTAL: Logout and delete session
+  app.post("/api/portal/logout", async (req, res) => {
+    try {
+      // Extract session token from Authorization header
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid authorization header' });
+      }
+      
+      const sessionToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+      
+      // Delete session from database
+      await storage.deletePortalSession(sessionToken);
+      
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error logging out from portal:', error);
+      res.status(500).json({ error: 'Failed to logout' });
+    }
+  });
 
   // PUBLIC: Unified document view endpoint for client portal
   app.get("/api/public/document/:type/:token", async (req, res) => {

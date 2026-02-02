@@ -701,4 +701,4 @@ export async function generateTrackingLink(
   }
 }
 
-export { smsTemplates };
+export { smsTemplates, sendSMS, formatPhoneNumber };

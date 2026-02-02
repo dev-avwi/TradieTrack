@@ -259,6 +259,12 @@ import {
   jobInvites,
   type JobInvite,
   type InsertJobInvite,
+  portalVerificationCodes,
+  type PortalVerificationCode,
+  type InsertPortalVerificationCode,
+  portalSessions,
+  type PortalSession,
+  type InsertPortalSession,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -802,6 +808,26 @@ export interface IStorage {
   createJobInvite(invite: InsertJobInvite): Promise<JobInvite>;
   revokeJobInvite(id: string, userId: string): Promise<JobInvite | undefined>;
   acceptJobInvite(code: string, acceptingUserId: string): Promise<JobInvite | undefined>;
+
+  // Client Portal Verification (OTP-based access)
+  createPortalVerificationCode(phone: string, code: string, expiresAt: Date): Promise<PortalVerificationCode>;
+  getPortalVerificationCode(phone: string, code: string): Promise<PortalVerificationCode | undefined>;
+  incrementVerificationAttempts(id: string): Promise<void>;
+  markVerificationCodeUsed(id: string): Promise<void>;
+  cleanupExpiredVerificationCodes(): Promise<void>;
+  
+  // Client Portal Sessions
+  createPortalSession(phone: string, sessionToken: string, expiresAt: Date): Promise<PortalSession>;
+  getPortalSessionByToken(token: string): Promise<PortalSession | undefined>;
+  deletePortalSession(token: string): Promise<void>;
+  cleanupExpiredPortalSessions(): Promise<void>;
+  
+  // Client Portal Data Access (find all clients by phone)
+  getClientsByPhone(phone: string): Promise<Client[]>;
+  getQuotesForClientIds(clientIds: string[]): Promise<Quote[]>;
+  getInvoicesForClientIds(clientIds: string[]): Promise<any[]>;
+  getReceiptsForClientIds(clientIds: string[]): Promise<any[]>;
+  getJobsForClientIds(clientIds: string[]): Promise<Job[]>;
 }
 
 // Initialize database connection
@@ -6610,6 +6636,145 @@ Thank you for your prompt attention to this matter.`,
       ))
       .returning();
     return updated;
+  }
+
+  // Client Portal Verification (OTP-based access)
+  async createPortalVerificationCode(phone: string, code: string, expiresAt: Date): Promise<PortalVerificationCode> {
+    const [created] = await db
+      .insert(portalVerificationCodes)
+      .values({
+        id: randomUUID(),
+        phone,
+        code,
+        expiresAt,
+        verified: false,
+        attempts: 0,
+      })
+      .returning();
+    return created;
+  }
+
+  async getPortalVerificationCode(phone: string, code: string): Promise<PortalVerificationCode | undefined> {
+    const [result] = await db
+      .select()
+      .from(portalVerificationCodes)
+      .where(and(
+        eq(portalVerificationCodes.phone, phone),
+        eq(portalVerificationCodes.code, code),
+        eq(portalVerificationCodes.verified, false),
+        gt(portalVerificationCodes.expiresAt, new Date())
+      ))
+      .limit(1);
+    return result;
+  }
+
+  async incrementVerificationAttempts(id: string): Promise<void> {
+    await db
+      .update(portalVerificationCodes)
+      .set({ attempts: sql`${portalVerificationCodes.attempts} + 1` })
+      .where(eq(portalVerificationCodes.id, id));
+  }
+
+  async markVerificationCodeUsed(id: string): Promise<void> {
+    await db
+      .update(portalVerificationCodes)
+      .set({ verified: true })
+      .where(eq(portalVerificationCodes.id, id));
+  }
+
+  async cleanupExpiredVerificationCodes(): Promise<void> {
+    await db
+      .delete(portalVerificationCodes)
+      .where(lt(portalVerificationCodes.expiresAt, new Date()));
+  }
+
+  // Client Portal Sessions
+  async createPortalSession(phone: string, sessionToken: string, expiresAt: Date): Promise<PortalSession> {
+    const [created] = await db
+      .insert(portalSessions)
+      .values({
+        id: randomUUID(),
+        phone,
+        sessionToken,
+        expiresAt,
+      })
+      .returning();
+    return created;
+  }
+
+  async getPortalSessionByToken(token: string): Promise<PortalSession | undefined> {
+    const [result] = await db
+      .select()
+      .from(portalSessions)
+      .where(and(
+        eq(portalSessions.sessionToken, token),
+        gt(portalSessions.expiresAt, new Date())
+      ))
+      .limit(1);
+    return result;
+  }
+
+  async deletePortalSession(token: string): Promise<void> {
+    await db
+      .delete(portalSessions)
+      .where(eq(portalSessions.sessionToken, token));
+  }
+
+  async cleanupExpiredPortalSessions(): Promise<void> {
+    await db
+      .delete(portalSessions)
+      .where(lt(portalSessions.expiresAt, new Date()));
+  }
+
+  // Client Portal Data Access
+  async getClientsByPhone(phone: string): Promise<Client[]> {
+    // Normalize phone number for comparison (remove spaces, dashes, etc.)
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    const results = await db
+      .select()
+      .from(clients)
+      .where(sql`REPLACE(REPLACE(REPLACE(REPLACE(${clients.phone}, ' ', ''), '-', ''), '(', ''), ')', '') = ${normalizedPhone}`);
+    return results;
+  }
+
+  async getQuotesForClientIds(clientIds: string[]): Promise<Quote[]> {
+    if (clientIds.length === 0) return [];
+    const results = await db
+      .select()
+      .from(quotes)
+      .where(inArray(quotes.clientId, clientIds))
+      .orderBy(desc(quotes.createdAt));
+    return results;
+  }
+
+  async getInvoicesForClientIds(clientIds: string[]): Promise<any[]> {
+    if (clientIds.length === 0) return [];
+    const results = await db
+      .select()
+      .from(invoices)
+      .where(inArray(invoices.clientId, clientIds))
+      .orderBy(desc(invoices.createdAt));
+    return results;
+  }
+
+  async getReceiptsForClientIds(clientIds: string[]): Promise<any[]> {
+    if (clientIds.length === 0) return [];
+    const results = await db
+      .select()
+      .from(receipts)
+      .where(inArray(receipts.clientId, clientIds))
+      .orderBy(desc(receipts.createdAt));
+    return results;
+  }
+
+  async getJobsForClientIds(clientIds: string[]): Promise<Job[]> {
+    if (clientIds.length === 0) return [];
+    const results = await db
+      .select()
+      .from(jobs)
+      .where(inArray(jobs.clientId, clientIds))
+      .orderBy(desc(jobs.scheduledAt));
+    return results;
   }
 }
 
