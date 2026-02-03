@@ -13,6 +13,7 @@ import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmai
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
 import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext } from "./permissions";
+import { logTeamActivity } from "./activityService";
 import {
   insertBusinessSettingsSchema,
   insertIntegrationSettingsSchema,
@@ -1239,6 +1240,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: 'Quote not found' });
         }
         
+        // Log quote view for activity tracking
+        await logTeamActivity({
+          businessOwnerId: quote.userId,
+          activityType: 'quote_viewed',
+          entityType: 'quote',
+          entityId: quote.id,
+          entityTitle: quote.title || quote.number,
+          description: 'Quote viewed in client portal'
+        });
+        
         const client = await storage.getClientById(quote.clientId);
         const settings = await storage.getBusinessSettingsByUserId(quote.userId);
         const lineItems = await storage.getQuoteLineItems(quote.id);
@@ -1294,6 +1305,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!invoice) {
           return res.status(404).json({ error: 'Invoice not found' });
         }
+        
+        // Log invoice view for activity tracking
+        await logTeamActivity({
+          businessOwnerId: invoice.userId,
+          activityType: 'invoice_viewed',
+          entityType: 'invoice',
+          entityId: invoice.id,
+          entityTitle: invoice.number,
+          description: 'Invoice viewed in client portal'
+        });
         
         const client = await storage.getClientById(invoice.clientId);
         const settings = await storage.getBusinessSettingsByUserId(invoice.userId);

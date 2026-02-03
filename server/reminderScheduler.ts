@@ -341,7 +341,7 @@ async function processQuoteFollowUp(rule: any, quote: any): Promise<void> {
       return;
     }
     
-    const message = rule.customMessage || `Hi ${client.name || 'there'}, just following up on the quote we sent for "${quote.title || 'your project'}". Let us know if you have any questions!`;
+    const message = rule.customMessage || `Hi ${client.name || 'there'}, just following up on quote #${quote.number || quote.id.slice(0, 8)} for "${quote.title || 'your project'}". Reply YES to accept or let us know if you have questions!`;
     
     await sendSmsToClient({
       businessOwnerId: rule.userId,

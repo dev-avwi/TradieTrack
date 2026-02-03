@@ -11,9 +11,11 @@ export type TeamActivityType =
   | 'quote_sent'          // Quote sent to client
   | 'quote_accepted'      // Quote accepted by client
   | 'quote_created'       // New quote created
+  | 'quote_viewed'        // Quote viewed by client in portal
   | 'invoice_sent'        // Invoice sent to client
   | 'invoice_paid'        // Invoice paid
   | 'invoice_created'     // New invoice created
+  | 'invoice_viewed'      // Invoice viewed by client in portal
   | 'payment_received'    // Payment received
   | 'client_added'        // New client added
   | 'milestone'           // Milestone reached (e.g., 100 jobs completed)

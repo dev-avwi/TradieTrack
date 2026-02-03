@@ -264,6 +264,224 @@ export async function sendQuickAction(options: QuickActionOptions): Promise<SmsM
 }
 
 /**
+ * Check if incoming SMS is a quote acceptance and process it
+ * Detects: YES, ACCEPT, APPROVED, OK, CONFIRM, GO AHEAD, etc.
+ * Returns auto-acceptance result with confirmation sent
+ */
+async function checkAndProcessQuoteAcceptance(
+  messageBody: string,
+  clientPhone: string,
+  conversation: SmsConversation
+): Promise<{ processed: boolean; quoteId?: string; message?: string }> {
+  // Normalize the message for matching (exact match only)
+  const normalized = messageBody.trim().toUpperCase();
+  
+  // First check for rejection/negation keywords using word boundaries
+  const rejectionPattern = /\b(NOT|CAN'?T|WON'?T|DON'?T|CANNOT|DECLINE|REJECT|NOPE|NAH)\b/i;
+  if (rejectionPattern.test(normalized) || normalized === 'NO') {
+    return { processed: false };
+  }
+  
+  // Keywords that indicate acceptance - EXACT MATCH ONLY (no substring matching)
+  const acceptKeywords = ['YES', 'YEP', 'YEAH', 'YUP', 'Y', 'ACCEPT', 'ACCEPTED', 
+    'APPROVED', 'APPROVE', 'OK', 'OKAY', 'CONFIRM', 'CONFIRMED',
+    'GO AHEAD', 'SOUNDS GOOD', 'LOOKS GOOD', 'PROCEED', 'AGREED', 'DEAL', 'DONE'];
+  
+  // Check for explicit quote number in message (e.g., "ACCEPT 1234", "YES Q-1234", "ACCEPT #1234")
+  const quoteNumberMatch = normalized.match(/(?:ACCEPT|YES|APPROVE|CONFIRM)\s*#?([A-Z]*-?\d+)/);
+  const specifiedQuoteNumber = quoteNumberMatch ? quoteNumberMatch[1] : null;
+  
+  // Check for EXACT acceptance match (with optional quote number or punctuation)
+  const isExactAcceptance = acceptKeywords.some(keyword => 
+    normalized === keyword || 
+    normalized === keyword + '!' ||
+    normalized === keyword + '.' ||
+    // Support "YES 1234" or "ACCEPT Q-1234" format
+    (specifiedQuoteNumber && normalized.startsWith(keyword))
+  );
+  
+  if (!isExactAcceptance) {
+    return { processed: false };
+  }
+  
+  // Check if there's a recent quote SMS sent to this client
+  if (!conversation.clientId) {
+    console.log('[SMS Quote Accept] No client linked to conversation');
+    return { processed: false };
+  }
+  
+  try {
+    // Check if we recently sent a quote SMS to this conversation (within 72 hours)
+    const messages = await storage.getSmsMessages(conversation.id);
+    const recentQuoteMessage = messages.find(m => {
+      if (m.direction !== 'outbound') return false;
+      const msgAge = Date.now() - new Date(m.createdAt).getTime();
+      const is72Hours = msgAge < 72 * 60 * 60 * 1000;
+      const isQuoteMessage = m.body?.toLowerCase().includes('quote') && 
+                             (m.body?.toLowerCase().includes('ready') || m.body?.toLowerCase().includes('reply yes'));
+      return is72Hours && isQuoteMessage;
+    });
+    
+    if (!recentQuoteMessage) {
+      console.log('[SMS Quote Accept] No recent quote SMS found in conversation');
+      return { processed: false };
+    }
+    
+    // Get quotes for this client - ONLY 'sent' status (not drafts, accepted, or rejected)
+    const quotes = await storage.getQuotesByClient(conversation.clientId);
+    const sentQuotes = quotes.filter(q => q.status === 'sent');
+    
+    if (sentQuotes.length === 0) {
+      console.log('[SMS Quote Accept] No sent quotes found for client');
+      return { processed: false };
+    }
+    
+    let targetQuote = null;
+    const now = new Date();
+    
+    // If client specified a quote number, find that exact quote
+    if (specifiedQuoteNumber) {
+      targetQuote = sentQuotes.find(q => 
+        q.number?.toUpperCase() === specifiedQuoteNumber ||
+        q.number?.toUpperCase().endsWith(specifiedQuoteNumber)
+      );
+      
+      if (!targetQuote) {
+        console.log(`[SMS Quote Accept] Specified quote ${specifiedQuoteNumber} not found`);
+        const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
+        const businessName = businessSettings?.businessName || 'Your tradie';
+        await sendSMS({ 
+          to: clientPhone, 
+          message: `Quote #${specifiedQuoteNumber} wasn't found. Available quotes: ${sentQuotes.map(q => q.number).join(', ')}. - ${businessName}`
+        });
+        return { processed: false };
+      }
+    } else if (sentQuotes.length > 1) {
+      // Multiple quotes but no number specified - require clarification
+      console.log('[SMS Quote Accept] Multiple quotes pending - asking for clarification');
+      const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
+      const businessName = businessSettings?.businessName || 'Your tradie';
+      const quoteList = sentQuotes.map(q => `#${q.number}`).join(', ');
+      await sendSMS({ 
+        to: clientPhone, 
+        message: `Thanks! You have multiple pending quotes (${quoteList}). Please reply with "Accept" followed by the quote number, e.g., "Accept ${sentQuotes[0].number}". - ${businessName}`
+      });
+      return { processed: false };
+    } else {
+      // Only one quote - select it
+      targetQuote = sentQuotes[0];
+    }
+    
+    // Validate the target quote
+    const latestQuote = targetQuote;
+    
+    // Check quote validity - must be within valid period
+    if (latestQuote.validUntil && new Date(latestQuote.validUntil) < now) {
+      console.log('[SMS Quote Accept] Quote has expired (validUntil passed)');
+      const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
+      const businessName = businessSettings?.businessName || 'Your tradie';
+      await sendSMS({ 
+        to: clientPhone, 
+        message: `Sorry, quote #${latestQuote.number} has expired. Please contact ${businessName} for an updated quote.`
+      });
+      return { processed: false };
+    }
+    
+    // Check if quote was sent recently (within 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sentDate = latestQuote.sentAt ? new Date(latestQuote.sentAt) : new Date(latestQuote.createdAt);
+    
+    if (sentDate < sevenDaysAgo) {
+      console.log('[SMS Quote Accept] Quote was sent more than 7 days ago');
+      return { processed: false };
+    }
+    
+    // Get client name for acceptance record
+    const client = await storage.getClient(conversation.clientId, conversation.businessOwnerId);
+    const clientName = client?.name || 'Client';
+    
+    // Re-check quote status right before accepting (optimistic concurrency guard)
+    const freshQuote = await storage.getQuoteById(latestQuote.id, conversation.businessOwnerId);
+    if (!freshQuote || freshQuote.status !== 'sent') {
+      console.log(`[SMS Quote Accept] Quote ${latestQuote.number} status changed since check (now: ${freshQuote?.status})`);
+      const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
+      const businessName = businessSettings?.businessName || 'Your tradie';
+      const statusMessage = freshQuote?.status === 'accepted' 
+        ? `Quote #${latestQuote.number} has already been accepted.` 
+        : `Quote #${latestQuote.number} is no longer available.`;
+      await sendSMS({ to: clientPhone, message: `${statusMessage} - ${businessName}` });
+      return { processed: false };
+    }
+    
+    // Accept the quote (status verified as 'sent')
+    await storage.updateQuote(latestQuote.id, conversation.businessOwnerId, {
+      status: 'accepted',
+      acceptedAt: new Date(),
+      acceptedBy: `${clientName} (via SMS)`,
+    });
+    
+    console.log(`[SMS Quote Accept] Quote ${latestQuote.number} accepted via SMS by ${clientName}`);
+    
+    // Send confirmation SMS
+    const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
+    const businessName = businessSettings?.businessName || 'Your tradie';
+    const total = parseFloat(latestQuote.total || '0').toFixed(2);
+    
+    const confirmationMessage = `Thanks ${clientName}! Your quote #${latestQuote.number} for $${total} is now ACCEPTED. We'll be in touch soon to schedule the work. - ${businessName}`;
+    
+    // Send confirmation via platform Twilio
+    await sendSMS({ 
+      to: clientPhone, 
+      message: confirmationMessage 
+    });
+    
+    // Create outbound confirmation message in conversation
+    await storage.createSmsMessage({
+      conversationId: conversation.id,
+      direction: 'outbound',
+      body: confirmationMessage,
+      senderUserId: null, // System generated
+      status: 'sent',
+      twilioSid: null,
+      isQuickAction: false,
+      quickActionType: null,
+      mediaUrls: [],
+      isJobRequest: false,
+      intentConfidence: null,
+      intentType: null,
+      suggestedJobTitle: null,
+      suggestedDescription: null,
+      jobCreatedFromSms: null,
+      readAt: null,
+      errorMessage: null,
+    });
+    
+    // Broadcast notification to tradie about quote acceptance
+    broadcastSmsNotification(conversation.businessOwnerId, {
+      conversationId: conversation.id,
+      senderPhone: clientPhone,
+      senderName: clientName,
+      messagePreview: `Quote #${latestQuote.number} ACCEPTED via SMS reply!`,
+      jobId: conversation.jobId,
+      unreadCount: (conversation.unreadCount || 0) + 1,
+      isQuoteAcceptance: true,
+      quoteId: latestQuote.id,
+    });
+    
+    return { 
+      processed: true, 
+      quoteId: latestQuote.id,
+      message: `Quote ${latestQuote.number} accepted via SMS` 
+    };
+    
+  } catch (error: any) {
+    console.error('[SMS Quote Accept] Error processing acceptance:', error);
+    return { processed: false };
+  }
+}
+
+/**
  * Handle incoming SMS/MMS from Twilio webhook
  * 
  * Multi-tenant safety: When multiple businesses serve the same client,
@@ -382,6 +600,18 @@ export async function handleIncomingSms(
   
   const isMMS = mediaUrls && mediaUrls.length > 0;
   const messageBody = body || (isMMS ? '[Media message]' : '');
+  
+  // Check for quote acceptance via SMS reply (YES, ACCEPT, APPROVED, etc.)
+  const quoteAcceptanceResult = await checkAndProcessQuoteAcceptance(
+    messageBody,
+    formattedFromPhone,
+    targetConversation
+  );
+  
+  if (quoteAcceptanceResult.processed) {
+    console.log(`[SMS] Quote acceptance processed: ${quoteAcceptanceResult.message}`);
+    // Continue to store the message but don't process further
+  }
   
   // AI Intent Detection - detect if message is a job/quote request
   let intentData: {

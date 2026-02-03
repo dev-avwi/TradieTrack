@@ -825,6 +825,7 @@ export interface IStorage {
   // Client Portal Data Access (find all clients by phone)
   getClientsByPhone(phone: string): Promise<Client[]>;
   getQuotesForClientIds(clientIds: string[]): Promise<Quote[]>;
+  getQuotesByClient(clientId: string): Promise<Quote[]>;
   getInvoicesForClientIds(clientIds: string[]): Promise<any[]>;
   getReceiptsForClientIds(clientIds: string[]): Promise<any[]>;
   getJobsForClientIds(clientIds: string[]): Promise<Job[]>;
@@ -6743,6 +6744,15 @@ Thank you for your prompt attention to this matter.`,
       .select()
       .from(quotes)
       .where(inArray(quotes.clientId, clientIds))
+      .orderBy(desc(quotes.createdAt));
+    return results;
+  }
+
+  async getQuotesByClient(clientId: string): Promise<Quote[]> {
+    const results = await db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.clientId, clientId))
       .orderBy(desc(quotes.createdAt));
     return results;
   }

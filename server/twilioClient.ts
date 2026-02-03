@@ -311,7 +311,10 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
 // SMS Templates for TradieTrack notifications
 export const smsTemplates = {
   quoteReady: (clientName: string, businessName: string, quoteNumber: string) =>
-    `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready. Check your email for details.`,
+    `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready. Reply YES to accept or view details:`,
+  
+  quoteWithTotal: (clientName: string, businessName: string, quoteNumber: string, total: string) =>
+    `Hi ${clientName}, your quote #${quoteNumber} for $${total} from ${businessName} is ready. Reply YES to accept or view:`,
   
   invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string) =>
     `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready. Check your email to pay online.`,
