@@ -156,6 +156,18 @@ export default function ClientPortalHub() {
   const [sourceDocument, setSourceDocument] = useState<{ type: string; token: string } | null>(null);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
+    root.classList.remove('dark');
+    
+    return () => {
+      if (previousTheme === 'dark') {
+        root.classList.add('dark');
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const initializePortal = async () => {
       const params = new URLSearchParams(window.location.search);
       const docType = params.get('doc');

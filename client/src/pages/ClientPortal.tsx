@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { SignaturePad } from "@/components/ui/signature-pad";
@@ -101,6 +101,18 @@ export default function ClientPortal() {
   const [isDeclining, setIsDeclining] = useState(false);
   const [acceptedName, setAcceptedName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
+    root.classList.remove('dark');
+    
+    return () => {
+      if (previousTheme === 'dark') {
+        root.classList.add('dark');
+      }
+    };
+  }, []);
 
   const { data, isLoading, error, refetch } = useQuery<DocumentData>({
     queryKey: ['/api/public/document', type, token],
