@@ -240,7 +240,7 @@ export default function ClientPortal() {
   const isPaid = data.status === 'paid';
 
   return (
-    <div className="min-h-screen bg-muted/30 dark:bg-background">
+    <div className="min-h-screen bg-white dark:bg-background">
       {/* Document Container - Full page feel */}
       <div className="min-h-screen flex flex-col">
         {/* Sticky Header with Business Info */}
