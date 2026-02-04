@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, desc, asc, sql, and, or, lt, gte, lte, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, lt, gt, gte, lte, isNull, isNotNull, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import {
   type User,
