@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { SignaturePad } from "@/components/ui/signature-pad";
 
 interface DocumentData {
   type: 'quote' | 'invoice' | 'receipt';
@@ -98,6 +100,7 @@ export default function ClientPortal() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [acceptedName, setAcceptedName] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery<DocumentData>({
     queryKey: ['/api/public/document', type, token],
@@ -141,11 +144,20 @@ export default function ClientPortal() {
       });
       return;
     }
+    if (!signature) {
+      toast({
+        title: "Signature Required",
+        description: "Please sign below to accept this quote",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsAccepting(true);
     try {
       await apiRequest('POST', `/api/public/quote/${token}/accept`, { 
-        acceptedBy: acceptedName.trim() 
+        acceptedBy: acceptedName.trim(),
+        signature: signature
       });
       toast({
         title: "Quote Accepted",
@@ -263,7 +275,7 @@ export default function ClientPortal() {
                   </div>
                 </div>
               </div>
-              <Link href="/portal">
+              <Link href={`/portal?doc=${type}&token=${token}`}>
                 <Button variant="outline" size="sm">
                   <FolderOpen className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">All Documents</span>
@@ -464,24 +476,32 @@ export default function ClientPortal() {
 
             {/* Action Buttons - Prominent */}
             {(showAcceptButtons || showPayButton) && (
-              <Card className="border-primary/30 bg-primary/5">
+              <Card className="border-primary/30 bg-primary/5 dark:bg-primary/10">
                 <CardContent className="pt-4 pb-4">
                   {showAcceptButtons && (
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-center">Ready to accept this quote?</h3>
-                      <div className="flex gap-2">
-                        <input
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-center text-foreground">Ready to accept this quote?</h3>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1">Your Name</label>
+                        <Input
                           type="text"
-                          placeholder="Enter your name to accept"
+                          placeholder="Enter your full name"
                           value={acceptedName}
                           onChange={(e) => setAcceptedName(e.target.value)}
-                          className="flex-1 px-4 py-3 border rounded-md"
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1">Your Signature</label>
+                        <SignaturePad 
+                          onSignatureChange={setSignature}
+                          className="w-full"
                         />
                       </div>
                       <div className="flex gap-2">
                         <Button 
                           onClick={handleAcceptQuote}
-                          disabled={isAccepting || !acceptedName.trim()}
+                          disabled={isAccepting || !acceptedName.trim() || !signature}
                           className="flex-1"
                           size="lg"
                         >

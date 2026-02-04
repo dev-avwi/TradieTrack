@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -142,6 +143,7 @@ function getJobStatusColor(status: string): string {
 
 export default function ClientPortalHub() {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [viewState, setViewState] = useState<ViewState>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -151,14 +153,56 @@ export default function ClientPortalHub() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<PortalQuote | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<PortalInvoice | null>(null);
+  const [sourceDocument, setSourceDocument] = useState<{ type: string; token: string } | null>(null);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('portal_session_token');
-    if (savedToken) {
-      setSessionToken(savedToken);
-      setViewState('dashboard');
-      fetchPortalData(savedToken);
-    }
+    const initializePortal = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const docType = params.get('doc');
+      const docToken = params.get('token');
+      
+      if (docType && docToken) {
+        setSourceDocument({ type: docType, token: docToken });
+        
+        const savedToken = localStorage.getItem('portal_session_token');
+        if (savedToken) {
+          setSessionToken(savedToken);
+          setViewState('dashboard');
+          fetchPortalData(savedToken);
+          return;
+        }
+        
+        try {
+          const res = await fetch('/api/portal/auto-auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentType: docType, documentToken: docToken })
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            if (data.sessionToken) {
+              localStorage.setItem('portal_session_token', data.sessionToken);
+              setSessionToken(data.sessionToken);
+              setViewState('dashboard');
+              fetchPortalData(data.sessionToken);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Auto-auth failed:', error);
+        }
+      }
+      
+      const savedToken = localStorage.getItem('portal_session_token');
+      if (savedToken) {
+        setSessionToken(savedToken);
+        setViewState('dashboard');
+        fetchPortalData(savedToken);
+      }
+    };
+    
+    initializePortal();
   }, []);
 
   const fetchPortalData = async (token: string) => {
@@ -419,6 +463,17 @@ export default function ClientPortalHub() {
     return (
       <div className="min-h-screen bg-muted/30 dark:bg-background">
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+          {sourceDocument && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}
+              className="mb-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to {sourceDocument.type === 'quote' ? 'Quote' : sourceDocument.type === 'invoice' ? 'Invoice' : 'Receipt'}
+            </Button>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">Your Portal</h1>

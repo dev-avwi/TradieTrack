@@ -1208,6 +1208,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CLIENT PORTAL: Auto-authenticate from document link
+  app.post("/api/portal/auto-auth", async (req, res) => {
+    try {
+      const { documentType, documentToken } = req.body;
+      
+      if (!documentType || typeof documentType !== 'string') {
+        return res.status(400).json({ error: 'Document type is required' });
+      }
+      
+      if (!documentToken || typeof documentToken !== 'string') {
+        return res.status(400).json({ error: 'Document token is required' });
+      }
+      
+      let clientPhone: string | null = null;
+      
+      // Look up document based on type to get client phone
+      if (documentType === 'quote') {
+        const quote = await storage.getQuoteByToken(documentToken);
+        if (quote) {
+          const client = await storage.getClientById(quote.clientId);
+          clientPhone = client?.phone || null;
+        }
+      } else if (documentType === 'invoice') {
+        const invoice = await storage.getInvoiceByPaymentToken(documentToken);
+        if (invoice) {
+          const client = await storage.getClientById(invoice.clientId);
+          clientPhone = client?.phone || null;
+        }
+      } else if (documentType === 'receipt') {
+        const receipt = await storage.getReceiptByViewToken(documentToken);
+        if (receipt) {
+          const client = await storage.getClientById(receipt.clientId);
+          clientPhone = client?.phone || null;
+        }
+      } else {
+        return res.status(400).json({ error: 'Invalid document type' });
+      }
+      
+      if (!clientPhone) {
+        return res.status(404).json({ error: 'Document not found or client has no phone number' });
+      }
+      
+      // Normalize phone number to E.164 format
+      const { formatPhoneNumber } = await import('./services/smsService');
+      const normalizedPhone = formatPhoneNumber(clientPhone);
+      
+      // Create session token (32 bytes hex = 64 character string)
+      const sessionToken = randomBytes(32).toString('hex');
+      
+      // Calculate expiry (24 hours from now)
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      // Create portal session
+      await storage.createPortalSession(normalizedPhone, sessionToken, expiresAt);
+      
+      return res.json({
+        success: true,
+        sessionToken,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error: any) {
+      console.error('Error in portal auto-auth:', error);
+      res.status(500).json({ error: 'Failed to authenticate' });
+    }
+  });
+
   // CLIENT PORTAL: Logout and delete session
   app.post("/api/portal/logout", async (req, res) => {
     try {
