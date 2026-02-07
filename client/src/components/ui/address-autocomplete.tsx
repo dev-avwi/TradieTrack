@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AddressAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
   onAddressSelect?: (address: string, lat?: number, lng?: number) => void;
+  onConfirmedChange?: (confirmed: boolean) => void;
+  requireSelection?: boolean;
   placeholder?: string;
   className?: string;
   "data-testid"?: string;
@@ -25,6 +27,8 @@ export default function AddressAutocomplete({
   value,
   onChange,
   onAddressSelect,
+  onConfirmedChange,
+  requireSelection = true,
   placeholder,
   className,
   disabled,
@@ -34,9 +38,25 @@ export default function AddressAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [confirmedValue, setConfirmedValue] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFetchRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (value && value.length > 5 && !confirmedValue && !isConfirmed) {
+      setIsConfirmed(true);
+      setConfirmedValue(value);
+      onConfirmedChange?.(true);
+    }
+  }, []);
+
+  const updateConfirmed = useCallback((confirmed: boolean, val?: string) => {
+    setIsConfirmed(confirmed);
+    if (confirmed && val) setConfirmedValue(val);
+    onConfirmedChange?.(confirmed);
+  }, [onConfirmedChange]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
@@ -73,6 +93,10 @@ export default function AddressAutocomplete({
     const newValue = e.target.value;
     onChange(newValue);
 
+    if (requireSelection && newValue !== confirmedValue) {
+      updateConfirmed(false);
+    }
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
@@ -95,6 +119,7 @@ export default function AddressAutocomplete({
     setIsOpen(false);
     setSuggestions([]);
     setHighlightedIndex(-1);
+    updateConfirmed(true, address);
 
     if (result.provider === "google" && result.place_id && onAddressSelect) {
       try {
@@ -173,6 +198,9 @@ export default function AddressAutocomplete({
     };
   }, []);
 
+  const showUnconfirmedWarning = requireSelection && !isConfirmed && value && value.length >= 3;
+  const showConfirmedCheck = requireSelection && isConfirmed && value && value.length > 0;
+
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
@@ -181,17 +209,30 @@ export default function AddressAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={cn("pr-8", className)}
+          className={cn(
+            "pr-8",
+            showUnconfirmedWarning && "border-orange-400 focus-visible:ring-orange-400",
+            showConfirmedCheck && "border-green-500 focus-visible:ring-green-500",
+            className
+          )}
           disabled={disabled}
           autoComplete="street-address"
           data-testid={props["data-testid"]}
         />
-        {isLoading && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
-        )}
+          ) : showConfirmedCheck ? (
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
+          ) : showUnconfirmedWarning ? (
+            <AlertCircle className="h-4 w-4 text-orange-400" />
+          ) : null}
+        </div>
       </div>
+
+      {showUnconfirmedWarning && !isOpen && (
+        <p className="text-xs text-orange-500 mt-1">Select an address from the suggestions above</p>
+      )}
 
       {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 border rounded-md bg-popover text-popover-foreground shadow-md">

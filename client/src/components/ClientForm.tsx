@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -49,6 +50,7 @@ interface ClientFormProps {
 export default function ClientForm({ onSubmit, onCancel }: ClientFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [addressConfirmed, setAddressConfirmed] = useState(false);
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
@@ -88,6 +90,10 @@ export default function ClientForm({ onSubmit, onCancel }: ClientFormProps) {
   });
 
   const handleSubmit = async (data: ClientFormData) => {
+    if (data.address && !addressConfirmed) {
+      toast({ title: "Please select an address", description: "Tap an address from the suggestions to confirm it", variant: "destructive" });
+      return;
+    }
     await createClientMutation.mutateAsync(data);
   };
 
@@ -234,6 +240,7 @@ export default function ClientForm({ onSubmit, onCancel }: ClientFormProps) {
                           <AddressAutocomplete
                             value={field.value || ''}
                             onChange={field.onChange}
+                            onConfirmedChange={(confirmed) => setAddressConfirmed(confirmed)}
                             placeholder="Start typing an address..."
                             data-testid="input-address"
                           />

@@ -39,6 +39,7 @@ interface JobEditFormProps {
 export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [addressConfirmed, setAddressConfirmed] = useState(true);
 
   const { data: job, isLoading: jobLoading, error: jobError } = useQuery<Job>({
     queryKey: ['/api/jobs', jobId],
@@ -109,6 +110,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
   });
 
   const handleSubmit = (data: JobEditData) => {
+    if (!addressConfirmed && data.address) {
+      toast({ title: "Please select an address", description: "Tap an address from the suggestions to confirm it", variant: "destructive" });
+      return;
+    }
     updateJobMutation.mutate(data);
   };
 
@@ -253,6 +258,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                         <AddressAutocomplete
                           value={field.value || ''}
                           onChange={field.onChange}
+                          onConfirmedChange={(confirmed) => setAddressConfirmed(confirmed)}
                           placeholder="Start typing an address..."
                           data-testid="input-job-address"
                         />

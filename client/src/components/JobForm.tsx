@@ -68,6 +68,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   });
   const [previousJobsOpen, setPreviousJobsOpen] = useState(false);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [addressConfirmed, setAddressConfirmed] = useState(false);
   
   
   // Read clientId and quoteId from URL params (when navigating from client view or quote)
@@ -360,6 +361,10 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   };
 
   const handleSubmit = async (data: JobFormData) => {
+    if (!addressConfirmed && data.address) {
+      toast({ title: "Please select an address", description: "Tap an address from the suggestions to confirm it", variant: "destructive" });
+      return;
+    }
     try {
       const jobData = {
         ...data,
@@ -675,6 +680,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                       <AddressAutocomplete 
                         value={field.value || ''} 
                         onChange={field.onChange}
+                        onConfirmedChange={(confirmed) => setAddressConfirmed(confirmed)}
                         placeholder="Start typing an address..." 
                         data-testid="input-job-address" 
                       />
