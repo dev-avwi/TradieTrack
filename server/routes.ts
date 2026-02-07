@@ -12211,7 +12211,13 @@ Be specific about materials, colors, and features that would be included.`
         };
       });
       
-      res.json(enrichedInvoices);
+      // Filter by quoteId if provided
+      const quoteIdFilter = req.query.quoteId as string | undefined;
+      const filtered = quoteIdFilter
+        ? enrichedInvoices.filter((inv: any) => inv.quoteId === quoteIdFilter)
+        : enrichedInvoices;
+
+      res.json(filtered);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ error: "Failed to fetch invoices" });

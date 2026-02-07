@@ -126,9 +126,10 @@ export function useConvertQuoteToInvoice() {
       const response = await apiRequest("POST", `/api/quotes/${quoteId}/convert-to-invoice`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, quoteId) => {
       safeInvalidateQueries({ queryKey: ["/api/quotes"] });
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", { quoteId }] });
     },
   });
 }

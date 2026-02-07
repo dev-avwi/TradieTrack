@@ -106,6 +106,20 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
     enabled: !!quote?.jobId
   });
 
+  const { data: linkedInvoice, isLoading: isLinkedInvoiceLoading } = useQuery({
+    queryKey: ['/api/invoices', { quoteId }],
+    queryFn: async () => {
+      const response = await fetch(`/api/invoices?quoteId=${quoteId}`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) return null;
+      const invoices = await response.json();
+      return Array.isArray(invoices) && invoices.length > 0 ? invoices[0] : null;
+    },
+    enabled: !!quote && quote.status === 'accepted'
+  });
+
   const { data: termsTemplate } = useQuery<BusinessTemplate>({
     queryKey: ["/api/business-templates/active/terms_conditions"],
     enabled: !!quote,
@@ -698,8 +712,18 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 Create Job
               </Button>
             )}
-            {/* Convert to Invoice - for accepted quotes */}
-            {quote.status === 'accepted' && (
+            {/* Convert to Invoice / View Invoice - for accepted quotes */}
+            {quote.status === 'accepted' && linkedInvoice ? (
+              <Button 
+                onClick={() => setLocation(`/invoices/${linkedInvoice.id}`)}
+                variant="outline"
+                className="w-full sm:w-auto"
+                data-testid="button-view-linked-invoice"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                View Invoice
+              </Button>
+            ) : quote.status === 'accepted' && !isLinkedInvoiceLoading && (
               <Button 
                 onClick={handleConvertToInvoice}
                 variant="outline"
