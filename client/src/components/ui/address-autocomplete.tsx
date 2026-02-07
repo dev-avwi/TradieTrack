@@ -43,14 +43,16 @@ export default function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const userTypingRef = useRef(false);
 
   useEffect(() => {
-    if (value && value.length > 5 && !confirmedValue && !isConfirmed) {
+    if (value && value.length > 5 && !userTypingRef.current && !isConfirmed) {
       setIsConfirmed(true);
       setConfirmedValue(value);
       onConfirmedChange?.(true);
     }
-  }, []);
+    userTypingRef.current = false;
+  }, [value]);
 
   const updateConfirmed = useCallback((confirmed: boolean, val?: string) => {
     setIsConfirmed(confirmed);
@@ -91,6 +93,7 @@ export default function AddressAutocomplete({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    userTypingRef.current = true;
     onChange(newValue);
 
     if (requireSelection && newValue !== confirmedValue) {

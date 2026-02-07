@@ -136,6 +136,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
           const currentAddress = form.getValues("address");
           if (!currentAddress) {
             form.setValue("address", pendingClient.address);
+            setAddressConfirmed(true);
             setLastAutoFilledClientId(pendingClient.id);
           }
         }
@@ -156,6 +157,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         // Also auto-fill address from this client
         if (clientFromUrl.address) {
           form.setValue("address", clientFromUrl.address);
+          setAddressConfirmed(true);
           setLastAutoFilledClientId(urlClientId);
         }
         
@@ -201,6 +203,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         const currentAddress = form.getValues("address");
         if (!currentAddress) {
           form.setValue("address", selectedClient.address);
+          setAddressConfirmed(true);
           setLastAutoFilledClientId(selectedClientId);
           toast({
             title: "Address auto-filled",
