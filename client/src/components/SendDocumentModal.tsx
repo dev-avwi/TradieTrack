@@ -550,10 +550,10 @@ export default function SendDocumentModal({
                 variant={deliveryMethod === 'sms' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
+                  setDeliveryMethod('sms');
                   if (!isSmsAvailable) {
                     setShowSmsSetupGuide(true);
                   } else {
-                    setDeliveryMethod('sms');
                     setShowSmsSetupGuide(false);
                   }
                 }}
@@ -570,11 +570,13 @@ export default function SendDocumentModal({
                 variant={deliveryMethod === 'both' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
-                  if (!isSmsAvailable) {
-                    setShowSmsSetupGuide(true);
-                  } else if (hasClientEmail) {
+                  if (hasClientEmail) {
                     setDeliveryMethod('both');
-                    setShowSmsSetupGuide(false);
+                    if (!isSmsAvailable) {
+                      setShowSmsSetupGuide(true);
+                    } else {
+                      setShowSmsSetupGuide(false);
+                    }
                   }
                 }}
                 disabled={!hasClientEmail}
