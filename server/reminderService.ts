@@ -2,6 +2,7 @@ import { storage } from './storage';
 import { sendInvoiceEmail } from './emailService';
 import { notifyInvoiceOverdue } from './pushNotifications';
 import { sendSMS } from './twilioClient';
+import { getProductionBaseUrl } from './urlHelper';
 
 interface ReminderResult {
   invoiceId: string;
@@ -35,54 +36,54 @@ function formatPhoneForSMS(phone: string): string | null {
 
 const REMINDER_TEMPLATES = {
   friendly: {
-    7: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    7: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Friendly Reminder: Invoice ${invoiceNumber} from ${businessName}`,
-      emailBody: `Hi ${clientName},\n\nJust a friendly reminder that invoice ${invoiceNumber} for $${amount} was due a week ago. If you've already paid, thank you and please disregard this message!\n\nIf you have any questions, just reply to this email.\n\nCheers,\n${businessName}`,
-      smsBody: `Hi ${clientName}, friendly reminder that invoice ${invoiceNumber} for $${amount} is now overdue. Thanks! - ${businessName}`
+      emailBody: `Hi ${clientName},\n\nJust a friendly reminder that invoice ${invoiceNumber} for $${amount} was due a week ago. If you've already paid, thank you and please disregard this message!${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\nIf you have any questions, just reply to this email.\n\nCheers,\n${businessName}`,
+      smsBody: `Hi ${clientName}, friendly reminder that invoice ${invoiceNumber} for $${amount} is now overdue. Thanks! - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
-    14: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    14: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Payment Reminder: Invoice ${invoiceNumber} - 2 Weeks Overdue`,
-      emailBody: `Hi ${clientName},\n\nThis is a reminder that invoice ${invoiceNumber} for $${amount} is now 2 weeks overdue. We'd appreciate it if you could arrange payment at your earliest convenience.\n\nIf there are any issues or you'd like to discuss payment options, please get in touch.\n\nThanks,\n${businessName}`,
-      smsBody: `Hi ${clientName}, invoice ${invoiceNumber} for $${amount} is 2 weeks overdue. Please arrange payment. Thanks - ${businessName}`
+      emailBody: `Hi ${clientName},\n\nThis is a reminder that invoice ${invoiceNumber} for $${amount} is now 2 weeks overdue. We'd appreciate it if you could arrange payment at your earliest convenience.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\nIf there are any issues or you'd like to discuss payment options, please get in touch.\n\nThanks,\n${businessName}`,
+      smsBody: `Hi ${clientName}, invoice ${invoiceNumber} for $${amount} is 2 weeks overdue. Please arrange payment. Thanks - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
-    30: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    30: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Urgent: Invoice ${invoiceNumber} - 30 Days Overdue`,
-      emailBody: `Hi ${clientName},\n\nInvoice ${invoiceNumber} for $${amount} is now 30 days overdue. Please arrange payment as soon as possible to avoid any further action.\n\nIf you're experiencing difficulties, please contact us immediately to discuss options.\n\nRegards,\n${businessName}`,
-      smsBody: `URGENT: Invoice ${invoiceNumber} for $${amount} is 30 days overdue. Please contact us immediately. - ${businessName}`
+      emailBody: `Hi ${clientName},\n\nInvoice ${invoiceNumber} for $${amount} is now 30 days overdue. Please arrange payment as soon as possible to avoid any further action.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\nIf you're experiencing difficulties, please contact us immediately to discuss options.\n\nRegards,\n${businessName}`,
+      smsBody: `URGENT: Invoice ${invoiceNumber} for $${amount} is 30 days overdue. Please contact us immediately. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
   },
   professional: {
-    7: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    7: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Payment Reminder: Invoice ${invoiceNumber}`,
-      emailBody: `Dear ${clientName},\n\nPlease be advised that invoice ${invoiceNumber} for $${amount} is now 7 days past due. We kindly request payment at your earliest convenience.\n\nShould you have any queries regarding this invoice, please do not hesitate to contact us.\n\nKind regards,\n${businessName}`,
-      smsBody: `Payment reminder: Invoice ${invoiceNumber} for $${amount} is 7 days overdue. - ${businessName}`
+      emailBody: `Dear ${clientName},\n\nPlease be advised that invoice ${invoiceNumber} for $${amount} is now 7 days past due. We kindly request payment at your earliest convenience.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\nShould you have any queries regarding this invoice, please do not hesitate to contact us.\n\nKind regards,\n${businessName}`,
+      smsBody: `Payment reminder: Invoice ${invoiceNumber} for $${amount} is 7 days overdue. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
-    14: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    14: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Second Notice: Invoice ${invoiceNumber} - Payment Required`,
-      emailBody: `Dear ${clientName},\n\nThis is a second notice regarding invoice ${invoiceNumber} for $${amount}, which is now 14 days past due.\n\nImmediate attention to this matter would be appreciated.\n\nRegards,\n${businessName}`,
-      smsBody: `Second notice: Invoice ${invoiceNumber} for $${amount} is 14 days overdue. Immediate payment requested. - ${businessName}`
+      emailBody: `Dear ${clientName},\n\nThis is a second notice regarding invoice ${invoiceNumber} for $${amount}, which is now 14 days past due.\n\nImmediate attention to this matter would be appreciated.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\nRegards,\n${businessName}`,
+      smsBody: `Second notice: Invoice ${invoiceNumber} for $${amount} is 14 days overdue. Immediate payment requested. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
-    30: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    30: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Final Notice: Invoice ${invoiceNumber} - Immediate Payment Required`,
-      emailBody: `Dear ${clientName},\n\nThis is a final notice regarding invoice ${invoiceNumber} for $${amount}, which is now 30 days past due.\n\nImmediate payment is required to avoid escalation of this matter.\n\nPlease contact us immediately if there are circumstances preventing payment.\n\nRegards,\n${businessName}`,
-      smsBody: `FINAL NOTICE: Invoice ${invoiceNumber} for $${amount} is 30 days overdue. Immediate payment required. - ${businessName}`
+      emailBody: `Dear ${clientName},\n\nThis is a final notice regarding invoice ${invoiceNumber} for $${amount}, which is now 30 days past due.\n\nImmediate payment is required to avoid escalation of this matter.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\nPlease contact us immediately if there are circumstances preventing payment.\n\nRegards,\n${businessName}`,
+      smsBody: `FINAL NOTICE: Invoice ${invoiceNumber} for $${amount} is 30 days overdue. Immediate payment required. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
   },
   firm: {
-    7: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    7: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Overdue Notice: Invoice ${invoiceNumber}`,
-      emailBody: `${clientName},\n\nInvoice ${invoiceNumber} for $${amount} is now overdue. Payment is required within 7 days.\n\n${businessName}`,
-      smsBody: `Invoice ${invoiceNumber} for $${amount} is overdue. Payment required. - ${businessName}`
+      emailBody: `${clientName},\n\nInvoice ${invoiceNumber} for $${amount} is now overdue. Payment is required within 7 days.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\n${businessName}`,
+      smsBody: `Invoice ${invoiceNumber} for $${amount} is overdue. Payment required. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
-    14: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    14: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Second Overdue Notice: Invoice ${invoiceNumber}`,
-      emailBody: `${clientName},\n\nInvoice ${invoiceNumber} for $${amount} is now 14 days overdue. Immediate payment is required.\n\nFailure to pay may result in late fees or suspension of services.\n\n${businessName}`,
-      smsBody: `Invoice ${invoiceNumber} - $${amount} - 14 days overdue. Pay immediately. - ${businessName}`
+      emailBody: `${clientName},\n\nInvoice ${invoiceNumber} for $${amount} is now 14 days overdue. Immediate payment is required.\n\nFailure to pay may result in late fees or suspension of services.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\n${businessName}`,
+      smsBody: `Invoice ${invoiceNumber} - $${amount} - 14 days overdue. Pay immediately. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
-    30: (clientName: string, invoiceNumber: string, amount: string, businessName: string) => ({
+    30: (clientName: string, invoiceNumber: string, amount: string, businessName: string, paymentLink: string) => ({
       subject: `Final Demand: Invoice ${invoiceNumber}`,
-      emailBody: `${clientName},\n\nFINAL DEMAND: Invoice ${invoiceNumber} for $${amount} is 30 days overdue.\n\nUnless payment is received within 7 days, this matter will be escalated for collection.\n\n${businessName}`,
-      smsBody: `FINAL DEMAND: Invoice ${invoiceNumber} - $${amount} - 30 days overdue. Collection action pending. - ${businessName}`
+      emailBody: `${clientName},\n\nFINAL DEMAND: Invoice ${invoiceNumber} for $${amount} is 30 days overdue.\n\nUnless payment is received within 7 days, this matter will be escalated for collection.${paymentLink ? `\n\nPay online: ${paymentLink}` : ''}\n\n${businessName}`,
+      smsBody: `FINAL DEMAND: Invoice ${invoiceNumber} - $${amount} - 30 days overdue. Collection action pending. - ${businessName}${paymentLink ? `\nPay here: ${paymentLink}` : ''}`
     }),
   },
 };
@@ -123,11 +124,15 @@ export async function processOverdueReminders(): Promise<ReminderResult[]> {
         if (!template) continue;
         
         const amount = Number(invoice.total).toFixed(2);
+        const paymentLink = (invoice as any).paymentToken 
+          ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}`
+          : '';
         const content = template(
           client.name.split(' ')[0],
           invoice.number,
           amount,
-          user.businessSettings.businessName || 'Your Service Provider'
+          user.businessSettings.businessName || 'Your Service Provider',
+          paymentLink
         );
         
         let emailSent = false;
@@ -224,11 +229,15 @@ export async function sendManualReminder(
     const template = REMINDER_TEMPLATES[tone][templateDay];
     
     const amount = Number(invoice.total).toFixed(2);
+    const paymentLink = (invoice as any).paymentToken 
+      ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}`
+      : '';
     const content = template(
       client.name.split(' ')[0],
       invoice.number,
       amount,
-      businessSettings.businessName || 'Your Service Provider'
+      businessSettings.businessName || 'Your Service Provider',
+      paymentLink
     );
     
     let emailSent = false;

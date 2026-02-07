@@ -5,7 +5,8 @@ import { checkAndExpireTrials } from './subscriptionService';
 import { processTimeBasedAutomations } from './automationService';
 import { runDailyBillingReminders } from './billingReminderService';
 import { notifyInstallmentDue } from './notifications';
-import { jobs, quotes, invoices, smsAutomationRules, paymentSchedules, paymentInstallments } from '@shared/schema';
+import { getProductionBaseUrl } from './urlHelper';
+import { jobs, quotes, invoices, smsAutomationRules, paymentSchedules, paymentInstallments, automationSettings, invoiceReminderLogs } from '@shared/schema';
 import { and, or, eq, lt, isNull, gte, lte, not } from 'drizzle-orm';
 
 let reminderInterval: NodeJS.Timeout | null = null;
@@ -321,6 +322,9 @@ async function processSmsAutomations(): Promise<void> {
     } else {
       console.log('[Scheduler] No SMS automations to process');
     }
+    
+    await processAutoQuoteFollowUps();
+    await processAutoInvoiceReminders();
   } catch (error) {
     console.error('[Scheduler] Error processing SMS automations:', error);
   }
@@ -341,7 +345,10 @@ async function processQuoteFollowUp(rule: any, quote: any): Promise<void> {
       return;
     }
     
-    const message = rule.customMessage || `Hi ${client.name || 'there'}, just following up on quote #${quote.number || quote.id.slice(0, 8)} for "${quote.title || 'your project'}". Reply YES to accept or let us know if you have questions!`;
+    const quoteLink = quote.acceptanceToken 
+      ? `${getProductionBaseUrl()}/portal/quote/${quote.acceptanceToken}` 
+      : '';
+    const message = rule.customMessage || `Hi ${client.name || 'there'}, just following up on quote #${quote.number || quote.id.slice(0, 8)} for "${quote.title || 'your project'}".${quoteLink ? ` View and accept here: ${quoteLink}` : ' Reply YES to accept or let us know if you have questions!'}`;
     
     await sendSmsToClient({
       businessOwnerId: rule.userId,
@@ -388,7 +395,10 @@ async function processInvoiceOverdue(rule: any, invoice: any): Promise<void> {
       return;
     }
     
-    const message = rule.customMessage || `Hi ${client.name || 'there'}, this is a friendly reminder that invoice #${invoice.invoiceNumber || invoice.id} for $${invoice.total} is now overdue. Please let us know if you have any questions.`;
+    const invoiceLink = invoice.paymentToken 
+      ? `${getProductionBaseUrl()}/portal/invoice/${invoice.paymentToken}` 
+      : '';
+    const message = rule.customMessage || `Hi ${client.name || 'there'}, friendly reminder that invoice #${invoice.invoiceNumber || invoice.id} for $${invoice.total} is now overdue.${invoiceLink ? ` Pay online: ${invoiceLink}` : ' Please let us know if you have any questions.'}`;
     
     await sendSmsToClient({
       businessOwnerId: rule.userId,
@@ -468,6 +478,159 @@ async function processJobDayBefore(rule: any, job: any): Promise<void> {
       status: 'failed',
       errorMessage: error.message,
     });
+  }
+}
+
+async function processAutoQuoteFollowUps(): Promise<void> {
+  try {
+    const allSettings = await db.select().from(automationSettings)
+      .where(eq(automationSettings.quoteFollowUpEnabled, true));
+    
+    if (allSettings.length === 0) return;
+    
+    let processed = 0;
+    const now = new Date();
+    
+    for (const settings of allSettings) {
+      try {
+        const followUpDays = settings.quoteFollowUpDays || 3;
+        const cutoffDate = new Date(now.getTime() - followUpDays * 24 * 60 * 60 * 1000);
+        
+        const existingRules = await db.select().from(smsAutomationRules)
+          .where(and(
+            eq(smsAutomationRules.userId, settings.userId),
+            eq(smsAutomationRules.triggerType, 'quote_follow_up'),
+            eq(smsAutomationRules.isActive, true)
+          ));
+        if (existingRules.length > 0) continue;
+        
+        const userQuotes = await db.select().from(quotes)
+          .where(and(
+            eq(quotes.userId, settings.userId),
+            eq(quotes.status, 'sent'),
+            lt(quotes.sentAt, cutoffDate)
+          ));
+        
+        for (const quote of userQuotes) {
+          const alreadySent = await storage.hasReminderBeenSent(quote.id, 'auto_quote_followup');
+          if (alreadySent) continue;
+          
+          const client = await storage.getClientById(quote.clientId);
+          if (!client?.phone) continue;
+          
+          try {
+            const { sendSmsToClient } = await import('./services/smsService');
+            const quoteLink = (quote as any).acceptanceToken 
+              ? `${getProductionBaseUrl()}/portal/quote/${(quote as any).acceptanceToken}` 
+              : '';
+            const message = `Hi ${client.name || 'there'}, just following up on quote #${(quote as any).number || quote.id.slice(0, 8)} for "${(quote as any).title || 'your project'}".${quoteLink ? ` View and accept here: ${quoteLink}` : ' Let us know if you have questions!'}`;
+            
+            await sendSmsToClient({
+              businessOwnerId: settings.userId,
+              clientPhone: client.phone,
+              clientName: client.name,
+              message,
+            });
+            
+            await storage.createInvoiceReminderLog({
+              invoiceId: quote.id,
+              userId: settings.userId,
+              reminderType: 'auto_quote_followup',
+              daysPastDue: followUpDays,
+              sentVia: 'sms',
+              emailSent: false,
+              smsSent: true,
+            });
+            
+            processed++;
+          } catch (sendError: any) {
+            console.error(`[Auto Quote Follow-up] Error sending follow-up for quote ${quote.id}:`, sendError.message);
+          }
+        }
+      } catch (userError) {
+        console.error(`[Auto Quote Follow-up] Error processing user ${settings.userId}:`, userError);
+      }
+    }
+    
+    if (processed > 0) {
+      console.log(`[Scheduler] Auto quote follow-ups sent: ${processed}`);
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error processing auto quote follow-ups:', error);
+  }
+}
+
+async function processAutoInvoiceReminders(): Promise<void> {
+  try {
+    const allSettings = await db.select().from(automationSettings)
+      .where(eq(automationSettings.invoiceReminderEnabled, true));
+    
+    if (allSettings.length === 0) return;
+    
+    let processed = 0;
+    const now = new Date();
+    
+    for (const settings of allSettings) {
+      try {
+        const daysBeforeDue = settings.invoiceReminderDaysBeforeDue || 3;
+        const targetDate = new Date(now.getTime() + daysBeforeDue * 24 * 60 * 60 * 1000);
+        const targetStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        const targetEnd = new Date(targetStart.getTime() + 24 * 60 * 60 * 1000);
+        
+        const upcomingInvoices = await db.select().from(invoices)
+          .where(and(
+            eq(invoices.userId, settings.userId),
+            or(eq(invoices.status, 'sent'), eq(invoices.status, 'viewed')),
+            gte(invoices.dueDate, targetStart),
+            lt(invoices.dueDate, targetEnd)
+          ));
+        
+        for (const invoice of upcomingInvoices) {
+          const alreadySent = await storage.hasReminderBeenSent(invoice.id, 'auto_predue_reminder');
+          if (alreadySent) continue;
+          
+          const client = await storage.getClientById(invoice.clientId);
+          if (!client?.phone) continue;
+          
+          try {
+            const { sendSmsToClient } = await import('./services/smsService');
+            const invoiceLink = (invoice as any).paymentToken 
+              ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}` 
+              : '';
+            const message = `Hi ${client.name || 'there'}, friendly reminder that invoice #${(invoice as any).invoiceNumber || invoice.id} for $${invoice.total} is due in ${daysBeforeDue} days.${invoiceLink ? ` Pay online: ${invoiceLink}` : ''}`;
+            
+            await sendSmsToClient({
+              businessOwnerId: settings.userId,
+              clientPhone: client.phone,
+              clientName: client.name,
+              message,
+            });
+            
+            await storage.createInvoiceReminderLog({
+              invoiceId: invoice.id,
+              userId: settings.userId,
+              reminderType: 'auto_predue_reminder',
+              daysPastDue: -daysBeforeDue,
+              sentVia: 'sms',
+              emailSent: false,
+              smsSent: true,
+            });
+            
+            processed++;
+          } catch (sendError: any) {
+            console.error(`[Auto Invoice Reminder] Error sending reminder for invoice ${invoice.id}:`, sendError.message);
+          }
+        }
+      } catch (userError) {
+        console.error(`[Auto Invoice Reminder] Error processing user ${settings.userId}:`, userError);
+      }
+    }
+    
+    if (processed > 0) {
+      console.log(`[Scheduler] Auto invoice pre-due reminders sent: ${processed}`);
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error processing auto invoice reminders:', error);
   }
 }
 

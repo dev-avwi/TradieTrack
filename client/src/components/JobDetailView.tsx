@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
 import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
@@ -129,6 +130,22 @@ interface LinkedDocument {
   paidAt?: string;
 }
 
+interface JobMaterial {
+  id: string;
+  name: string;
+  description?: string;
+  quantity: string;
+  unit: string;
+  unitCost: string;
+  totalCost: string;
+  supplier?: string;
+  trackingNumber?: string;
+  trackingCarrier?: string;
+  status: string;
+  notes?: string;
+  createdAt: string;
+}
+
 interface JobWithLinks {
   linkedQuote?: LinkedDocument | null;
   linkedInvoice?: LinkedDocument | null;
@@ -193,6 +210,15 @@ export default function JobDetailView({
   const [inviteExpiry, setInviteExpiry] = useState<'never' | '7days' | '30days'>('never');
   const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [materialName, setMaterialName] = useState('');
+  const [materialQty, setMaterialQty] = useState('1');
+  const [materialUnit, setMaterialUnit] = useState('each');
+  const [materialUnitCost, setMaterialUnitCost] = useState('');
+  const [materialSupplier, setMaterialSupplier] = useState('');
+  const [materialTrackingNumber, setMaterialTrackingNumber] = useState('');
+  const [materialTrackingCarrier, setMaterialTrackingCarrier] = useState('');
+  const [materialNotes, setMaterialNotes] = useState('');
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -271,6 +297,11 @@ export default function JobDetailView({
   const linkedQuote = linkedDocuments?.linkedQuote;
   const linkedInvoice = linkedDocuments?.linkedInvoice;
   const linkedReceipts = linkedDocuments?.linkedReceipts || [];
+
+  const { data: jobMaterials = [], isLoading: materialsLoading } = useQuery<JobMaterial[]>({
+    queryKey: ['/api/jobs', jobId, 'materials'],
+    enabled: !!jobId,
+  });
 
   // Fetch team members for assignment (only for owners/managers)
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
@@ -693,6 +724,49 @@ export default function JobDetailView({
       renameJobMutation.mutate(newJobTitle.trim());
     }
   };
+
+  const addMaterialMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest('POST', `/api/jobs/${jobId}/materials`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'materials'] });
+      setShowAddMaterial(false);
+      setMaterialName('');
+      setMaterialQty('1');
+      setMaterialUnit('each');
+      setMaterialUnitCost('');
+      setMaterialSupplier('');
+      setMaterialTrackingNumber('');
+      setMaterialTrackingCarrier('');
+      setMaterialNotes('');
+      toast({ title: 'Material added' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to add material', variant: 'destructive' });
+    },
+  });
+
+  const updateMaterialStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const res = await apiRequest('PATCH', `/api/materials/${id}`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'materials'] });
+    },
+  });
+
+  const deleteMaterialMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/materials/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'materials'] });
+      toast({ title: 'Material removed' });
+    },
+  });
 
   // Delete job mutation
   const deleteJobMutation = useMutation({
@@ -1365,7 +1439,7 @@ export default function JobDetailView({
         />
 
         {linkedQuote && linkedQuote.lineItems && linkedQuote.lineItems.length > 0 && (
-          <Card className="border-trade/30" data-testid="card-job-brief">
+          <Card className="border-trade/30 bg-trade/5" data-testid="card-job-brief">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
@@ -1405,6 +1479,195 @@ export default function JobDetailView({
             </CardContent>
           </Card>
         )}
+
+        {/* Materials Tracking */}
+        <Card className="border-trade/30 bg-trade/5" data-testid="card-materials">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                <CardTitle className="text-sm font-medium">Materials & Parts</CardTitle>
+                {jobMaterials.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
+                )}
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(!showAddMaterial)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            {showAddMaterial && (
+              <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                <Input
+                  placeholder="Material name (e.g., 25mm copper pipe)"
+                  value={materialName}
+                  onChange={(e) => setMaterialName(e.target.value)}
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <Input
+                    placeholder="Qty"
+                    type="number"
+                    value={materialQty}
+                    onChange={(e) => setMaterialQty(e.target.value)}
+                  />
+                  <Select value={materialUnit} onValueChange={setMaterialUnit}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="each">each</SelectItem>
+                      <SelectItem value="metre">metre</SelectItem>
+                      <SelectItem value="sqm">sqm</SelectItem>
+                      <SelectItem value="litre">litre</SelectItem>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="box">box</SelectItem>
+                      <SelectItem value="pack">pack</SelectItem>
+                      <SelectItem value="roll">roll</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!isTradie && (
+                    <Input
+                      placeholder="$ Cost"
+                      type="number"
+                      step="0.01"
+                      value={materialUnitCost}
+                      onChange={(e) => setMaterialUnitCost(e.target.value)}
+                    />
+                  )}
+                </div>
+                <Input
+                  placeholder="Supplier (optional)"
+                  value={materialSupplier}
+                  onChange={(e) => setMaterialSupplier(e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Tracking # (optional)"
+                    value={materialTrackingNumber}
+                    onChange={(e) => setMaterialTrackingNumber(e.target.value)}
+                  />
+                  <Select value={materialTrackingCarrier} onValueChange={setMaterialTrackingCarrier}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Carrier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auspost">Australia Post</SelectItem>
+                      <SelectItem value="startrack">StarTrack</SelectItem>
+                      <SelectItem value="tnt">TNT</SelectItem>
+                      <SelectItem value="toll">Toll</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input
+                  placeholder="Notes (optional)"
+                  value={materialNotes}
+                  onChange={(e) => setMaterialNotes(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={!materialName.trim() || addMaterialMutation.isPending}
+                    onClick={() => {
+                      addMaterialMutation.mutate({
+                        name: materialName.trim(),
+                        quantity: materialQty || '1',
+                        unit: materialUnit,
+                        unitCost: materialUnitCost || '0',
+                        supplier: materialSupplier || undefined,
+                        trackingNumber: materialTrackingNumber || undefined,
+                        trackingCarrier: materialTrackingCarrier || undefined,
+                        notes: materialNotes || undefined,
+                      });
+                    }}
+                    style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                  >
+                    {addMaterialMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Material'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {jobMaterials.length === 0 && !showAddMaterial && (
+              <p className="text-sm text-muted-foreground py-2">No materials tracked yet. Tap Add to start tracking parts and supplies.</p>
+            )}
+
+            {jobMaterials.length > 0 && (
+              <div className="space-y-2">
+                {jobMaterials.map((mat) => {
+                  const statusColors: Record<string, string> = {
+                    needed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                    ordered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                    shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+                    received: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                    installed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+                  };
+                  return (
+                    <div key={mat.id} className="flex items-start gap-3 p-2 rounded-lg border bg-background">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium">{mat.name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColors[mat.status] || statusColors.needed}`}>
+                            {mat.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <span>{mat.quantity} {mat.unit}</span>
+                          {mat.supplier && <span>from {mat.supplier}</span>}
+                          {!isTradie && mat.totalCost && parseFloat(mat.totalCost) > 0 && (
+                            <span className="font-medium">${parseFloat(mat.totalCost).toFixed(2)}</span>
+                          )}
+                        </div>
+                        {mat.trackingNumber && (
+                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                            <Truck className="h-3 w-3" />
+                            <span>{mat.trackingCarrier === 'auspost' ? 'AusPost' : mat.trackingCarrier === 'startrack' ? 'StarTrack' : mat.trackingCarrier?.toUpperCase() || ''}</span>
+                            <span className="font-mono">{mat.trackingNumber}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Select
+                          value={mat.status}
+                          onValueChange={(val) => updateMaterialStatusMutation.mutate({ id: mat.id, status: val })}
+                        >
+                          <SelectTrigger className="h-7 w-[90px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="needed">Needed</SelectItem>
+                            <SelectItem value="ordered">Ordered</SelectItem>
+                            <SelectItem value="shipped">Shipped</SelectItem>
+                            <SelectItem value="received">Received</SelectItem>
+                            <SelectItem value="installed">Installed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {!isTradie && (
+                          <Button size="icon" variant="ghost" onClick={() => deleteMaterialMutation.mutate(mat.id)}>
+                            <Trash2 className="text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!isTradie && jobMaterials.length > 0 && (
+              <div className="flex items-center justify-end pt-2 border-t">
+                <span className="text-sm font-medium">
+                  Materials Total: ${jobMaterials.reduce((sum, m) => sum + (parseFloat(m.totalCost) || 0), 0).toFixed(2)}
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {!isTradie && (
           <LinkedDocumentsCard

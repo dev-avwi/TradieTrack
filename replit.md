@@ -56,7 +56,9 @@ Core architectural and design decisions include:
 *   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signatures.
 *   **Templates Hub**: Focuses on Document Styles with integrated live preview for quotes, invoices, and jobs.
 *   **Communications Hub**: Unified view of all sent emails and SMS messages with statistics and filtering.
-*   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
+*   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out. Automatic overdue invoice reminders (7/14/30 days with friendly/professional/firm tones) and quote follow-ups include client portal payment/acceptance links for direct action.
+*   **Job Materials Tracking**: Per-job material lists with quantities, unit costs, suppliers, and shipping tracking (Australia Post, StarTrack, TNT, Toll). Materials have status workflow (needed → ordered → shipped → received → installed). Workers see materials but costs are hidden at API level. API routes: `/api/jobs/:jobId/materials`, `/api/materials/:id`.
+*   **Job Brief**: Quote line items automatically display in job detail view as a work scope checklist. Workers see descriptions/quantities only (pricing hidden at API level for security). Card shows when job has linked quote with line items.
 *   **Feature Implementation Roadmap**: 11-feature roadmap in `docs/FEATURE_IMPLEMENTATION_PLAN.md` - ALL 11 FEATURES NOW IMPLEMENTED:
     - ✅ **Today Widget**: Weather forecast + today's jobs + quick stats on dashboard
     - ✅ **Service Reminders**: Recurring maintenance tracking with auto-reminders (`/service-reminders`)
