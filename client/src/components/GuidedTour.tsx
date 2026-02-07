@@ -359,12 +359,11 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   const calculateCardPosition = useCallback((rect: DOMRect): CardPosition => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const cardHeight = 280; // Approximate card height
+    const cardHeight = 280;
     const cardWidth = Math.min(380, viewportWidth - 32);
     const padding = 20;
 
-    // Check available space in each direction
-    const spaceAbove = rect.top - 80; // Account for header
+    const spaceAbove = rect.top - 80;
     const spaceBelow = viewportHeight - rect.bottom - 20;
     const spaceLeft = rect.left;
     const spaceRight = viewportWidth - rect.right;
@@ -425,6 +424,9 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       const targetRoute = (!isMobileView && step.desktopRoute) ? step.desktopRoute : step.route;
       if (targetRoute !== currentPath) {
         setLocation(targetRoute);
+        window.scrollTo({ top: 0 });
+        const mainContent = document.querySelector('main');
+        if (mainContent) mainContent.scrollTop = 0;
         await new Promise(r => setTimeout(r, 500));
       }
 
@@ -599,20 +601,32 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
   if (!isOpen) return null;
 
+  // Check if a proposed card rect overlaps the target spotlight area
+  const wouldOverlapTarget = (cardLeft: number, cardTop: number, cardW: number, cardH: number, target: DOMRect): boolean => {
+    const spotPad = 20;
+    const tLeft = target.left - spotPad;
+    const tRight = target.right + spotPad;
+    const tTop = target.top - spotPad;
+    const tBottom = target.bottom + spotPad;
+    const cRight = cardLeft + cardW;
+    const cBottom = cardTop + cardH;
+    return !(cardLeft >= tRight || cRight <= tLeft || cardTop >= tBottom || cBottom <= tTop);
+  };
+
   // Calculate card style based on position
   const getCardStyle = (): React.CSSProperties => {
     const isMobile = window.innerWidth < 640;
-    const cardWidth = isMobile ? 'calc(100vw - 32px)' : '380px';
+    const cardWidthPx = isMobile ? window.innerWidth - 32 : 380;
+    const cardWidthStr = isMobile ? 'calc(100vw - 32px)' : '380px';
     
     const base: React.CSSProperties = {
       position: 'fixed',
-      width: cardWidth,
+      width: cardWidthStr,
       maxWidth: 'calc(100vw - 32px)',
       zIndex: 10001,
       pointerEvents: 'auto'
     };
 
-    // On mobile: position card at TOP of screen to leave bottom nav accessible
     if (isMobile) {
       return {
         ...base,
@@ -625,7 +639,6 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       };
     }
 
-    // Desktop: center if no target
     if (!targetRect || cardPosition === 'center') {
       return {
         ...base,
@@ -636,40 +649,54 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     }
 
     const gap = 20;
-    const cardHeight = 350; // Approximate max card height
+    const cardH = 350;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-    switch (cardPosition) {
-      case 'bottom':
-        // Ensure card doesn't go off bottom of screen
-        const bottomTop = Math.min(targetRect.bottom + gap, window.innerHeight - cardHeight - 20);
-        return {
-          ...base,
-          left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 400)),
-          top: Math.max(80, bottomTop)
-        };
-      case 'top':
-        // Ensure card doesn't go off top of screen - use top positioning instead of bottom
-        const topPosition = Math.max(80, targetRect.top - cardHeight - gap);
-        return {
-          ...base,
-          left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 400)),
-          top: topPosition
-        };
-      case 'right':
-        return {
-          ...base,
-          left: Math.min(targetRect.right + gap, window.innerWidth - 400),
-          top: Math.max(80, Math.min(targetRect.top, window.innerHeight - cardHeight - 20))
-        };
-      case 'left':
-        return {
-          ...base,
-          right: Math.max(16, window.innerWidth - targetRect.left + gap),
-          top: Math.max(80, Math.min(targetRect.top, window.innerHeight - cardHeight - 20))
-        };
-      default:
-        return base;
+    const tryPosition = (pos: CardPosition): React.CSSProperties | null => {
+      let left: number;
+      let top: number;
+      switch (pos) {
+        case 'bottom':
+          left = Math.max(16, Math.min(targetRect.left, vw - cardWidthPx - 16));
+          top = Math.max(80, Math.min(targetRect.bottom + gap, vh - cardH - 20));
+          break;
+        case 'top':
+          left = Math.max(16, Math.min(targetRect.left, vw - cardWidthPx - 16));
+          top = Math.max(80, targetRect.top - cardH - gap);
+          break;
+        case 'right':
+          left = Math.min(targetRect.right + gap, vw - cardWidthPx - 16);
+          top = Math.max(80, Math.min(targetRect.top, vh - cardH - 20));
+          break;
+        case 'left':
+          left = Math.max(16, targetRect.left - cardWidthPx - gap);
+          top = Math.max(80, Math.min(targetRect.top, vh - cardH - 20));
+          break;
+        default:
+          return null;
+      }
+      if (isInteractive && wouldOverlapTarget(left, top, cardWidthPx, cardH, targetRect)) {
+        return null;
+      }
+      return { ...base, left, top };
+    };
+
+    const preferred = tryPosition(cardPosition);
+    if (preferred) return preferred;
+
+    const fallbacks: CardPosition[] = ['bottom', 'right', 'top', 'left'];
+    for (const pos of fallbacks) {
+      if (pos === cardPosition) continue;
+      const result = tryPosition(pos);
+      if (result) return result;
     }
+
+    return {
+      ...base,
+      right: 16,
+      bottom: 20
+    };
   };
 
   const renderArrow = () => {
