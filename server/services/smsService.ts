@@ -34,6 +34,7 @@ interface QuickActionOptions {
   includeTrackingLink?: boolean;
   trackingLinkUrl?: string;
   businessPhone?: string;
+  senderPhone?: string;
 }
 
 /**
@@ -195,8 +196,9 @@ export async function sendQuickAction(options: QuickActionOptions): Promise<SmsM
       throw new Error('Invalid quick action type');
   }
   
-  if (options.businessPhone) {
-    message += `\nCall us: ${options.businessPhone}`;
+  const contactPhone = options.senderPhone || options.businessPhone;
+  if (contactPhone) {
+    message += `\nCall: ${contactPhone}`;
   }
   
   return sendSmsToClient({

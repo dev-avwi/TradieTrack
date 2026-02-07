@@ -23387,6 +23387,8 @@ Respond with JSON in this format:
       const businessName = businessSettings?.businessName || user?.firstName || 'Your tradie';
       
       const { sendQuickAction } = await import('./services/smsService');
+      const senderPhone = membership?.phone || undefined;
+
       const smsMessage = await sendQuickAction({
         conversationId,
         senderUserId: userId,
@@ -23395,6 +23397,7 @@ Respond with JSON in this format:
         businessName,
         estimatedTime,
         businessPhone: businessSettings?.phone || undefined,
+        senderPhone,
       });
       
       res.json(smsMessage);
