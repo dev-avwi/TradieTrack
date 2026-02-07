@@ -315,7 +315,7 @@ export interface IStorage {
 
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
-  createNotification(notification: InsertNotification): Promise<Notification>;
+  createNotification(notification: InsertNotification, createdAt?: Date): Promise<Notification>;
   markNotificationAsRead(id: string, userId: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<number>;
   dismissNotification(id: string, userId: string): Promise<Notification | undefined>;
@@ -1159,8 +1159,9 @@ export class PostgresStorage implements IStorage {
       .orderBy(desc(notifications.createdAt));
   }
 
-  async createNotification(notification: InsertNotification): Promise<Notification> {
-    const result = await db.insert(notifications).values(notification).returning();
+  async createNotification(notification: InsertNotification, createdAt?: Date): Promise<Notification> {
+    const values = createdAt ? { ...notification, createdAt } : notification;
+    const result = await db.insert(notifications).values(values).returning();
     return result[0];
   }
 

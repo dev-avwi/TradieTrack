@@ -2128,9 +2128,13 @@ export async function createDemoNotifications(userId: string): Promise<void> {
     // Shuffle and take top 10 for variety
     const shuffled = notifications.sort(() => Math.random() - 0.5).slice(0, 10);
     
-    // Create notifications
-    for (const notif of shuffled) {
-      await storage.createNotification(notif);
+    // Create notifications with staggered timestamps for realistic display
+    const now = Date.now();
+    const minutesAgoList = [5, 15, 28, 45, 72, 120, 180, 300, 480, 720];
+    for (let i = 0; i < shuffled.length; i++) {
+      const minutesAgo = minutesAgoList[i] || (i * 60);
+      const createdAt = new Date(now - minutesAgo * 60 * 1000);
+      await storage.createNotification(shuffled[i], createdAt);
     }
     
     console.log(`[DemoNotifications] Created ${shuffled.length} diverse notifications`);

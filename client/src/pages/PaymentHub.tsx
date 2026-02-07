@@ -334,6 +334,7 @@ function StripeConnectCard({
   status, 
   balance, 
   isLoading, 
+  isConnecting,
   onConnect,
   onDashboard,
   onSettings
@@ -341,6 +342,7 @@ function StripeConnectCard({
   status?: StripeConnectStatus; 
   balance?: StripeBalance;
   isLoading: boolean;
+  isConnecting?: boolean;
   onConnect: () => void;
   onDashboard: () => void;
   onSettings: () => void;
@@ -444,16 +446,19 @@ function StripeConnectCard({
             ) : needsSetup ? (
               <Button 
                 onClick={onConnect}
+                disabled={isConnecting}
                 data-testid="btn-complete-stripe-setup"
               >
+                {isConnecting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Complete Setup
               </Button>
             ) : (
               <Button 
                 onClick={onConnect}
+                disabled={isConnecting}
                 data-testid="btn-connect-stripe"
               >
-                <Link2 className="h-4 w-4 mr-1" />
+                {isConnecting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
                 Connect Stripe
               </Button>
             )}
@@ -623,12 +628,12 @@ export default function PaymentHub() {
       // API returns onboardingUrl, not url
       const redirectUrl = data.onboardingUrl || data.url;
       if (redirectUrl) {
-        window.open(redirectUrl, '_blank');
+        window.location.href = redirectUrl;
       } else {
         toast({
-          title: "Setup Started",
-          description: "Please check if a new window opened for Stripe setup",
-          variant: "default",
+          title: "Connection Error",
+          description: "No redirect URL received from Stripe",
+          variant: "destructive",
         });
       }
     } catch (error: any) {
@@ -673,6 +678,7 @@ export default function PaymentHub() {
           status={stripeStatus}
           balance={stripeBalance}
           isLoading={stripeStatusLoading || stripeBalanceLoading}
+          isConnecting={isConnecting}
           onConnect={handleConnectStripe}
           onDashboard={handleOpenStripeDashboard}
           onSettings={handleOpenSettings}
