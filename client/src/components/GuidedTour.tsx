@@ -32,7 +32,7 @@ interface TourStep {
   clickTargetSelector?: string;
   clickTargetLabel?: string;
   mobileOnly?: boolean;
-  // Desktop alternative - shown instead of this step on desktop
+  desktopRoute?: string;
   desktopAlternative?: {
     title: string;
     description: string;
@@ -82,7 +82,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: Users,
     waitForClick: true,
     clickTargetSelector: '[data-testid="card-clients"], [data-testid="nav-clients"], a[href="/clients"]',
-    clickTargetLabel: "Clients"
+    clickTargetLabel: "Clients",
+    mobileOnly: true
   },
   {
     id: "clients-page",
@@ -110,7 +111,14 @@ const TOUR_STEPS: TourStep[] = [
     icon: Briefcase,
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-work"], [data-testid="nav-work"], a[href="/work"]',
-    clickTargetLabel: "Work"
+    clickTargetLabel: "Work",
+    mobileOnly: true,
+    desktopAlternative: {
+      title: "Navigate to Your Jobs",
+      description: "Click 'Work' in the sidebar to see how job management works.",
+      clickTargetSelector: '[data-testid="sidebar-work"]',
+      clickTargetLabel: "Work"
+    }
   },
   {
     id: "jobs-page",
@@ -131,10 +139,10 @@ const TOUR_STEPS: TourStep[] = [
     clickTargetLabel: "More",
     mobileOnly: true,
     desktopAlternative: {
-      title: "Navigate to Quotes",
-      description: "Click 'Quotes' in the sidebar to see how you create professional quotes for your clients.",
-      clickTargetSelector: '[data-testid="sidebar-quotes"], a[href="/quotes"]',
-      clickTargetLabel: "Quotes"
+      title: "Navigate to Documents",
+      description: "Click 'Documents' in the sidebar to see your quotes, invoices, and receipts.",
+      clickTargetSelector: '[data-testid="sidebar-documents"]',
+      clickTargetLabel: "Documents"
     }
   },
   {
@@ -145,15 +153,21 @@ const TOUR_STEPS: TourStep[] = [
     icon: FileText,
     waitForClick: true,
     clickTargetSelector: '[data-testid="card-quotes"], [data-testid="nav-quotes"], a[href="/quotes"]',
-    clickTargetLabel: "Quotes"
+    clickTargetLabel: "Quotes",
+    mobileOnly: true
   },
   {
     id: "quotes-page",
     title: "Your Quotes",
     description: "You have 3 sample quotes ready to explore. Click one to see the professional layout with GST calculated automatically. When a client accepts, convert it to an invoice with one click!",
     route: "/quotes",
+    desktopRoute: "/documents",
     icon: FileText,
-    targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"], main'
+    targetSelector: '[data-testid="quotes-content"], [data-testid="quotes-list"], main',
+    desktopAlternative: {
+      title: "Your Documents",
+      description: "Here's where all your quotes, invoices, and receipts are stored. Use the tabs at the top to switch between them. You have sample documents to explore - try clicking one!"
+    }
   },
   {
     id: "nav-more-invoices",
@@ -164,13 +178,7 @@ const TOUR_STEPS: TourStep[] = [
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
     clickTargetLabel: "More",
-    mobileOnly: true,
-    desktopAlternative: {
-      title: "Navigate to Invoices",
-      description: "Click 'Invoices' in the sidebar to see how you get paid.",
-      clickTargetSelector: '[data-testid="sidebar-invoices"], a[href="/invoices"]',
-      clickTargetLabel: "Invoices"
-    }
+    mobileOnly: true
   },
   {
     id: "nav-invoices",
@@ -180,7 +188,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: Receipt,
     waitForClick: true,
     clickTargetSelector: '[data-testid="card-invoices"], [data-testid="nav-invoices"], a[href="/invoices"]',
-    clickTargetLabel: "Invoices"
+    clickTargetLabel: "Invoices",
+    mobileOnly: true
   },
   {
     id: "invoices-page",
@@ -188,13 +197,15 @@ const TOUR_STEPS: TourStep[] = [
     description: "You have 2 sample invoices to explore. Track pending, overdue, or paid invoices. Connect Stripe to accept card payments and get paid faster!",
     route: "/invoices",
     icon: Receipt,
-    targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"], main'
+    targetSelector: '[data-testid="invoices-content"], [data-testid="invoices-list"], main',
+    mobileOnly: true
   },
   {
     id: "nav-more-settings",
     title: "One More Time",
     description: "Tap 'More' to find Settings.",
     route: "/invoices",
+    desktopRoute: "/documents",
     icon: MoreHorizontal,
     waitForClick: true,
     clickTargetSelector: '[data-testid="bottom-nav-more"], [data-testid="nav-more"]',
@@ -215,7 +226,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: Settings,
     waitForClick: true,
     clickTargetSelector: '[data-testid="card-settings"], [data-testid="nav-settings"], a[href="/settings"]',
-    clickTargetLabel: "Settings"
+    clickTargetLabel: "Settings",
+    mobileOnly: true
   },
   {
     id: "settings-page",
@@ -264,7 +276,6 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   // Transform steps based on screen size - apply desktop alternatives for mobile-only steps (memoized for stability)
   const filteredSteps = useMemo(() => 
     TOUR_STEPS.map(s => {
-      // If this is a mobile-only step and we're on desktop, use the desktop alternative
       if (s.mobileOnly && !isMobileView && s.desktopAlternative) {
         return {
           ...s,
@@ -272,8 +283,16 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
           description: s.desktopAlternative.description,
           clickTargetSelector: s.desktopAlternative.clickTargetSelector || s.clickTargetSelector,
           clickTargetLabel: s.desktopAlternative.clickTargetLabel || s.clickTargetLabel,
-          // Keep the step - don't filter it out
           mobileOnly: false
+        };
+      }
+      if (!s.mobileOnly && !isMobileView && s.desktopAlternative) {
+        return {
+          ...s,
+          title: s.desktopAlternative.title,
+          description: s.desktopAlternative.description,
+          clickTargetSelector: s.desktopAlternative.clickTargetSelector || s.clickTargetSelector,
+          clickTargetLabel: s.desktopAlternative.clickTargetLabel || s.clickTargetLabel,
         };
       }
       return s;
@@ -303,23 +322,32 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     return null;
   }, []);
 
-  // Scroll element into view with offset for headers
   const scrollToElement = useCallback((element: Element): Promise<void> => {
     return new Promise((resolve) => {
       const rect = element.getBoundingClientRect();
-      const headerOffset = 80; // Account for sticky header
+      const headerOffset = 80;
       const viewportHeight = window.innerHeight;
       
-      // Calculate if element is visible
-      const isVisible = rect.top >= headerOffset && rect.bottom <= viewportHeight - 100;
+      const sidebarContent = element.closest('[data-sidebar="content"]');
+      if (sidebarContent) {
+        const sidebarRect = sidebarContent.getBoundingClientRect();
+        const elementRelativeTop = rect.top - sidebarRect.top + sidebarContent.scrollTop;
+        const targetScroll = elementRelativeTop - sidebarRect.height / 2 + rect.height / 2;
+        sidebarContent.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior: 'smooth'
+        });
+        setTimeout(resolve, 400);
+        return;
+      }
       
+      const isVisible = rect.top >= headerOffset && rect.bottom <= viewportHeight - 100;
       if (!isVisible) {
         const scrollTop = window.scrollY + rect.top - headerOffset - 50;
         window.scrollTo({
           top: Math.max(0, scrollTop),
           behavior: 'smooth'
         });
-        // Wait for scroll to complete
         setTimeout(resolve, 400);
       } else {
         resolve();
@@ -341,18 +369,18 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     const spaceLeft = rect.left;
     const spaceRight = viewportWidth - rect.right;
 
-    // For mobile, prefer bottom positioning
     if (viewportWidth < 640) {
       return spaceBelow > cardHeight + padding ? 'bottom' : 'top';
     }
 
-    // Prefer positioning below or to the side
+    if (rect.left < 300 && spaceRight > cardWidth + padding) return 'right';
+    
     if (spaceBelow > cardHeight + padding) return 'bottom';
     if (spaceAbove > cardHeight + padding) return 'top';
     if (spaceRight > cardWidth + padding) return 'right';
     if (spaceLeft > cardWidth + padding) return 'left';
     
-    return 'bottom'; // Default
+    return 'bottom';
   }, []);
 
   // Measure and set up target
@@ -393,10 +421,10 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       setIsReady(false);
       setTargetRect(null);
 
-      // Navigate to route if needed
       const currentPath = window.location.pathname;
-      if (step.route !== currentPath) {
-        setLocation(step.route);
+      const targetRoute = (!isMobileView && step.desktopRoute) ? step.desktopRoute : step.route;
+      if (targetRoute !== currentPath) {
+        setLocation(targetRoute);
         await new Promise(r => setTimeout(r, 500));
       }
 
@@ -406,7 +434,7 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     };
 
     navigateToStep();
-  }, [currentStep, isOpen, step.route, setLocation, setupTarget]);
+  }, [currentStep, isOpen, step.route, step.desktopRoute, isMobileView, setLocation, setupTarget]);
 
   // Draw overlay with spotlight
   const drawOverlay = useCallback(() => {
@@ -644,11 +672,38 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
     }
   };
 
-  // Render arrow pointing to target
   const renderArrow = () => {
     if (!targetRect || !isReady || cardPosition === 'center') return null;
 
     const arrowColor = isInteractive ? '#10b981' : '#3b82f6';
+    
+    const isLeftSide = targetRect.left < 300;
+    
+    if (isLeftSide && isInteractive) {
+      return (
+        <div 
+          className="fixed pointer-events-none z-[10002]"
+          style={{
+            left: targetRect.right + 8,
+            top: targetRect.top + targetRect.height / 2 - 16
+          }}
+        >
+          <div className="flex items-center animate-bounce">
+            <div 
+              className="w-0 h-0 border-t-8 border-b-8 border-r-8 border-transparent"
+              style={{ borderRightColor: arrowColor }}
+            />
+            <div 
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-sm font-semibold shadow-lg whitespace-nowrap"
+              style={{ backgroundColor: arrowColor }}
+            >
+              <MousePointerClick className="h-4 w-4" />
+              Click "{step.clickTargetLabel}"
+            </div>
+          </div>
+        </div>
+      );
+    }
     
     return (
       <div 
@@ -775,13 +830,13 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
           {/* Step progress dots */}
           <div className="flex items-center justify-center gap-1 mb-4 flex-wrap">
-            {TOUR_STEPS.map((_, index) => (
+            {filteredSteps.map((_, index) => (
               <div
                 key={index}
                 className={`h-2 rounded-full transition-all duration-200 ${
-                  index === currentStep
+                  index === safeCurrentStep
                     ? "w-4 bg-primary"
-                    : index < currentStep
+                    : index < safeCurrentStep
                     ? "w-2 bg-primary/40"
                     : "w-2 bg-muted-foreground/20"
                 }`}
