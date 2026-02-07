@@ -467,13 +467,16 @@ export default function CommunicationsHub() {
         
         const fullBody = metadata.emailBody || metadata.messageBody || log.description || '';
         
+        const isSms = metadata.deliveryMethod === 'sms';
+        
         communications.push({
-          id: `email-${log.id}`,
-          type: 'email',
+          id: isSms ? `sms-activity-${log.id}` : `email-${log.id}`,
+          type: isSms ? 'sms' : 'email',
           direction: 'outbound',
           status: 'sent',
           recipient: metadata.clientName || metadata.recipientName || 'Client',
-          recipientEmail: metadata.recipientEmail || metadata.clientEmail,
+          recipientEmail: isSms ? undefined : (metadata.recipientEmail || metadata.clientEmail),
+          recipientPhone: isSms ? (metadata.clientPhone || metadata.recipientPhone) : undefined,
           subject,
           body: log.description || '',
           fullBody,

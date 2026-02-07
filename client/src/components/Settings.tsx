@@ -3098,10 +3098,7 @@ function DeveloperTab() {
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
-      const response = await fetch('/api/dev/seed-mock-data', {
-        method: 'POST',
-        credentials: 'include'
-      });
+      const response = await apiRequest('POST', '/api/dev/seed-mock-data');
       const result = await response.json();
       
       if (result.success) {
@@ -3138,10 +3135,7 @@ function DeveloperTab() {
     
     setIsClearing(true);
     try {
-      const response = await fetch('/api/dev/clear-data', {
-        method: 'POST',
-        credentials: 'include'
-      });
+      const response = await apiRequest('POST', '/api/dev/clear-data');
       const result = await response.json();
       
       if (result.success) {

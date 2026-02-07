@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -493,8 +492,8 @@ export default function SendDocumentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
             Send {getDocTypeLabel()}
@@ -597,9 +596,9 @@ export default function SendDocumentModal({
 
         <Separator className="my-2" />
 
-        <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="compose" className="flex items-center gap-2">
                 <Edit3 className="h-4 w-4" />
                 Compose
@@ -610,8 +609,7 @@ export default function SendDocumentModal({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="compose" className="flex-1 mt-4 min-h-0">
-              <ScrollArea className="h-[320px] pr-4">
+            <TabsContent value="compose" className="mt-4">
                 <div className="space-y-4">
                   {(deliveryMethod === 'email' || deliveryMethod === 'both') && (
                     <div className="space-y-4 p-4 rounded-lg border bg-card">
@@ -759,11 +757,9 @@ export default function SendDocumentModal({
                     </div>
                   )}
                 </div>
-              </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="preview" className="flex-1 overflow-auto mt-4">
-              <ScrollArea className="h-[320px]">
+            <TabsContent value="preview" className="mt-4">
                 <div className="space-y-4">
                   {(deliveryMethod === 'email' || deliveryMethod === 'both') && (
                     <Card className="border-2">
@@ -831,12 +827,11 @@ export default function SendDocumentModal({
                     </Card>
                   )}
                 </div>
-              </ScrollArea>
             </TabsContent>
           </Tabs>
         </div>
 
-        <div className="space-y-3 pt-4 border-t flex-shrink-0">
+        <div className="space-y-3 pt-4 border-t">
           <Button 
             onClick={handleSend}
             disabled={
