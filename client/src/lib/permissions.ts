@@ -55,6 +55,8 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/jobs', label: 'Jobs', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   { path: '/jobs/new', label: 'New Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/jobs/:id', label: 'Job Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  { path: '/jobs/:id/edit', label: 'Edit Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/jobs/:id/complete', label: 'Complete Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Clients - staff can only view (not in nav for staff)
   { path: '/clients', label: 'Clients', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },

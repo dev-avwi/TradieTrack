@@ -22,6 +22,7 @@ import {
   Loader2,
   ArrowRight
 } from "lucide-react";
+import AddressAutocomplete from "@/components/ui/address-autocomplete";
 
 const phoneRegex = /^(\+?61|0)[2-478]\d{8}$|^(\+?61|0)4\d{8}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -230,9 +231,10 @@ export default function ClientForm({ onSubmit, onCancel }: ClientFormProps) {
                           Job Site Address
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="e.g., 123 Main Street, Sydney NSW 2000"
+                          <AddressAutocomplete
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder="Start typing an address..."
                             data-testid="input-address"
                           />
                         </FormControl>

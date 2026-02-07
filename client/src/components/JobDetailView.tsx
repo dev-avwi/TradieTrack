@@ -1163,6 +1163,7 @@ export default function JobDetailView({
         </div>
       </div>
 
+      {/* Full-width banners */}
       <div className="space-y-4">
         {/* Urgency Banner for scheduled jobs */}
         {job.status === 'scheduled' && jobUrgency && (
@@ -1415,1167 +1416,1176 @@ export default function JobDetailView({
             </div>
           );
         })()}
+      </div>
 
-        <JobFlowWizard
-          status={job.status}
-          hasQuote={!!linkedQuote}
-          hasInvoice={!!linkedInvoice}
-          invoicePaid={linkedInvoice?.status === 'paid'}
-          timestamps={{
-            scheduledAt: job.scheduledAt,
-            startedAt: job.startedAt,
-            completedAt: job.completedAt,
-            invoicedAt: job.invoicedAt,
-          }}
-          jobId={jobId}
-          timerRunning={!!activeTimerForThisJob}
-          onCreateQuote={() => onCreateQuote?.(jobId)}
-          onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
-          onSchedule={() => onEditJob?.(jobId)}
-          onStart={() => updateJobMutation.mutate({ status: 'in_progress' })}
-          onComplete={handleCompleteJob}
-          onCreateInvoice={() => onCreateInvoice?.(jobId)}
-          onViewInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
-          onStatusChange={(newStatus) => {
-            setRollbackTargetStatus(newStatus);
-            setShowRollbackConfirm(true);
-          }}
-          data-testid="job-flow-wizard"
-        />
+      {/* Two-column layout on desktop, single column on mobile */}
+      <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0 mt-4">
+        {/* Left column - Primary content */}
+        <div className="space-y-4 lg:col-span-3">
+          <JobFlowWizard
+            status={job.status}
+            hasQuote={!!linkedQuote}
+            hasInvoice={!!linkedInvoice}
+            invoicePaid={linkedInvoice?.status === 'paid'}
+            timestamps={{
+              scheduledAt: job.scheduledAt,
+              startedAt: job.startedAt,
+              completedAt: job.completedAt,
+              invoicedAt: job.invoicedAt,
+            }}
+            jobId={jobId}
+            timerRunning={!!activeTimerForThisJob}
+            onCreateQuote={() => onCreateQuote?.(jobId)}
+            onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
+            onSchedule={() => onEditJob?.(jobId)}
+            onStart={() => updateJobMutation.mutate({ status: 'in_progress' })}
+            onComplete={handleCompleteJob}
+            onCreateInvoice={() => onCreateInvoice?.(jobId)}
+            onViewInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
+            onStatusChange={(newStatus) => {
+              setRollbackTargetStatus(newStatus);
+              setShowRollbackConfirm(true);
+            }}
+            data-testid="job-flow-wizard"
+          />
 
-        {(linkedQuote?.lineItems?.length > 0 || jobVariations.length > 0 || jobMaterials.length > 0) && (
-          <Card className="border-trade/30 bg-trade/5" data-testid="card-job-brief">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-                <CardTitle className="text-sm font-medium">Job Brief</CardTitle>
-              </div>
-              {linkedQuote && (
-                <p className="text-xs text-muted-foreground">
-                  Scope of work from {linkedQuote.number || linkedQuote.quoteNumber ? `Quote #${linkedQuote.number || linkedQuote.quoteNumber}` : "Linked Quote"}
-                </p>
-              )}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Job Details
+              </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              {linkedQuote?.lineItems && linkedQuote.lineItems.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original Scope</span>
-                  </div>
-                  {linkedQuote.description && (
-                    <p className="text-sm text-muted-foreground">{linkedQuote.description}</p>
-                  )}
-                  <div className="space-y-1.5">
-                    {linkedQuote.lineItems.map((item) => (
-                      <div key={item.id} className="flex items-start gap-2">
-                        <Circle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/50" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm">{item.description}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
-                          {parseFloat(item.quantity) !== 1 && (
-                            <span>x{item.quantity}</span>
-                          )}
-                          {!isTradie && item.total && !isNaN(parseFloat(item.total)) && (
-                            <span className="text-right w-20">${parseFloat(item.total).toFixed(2)}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            <CardContent className="space-y-4">
+              {job.description && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                  <p className="text-sm">{job.description}</p>
                 </div>
               )}
 
-              {jobVariations.filter((v: any) => v.status === 'approved').length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <FileEdit className="h-3.5 w-3.5 text-amber-600" />
-                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Variations</span>
-                    <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                      {jobVariations.filter((v: any) => v.status === 'approved').length}
-                    </Badge>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {client?.name && (
+                  <div>
+                    <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                      <User className="h-3 w-3" />
+                      Client
+                    </div>
+                    <p 
+                      className="font-medium hover:underline cursor-pointer"
+                      onClick={() => job.clientId && onViewClient?.(job.clientId)}
+                      data-testid="client-name"
+                    >
+                      {client.name}
+                    </p>
                   </div>
-                  <div className="space-y-1.5 pl-0.5">
-                    {jobVariations.filter((v: any) => v.status === 'approved').map((variation: any) => (
-                      <div key={variation.id} className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 rounded-md p-2">
-                        <Plus className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium">{variation.title}</span>
-                          {variation.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{variation.description}</p>
-                          )}
-                        </div>
-                        {!isTradie && variation.totalAmount && (
-                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400 shrink-0">
-                            +${parseFloat(variation.totalAmount).toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                )}
+
+                {job.address && (
+                  <div>
+                    <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                      <MapPin className="h-3 w-3" />
+                      Address
+                    </div>
+                    <p className="font-medium">{job.address}</p>
                   </div>
+                )}
+
+                {job.scheduledAt && (
+                  <div>
+                    <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                      <Calendar className="h-3 w-3" />
+                      Scheduled
+                    </div>
+                    <p className="font-medium">
+                      {format(new Date(job.scheduledAt), 'MMM d, yyyy')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(job.scheduledAt), 'h:mm a')}
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Assign Worker - Only for team owners/managers */}
+              {!isTradie && !isSolo && teamMembers.length > 0 && (
+                <div className="pt-2 border-t">
+                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
+                    <Users className="h-3 w-3" />
+                    Assign Worker
+                  </div>
+                  <Select
+                    value={job.assignedTo || "unassigned"}
+                    onValueChange={(value) => {
+                      assignWorkerMutation.mutate(value === "unassigned" ? null : value);
+                    }}
+                    disabled={assignWorkerMutation.isPending}
+                  >
+                    <SelectTrigger 
+                      className="w-full" 
+                      data-testid="select-assign-worker"
+                    >
+                      <SelectValue placeholder="Select worker..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">
+                        Unassigned
+                      </SelectItem>
+                      {teamMembers.filter(m => m.isActive).map((member) => (
+                        <SelectItem 
+                          key={member.memberId} 
+                          value={member.memberId}
+                          data-testid={`option-worker-${member.memberId}`}
+                        >
+                          {member.firstName} {member.lastName} ({member.roleName})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
-              {!isTradie && jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Variations</span>
-                    <Badge variant="outline" className="text-xs">
-                      {jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').length}
-                    </Badge>
+              {/* Job Costing Section - Shows estimated vs actual hours */}
+              {(job.estimatedHours || actualHoursData.hasData) && (
+                <div className="pt-2 border-t">
+                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
+                    <DollarSign className="h-3 w-3" />
+                    Job Costing
                   </div>
-                  <div className="space-y-1.5 pl-0.5">
-                    {jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').map((variation: any) => (
-                      <div key={variation.id} className="flex items-start gap-2 opacity-70">
-                        <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm">{variation.title}</span>
-                        </div>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {variation.status}
-                        </Badge>
+                  <div className="space-y-2">
+                    {job.estimatedHours && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Estimated</span>
+                        <span className="text-sm font-medium">{job.estimatedHours} hrs</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {jobMaterials.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Materials</span>
-                    <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
-                  </div>
-                  <div className="space-y-1.5">
-                    {jobMaterials.slice(0, 5).map((material) => (
-                      <div key={material.id} className="flex items-center gap-2 text-sm">
-                        <span className="flex-1 min-w-0 truncate">{material.name}</span>
-                        <span className="text-muted-foreground shrink-0">{material.quantity} {material.unit}</span>
-                        <Badge variant="outline" className="text-xs shrink-0 capitalize">
-                          {material.status}
-                        </Badge>
+                    )}
+                    {actualHoursData.hasData && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Actual</span>
+                        <span className="text-sm font-medium">{actualHoursData.actualHours} hrs</span>
                       </div>
-                    ))}
-                    {jobMaterials.length > 5 && (
-                      <p className="text-xs text-muted-foreground">+{jobMaterials.length - 5} more materials</p>
+                    )}
+                    {job.estimatedHours && actualHoursData.hasData && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Variance</span>
+                        {(() => {
+                          const variance = actualHoursData.actualHours - job.estimatedHours;
+                          const isOver = variance > 0;
+                          const isUnder = variance < 0;
+                          return (
+                            <span className={`text-sm font-medium ${isOver ? 'text-red-600 dark:text-red-400' : isUnder ? 'text-green-600 dark:text-green-400' : ''}`}>
+                              {isOver ? '+' : ''}{variance.toFixed(2)} hrs
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    {actualHoursData.hasData && actualHoursData.laborCost > 0 && (
+                      <div className="flex items-center justify-between pt-1 border-t">
+                        <span className="text-sm text-muted-foreground">Labor Cost</span>
+                        <span className="text-sm font-medium">${actualHoursData.laborCost.toFixed(2)}</span>
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {!isTradie && linkedQuote?.total && (
-                <div className="pt-2 border-t space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Original Quote</span>
-                    <span>${parseFloat(linkedQuote.total).toFixed(2)}</span>
-                  </div>
-                  {jobVariations.filter((v: any) => v.status === 'approved').length > 0 && (
-                    <>
-                      <div className="flex items-center justify-between text-sm text-amber-700 dark:text-amber-400">
-                        <span>Approved Variations</span>
-                        <span>+${jobVariations.filter((v: any) => v.status === 'approved').reduce((sum: number, v: any) => sum + (parseFloat(v.totalAmount) || 0), 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm font-semibold pt-1 border-t">
-                        <span>Revised Total</span>
-                        <span>${(parseFloat(linkedQuote.total) + jobVariations.filter((v: any) => v.status === 'approved').reduce((sum: number, v: any) => sum + (parseFloat(v.totalAmount) || 0), 0)).toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
-                  {jobVariations.filter((v: any) => v.status === 'approved').length === 0 && (
-                    <div className="flex items-center justify-between text-sm font-semibold">
-                      <span>Total</span>
-                      <span>${parseFloat(linkedQuote.total).toFixed(2)}</span>
-                    </div>
-                  )}
+              {job.estimatedCost && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Estimated Cost</p>
+                  <p className="text-sm">${(Number(job.estimatedCost) / 100).toFixed(2)}</p>
                 </div>
               )}
             </CardContent>
           </Card>
-        )}
 
-        {/* Materials Tracking */}
-        <Card className="border-trade/30 bg-trade/5" data-testid="card-materials">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-                <CardTitle className="text-sm font-medium">Materials & Parts</CardTitle>
-                {jobMaterials.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
+          {(linkedQuote?.lineItems?.length > 0 || jobVariations.length > 0 || jobMaterials.length > 0) && (
+            <Card className="border-trade/30 bg-trade/5" data-testid="card-job-brief">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                  <CardTitle className="text-sm font-medium">Job Brief</CardTitle>
+                </div>
+                {linkedQuote && (
+                  <p className="text-xs text-muted-foreground">
+                    Scope of work from {linkedQuote.number || linkedQuote.quoteNumber ? `Quote #${linkedQuote.number || linkedQuote.quoteNumber}` : "Linked Quote"}
+                  </p>
                 )}
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(!showAddMaterial)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-3">
-            {showAddMaterial && (
-              <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
-                <Input
-                  placeholder="Material name (e.g., 25mm copper pipe)"
-                  value={materialName}
-                  onChange={(e) => setMaterialName(e.target.value)}
-                />
-                <div className="grid grid-cols-3 gap-2">
-                  <Input
-                    placeholder="Qty"
-                    type="number"
-                    value={materialQty}
-                    onChange={(e) => setMaterialQty(e.target.value)}
-                  />
-                  <Select value={materialUnit} onValueChange={setMaterialUnit}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="each">each</SelectItem>
-                      <SelectItem value="metre">metre</SelectItem>
-                      <SelectItem value="sqm">sqm</SelectItem>
-                      <SelectItem value="litre">litre</SelectItem>
-                      <SelectItem value="kg">kg</SelectItem>
-                      <SelectItem value="box">box</SelectItem>
-                      <SelectItem value="pack">pack</SelectItem>
-                      <SelectItem value="roll">roll</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {!isTradie && (
-                    <Input
-                      placeholder="$ Cost"
-                      type="number"
-                      step="0.01"
-                      value={materialUnitCost}
-                      onChange={(e) => setMaterialUnitCost(e.target.value)}
-                    />
-                  )}
-                </div>
-                <Input
-                  placeholder="Supplier (optional)"
-                  value={materialSupplier}
-                  onChange={(e) => setMaterialSupplier(e.target.value)}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="Tracking # (optional)"
-                    value={materialTrackingNumber}
-                    onChange={(e) => setMaterialTrackingNumber(e.target.value)}
-                  />
-                  <Select value={materialTrackingCarrier} onValueChange={setMaterialTrackingCarrier}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Carrier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auspost">Australia Post</SelectItem>
-                      <SelectItem value="startrack">StarTrack</SelectItem>
-                      <SelectItem value="tnt">TNT</SelectItem>
-                      <SelectItem value="toll">Toll</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Input
-                  placeholder="Notes (optional)"
-                  value={materialNotes}
-                  onChange={(e) => setMaterialNotes(e.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    disabled={!materialName.trim() || addMaterialMutation.isPending}
-                    onClick={() => {
-                      addMaterialMutation.mutate({
-                        name: materialName.trim(),
-                        quantity: materialQty || '1',
-                        unit: materialUnit,
-                        unitCost: materialUnitCost || '0',
-                        supplier: materialSupplier || undefined,
-                        trackingNumber: materialTrackingNumber || undefined,
-                        trackingCarrier: materialTrackingCarrier || undefined,
-                        notes: materialNotes || undefined,
-                      });
-                    }}
-                    style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
-                  >
-                    {addMaterialMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Material'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {jobMaterials.length === 0 && !showAddMaterial && (
-              <p className="text-sm text-muted-foreground py-2">No materials tracked yet. Tap Add to start tracking parts and supplies.</p>
-            )}
-
-            {jobMaterials.length > 0 && (
-              <div className="space-y-2">
-                {jobMaterials.map((mat) => {
-                  const statusColors: Record<string, string> = {
-                    needed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-                    ordered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-                    shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-                    received: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-                    installed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-                  };
-                  return (
-                    <div key={mat.id} className="flex items-start gap-3 p-2 rounded-lg border bg-background">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium">{mat.name}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColors[mat.status] || statusColors.needed}`}>
-                            {mat.status}
-                          </span>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                {linkedQuote?.lineItems && linkedQuote.lineItems.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original Scope</span>
+                    </div>
+                    {linkedQuote.description && (
+                      <p className="text-sm text-muted-foreground">{linkedQuote.description}</p>
+                    )}
+                    <div className="space-y-1.5">
+                      {linkedQuote.lineItems.map((item) => (
+                        <div key={item.id} className="flex items-start gap-2">
+                          <Circle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/50" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm">{item.description}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
+                            {parseFloat(item.quantity) !== 1 && (
+                              <span>x{item.quantity}</span>
+                            )}
+                            {!isTradie && item.total && !isNaN(parseFloat(item.total)) && (
+                              <span className="text-right w-20">${parseFloat(item.total).toFixed(2)}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                          <span>{mat.quantity} {mat.unit}</span>
-                          {mat.supplier && <span>from {mat.supplier}</span>}
-                          {!isTradie && mat.totalCost && parseFloat(mat.totalCost) > 0 && (
-                            <span className="font-medium">${parseFloat(mat.totalCost).toFixed(2)}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {jobVariations.filter((v: any) => v.status === 'approved').length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileEdit className="h-3.5 w-3.5 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Variations</span>
+                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                        {jobVariations.filter((v: any) => v.status === 'approved').length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5 pl-0.5">
+                      {jobVariations.filter((v: any) => v.status === 'approved').map((variation: any) => (
+                        <div key={variation.id} className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 rounded-md p-2">
+                          <Plus className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{variation.title}</span>
+                            {variation.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{variation.description}</p>
+                            )}
+                          </div>
+                          {!isTradie && variation.totalAmount && (
+                            <span className="text-sm font-medium text-amber-700 dark:text-amber-400 shrink-0">
+                              +${parseFloat(variation.totalAmount).toFixed(2)}
+                            </span>
                           )}
                         </div>
-                        {mat.trackingNumber && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                            <Truck className="h-3 w-3" />
-                            <span>{mat.trackingCarrier === 'auspost' ? 'AusPost' : mat.trackingCarrier === 'startrack' ? 'StarTrack' : mat.trackingCarrier?.toUpperCase() || ''}</span>
-                            <span className="font-mono">{mat.trackingNumber}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!isTradie && jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Variations</span>
+                      <Badge variant="outline" className="text-xs">
+                        {jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5 pl-0.5">
+                      {jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').map((variation: any) => (
+                        <div key={variation.id} className="flex items-start gap-2 opacity-70">
+                          <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm">{variation.title}</span>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Select
-                          value={mat.status}
-                          onValueChange={(val) => updateMaterialStatusMutation.mutate({ id: mat.id, status: val })}
-                        >
-                          <SelectTrigger className="h-7 w-[90px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="needed">Needed</SelectItem>
-                            <SelectItem value="ordered">Ordered</SelectItem>
-                            <SelectItem value="shipped">Shipped</SelectItem>
-                            <SelectItem value="received">Received</SelectItem>
-                            <SelectItem value="installed">Installed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {!isTradie && (
-                          <Button size="icon" variant="ghost" onClick={() => deleteMaterialMutation.mutate(mat.id)}>
-                            <Trash2 className="text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {!isTradie && jobMaterials.length > 0 && (
-              <div className="flex items-center justify-end pt-2 border-t">
-                <span className="text-sm font-medium">
-                  Materials Total: ${jobMaterials.reduce((sum, m) => sum + (parseFloat(m.totalCost) || 0), 0).toFixed(2)}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {!isTradie && (
-          <LinkedDocumentsCard
-            linkedQuote={linkedQuote}
-            linkedInvoice={linkedInvoice}
-            linkedReceipts={linkedReceipts}
-            jobStatus={job.status}
-            onViewQuote={(id) => navigate(`/quotes/${id}`)}
-            onViewInvoice={(id) => navigate(`/invoices/${id}`)}
-            onViewReceipt={(id) => navigate(`/receipts/${id}`)}
-            onCreateQuote={() => onCreateQuote?.(jobId)}
-            onCreateInvoice={() => onCreateInvoice?.(jobId)}
-          />
-        )}
-
-        {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
-        {(job.status === 'done' || job.status === 'in_progress') && linkedQuote && linkedQuote.status === 'accepted' && !linkedInvoice && (
-          <Card className="border-trade/30 bg-trade/5" data-testid="card-quick-collect">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-                  Collect Payment Now
-                </CardTitle>
-                <Badge variant="secondary" className="text-xs">Based on quote</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">
-                Collect payment immediately using the accepted quote amount. An invoice and receipt will be created automatically.
-              </p>
-              <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-background border">
-                <span className="text-sm text-muted-foreground">Quote total</span>
-                <span className="text-lg font-bold" style={{ color: 'hsl(var(--trade))' }}>
-                  ${parseFloat(linkedQuote.total as string || '0').toFixed(2)}
-                </span>
-              </div>
-              <Button
-                className="w-full"
-                style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
-                onClick={() => setShowQuickCollect(true)}
-                data-testid="button-quick-collect-open"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Quick Collect Payment
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Collect Payment Section - Shows when invoice is unpaid */}
-        {linkedInvoice && !isTradie && (linkedInvoice.status === 'sent' || linkedInvoice.status === 'overdue' || linkedInvoice.status === 'partial') && (
-          <Card data-testid="card-collect-payment">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-                  Collect Payment
-                </CardTitle>
-                <Badge variant="outline" className="text-xs">
-                  ${parseFloat(linkedInvoice.total as string || '0').toFixed(2)} outstanding
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Invoice {linkedInvoice.invoiceNumber} is ready for payment
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="default"
-                  className="flex items-center justify-center gap-2"
-                  style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
-                  onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}`)}
-                  data-testid="button-tap-to-pay-job"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Tap to Pay
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center justify-center gap-2"
-                  onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}&method=qr`)}
-                  data-testid="button-qr-code-job"
-                >
-                  <QrCode className="h-4 w-4" />
-                  QR Code
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center justify-center gap-2"
-                  onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}&method=link`)}
-                  data-testid="button-send-link-job"
-                >
-                  <Link2 className="h-4 w-4" />
-                  Send Link
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center justify-center gap-2"
-                  onClick={() => navigate(`/invoices/${linkedInvoice.id}?action=recordPayment`)}
-                  data-testid="button-record-cash-job"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  Record Cash
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Receipt Display - Shows after payment received */}
-        {linkedReceipts.length > 0 && !isTradie && (
-          <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" data-testid="card-payment-received">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="h-4 w-4" />
-                Payment Received
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {linkedReceipts.map((receipt) => (
-                  <div 
-                    key={receipt.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-card border cursor-pointer hover-elevate"
-                    onClick={() => navigate(`/receipts/${receipt.id}`)}
-                    data-testid={`receipt-item-${receipt.id}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                        <Receipt className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Receipt #{receipt.receiptNumber}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {receipt.paymentMethod || 'Payment'} • {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : 'Recently'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-emerald-600">${parseFloat(receipt.amount).toFixed(2)}</p>
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {variation.status}
+                          </Badge>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Contact Client - Email/SMS side by side */}
-        {client && (client.email || client.phone) && (
-          <Card data-testid="card-contact-client">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Send className="h-4 w-4" />
-                Contact Client
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {client.email && (
-                  <Button
-                    variant="outline"
-                    className="flex items-center justify-center gap-2"
-                    onClick={() => setShowUnifiedSendModal(true)}
-                    data-testid="button-email-client"
-                  >
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </Button>
                 )}
-                {client.phone && (
-                  <Button
-                    variant="outline"
-                    className="flex items-center justify-center gap-2"
-                    onClick={() => {
-                      if (twilioConnected) {
-                        setShowUnifiedSendModal(true);
-                      } else {
-                        setShowManualSms(true);
-                      }
-                    }}
-                    data-testid="button-sms-client"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    SMS
-                  </Button>
-                )}
-              </div>
-              {!twilioConnected && client.phone && (
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  SMS via your phone's messaging app
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Job Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {job.description && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
-                <p className="text-sm">{job.description}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              {client?.name && (
-                <div>
-                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                    <User className="h-3 w-3" />
-                    Client
-                  </div>
-                  <p 
-                    className="font-medium hover:underline cursor-pointer"
-                    onClick={() => job.clientId && onViewClient?.(job.clientId)}
-                    data-testid="client-name"
-                  >
-                    {client.name}
-                  </p>
-                </div>
-              )}
-
-              {job.address && (
-                <div>
-                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                    <MapPin className="h-3 w-3" />
-                    Address
-                  </div>
-                  <p className="font-medium">{job.address}</p>
-                </div>
-              )}
-
-              {job.scheduledAt && (
-                <div>
-                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
-                    <Calendar className="h-3 w-3" />
-                    Scheduled
-                  </div>
-                  <p className="font-medium">
-                    {format(new Date(job.scheduledAt), 'MMM d, yyyy')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(job.scheduledAt), 'h:mm a')}
-                  </p>
-                </div>
-              )}
-
-            </div>
-
-            {/* Assign Worker - Only for team owners/managers */}
-            {!isTradie && !isSolo && teamMembers.length > 0 && (
-              <div className="pt-2 border-t">
-                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
-                  <Users className="h-3 w-3" />
-                  Assign Worker
-                </div>
-                <Select
-                  value={job.assignedTo || "unassigned"}
-                  onValueChange={(value) => {
-                    assignWorkerMutation.mutate(value === "unassigned" ? null : value);
-                  }}
-                  disabled={assignWorkerMutation.isPending}
-                >
-                  <SelectTrigger 
-                    className="w-full" 
-                    data-testid="select-assign-worker"
-                  >
-                    <SelectValue placeholder="Select worker..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">
-                      Unassigned
-                    </SelectItem>
-                    {teamMembers.filter(m => m.isActive).map((member) => (
-                      <SelectItem 
-                        key={member.memberId} 
-                        value={member.memberId}
-                        data-testid={`option-worker-${member.memberId}`}
-                      >
-                        {member.firstName} {member.lastName} ({member.roleName})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Job Costing Section - Shows estimated vs actual hours */}
-            {(job.estimatedHours || actualHoursData.hasData) && (
-              <div className="pt-2 border-t">
-                <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
-                  <DollarSign className="h-3 w-3" />
-                  Job Costing
-                </div>
-                <div className="space-y-2">
-                  {job.estimatedHours && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Estimated</span>
-                      <span className="text-sm font-medium">{job.estimatedHours} hrs</span>
+                {jobMaterials.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Materials</span>
+                      <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
                     </div>
-                  )}
-                  {actualHoursData.hasData && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Actual</span>
-                      <span className="text-sm font-medium">{actualHoursData.actualHours} hrs</span>
-                    </div>
-                  )}
-                  {job.estimatedHours && actualHoursData.hasData && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Variance</span>
-                      {(() => {
-                        const variance = actualHoursData.actualHours - job.estimatedHours;
-                        const isOver = variance > 0;
-                        const isUnder = variance < 0;
-                        return (
-                          <span className={`text-sm font-medium ${isOver ? 'text-red-600 dark:text-red-400' : isUnder ? 'text-green-600 dark:text-green-400' : ''}`}>
-                            {isOver ? '+' : ''}{variance.toFixed(2)} hrs
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  {actualHoursData.hasData && actualHoursData.laborCost > 0 && (
-                    <div className="flex items-center justify-between pt-1 border-t">
-                      <span className="text-sm text-muted-foreground">Labor Cost</span>
-                      <span className="text-sm font-medium">${actualHoursData.laborCost.toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {job.estimatedCost && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Estimated Cost</p>
-                <p className="text-sm">${(Number(job.estimatedCost) / 100).toFixed(2)}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Editable Notes Card - Always visible like mobile app */}
-        <Card 
-          className="cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={handleOpenNotesModal}
-          data-testid="card-job-notes"
-        >
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Notes
-                {jobNotesData.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">{jobNotesData.length}</Badge>
-                )}
-              </span>
-              <Plus className="h-4 w-4 text-muted-foreground" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {jobNotesData.length > 0 ? (
-              <div className="space-y-3">
-                {jobNotesData.slice(0, 3).map((note) => (
-                  <div key={note.id} className="p-3 rounded-lg bg-muted/50 border border-border">
-                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatHistoryDate(note.createdAt)}</span>
-                      {note.createdByName && (
-                        <>
-                          <span>•</span>
-                          <span>{note.createdByName}</span>
-                        </>
+                    <div className="space-y-1.5">
+                      {jobMaterials.slice(0, 5).map((material) => (
+                        <div key={material.id} className="flex items-center gap-2 text-sm">
+                          <span className="flex-1 min-w-0 truncate">{material.name}</span>
+                          <span className="text-muted-foreground shrink-0">{material.quantity} {material.unit}</span>
+                          <Badge variant="outline" className="text-xs shrink-0 capitalize">
+                            {material.status}
+                          </Badge>
+                        </div>
+                      ))}
+                      {jobMaterials.length > 5 && (
+                        <p className="text-xs text-muted-foreground">+{jobMaterials.length - 5} more materials</p>
                       )}
                     </div>
                   </div>
-                ))}
-                {jobNotesData.length > 3 && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    +{jobNotesData.length - 3} more notes
-                  </p>
                 )}
-              </div>
-            ) : job.notes ? (
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
-                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>Legacy note</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                Tap to add a note tied to this moment...
-              </p>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* AI Photo Analysis - Show when photos exist */}
-        {jobPhotos.length > 0 && (
-          <AIPhotoAnalysis
-            jobId={jobId}
-            photoCount={jobPhotos.length}
-            existingNotes={jobNotesData.length > 0 ? jobNotesData.map(n => n.content).join('\n') : job.notes}
-          />
-        )}
+                {!isTradie && linkedQuote?.total && (
+                  <div className="pt-2 border-t space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Original Quote</span>
+                      <span>${parseFloat(linkedQuote.total).toFixed(2)}</span>
+                    </div>
+                    {jobVariations.filter((v: any) => v.status === 'approved').length > 0 && (
+                      <>
+                        <div className="flex items-center justify-between text-sm text-amber-700 dark:text-amber-400">
+                          <span>Approved Variations</span>
+                          <span>+${jobVariations.filter((v: any) => v.status === 'approved').reduce((sum: number, v: any) => sum + (parseFloat(v.totalAmount) || 0), 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm font-semibold pt-1 border-t">
+                          <span>Revised Total</span>
+                          <span>${(parseFloat(linkedQuote.total) + jobVariations.filter((v: any) => v.status === 'approved').reduce((sum: number, v: any) => sum + (parseFloat(v.totalAmount) || 0), 0)).toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                    {jobVariations.filter((v: any) => v.status === 'approved').length === 0 && (
+                      <div className="flex items-center justify-between text-sm font-semibold">
+                        <span>Total</span>
+                        <span>${parseFloat(linkedQuote.total).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Time Tracking Widget - Show for scheduled and in_progress jobs */}
-        {(job.status === 'scheduled' || job.status === 'in_progress') && (
+          {/* Editable Notes Card - Always visible like mobile app */}
           <Card 
-            className="border-2"
-            style={{ borderColor: 'hsl(var(--trade) / 0.3)' }}
-            data-testid="card-time-tracking"
+            className="cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={handleOpenNotesModal}
+            data-testid="card-job-notes"
           >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--trade))' }}>
-                <Timer className="h-5 w-5" />
-                Time Tracking
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Notes
+                  {jobNotesData.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">{jobNotesData.length}</Badge>
+                  )}
+                </span>
+                <Plus className="h-4 w-4 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <TimerWidget 
-                jobId={jobId} 
-                jobTitle={job.title}
-              />
+              {jobNotesData.length > 0 ? (
+                <div className="space-y-3">
+                  {jobNotesData.slice(0, 3).map((note) => (
+                    <div key={note.id} className="p-3 rounded-lg bg-muted/50 border border-border">
+                      <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>{formatHistoryDate(note.createdAt)}</span>
+                        {note.createdByName && (
+                          <>
+                            <span>•</span>
+                            <span>{note.createdByName}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {jobNotesData.length > 3 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      +{jobNotesData.length - 3} more notes
+                    </p>
+                  )}
+                </div>
+              ) : job.notes ? (
+                <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                  <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>Legacy note</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  Tap to add a note tied to this moment...
+                </p>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        {/* Geofence Time Tracking Settings - Only show for owners/managers */}
-        {!isTradie && (
-          <GeofenceSettingsCard
-            jobId={jobId}
-            hasLocation={!!(job.latitude && job.longitude)}
-            geofenceEnabled={job.geofenceEnabled}
-            geofenceRadius={job.geofenceRadius}
-            geofenceAutoClockIn={job.geofenceAutoClockIn}
-            geofenceAutoClockOut={job.geofenceAutoClockOut}
-          />
-        )}
+          {/* Job Variations / Change Orders - for tracking scope changes */}
+          <JobVariations jobId={jobId} canEdit={job.status !== 'invoiced' && !isTradie} />
 
-        {/* Linked Documents Section - Shows quote/invoice status */}
-        {(linkedQuote || linkedInvoice) && (
-          <Card data-testid="card-linked-documents">
+          {/* Custom Forms - available for in_progress, done, invoiced jobs */}
+          {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
+            <Card>
+              <CardContent className="pt-4">
+                <JobForms jobId={jobId} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-6">
+                <div className="text-center text-muted-foreground">
+                  <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">
+                    Forms can be filled once the job is started
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Client Signature - show for in_progress (for capturing before completion), done and invoiced jobs */}
+          {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
+            <JobSignature jobId={jobId} />
+          )}
+
+          {/* Job Discussion - only show for team mode (not solo owners) */}
+          {currentUser && !isSolo && (
+            <div ref={chatSectionRef} data-testid="section-job-chat">
+              <JobChat 
+                jobId={jobId} 
+                currentUserId={currentUser.id}
+              />
+            </div>
+          )}
+
+          {/* Job Activity Feed - shows history of events for this job */}
+          <Card data-testid="job-activity-feed">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Linked Documents
+                <History className="h-4 w-4" />
+                Activity History
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {linkedQuote && (
-                <button
-                  onClick={() => navigate(`/quotes/${linkedQuote.id}`)}
-                  className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-                  data-testid="button-view-linked-quote"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">
-                        Quote #{linkedQuote.quoteNumber}
-                      </span>
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-xs ${
-                          linkedQuote.status === 'accepted' 
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                            : linkedQuote.status === 'sent'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                        }`}
-                      >
-                        {linkedQuote.status === 'accepted' ? 'Accepted' : 
-                         linkedQuote.status === 'sent' ? 'Sent' : 'Draft'}
-                      </Badge>
-                    </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {linkedQuote.title} • ${parseFloat(linkedQuote.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                  </p>
-                </button>
-              )}
-
-              {linkedInvoice && (
-                <button
-                  onClick={() => navigate(`/invoices/${linkedInvoice.id}`)}
-                  className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-                  data-testid="button-view-linked-invoice"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">
-                        Invoice #{linkedInvoice.invoiceNumber}
-                      </span>
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-xs ${
-                          linkedInvoice.status === 'paid' 
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                            : linkedInvoice.status === 'sent'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                            : linkedInvoice.status === 'overdue'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                        }`}
-                      >
-                        {linkedInvoice.status === 'paid' ? 'Paid' : 
-                         linkedInvoice.status === 'sent' ? 'Sent' : 
-                         linkedInvoice.status === 'overdue' ? 'Overdue' : 'Draft'}
-                      </Badge>
-                    </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {linkedInvoice.title} • ${parseFloat(linkedInvoice.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                  </p>
-                </button>
-              )}
-
-              {/* Prominent CTA: Create Invoice from Accepted Quote - hidden for staff tradies */}
-              {linkedQuote?.status === 'accepted' && !linkedInvoice && !isTradie && (
-                <Button
-                  onClick={() => navigate(`/invoices/new?quoteId=${linkedQuote.id}&jobId=${jobId}`)}
-                  className="w-full mt-2 text-white"
-                  style={{ backgroundColor: 'hsl(var(--trade))' }}
-                  data-testid="button-create-invoice-from-quote"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Create Invoice from Accepted Quote
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Safety Forms Section - Prominent before job starts */}
-        <SafetyFormsSection 
-          jobId={jobId} 
-          jobStatus={job.status}
-        />
-
-        {/* Photos - show for ALL job statuses so team sync works */}
-        <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
-
-        {/* Voice Notes - show for ALL job statuses so team sync works */}
-        <JobVoiceNotes 
-          jobId={jobId} 
-          canUpload={job.status !== 'invoiced'} 
-          existingNotes={job.notes}
-        />
-
-        {/* Uploaded Documents - external quotes, invoices, PDFs */}
-        <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
-
-        {/* Job Variations / Change Orders - for tracking scope changes */}
-        <JobVariations jobId={jobId} canEdit={job.status !== 'invoiced' && !isTradie} />
-
-        {/* Custom Forms - available for in_progress, done, invoiced jobs */}
-        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
-          <Card>
-            <CardContent className="pt-4">
-              <JobForms jobId={jobId} />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="py-6">
-              <div className="text-center text-muted-foreground">
-                <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">
-                  Forms can be filled once the job is started
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Client Signature - show for in_progress (for capturing before completion), done and invoiced jobs */}
-        {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
-          <JobSignature jobId={jobId} />
-        )}
-
-        {/* Job Discussion - only show for team mode (not solo owners) */}
-        {currentUser && !isSolo && (
-          <div ref={chatSectionRef} data-testid="section-job-chat">
-            <JobChat 
-              jobId={jobId} 
-              currentUserId={currentUser.id}
-            />
-          </div>
-        )}
-
-        {/* Job Activity Feed - shows history of events for this job */}
-        <Card data-testid="job-activity-feed">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Activity History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activitiesLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : jobActivities.length === 0 ? (
-              <div className="text-center py-6">
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-                  style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
-                >
-                  <History className="h-6 w-6 text-muted-foreground/40" />
+            <CardContent>
+              {activitiesLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-                <p className="text-sm text-muted-foreground mb-1">No activity yet</p>
-                <p className="text-xs text-muted-foreground/70">
-                  Status changes, emails sent, and other events will appear here
-                </p>
-              </div>
-            ) : (
-              <div className="relative">
-                {jobActivities.length > 1 && (
-                  <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
-                )}
-                <div className="space-y-1">
-                  {jobActivities.map((activity, index) => {
-                    const Icon = activityIcons[activity.type] || Briefcase;
-                    const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
-                    
-                    return (
-                      <div 
-                        key={activity.id}
-                        className="relative flex items-start gap-3 p-2 rounded-lg"
-                        data-testid={`activity-item-${activity.id}`}
-                      >
-                        <div className="relative z-10">
-                          <div 
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: colors.bg }}
-                          >
-                            <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+              ) : jobActivities.length === 0 ? (
+                <div className="text-center py-6">
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                    style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
+                  >
+                    <History className="h-6 w-6 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-1">No activity yet</p>
+                  <p className="text-xs text-muted-foreground/70">
+                    Status changes, emails sent, and other events will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="relative">
+                  {jobActivities.length > 1 && (
+                    <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
+                  )}
+                  <div className="space-y-1">
+                    {jobActivities.map((activity, index) => {
+                      const Icon = activityIcons[activity.type] || Briefcase;
+                      const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+                      
+                      return (
+                        <div 
+                          key={activity.id}
+                          className="relative flex items-start gap-3 p-2 rounded-lg"
+                          data-testid={`activity-item-${activity.id}`}
+                        >
+                          <div className="relative z-10">
+                            <div 
+                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: colors.bg }}
+                            >
+                              <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+                            </div>
+                            {activity.status === 'success' && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                                <CheckCircle2 className="h-1.5 w-1.5 text-white" />
+                              </div>
+                            )}
                           </div>
-                          {activity.status === 'success' && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
-                              <CheckCircle2 className="h-1.5 w-1.5 text-white" />
+                          
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <p className="text-sm font-medium truncate">{activity.title}</p>
+                            {activity.description && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
+                            )}
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">
+                              {formatHistoryDate(activity.timestamp)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
+          <div className="flex flex-col gap-2 pt-2">
+            {/* Pending → Schedule */}
+            {job.status === 'pending' && (
+              <Button
+                onClick={() => updateJobMutation.mutate({ status: 'scheduled' })}
+                disabled={updateJobMutation.isPending}
+                data-testid="button-schedule-job"
+                className="w-full text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                {updateJobMutation.isPending ? 'Scheduling...' : 'Schedule Job'}
+              </Button>
+            )}
+
+            {/* Scheduled → Start (Begin work on site) */}
+            {job.status === 'scheduled' && (
+              <Button
+                onClick={() => setShowSafetyCheck(true)}
+                disabled={updateJobMutation.isPending}
+                data-testid="button-start-job"
+                className="w-full text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                {updateJobMutation.isPending ? 'Starting...' : 'Start Job'}
+              </Button>
+            )}
+
+            {/* In Progress → Complete (Finish work) */}
+            {job.status === 'in_progress' && onCompleteJob && (
+              <Button
+                onClick={() => onCompleteJob(jobId)}
+                data-testid="button-complete-job"
+                className="w-full text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Go Complete Job
+              </Button>
+            )}
+
+            {/* Done → Smart Actions or Create Quote/Invoice (hidden for staff) */}
+            {job.status === 'done' && !isTradie && (
+              <>
+                {showSmartActions && smartActions.length > 0 ? (
+                  <SmartActionsPanel
+                    title="What's Next?"
+                    subtitle="Choose your next steps - you control what happens"
+                    actions={smartActions}
+                    onActionToggle={handleActionToggle}
+                    onActionPreview={handleActionPreview}
+                    onActionEdit={handleActionEdit}
+                    onExecuteAll={handleExecuteActions}
+                    onSkipAll={handleSkipAll}
+                    isExecuting={isExecutingActions}
+                    entityType="job"
+                    entityStatus={job.status}
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={initializeSmartActions}
+                      className="w-full"
+                      variant="outline"
+                      data-testid="button-show-smart-actions"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      See Suggested Actions
+                    </Button>
+                    <div className="flex gap-2">
+                      {onCreateQuote && (
+                        <Button
+                          variant="outline"
+                          onClick={() => onCreateQuote(jobId)}
+                          data-testid="button-create-quote"
+                          className="flex-1"
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Quote
+                        </Button>
+                      )}
+                      {onCreateInvoice && (
+                        <Button
+                          variant="outline"
+                          onClick={() => onCreateInvoice(jobId)}
+                          data-testid="button-create-invoice"
+                          className="flex-1"
+                        >
+                          <Receipt className="h-4 w-4 mr-2" />
+                          Invoice
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            
+            {/* Staff tradie sees confirmation when job is done */}
+            {job.status === 'done' && isTradie && (
+              <div className="text-center text-sm text-muted-foreground py-2">
+                Job marked as complete
+              </div>
+            )}
+
+            {/* Invoiced - Show status only */}
+            {job.status === 'invoiced' && (
+              <div className="text-center text-sm text-muted-foreground py-2">
+                This job has been invoiced
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column - Secondary/supporting content */}
+        <div className="space-y-4 lg:col-span-2">
+          {!isTradie && (
+            <LinkedDocumentsCard
+              linkedQuote={linkedQuote}
+              linkedInvoice={linkedInvoice}
+              linkedReceipts={linkedReceipts}
+              jobStatus={job.status}
+              onViewQuote={(id) => navigate(`/quotes/${id}`)}
+              onViewInvoice={(id) => navigate(`/invoices/${id}`)}
+              onViewReceipt={(id) => navigate(`/receipts/${id}`)}
+              onCreateQuote={() => onCreateQuote?.(jobId)}
+              onCreateInvoice={() => onCreateInvoice?.(jobId)}
+            />
+          )}
+
+          {/* Linked Documents Section - Shows quote/invoice status */}
+          {(linkedQuote || linkedInvoice) && (
+            <Card data-testid="card-linked-documents">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Linked Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {linkedQuote && (
+                  <button
+                    onClick={() => navigate(`/quotes/${linkedQuote.id}`)}
+                    className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
+                    data-testid="button-view-linked-quote"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">
+                          Quote #{linkedQuote.quoteNumber}
+                        </span>
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${
+                            linkedQuote.status === 'accepted' 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                              : linkedQuote.status === 'sent'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }`}
+                        >
+                          {linkedQuote.status === 'accepted' ? 'Accepted' : 
+                           linkedQuote.status === 'sent' ? 'Sent' : 'Draft'}
+                        </Badge>
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                      {linkedQuote.title} • ${parseFloat(linkedQuote.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                    </p>
+                  </button>
+                )}
+
+                {linkedInvoice && (
+                  <button
+                    onClick={() => navigate(`/invoices/${linkedInvoice.id}`)}
+                    className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
+                    data-testid="button-view-linked-invoice"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">
+                          Invoice #{linkedInvoice.invoiceNumber}
+                        </span>
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${
+                            linkedInvoice.status === 'paid' 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                              : linkedInvoice.status === 'sent'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                              : linkedInvoice.status === 'overdue'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }`}
+                        >
+                          {linkedInvoice.status === 'paid' ? 'Paid' : 
+                           linkedInvoice.status === 'sent' ? 'Sent' : 
+                           linkedInvoice.status === 'overdue' ? 'Overdue' : 'Draft'}
+                        </Badge>
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                      {linkedInvoice.title} • ${parseFloat(linkedInvoice.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                    </p>
+                  </button>
+                )}
+
+                {/* Prominent CTA: Create Invoice from Accepted Quote - hidden for staff tradies */}
+                {linkedQuote?.status === 'accepted' && !linkedInvoice && !isTradie && (
+                  <Button
+                    onClick={() => navigate(`/invoices/new?quoteId=${linkedQuote.id}&jobId=${jobId}`)}
+                    className="w-full mt-2 text-white"
+                    style={{ backgroundColor: 'hsl(var(--trade))' }}
+                    data-testid="button-create-invoice-from-quote"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Create Invoice from Accepted Quote
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
+          {(job.status === 'done' || job.status === 'in_progress') && linkedQuote && linkedQuote.status === 'accepted' && !linkedInvoice && (
+            <Card className="border-trade/30 bg-trade/5" data-testid="card-quick-collect">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                    Collect Payment Now
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs">Based on quote</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Collect payment immediately using the accepted quote amount. An invoice and receipt will be created automatically.
+                </p>
+                <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-background border">
+                  <span className="text-sm text-muted-foreground">Quote total</span>
+                  <span className="text-lg font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                    ${parseFloat(linkedQuote.total as string || '0').toFixed(2)}
+                  </span>
+                </div>
+                <Button
+                  className="w-full"
+                  style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                  onClick={() => setShowQuickCollect(true)}
+                  data-testid="button-quick-collect-open"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Quick Collect Payment
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Collect Payment Section - Shows when invoice is unpaid */}
+          {linkedInvoice && !isTradie && (linkedInvoice.status === 'sent' || linkedInvoice.status === 'overdue' || linkedInvoice.status === 'partial') && (
+            <Card data-testid="card-collect-payment">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                    Collect Payment
+                  </CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    ${parseFloat(linkedInvoice.total as string || '0').toFixed(2)} outstanding
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Invoice {linkedInvoice.invoiceNumber} is ready for payment
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="default"
+                    className="flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                    onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}`)}
+                    data-testid="button-tap-to-pay-job"
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    Tap to Pay
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2"
+                    onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}&method=qr`)}
+                    data-testid="button-qr-code-job"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    QR Code
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2"
+                    onClick={() => navigate(`/collect-payment?invoiceId=${linkedInvoice.id}&jobId=${jobId}&method=link`)}
+                    data-testid="button-send-link-job"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Send Link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2"
+                    onClick={() => navigate(`/invoices/${linkedInvoice.id}?action=recordPayment`)}
+                    data-testid="button-record-cash-job"
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Record Cash
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Receipt Display - Shows after payment received */}
+          {linkedReceipts.length > 0 && !isTradie && (
+            <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" data-testid="card-payment-received">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Payment Received
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {linkedReceipts.map((receipt) => (
+                    <div 
+                      key={receipt.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-card border cursor-pointer hover-elevate"
+                      onClick={() => navigate(`/receipts/${receipt.id}`)}
+                      data-testid={`receipt-item-${receipt.id}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                          <Receipt className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Receipt #{receipt.receiptNumber}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {receipt.paymentMethod || 'Payment'} • {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : 'Recently'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-emerald-600">${parseFloat(receipt.amount).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Contact Client - Email/SMS side by side */}
+          {client && (client.email || client.phone) && (
+            <Card data-testid="card-contact-client">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Contact Client
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2">
+                  {client.email && (
+                    <Button
+                      variant="outline"
+                      className="flex items-center justify-center gap-2"
+                      onClick={() => setShowUnifiedSendModal(true)}
+                      data-testid="button-email-client"
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </Button>
+                  )}
+                  {client.phone && (
+                    <Button
+                      variant="outline"
+                      className="flex items-center justify-center gap-2"
+                      onClick={() => {
+                        if (twilioConnected) {
+                          setShowUnifiedSendModal(true);
+                        } else {
+                          setShowManualSms(true);
+                        }
+                      }}
+                      data-testid="button-sms-client"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      SMS
+                    </Button>
+                  )}
+                </div>
+                {!twilioConnected && client.phone && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    SMS via your phone's messaging app
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Materials Tracking */}
+          <Card className="border-trade/30 bg-trade/5" data-testid="card-materials">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                  <CardTitle className="text-sm font-medium">Materials & Parts</CardTitle>
+                  {jobMaterials.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
+                  )}
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(!showAddMaterial)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {showAddMaterial && (
+                <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                  <Input
+                    placeholder="Material name (e.g., 25mm copper pipe)"
+                    value={materialName}
+                    onChange={(e) => setMaterialName(e.target.value)}
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      placeholder="Qty"
+                      type="number"
+                      value={materialQty}
+                      onChange={(e) => setMaterialQty(e.target.value)}
+                    />
+                    <Select value={materialUnit} onValueChange={setMaterialUnit}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="each">each</SelectItem>
+                        <SelectItem value="metre">metre</SelectItem>
+                        <SelectItem value="sqm">sqm</SelectItem>
+                        <SelectItem value="litre">litre</SelectItem>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="box">box</SelectItem>
+                        <SelectItem value="pack">pack</SelectItem>
+                        <SelectItem value="roll">roll</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!isTradie && (
+                      <Input
+                        placeholder="$ Cost"
+                        type="number"
+                        step="0.01"
+                        value={materialUnitCost}
+                        onChange={(e) => setMaterialUnitCost(e.target.value)}
+                      />
+                    )}
+                  </div>
+                  <Input
+                    placeholder="Supplier (optional)"
+                    value={materialSupplier}
+                    onChange={(e) => setMaterialSupplier(e.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Tracking # (optional)"
+                      value={materialTrackingNumber}
+                      onChange={(e) => setMaterialTrackingNumber(e.target.value)}
+                    />
+                    <Select value={materialTrackingCarrier} onValueChange={setMaterialTrackingCarrier}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Carrier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auspost">Australia Post</SelectItem>
+                        <SelectItem value="startrack">StarTrack</SelectItem>
+                        <SelectItem value="tnt">TNT</SelectItem>
+                        <SelectItem value="toll">Toll</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input
+                    placeholder="Notes (optional)"
+                    value={materialNotes}
+                    onChange={(e) => setMaterialNotes(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={!materialName.trim() || addMaterialMutation.isPending}
+                      onClick={() => {
+                        addMaterialMutation.mutate({
+                          name: materialName.trim(),
+                          quantity: materialQty || '1',
+                          unit: materialUnit,
+                          unitCost: materialUnitCost || '0',
+                          supplier: materialSupplier || undefined,
+                          trackingNumber: materialTrackingNumber || undefined,
+                          trackingCarrier: materialTrackingCarrier || undefined,
+                          notes: materialNotes || undefined,
+                        });
+                      }}
+                      style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                    >
+                      {addMaterialMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Material'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {jobMaterials.length === 0 && !showAddMaterial && (
+                <p className="text-sm text-muted-foreground py-2">No materials tracked yet. Tap Add to start tracking parts and supplies.</p>
+              )}
+
+              {jobMaterials.length > 0 && (
+                <div className="space-y-2">
+                  {jobMaterials.map((mat) => {
+                    const statusColors: Record<string, string> = {
+                      needed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                      ordered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                      shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+                      received: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                      installed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+                    };
+                    return (
+                      <div key={mat.id} className="flex items-start gap-3 p-2 rounded-lg border bg-background">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">{mat.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColors[mat.status] || statusColors.needed}`}>
+                              {mat.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                            <span>{mat.quantity} {mat.unit}</span>
+                            {mat.supplier && <span>from {mat.supplier}</span>}
+                            {!isTradie && mat.totalCost && parseFloat(mat.totalCost) > 0 && (
+                              <span className="font-medium">${parseFloat(mat.totalCost).toFixed(2)}</span>
+                            )}
+                          </div>
+                          {mat.trackingNumber && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                              <Truck className="h-3 w-3" />
+                              <span>{mat.trackingCarrier === 'auspost' ? 'AusPost' : mat.trackingCarrier === 'startrack' ? 'StarTrack' : mat.trackingCarrier?.toUpperCase() || ''}</span>
+                              <span className="font-mono">{mat.trackingNumber}</span>
                             </div>
                           )}
                         </div>
-                        
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <p className="text-sm font-medium truncate">{activity.title}</p>
-                          {activity.description && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Select
+                            value={mat.status}
+                            onValueChange={(val) => updateMaterialStatusMutation.mutate({ id: mat.id, status: val })}
+                          >
+                            <SelectTrigger className="h-7 w-[90px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="needed">Needed</SelectItem>
+                              <SelectItem value="ordered">Ordered</SelectItem>
+                              <SelectItem value="shipped">Shipped</SelectItem>
+                              <SelectItem value="received">Received</SelectItem>
+                              <SelectItem value="installed">Installed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {!isTradie && (
+                            <Button size="icon" variant="ghost" onClick={() => deleteMaterialMutation.mutate(mat.id)}>
+                              <Trash2 className="text-muted-foreground" />
+                            </Button>
                           )}
-                          <p className="text-[10px] text-muted-foreground/70 mt-1">
-                            {formatHistoryDate(activity.timestamp)}
-                          </p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
 
-        {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
-        <div className="flex flex-col gap-2 pt-2">
-          {/* Pending → Schedule */}
-          {job.status === 'pending' && (
-            <Button
-              onClick={() => updateJobMutation.mutate({ status: 'scheduled' })}
-              disabled={updateJobMutation.isPending}
-              data-testid="button-schedule-job"
-              className="w-full text-white"
-              style={{ backgroundColor: 'hsl(var(--trade))' }}
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              {updateJobMutation.isPending ? 'Scheduling...' : 'Schedule Job'}
-            </Button>
-          )}
-
-          {/* Scheduled → Start (Begin work on site) */}
-          {job.status === 'scheduled' && (
-            <Button
-              onClick={() => setShowSafetyCheck(true)}
-              disabled={updateJobMutation.isPending}
-              data-testid="button-start-job"
-              className="w-full text-white"
-              style={{ backgroundColor: 'hsl(var(--trade))' }}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              {updateJobMutation.isPending ? 'Starting...' : 'Start Job'}
-            </Button>
-          )}
-
-          {/* In Progress → Complete (Finish work) */}
-          {job.status === 'in_progress' && onCompleteJob && (
-            <Button
-              onClick={() => onCompleteJob(jobId)}
-              data-testid="button-complete-job"
-              className="w-full text-white"
-              style={{ backgroundColor: 'hsl(var(--trade))' }}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Go Complete Job
-            </Button>
-          )}
-
-          {/* Done → Smart Actions or Create Quote/Invoice (hidden for staff) */}
-          {job.status === 'done' && !isTradie && (
-            <>
-              {showSmartActions && smartActions.length > 0 ? (
-                <SmartActionsPanel
-                  title="What's Next?"
-                  subtitle="Choose your next steps - you control what happens"
-                  actions={smartActions}
-                  onActionToggle={handleActionToggle}
-                  onActionPreview={handleActionPreview}
-                  onActionEdit={handleActionEdit}
-                  onExecuteAll={handleExecuteActions}
-                  onSkipAll={handleSkipAll}
-                  isExecuting={isExecutingActions}
-                  entityType="job"
-                  entityStatus={job.status}
-                />
-              ) : (
-                <div className="space-y-2">
-                  <Button
-                    onClick={initializeSmartActions}
-                    className="w-full"
-                    variant="outline"
-                    data-testid="button-show-smart-actions"
-                  >
-                    <Zap className="h-4 w-4 mr-2" />
-                    See Suggested Actions
-                  </Button>
-                  <div className="flex gap-2">
-                    {onCreateQuote && (
-                      <Button
-                        variant="outline"
-                        onClick={() => onCreateQuote(jobId)}
-                        data-testid="button-create-quote"
-                        className="flex-1"
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Quote
-                      </Button>
-                    )}
-                    {onCreateInvoice && (
-                      <Button
-                        variant="outline"
-                        onClick={() => onCreateInvoice(jobId)}
-                        data-testid="button-create-invoice"
-                        className="flex-1"
-                      >
-                        <Receipt className="h-4 w-4 mr-2" />
-                        Invoice
-                      </Button>
-                    )}
-                  </div>
+              {!isTradie && jobMaterials.length > 0 && (
+                <div className="flex items-center justify-end pt-2 border-t">
+                  <span className="text-sm font-medium">
+                    Materials Total: ${jobMaterials.reduce((sum, m) => sum + (parseFloat(m.totalCost) || 0), 0).toFixed(2)}
+                  </span>
                 </div>
               )}
-            </>
-          )}
-          
-          {/* Staff tradie sees confirmation when job is done */}
-          {job.status === 'done' && isTradie && (
-            <div className="text-center text-sm text-muted-foreground py-2">
-              Job marked as complete
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* Time Tracking Widget - Show for scheduled and in_progress jobs */}
+          {(job.status === 'scheduled' || job.status === 'in_progress') && (
+            <Card 
+              className="border-2"
+              style={{ borderColor: 'hsl(var(--trade) / 0.3)' }}
+              data-testid="card-time-tracking"
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--trade))' }}>
+                  <Timer className="h-5 w-5" />
+                  Time Tracking
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TimerWidget 
+                  jobId={jobId} 
+                  jobTitle={job.title}
+                />
+              </CardContent>
+            </Card>
           )}
 
-          {/* Invoiced - Show status only */}
-          {job.status === 'invoiced' && (
-            <div className="text-center text-sm text-muted-foreground py-2">
-              This job has been invoiced
-            </div>
+          {/* Geofence Time Tracking Settings - Only show for owners/managers */}
+          {!isTradie && (
+            <GeofenceSettingsCard
+              jobId={jobId}
+              hasLocation={!!(job.latitude && job.longitude)}
+              geofenceEnabled={job.geofenceEnabled}
+              geofenceRadius={job.geofenceRadius}
+              geofenceAutoClockIn={job.geofenceAutoClockIn}
+              geofenceAutoClockOut={job.geofenceAutoClockOut}
+            />
           )}
+
+          {/* AI Photo Analysis - Show when photos exist */}
+          {jobPhotos.length > 0 && (
+            <AIPhotoAnalysis
+              jobId={jobId}
+              photoCount={jobPhotos.length}
+              existingNotes={jobNotesData.length > 0 ? jobNotesData.map(n => n.content).join('\n') : job.notes}
+            />
+          )}
+
+          {/* Photos - show for ALL job statuses so team sync works */}
+          <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
+          {/* Voice Notes - show for ALL job statuses so team sync works */}
+          <JobVoiceNotes 
+            jobId={jobId} 
+            canUpload={job.status !== 'invoiced'} 
+            existingNotes={job.notes}
+          />
+
+          {/* Uploaded Documents - external quotes, invoices, PDFs */}
+          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
+          {/* Safety Forms Section - Prominent before job starts */}
+          <SafetyFormsSection 
+            jobId={jobId} 
+            jobStatus={job.status}
+          />
         </div>
       </div>
 

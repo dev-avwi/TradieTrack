@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, Loader2, Save, MapPin, Calendar, Clock, AlertTriangle } from "lucide-react";
+import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import type { Job, Client } from "@shared/schema";
 
 const jobEditSchema = z.object({
@@ -249,9 +250,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                     <FormItem>
                       <FormLabel>Address</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="123 Main St, Sydney NSW"
-                          {...field}
+                        <AddressAutocomplete
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          placeholder="Start typing an address..."
                           data-testid="input-job-address"
                         />
                       </FormControl>

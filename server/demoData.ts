@@ -26,7 +26,7 @@ export const TEST_USERS = [
     email: 'mike@northqldplumbing.com.au',
     password: 'mikesullivan',
     name: 'Mike Sullivan',
-    businessName: 'North QLD Plumbing & Gas',
+    businessName: 'North Shore Plumbing & Gas',
     phone: '+61407123456',
   },
   {
@@ -137,7 +137,7 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
     businessSettings = await storage.createBusinessSettings({
       userId: demoUser.id,
       businessName: DEMO_USER.businessName,
-      businessAddress: '42 Grafton Street, Cairns QLD 4870',
+      businessAddress: '42 George Street, Parramatta NSW 2150',
       businessPhone: DEMO_USER.phone,
       businessEmail: 'info@demoplumbing.com.au',
       abn: '12 345 678 901',
@@ -146,7 +146,7 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
       accountNumber: '12345678',
       accountName: 'Demo Plumbing & Gas Pty Ltd',
       gstEnabled: true,
-      qbccLicense: 'QBCC 1234567',
+      qbccLicense: 'NSW Lic 1234567C',
       insurancePolicy: 'QBE-PLB-987654',
     });
     console.log('✅ Business settings created');
@@ -331,7 +331,7 @@ export async function createDemoUserAndData() {
       businessSettings = await storage.createBusinessSettings({
         userId: demoUser.id,
         businessName: DEMO_USER.businessName,
-        businessAddress: '42 Grafton Street, Cairns QLD 4870',
+        businessAddress: '42 George Street, Parramatta NSW 2150',
         businessPhone: DEMO_USER.phone,
         businessEmail: 'info@demoplumbing.com.au',
         abn: '12 345 678 901',
@@ -340,7 +340,7 @@ export async function createDemoUserAndData() {
         accountNumber: '12345678',
         accountName: 'Demo Plumbing & Gas Pty Ltd',
         gstEnabled: true,
-        qbccLicense: 'QBCC 1234567',
+        qbccLicense: 'NSW Lic 1234567C',
         insurancePolicy: 'QBE-PLB-987654',
       });
       console.log('✅ Business settings created');
@@ -368,19 +368,19 @@ export async function createDemoUserAndData() {
     }
 
     // ============================================
-    // CREATE 10 CLIENTS (Australian names, Cairns QLD addresses)
+    // CREATE 10 CLIENTS (Australian names, Sydney NSW addresses)
     // ============================================
     const clientsData = [
-      { name: 'Sarah Mitchell', email: 'sarah.mitchell@email.com.au', phone: '+61412345678', address: '15 Sheridan Street, Cairns City QLD 4870' },
-      { name: 'David O\'Connor', email: 'david.oconnor@gmail.com', phone: '+61423456789', address: '28 Mulgrave Road, Parramatta Park QLD 4870' },
-      { name: 'Emma Thompson', email: 'emma.t@outlook.com.au', phone: '+61434567890', address: '7 Lake Street, Cairns QLD 4870' },
-      { name: 'James Wilson', email: 'james.wilson@bigpond.com', phone: '+61445678901', address: '92 Martyn Street, Parramatta Park QLD 4870' },
-      { name: 'Lisa Chen', email: 'lisa.chen@email.com', phone: '+61456789012', address: '45 Florence Street, Edge Hill QLD 4870' },
-      { name: 'Michael Brown', email: 'michael.brown@work.com.au', phone: '+61467890123', address: '12 Collins Avenue, Edge Hill QLD 4870' },
-      { name: 'Rachel Green', email: 'rachel.g@email.com', phone: '+61478901234', address: '33 Anderson Street, Manunda QLD 4870' },
-      { name: 'Peter Johnson', email: 'peter.johnson@business.com.au', phone: '+61489012345', address: '78 Kenny Street, Portsmith QLD 4870' },
-      { name: 'Amanda White', email: 'amanda.white@email.com', phone: '+61490123456', address: '56 Digger Street, Cairns North QLD 4870' },
-      { name: 'Chris Taylor', email: 'chris.taylor@company.com.au', phone: '+61401234567', address: '19 Wharf Street, Cairns City QLD 4870' },
+      { name: 'Sarah Mitchell', email: 'sarah.mitchell@email.com.au', phone: '+61412345678', address: '15 Church Street, Parramatta NSW 2150' },
+      { name: 'David O\'Connor', email: 'david.oconnor@gmail.com', phone: '+61423456789', address: '28 Victoria Road, Ryde NSW 2112' },
+      { name: 'Emma Thompson', email: 'emma.t@outlook.com.au', phone: '+61434567890', address: '7 Pittwater Road, Manly NSW 2095' },
+      { name: 'James Wilson', email: 'james.wilson@bigpond.com', phone: '+61445678901', address: '92 Pacific Highway, Hornsby NSW 2077' },
+      { name: 'Lisa Chen', email: 'lisa.chen@email.com', phone: '+61456789012', address: '45 Military Road, Neutral Bay NSW 2089' },
+      { name: 'Michael Brown', email: 'michael.brown@work.com.au', phone: '+61467890123', address: '12 Beecroft Road, Epping NSW 2121' },
+      { name: 'Rachel Green', email: 'rachel.g@email.com', phone: '+61478901234', address: '33 Forest Road, Hurstville NSW 2220' },
+      { name: 'Peter Johnson', email: 'peter.johnson@business.com.au', phone: '+61489012345', address: '78 Railway Parade, Granville NSW 2142' },
+      { name: 'Amanda White', email: 'amanda.white@email.com', phone: '+61490123456', address: '56 Pitt Street, Redfern NSW 2016' },
+      { name: 'Chris Taylor', email: 'chris.taylor@company.com.au', phone: '+61401234567', address: '19 Macquarie Street, Liverpool NSW 2170' },
     ];
 
     const createdClients = [];
@@ -1553,13 +1553,13 @@ export async function createDemoTeamMembers() {
 
     console.log('🔧 Setting up demo team members...');
 
-    // Cairns QLD area locations for demo team members
-    const cairnsLocations = [
-      { lat: -16.9186, lng: 145.7781, address: 'Cairns City QLD 4870', status: 'working' },
-      { lat: -16.9246, lng: 145.7621, address: 'Parramatta Park QLD 4870', status: 'driving' },
-      { lat: -16.9073, lng: 145.7478, address: 'Edge Hill QLD 4870', status: 'online' },
-      { lat: -16.9361, lng: 145.7514, address: 'Manunda QLD 4870', status: 'working' },
-      { lat: -16.9147, lng: 145.7568, address: 'Cairns North QLD 4870', status: 'online' },
+    // Sydney NSW area locations for demo team members
+    const sydneyLocations = [
+      { lat: -33.8153, lng: 151.0029, address: 'Parramatta NSW 2150', status: 'working' },
+      { lat: -33.8142, lng: 151.1002, address: 'Ryde NSW 2112', status: 'driving' },
+      { lat: -33.7970, lng: 151.2880, address: 'Manly NSW 2095', status: 'online' },
+      { lat: -33.7049, lng: 151.0990, address: 'Hornsby NSW 2077', status: 'working' },
+      { lat: -33.8353, lng: 151.2163, address: 'Neutral Bay NSW 2089', status: 'online' },
     ];
 
     // Get or create a worker role
@@ -1589,7 +1589,7 @@ export async function createDemoTeamMembers() {
 
     for (let i = 0; i < teamMemberData.length; i++) {
       const memberInfo = teamMemberData[i];
-      const location = cairnsLocations[i % cairnsLocations.length];
+      const location = sydneyLocations[i % sydneyLocations.length];
       const nameParts = memberInfo.name.split(' ');
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ');
@@ -1670,16 +1670,16 @@ export async function refreshDemoTeamActivity() {
     const teamMembers = await storage.getTeamMembers(demoUser.id);
     const activeMembers = teamMembers.filter(m => m.inviteStatus === 'accepted' && m.isActive);
 
-    // Cairns QLD area - deterministic locations for each team member slot
+    // Sydney NSW area - deterministic locations for each team member slot
     const memberLocations = [
-      { lat: -16.9186, lng: 145.7781, status: 'working', battery: 85, speed: 0 },
-      { lat: -16.9246, lng: 145.7621, status: 'driving', battery: 72, speed: 12 },
-      { lat: -16.9073, lng: 145.7478, status: 'online', battery: 91, speed: 0 },
-      { lat: -16.9361, lng: 145.7514, status: 'working', battery: 68, speed: 0 },
-      { lat: -16.9120, lng: 145.7680, status: 'working', battery: 78, speed: 0 },
-      { lat: -16.9200, lng: 145.7550, status: 'online', battery: 65, speed: 0 },
-      { lat: -16.9280, lng: 145.7700, status: 'driving', battery: 82, speed: 14 },
-      { lat: -16.9150, lng: 145.7600, status: 'idle', battery: 55, speed: 0 },
+      { lat: -33.8153, lng: 151.0029, status: 'working', battery: 85, speed: 0 },
+      { lat: -33.8142, lng: 151.1002, status: 'driving', battery: 72, speed: 12 },
+      { lat: -33.7970, lng: 151.2880, status: 'online', battery: 91, speed: 0 },
+      { lat: -33.7049, lng: 151.0990, status: 'working', battery: 68, speed: 0 },
+      { lat: -33.8353, lng: 151.2163, status: 'working', battery: 78, speed: 0 },
+      { lat: -33.8688, lng: 151.2093, status: 'online', battery: 65, speed: 0 },
+      { lat: -33.8142, lng: 151.0029, status: 'driving', battery: 82, speed: 14 },
+      { lat: -33.8916, lng: 151.2767, status: 'idle', battery: 55, speed: 0 },
     ];
 
     // Fixed number of active members (8) for consistency between dev and production
@@ -2321,7 +2321,7 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
     const sampleClients = [
       { name: 'Sarah Mitchell', email: 'sarah.mitchell@example.com', phone: '+61412345678', address: '15 Smith Street, Sydney NSW 2000' },
       { name: 'David Wilson', email: 'david.wilson@example.com', phone: '+61423456789', address: '28 Park Avenue, Melbourne VIC 3000' },
-      { name: 'Emma Thompson', email: 'emma.t@example.com', phone: '+61434567890', address: '7 Beach Road, Brisbane QLD 4000' },
+      { name: 'Emma Thompson', email: 'emma.t@example.com', phone: '+61434567890', address: '7 Beach Road, Bondi NSW 2026' },
       { name: 'James Brown', email: 'james.brown@example.com', phone: '+61445678901', address: '92 Main Street, Perth WA 6000' },
       { name: 'Lisa Chen', email: 'lisa.chen@example.com', phone: '+61456789012', address: '45 River Drive, Adelaide SA 5000' },
     ];

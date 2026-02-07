@@ -19,6 +19,7 @@ import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
+import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import { useSearch } from "wouter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
@@ -671,7 +672,12 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                   <FormItem>
                     <FormLabel>Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter job address" {...field} data-testid="input-job-address" />
+                      <AddressAutocomplete 
+                        value={field.value || ''} 
+                        onChange={field.onChange}
+                        placeholder="Start typing an address..." 
+                        data-testid="input-job-address" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

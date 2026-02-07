@@ -27840,6 +27840,35 @@ Respond with JSON in this format:
     }
   });
 
+  app.get("/api/address-search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query || query.length < 3) {
+        return res.json([]);
+      }
+      
+      const encoded = encodeURIComponent(query);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=au&limit=5&addressdetails=1`,
+        {
+          headers: {
+            "User-Agent": "TradieTrack/1.0 (tradietrack.com.au)",
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Address search failed" });
+      }
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Address search error:", error);
+      res.status(500).json({ error: "Address search failed" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
