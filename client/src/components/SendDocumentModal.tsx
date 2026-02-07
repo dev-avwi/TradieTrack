@@ -313,6 +313,11 @@ export default function SendDocumentModal({
         return true;
       }
 
+      toast({
+        title: "Email couldn't be sent",
+        description: result.error || result.message || "The email service may not be configured. Check your email settings.",
+        variant: "destructive"
+      });
       return false;
     } catch (error: any) {
       console.error('Email send error:', error);
@@ -443,6 +448,20 @@ export default function SendDocumentModal({
             toast({
               title: `${getDocTypeLabel()} sent via Email & SMS!`,
               description: "Your client will receive both notifications.",
+            });
+          }
+          if (emailSuccess && !smsSuccess) {
+            toast({
+              title: "Email sent, SMS failed",
+              description: "The email was sent but the SMS couldn't be delivered.",
+              variant: "destructive"
+            });
+          }
+          if (!emailSuccess && smsSuccess) {
+            toast({
+              title: "SMS sent, email failed",
+              description: "The SMS was sent but the email couldn't be delivered.",
+              variant: "destructive"
             });
           }
         }

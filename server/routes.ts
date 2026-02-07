@@ -11791,6 +11791,13 @@ Be specific about materials, colors, and features that would be included.`
         senderUserId: req.userId,
       });
       
+      if (smsMessage.status === 'failed') {
+        return res.status(500).json({ 
+          error: smsMessage.errorMessage || 'SMS failed to send',
+          notConfigured: smsMessage.errorMessage?.includes('not configured'),
+        });
+      }
+      
       // Update quote status to sent if it was draft
       if (quote.status === 'draft') {
         await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
@@ -12511,6 +12518,13 @@ Be specific about materials, colors, and features that would be included.`
         message,
         senderUserId: req.userId,
       });
+      
+      if (smsMessage.status === 'failed') {
+        return res.status(500).json({ 
+          error: smsMessage.errorMessage || 'SMS failed to send',
+          notConfigured: smsMessage.errorMessage?.includes('not configured'),
+        });
+      }
       
       // Update invoice status to sent if it was draft
       if (invoice.status === 'draft') {
@@ -14859,6 +14873,13 @@ Be specific about materials, colors, and features that would be included.`
         message,
         senderUserId: req.userId,
       });
+      
+      if (smsMessage.status === 'failed') {
+        return res.status(500).json({ 
+          error: smsMessage.errorMessage || 'SMS failed to send',
+          notConfigured: smsMessage.errorMessage?.includes('not configured'),
+        });
+      }
       
       // Update receipt with SMS sent timestamp
       await storage.updateReceipt(receipt.id, effectiveUserId, {
