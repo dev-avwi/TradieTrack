@@ -3098,18 +3098,19 @@ function DeveloperTab() {
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
-      const response = await apiRequest('POST', '/api/dev/seed-mock-data');
+      const response = await apiRequest('POST', '/api/dev/seed-mock-data', { force: true });
       const result = await response.json();
       
       if (result.success) {
         toast({
           title: "Mock Data Created",
-          description: `Created ${result.results?.clients || 0} clients, ${result.results?.jobs || 0} jobs, ${result.results?.quotes || 0} quotes, ${result.results?.invoices || 0} invoices`,
+          description: `Created ${result.results?.clients || 0} clients, ${result.results?.jobs || 0} jobs, ${result.results?.quotes || 0} quotes, ${result.results?.invoices || 0} invoices, ${result.results?.receipts || 0} receipts`,
         });
         queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
         queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
         queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
         queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
         queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       } else {
         toast({

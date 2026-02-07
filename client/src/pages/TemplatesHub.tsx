@@ -1536,6 +1536,8 @@ function FormsTab() {
   const [editFormId, setEditFormId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
+  const [formSearch, setFormSearch] = useState('');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const { data: forms = [], isLoading } = useQuery<CustomForm[]>({
     queryKey: ["/api/custom-forms"],
@@ -1569,9 +1571,10 @@ function FormsTab() {
     setDeleteConfirmOpen(true);
   };
 
-  const safetyForms = forms.filter(f => f.formType === 'safety' && f.isActive);
-  const complianceForms = forms.filter(f => f.formType === 'compliance' && f.isActive);
-  const inspectionForms = forms.filter(f => f.formType === 'inspection' && f.isActive);
+  const searchLower = formSearch.toLowerCase();
+  const safetyForms = forms.filter(f => f.formType === 'safety' && f.isActive && (!formSearch || f.name.toLowerCase().includes(searchLower)));
+  const complianceForms = forms.filter(f => f.formType === 'compliance' && f.isActive && (!formSearch || f.name.toLowerCase().includes(searchLower)));
+  const inspectionForms = forms.filter(f => f.formType === 'inspection' && f.isActive && (!formSearch || f.name.toLowerCase().includes(searchLower)));
 
   const getFormTypeIcon = (formType: string) => {
     switch (formType) {
@@ -1599,71 +1602,55 @@ function FormsTab() {
     }
   };
 
-  const renderFormCard = (form: CustomForm) => (
-    <Card 
+  const FORMS_VISIBLE_DEFAULT = 5;
+
+  const renderFormRow = (form: CustomForm) => (
+    <div
       key={form.id}
-      className={`cursor-pointer transition-all ${selectedForm?.id === form.id ? 'ring-2 ring-primary' : 'hover-elevate'}`}
+      className={`flex items-center justify-between gap-2 py-2 px-3 border-b last:border-b-0 cursor-pointer transition-colors ${selectedForm?.id === form.id ? 'bg-primary/5' : 'hover-elevate'}`}
       onClick={() => setSelectedForm(form)}
       data-testid={`card-form-${form.id}`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-            >
-              {getFormTypeIcon(form.formType || 'general')}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium truncate">{form.name}</span>
-                <Badge variant={getFormTypeBadgeVariant(form.formType || 'general')} className="text-xs capitalize flex-shrink-0">
-                  {form.formType || 'general'}
-                </Badge>
-                {form.requiresSignature && (
-                  <Badge variant="outline" className="text-xs flex-shrink-0">
-                    Signature
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                <Calendar className="h-3 w-3" />
-                <span>
-                  {form.updatedAt 
-                    ? format(new Date(form.updatedAt), 'dd MMM yyyy') 
-                    : form.createdAt 
-                      ? format(new Date(form.createdAt), 'dd MMM yyyy')
-                      : 'Unknown'}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditForm(form);
-              }}
-              data-testid={`button-edit-form-${form.id}`}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              className="text-destructive"
-              onClick={(e) => handleDeleteForm(form, e)}
-              data-testid={`button-delete-form-${form.id}`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div
+          className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+        >
+          {getFormTypeIcon(form.formType || 'general')}
         </div>
-      </CardContent>
-    </Card>
+        <span className="text-sm font-medium truncate">{form.name}</span>
+        <Badge variant={getFormTypeBadgeVariant(form.formType || 'general')} className="text-xs capitalize flex-shrink-0">
+          {form.formType || 'general'}
+        </Badge>
+        {form.requiresSignature && (
+          <Badge variant="outline" className="text-xs flex-shrink-0">
+            Sig
+          </Badge>
+        )}
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditForm(form);
+          }}
+          data-testid={`button-edit-form-${form.id}`}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="text-destructive"
+          onClick={(e) => handleDeleteForm(form, e)}
+          data-testid={`button-delete-form-${form.id}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 
   const renderFormSection = (
@@ -1674,51 +1661,69 @@ function FormsTab() {
     isOpen: boolean,
     setIsOpen: (open: boolean) => void,
     testId: string
-  ) => (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card data-testid={testId}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover-elevate rounded-t-xl">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-                >
-                  {icon}
+  ) => {
+    const isExpanded = expandedSections[testId] ?? false;
+    const visibleForms = isExpanded ? forms : forms.slice(0, FORMS_VISIBLE_DEFAULT);
+    const hasMore = forms.length > FORMS_VISIBLE_DEFAULT;
+
+    return (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card data-testid={testId}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover-elevate rounded-t-xl py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+                  >
+                    {icon}
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">{title}</CardTitle>
+                    <CardDescription className="text-xs">{description}</CardDescription>
+                  </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">{forms.length}</Badge>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 px-0 pb-0">
+              {forms.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground px-4">
+                  <p className="text-sm">No {title.toLowerCase()} created yet</p>
+                </div>
+              ) : (
                 <div>
-                  <CardTitle className="text-lg">{title}</CardTitle>
-                  <CardDescription>{description}</CardDescription>
+                  {visibleForms.map(renderFormRow)}
+                  {hasMore && (
+                    <div className="px-3 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs text-muted-foreground"
+                        onClick={() => setExpandedSections(prev => ({ ...prev, [testId]: !isExpanded }))}
+                      >
+                        {isExpanded ? 'Show less' : `Show all ${forms.length} forms`}
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs">{forms.length}</Badge>
-                {isOpen ? (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0">
-            {forms.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <p className="text-sm">No {title.toLowerCase()} created yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {forms.map(renderFormCard)}
-              </div>
-            )}
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
-  );
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -1746,7 +1751,7 @@ function FormsTab() {
           </Button>
         </div>
 
-        {totalForms === 0 ? (
+        {totalForms === 0 && !formSearch ? (
           <Card className="p-6 text-center">
             <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
             <h3 className="font-semibold mb-2">No forms yet</h3>
@@ -1759,7 +1764,23 @@ function FormsTab() {
             </Button>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search forms..."
+                value={formSearch}
+                onChange={(e) => setFormSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {formSearch && totalForms === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No forms matching "{formSearch}"</p>
+              </div>
+            ) : (
+            <>
             {renderFormSection(
               "Safety Forms",
               "SWMS, JSA, and safety checklists",
@@ -1788,6 +1809,8 @@ function FormsTab() {
               inspectionFormsOpen,
               setInspectionFormsOpen,
               "card-inspection-forms"
+            )}
+            </>
             )}
           </div>
         )}

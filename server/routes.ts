@@ -26333,8 +26333,14 @@ Respond with JSON in this format:
       const userId = req.userId!;
       const user = await storage.getUser(userId);
       const tradeType = user?.tradeType || 'plumbing';
+      const force = req.body?.force === true;
       
-      const { seedMockData } = await import('./mockData');
+      const { seedMockData, clearMockData } = await import('./mockData');
+      
+      if (force) {
+        await clearMockData(userId);
+      }
+      
       const result = await seedMockData(userId, tradeType);
       
       res.json(result);

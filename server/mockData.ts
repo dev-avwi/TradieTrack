@@ -201,6 +201,7 @@ export async function seedMockData(userId: string, tradeType: string = 'plumbing
     jobs: 0,
     quotes: 0,
     invoices: 0,
+    receipts: 0,
     notifications: 0
   };
 
@@ -211,7 +212,7 @@ export async function seedMockData(userId: string, tradeType: string = 'plumbing
     const existingInvoices = await storage.getInvoices(userId);
     
     // Check if we already have substantial mock data
-    if (existingClients.length >= 10 && existingJobs.length >= 15 && existingQuotes.length >= 5 && existingInvoices.length >= 8) {
+    if (existingClients.length >= 10 && existingJobs.length >= 20 && existingQuotes.length >= 20 && existingInvoices.length >= 15) {
       console.log('✅ Mock data already exists');
       return { success: true, message: 'Mock data already exists', results };
     }
@@ -220,7 +221,7 @@ export async function seedMockData(userId: string, tradeType: string = 'plumbing
     let clients: any[] = [...existingClients];
     
     if (existingClients.length < 10) {
-      const clientCount = 15 - existingClients.length;
+      const clientCount = 10 - existingClients.length;
       
       for (let i = 0; i < clientCount; i++) {
         const firstName = randomItem(AUSTRALIAN_FIRST_NAMES);
@@ -291,14 +292,14 @@ export async function seedMockData(userId: string, tradeType: string = 'plumbing
     // Create quotes if needed
     let quotes: any[] = [...existingQuotes];
     
-    if (existingQuotes.length < 5) {
-      const quotesToCreate = 8 - existingQuotes.length;
+    if (existingQuotes.length < 15) {
+      const quotesToCreate = 25 - existingQuotes.length;
       
       for (let i = 0; i < quotesToCreate; i++) {
         const client = randomItem(clients);
         const availableJobs = jobs.filter(j => j.status === 'pending' || j.status === 'scheduled');
         const job = i < 5 && availableJobs.length > 0 ? randomItem(availableJobs) : null;
-        const status = i < 2 ? 'draft' : i < 5 ? 'sent' : i < 7 ? 'accepted' : 'declined';
+        const status = i < 5 ? 'draft' : i < 13 ? 'sent' : i < 21 ? 'accepted' : 'declined';
         
         const subtotal = randomInt(200, 3000);
         const gst = Math.round(subtotal * 0.1 * 100) / 100;
@@ -349,17 +350,17 @@ export async function seedMockData(userId: string, tradeType: string = 'plumbing
     // Create invoices if needed
     let invoices: any[] = [...existingInvoices];
     
-    if (existingInvoices.length < 8) {
-      const invoicesToCreate = 12 - existingInvoices.length;
+    if (existingInvoices.length < 12) {
+      const invoicesToCreate = 20 - existingInvoices.length;
       
       for (let i = 0; i < invoicesToCreate; i++) {
         const client = randomItem(clients);
         const completedJobs = jobs.filter(j => j.status === 'done' || j.status === 'invoiced');
         const job = i < 8 && completedJobs.length > 0 ? randomItem(completedJobs) : null;
         
-        const status = i < 2 ? 'draft' : 
-                       i < 5 ? 'sent' : 
-                       i < 9 ? 'paid' : 'overdue';
+        const status = i < 3 ? 'draft' : 
+                       i < 8 ? 'sent' : 
+                       i < 16 ? 'paid' : 'overdue';
         
         const subtotal = randomInt(150, 2500);
         const gst = Math.round(subtotal * 0.1 * 100) / 100;
@@ -410,6 +411,40 @@ export async function seedMockData(userId: string, tradeType: string = 'plumbing
       console.log(`✅ Using ${invoices.length} existing invoices`);
     }
 
+    // Create receipts for paid invoices
+    const paidInvoices = invoices.filter(inv => inv.status === 'paid');
+    const existingReceipts = await storage.getReceipts(userId);
+    
+    if (existingReceipts.length < 15) {
+      const targetReceipts = Math.min(20, paidInvoices.length);
+      const receiptsToCreate = Math.max(0, targetReceipts - existingReceipts.length);
+      
+      for (let i = 0; i < receiptsToCreate && i < paidInvoices.length; i++) {
+        const invoice = paidInvoices[i];
+        const paymentMethod = randomItem(['card', 'bank_transfer', 'cash', 'tap_to_pay']);
+        const receiptNumber = await storage.generateReceiptNumber(userId);
+        
+        await storage.createReceipt({
+          userId,
+          invoiceId: invoice.id,
+          jobId: invoice.jobId || null,
+          clientId: invoice.clientId,
+          receiptNumber,
+          amount: invoice.total,
+          gstAmount: invoice.gstAmount || '0.00',
+          subtotal: invoice.subtotal || '0.00',
+          description: invoice.title || 'Payment received',
+          paymentMethod,
+          paymentReference: `REF-${randomInt(100000, 999999)}`,
+          paidAt: invoice.paidAt || new Date(),
+        });
+        results.receipts++;
+      }
+      console.log(`✅ Created ${results.receipts} new receipts`);
+    } else {
+      console.log(`✅ Using ${existingReceipts.length} existing receipts`);
+    }
+
     const notificationTypes = [
       { type: 'job_scheduled', title: 'Job Scheduled', message: 'A new job has been scheduled' },
       { type: 'quote_accepted', title: 'Quote Accepted', message: 'Client has accepted your quote' },
@@ -446,6 +481,11 @@ export async function clearMockData(userId: string) {
   console.log(`🗑️ Clearing all data for user ${userId}...`);
   
   try {
+    const receipts = await storage.getReceipts(userId);
+    for (const receipt of receipts) {
+      await storage.deleteReceipt(receipt.id, userId);
+    }
+
     const invoices = await storage.getInvoices(userId);
     for (const invoice of invoices) {
       await storage.deleteInvoice(invoice.id, userId);
