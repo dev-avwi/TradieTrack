@@ -151,6 +151,27 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   useEffect(() => {
     if (autoLoaded || clients.length === 0) return;
     
+    const fetchVariationsForAutoLoad = async (jobId: string, baseItems: any[]) => {
+      try {
+        const varRes = await fetch(`/api/jobs/${jobId}/variations`, { credentials: 'include' });
+        if (varRes.ok) {
+          const allVariations = await varRes.json();
+          const approved = allVariations.filter((v: any) => v.status === 'approved');
+          if (approved.length > 0) {
+            const variationItems = approved.map((v: any) => ({
+              description: `VARIATION: ${v.title}${v.description ? ' - ' + v.description : ''}`,
+              quantity: "1",
+              unitPrice: String(v.additionalAmount || v.totalAmount || 0),
+            }));
+            return { items: [...baseItems, ...variationItems], count: approved.length };
+          }
+        }
+      } catch (err) {
+        // Silently fall back
+      }
+      return { items: baseItems, count: 0 };
+    };
+
     // Priority: Quote data first (contains line items), then job data
     if (preloadedQuote) {
       setAutoLoaded(true);
@@ -167,19 +188,32 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       form.setValue("notes", quote.notes || quote.terms || "");
       
       // Copy line items from quote
+      let baseItems: any[] = [];
       if (quote.lineItems && quote.lineItems.length > 0) {
-        const items = quote.lineItems.map((item: any) => ({
+        baseItems = quote.lineItems.map((item: any) => ({
           description: String(item.description ?? ""),
           quantity: String(item.quantity ?? item.qty ?? 1),
           unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
         }));
-        form.setValue("lineItems", items);
       }
-      
-      toast({
-        title: "Quote details loaded",
-        description: `Creating invoice from quote "${quote.title}"`,
-      });
+
+      if (urlJobId) {
+        fetchVariationsForAutoLoad(urlJobId, baseItems).then(({ items: finalItems, count: varCount }) => {
+          form.setValue("lineItems", finalItems);
+          toast({
+            title: "Quote details loaded",
+            description: varCount > 0
+              ? `Creating invoice from quote "${quote.title}" + ${varCount} variation${varCount > 1 ? 's' : ''}`
+              : `Creating invoice from quote "${quote.title}"`,
+          });
+        });
+      } else {
+        form.setValue("lineItems", baseItems);
+        toast({
+          title: "Quote details loaded",
+          description: `Creating invoice from quote "${quote.title}"`,
+        });
+      }
     } else if (preloadedJob) {
       setAutoLoaded(true);
       const job = preloadedJob as any;
@@ -201,36 +235,51 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       form.setValue("dueDate", dueDate);
       
       // Fetch linked documents to get quote line items
-      fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
+      (async () => {
+        try {
+          const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
+          const data = res.ok ? await res.json() : null;
           if (data?.quote?.lineItems && data.quote.lineItems.length > 0) {
-            const items = data.quote.lineItems.map((item: any) => ({
+            const baseItems = data.quote.lineItems.map((item: any) => ({
               description: String(item.description ?? ""),
               quantity: String(item.quantity ?? item.qty ?? 1),
               unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
             }));
-            form.setValue("lineItems", items);
             setSourceQuoteId(data.quote.id);
             setSelectedQuoteId(data.quote.id);
             
+            const { items: finalItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, baseItems);
+            form.setValue("lineItems", finalItems);
+            
             toast({
               title: "Job loaded",
-              description: `Invoice prefilled from "${job.title}" with quote line items`,
+              description: varCount > 0
+                ? `Invoice prefilled from "${job.title}" with quote items + ${varCount} variation${varCount > 1 ? 's' : ''}`
+                : `Invoice prefilled from "${job.title}" with quote line items`,
             });
           } else {
+            const { items: varOnlyItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, []);
+            form.setValue("lineItems", varOnlyItems);
+
             toast({
               title: "Job loaded", 
-              description: `Invoice prefilled from "${job.title}". Add line items for your charges.`,
+              description: varCount > 0
+                ? `Invoice prefilled from "${job.title}" with ${varCount} variation${varCount > 1 ? 's' : ''}`
+                : `Invoice prefilled from "${job.title}". Add line items for your charges.`,
             });
           }
-        })
-        .catch(() => {
+        } catch {
+          const { items: varOnlyItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, []);
+          form.setValue("lineItems", varOnlyItems);
+
           toast({
             title: "Job loaded",
-            description: `Invoice prefilled from "${job.title}". Add line items for your charges.`,
+            description: varCount > 0
+              ? `Invoice prefilled from "${job.title}" with ${varCount} variation${varCount > 1 ? 's' : ''}`
+              : `Invoice prefilled from "${job.title}". Add line items for your charges.`,
           });
-        });
+        }
+      })();
     }
   }, [preloadedJob, preloadedQuote, autoLoaded, clients, form, toast]);
 
@@ -307,22 +356,47 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     form.setValue("dueDate", dueDate);
     
+    const fetchApprovedVariations = async (jobId: string, baseItems: any[]) => {
+      try {
+        const varRes = await fetch(`/api/jobs/${jobId}/variations`, { credentials: 'include' });
+        if (varRes.ok) {
+          const allVariations = await varRes.json();
+          const approved = allVariations.filter((v: any) => v.status === 'approved');
+          if (approved.length > 0) {
+            const variationItems = approved.map((v: any) => ({
+              description: `VARIATION: ${v.title}${v.description ? ' - ' + v.description : ''}`,
+              quantity: "1",
+              unitPrice: String(v.additionalAmount || v.totalAmount || 0),
+            }));
+            return { items: [...baseItems, ...variationItems], count: approved.length };
+          }
+        }
+      } catch (err) {
+        // Silently fall back to just base items
+      }
+      return { items: baseItems, count: 0 };
+    };
+
     // Check if job has a linked quote with line items
     if (job.linkedQuote?.lineItems && job.linkedQuote.lineItems.length > 0) {
-      const items = job.linkedQuote.lineItems.map((item: any) => ({
+      const baseItems = job.linkedQuote.lineItems.map((item: any) => ({
         description: String(item.description ?? ""),
         quantity: String(item.quantity ?? item.qty ?? 1),
         unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
       }));
-      form.setValue("lineItems", items);
       
       // Set the source quote for linking
       setSourceQuoteId(job.linkedQuote.id);
       setSelectedQuoteId(job.linkedQuote.id);
+
+      const { items: finalItems, count: varCount } = await fetchApprovedVariations(job.id, baseItems);
+      form.setValue("lineItems", finalItems);
       
       toast({
         title: "Job loaded",
-        description: `Invoice prefilled from "${job.title}" with quote line items`,
+        description: varCount > 0
+          ? `Invoice prefilled from "${job.title}" with quote items + ${varCount} variation${varCount > 1 ? 's' : ''}`
+          : `Invoice prefilled from "${job.title}" with quote line items`,
       });
     } else {
       // Try to fetch linked documents to get quote line items
@@ -331,20 +405,24 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         if (res.ok) {
           const data = await res.json();
           if (data.quote?.lineItems && data.quote.lineItems.length > 0) {
-            const items = data.quote.lineItems.map((item: any) => ({
+            const baseItems = data.quote.lineItems.map((item: any) => ({
               description: String(item.description ?? ""),
               quantity: String(item.quantity ?? item.qty ?? 1),
               unitPrice: String(item.unitPrice ?? item.unit_price ?? 0),
             }));
-            form.setValue("lineItems", items);
             
             // Set the source quote for linking
             setSourceQuoteId(data.quote.id);
             setSelectedQuoteId(data.quote.id);
+
+            const { items: finalItems, count: varCount } = await fetchApprovedVariations(job.id, baseItems);
+            form.setValue("lineItems", finalItems);
             
             toast({
               title: "Job loaded",
-              description: `Invoice prefilled from "${job.title}" with quote line items`,
+              description: varCount > 0
+                ? `Invoice prefilled from "${job.title}" with quote items + ${varCount} variation${varCount > 1 ? 's' : ''}`
+                : `Invoice prefilled from "${job.title}" with quote line items`,
             });
             return;
           }
@@ -353,14 +431,17 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         console.error("Error fetching linked documents:", err);
       }
       
-      // No quote line items - just prefill from job
-      form.setValue("lineItems", []);
+      // No quote line items - check for variations only
+      const { items: varOnlyItems, count: varCount } = await fetchApprovedVariations(job.id, []);
+      form.setValue("lineItems", varOnlyItems);
       setSourceQuoteId(undefined);
       setSelectedQuoteId(undefined);
       
       toast({
         title: "Job loaded",
-        description: `Invoice prefilled from "${job.title}". Add line items for your charges.`,
+        description: varCount > 0
+          ? `Invoice prefilled from "${job.title}" with ${varCount} variation${varCount > 1 ? 's' : ''}`
+          : `Invoice prefilled from "${job.title}". Add line items for your charges.`,
       });
     }
   };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -300,6 +300,11 @@ export default function JobDetailView({
 
   const { data: jobMaterials = [], isLoading: materialsLoading } = useQuery<JobMaterial[]>({
     queryKey: ['/api/jobs', jobId, 'materials'],
+    enabled: !!jobId,
+  });
+
+  const { data: jobVariations = [] } = useQuery<any[]>({
+    queryKey: ['/api/jobs', jobId, 'variations'],
     enabled: !!jobId,
   });
 
@@ -1438,42 +1443,153 @@ export default function JobDetailView({
           data-testid="job-flow-wizard"
         />
 
-        {linkedQuote && linkedQuote.lineItems && linkedQuote.lineItems.length > 0 && (
+        {(linkedQuote?.lineItems?.length > 0 || jobVariations.length > 0 || jobMaterials.length > 0) && (
           <Card className="border-trade/30 bg-trade/5" data-testid="card-job-brief">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                 <CardTitle className="text-sm font-medium">Job Brief</CardTitle>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Scope of work from {linkedQuote.number || linkedQuote.quoteNumber ? `Quote #${linkedQuote.number || linkedQuote.quoteNumber}` : "Linked Quote"}
-              </p>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {linkedQuote.description && (
-                <p className="text-sm text-muted-foreground">{linkedQuote.description}</p>
+              {linkedQuote && (
+                <p className="text-xs text-muted-foreground">
+                  Scope of work from {linkedQuote.number || linkedQuote.quoteNumber ? `Quote #${linkedQuote.number || linkedQuote.quoteNumber}` : "Linked Quote"}
+                </p>
               )}
-              <div className="space-y-2">
-                {linkedQuote.lineItems.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2">
-                    <Circle className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground/50" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm">{item.description}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
-                      {parseFloat(item.quantity) !== 1 && (
-                        <span>x{item.quantity}</span>
-                      )}
-                      {!isTradie && item.total && !isNaN(parseFloat(item.total)) && (
-                        <span className="text-right w-20">${parseFloat(item.total).toFixed(2)}</span>
-                      )}
-                    </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              {linkedQuote?.lineItems && linkedQuote.lineItems.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original Scope</span>
                   </div>
-                ))}
-              </div>
-              {!isTradie && linkedQuote.total && !isNaN(parseFloat(linkedQuote.total)) && (
-                <div className="flex items-center justify-end pt-2 border-t">
-                  <span className="text-sm font-medium">Total: ${parseFloat(linkedQuote.total).toFixed(2)}</span>
+                  {linkedQuote.description && (
+                    <p className="text-sm text-muted-foreground">{linkedQuote.description}</p>
+                  )}
+                  <div className="space-y-1.5">
+                    {linkedQuote.lineItems.map((item) => (
+                      <div key={item.id} className="flex items-start gap-2">
+                        <Circle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/50" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm">{item.description}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
+                          {parseFloat(item.quantity) !== 1 && (
+                            <span>x{item.quantity}</span>
+                          )}
+                          {!isTradie && item.total && !isNaN(parseFloat(item.total)) && (
+                            <span className="text-right w-20">${parseFloat(item.total).toFixed(2)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {jobVariations.filter((v: any) => v.status === 'approved').length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FileEdit className="h-3.5 w-3.5 text-amber-600" />
+                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Variations</span>
+                    <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      {jobVariations.filter((v: any) => v.status === 'approved').length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 pl-0.5">
+                    {jobVariations.filter((v: any) => v.status === 'approved').map((variation: any) => (
+                      <div key={variation.id} className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 rounded-md p-2">
+                        <Plus className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{variation.title}</span>
+                          {variation.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{variation.description}</p>
+                          )}
+                        </div>
+                        {!isTradie && variation.totalAmount && (
+                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400 shrink-0">
+                            +${parseFloat(variation.totalAmount).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!isTradie && jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Variations</span>
+                    <Badge variant="outline" className="text-xs">
+                      {jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 pl-0.5">
+                    {jobVariations.filter((v: any) => v.status === 'sent' || v.status === 'draft').map((variation: any) => (
+                      <div key={variation.id} className="flex items-start gap-2 opacity-70">
+                        <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm">{variation.title}</span>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {variation.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {jobMaterials.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Materials</span>
+                    <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
+                  </div>
+                  <div className="space-y-1.5">
+                    {jobMaterials.slice(0, 5).map((material) => (
+                      <div key={material.id} className="flex items-center gap-2 text-sm">
+                        <span className="flex-1 min-w-0 truncate">{material.name}</span>
+                        <span className="text-muted-foreground shrink-0">{material.quantity} {material.unit}</span>
+                        <Badge variant="outline" className="text-xs shrink-0 capitalize">
+                          {material.status}
+                        </Badge>
+                      </div>
+                    ))}
+                    {jobMaterials.length > 5 && (
+                      <p className="text-xs text-muted-foreground">+{jobMaterials.length - 5} more materials</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!isTradie && linkedQuote?.total && (
+                <div className="pt-2 border-t space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Original Quote</span>
+                    <span>${parseFloat(linkedQuote.total).toFixed(2)}</span>
+                  </div>
+                  {jobVariations.filter((v: any) => v.status === 'approved').length > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-amber-700 dark:text-amber-400">
+                        <span>Approved Variations</span>
+                        <span>+${jobVariations.filter((v: any) => v.status === 'approved').reduce((sum: number, v: any) => sum + (parseFloat(v.totalAmount) || 0), 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm font-semibold pt-1 border-t">
+                        <span>Revised Total</span>
+                        <span>${(parseFloat(linkedQuote.total) + jobVariations.filter((v: any) => v.status === 'approved').reduce((sum: number, v: any) => sum + (parseFloat(v.totalAmount) || 0), 0)).toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                  {jobVariations.filter((v: any) => v.status === 'approved').length === 0 && (
+                    <div className="flex items-center justify-between text-sm font-semibold">
+                      <span>Total</span>
+                      <span>${parseFloat(linkedQuote.total).toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
