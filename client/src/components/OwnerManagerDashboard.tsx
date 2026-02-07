@@ -247,9 +247,9 @@ export default function OwnerManagerDashboard({
         </section>
       )}
 
-      {/* Quick Stats - Native Grid */}
+      {/* Quick Links - Native Grid */}
       <section>
-        <h2 className="ios-label mb-3">Quick Stats</h2>
+        <h2 className="ios-label mb-3">Quick Links</h2>
         <div className="grid grid-cols-2 gap-3">
           <div 
             className="feed-card card-press cursor-pointer"

@@ -1706,10 +1706,10 @@ export default function DashboardScreen() {
       )}
 
 
-      {/* Quick Stats - Different for staff vs owner */}
+      {/* Quick Links - Different for staff vs owner */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>
-          {isStaffUser ? 'My Stats' : 'Quick Stats'}
+          {isStaffUser ? 'My Stats' : 'Quick Links'}
         </Text>
         <View style={styles.kpiGrid}>
           <KPICard

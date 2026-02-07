@@ -265,6 +265,9 @@ import {
   portalSessions,
   type PortalSession,
   type InsertPortalSession,
+  jobMaterials,
+  type JobMaterial,
+  type InsertJobMaterial,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -342,6 +345,13 @@ export interface IStorage {
   updateJobVariation(id: string, userId: string, updates: Partial<InsertJobVariation>): Promise<JobVariation | undefined>;
   deleteJobVariation(id: string, userId: string): Promise<boolean>;
   getNextVariationNumber(jobId: string, userId: string): Promise<string>;
+
+  // Job Materials
+  getJobMaterials(jobId: string, userId: string): Promise<JobMaterial[]>;
+  getJobMaterial(id: string, userId: string): Promise<JobMaterial | undefined>;
+  createJobMaterial(material: InsertJobMaterial): Promise<JobMaterial>;
+  updateJobMaterial(id: string, userId: string, updates: Partial<InsertJobMaterial>): Promise<JobMaterial | undefined>;
+  deleteJobMaterial(id: string, userId: string): Promise<boolean>;
 
   // Service Reminders
   getServiceReminders(userId: string): Promise<ServiceReminder[]>;
@@ -1360,6 +1370,52 @@ export class PostgresStorage implements IStorage {
     const variations = await this.getJobVariations(jobId, userId);
     const nextNum = variations.length + 1;
     return `V${String(nextNum).padStart(3, '0')}`;
+  }
+
+  // Job Materials
+  async getJobMaterials(jobId: string, userId: string): Promise<JobMaterial[]> {
+    return await db
+      .select()
+      .from(jobMaterials)
+      .where(and(eq(jobMaterials.jobId, jobId), eq(jobMaterials.userId, userId)))
+      .orderBy(desc(jobMaterials.createdAt));
+  }
+
+  async getJobMaterial(id: string, userId: string): Promise<JobMaterial | undefined> {
+    const result = await db
+      .select()
+      .from(jobMaterials)
+      .where(and(eq(jobMaterials.id, id), eq(jobMaterials.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createJobMaterial(material: InsertJobMaterial): Promise<JobMaterial> {
+    const result = await db.insert(jobMaterials).values({
+      ...material,
+      id: randomUUID(),
+    }).returning();
+    return result[0];
+  }
+
+  async updateJobMaterial(id: string, userId: string, updates: Partial<InsertJobMaterial>): Promise<JobMaterial | undefined> {
+    const existing = await this.getJobMaterial(id, userId);
+    if (!existing) return undefined;
+
+    const result = await db
+      .update(jobMaterials)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(jobMaterials.id, id), eq(jobMaterials.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteJobMaterial(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(jobMaterials)
+      .where(and(eq(jobMaterials.id, id), eq(jobMaterials.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Service Reminders

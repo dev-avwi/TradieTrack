@@ -67,6 +67,7 @@ import {
   insertLeadSchema,
   // Job notes schema
   insertJobNoteSchema,
+  insertJobMaterialSchema,
   // Service reminders schema
   insertServiceReminderSchema,
   // Rebates schema
@@ -21302,6 +21303,141 @@ Respond with JSON in this format:
       });
     } catch (error: any) {
       console.error('Error getting variation summary:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== JOB MATERIALS ROUTES =====
+
+  // List materials for a job
+  app.get("/api/jobs/:jobId/materials", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const effectiveUserId = req.effectiveUserId || userId;
+
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      const materials = await storage.getJobMaterials(jobId, effectiveUserId);
+
+      const workerContext = await getWorkerPermissionContext(userId);
+      if (workerContext.isWorker) {
+        const sanitized = materials.map((m: any) => ({
+          ...m,
+          unitCost: undefined,
+          totalCost: undefined,
+        }));
+        return res.json(sanitized);
+      }
+
+      res.json(materials);
+    } catch (error: any) {
+      console.error('Error getting job materials:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a material entry
+  app.post("/api/jobs/:jobId/materials", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const effectiveUserId = req.effectiveUserId || userId;
+
+      const job = await storage.getJob(jobId, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      const parsed = insertJobMaterialSchema.parse({
+        ...req.body,
+        jobId,
+        userId: effectiveUserId,
+      });
+
+      const quantity = parseFloat(String(parsed.quantity || '1'));
+      const unitCost = parseFloat(String(parsed.unitCost || '0'));
+      const totalCost = (quantity * unitCost).toFixed(2);
+
+      const material = await storage.createJobMaterial({
+        ...parsed,
+        totalCost,
+      });
+
+      res.status(201).json(material);
+    } catch (error: any) {
+      console.error('Error creating job material:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid material data', details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a material
+  app.patch("/api/materials/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const effectiveUserId = req.effectiveUserId || userId;
+
+      const existing = await storage.getJobMaterial(id, effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: "Material not found" });
+      }
+
+      const workerContext = await getWorkerPermissionContext(userId);
+      if (workerContext.isWorker) {
+        const allowedKeys = Object.keys(req.body);
+        const onlyStatus = allowedKeys.every(k => k === 'status');
+        if (!onlyStatus) {
+          return res.status(403).json({ error: "Workers can only update material status" });
+        }
+      }
+
+      let updates = { ...req.body };
+
+      if (updates.quantity !== undefined || updates.unitCost !== undefined) {
+        const quantity = parseFloat(String(updates.quantity ?? existing.quantity ?? '1'));
+        const unitCost = parseFloat(String(updates.unitCost ?? existing.unitCost ?? '0'));
+        updates.totalCost = (quantity * unitCost).toFixed(2);
+      }
+
+      const updated = await storage.updateJobMaterial(id, effectiveUserId, updates);
+      if (!updated) {
+        return res.status(404).json({ error: "Material not found" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating job material:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a material
+  app.delete("/api/materials/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const effectiveUserId = req.effectiveUserId || userId;
+
+      const workerContext = await getWorkerPermissionContext(userId);
+      if (workerContext.isWorker) {
+        return res.status(403).json({ error: "Workers cannot delete materials" });
+      }
+
+      const deleted = await storage.deleteJobMaterial(id, effectiveUserId);
+      if (!deleted) {
+        return res.status(404).json({ error: "Material not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting job material:', error);
       res.status(500).json({ error: error.message });
     }
   });

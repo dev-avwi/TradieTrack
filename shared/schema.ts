@@ -3334,6 +3334,30 @@ export const insertTimesheetApprovalSchema = createInsertSchema(timesheetApprova
 export type InsertTimesheetApproval = z.infer<typeof insertTimesheetApprovalSchema>;
 export type TimesheetApproval = typeof timesheetApprovals.$inferSelect;
 
+// Job Materials - Track materials/parts for each job
+export const jobMaterials = pgTable("job_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).default('1'),
+  unit: text("unit").default('each'),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }).default('0'),
+  totalCost: decimal("total_cost", { precision: 10, scale: 2 }).default('0'),
+  supplier: text("supplier"),
+  trackingNumber: text("tracking_number"),
+  trackingCarrier: text("tracking_carrier"),
+  status: text("status").default('needed'),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobMaterialSchema = createInsertSchema(jobMaterials).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJobMaterial = z.infer<typeof insertJobMaterialSchema>;
+export type JobMaterial = typeof jobMaterials.$inferSelect;
+
 // Automation Settings - Configure automatic behaviors
 export const automationSettings = pgTable("automation_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

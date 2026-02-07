@@ -202,7 +202,7 @@ function WebMockup({ isDark }: { isDark: boolean }) {
             <p className={`text-sm ${textMuted}`}>You have 3 jobs scheduled today</p>
           </div>
 
-          {/* Quick Stats Grid - matches the KPI cards */}
+          {/* Quick Links Grid - matches the KPI cards */}
           <div className="grid grid-cols-4 gap-3 mb-5">
             {[
               { label: "Jobs Today", value: "3", icon: Briefcase, color: tradeColor, bgColor: tradeColorBg },
@@ -367,7 +367,7 @@ function MobileMockup({ isDark }: { isDark: boolean }) {
               </button>
             </div>
 
-            {/* Quick Stats */}
+            {/* Quick Links */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className={`${bgCard} border ${border} rounded-xl p-3`}>
                 <div className="flex items-center gap-2 mb-1">

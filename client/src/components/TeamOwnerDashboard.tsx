@@ -364,9 +364,9 @@ export default function TeamOwnerDashboard({
         </section>
       )}
 
-      {/* Quick Stats - KPIs */}
+      {/* Quick Links - KPIs */}
       <section>
-        <h2 className="ios-label mb-3">Quick Stats</h2>
+        <h2 className="ios-label mb-3">Quick Links</h2>
         <div className="grid grid-cols-2 gap-3">
           <div 
             className="feed-card card-press cursor-pointer"
