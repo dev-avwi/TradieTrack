@@ -23,7 +23,8 @@ import {
   Building2,
   Calendar,
   MapPin,
-  Mail
+  Mail,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -377,352 +378,439 @@ export default function ClientPortalHub() {
 
   if (viewState === 'phone') {
     return (
-      <div className="min-h-screen bg-white dark:bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg border-primary/10">
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Phone className="w-8 h-8 text-primary" />
+      <div className="min-h-screen bg-white dark:bg-background flex flex-col">
+        <div className="bg-primary text-primary-foreground py-12 px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-8 h-8" />
             </div>
-            <CardTitle>Client Portal</CardTitle>
-            <CardDescription>
-              Enter your mobile number to access your quotes, invoices, and job history
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Input
-                type="tel"
-                placeholder="0400 000 000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="text-center text-lg"
-              />
-            </div>
-            <Button 
-              onClick={handleRequestCode}
-              disabled={isLoading || !phone.trim()}
-              className="w-full"
-              size="lg"
-            >
-              {isLoading ? 'Sending...' : 'Send Verification Code'}
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              We'll send a 6-digit code to verify your identity
-            </p>
-          </CardContent>
-        </Card>
+            <h1 className="text-2xl font-bold">Client Portal</h1>
+            <p className="text-sm opacity-90 mt-1">Access your quotes, invoices, and job history</p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-start justify-center px-4 -mt-6">
+          <Card className="w-full max-w-md shadow-lg">
+            <CardHeader className="text-center pb-2">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Phone className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Verify Your Identity</CardTitle>
+              <CardDescription>
+                Enter the mobile number associated with your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Input
+                  type="tel"
+                  placeholder="0400 000 000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="text-center text-lg"
+                />
+              </div>
+              <Button 
+                onClick={handleRequestCode}
+                disabled={isLoading || !phone.trim()}
+                className="w-full"
+                size="lg"
+              >
+                {isLoading ? 'Sending...' : 'Send Verification Code'}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
+                <Shield className="w-3 h-3" />
+                We'll send a 6-digit code to verify your identity
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center text-xs text-muted-foreground py-4">
+          <p>Powered by TradieTrack</p>
+        </div>
       </div>
     );
   }
 
   if (viewState === 'code') {
     return (
-      <div className="min-h-screen bg-white dark:bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg border-primary/10">
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8 text-primary" />
+      <div className="min-h-screen bg-white dark:bg-background flex flex-col">
+        <div className="bg-primary text-primary-foreground py-12 px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-8 h-8" />
             </div>
-            <CardTitle>Enter Verification Code</CardTitle>
-            <CardDescription>
-              We sent a 6-digit code to {phone}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Input
-                type="text"
-                placeholder="000000"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                className="text-center text-2xl tracking-widest font-mono"
-                maxLength={6}
-              />
-            </div>
-            <Button 
-              onClick={handleVerifyCode}
-              disabled={isLoading || code.length !== 6}
-              className="w-full"
-              size="lg"
-            >
-              {isLoading ? 'Verifying...' : 'Verify & Continue'}
-            </Button>
-            <div className="flex gap-2">
+            <h1 className="text-2xl font-bold">Client Portal</h1>
+            <p className="text-sm opacity-90 mt-1">Secure verification</p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-start justify-center px-4 -mt-6">
+          <Card className="w-full max-w-md shadow-lg">
+            <CardHeader className="text-center pb-2">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Enter Verification Code</CardTitle>
+              <CardDescription>
+                We sent a 6-digit code to {phone}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Input
+                  type="text"
+                  placeholder="000000"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="text-center text-2xl tracking-widest font-mono"
+                  maxLength={6}
+                />
+              </div>
               <Button 
-                variant="ghost" 
-                onClick={() => setViewState('phone')}
-                className="flex-1"
+                onClick={handleVerifyCode}
+                disabled={isLoading || code.length !== 6}
+                className="w-full"
+                size="lg"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
+                {isLoading ? 'Verifying...' : 'Verify & Continue'}
               </Button>
-              <Button 
-                variant="ghost" 
-                onClick={handleRequestCode}
-                disabled={isLoading}
-                className="flex-1"
-              >
-                Resend Code
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex gap-2">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setViewState('phone')}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleRequestCode}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  Resend Code
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center text-xs text-muted-foreground py-4">
+          <p>Powered by TradieTrack</p>
+        </div>
       </div>
     );
   }
 
   if (viewState === 'dashboard') {
+    const business = portalData?.quotes[0]?.business || portalData?.invoices[0]?.business || null;
+    const clientName = portalData?.clients[0]?.name;
+
     return (
-      <div className="min-h-screen bg-white dark:bg-background">
-        <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-          {sourceDocument && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}
-              className="mb-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to {sourceDocument.type === 'quote' ? 'Quote' : sourceDocument.type === 'invoice' ? 'Invoice' : 'Receipt'}
-            </Button>
-          )}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Your Portal</h1>
-              <p className="text-sm text-muted-foreground">
-                {portalData?.phone ? `Logged in as ${portalData.phone}` : 'Welcome back'}
-              </p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-
-          {isLoadingData ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-48 w-full" />
-            </div>
-          ) : (
-            <Tabs defaultValue="quotes" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
-                <TabsTrigger value="quotes" className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  <span className="hidden sm:inline">Quotes</span>
-                  {portalData?.quotes.length ? (
-                    <Badge variant="secondary" className="ml-1">{portalData.quotes.length}</Badge>
-                  ) : null}
-                </TabsTrigger>
-                <TabsTrigger value="invoices" className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4" />
-                  <span className="hidden sm:inline">Invoices</span>
-                  {portalData?.invoices.length ? (
-                    <Badge variant="secondary" className="ml-1">{portalData.invoices.length}</Badge>
-                  ) : null}
-                </TabsTrigger>
-                <TabsTrigger value="receipts" className="flex items-center gap-2">
-                  <Receipt className="w-4 h-4" />
-                  <span className="hidden sm:inline">Receipts</span>
-                  {portalData?.receipts.length ? (
-                    <Badge variant="secondary" className="ml-1">{portalData.receipts.length}</Badge>
-                  ) : null}
-                </TabsTrigger>
-                <TabsTrigger value="jobs" className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" />
-                  <span className="hidden sm:inline">Jobs</span>
-                  {portalData?.jobs.length ? (
-                    <Badge variant="secondary" className="ml-1">{portalData.jobs.length}</Badge>
-                  ) : null}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="quotes" className="space-y-4">
-                {portalData?.quotes.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-6 text-center text-muted-foreground">
-                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No quotes yet</p>
-                    </CardContent>
-                  </Card>
+      <div className="min-h-screen bg-white dark:bg-background flex flex-col">
+        <header className="bg-card border-b sticky top-0 z-20 shadow-sm">
+          <div className="px-4 py-3">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {business?.logoUrl ? (
+                  <img 
+                    src={business.logoUrl} 
+                    alt={business.businessName || 'Business'}
+                    className="w-10 h-10 object-contain rounded border"
+                  />
                 ) : (
-                  portalData?.quotes.map((quote) => (
-                    <Card key={quote.id} className="hover-elevate cursor-pointer" onClick={() => handleViewQuote(quote)}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium truncate">Quote #{quote.number}</h3>
-                              <Badge className={getQuoteStatusColor(quote.status)}>
-                                {quote.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">{quote.title}</p>
-                            {quote.business?.businessName && (
-                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                <Building2 className="w-3 h-3" />
-                                {quote.business.businessName}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatDate(quote.createdAt)}
-                              {quote.validUntil && ` • Valid until ${formatDate(quote.validUntil)}`}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-lg">{formatCurrency(quote.total)}</p>
-                            {quote.status === 'sent' && (
-                              <Button size="sm" className="mt-2">
-                                <Check className="w-3 h-3 mr-1" />
-                                View & Accept
-                              </Button>
-                            )}
-                          </div>
-                        </div>
+                  <div className="w-10 h-10 rounded border bg-primary/10 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h1 className="font-bold text-base truncate">
+                    {business?.businessName || 'Client Portal'}
+                  </h1>
+                  <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                    {business?.businessPhone && (
+                      <a href={`tel:${business.businessPhone}`} className="hover:text-primary flex items-center gap-1">
+                        <Phone className="w-3 h-3" /> {business.businessPhone}
+                      </a>
+                    )}
+                    {business?.businessEmail && (
+                      <a href={`mailto:${business.businessEmail}`} className="hover:text-primary flex items-center gap-1 hidden sm:flex">
+                        <Mail className="w-3 h-3" /> {business.businessEmail}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <div className="bg-primary text-primary-foreground py-4 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6" />
+                <div>
+                  <h2 className="text-xl font-bold">
+                    {clientName ? `Welcome back, ${clientName}` : 'Your Documents'}
+                  </h2>
+                  <p className="text-sm opacity-90">
+                    {portalData?.phone ? `Logged in as ${portalData.phone}` : 'Client Portal'}
+                  </p>
+                </div>
+              </div>
+              {sourceDocument && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-primary-foreground/30 text-primary-foreground"
+                  onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">
+                    Back to {sourceDocument.type === 'quote' ? 'Quote' : sourceDocument.type === 'invoice' ? 'Invoice' : 'Receipt'}
+                  </span>
+                  <span className="sm:hidden">Back</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <main className="flex-1 px-4 py-6">
+          <div className="max-w-4xl mx-auto">
+            {isLoadingData ? (
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+              </div>
+            ) : (
+              <Tabs defaultValue="quotes" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-6">
+                  <TabsTrigger value="quotes" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Quotes</span>
+                    {portalData?.quotes.length ? (
+                      <Badge variant="secondary" className="ml-1">{portalData.quotes.length}</Badge>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="invoices" className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    <span className="hidden sm:inline">Invoices</span>
+                    {portalData?.invoices.length ? (
+                      <Badge variant="secondary" className="ml-1">{portalData.invoices.length}</Badge>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="receipts" className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4" />
+                    <span className="hidden sm:inline">Receipts</span>
+                    {portalData?.receipts.length ? (
+                      <Badge variant="secondary" className="ml-1">{portalData.receipts.length}</Badge>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="jobs" className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4" />
+                    <span className="hidden sm:inline">Jobs</span>
+                    {portalData?.jobs.length ? (
+                      <Badge variant="secondary" className="ml-1">{portalData.jobs.length}</Badge>
+                    ) : null}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="quotes" className="space-y-4">
+                  {portalData?.quotes.length === 0 ? (
+                    <Card>
+                      <CardContent className="pt-6 text-center text-muted-foreground">
+                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No quotes yet</p>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </TabsContent>
-
-              <TabsContent value="invoices" className="space-y-4">
-                {portalData?.invoices.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-6 text-center text-muted-foreground">
-                      <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No invoices yet</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  portalData?.invoices.map((invoice) => (
-                    <Card key={invoice.id} className="hover-elevate">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium truncate">Invoice #{invoice.number}</h3>
-                              <Badge className={getInvoiceStatusColor(invoice.status)}>
-                                {invoice.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">{invoice.title}</p>
-                            {invoice.business?.businessName && (
-                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                <Building2 className="w-3 h-3" />
-                                {invoice.business.businessName}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatDate(invoice.createdAt)}
-                              {invoice.dueDate && invoice.status !== 'paid' && ` • Due ${formatDate(invoice.dueDate)}`}
-                              {invoice.paidAt && ` • Paid ${formatDate(invoice.paidAt)}`}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-lg">{formatCurrency(invoice.total)}</p>
-                            {invoice.status !== 'paid' && invoice.allowOnlinePayment && (
-                              <Button size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); handlePayInvoice(invoice); }}>
-                                <CreditCard className="w-3 h-3 mr-1" />
-                                Pay Now
-                              </Button>
-                            )}
-                            {invoice.status === 'paid' && (
-                              <div className="flex items-center gap-1 text-green-600 text-sm mt-2">
-                                <CheckCircle2 className="w-4 h-4" />
-                                Paid
+                  ) : (
+                    portalData?.quotes.map((quote) => (
+                      <Card key={quote.id} className="hover-elevate cursor-pointer" onClick={() => handleViewQuote(quote)}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3 className="font-medium truncate">Quote #{quote.number}</h3>
+                                <Badge className={getQuoteStatusColor(quote.status)}>
+                                  {quote.status}
+                                </Badge>
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
-
-              <TabsContent value="receipts" className="space-y-4">
-                {portalData?.receipts.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-6 text-center text-muted-foreground">
-                      <Receipt className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No receipts yet</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  portalData?.receipts.map((receipt) => (
-                    <Card key={receipt.id} className="hover-elevate cursor-pointer" onClick={() => handleViewReceipt(receipt)}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium">Receipt #{receipt.number}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Paid {formatDate(receipt.paymentDate)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-lg">{formatCurrency(receipt.total)}</p>
-                            <Button size="sm" variant="outline" className="mt-2">
-                              <Download className="w-3 h-3 mr-1" />
-                              View
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
-
-              <TabsContent value="jobs" className="space-y-4">
-                {portalData?.jobs.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-6 text-center text-muted-foreground">
-                      <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No jobs yet</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  portalData?.jobs.map((job) => (
-                    <Card key={job.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium truncate">{job.title}</h3>
-                              <Badge className={getJobStatusColor(job.status)}>
-                                {job.status.replace('_', ' ')}
-                              </Badge>
-                            </div>
-                            {job.address && (
-                              <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                                <MapPin className="w-3 h-3" />
-                                {job.address}
+                              <p className="text-sm text-muted-foreground truncate">{quote.title}</p>
+                              {quote.business?.businessName && (
+                                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                  <Building2 className="w-3 h-3" />
+                                  {quote.business.businessName}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatDate(quote.createdAt)}
+                                {quote.validUntil && ` • Valid until ${formatDate(quote.validUntil)}`}
                               </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {job.scheduledAt ? `Scheduled: ${formatDate(job.scheduledAt)}` : 'Not scheduled'}
-                              {job.completedAt && ` • Completed: ${formatDate(job.completedAt)}`}
-                            </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">{formatCurrency(quote.total)}</p>
+                              {quote.status === 'sent' && (
+                                <Button size="sm" className="mt-2">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  View & Accept
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          {job.photos && job.photos.length > 0 && (
-                            <Badge variant="secondary">
-                              {job.photos.length} photo{job.photos.length !== 1 ? 's' : ''}
-                            </Badge>
-                          )}
-                        </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+
+                <TabsContent value="invoices" className="space-y-4">
+                  {portalData?.invoices.length === 0 ? (
+                    <Card>
+                      <CardContent className="pt-6 text-center text-muted-foreground">
+                        <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No invoices yet</p>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
+                  ) : (
+                    portalData?.invoices.map((invoice) => (
+                      <Card key={invoice.id} className="hover-elevate">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3 className="font-medium truncate">Invoice #{invoice.number}</h3>
+                                <Badge className={getInvoiceStatusColor(invoice.status)}>
+                                  {invoice.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{invoice.title}</p>
+                              {invoice.business?.businessName && (
+                                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                  <Building2 className="w-3 h-3" />
+                                  {invoice.business.businessName}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatDate(invoice.createdAt)}
+                                {invoice.dueDate && invoice.status !== 'paid' && ` • Due ${formatDate(invoice.dueDate)}`}
+                                {invoice.paidAt && ` • Paid ${formatDate(invoice.paidAt)}`}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">{formatCurrency(invoice.total)}</p>
+                              {invoice.status !== 'paid' && invoice.allowOnlinePayment && (
+                                <Button size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); handlePayInvoice(invoice); }}>
+                                  <CreditCard className="w-3 h-3 mr-1" />
+                                  Pay Now
+                                </Button>
+                              )}
+                              {invoice.status === 'paid' && (
+                                <div className="flex items-center gap-1 text-green-600 text-sm mt-2">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  Paid
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
 
-          <div className="text-center text-xs text-muted-foreground pt-6 pb-4">
-            <p>Powered by TradieTrack</p>
+                <TabsContent value="receipts" className="space-y-4">
+                  {portalData?.receipts.length === 0 ? (
+                    <Card>
+                      <CardContent className="pt-6 text-center text-muted-foreground">
+                        <Receipt className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No receipts yet</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    portalData?.receipts.map((receipt) => (
+                      <Card key={receipt.id} className="hover-elevate cursor-pointer" onClick={() => handleViewReceipt(receipt)}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium">Receipt #{receipt.number}</h3>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Paid {formatDate(receipt.paymentDate)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">{formatCurrency(receipt.total)}</p>
+                              <Button size="sm" variant="outline" className="mt-2">
+                                <Download className="w-3 h-3 mr-1" />
+                                View
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+
+                <TabsContent value="jobs" className="space-y-4">
+                  {portalData?.jobs.length === 0 ? (
+                    <Card>
+                      <CardContent className="pt-6 text-center text-muted-foreground">
+                        <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No jobs yet</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    portalData?.jobs.map((job) => (
+                      <Card key={job.id}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3 className="font-medium truncate">{job.title}</h3>
+                                <Badge className={getJobStatusColor(job.status)}>
+                                  {job.status.replace('_', ' ')}
+                                </Badge>
+                              </div>
+                              {job.address && (
+                                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {job.address}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {job.scheduledAt ? `Scheduled: ${formatDate(job.scheduledAt)}` : 'Not scheduled'}
+                                {job.completedAt && ` • Completed: ${formatDate(job.completedAt)}`}
+                              </p>
+                            </div>
+                            {job.photos && job.photos.length > 0 && (
+                              <Badge variant="secondary">
+                                {job.photos.length} photo{job.photos.length !== 1 ? 's' : ''}
+                              </Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+              </Tabs>
+            )}
           </div>
+        </main>
+
+        <div className="text-center text-xs text-muted-foreground py-4 border-t">
+          <p>Powered by TradieTrack</p>
         </div>
       </div>
     );
