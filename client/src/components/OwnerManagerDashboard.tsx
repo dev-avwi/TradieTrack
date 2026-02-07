@@ -413,7 +413,7 @@ export default function OwnerManagerDashboard({
       </section>
 
       {/* Two-column layout: Left (AI Optimizer), Right (Today + Activity) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
         {/* LEFT COLUMN - AI Optimizer */}
         <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
           <AIScheduleOptimizer 

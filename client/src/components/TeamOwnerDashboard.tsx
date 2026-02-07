@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import GettingStartedChecklist from "./GettingStartedChecklist";
@@ -554,7 +553,7 @@ export default function TeamOwnerDashboard({
       </section>
 
       {/* Two-column layout: Left (Job Scheduler + AI Optimizer), Right (Today's Jobs + Activity) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
         {/* LEFT COLUMN - Job Scheduler + AI Optimizer stacking */}
         <div className="space-y-4 lg:space-y-6">
         {/* Job Scheduler - Drag & Drop */}
@@ -631,9 +630,9 @@ export default function TeamOwnerDashboard({
                 </CardTitle>
               </CardHeader>
               <CardContent className="py-0 px-4 pb-4">
-                <ScrollArea className="w-full">
-                  <div className="flex gap-2 pb-2">
-                    {jobsToAssign.slice(0, 5).map((job) => {
+                <div className="overflow-x-auto scrollbar-thin" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div className="flex gap-2 pb-2 w-max">
+                    {jobsToAssign.slice(0, 8).map((job) => {
                       const isSelected = selectedJob?.id === job.id;
                       return (
                       <div
@@ -664,18 +663,18 @@ export default function TeamOwnerDashboard({
                       </div>
                     );
                     })}
-                    {jobsToAssign.length > 5 && (
+                    {jobsToAssign.length > 8 && (
                       <Button
                         variant="ghost"
                         className="flex-shrink-0 h-auto py-3 px-4 rounded-xl"
                         onClick={() => onNavigate?.('/jobs?filter=unassigned')}
                       >
-                        +{jobsToAssign.length - 5} more
+                        +{jobsToAssign.length - 8} more
                         <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           )}
