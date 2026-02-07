@@ -400,6 +400,39 @@ function FlyToSearchedJob({
   return null;
 }
 
+function FlyToClickedJob({
+  position,
+  onComplete,
+}: {
+  position: { lat: number; lng: number; id: string } | null;
+  onComplete?: () => void;
+}) {
+  const map = useMap();
+  const lastIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!position) {
+      lastIdRef.current = null;
+      return;
+    }
+    if (lastIdRef.current === position.id) return;
+    lastIdRef.current = position.id;
+
+    const currentZoom = map.getZoom();
+    const targetZoom = Math.max(currentZoom, 16);
+
+    map.flyTo([position.lat, position.lng], targetZoom, {
+      duration: 0.6,
+    });
+
+    setTimeout(() => {
+      onComplete?.();
+    }, 650);
+  }, [position, map, onComplete]);
+
+  return null;
+}
+
 function FlyToTeamMember({ 
   selectedId, 
   teamLocations,
@@ -510,6 +543,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   const [jobSearch, setJobSearch] = useState("");
   const [showJobSearchResults, setShowJobSearchResults] = useState(false);
   const [selectedSearchJob, setSelectedSearchJob] = useState<JobMapData | null>(null);
+  const [clickedJobPosition, setClickedJobPosition] = useState<{ lat: number; lng: number; id: string } | null>(null);
   
   // Selected team member - when clicking a chip, fly to this member and show their info
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string | null>(null);
@@ -1123,6 +1157,11 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
             onComplete={() => {}}
           />
           
+          <FlyToClickedJob
+            position={clickedJobPosition}
+            onComplete={() => setClickedJobPosition(null)}
+          />
+          
           {/* Route polyline - draw line between stops */}
           {showRoutePanel && routeCoordinates.length >= 2 && (
             <Polyline
@@ -1186,6 +1225,15 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
               key={job.id}
               position={[job.latitude!, job.longitude!]}
               icon={createJobIcon(job.status, isDark)}
+              eventHandlers={{
+                click: () => {
+                  setClickedJobPosition({
+                    lat: job.latitude!,
+                    lng: job.longitude!,
+                    id: job.id + '-' + Date.now(),
+                  });
+                },
+              }}
             >
               <Popup>
                 <div className="min-w-[260px] p-2">
