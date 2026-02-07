@@ -13,58 +13,12 @@ interface AddressAutocompleteProps {
   disabled?: boolean;
 }
 
-interface NominatimResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-  address: {
-    house_number?: string;
-    road?: string;
-    suburb?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    state?: string;
-    postcode?: string;
-    country?: string;
-  };
-}
-
-function formatAustralianAddress(result: NominatimResult): string {
-  const addr = result.address;
-  const parts: string[] = [];
-
-  if (addr.house_number && addr.road) {
-    parts.push(`${addr.house_number} ${addr.road}`);
-  } else if (addr.road) {
-    parts.push(addr.road);
-  }
-
-  const locality = addr.suburb || addr.city || addr.town || addr.village;
-  if (locality) parts.push(locality);
-
-  const stateAbbr = addr.state ? getStateAbbreviation(addr.state) : "";
-  if (stateAbbr && addr.postcode) {
-    parts.push(`${stateAbbr} ${addr.postcode}`);
-  } else if (stateAbbr) {
-    parts.push(stateAbbr);
-  }
-
-  return parts.length > 0 ? parts.join(", ") : result.display_name;
-}
-
-function getStateAbbreviation(state: string): string {
-  const map: Record<string, string> = {
-    "New South Wales": "NSW",
-    "Victoria": "VIC",
-    "Queensland": "QLD",
-    "South Australia": "SA",
-    "Western Australia": "WA",
-    "Tasmania": "TAS",
-    "Northern Territory": "NT",
-    "Australian Capital Territory": "ACT",
-  };
-  return map[state] || state;
+interface AddressResult {
+  description: string;
+  place_id?: string;
+  lat?: string;
+  lng?: string;
+  provider: "google" | "nominatim";
 }
 
 export default function AddressAutocomplete({
@@ -76,7 +30,7 @@ export default function AddressAutocomplete({
   disabled,
   ...props
 }: AddressAutocompleteProps) {
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
+  const [suggestions, setSuggestions] = useState<AddressResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -103,7 +57,7 @@ export default function AddressAutocomplete({
       const response = await fetch(`/api/address-search?q=${encoded}`);
       lastFetchRef.current = Date.now();
       if (response.ok) {
-        const data: NominatimResult[] = await response.json();
+        const data: AddressResult[] = await response.json();
         setSuggestions(data);
         setIsOpen(data.length > 0);
         setHighlightedIndex(-1);
@@ -135,13 +89,37 @@ export default function AddressAutocomplete({
     }
   };
 
-  const handleSelect = (result: NominatimResult) => {
-    const formatted = formatAustralianAddress(result);
-    onChange(formatted);
-    onAddressSelect?.(formatted, parseFloat(result.lat), parseFloat(result.lon));
+  const handleSelect = async (result: AddressResult) => {
+    const address = result.description;
+    onChange(address);
     setIsOpen(false);
     setSuggestions([]);
     setHighlightedIndex(-1);
+
+    if (result.provider === "google" && result.place_id && onAddressSelect) {
+      try {
+        const res = await fetch(
+          `/api/address-search/details?place_id=${result.place_id}`
+        );
+        if (res.ok) {
+          const details = await res.json();
+          if (details.lat && details.lng) {
+            onAddressSelect(address, details.lat, details.lng);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    if (result.lat && result.lng) {
+      onAddressSelect?.(
+        address,
+        parseFloat(result.lat),
+        parseFloat(result.lng)
+      );
+    } else {
+      onAddressSelect?.(address);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -205,6 +183,7 @@ export default function AddressAutocomplete({
           placeholder={placeholder}
           className={cn("pr-8", className)}
           disabled={disabled}
+          autoComplete="street-address"
           data-testid={props["data-testid"]}
         />
         {isLoading && (
@@ -218,7 +197,7 @@ export default function AddressAutocomplete({
         <div className="absolute z-50 w-full mt-1 border rounded-md bg-popover text-popover-foreground shadow-md">
           {suggestions.map((result, index) => (
             <div
-              key={`${result.lat}-${result.lon}-${index}`}
+              key={`${result.place_id || result.lat}-${index}`}
               className={cn(
                 "flex items-start gap-2 px-3 py-2 cursor-pointer text-sm",
                 index === highlightedIndex && "bg-accent"
@@ -230,9 +209,7 @@ export default function AddressAutocomplete({
               }}
             >
               <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-              <span className="line-clamp-2">
-                {formatAustralianAddress(result)}
-              </span>
+              <span className="line-clamp-2">{result.description}</span>
             </div>
           ))}
         </div>

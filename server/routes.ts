@@ -27840,13 +27840,38 @@ Respond with JSON in this format:
     }
   });
 
+  // Address search - Google Places API (when key available) with Nominatim fallback
   app.get("/api/address-search", async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query || query.length < 3) {
         return res.json([]);
       }
+
+      const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
       
+      if (googleApiKey) {
+        const encoded = encodeURIComponent(query);
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encoded}&components=country:au&types=address&key=${googleApiKey}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'OK' && data.predictions) {
+            const results = data.predictions.map((p: any) => ({
+              description: p.description,
+              place_id: p.place_id,
+              provider: 'google',
+            }));
+            return res.json(results);
+          } else if (data.status === 'ZERO_RESULTS') {
+            return res.json([]);
+          }
+        }
+      }
+      
+      // Fallback to Nominatim (free, no key needed)
       const encoded = encodeURIComponent(query);
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=au&limit=5&addressdetails=1`,
@@ -27862,10 +27887,62 @@ Respond with JSON in this format:
       }
       
       const data = await response.json();
-      res.json(data);
+      const results = data.map((item: any) => {
+        const addr = item.address || {};
+        const parts: string[] = [];
+        if (addr.house_number && addr.road) parts.push(`${addr.house_number} ${addr.road}`);
+        else if (addr.road) parts.push(addr.road);
+        const locality = addr.suburb || addr.city || addr.town || addr.village;
+        if (locality) parts.push(locality);
+        const stateMap: Record<string, string> = {
+          'New South Wales': 'NSW', 'Victoria': 'VIC', 'Queensland': 'QLD',
+          'South Australia': 'SA', 'Western Australia': 'WA', 'Tasmania': 'TAS',
+          'Northern Territory': 'NT', 'Australian Capital Territory': 'ACT',
+        };
+        const stateAbbr = addr.state ? (stateMap[addr.state] || addr.state) : '';
+        if (stateAbbr && addr.postcode) parts.push(`${stateAbbr} ${addr.postcode}`);
+        else if (stateAbbr) parts.push(stateAbbr);
+        return {
+          description: parts.length > 0 ? parts.join(', ') : item.display_name,
+          lat: item.lat,
+          lng: item.lon,
+          provider: 'nominatim',
+        };
+      });
+      res.json(results);
     } catch (error) {
       console.error("Address search error:", error);
       res.status(500).json({ error: "Address search failed" });
+    }
+  });
+
+  // Google Places detail lookup for lat/lng after address selection
+  app.get("/api/address-search/details", async (req, res) => {
+    try {
+      const placeId = req.query.place_id as string;
+      const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+      
+      if (!placeId || !googleApiKey) {
+        return res.json({});
+      }
+      
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${googleApiKey}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result?.geometry?.location) {
+          return res.json({
+            lat: data.result.geometry.location.lat,
+            lng: data.result.geometry.location.lng,
+          });
+        }
+      }
+      res.json({});
+    } catch (error) {
+      console.error("Address details error:", error);
+      res.status(500).json({ error: "Details lookup failed" });
     }
   });
 
