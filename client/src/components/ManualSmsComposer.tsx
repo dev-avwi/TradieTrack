@@ -99,7 +99,7 @@ export function ManualSmsComposer({
             Send SMS Manually
           </DialogTitle>
           <DialogDescription>
-            Twilio SMS is not configured. You can compose your message here, then send it using your phone's messaging app.
+            Compose your message here, then send it using your phone's messaging app.
           </DialogDescription>
         </DialogHeader>
 
@@ -173,9 +173,6 @@ export function ManualSmsComposer({
           </Button>
         </DialogFooter>
 
-        <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-          <p>Want automatic SMS? <a href="/integrations" className="text-primary underline">Connect Twilio</a></p>
-        </div>
       </DialogContent>
     </Dialog>
   );

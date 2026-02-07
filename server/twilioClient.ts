@@ -249,6 +249,7 @@ interface SMSResult {
   messageId?: string;
   error?: string;
   simulated?: boolean;
+  notConfigured?: boolean;
 }
 
 export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {

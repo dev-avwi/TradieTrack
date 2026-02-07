@@ -121,17 +121,10 @@ export function UnifiedSendModal({
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.simulated) {
-        toast({
-          title: "SMS simulated (demo mode)",
-          description: "Message logged. Connect Twilio to send real SMS.",
-        });
-      } else {
-        toast({
-          title: "SMS sent!",
-          description: `Message sent to ${recipientPhone}`,
-        });
-      }
+      toast({
+        title: "SMS sent!",
+        description: `Message sent to ${recipientPhone}`,
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       onOpenChange(false);
     },
@@ -268,17 +261,6 @@ export function UnifiedSendModal({
           </TabsContent>
 
           <TabsContent value="sms" className="space-y-4 mt-4">
-            {!twilioConnected && (
-              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-800 dark:text-amber-200">SMS not fully configured</p>
-                  <p className="text-amber-700 dark:text-amber-300">
-                    You can copy the message or open your SMS app. <a href="/integrations" className="underline">Connect Twilio</a> for in-app SMS.
-                  </p>
-                </div>
-              </div>
-            )}
 
             <div>
               <Label>To</Label>
@@ -315,40 +297,18 @@ export function UnifiedSendModal({
             </div>
 
             <div className="flex gap-2">
-              {twilioConnected ? (
-                <Button
-                  onClick={() => sendSmsMutation.mutate()}
-                  disabled={sendSmsMutation.isPending || !smsMessage.trim()}
-                  className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
-                >
-                  {sendSmsMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  Send SMS
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyMessage}
-                    disabled={!smsMessage.trim()}
-                    className="gap-2"
-                  >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copied ? "Copied!" : "Copy"}
-                  </Button>
-                  <Button
-                    onClick={handleOpenSmsApp}
-                    disabled={!smsMessage.trim()}
-                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Open SMS App
-                  </Button>
-                </>
-              )}
+              <Button
+                onClick={() => sendSmsMutation.mutate()}
+                disabled={sendSmsMutation.isPending || !smsMessage.trim()}
+                className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+              >
+                {sendSmsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send SMS
+              </Button>
             </div>
           </TabsContent>
         </Tabs>

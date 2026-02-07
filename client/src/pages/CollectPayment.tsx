@@ -610,8 +610,8 @@ export default function CollectPayment() {
       
       if (isNotConfigured) {
         toast({
-          title: "SMS not set up",
-          description: "Tap 'Open SMS App' to send manually, or set up Twilio in Settings.",
+          title: "SMS error",
+          description: "SMS could not be sent. Tap 'Open SMS App' to send manually.",
           variant: "destructive",
           action: (
             <ToastAction

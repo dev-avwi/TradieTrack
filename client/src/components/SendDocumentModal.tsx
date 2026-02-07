@@ -363,8 +363,8 @@ export default function SendDocumentModal({
         if (result.notConfigured) {
           setShowSmsSetupGuide(true);
           toast({
-            title: "SMS not set up",
-            description: "Set up Twilio in Settings to send SMS messages.",
+            title: "SMS error",
+            description: "SMS could not be sent. Please try again later.",
             variant: "destructive"
           });
         } else {
@@ -398,13 +398,12 @@ export default function SendDocumentModal({
       
       // Detect "not configured" errors and show setup guide
       const isNotConfigured = errorMessage.toLowerCase().includes('not configured') || 
-                              errorMessage.toLowerCase().includes('twilio') ||
                               errorMessage.toLowerCase().includes('set up');
       if (isNotConfigured) {
         setShowSmsSetupGuide(true);
         toast({
-          title: "SMS not set up",
-          description: "Set up Twilio in Settings to send SMS messages.",
+          title: "SMS error",
+          description: "SMS could not be sent. Please try again later.",
           variant: "destructive"
         });
       } else {

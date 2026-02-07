@@ -106,7 +106,7 @@ Core architectural and design decisions include:
 *   **Styling**: TailwindCSS
 *   **Fonts**: Google Fonts (Inter)
 *   **AI Integration**: Replit AI Integrations (GPT-4o-mini, GPT-4o vision)
-*   **SMS Notifications**: Twilio
+*   **SMS Notifications**: Twilio (platform-managed shared account - no per-business Twilio setup required, works like SendGrid email)
 *   **Object Storage**: Google Cloud Storage (GCS)
 *   **Maps**: Leaflet with react-leaflet
 *   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online

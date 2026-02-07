@@ -47,15 +47,7 @@ export function SmsSetupPrompt({
   showWhenConfigured = false,
   onSetupClick 
 }: SmsSetupPromptProps) {
-  const { data: smsStatus, isLoading } = useSmsStatus();
-
-  if (isLoading) return null;
-  
-  if (smsStatus?.connected && !showWhenConfigured) {
-    return null;
-  }
-
-  const instructions = smsStatus?.setupInstructions;
+  return null;
 
   if (variant === "banner") {
     return (

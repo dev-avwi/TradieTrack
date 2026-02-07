@@ -45,8 +45,13 @@ export function useIntegrationHealth() {
 }
 
 // Helper functions to check specific integrations
+// SMS uses platform-managed Twilio (no per-business setup needed)
+// Returns true when the platform connector is configured, or when health hasn't loaded yet (optimistic)
 export function isTwilioReady(health: IntegrationHealth | undefined): boolean {
-  return health?.services?.twilio?.verified === true;
+  if (!health) return true;
+  const twilio = health.services?.twilio;
+  if (!twilio) return true;
+  return twilio.status === 'ready' || twilio.verified === true || twilio.managed === true;
 }
 
 export function isStripeReady(health: IntegrationHealth | undefined): boolean {

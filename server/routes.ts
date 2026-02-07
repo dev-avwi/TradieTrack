@@ -480,7 +480,7 @@ async function gatherAIContext(userId: string, storage: any, userContext?: UserC
   // Check if SMS is set up (Twilio via connector or environment variables)
   // Only consider SMS set up if credentials are verified (not placeholders)
   const twilioStatus = await checkTwilioAvailability();
-  const hasSmsSetup = twilioStatus.verified === true;
+  const hasSmsSetup = twilioStatus.configured || twilioStatus.verified;
 
   // Get user name for context
   const userName = currentUser?.firstName || currentUser?.name?.split(' ')[0] || 'mate';
@@ -5167,26 +5167,11 @@ Be specific about materials, colors, and features that would be included.`
     try {
       const settings = await storage.getBusinessSettings(req.userId);
       
-      // Mask auth token like "••••••abc1" - only show last 4 chars
-      const maskedAuthToken = settings?.twilioAuthToken 
-        ? '••••••' + settings.twilioAuthToken.slice(-4) 
-        : null;
-      
-      // Check platform Twilio availability (connector or env vars)
-      // Use verified flag to ensure credentials are not placeholders
       const platformTwilioStatus = await checkTwilioAvailability();
       
-      // Return SMS branding fields (mask ALL sensitive data)
       const smsBranding = {
-        twilioPhoneNumber: settings?.twilioPhoneNumber || null,
         twilioSenderId: settings?.twilioSenderId || null,
-        twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
-        twilioAuthToken: maskedAuthToken,
-        twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
-        // Include platform defaults info (connector or env vars)
-        // Only show as configured if verified (not placeholder credentials)
         platformTwilioConfigured: platformTwilioStatus.verified === true,
-        platformTwilioPhoneNumber: platformTwilioStatus.hasPhoneNumber ? '(configured)' : null,
       };
       
       res.json(smsBranding);
@@ -5199,9 +5184,8 @@ Be specific about materials, colors, and features that would be included.`
   // Update SMS branding settings
   app.put("/api/settings/sms-branding", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const { twilioPhoneNumber, twilioSenderId, twilioAccountSid, twilioAuthToken } = req.body;
+      const { twilioSenderId } = req.body;
       
-      // Validate sender ID (alphanumeric only, max 11 chars)
       if (twilioSenderId) {
         const senderIdRegex = /^[a-zA-Z0-9]{1,11}$/;
         if (!senderIdRegex.test(twilioSenderId)) {
@@ -5211,32 +5195,10 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
-      // Validate phone number format (E.164)
-      if (twilioPhoneNumber) {
-        const phoneRegex = /^\+[1-9]\d{1,14}$/;
-        if (!phoneRegex.test(twilioPhoneNumber)) {
-          return res.status(400).json({ 
-            error: "Invalid phone number. Must be in E.164 format (e.g., +61412345678)." 
-          });
-        }
-      }
-      
-      // Get or create business settings
       let settings = await storage.getBusinessSettings(req.userId);
       
       const updateData: any = {};
-      if (twilioPhoneNumber !== undefined) updateData.twilioPhoneNumber = twilioPhoneNumber || null;
       if (twilioSenderId !== undefined) updateData.twilioSenderId = twilioSenderId || null;
-      
-      // Don't update account SID if a masked value is sent back (starts with ***)
-      if (twilioAccountSid !== undefined && !twilioAccountSid?.startsWith('***')) {
-        updateData.twilioAccountSid = twilioAccountSid || null;
-      }
-      
-      // Don't update auth token if a masked value is sent back (contains •)
-      if (twilioAuthToken !== undefined && !twilioAuthToken?.includes('•')) {
-        updateData.twilioAuthToken = twilioAuthToken || null;
-      }
       
       if (settings) {
         settings = await storage.updateBusinessSettings(req.userId, updateData);
@@ -5248,17 +5210,8 @@ Be specific about materials, colors, and features that would be included.`
         });
       }
       
-      // Return masked response - mask auth token like "••••••abc1"
-      const maskedAuthToken = settings?.twilioAuthToken 
-        ? '••••••' + settings.twilioAuthToken.slice(-4) 
-        : null;
-      
       res.json({
-        twilioPhoneNumber: settings?.twilioPhoneNumber || null,
         twilioSenderId: settings?.twilioSenderId || null,
-        twilioAccountSid: settings?.twilioAccountSid ? '***' + settings.twilioAccountSid.slice(-4) : null,
-        twilioAuthToken: maskedAuthToken,
-        twilioAuthTokenConfigured: !!settings?.twilioAuthToken,
         message: "SMS branding settings updated successfully",
       });
     } catch (error) {
@@ -5267,67 +5220,6 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Test Twilio connection with provided credentials
-  app.post("/api/settings/sms-branding/test", requireAuth, ownerOnly(), async (req: any, res) => {
-    try {
-      const { twilioAccountSid, twilioAuthToken, twilioPhoneNumber } = req.body;
-      
-      if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
-        return res.status(400).json({ 
-          error: "Account SID, Auth Token, and Phone Number are all required" 
-        });
-      }
-      
-      // Validate phone number format (E.164)
-      const phoneRegex = /^\+[1-9]\d{1,14}$/;
-      if (!phoneRegex.test(twilioPhoneNumber)) {
-        return res.status(400).json({ 
-          error: "Invalid phone number. Must be in E.164 format (e.g., +61412345678)." 
-        });
-      }
-      
-      // Try to initialize a Twilio client with the provided credentials
-      const twilio = await import('twilio');
-      const client = twilio.default(twilioAccountSid, twilioAuthToken);
-      
-      // Verify the credentials by fetching account info
-      const account = await client.api.accounts(twilioAccountSid).fetch();
-      
-      // Verify the phone number belongs to this account
-      const phoneNumbers = await client.incomingPhoneNumbers.list({ phoneNumber: twilioPhoneNumber });
-      
-      if (phoneNumbers.length === 0) {
-        return res.status(400).json({ 
-          error: "Phone number not found in your Twilio account. Make sure you've purchased this number." 
-        });
-      }
-      
-      res.json({ 
-        success: true,
-        message: `Connection successful! Account: ${account.friendlyName}`,
-        accountName: account.friendlyName,
-        phoneNumber: twilioPhoneNumber,
-      });
-    } catch (error: any) {
-      console.error("Twilio connection test failed:", error);
-      
-      // Handle specific Twilio errors
-      if (error.code === 20003) {
-        return res.status(401).json({ 
-          error: "Invalid credentials. Please check your Account SID and Auth Token." 
-        });
-      }
-      if (error.code === 20404) {
-        return res.status(404).json({ 
-          error: "Account not found. Please verify your Account SID." 
-        });
-      }
-      
-      res.status(500).json({ 
-        error: error.message || "Failed to connect to Twilio. Please check your credentials." 
-      });
-    }
-  });
 
   // Integration Settings Routes
   app.get("/api/integrations/settings", requireAuth, async (req: any, res) => {

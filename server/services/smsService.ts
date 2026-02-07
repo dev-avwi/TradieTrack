@@ -5,7 +5,6 @@
  * Integration: connection:conn_twilio_01KB17KVHYEAGTVK0VVR1H47AA
  */
 
-import twilio from 'twilio';
 import { sendSMS, getTwilioPhoneNumber, isTwilioInitialized, smsTemplates } from '../twilioClient';
 import { storage } from '../storage';
 import type { SmsConversation, SmsMessage, InsertSmsConversation, InsertSmsMessage, BusinessSettings } from '@shared/schema';
@@ -89,64 +88,16 @@ export async function getOrCreateConversation(options: {
 }
 
 /**
- * Send SMS using business's custom Twilio credentials if configured
+ * Send SMS via the platform Twilio account
  */
-async function sendSmsWithBusinessSettings(
+async function sendSmsPlatform(
   to: string,
   message: string,
-  businessSettings: BusinessSettings | null | undefined,
   mediaUrls?: string[]
 ): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean }> {
-  // Format phone number
-  let formattedTo = to.replace(/\s+/g, '').replace(/^0/, '+61');
-  if (!formattedTo.startsWith('+')) {
-    formattedTo = '+61' + formattedTo.replace(/^61/, '');
-  }
-  
+  const formattedTo = formatPhoneNumber(to);
   const validMediaUrls = mediaUrls?.slice(0, 10) || [];
-  const isMMS = validMediaUrls.length > 0;
   
-  // Check if business has custom Twilio settings
-  if (businessSettings?.twilioAccountSid && businessSettings?.twilioAuthToken) {
-    try {
-      const client = twilio(businessSettings.twilioAccountSid, businessSettings.twilioAuthToken);
-      
-      // Determine the "from" value - use sender ID or phone number
-      // Note: Alphanumeric sender IDs don't support MMS, so use phone number for MMS
-      let fromValue: string;
-      if (isMMS || !businessSettings.twilioSenderId) {
-        // Use phone number for MMS or if no sender ID configured
-        fromValue = businessSettings.twilioPhoneNumber || getTwilioPhoneNumber() || '';
-      } else {
-        // Use alphanumeric sender ID for SMS (max 11 chars, alphanumeric only)
-        fromValue = businessSettings.twilioSenderId.slice(0, 11);
-      }
-      
-      if (!fromValue) {
-        throw new Error('No Twilio phone number or sender ID configured');
-      }
-      
-      const messageOptions: any = {
-        body: message,
-        from: fromValue,
-        to: formattedTo
-      };
-      
-      if (isMMS) {
-        messageOptions.mediaUrl = validMediaUrls;
-      }
-      
-      const result = await client.messages.create(messageOptions);
-      console.log(`✅ ${isMMS ? 'MMS' : 'SMS'} sent via business Twilio (${fromValue}) to ${formattedTo}: ${result.sid}`);
-      return { success: true, messageId: result.sid };
-    } catch (error: any) {
-      console.error(`❌ Failed to send ${isMMS ? 'MMS' : 'SMS'} via business Twilio:`, error.message);
-      // Fall back to platform Twilio
-      console.log('Falling back to platform Twilio...');
-    }
-  }
-  
-  // Fall back to platform Twilio
   return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined });
 }
 
@@ -162,13 +113,8 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
     jobId: options.jobId,
   });
   
-  // Fetch business settings for custom Twilio configuration
-  const businessSettings = await storage.getBusinessSettings(options.businessOwnerId);
-  
-  // Validate and limit media URLs (max 10 per Twilio MMS)
   const validMediaUrls = options.mediaUrls?.slice(0, 10) || [];
   
-  // Create message record first (pending status)
   const message = await storage.createSmsMessage({
     conversationId: conversation.id,
     direction: 'outbound',
@@ -183,11 +129,9 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
     errorMessage: null,
   });
   
-  // Send via Twilio using business settings if available
-  const result = await sendSmsWithBusinessSettings(
+  const result = await sendSmsPlatform(
     conversation.clientPhone,
     options.message,
-    businessSettings,
     validMediaUrls.length > 0 ? validMediaUrls : undefined
   );
   
