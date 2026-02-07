@@ -11778,7 +11778,8 @@ Be specific about materials, colors, and features that would be included.`
       // Build public URL and message
       const publicUrl = getQuotePublicUrl(acceptanceToken, req);
       
-      const message = `${smsTemplates.quoteReady(client.name, businessName, quote.number || quote.id.slice(0, 8))} View: ${publicUrl}`;
+      const businessPhone = businessSettings?.phone || undefined;
+      const message = `${smsTemplates.quoteReady(client.name, businessName, quote.number || quote.id.slice(0, 8), businessPhone)} View: ${publicUrl}`;
       
       // Send SMS
       const smsMessage = await sendSmsToClient({
@@ -12506,7 +12507,8 @@ Be specific about materials, colors, and features that would be included.`
       const publicUrl = `${getProductionBaseUrl(req)}/pay/${paymentToken}`;
       const amount = `$${parseFloat(String(invoice.total || '0')).toFixed(2)}`;
       
-      const message = `${smsTemplates.invoiceSent(client.name, businessName, invoice.number || invoice.id.slice(0, 8), amount)} Pay: ${publicUrl}`;
+      const businessPhone = businessSettings?.phone || undefined;
+      const message = `${smsTemplates.invoiceSent(client.name, businessName, invoice.number || invoice.id.slice(0, 8), amount, businessPhone)} Pay: ${publicUrl}`;
       
       // Send SMS
       const smsMessage = await sendSmsToClient({
@@ -14861,7 +14863,8 @@ Be specific about materials, colors, and features that would be included.`
       const receiptUrl = getReceiptPublicUrl(viewToken, req);
       
       // Use paymentReceived template with receipt URL
-      const message = smsTemplates.paymentReceived(clientName || 'Customer', amount, businessName, receiptUrl);
+      const businessPhone = businessSettings?.phone || undefined;
+      const message = smsTemplates.paymentReceived(clientName || 'Customer', amount, businessName, receiptUrl, businessPhone);
       
       // Send SMS
       const smsMessage = await sendSmsToClient({
@@ -23391,6 +23394,7 @@ Respond with JSON in this format:
         jobTitle,
         businessName,
         estimatedTime,
+        businessPhone: businessSettings?.phone || undefined,
       });
       
       res.json(smsMessage);

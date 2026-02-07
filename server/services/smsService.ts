@@ -33,6 +33,7 @@ interface QuickActionOptions {
   estimatedTime?: string;
   includeTrackingLink?: boolean;
   trackingLinkUrl?: string;
+  businessPhone?: string;
 }
 
 /**
@@ -192,6 +193,10 @@ export async function sendQuickAction(options: QuickActionOptions): Promise<SmsM
       break;
     default:
       throw new Error('Invalid quick action type');
+  }
+  
+  if (options.businessPhone) {
+    message += `\nCall us: ${options.businessPhone}`;
   }
   
   return sendSmsToClient({

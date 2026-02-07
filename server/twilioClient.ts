@@ -311,26 +311,26 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
 
 // SMS Templates for JobRunner notifications
 export const smsTemplates = {
-  quoteReady: (clientName: string, businessName: string, quoteNumber: string) =>
-    `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready. Reply YES to accept or view details:`,
+  quoteReady: (clientName: string, businessName: string, quoteNumber: string, businessPhone?: string) =>
+    `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready. Reply YES to accept or view details:${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
   
-  quoteWithTotal: (clientName: string, businessName: string, quoteNumber: string, total: string) =>
-    `Hi ${clientName}, your quote #${quoteNumber} for $${total} from ${businessName} is ready. Reply YES to accept or view:`,
+  quoteWithTotal: (clientName: string, businessName: string, quoteNumber: string, total: string, businessPhone?: string) =>
+    `Hi ${clientName}, your quote #${quoteNumber} for $${total} from ${businessName} is ready. Reply YES to accept or view:${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
   
-  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string) =>
-    `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready. Check your email to pay online.`,
+  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string, businessPhone?: string) =>
+    `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready. Check your email to pay online.${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
   
-  paymentReceived: (clientName: string, amount: string, businessName: string, receiptUrl?: string) =>
+  paymentReceived: (clientName: string, amount: string, businessName: string, receiptUrl?: string, businessPhone?: string) =>
     receiptUrl 
-      ? `Thanks ${clientName}! We received your payment of ${amount}. Your receipt: ${receiptUrl} - ${businessName}`
-      : `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}`,
+      ? `Thanks ${clientName}! We received your payment of ${amount}. Your receipt: ${receiptUrl} - ${businessName}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`
+      : `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
   
-  jobScheduled: (clientName: string, businessName: string, date: string) =>
-    `Hi ${clientName}, ${businessName} has scheduled your job for ${date}. We'll see you then!`,
+  jobScheduled: (clientName: string, businessName: string, date: string, businessPhone?: string) =>
+    `Hi ${clientName}, ${businessName} has scheduled your job for ${date}. We'll see you then!${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
   
-  jobComplete: (clientName: string, businessName: string) =>
-    `Hi ${clientName}, your job with ${businessName} is complete. Thanks for choosing us!`,
+  jobComplete: (clientName: string, businessName: string, businessPhone?: string) =>
+    `Hi ${clientName}, your job with ${businessName} is complete. Thanks for choosing us!${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
   
-  reminder: (clientName: string, businessName: string, message: string) =>
-    `Hi ${clientName}, reminder from ${businessName}: ${message}`
+  reminder: (clientName: string, businessName: string, message: string, businessPhone?: string) =>
+    `Hi ${clientName}, reminder from ${businessName}: ${message}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`
 };

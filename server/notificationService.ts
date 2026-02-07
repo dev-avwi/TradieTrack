@@ -83,6 +83,7 @@ export interface NotifyClientOptions {
   clientPhone?: string;
   businessName: string;
   businessEmail?: string;
+  businessPhone?: string;
   channel?: NotificationChannel;
 }
 
@@ -147,7 +148,7 @@ export async function notifyQuoteReady(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.quoteReady(clientName, businessName, quoteNumber)
+        message: smsTemplates.quoteReady(clientName, businessName, quoteNumber, options.businessPhone)
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) {
@@ -215,7 +216,7 @@ export async function notifyInvoiceSent(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal)
+        message: smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal, options.businessPhone)
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
@@ -274,7 +275,7 @@ export async function notifyPaymentReceived(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.paymentReceived(clientName, amount, businessName)
+        message: smsTemplates.paymentReceived(clientName, amount, businessName, undefined, options.businessPhone)
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
@@ -334,7 +335,7 @@ export async function notifyJobScheduled(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.jobScheduled(clientName, businessName, jobDate)
+        message: smsTemplates.jobScheduled(clientName, businessName, jobDate, options.businessPhone)
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
