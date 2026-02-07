@@ -10195,6 +10195,10 @@ Be specific about materials, colors, and features that would be included.`
       const effectiveUserId = req.effectiveUserId || req.userId;
       const jobId = req.params.id;
       
+      // Determine if user is a worker to control pricing visibility
+      const workerContext = await getWorkerPermissionContext(req.userId);
+      const isWorker = workerContext.isWorker;
+      
       // Verify job exists and user has access
       const job = await storage.getJob(jobId, effectiveUserId);
       if (!job) {
@@ -10241,15 +10245,27 @@ Be specific about materials, colors, and features that would be included.`
       const linkedInvoice = linkedInvoices.length > 0 ? linkedInvoices[linkedInvoices.length - 1] : null;
       
       res.json({
-        linkedQuote: linkedQuote ? {
-          id: linkedQuote.id,
-          number: linkedQuote.number,
-          quoteNumber: linkedQuote.number, // Alias for backward compatibility
-          title: linkedQuote.title,
-          status: linkedQuote.status,
-          total: linkedQuote.total,
-          createdAt: linkedQuote.createdAt,
-        } : null,
+        linkedQuote: linkedQuote ? await (async () => {
+          const lineItems = await storage.getQuoteLineItems(linkedQuote.id);
+          const sortedLineItems = lineItems.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+          return {
+            id: linkedQuote.id,
+            number: linkedQuote.number,
+            quoteNumber: linkedQuote.number,
+            title: linkedQuote.title,
+            status: linkedQuote.status,
+            ...(isWorker ? {} : { total: linkedQuote.total }),
+            description: linkedQuote.description,
+            createdAt: linkedQuote.createdAt,
+            lineItems: sortedLineItems.map((item: any) => ({
+              id: item.id,
+              description: item.description,
+              quantity: item.quantity,
+              ...(isWorker ? {} : { unitPrice: item.unitPrice, total: item.total }),
+              sortOrder: item.sortOrder,
+            })),
+          };
+        })() : null,
         linkedInvoice: linkedInvoice ? {
           id: linkedInvoice.id,
           number: linkedInvoice.number,

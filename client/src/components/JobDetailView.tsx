@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle } from "lucide-react";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
 import { getJobUrgency, getInProgressDuration } from "@/lib/jobUrgency";
@@ -105,6 +105,15 @@ interface User {
   lastName?: string | null;
 }
 
+interface QuoteLineItem {
+  id: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  total: string;
+  sortOrder: number;
+}
+
 interface LinkedDocument {
   id: string;
   title?: string;
@@ -113,6 +122,8 @@ interface LinkedDocument {
   number?: string;
   quoteNumber?: string;
   invoiceNumber?: string;
+  description?: string;
+  lineItems?: QuoteLineItem[];
   createdAt?: string;
   dueDate?: string;
   paidAt?: string;
@@ -1353,6 +1364,47 @@ export default function JobDetailView({
           data-testid="job-flow-wizard"
         />
 
+        {linkedQuote && linkedQuote.lineItems && linkedQuote.lineItems.length > 0 && (
+          <Card className="border-trade/30" data-testid="card-job-brief">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                <CardTitle className="text-sm font-medium">Job Brief</CardTitle>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Scope of work from {linkedQuote.number || linkedQuote.quoteNumber ? `Quote #${linkedQuote.number || linkedQuote.quoteNumber}` : "Linked Quote"}
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {linkedQuote.description && (
+                <p className="text-sm text-muted-foreground">{linkedQuote.description}</p>
+              )}
+              <div className="space-y-2">
+                {linkedQuote.lineItems.map((item) => (
+                  <div key={item.id} className="flex items-start gap-2">
+                    <Circle className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground/50" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm">{item.description}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
+                      {parseFloat(item.quantity) !== 1 && (
+                        <span>x{item.quantity}</span>
+                      )}
+                      {!isTradie && item.total && !isNaN(parseFloat(item.total)) && (
+                        <span className="text-right w-20">${parseFloat(item.total).toFixed(2)}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {!isTradie && linkedQuote.total && !isNaN(parseFloat(linkedQuote.total)) && (
+                <div className="flex items-center justify-end pt-2 border-t">
+                  <span className="text-sm font-medium">Total: ${parseFloat(linkedQuote.total).toFixed(2)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {!isTradie && (
           <LinkedDocumentsCard
