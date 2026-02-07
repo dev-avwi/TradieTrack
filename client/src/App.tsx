@@ -390,6 +390,7 @@ function Router({
             }
           }}
           onCreateJob={(clientId) => onNavigate(`/jobs/new?clientId=${clientId}`)}
+          onCreateQuote={(clientId) => onNavigate(`/quotes/new?clientId=${clientId}`)}
           onViewJob={(jobId) => onNavigate(`/jobs/${jobId}`)}
         />
       )} />

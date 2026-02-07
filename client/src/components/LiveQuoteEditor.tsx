@@ -81,10 +81,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const { data: businessSettings } = useBusinessSettings();
   const createQuoteMutation = useCreateQuote();
   
-  // Read jobId from URL query parameters (e.g., /quotes/new?jobId=123)
+  // Read jobId and clientId from URL query parameters (e.g., /quotes/new?jobId=123 or /quotes/new?clientId=456)
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const urlJobId = urlParams.get('jobId');
+  const urlClientId = urlParams.get('clientId');
   
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
@@ -283,6 +284,16 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       description: `Quote prefilled from "${job.title}"`,
     });
   };
+
+  // Auto-fill client when coming from client detail page
+  useEffect(() => {
+    if (urlClientId && clients.length > 0 && !form.getValues("clientId")) {
+      const clientExists = (clients as any[]).some(c => String(c.id) === urlClientId);
+      if (clientExists) {
+        form.setValue("clientId", urlClientId);
+      }
+    }
+  }, [urlClientId, clients, form]);
 
   const handleApplyTemplate = (template: DocumentTemplate) => {
     // Update scalar form values using setValue
@@ -799,6 +810,20 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   </div>
                 )}
                 
+                <div className="pt-2 border-t">
+                  <JobScopeChecklist
+                    onAddItems={(items) => {
+                      items.forEach(item => appendLineItem(item));
+                    }}
+                    currentItems={lineItems.map(item => ({
+                      description: item.description,
+                      quantity: item.quantity,
+                      unitPrice: item.unitPrice,
+                    }))}
+                    jobType={form.getValues("title")}
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="title" className="text-xs text-muted-foreground">Title</Label>
                   <Input
@@ -947,17 +972,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   >
                     <BookOpen className="h-4 w-4" />
                   </Button>
-                  <JobScopeChecklist
-                    onAddItems={(items) => {
-                      items.forEach(item => appendLineItem(item));
-                    }}
-                    currentItems={lineItems.map(item => ({
-                      description: item.description,
-                      quantity: item.quantity,
-                      unitPrice: item.unitPrice,
-                    }))}
-                    jobType={form.getValues("title")}
-                  />
                 </div>
 
                 {form.formState.errors.lineItems && (
