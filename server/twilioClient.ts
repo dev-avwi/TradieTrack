@@ -309,7 +309,7 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   }
 }
 
-// SMS Templates for TradieTrack notifications
+// SMS Templates for JobRunner notifications
 export const smsTemplates = {
   quoteReady: (clientName: string, businessName: string, quoteNumber: string) =>
     `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready. Reply YES to accept or view details:`,

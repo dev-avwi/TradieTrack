@@ -1,5 +1,5 @@
 /**
- * SMS Service for TradieTrack
+ * SMS Service for JobRunner
  * Handles two-way SMS communication with clients via Twilio
  * 
  * Integration: connection:conn_twilio_01KB17KVHYEAGTVK0VVR1H47AA
