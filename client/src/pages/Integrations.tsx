@@ -3,25 +3,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-business-settings";
-import StripeSetupGuide from "@/components/StripeSetupGuide";
-import XeroSetupGuide from "@/components/XeroSetupGuide";
-import GoogleCalendarSetupGuide from "@/components/GoogleCalendarSetupGuide";
 import QuickBooksIntegration from "@/components/QuickBooksIntegration";
-// MYOB integration removed per user request - focusing on Xero
-// import MyobSetupGuide from "@/components/MyobSetupGuide";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { 
   CreditCard, 
   Mail, 
@@ -34,40 +20,15 @@ import {
   ArrowRight,
   Building2,
   Wallet,
-  Info,
   Phone,
-  MessageSquare,
   Send,
-  Clock,
   FileText,
-  BarChart3,
-  Eye,
-  EyeOff,
-  HelpCircle,
   Calendar,
-  ChevronDown,
-  Shield,
-  Plus,
-  Pencil,
-  Trash2
+  RefreshCw,
+  Link2Off,
+  Users,
 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { MessageTemplate } from "@shared/schema";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { SiStripe, SiGmail, SiXero } from "react-icons/si";
-import { RefreshCw, Link2Off, Users } from "lucide-react";
 
 interface XeroStatus {
   configured: boolean;
@@ -207,111 +168,19 @@ interface TwilioSettings {
 }
 
 export default function Integrations() {
-  const [stripeDialogOpen, setStripeDialogOpen] = useState(false);
   const { toast } = useToast();
   
-  // Message Templates state
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
-  const [templateChannel, setTemplateChannel] = useState<'email' | 'sms'>('email');
-  const [templateName, setTemplateName] = useState('');
-  const [templateCategory, setTemplateCategory] = useState('general');
-  const [templateSubject, setTemplateSubject] = useState('');
-  const [templateBody, setTemplateBody] = useState('');
-  
-  // Business settings for email sending mode
   const { data: businessSettings } = useBusinessSettings();
   const updateBusinessSettings = useUpdateBusinessSettings();
   const emailSendingMode = businessSettings?.emailSendingMode || 'manual';
 
-  // Track if we've already handled the URL params (to avoid duplicate toasts)
   const [urlParamsHandled, setUrlParamsHandled] = useState(false);
 
   const { data: health, isLoading, isError, refetch } = useQuery<HealthStatus>({
     queryKey: ['/api/integrations/health'],
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Message Templates queries and mutations
-  const { data: messageTemplates = [], refetch: refetchTemplates } = useQuery<MessageTemplate[]>({
-    queryKey: ['/api/message-templates'],
-  });
-
-  const createTemplateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch('/api/message-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to create template');
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Template created", description: "Your new template is ready to use" });
-      refetchTemplates();
-      setTemplateDialogOpen(false);
-      resetTemplateForm();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create template",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateTemplateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await fetch(`/api/message-templates/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to update template');
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Template updated", description: "Your changes have been saved" });
-      refetchTemplates();
-      setTemplateDialogOpen(false);
-      resetTemplateForm();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update template",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteTemplateMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/message-templates/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to delete template');
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Template deleted", description: "The template has been removed" });
-      refetchTemplates();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete template",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutation to start Stripe Connect onboarding
   const connectStripeMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/stripe-connect/onboard');
@@ -331,7 +200,6 @@ export default function Integrations() {
     },
   });
 
-  // Mutation to open Stripe dashboard (GET request, not POST)
   const openDashboardMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/stripe-connect/dashboard', {
@@ -357,7 +225,6 @@ export default function Integrations() {
     },
   });
 
-  // Xero integration queries and mutations
   const { data: xeroStatus, refetch: refetchXero } = useQuery<XeroStatus>({
     queryKey: ['/api/integrations/xero/status'],
   });
@@ -454,7 +321,6 @@ export default function Integrations() {
     },
   });
 
-  // MYOB integration queries and mutations
   const { data: myobStatus, refetch: refetchMyob } = useQuery<MyobStatus>({
     queryKey: ['/api/integrations/myob/status'],
   });
@@ -549,7 +415,6 @@ export default function Integrations() {
     },
   });
 
-  // QuickBooks integration queries and mutations
   const [quickbooksSyncError, setQuickbooksSyncError] = useState<string | undefined>();
   const { data: quickbooksStatus, refetch: refetchQuickbooks } = useQuery<QuickBooksStatus>({
     queryKey: ['/api/integrations/quickbooks/status'],
@@ -620,11 +485,10 @@ export default function Integrations() {
     },
   });
 
-  // Google Calendar integration queries and mutations
   const { data: googleCalendarStatus, refetch: refetchGoogleCalendar } = useQuery<GoogleCalendarStatus>({
     queryKey: ['/api/integrations/google-calendar/status'],
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const connectGoogleCalendarMutation = useMutation({
@@ -687,7 +551,6 @@ export default function Integrations() {
     },
   });
 
-  // Outlook/Microsoft 365 integration queries and mutations
   const { data: outlookStatus, refetch: refetchOutlook } = useQuery<OutlookStatus>({
     queryKey: ['/api/integrations/outlook/status'],
     staleTime: 0,
@@ -734,8 +597,6 @@ export default function Integrations() {
     },
   });
 
-
-  // Handle OAuth callback success/error messages from URL params
   useEffect(() => {
     if (urlParamsHandled) return;
     
@@ -750,7 +611,6 @@ export default function Integrations() {
         description: "Your Google Calendar has been successfully linked. Jobs will now sync automatically.",
       });
       refetchGoogleCalendar();
-      // Clean up URL
       window.history.replaceState({}, '', '/integrations');
     } else if (success === 'xero_connected') {
       setUrlParamsHandled(true);
@@ -802,25 +662,22 @@ export default function Integrations() {
     }
   }, [urlParamsHandled, toast, refetchGoogleCalendar, refetchXero, refetchQuickbooks, refetchOutlook]);
 
-  // Handle hash scroll (e.g., /integrations#twilio)
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
-      const elementId = hash.substring(1); // Remove the #
+      const elementId = hash.substring(1);
       setTimeout(() => {
         const element = document.getElementById(elementId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Optional: highlight the element briefly
           element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
           setTimeout(() => {
             element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
           }, 2000);
         }
-      }, 500); // Delay to ensure page is rendered
+      }, 500);
     }
   }, []);
-
 
   if (isLoading) {
     return (
@@ -833,19 +690,10 @@ export default function Integrations() {
     );
   }
 
-  const fetchFailed = isError || !health;
   const stripeConnect = health?.stripeConnect;
-  const payments = health?.services?.payments;
-  const email = health?.services?.email;
   
-  // Determine actual connection status
   const stripeConnected = stripeConnect?.connected && stripeConnect?.chargesEnabled && stripeConnect?.payoutsEnabled;
   const stripePartiallyConnected = stripeConnect?.connected && (!stripeConnect?.chargesEnabled || !stripeConnect?.payoutsEnabled);
-  const stripeTestMode = payments?.status === 'test';
-  const emailReady = email?.status === 'ready';
-  
-  // All integrations ready only if Stripe is fully connected
-  const allReady = stripeConnected && emailReady;
 
   const handleConnectStripe = () => {
     connectStripeMutation.mutate();
@@ -855,212 +703,64 @@ export default function Integrations() {
     openDashboardMutation.mutate();
   };
 
-  // Message Templates helper functions
-  const resetTemplateForm = () => {
-    setEditingTemplate(null);
-    setTemplateName('');
-    setTemplateCategory('general');
-    setTemplateSubject('');
-    setTemplateBody('');
-  };
-
-  const openCreateTemplate = (channel: 'email' | 'sms') => {
-    resetTemplateForm();
-    setTemplateChannel(channel);
-    setTemplateDialogOpen(true);
-  };
-
-  const openEditTemplate = (template: MessageTemplate) => {
-    setEditingTemplate(template);
-    setTemplateChannel(template.channel as 'email' | 'sms');
-    setTemplateName(template.name);
-    setTemplateCategory(template.category);
-    setTemplateSubject(template.subject || '');
-    setTemplateBody(template.body);
-    setTemplateDialogOpen(true);
-  };
-
-  const handleSaveTemplate = () => {
-    const data = {
-      channel: templateChannel,
-      name: templateName,
-      category: templateCategory,
-      subject: templateChannel === 'email' ? templateSubject : null,
-      body: templateBody,
-    };
-    
-    if (editingTemplate) {
-      updateTemplateMutation.mutate({ id: editingTemplate.id, data });
-    } else {
-      createTemplateMutation.mutate(data);
-    }
-  };
-
-  const emailTemplates = messageTemplates.filter(t => t.channel === 'email');
-  const smsTemplates = messageTemplates.filter(t => t.channel === 'sms');
-
   return (
     <PageShell>
       <PageHeader
         title="Integrations"
-        subtitle="Connect your payment and communication services"
+        subtitle="Connect your tools and services"
       />
 
-      {/* Status Banner */}
-      {allReady ? (
-        <Card className="border-green-300 dark:border-green-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
-                  Ready to Accept Payments
-                </h3>
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  Your Stripe account is connected and ready. You can send invoices and collect payments!
-                </p>
-              </div>
-              <Badge className="bg-green-600 hover:bg-green-700 text-white">
-                <Sparkles className="w-3 h-3 mr-1" />
-                Live
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      ) : stripePartiallyConnected ? (
-        <Card className="border-orange-300 dark:border-orange-700 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-200">
-                  Stripe Setup Incomplete
-                </h3>
-                <p className="text-sm text-orange-700 dark:text-orange-300">
-                  Your Stripe account needs additional verification. Complete the setup to start accepting payments.
-                </p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleOpenDashboard}
-                disabled={openDashboardMutation.isPending}
-              >
-                {openDashboardMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    Complete Setup
-                    <ExternalLink className="w-3 h-3 ml-1" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : stripeTestMode ? (
-        <Card className="border-orange-300 dark:border-orange-700 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-200">
-                  Test Mode Active
-                </h3>
-                <p className="text-sm text-orange-700 dark:text-orange-300">
-                  Payments are in test mode - no real money will be processed. 
-                  Connect your Stripe account to accept real payments.
-                </p>
-              </div>
-              <Badge className="bg-orange-600 hover:bg-orange-700 text-white">
-                Testing
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-amber-300 dark:border-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                <Settings className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200">
-                  Setup Your Payment Account
-                </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Connect your Stripe account to start accepting online payments from clients.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="space-y-8">
+        {/* Payments */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Payments</h3>
 
-      <div className="grid gap-4">
-        {/* Stripe Connect Payment Processing */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  stripeConnected ? 'bg-purple-100 dark:bg-purple-900/50' :
-                  stripePartiallyConnected ? 'bg-orange-100 dark:bg-orange-900/50' :
-                  'bg-gray-100 dark:bg-gray-800/50'
-                }`}>
-                  <SiStripe className={`w-5 h-5 ${
-                    stripeConnected ? 'text-purple-600 dark:text-purple-400' :
-                    stripePartiallyConnected ? 'text-orange-600 dark:text-orange-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`} />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Payment Processing</CardTitle>
-                  <p className="text-xs text-muted-foreground">Accept payments via Stripe</p>
-                </div>
-              </div>
-              {stripeConnected ? (
-                <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-0">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              ) : stripePartiallyConnected ? (
-                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-0">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  Incomplete
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Connected
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {stripeConnected ? (
-              <>
-                <div className="p-4 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                      {stripeConnect?.businessName || 'Your Business'}
-                    </span>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    stripeConnected ? 'bg-purple-100 dark:bg-purple-900/50' :
+                    stripePartiallyConnected ? 'bg-orange-100 dark:bg-orange-900/50' :
+                    'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <SiStripe className={`w-5 h-5 ${
+                      stripeConnected ? 'text-purple-600 dark:text-purple-400' :
+                      stripePartiallyConnected ? 'text-orange-600 dark:text-orange-400' :
+                      'text-gray-500 dark:text-gray-400'
+                    }`} />
                   </div>
-                  <p className="text-xs text-purple-700 dark:text-purple-300">
-                    Payments are processed and deposited directly to your bank account.
-                  </p>
+                  <div>
+                    <CardTitle className="text-base">Payment Processing</CardTitle>
+                    <p className="text-xs text-muted-foreground">Accept payments via Stripe</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                {stripeConnected ? (
+                  <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : stripePartiallyConnected ? (
+                  <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-0">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Incomplete
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {stripeConnected ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    <Building2 className="w-4 h-4 inline mr-1" />
+                    {stripeConnect?.businessName || 'Your Business'} — payments deposited to your bank account.
+                  </p>
                   <Button 
                     variant="outline"
-                    className="flex-1"
                     onClick={handleOpenDashboard}
                     disabled={openDashboardMutation.isPending}
                     data-testid="button-stripe-dashboard"
@@ -1070,203 +770,155 @@ export default function Integrations() {
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
-                        View Stripe Dashboard
+                        View Dashboard
                         <ExternalLink className="w-3 h-3 ml-2" />
                       </>
                     )}
                   </Button>
-                </div>
-              </>
-            ) : stripePartiallyConnected ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Your Stripe account is connected but requires additional verification before you can receive payments.
-                </p>
-                <div className="p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
-                  <p className="text-xs text-orange-700 dark:text-orange-300 flex items-center gap-2">
-                    <AlertTriangle className="w-3 h-3" />
-                    {!stripeConnect?.chargesEnabled && "Charges not enabled. "}
-                    {!stripeConnect?.payoutsEnabled && "Payouts not enabled. "}
-                    Complete verification to activate.
+                </>
+              ) : stripePartiallyConnected ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Your Stripe account needs additional verification before you can receive payments.
                   </p>
-                </div>
-                <Button 
-                  onClick={handleOpenDashboard}
-                  disabled={openDashboardMutation.isPending}
-                  className="w-full"
-                  data-testid="button-complete-stripe"
-                >
-                  {openDashboardMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
+                  <Button 
+                    onClick={handleOpenDashboard}
+                    disabled={openDashboardMutation.isPending}
+                    data-testid="button-complete-stripe"
+                  >
+                    {openDashboardMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
                       <Settings className="w-4 h-4 mr-2" />
-                      Complete Stripe Verification
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your Stripe account to accept online payments from clients. 
-                  Payments are deposited directly to your bank account.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Transaction fee:</strong> 2.5% + 30c per payment</p>
-                      <p><strong>Payouts:</strong> Direct to your bank, typically 2-3 business days</p>
-                      <p><strong>No monthly fees</strong> - only pay when you receive payments</p>
-                    </div>
-                  </div>
-                </div>
-                <Button 
-                  onClick={handleConnectStripe}
-                  disabled={connectStripeMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-stripe"
-                >
-                  {connectStripeMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <CreditCard className="w-4 h-4 mr-2" />
-                  )}
-                  Connect Your Stripe Account
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                    )}
+                    Complete Setup
+                    <ExternalLink className="w-3 h-3 ml-2" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Stripe account to accept online payments from clients.
+                  </p>
+                  <Button 
+                    onClick={handleConnectStripe}
+                    disabled={connectStripeMutation.isPending}
+                    data-testid="button-connect-stripe"
+                  >
+                    {connectStripeMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <CreditCard className="w-4 h-4 mr-2" />
+                    )}
+                    Connect Stripe
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Email - Dynamic based on sending mode */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  emailSendingMode === 'automatic' 
-                    ? 'bg-green-100 dark:bg-green-900/50' 
-                    : 'bg-red-100 dark:bg-red-900/50'
-                }`}>
-                  {emailSendingMode === 'automatic' ? (
-                    <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  ) : (
-                    <SiGmail className="w-5 h-5 text-red-500" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
+        {/* Communication */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Communication</h3>
+
+          {/* Email Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    emailSendingMode === 'automatic' 
+                      ? 'bg-green-100 dark:bg-green-900/50' 
+                      : 'bg-red-100 dark:bg-red-900/50'
+                  }`}>
+                    {emailSendingMode === 'automatic' ? (
+                      <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <SiGmail className="w-5 h-5 text-red-500" />
+                    )}
+                  </div>
+                  <div>
                     <CardTitle className="text-base">
                       {emailSendingMode === 'automatic' ? 'Email - Instant Sending' : 'Email - Gmail Review'}
                     </CardTitle>
-                    <Badge className={`border-0 text-xs ${
-                      emailSendingMode === 'automatic'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
-                    }`}>
-                      <Shield className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      {emailSendingMode === 'automatic' 
+                        ? 'Quotes and invoices sent instantly via our servers'
+                        : 'Review and send from your Gmail account'}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {emailSendingMode === 'automatic' 
-                      ? 'Quotes and invoices sent instantly via our servers'
-                      : 'Review and send from your Gmail account'}
-                  </p>
                 </div>
+                <Badge className={`border-0 ${
+                  emailSendingMode === 'automatic'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                }`}>
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Working
+                </Badge>
               </div>
-              <Badge className={`border-0 ${
-                emailSendingMode === 'automatic'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                  : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
-              }`}>
-                <CheckCircle className="w-3 h-3 mr-1" />
-                Working
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {/* Email Sending Preference - moved to top for better UX */}
-            <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
-              <p className="text-sm font-medium">When you email a quote or invoice:</p>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
               <div className="space-y-2">
-                <div 
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    emailSendingMode === 'manual' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted hover-elevate'
-                  }`}
-                  onClick={() => {
-                    updateBusinessSettings.mutate({ emailSendingMode: 'manual' });
-                  }}
-                  data-testid="option-email-manual"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                      emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {emailSendingMode === 'manual' && (
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Review in Gmail first</p>
-                      <p className="text-xs text-muted-foreground">Opens Gmail so you can check and personalise before sending</p>
+                <p className="text-sm font-medium">When you email a quote or invoice:</p>
+                <div className="space-y-2">
+                  <div 
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      emailSendingMode === 'manual' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted hover-elevate'
+                    }`}
+                    onClick={() => {
+                      updateBusinessSettings.mutate({ emailSendingMode: 'manual' });
+                    }}
+                    data-testid="option-email-manual"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                        emailSendingMode === 'manual' ? 'border-primary' : 'border-muted-foreground'
+                      }`}>
+                        {emailSendingMode === 'manual' && (
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Review in Gmail first</p>
+                        <p className="text-xs text-muted-foreground">Opens Gmail so you can check and personalise before sending</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div 
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    emailSendingMode === 'automatic' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted hover-elevate'
-                  }`}
-                  onClick={() => {
-                    updateBusinessSettings.mutate({ emailSendingMode: 'automatic' });
-                  }}
-                  data-testid="option-email-automatic"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                      emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {emailSendingMode === 'automatic' && (
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Send instantly</p>
-                      <p className="text-xs text-muted-foreground">Emails go out immediately via our servers - faster for busy tradies</p>
+                  <div 
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      emailSendingMode === 'automatic' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted hover-elevate'
+                    }`}
+                    onClick={() => {
+                      updateBusinessSettings.mutate({ emailSendingMode: 'automatic' });
+                    }}
+                    data-testid="option-email-automatic"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                        emailSendingMode === 'automatic' ? 'border-primary' : 'border-muted-foreground'
+                      }`}>
+                        {emailSendingMode === 'automatic' && (
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Send instantly</p>
+                        <p className="text-xs text-muted-foreground">Emails go out immediately via our servers - faster for busy tradies</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Mode-specific content */}
-            {emailSendingMode === 'manual' ? (
-              <>
-                {/* Manual Mode - Gmail Info */}
-                <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <SiGmail className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-1">
-                        Gmail review mode active
-                      </p>
-                      <p className="text-sm text-red-700 dark:text-red-300">
-                        When you send a quote or invoice, Gmail opens with everything ready. You can review, personalise the message, then hit send.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Test Email Button - Gmail */}
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {emailSendingMode === 'manual' ? (
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -1280,65 +932,7 @@ export default function Integrations() {
                     <Send className="w-4 h-4 mr-2" />
                     Send Test Email
                   </Button>
-                  <span className="text-xs text-muted-foreground">Opens Gmail with a test message</span>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Automatic Mode - Backend sending info */}
-                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-                        Instant sending active
-                      </p>
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        Quotes and invoices are sent instantly when you click "Send" - no extra steps. Professional emails with your business name are delivered directly to your client's inbox.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Features for automatic mode */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-foreground">What's included:</p>
-                  <div className="grid gap-1.5">
-                    <div className="flex items-center gap-2 text-xs">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                      <span className="text-foreground">One-click sending (no Gmail popup)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                      <span className="text-foreground">Professional email templates</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                      <span className="text-foreground">PDF attachments included</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                      <span className="text-foreground">Emails sent from your business name</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action buttons for automatic mode */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      toast({
-                        title: "Email Templates",
-                        description: "Templates are automatically customised with your business details when sending quotes and invoices.",
-                      });
-                    }}
-                    data-testid="button-edit-templates"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    About Templates
-                  </Button>
+                ) : (
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -1364,254 +958,182 @@ export default function Integrations() {
                     <Send className="w-4 h-4 mr-2" />
                     Send Test Email
                   </Button>
-                </div>
-              </>
-            )}
-
-            {/* Email Setup Checklist - always shown */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-foreground flex items-center gap-1">
-                <CheckCircle className="w-3 h-3 text-green-600" />
-                Setup Checklist
-              </p>
-              <div className="grid gap-1.5">
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                  <span className="text-foreground">Email delivery connected</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                  <span className="text-foreground">Quote templates ready</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                  <span className="text-foreground">Invoice templates ready</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                  <span className="text-foreground">Professional PDF generation</span>
-                </div>
+                )}
               </div>
-            </div>
-            
-            {/* Australian Compliance Tips - Expandable */}
-            <Collapsible className="border rounded-lg">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 text-left hover-elevate rounded-lg">
-                <div className="flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-medium">Australian Compliance Tips</span>
-                </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="px-3 pb-3">
-                <div className="space-y-2 pt-2 border-t">
-                  <div className="flex items-start gap-2 text-xs">
-                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Include your ABN on all quotes and invoices</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs">
-                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">GST should be clearly shown on invoices</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs">
-                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Keep records for 5 years (ATO requirement)</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs">
-                    <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Use tax invoices for transactions over $82.50 (inc. GST)</span>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Outlook/Microsoft 365 Email Integration */}
-        <Card data-testid="card-outlook-integration">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  outlookStatus?.connected ? 'bg-blue-100 dark:bg-blue-900/50' :
-                  'bg-gray-100 dark:bg-gray-800/50'
-                }`}>
-                  <Mail className={`w-5 h-5 ${
-                    outlookStatus?.connected ? 'text-blue-600 dark:text-blue-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`} />
+          {/* Outlook Card */}
+          <Card data-testid="card-outlook-integration">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    outlookStatus?.connected ? 'bg-blue-100 dark:bg-blue-900/50' :
+                    'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <Mail className={`w-5 h-5 ${
+                      outlookStatus?.connected ? 'text-blue-600 dark:text-blue-400' :
+                      'text-gray-500 dark:text-gray-400'
+                    }`} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Outlook / Microsoft 365</CardTitle>
+                    <p className="text-xs text-muted-foreground">Send emails from your Outlook account</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-base">Outlook / Microsoft 365</CardTitle>
-                  <p className="text-xs text-muted-foreground">Send emails from your Outlook account</p>
-                </div>
+                {outlookStatus?.connected ? (
+                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : outlookStatus?.configured === false ? (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Configured
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
               </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
               {outlookStatus?.connected ? (
-                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              ) : outlookStatus?.configured === false ? (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Configured
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Connected
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {outlookStatus?.connected ? (
-              <>
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      {outlookStatus.email || 'Outlook Account'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Quotes and invoices will be sent from your Outlook account
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    <Mail className="w-4 h-4 inline mr-1" />
+                    {outlookStatus.email || 'Outlook Account'} — quotes and invoices sent from your account.
                   </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-foreground">Features enabled:</p>
-                  <ul className="text-xs text-muted-foreground space-y-1.5">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      Send quotes and invoices via Outlook
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      Emails appear from your business address
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      PDF attachments included
-                    </li>
-                  </ul>
-                </div>
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => disconnectOutlookMutation.mutate()}
-                  disabled={disconnectOutlookMutation.isPending}
-                  className="w-full"
-                  data-testid="button-disconnect-outlook"
-                >
-                  {disconnectOutlookMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Link2Off className="w-4 h-4 mr-2" />
-                  )}
-                  Disconnect Outlook
-                </Button>
-              </>
-            ) : outlookStatus?.configured === false ? (
-              <>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => disconnectOutlookMutation.mutate()}
+                    disabled={disconnectOutlookMutation.isPending}
+                    data-testid="button-disconnect-outlook"
+                  >
+                    {disconnectOutlookMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Link2Off className="w-4 h-4 mr-2" />
+                    )}
+                    Disconnect Outlook
+                  </Button>
+                </>
+              ) : outlookStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
                   Outlook integration is not configured. Contact support to enable this feature.
                 </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground">
-                      <p>Microsoft credentials must be configured by the platform administrator.</p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your Outlook or Microsoft 365 account to send quotes and invoices directly from your business email.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Professional emails:</strong> Sent from your own email address</p>
-                      <p><strong>Works with:</strong> Outlook.com, Hotmail, Microsoft 365</p>
-                      <p><strong>Secure:</strong> We never store your password</p>
-                    </div>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => connectOutlookMutation.mutate()}
-                  disabled={connectOutlookMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-outlook"
-                >
-                  {connectOutlookMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Mail className="w-4 h-4 mr-2" />
-                  )}
-                  Connect Outlook
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Outlook or Microsoft 365 account to send quotes and invoices directly from your business email.
+                  </p>
+                  <Button 
+                    onClick={() => connectOutlookMutation.mutate()}
+                    disabled={connectOutlookMutation.isPending}
+                    data-testid="button-connect-outlook"
+                  >
+                    {connectOutlookMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Mail className="w-4 h-4 mr-2" />
+                    )}
+                    Connect Outlook
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Xero Accounting Integration */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  xeroStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
-                  xeroStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
-                  'bg-gray-100 dark:bg-gray-800/50'
-                }`}>
-                  <SiXero className={`w-5 h-5 ${
-                    xeroStatus?.connected ? 'text-green-600 dark:text-green-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`} />
+          {/* SMS Card */}
+          <Card id="twilio" data-testid="card-twilio-integration">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 dark:bg-green-900/50">
+                    <Phone className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">SMS Notifications</CardTitle>
+                    <p className="text-xs text-muted-foreground">Send SMS reminders and updates to clients</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-base">Xero Accounting</CardTitle>
-                  <p className="text-xs text-muted-foreground">Sync invoices and contacts with Xero</p>
-                </div>
-              </div>
-              {xeroStatus?.connected ? (
                 <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
                   <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
+                  Active
                 </Badge>
-              ) : xeroStatus?.configured === false ? (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Configured
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Connected
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {xeroStatus?.connected ? (
-              <>
-                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                      {xeroStatus.tenantName || 'Xero Organization'}
-                    </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ul className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3 text-green-500" />
+                  SMS reminders sent automatically
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3 text-green-500" />
+                  Two-way texting with clients
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3 text-green-500" />
+                  Appointment confirmations
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Accounting */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Accounting</h3>
+
+          {/* Xero Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    xeroStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                    'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <SiXero className={`w-5 h-5 ${
+                      xeroStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                      'text-gray-500 dark:text-gray-400'
+                    }`} />
                   </div>
-                  {xeroStatus.lastSyncAt && (
-                    <p className="text-xs text-green-700 dark:text-green-300">
-                      Last synced: {new Date(xeroStatus.lastSyncAt).toLocaleString()}
-                    </p>
-                  )}
+                  <div>
+                    <CardTitle className="text-base">Xero Accounting</CardTitle>
+                    <p className="text-xs text-muted-foreground">Sync invoices and contacts with Xero</p>
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-foreground">Sync Actions</p>
+                {xeroStatus?.connected ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : xeroStatus?.configured === false ? (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Configured
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {xeroStatus?.connected ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="w-4 h-4" />
+                    <span>{xeroStatus.tenantName || 'Xero Organization'}</span>
+                    {xeroStatus.lastSyncAt && (
+                      <span className="text-xs">— Last synced: {new Date(xeroStatus.lastSyncAt).toLocaleString()}</span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
                       variant="outline"
@@ -1642,229 +1164,107 @@ export default function Integrations() {
                       Push Invoices
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Contacts are imported from Xero. Sent invoices are pushed to Xero.
-                  </p>
-                </div>
-
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => disconnectXeroMutation.mutate()}
-                  disabled={disconnectXeroMutation.isPending}
-                  className="w-full"
-                  data-testid="button-disconnect-xero"
-                >
-                  {disconnectXeroMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Link2Off className="w-4 h-4 mr-2" />
-                  )}
-                  Disconnect Xero
-                </Button>
-              </>
-            ) : xeroStatus?.configured === false ? (
-              <XeroSetupGuide
-                isConnected={false}
-                isConfigured={false}
-                onConnect={() => connectXeroMutation.mutate()}
-                isConnecting={connectXeroMutation.isPending}
-              />
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your Xero account to automatically sync invoices and contacts.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Two-way sync:</strong> Contacts and invoices stay in sync</p>
-                      <p><strong>Automatic updates:</strong> Changes sync between platforms</p>
-                      <p><strong>Australian business:</strong> Works with Xero AU</p>
-                    </div>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => connectXeroMutation.mutate()}
-                  disabled={connectXeroMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-xero"
-                >
-                  {connectXeroMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <SiXero className="w-4 h-4 mr-2" />
-                  )}
-                  Connect to Xero
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* QuickBooks Integration */}
-        <QuickBooksIntegration
-          isConnected={quickbooksStatus?.connected || false}
-          isConfigured={quickbooksStatus?.configured || false}
-          companyName={quickbooksStatus?.companyName}
-          lastSyncAt={quickbooksStatus?.lastSyncAt}
-          onConnect={() => connectQuickbooksMutation.mutate()}
-          onDisconnect={() => disconnectQuickbooksMutation.mutate()}
-          onSync={() => syncQuickbooksMutation.mutate()}
-          isConnecting={connectQuickbooksMutation.isPending}
-          isSyncing={syncQuickbooksMutation.isPending}
-          syncError={quickbooksSyncError}
-        />
-
-        {/* Google Calendar Integration */}
-        <Card data-testid="card-google-calendar-integration">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  googleCalendarStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
-                  googleCalendarStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
-                  'bg-gray-100 dark:bg-gray-800/50'
-                }`}>
-                  <Calendar className={`w-5 h-5 ${
-                    googleCalendarStatus?.connected ? 'text-green-600 dark:text-green-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`} />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Google Calendar</CardTitle>
-                  <p className="text-xs text-muted-foreground">Sync scheduled jobs to your calendar</p>
-                </div>
-              </div>
-              {googleCalendarStatus?.connected ? (
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              ) : googleCalendarStatus?.configured === false ? (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Configured
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Connected
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {googleCalendarStatus?.connected ? (
-              <>
-                <GoogleCalendarSetupGuide
-                  isConnected={true}
-                  isConfigured={true}
-                  email={googleCalendarStatus.email}
-                  onConnect={() => connectGoogleCalendarMutation.mutate()}
-                  isConnecting={connectGoogleCalendarMutation.isPending}
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={() => syncAllJobsMutation.mutate()}
-                    disabled={syncAllJobsMutation.isPending}
-                    className="flex-1"
-                    data-testid="button-sync-all-jobs"
-                  >
-                    {syncAllJobsMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                    )}
-                    Sync All Jobs
-                  </Button>
                   <Button 
                     variant="outline"
-                    onClick={() => disconnectGoogleCalendarMutation.mutate()}
-                    disabled={disconnectGoogleCalendarMutation.isPending}
-                    data-testid="button-disconnect-google-calendar"
+                    size="sm"
+                    onClick={() => disconnectXeroMutation.mutate()}
+                    disabled={disconnectXeroMutation.isPending}
+                    data-testid="button-disconnect-xero"
                   >
-                    {disconnectGoogleCalendarMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    {disconnectXeroMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : (
-                      <Link2Off className="w-4 h-4" />
+                      <Link2Off className="w-4 h-4 mr-2" />
                     )}
+                    Disconnect Xero
                   </Button>
-                </div>
-              </>
-            ) : googleCalendarStatus?.configured === false ? (
-              <GoogleCalendarSetupGuide
-                isConnected={false}
-                isConfigured={false}
-                onConnect={() => connectGoogleCalendarMutation.mutate()}
-                isConnecting={connectGoogleCalendarMutation.isPending}
-              />
-            ) : (
-              <GoogleCalendarSetupGuide
-                isConnected={false}
-                isConfigured={true}
-                onConnect={() => connectGoogleCalendarMutation.mutate()}
-                isConnecting={connectGoogleCalendarMutation.isPending}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* MYOB Accounting Integration */}
-        <Card data-testid="card-myob-integration">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  myobStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
-                  myobStatus?.configured ? 'bg-gray-100 dark:bg-gray-800/50' :
-                  'bg-gray-100 dark:bg-gray-800/50'
-                }`}>
-                  <Building2 className={`w-5 h-5 ${
-                    myobStatus?.connected ? 'text-green-600 dark:text-green-400' :
-                    'text-gray-500 dark:text-gray-400'
-                  }`} />
-                </div>
-                <div>
-                  <CardTitle className="text-base">MYOB AccountRight</CardTitle>
-                  <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB</p>
-                </div>
-              </div>
-              {myobStatus?.connected ? (
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              ) : myobStatus?.configured === false ? (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Configured
-                </Badge>
+                </>
+              ) : xeroStatus?.configured === false ? (
+                <p className="text-sm text-muted-foreground">
+                  Xero integration is not configured. Contact support to enable this feature.
+                </p>
               ) : (
-                <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                  Not Connected
-                </Badge>
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Xero account to automatically sync invoices and contacts.
+                  </p>
+                  <Button 
+                    onClick={() => connectXeroMutation.mutate()}
+                    disabled={connectXeroMutation.isPending}
+                    data-testid="button-connect-xero"
+                  >
+                    {connectXeroMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <SiXero className="w-4 h-4 mr-2" />
+                    )}
+                    Connect to Xero
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
               )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {myobStatus?.connected ? (
-              <>
-                <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                      {myobStatus.companyName || 'MYOB Company File'}
-                    </span>
+            </CardContent>
+          </Card>
+
+          {/* QuickBooks */}
+          <QuickBooksIntegration
+            isConnected={quickbooksStatus?.connected || false}
+            isConfigured={quickbooksStatus?.configured || false}
+            companyName={quickbooksStatus?.companyName}
+            lastSyncAt={quickbooksStatus?.lastSyncAt}
+            onConnect={() => connectQuickbooksMutation.mutate()}
+            onDisconnect={() => disconnectQuickbooksMutation.mutate()}
+            onSync={() => syncQuickbooksMutation.mutate()}
+            isConnecting={connectQuickbooksMutation.isPending}
+            isSyncing={syncQuickbooksMutation.isPending}
+            syncError={quickbooksSyncError}
+          />
+
+          {/* MYOB Card */}
+          <Card data-testid="card-myob-integration">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    myobStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                    'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <Building2 className={`w-5 h-5 ${
+                      myobStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                      'text-gray-500 dark:text-gray-400'
+                    }`} />
                   </div>
-                  {myobStatus.lastSyncAt && (
-                    <p className="text-xs text-green-700 dark:text-green-300">
-                      Last synced: {new Date(myobStatus.lastSyncAt).toLocaleString()}
-                    </p>
-                  )}
+                  <div>
+                    <CardTitle className="text-base">MYOB AccountRight</CardTitle>
+                    <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB</p>
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-foreground">Sync Actions</p>
+                {myobStatus?.connected ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : myobStatus?.configured === false ? (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Configured
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {myobStatus?.connected ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="w-4 h-4" />
+                    <span>{myobStatus.companyName || 'MYOB Company File'}</span>
+                    {myobStatus.lastSyncAt && (
+                      <span className="text-xs">— Last synced: {new Date(myobStatus.lastSyncAt).toLocaleString()}</span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
                       variant="outline"
@@ -1895,453 +1295,152 @@ export default function Integrations() {
                       Push Invoices
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Contacts are imported from MYOB. Sent invoices are pushed to MYOB.
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => disconnectMyobMutation.mutate()}
+                    disabled={disconnectMyobMutation.isPending}
+                    data-testid="button-disconnect-myob"
+                  >
+                    {disconnectMyobMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Link2Off className="w-4 h-4 mr-2" />
+                    )}
+                    Disconnect MYOB
+                  </Button>
+                </>
+              ) : myobStatus?.configured === false ? (
+                <p className="text-sm text-muted-foreground">
+                  MYOB integration is not configured. Contact support to enable this feature.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your MYOB AccountRight account to automatically sync invoices and contacts.
                   </p>
-                </div>
-
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => disconnectMyobMutation.mutate()}
-                  disabled={disconnectMyobMutation.isPending}
-                  className="w-full"
-                  data-testid="button-disconnect-myob"
-                >
-                  {disconnectMyobMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Link2Off className="w-4 h-4 mr-2" />
-                  )}
-                  Disconnect MYOB
-                </Button>
-              </>
-            ) : myobStatus?.configured === false ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  MYOB integration is not configured. Please contact support to enable this feature.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground">
-                      <p>MYOB_CLIENT_ID and MYOB_CLIENT_SECRET must be configured.</p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your MYOB AccountRight account to automatically sync invoices and contacts.
-                </p>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Two-way sync:</strong> Contacts and invoices stay in sync</p>
-                      <p><strong>Automatic updates:</strong> Changes sync between platforms</p>
-                      <p><strong>Australian business:</strong> Works with MYOB AU</p>
-                    </div>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => connectMyobMutation.mutate()}
-                  disabled={connectMyobMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-myob"
-                >
-                  {connectMyobMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Building2 className="w-4 h-4 mr-2" />
-                  )}
-                  Connect to MYOB
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Communication Services Section */}
-      <div className="pt-6">
-        <h3 className="text-lg font-semibold mb-2">Communication Services</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Connect these services to automate client communications
-        </p>
-        
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* SMS Notifications Card - Platform managed */}
-          <Card id="twilio" data-testid="card-twilio-integration">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 dark:bg-green-900/50">
-                    <Phone className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">SMS Notifications</CardTitle>
-                    <p className="text-xs text-muted-foreground">Send SMS reminders and updates to clients</p>
-                  </div>
-                </div>
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Connected
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-                <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                  SMS integration is active
-                </p>
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  Your clients will receive SMS notifications for appointments and updates.
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-foreground">Active features:</p>
-                <ul className="text-xs text-muted-foreground space-y-1.5">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3 h-3 text-green-500" />
-                    SMS reminders sent automatically
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3 h-3 text-green-500" />
-                    Two-way texting with clients
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3 h-3 text-green-500" />
-                    Appointment confirmations
-                  </li>
-                </ul>
-              </div>
+                  <Button 
+                    onClick={() => connectMyobMutation.mutate()}
+                    disabled={connectMyobMutation.isPending}
+                    data-testid="button-connect-myob"
+                  >
+                    {connectMyobMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Building2 className="w-4 h-4 mr-2" />
+                    )}
+                    Connect to MYOB
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Message Templates Card */}
-          <Card data-testid="card-message-templates">
+        {/* Calendar */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Calendar</h3>
+
+          <Card data-testid="card-google-calendar-integration">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/50">
-                    <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    googleCalendarStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                    'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <Calendar className={`w-5 h-5 ${
+                      googleCalendarStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                      'text-gray-500 dark:text-gray-400'
+                    }`} />
                   </div>
                   <div>
-                    <CardTitle className="text-base">Message Templates</CardTitle>
-                    <p className="text-xs text-muted-foreground">Create reusable email and SMS templates</p>
+                    <CardTitle className="text-base">Google Calendar</CardTitle>
+                    <p className="text-xs text-muted-foreground">Sync scheduled jobs to your calendar</p>
                   </div>
                 </div>
-                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
-                  {messageTemplates.length} template{messageTemplates.length !== 1 ? 's' : ''}
-                </Badge>
+                {googleCalendarStatus?.connected ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : googleCalendarStatus?.configured === false ? (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Configured
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
               </div>
             </CardHeader>
-            <CardContent className="pt-0 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Save time by creating templates for common messages. Use merge fields to personalize each message.
-              </p>
-              
-              <Tabs defaultValue="email" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="email" data-testid="tab-email-templates">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email ({emailTemplates.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="sms" data-testid="tab-sms-templates">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    SMS ({smsTemplates.length})
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="email" className="mt-4 space-y-3">
-                  {emailTemplates.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Mail className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No email templates yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {emailTemplates.map((template) => (
-                        <div
-                          key={template.id}
-                          className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate"
-                          data-testid={`template-item-${template.id}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{template.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{template.subject}</p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEditTemplate(template)}
-                              data-testid={`button-edit-template-${template.id}`}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => deleteTemplateMutation.mutate(template.id)}
-                              disabled={deleteTemplateMutation.isPending}
-                              data-testid={`button-delete-template-${template.id}`}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+            <CardContent className="pt-0 space-y-3">
+              {googleCalendarStatus?.connected ? (
+                <>
+                  {googleCalendarStatus.email && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-google-calendar-email">
+                      <Calendar className="w-4 h-4 inline mr-1" />
+                      Connected to: {googleCalendarStatus.email}
+                    </p>
                   )}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => openCreateTemplate('email')}
-                    data-testid="button-create-email-template"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Email Template
-                  </Button>
-                </TabsContent>
-                
-                <TabsContent value="sms" className="mt-4 space-y-3">
-                  {smsTemplates.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No SMS templates yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {smsTemplates.map((template) => (
-                        <div
-                          key={template.id}
-                          className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate"
-                          data-testid={`template-item-${template.id}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{template.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {template.body.substring(0, 50)}{template.body.length > 50 ? '...' : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEditTemplate(template)}
-                              data-testid={`button-edit-template-${template.id}`}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => deleteTemplateMutation.mutate(template.id)}
-                              disabled={deleteTemplateMutation.isPending}
-                              data-testid={`button-delete-template-${template.id}`}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => openCreateTemplate('sms')}
-                    data-testid="button-create-sms-template"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create SMS Template
-                  </Button>
-                </TabsContent>
-              </Tabs>
-
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                  <div className="text-xs text-muted-foreground">
-                    <p className="font-medium mb-1">Available merge fields:</p>
-                    <p>{"{{client_name}}, {{job_address}}, {{job_date}}, {{amount}}, {{business_name}}"}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      onClick={() => syncAllJobsMutation.mutate()}
+                      disabled={syncAllJobsMutation.isPending}
+                      data-testid="button-sync-all-jobs"
+                    >
+                      {syncAllJobsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Sync All Jobs
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => disconnectGoogleCalendarMutation.mutate()}
+                      disabled={disconnectGoogleCalendarMutation.isPending}
+                      data-testid="button-disconnect-google-calendar"
+                    >
+                      {disconnectGoogleCalendarMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Link2Off className="w-4 h-4 mr-2" />
+                      )}
+                      Disconnect
+                    </Button>
                   </div>
-                </div>
-              </div>
+                </>
+              ) : googleCalendarStatus?.configured === false ? (
+                <p className="text-sm text-muted-foreground">
+                  Google Calendar integration is not configured. Contact support to enable this feature.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Google Calendar to automatically sync scheduled jobs.
+                  </p>
+                  <Button 
+                    onClick={() => connectGoogleCalendarMutation.mutate()}
+                    disabled={connectGoogleCalendarMutation.isPending}
+                    data-testid="button-connect-google-calendar"
+                  >
+                    {connectGoogleCalendarMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Calendar className="w-4 h-4 mr-2" />
+                    )}
+                    Connect Google Calendar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
-
         </div>
       </div>
-
-      {/* Stripe Setup Guide - shows when not fully connected */}
-      {!stripeConnected && (
-        <StripeSetupGuide
-          isConnected={stripeConnected ?? false}
-          isPartiallyConnected={stripePartiallyConnected ?? false}
-          chargesEnabled={stripeConnect?.chargesEnabled || false}
-          payoutsEnabled={stripeConnect?.payoutsEnabled || false}
-          onConnect={handleConnectStripe}
-          onOpenDashboard={handleOpenDashboard}
-          isConnecting={connectStripeMutation.isPending}
-        />
-      )}
-
-
-      {/* Message Template Dialog */}
-      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              {editingTemplate ? 'Edit Template' : 'Create Template'}
-            </DialogTitle>
-            <DialogDescription>
-              {templateChannel === 'email' ? 'Create a reusable email template' : 'Create a reusable SMS template'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Template Name</Label>
-              <Input
-                id="template-name"
-                placeholder="e.g., Quote Follow-up"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                data-testid="input-template-name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="template-category">Category</Label>
-              <Select value={templateCategory} onValueChange={setTemplateCategory}>
-                <SelectTrigger id="template-category" data-testid="select-template-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="general">General</SelectItem>
-                  <SelectItem value="quote_follow_up">Quote Follow-up</SelectItem>
-                  <SelectItem value="payment_reminder">Payment Reminder</SelectItem>
-                  <SelectItem value="job_booking">Job Booking</SelectItem>
-                  <SelectItem value="on_my_way">On My Way</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {templateChannel === 'email' && (
-              <div className="space-y-2">
-                <Label htmlFor="template-subject">Subject Line</Label>
-                <Input
-                  id="template-subject"
-                  placeholder="e.g., Your quote from {{business_name}}"
-                  value={templateSubject}
-                  onChange={(e) => setTemplateSubject(e.target.value)}
-                  data-testid="input-template-subject"
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="template-body">Message Body</Label>
-              <Textarea
-                id="template-body"
-                placeholder={templateChannel === 'email' 
-                  ? "Hi {{client_name}},\n\nThank you for your interest in our services..."
-                  : "Hi {{client_name}}, this is {{business_name}}..."
-                }
-                value={templateBody}
-                onChange={(e) => setTemplateBody(e.target.value)}
-                rows={templateChannel === 'email' ? 8 : 4}
-                className="resize-none"
-                data-testid="textarea-template-body"
-              />
-            </div>
-
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-start gap-2">
-                <HelpCircle className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400" />
-                <div className="text-xs text-blue-800 dark:text-blue-200">
-                  <p className="font-medium mb-1">Available merge fields:</p>
-                  <div className="flex flex-wrap gap-1">
-                    <Badge variant="outline" className="text-xs">{"{{client_name}}"}</Badge>
-                    <Badge variant="outline" className="text-xs">{"{{job_address}}"}</Badge>
-                    <Badge variant="outline" className="text-xs">{"{{job_date}}"}</Badge>
-                    <Badge variant="outline" className="text-xs">{"{{amount}}"}</Badge>
-                    <Badge variant="outline" className="text-xs">{"{{business_name}}"}</Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setTemplateDialogOpen(false);
-                  resetTemplateForm();
-                }}
-                className="flex-1"
-                data-testid="button-cancel-template"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveTemplate}
-                disabled={!templateName || !templateBody || createTemplateMutation.isPending || updateTemplateMutation.isPending}
-                className="flex-1"
-                data-testid="button-save-template"
-              >
-                {(createTemplateMutation.isPending || updateTemplateMutation.isPending) ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : null}
-                {editingTemplate ? 'Save Changes' : 'Create Template'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* How it works */}
-      <Card className="border-dashed">
-        <CardContent className="p-6">
-          <h4 className="font-medium mb-3">Quick Guide: Getting Paid</h4>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="text-center p-3 rounded-lg bg-muted/30">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
-                <span className="text-primary font-bold">1</span>
-              </div>
-              <p className="text-sm font-medium">Connect Stripe</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Add your bank details so you can receive payments
-              </p>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/30">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
-                <span className="text-primary font-bold">2</span>
-              </div>
-              <p className="text-sm font-medium">Send Invoice</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Your client gets an email with a "Pay Now" button
-              </p>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-muted/30">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
-                <span className="text-primary font-bold">3</span>
-              </div>
-              <p className="text-sm font-medium">Get Paid</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Money goes to your bank in 2-3 business days
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </PageShell>
   );
 }
