@@ -64,7 +64,8 @@ import {
   DollarSign,
   PlayCircle,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -700,6 +701,37 @@ export default function Settings({
     }
   };
 
+  const getFixAction = (item: { id: string; status: string }) => {
+    if (item.status === 'pass' || item.status === 'na') return null;
+
+    const scrollToElement = (selector: string) => {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus?.();
+        el.classList.add('ring-2', 'ring-offset-2');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-offset-2'), 2000);
+      }
+    };
+
+    switch (item.id) {
+      case 'tax_invoice_label':
+        return () => scrollToElement('[data-testid="switch-gst"]');
+      case 'business_identity':
+        return () => scrollToElement('[data-testid="input-business-name"]');
+      case 'abn_display':
+        return () => scrollToElement('[data-testid="input-abn"]');
+      case 'payment_terms':
+        return () => {
+          setActiveTab('payment');
+          localStorage.setItem('tradietrack-settings-tab', 'payment');
+          setTimeout(() => scrollToElement('[data-testid="textarea-payment-instructions"]'), 300);
+        };
+      default:
+        return null;
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pass':
@@ -1300,20 +1332,31 @@ export default function Settings({
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {complianceChecklist.map((item) => (
-                <div key={item.id} className="flex items-start justify-between p-4 border rounded-lg">
-                  <div className="flex items-start gap-3 flex-1">
-                    {getStatusIcon(item.status)}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{item.label}</h4>
-                        {getStatusBadge(item.status)}
+              {complianceChecklist.map((item) => {
+                const fixAction = getFixAction(item);
+                return (
+                  <div key={item.id} className="flex items-start justify-between p-4 border rounded-lg">
+                    <div className="flex items-start gap-3 flex-1">
+                      {getStatusIcon(item.status)}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <h4 className="font-medium">{item.label}</h4>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(item.status)}
+                            {fixAction && (
+                              <Button variant="outline" size="sm" onClick={fixAction}>
+                                Fix Now
+                                <ArrowRight className="h-3 w-3 ml-1" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               
               <div 
                 className="mt-4 p-4 rounded-lg border"
