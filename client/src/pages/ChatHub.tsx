@@ -237,6 +237,20 @@ const QUICK_ACTION_TEMPLATES = [
   { id: 'thanks', label: "Thanks", icon: User, message: "Thanks for your business mate! Really appreciate it. Don't hesitate to reach out if you need anything.", primary: false },
 ];
 
+function getWorkerNamedMessage(templateId: string, workerFirstName: string): string | null {
+  const name = workerFirstName;
+  switch (templateId) {
+    case 'omw':
+      return `G'day! Just letting you know ${name} is on the way now. Should be there in about 20 minutes.`;
+    case 'running-late':
+      return `Apologies, ${name} is running a bit behind schedule. Will be there as soon as possible - should only be another 15-20 minutes.`;
+    case 'job-done':
+      return `All done! ${name} has completed the job. Let me know if you have any questions or need anything else.`;
+    default:
+      return null;
+  }
+}
+
 const QUICK_REPLY_TEMPLATES = QUICK_ACTION_TEMPLATES;
 
 function ConversationSkeleton() {
@@ -487,9 +501,17 @@ export default function ChatHub() {
       if (pendingQuickAction) {
         const template = QUICK_ACTION_TEMPLATES.find(t => t.id === pendingQuickAction);
         if (template) {
+          const isSelfAssigned = variables.memberId === currentUser?.id;
+          let workerFirstName: string | null = null;
+          if (!isSelfAssigned) {
+            const assignedMember = teamMembers.find((m: any) => m.id === variables.memberId);
+            workerFirstName = assignedMember ? (assignedMember.firstName || getTeamMemberName(assignedMember).split(' ')[0]) : null;
+          }
+          const namedMsg = workerFirstName ? getWorkerNamedMessage(template.id, workerFirstName) : null;
+          const baseMessage = namedMsg || template.message;
           const message = selectedSmsConversation
-            ? applySmsTemplateFields(template.message, selectedSmsConversation)
-            : template.message;
+            ? applySmsTemplateFields(baseMessage, selectedSmsConversation)
+            : baseMessage;
           setSmsNewMessage(message);
         }
         setPendingQuickAction(null);
@@ -2253,9 +2275,14 @@ export default function ChatHub() {
                             setAssignWorkerDialogOpen(true);
                             return;
                           }
+                          const isOwnerAssigned = selectedConversation?.data?.assignedTo === currentUser?.id;
+                          const workerName = (!isOwnerAssigned && selectedConversation?.assignedWorkerName) 
+                            ? selectedConversation.assignedWorkerName.split(' ')[0] : null;
+                          const namedMsg = workerName ? getWorkerNamedMessage(template.id, workerName) : null;
+                          const baseMessage = namedMsg || template.message;
                           const message = selectedSmsConversation 
-                            ? applySmsTemplateFields(template.message, selectedSmsConversation)
-                            : template.message;
+                            ? applySmsTemplateFields(baseMessage, selectedSmsConversation)
+                            : baseMessage;
                           setSmsNewMessage(message);
                         }}
                         data-testid={`quick-action-${template.id}`}
@@ -2831,9 +2858,14 @@ export default function ChatHub() {
                 if (pendingQuickAction) {
                   const template = QUICK_ACTION_TEMPLATES.find(t => t.id === pendingQuickAction);
                   if (template) {
+                    const isOwnerAssigned = selectedConversation?.data?.assignedTo === currentUser?.id;
+                    const workerName = (!isOwnerAssigned && selectedConversation?.assignedWorkerName)
+                      ? selectedConversation.assignedWorkerName.split(' ')[0] : null;
+                    const namedMsg = workerName ? getWorkerNamedMessage(template.id, workerName) : null;
+                    const baseMessage = namedMsg || template.message;
                     const message = selectedSmsConversation
-                      ? applySmsTemplateFields(template.message, selectedSmsConversation)
-                      : template.message;
+                      ? applySmsTemplateFields(baseMessage, selectedSmsConversation)
+                      : baseMessage;
                     setSmsNewMessage(message);
                   }
                 }
