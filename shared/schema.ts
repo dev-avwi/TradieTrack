@@ -994,6 +994,19 @@ export const rateCards = pgTable("rate_cards", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const quoteTemplates = pgTable("quote_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  description: text("description"),
+  tradeType: text("trade_type").default('general'),
+  jobType: text("job_type"),
+  items: jsonb("items").notNull().default('[]'),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Style Presets for Document Templates
 export const stylePresets = pgTable("style_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1215,6 +1228,16 @@ export type LineItemCatalog = typeof lineItemCatalog.$inferSelect;
 
 export type InsertRateCard = z.infer<typeof insertRateCardSchema>;
 export type RateCard = typeof rateCards.$inferSelect;
+
+export const insertQuoteTemplateSchema = createInsertSchema(quoteTemplates).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertQuoteTemplate = z.infer<typeof insertQuoteTemplateSchema>;
+export type QuoteTemplate = typeof quoteTemplates.$inferSelect;
 
 // Template Analysis Jobs - for AI-powered template extraction from PDFs
 export const templateAnalysisJobs = pgTable("template_analysis_jobs", {

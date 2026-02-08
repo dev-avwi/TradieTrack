@@ -48,7 +48,7 @@ import {
   UserPlus
 } from "lucide-react";
 import AIQuoteGenerator from "@/components/AIQuoteGenerator";
-import JobScopeChecklist from "@/components/JobScopeChecklist";
+import { QuoteTemplatePicker } from "@/components/QuoteTemplatePicker";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
@@ -811,16 +811,10 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                 )}
                 
                 <div className="pt-2 border-t">
-                  <JobScopeChecklist
-                    onAddItems={(items) => {
+                  <QuoteTemplatePicker
+                    onApplyTemplate={(items) => {
                       items.forEach(item => appendLineItem(item));
                     }}
-                    currentItems={lineItems.map(item => ({
-                      description: item.description,
-                      quantity: item.quantity,
-                      unitPrice: item.unitPrice,
-                    }))}
-                    jobType={form.getValues("title")}
                   />
                 </div>
 

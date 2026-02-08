@@ -15768,6 +15768,109 @@ Respond with JSON in this format:
     }
   });
 
+  // ===== Quote Templates =====
+  app.get("/api/quote-templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const tradeType = req.query.tradeType as string | undefined;
+      let templates = await storage.getQuoteTemplates(userId, tradeType);
+      
+      // Auto-seed default quote templates from job scope templates if user has none
+      if (templates.length === 0 && !tradeType) {
+        try {
+          const { jobScopeTemplates } = await import("@shared/tradeCatalog");
+          for (const jst of jobScopeTemplates) {
+            const items = jst.items.map(item => ({
+              description: item.label,
+              quantity: String(item.defaultQty || 1),
+              unitPrice: String(item.estimatedPrice || 0),
+              unit: item.unit || 'item',
+              category: item.category,
+            }));
+            await storage.createQuoteTemplate({
+              userId,
+              name: jst.jobType,
+              description: jst.description,
+              tradeType: jst.tradeId,
+              jobType: jst.jobType,
+              items,
+              isDefault: true,
+            });
+          }
+          templates = await storage.getQuoteTemplates(userId);
+        } catch (seedError) {
+          console.error('Error seeding quote templates:', seedError);
+        }
+      }
+      
+      res.json(templates);
+    } catch (error: any) {
+      console.error('Error fetching quote templates:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/quote-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const template = await storage.getQuoteTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error: any) {
+      console.error('Error fetching quote template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/quote-templates", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const template = await storage.createQuoteTemplate({
+        ...req.body,
+        userId,
+      });
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error('Error creating quote template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/quote-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const template = await storage.getQuoteTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      if (template.userId !== req.user.id && template.userId !== 'shared') {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const updated = await storage.updateQuoteTemplate(req.params.id, req.body);
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating quote template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/quote-templates/:id", requireAuth, async (req: any, res) => {
+    try {
+      const template = await storage.getQuoteTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      if (template.userId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      await storage.deleteQuoteTemplate(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting quote template:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Style Presets Routes
   app.get("/api/style-presets", requireAuth, async (req: any, res) => {
     try {

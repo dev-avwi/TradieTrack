@@ -26,6 +26,8 @@ import {
   type InsertLineItemCatalog,
   type RateCard,
   type InsertRateCard,
+  type QuoteTemplate,
+  type InsertQuoteTemplate,
   type StylePreset,
   type InsertStylePreset,
   type IntegrationSettings,
@@ -96,6 +98,7 @@ import {
   documentTemplates,
   lineItemCatalog,
   rateCards,
+  quoteTemplates,
   stylePresets,
   integrationSettings,
   notifications,
@@ -500,6 +503,13 @@ export interface IStorage {
   createRateCard(data: InsertRateCard & { userId: string }): Promise<RateCard>;
   updateRateCard(id: string, data: Partial<InsertRateCard>): Promise<RateCard>;
   deleteRateCard(id: string): Promise<void>;
+
+  // Quote Templates
+  getQuoteTemplates(userId: string, tradeType?: string): Promise<QuoteTemplate[]>;
+  getQuoteTemplate(id: string): Promise<QuoteTemplate | null>;
+  createQuoteTemplate(data: InsertQuoteTemplate & { userId: string }): Promise<QuoteTemplate>;
+  updateQuoteTemplate(id: string, data: Partial<InsertQuoteTemplate>): Promise<QuoteTemplate>;
+  deleteQuoteTemplate(id: string): Promise<void>;
 
   // Template Analysis Jobs
   createTemplateAnalysisJob(data: InsertTemplateAnalysisJob): Promise<TemplateAnalysisJob>;
@@ -2727,6 +2737,38 @@ export class PostgresStorage implements IStorage {
 
   async deleteRateCard(id: string): Promise<void> {
     await db.delete(rateCards).where(eq(rateCards.id, id));
+  }
+
+  // Quote Templates implementation
+  async getQuoteTemplates(userId: string, tradeType?: string): Promise<QuoteTemplate[]> {
+    const baseCondition = or(eq(quoteTemplates.userId, userId), eq(quoteTemplates.userId, 'shared'));
+    const condition = tradeType
+      ? and(baseCondition, eq(quoteTemplates.tradeType, tradeType))
+      : baseCondition;
+    return await db.select().from(quoteTemplates).where(condition).orderBy(desc(quoteTemplates.createdAt));
+  }
+
+  async getQuoteTemplate(id: string): Promise<QuoteTemplate | null> {
+    const result = await db.select().from(quoteTemplates).where(eq(quoteTemplates.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async createQuoteTemplate(data: InsertQuoteTemplate & { userId: string }): Promise<QuoteTemplate> {
+    const result = await db.insert(quoteTemplates).values(data).returning();
+    return result[0];
+  }
+
+  async updateQuoteTemplate(id: string, data: Partial<InsertQuoteTemplate>): Promise<QuoteTemplate> {
+    const result = await db
+      .update(quoteTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(quoteTemplates.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteQuoteTemplate(id: string): Promise<void> {
+    await db.delete(quoteTemplates).where(eq(quoteTemplates.id, id));
   }
 
   // Style Presets implementation
