@@ -49,6 +49,7 @@ import {
   ChevronDown,
   Receipt,
   Bell,
+  Wrench,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +85,7 @@ interface TeamMember {
   lastName?: string;
   name?: string;
   email: string;
+  phone?: string | null;
   role: string;
   profileImageUrl?: string | null;
   status?: string;
@@ -197,6 +199,8 @@ interface ConversationItem {
   jobId?: string;
   jobStatus?: string;
   jobAddress?: string;
+  assignedWorkerName?: string;
+  assignedWorkerPhone?: string;
   // Client/SMS context
   clientId?: string;
   clientPhone?: string;
@@ -932,7 +936,7 @@ export default function ChatHub() {
 
       // Show remaining team members without existing DM conversations
       teamMembers
-        .filter(m => isAcceptedMember(m) && !dmUserIds.has(m.userId))
+        .filter(m => isAcceptedMember(m) && m.userId && !dmUserIds.has(m.userId))
         .forEach(member => {
           const memberName = getTeamMemberName(member);
           items.push({
@@ -970,6 +974,14 @@ export default function ChatHub() {
       // Build clientId -> Client lookup for showing client names on job cards
       const clientLookup = new Map<string, Client>();
       allClients.forEach(c => clientLookup.set(c.id, c));
+
+      // Build assignee lookup from team members (memberId/userId -> member info)
+      const assigneeLookup = new Map<string, TeamMember>();
+      teamMembers.filter(isAcceptedMember).forEach(m => {
+        if (m.userId) assigneeLookup.set(m.userId, m);
+        if (m.memberId) assigneeLookup.set(m.memberId, m);
+        if (m.id) assigneeLookup.set(m.id, m);
+      });
       
       // Create job-centric conversation items
       jobs.forEach(job => {
@@ -997,6 +1009,11 @@ export default function ChatHub() {
           deletedAt: null,
         } as SmsConversation : undefined);
 
+        // Resolve assigned worker
+        const assignee = job.assignedTo ? assigneeLookup.get(job.assignedTo) : undefined;
+        const assignedWorkerName = assignee ? getTeamMemberName(assignee) : undefined;
+        const assignedWorkerPhone = assignee?.phone || undefined;
+
         items.push({
           id: `job-${job.id}`,
           type: 'job',
@@ -1011,6 +1028,8 @@ export default function ChatHub() {
           jobId: job.id,
           jobStatus: job.status,
           jobAddress: job.address,
+          assignedWorkerName,
+          assignedWorkerPhone,
           clientId: job.clientId || effectiveSmsConvo?.clientId || undefined,
           clientPhone: resolvedClientPhone || undefined,
           clientName: resolvedClientName || undefined,
@@ -1609,11 +1628,26 @@ export default function ChatHub() {
                         </div>
                       </div>
                       
-                      {/* Job cards: show client name + address */}
+                      {/* Job cards: show client name + assigned worker + address */}
                       {item.type === 'job' && item.clientName && (
                         <p className="text-xs truncate mt-0.5">
                           <User className="h-3 w-3 inline mr-1 text-muted-foreground" />
                           {item.clientName}
+                        </p>
+                      )}
+                      {item.type === 'job' && item.assignedWorkerName && (
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                          <Wrench className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{item.assignedWorkerName}</span>
+                          {item.assignedWorkerPhone && (
+                            <a 
+                              href={`tel:${item.assignedWorkerPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="shrink-0 text-primary hover:underline"
+                            >
+                              <Phone className="h-2.5 w-2.5" />
+                            </a>
+                          )}
                         </p>
                       )}
                       {item.type === 'job' && item.subtitle && (
@@ -2147,6 +2181,15 @@ export default function ChatHub() {
                         size="sm"
                         className="shrink-0 gap-1.5 bg-background"
                         onClick={() => {
+                          if ((template.id === 'omw' || template.id === 'running-late') && 
+                              selectedConversation?.type === 'job' && 
+                              !selectedConversation?.data?.assignedTo) {
+                            toast({
+                              title: "No worker assigned",
+                              description: "This job doesn't have a worker assigned yet. The message will still be sent to the client.",
+                              variant: "destructive",
+                            });
+                          }
                           const message = selectedSmsConversation 
                             ? applySmsTemplateFields(template.message, selectedSmsConversation)
                             : template.message;
