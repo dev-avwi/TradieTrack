@@ -879,6 +879,18 @@ export default function ChatHub() {
         const resolvedClientName = smsConvo?.clientName || (job.clientId ? clientLookup.get(job.clientId)?.name : undefined);
         const resolvedClientPhone = smsConvo?.clientPhone || (job.clientId ? clientLookup.get(job.clientId)?.phone : undefined);
         
+        const effectiveSmsConvo = smsConvo || (resolvedClientPhone ? {
+          id: 'new' as string,
+          businessOwnerId: '',
+          clientId: job.clientId || null,
+          clientPhone: resolvedClientPhone,
+          clientName: resolvedClientName || job.title,
+          jobId: job.id,
+          lastMessageAt: null,
+          unreadCount: 0,
+          deletedAt: null,
+        } as SmsConversation : undefined);
+
         items.push({
           id: `job-${job.id}`,
           type: 'job',
@@ -887,16 +899,16 @@ export default function ChatHub() {
           avatar: sitePhotoUrl || null,
           avatarFallback: job.title.slice(0, 2).toUpperCase(),
           lastMessage: undefined,
-          lastMessageTime: smsConvo?.lastMessageAt || job.scheduledAt || undefined,
-          unreadCount: smsConvo?.unreadCount || 0,
+          lastMessageTime: effectiveSmsConvo?.lastMessageAt || job.scheduledAt || undefined,
+          unreadCount: effectiveSmsConvo?.unreadCount || 0,
           status: job.status,
           jobId: job.id,
           jobStatus: job.status,
           jobAddress: job.address,
-          clientId: job.clientId || smsConvo?.clientId || undefined,
+          clientId: job.clientId || effectiveSmsConvo?.clientId || undefined,
           clientPhone: resolvedClientPhone || undefined,
           clientName: resolvedClientName || undefined,
-          smsConversation: smsConvo,
+          smsConversation: effectiveSmsConvo,
           data: job,
         });
       });
@@ -983,6 +995,18 @@ export default function ChatHub() {
         if (item.smsConversation.id !== 'new') {
           markSmsReadMutation.mutate(item.smsConversation.id);
         }
+      } else if (item.clientPhone && item.clientId) {
+        setSelectedSmsConversation({
+          id: 'new',
+          businessOwnerId: '',
+          clientId: item.clientId,
+          clientPhone: item.clientPhone,
+          clientName: item.clientName || item.title,
+          jobId: item.jobId || null,
+          lastMessageAt: null,
+          unreadCount: 0,
+          deletedAt: null,
+        } as SmsConversation);
       } else {
         setSelectedSmsConversation(null);
       }
@@ -2177,7 +2201,7 @@ export default function ChatHub() {
   return (
     <div className="flex h-full overflow-hidden bg-background" data-testid="chat-hub">
       {/* Left sidebar - conversation list */}
-      <div className={`w-full md:w-72 lg:w-80 shrink-0 border-r ${mobileShowChat ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
+      <div className={`w-full md:w-72 lg:w-80 shrink-0 border-r min-w-0 ${mobileShowChat ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
         {renderConversationList()}
       </div>
 
