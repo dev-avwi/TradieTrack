@@ -185,14 +185,18 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
             </div>
           ) : (
             <>
-              {safetySubmissions.length === 0 && jobStatus !== 'invoiced' && (
-                <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950">
+              {safetySubmissions.length === 0 && (
+                <div className={`p-4 rounded-lg border-2 ${jobStatus === 'invoiced' ? 'border-muted bg-muted/30' : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/80'}`}>
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${jobStatus === 'invoiced' ? 'bg-muted' : 'bg-amber-100 dark:bg-amber-900'}`}>
+                      <AlertTriangle className={`h-5 w-5 ${jobStatus === 'invoiced' ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'}`} />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Safety documentation required</p>
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                        Complete a SWMS or JSA before starting high-risk work
+                      <p className={`text-sm font-semibold ${jobStatus === 'invoiced' ? 'text-muted-foreground' : 'text-amber-800 dark:text-amber-200'}`}>
+                        {jobStatus === 'invoiced' ? 'No safety forms were completed' : 'Safety documentation required'}
+                      </p>
+                      <p className={`text-xs mt-1 ${jobStatus === 'invoiced' ? 'text-muted-foreground/70' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {jobStatus === 'invoiced' ? 'Safety forms were not completed for this job' : 'Complete a SWMS or JSA before starting high-risk work'}
                       </p>
                     </div>
                   </div>

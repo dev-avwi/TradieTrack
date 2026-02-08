@@ -212,6 +212,7 @@ export default function JobDetailView({
   const [inviteExpiry, setInviteExpiry] = useState<'never' | '7days' | '30days'>('never');
   const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [showAllActivities, setShowAllActivities] = useState(false);
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [materialName, setMaterialName] = useState('');
   const [materialQty, setMaterialQty] = useState('1');
@@ -2397,47 +2398,65 @@ export default function JobDetailView({
                 </div>
               ) : (
                 <div className="relative">
-                  {jobActivities.length > 1 && (
-                    <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
-                  )}
-                  <div className="space-y-1">
-                    {jobActivities.map((activity, index) => {
-                      const Icon = activityIcons[activity.type] || Briefcase;
-                      const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
-                      
-                      return (
-                        <div 
-                          key={activity.id}
-                          className="relative flex items-start gap-3 p-2 rounded-lg"
-                          data-testid={`activity-item-${activity.id}`}
-                        >
-                          <div className="relative z-10">
-                            <div 
-                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                              style={{ backgroundColor: colors.bg }}
-                            >
-                              <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
-                            </div>
-                            {activity.status === 'success' && (
-                              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
-                                <CheckCircle2 className="h-1.5 w-1.5 text-white" />
+                  {(() => {
+                    const displayedActivities = showAllActivities ? jobActivities : jobActivities.slice(0, 3);
+                    return (
+                      <>
+                        {displayedActivities.length > 1 && (
+                          <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
+                        )}
+                        <div className="space-y-1">
+                          {displayedActivities.map((activity, index) => {
+                            const Icon = activityIcons[activity.type] || Briefcase;
+                            const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+                            
+                            return (
+                              <div 
+                                key={activity.id}
+                                className="relative flex items-start gap-3 p-2 rounded-lg"
+                                data-testid={`activity-item-${activity.id}`}
+                              >
+                                <div className="relative z-10">
+                                  <div 
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                    style={{ backgroundColor: colors.bg }}
+                                  >
+                                    <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+                                  </div>
+                                  {activity.status === 'success' && (
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                                      <CheckCircle2 className="h-1.5 w-1.5 text-white" />
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 min-w-0 pt-0.5">
+                                  <p className="text-sm font-medium truncate">{activity.title}</p>
+                                  {activity.description && (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
+                                  )}
+                                  <p className="text-[10px] text-muted-foreground/70 mt-1">
+                                    {formatHistoryDate(activity.timestamp)}
+                                  </p>
+                                </div>
                               </div>
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0 pt-0.5">
-                            <p className="text-sm font-medium truncate">{activity.title}</p>
-                            {activity.description && (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
-                            )}
-                            <p className="text-[10px] text-muted-foreground/70 mt-1">
-                              {formatHistoryDate(activity.timestamp)}
-                            </p>
-                          </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
+                        {jobActivities.length > 3 && (
+                          <div className="pt-2">
+                            <Button
+                              variant="ghost"
+                              className="w-full text-xs"
+                              onClick={() => setShowAllActivities(!showAllActivities)}
+                            >
+                              {showAllActivities ? 'Show less' : `View all (${jobActivities.length})`}
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </CardContent>
