@@ -50,6 +50,8 @@ import {
   Receipt,
   Bell,
   Wrench,
+  UserPlus,
+  Link2,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -347,6 +349,9 @@ export default function ChatHub() {
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
 
+  const [assignWorkerDialogOpen, setAssignWorkerDialogOpen] = useState(false);
+  const [pendingQuickAction, setPendingQuickAction] = useState<string | null>(null);
+
   const { data: currentUser } = useQuery<User>({
     queryKey: ['/api/auth/me'],
   });
@@ -438,6 +443,66 @@ export default function ChatHub() {
   const { data: smsMessages = [], refetch: refetchSmsMessages } = useQuery<SmsMessage[]>({
     queryKey: ['/api/sms/conversations', selectedSmsConversation?.id, 'messages'],
     enabled: !!selectedSmsConversation && ['client', 'job', 'unassigned'].includes(selectedConversation?.type || ''),
+  });
+
+  const selectedJobId = selectedConversation?.type === 'job' ? selectedConversation?.data?.id : null;
+
+  const { data: jobQuotes = [] } = useQuery<any[]>({
+    queryKey: ['/api/quotes'],
+    enabled: !!selectedJobId,
+  });
+
+  const { data: jobInvoices = [] } = useQuery<any[]>({
+    queryKey: ['/api/invoices'],
+    enabled: !!selectedJobId,
+  });
+
+  const currentJobQuotes = useMemo(() => 
+    selectedJobId ? jobQuotes.filter((q: any) => q.jobId === selectedJobId && q.acceptanceToken) : [],
+    [jobQuotes, selectedJobId]
+  );
+
+  const currentJobInvoices = useMemo(() => 
+    selectedJobId ? jobInvoices.filter((inv: any) => inv.jobId === selectedJobId && inv.paymentToken) : [],
+    [jobInvoices, selectedJobId]
+  );
+
+  const assignWorkerMutation = useMutation({
+    mutationFn: async ({ jobId, memberId }: { jobId: string; memberId: string }) => {
+      const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, { assignedTo: memberId });
+      return response.json();
+    },
+    onSuccess: (data: any, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      if (selectedConversation) {
+        setSelectedConversation({
+          ...selectedConversation,
+          data: { ...selectedConversation.data, assignedTo: variables.memberId },
+        });
+      }
+      toast({
+        title: "Worker assigned",
+        description: "The worker has been assigned to this job.",
+      });
+      if (pendingQuickAction) {
+        const template = QUICK_ACTION_TEMPLATES.find(t => t.id === pendingQuickAction);
+        if (template) {
+          const message = selectedSmsConversation
+            ? applySmsTemplateFields(template.message, selectedSmsConversation)
+            : template.message;
+          setSmsNewMessage(message);
+        }
+        setPendingQuickAction(null);
+      }
+      setAssignWorkerDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to assign worker",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
   });
 
   const sendTeamMessageMutation = useMutation({
@@ -2184,11 +2249,9 @@ export default function ChatHub() {
                           if ((template.id === 'omw' || template.id === 'running-late') && 
                               selectedConversation?.type === 'job' && 
                               !selectedConversation?.data?.assignedTo) {
-                            toast({
-                              title: "No worker assigned",
-                              description: "This job doesn't have a worker assigned yet. The message will still be sent to the client.",
-                              variant: "destructive",
-                            });
+                            setPendingQuickAction(template.id);
+                            setAssignWorkerDialogOpen(true);
+                            return;
                           }
                           const message = selectedSmsConversation 
                             ? applySmsTemplateFields(template.message, selectedSmsConversation)
@@ -2238,6 +2301,44 @@ export default function ChatHub() {
                             <span className="text-sm">Set Reminder</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          {(currentJobQuotes.length > 0 || currentJobInvoices.length > 0) && (
+                            <>
+                              <DropdownMenuLabel className="text-xs">Client Links</DropdownMenuLabel>
+                              {currentJobQuotes.map((quote: any) => (
+                                <DropdownMenuItem
+                                  key={`quote-${quote.id}`}
+                                  onClick={() => {
+                                    const url = `${window.location.origin}/q/${quote.acceptanceToken}`;
+                                    const clientFirst = selectedSmsConversation?.clientName?.split(' ')[0] || '';
+                                    const greeting = clientFirst ? `Hi ${clientFirst}, here` : 'Here';
+                                    const message = `${greeting}'s your quote - you can view, accept, or pay the deposit right from this link: ${url}`;
+                                    setSmsNewMessage(message);
+                                  }}
+                                  className="gap-2"
+                                >
+                                  <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="text-sm">Send Quote Link</span>
+                                </DropdownMenuItem>
+                              ))}
+                              {currentJobInvoices.map((invoice: any) => (
+                                <DropdownMenuItem
+                                  key={`invoice-${invoice.id}`}
+                                  onClick={() => {
+                                    const url = `${window.location.origin}/portal/invoice/${invoice.paymentToken}`;
+                                    const clientFirst = selectedSmsConversation?.clientName?.split(' ')[0] || '';
+                                    const greeting = clientFirst ? `Hi ${clientFirst}, here` : 'Here';
+                                    const message = `${greeting}'s your invoice - you can view and pay online here: ${url}`;
+                                    setSmsNewMessage(message);
+                                  }}
+                                  className="gap-2"
+                                >
+                                  <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="text-sm">Send Invoice Link</span>
+                                </DropdownMenuItem>
+                              ))}
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
                         </>
                       )}
                       <DropdownMenuLabel className="text-xs">More Quick Messages</DropdownMenuLabel>
@@ -2662,6 +2763,85 @@ export default function ChatHub() {
             </Button>
             <Button onClick={handleCreateClientSubmit} disabled={!newClientName.trim() || createClientFromSmsMutation.isPending} data-testid="button-create-client-submit">
               {createClientFromSmsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Client'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={assignWorkerDialogOpen} onOpenChange={(open) => { if (!open) { setAssignWorkerDialogOpen(false); setPendingQuickAction(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Assign a worker first
+            </DialogTitle>
+            <DialogDescription>
+              This job doesn't have a worker assigned yet. Choose a team member to assign, or skip and send the message anyway.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {currentUser && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => {
+                  if (selectedConversation?.data?.id && currentUser.id) {
+                    assignWorkerMutation.mutate({ jobId: selectedConversation.data.id, memberId: currentUser.id });
+                  }
+                }}
+                disabled={assignWorkerMutation.isPending}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={currentUser.profileImageUrl || undefined} />
+                  <AvatarFallback>{getInitials(getUserDisplayName(currentUser))}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium">{getUserDisplayName(currentUser)}</span>
+                  <span className="text-xs text-muted-foreground">Assign myself</span>
+                </div>
+              </Button>
+            )}
+            {teamMembers.filter(isAcceptedMember).filter(m => m.userId !== currentUser?.id).map((member) => (
+              <Button
+                key={member.id}
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => {
+                  if (selectedConversation?.data?.id) {
+                    assignWorkerMutation.mutate({ jobId: selectedConversation.data.id, memberId: member.id });
+                  }
+                }}
+                disabled={assignWorkerMutation.isPending}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={member.profileImageUrl || undefined} />
+                  <AvatarFallback>{getInitials(getTeamMemberName(member))}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium">{getTeamMemberName(member)}</span>
+                  <span className="text-xs text-muted-foreground">{member.role}</span>
+                </div>
+              </Button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (pendingQuickAction) {
+                  const template = QUICK_ACTION_TEMPLATES.find(t => t.id === pendingQuickAction);
+                  if (template) {
+                    const message = selectedSmsConversation
+                      ? applySmsTemplateFields(template.message, selectedSmsConversation)
+                      : template.message;
+                    setSmsNewMessage(message);
+                  }
+                }
+                setPendingQuickAction(null);
+                setAssignWorkerDialogOpen(false);
+              }}
+            >
+              Skip - send anyway
             </Button>
           </DialogFooter>
         </DialogContent>
