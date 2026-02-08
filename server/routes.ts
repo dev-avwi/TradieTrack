@@ -127,6 +127,7 @@ import * as xeroService from "./xeroService";
 import * as myobService from "./myobService";
 import * as quickbooksService from "./quickbooksService";
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
+import { generateQuoteEmailTemplate, generateInvoiceEmailTemplate } from './emailTemplates';
 
 // Environment check for development-only endpoints
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -1017,7 +1018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { sendSMS } = await import('./services/smsService');
         await sendSMS({
           to: normalizedPhone,
-          message: `Your TradieTrack verification code is: ${code}. This code will expire in 10 minutes.`,
+          message: `Your JobRunner verification code is: ${code}. This code will expire in 10 minutes.`,
         });
         console.log(`✅ Portal verification code SMS sent to ${normalizedPhone}`);
       } catch (smsError: any) {
@@ -3694,6 +3695,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const termsTemplate = termsTemplateResult[0]?.content;
         const warrantyTemplate = warrantyTemplateResult[0]?.content;
         
+        let paymentToken = invoice.paymentToken;
+        if (!paymentToken) {
+          const { nanoid } = await import('nanoid');
+          paymentToken = nanoid(12);
+          await storage.updateInvoice(invoice.id, userContext.effectiveUserId, { paymentToken });
+        }
+        const paymentUrl = getInvoicePublicUrl(paymentToken, req);
+
+        const invoiceEmailData = generateInvoiceEmailTemplate({
+          businessName: business?.businessName || 'Your Tradie',
+          businessEmail: business?.businessEmail || undefined,
+          businessPhone: business?.phone || undefined,
+          businessAddress: business?.address || undefined,
+          businessAbn: business?.abn || undefined,
+          businessLogo: business?.logo || undefined,
+          clientName: client.name || 'Customer',
+          clientEmail: client.email || undefined,
+          clientAddress: client.address || undefined,
+          clientPhone: client.phone || undefined,
+          invoiceNumber: invoice.number || invoice.id.toString(),
+          invoiceTitle: invoice.title || 'Invoice',
+          invoiceDescription: invoice.description || undefined,
+          dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString() : undefined,
+          lineItems: (invoice.lineItems || []).map((li: any) => ({
+            description: li.description || '',
+            quantity: Number(li.quantity) || 0,
+            unitPrice: Number(li.unitPrice) || 0,
+            total: Number(li.total) || 0,
+          })),
+          subtotal: parseFloat(invoice.subtotal || '0'),
+          gstAmount: parseFloat(invoice.gstAmount || '0'),
+          total: parseFloat(invoice.total || '0'),
+          paymentUrl,
+          isOverdue: invoice.status === 'overdue',
+        });
+
         const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
         const businessForPdf = await resolveBusinessLogoForPdf(business);
         const html = generateInvoicePDF({
@@ -3708,12 +3745,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const result = await sendEmailViaIntegration({
           to: client.email,
-          subject: `Invoice ${invoice.number || ''} from ${business?.businessName || 'Your Tradie'}`,
-          html: `<p>Hi ${client.name?.split(' ')[0]},</p>
-                 <p>Please find attached invoice ${invoice.number || ''} for $${parseFloat(invoice.total || '0').toFixed(2)}.</p>
-                 ${action.data.message ? `<p>${action.data.message}</p>` : ''}
-                 <p>Thanks for your business!</p>
-                 <p>${business?.businessName || ''}</p>`,
+          subject: invoiceEmailData.subject,
+          html: invoiceEmailData.html,
           text: `Invoice ${invoice.number || ''} attached`,
           userId: userContext.effectiveUserId,
           type: 'invoice',
@@ -3751,18 +3784,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+
+        let acceptanceToken = quote.acceptanceToken;
+        if (!acceptanceToken) {
+          const { nanoid } = await import('nanoid');
+          acceptanceToken = nanoid(12);
+          await storage.updateQuote(quote.id, userContext.effectiveUserId, { acceptanceToken });
+        }
+        const acceptanceUrl = getQuotePublicUrl(acceptanceToken, req);
+
+        const quoteEmailData = generateQuoteEmailTemplate({
+          businessName: business?.businessName || 'Your Tradie',
+          businessEmail: business?.businessEmail || undefined,
+          businessPhone: business?.phone || undefined,
+          businessAddress: business?.address || undefined,
+          businessAbn: business?.abn || undefined,
+          businessLogo: business?.logo || undefined,
+          clientName: client.name || 'Customer',
+          clientEmail: client.email || undefined,
+          clientAddress: client.address || undefined,
+          clientPhone: client.phone || undefined,
+          quoteNumber: quote.number || quote.id.toString(),
+          quoteTitle: quote.title || 'Quote',
+          quoteDescription: quote.description || undefined,
+          validUntil: quote.validUntil ? new Date(quote.validUntil).toISOString() : undefined,
+          lineItems: (quote.lineItems || []).map((li: any) => ({
+            description: li.description || '',
+            quantity: Number(li.quantity) || 0,
+            unitPrice: Number(li.unitPrice) || 0,
+            total: Number(li.total) || 0,
+          })),
+          subtotal: parseFloat(quote.subtotal || '0'),
+          gstAmount: parseFloat(quote.gstAmount || '0'),
+          total: parseFloat(quote.total || '0'),
+          acceptanceUrl,
+        });
+
         const { generateQuotePDF, resolveBusinessLogoForPdf } = await import('./pdfService');
         const businessForPdf = await resolveBusinessLogoForPdf(business);
         const pdfBuffer = await generateQuotePDF(quote, quote.lineItems || [], client, businessForPdf);
 
         const result = await sendEmailViaIntegration({
           to: client.email,
-          subject: `Quote ${quote.number || ''} from ${business?.businessName || 'Your Tradie'}`,
-          html: `<p>Hi ${client.name?.split(' ')[0]},</p>
-                 <p>Please find attached your quote for $${parseFloat(quote.total || '0').toFixed(2)}.</p>
-                 ${action.data.message ? `<p>${action.data.message}</p>` : ''}
-                 <p>Let me know if you have any questions!</p>
-                 <p>${business?.businessName || ''}</p>`,
+          subject: quoteEmailData.subject,
+          html: quoteEmailData.html,
           text: `Quote ${quote.number || ''} attached`,
           userId: userContext.effectiveUserId,
           type: 'quote',

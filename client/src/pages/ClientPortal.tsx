@@ -565,7 +565,7 @@ export default function ClientPortal() {
         {/* Footer */}
         <footer className="border-t bg-card py-4 px-4 mt-auto">
           <div className="max-w-4xl mx-auto text-center text-xs text-muted-foreground">
-            <p>Powered by TradieTrack • Questions? Contact <a href={`tel:${data.business.phone}`} className="hover:underline text-foreground">{data.business.name}</a></p>
+            <p>Powered by JobRunner • Questions? Contact <a href={`tel:${data.business.phone}`} className="hover:underline text-foreground">{data.business.name}</a></p>
           </div>
         </footer>
       </div>

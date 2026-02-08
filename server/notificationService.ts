@@ -55,9 +55,9 @@ const sendSMS = async (options: { to: string; message: string }): Promise<{ succ
 };
 
 const smsTemplates = {
-  quoteReady: (clientName: string, businessName: string, quoteNumber: string) =>
+  quoteReady: (clientName: string, businessName: string, quoteNumber: string, _businessPhone?: string) =>
     `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready.`,
-  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string) =>
+  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string, _businessPhone?: string) =>
     `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready.`,
   paymentReceived: (clientName: string, amount: string, businessName: string) =>
     `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}`,

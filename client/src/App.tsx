@@ -117,6 +117,41 @@ interface ClientData {
   name: string;
 }
 
+// Short URL redirects for quote/invoice links sent via email/SMS
+function QuoteShortRedirect({ token }: { token: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (token) {
+      setLocation(`/portal/quote/${token}`);
+    }
+  }, [token, setLocation]);
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading your quote...</p>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceShortRedirect({ token }: { token: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (token) {
+      setLocation(`/portal/invoice/${token}`);
+    }
+  }, [token, setLocation]);
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading your invoice...</p>
+      </div>
+    </div>
+  );
+}
+
 // Public Receipt Redirect - redirects to PDF download for SMS links
 function PublicReceiptRedirect({ token }: { token: string }) {
   useEffect(() => {
@@ -1244,6 +1279,8 @@ function App() {
           <TooltipProvider>
             <Switch>
               {/* Public routes - no auth required */}
+              <Route path="/q/:token">{(params) => <QuoteShortRedirect token={params.token} />}</Route>
+              <Route path="/i/:token">{(params) => <InvoiceShortRedirect token={params.token} />}</Route>
               <Route path="/pay/:token" component={PaymentPage} />
               <Route path="/portal" component={ClientPortalHub} />
               <Route path="/portal/:type/:token" component={ClientPortal} />

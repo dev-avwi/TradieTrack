@@ -1,5 +1,5 @@
 /**
- * Production Email Templates for TradieTrack
+ * Production Email Templates for JobRunner
  * Professional, responsive HTML email templates for all business communications
  */
 
@@ -20,7 +20,7 @@ const baseEmailWrapper = (content: string, brandColor: string = BRAND_BLUE) => `
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>TradieTrack</title>
+  <title>JobRunner</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -60,10 +60,10 @@ const baseEmailWrapper = (content: string, brandColor: string = BRAND_BLUE) => `
         <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width: 600px; margin-top: 24px;">
           <tr>
             <td align="center" style="padding: 20px; color: #94a3b8; font-size: 12px; line-height: 1.5;">
-              <p style="margin: 0;">Powered by <strong>TradieTrack</strong></p>
+              <p style="margin: 0;">Powered by <strong>JobRunner</strong></p>
               <p style="margin: 8px 0 0 0;">The business management platform for Australian tradies</p>
               <p style="margin: 16px 0 0 0; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-                This email was sent by TradieTrack on behalf of the business above.<br>
+                This email was sent by JobRunner on behalf of the business above.<br>
                 <a href="<%asm_group_unsubscribe_url%>" style="color: #64748b; text-decoration: underline;">Unsubscribe</a> | 
                 <a href="<%asm_preferences_url%>" style="color: #64748b; text-decoration: underline;">Manage email preferences</a>
               </p>
@@ -78,7 +78,7 @@ const baseEmailWrapper = (content: string, brandColor: string = BRAND_BLUE) => `
 `;
 
 // Header component - always shows logo with white container for consistency
-// Uses absolute TradieTrack logo URL as fallback for email client compatibility
+// Uses absolute JobRunner logo URL as fallback for email client compatibility
 const emailHeader = (
   businessName: string, 
   documentType: string, 
@@ -87,7 +87,7 @@ const emailHeader = (
   logoUrl?: string,
   abn?: string
 ) => {
-  // Compute absolute fallback URL for TradieTrack logo (relative URLs don't work in email clients)
+  // Compute absolute fallback URL for JobRunner logo (relative URLs don't work in email clients)
   const baseUrl = getProductionBaseUrl();
   const defaultLogoUrl = `${baseUrl}/logo.png`;
   const resolvedLogoUrl = logoUrl || defaultLogoUrl;
@@ -96,7 +96,7 @@ const emailHeader = (
 <tr>
   <td class="header" style="background: linear-gradient(135deg, ${brandColor} 0%, ${adjustColor(brandColor, -20)} 100%); padding: 32px; text-align: center;">
     <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px;">
-      <img src="${resolvedLogoUrl}" alt="${businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+      <img src="${resolvedLogoUrl}" alt="${businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
     </div>
     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${businessName}</h1>
     ${abn ? `<p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">ABN: ${abn}</p>` : ''}
@@ -404,7 +404,7 @@ export function generateInvoiceEmailTemplate(data: InvoiceEmailData): { subject:
 export function generateReceiptEmailTemplate(data: ReceiptEmailData): { subject: string; html: string } {
   const brandColor = SUCCESS_GREEN;
   const clientFirstName = data.clientName.split(' ')[0];
-  // Logo is provided via data.businessLogo (business logo or TradieTrack fallback)
+  // Logo is provided via data.businessLogo (business logo or JobRunner fallback)
   const logoUrl = data.businessLogo;
   
   const content = `

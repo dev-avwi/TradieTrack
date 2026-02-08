@@ -427,7 +427,7 @@ export default function ClientPortalHub() {
         </div>
 
         <div className="text-center text-xs text-muted-foreground py-4">
-          <p>Powered by TradieTrack</p>
+          <p>Powered by JobRunner</p>
         </div>
       </div>
     );
@@ -499,7 +499,7 @@ export default function ClientPortalHub() {
         </div>
 
         <div className="text-center text-xs text-muted-foreground py-4">
-          <p>Powered by TradieTrack</p>
+          <p>Powered by JobRunner</p>
         </div>
       </div>
     );
@@ -810,7 +810,7 @@ export default function ClientPortalHub() {
         </main>
 
         <div className="text-center text-xs text-muted-foreground py-4 border-t">
-          <p>Powered by TradieTrack</p>
+          <p>Powered by JobRunner</p>
         </div>
       </div>
     );
