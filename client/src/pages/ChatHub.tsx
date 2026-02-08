@@ -500,10 +500,6 @@ export default function ChatHub() {
       if (selectedSmsConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation.id, 'messages'] });
       }
-      // Also invalidate job SMS messages if viewing a job
-      if (jobSmsConversation) {
-        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', jobSmsConversation.id, 'messages'] });
-      }
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
     },
     onError: (error: any) => {
@@ -530,9 +526,6 @@ export default function ChatHub() {
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       if (selectedSmsConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation.id, 'messages'] });
-      }
-      if (jobSmsConversation) {
-        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', jobSmsConversation.id, 'messages'] });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
       toast({
