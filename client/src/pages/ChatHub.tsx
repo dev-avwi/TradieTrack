@@ -173,7 +173,7 @@ interface Client {
   email?: string | null;
 }
 
-type FilterType = 'jobs' | 'team';
+type FilterType = 'jobs' | 'team' | 'enquiries';
 
 interface ConversationItem {
   id: string;
@@ -311,6 +311,7 @@ export default function ChatHub() {
   const showDirectFilter = isOwner || isManager;
   
   const [filter, setFilter] = useState<FilterType>('jobs');
+  const [jobStatusFilter, setJobStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<ConversationItem | null>(null);
   const [selectedDirectUser, setSelectedDirectUser] = useState<User | null>(null);
@@ -967,10 +968,17 @@ export default function ChatHub() {
           data: job,
         });
       });
+
+      // Apply job status filter
+      if (jobStatusFilter !== 'all') {
+        const filteredItems = items.filter(item => item.type !== 'job' || item.jobStatus === jobStatusFilter);
+        items.length = 0;
+        items.push(...filteredItems);
+      }
     }
     
-    // UNASSIGNED: SMS conversations not linked to any job - also show in jobs filter
-    if (filter === 'jobs') {
+    // ENQUIRIES: SMS conversations not linked to any job
+    if (filter === 'enquiries') {
       // Find SMS conversations that don't have a jobId and whose clientId doesn't have jobs
       const clientsWithJobs = new Set<string>();
       jobs.forEach(job => {
@@ -1283,7 +1291,16 @@ export default function ChatHub() {
     resetNewSmsDialog();
   };
 
-  const smsUnreadCount = smsConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const enquiryConversations = useMemo(() => {
+    const clientsWithJobs = new Set<string>();
+    jobs.forEach(job => {
+      if (job.clientId) clientsWithJobs.add(job.clientId);
+    });
+    return smsConversations.filter(sms => !sms.jobId && !(sms.clientId && clientsWithJobs.has(sms.clientId)));
+  }, [smsConversations, jobs]);
+  const enquiryCount = enquiryConversations.length;
+  const enquiryUnreadCount = enquiryConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const jobSmsUnreadCount = smsConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0) - enquiryUnreadCount;
   const pinnedMessages = teamMessages.filter(m => m.isPinned);
   const conversationList = buildConversationList();
   const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading || smsLoading;
@@ -1329,7 +1346,7 @@ export default function ChatHub() {
           />
         </div>
 
-        {/* Simplified filter - personalized labels for tradies */}
+        {/* Filter tabs */}
         <div className="flex gap-1">
           <Button
             variant={filter === 'jobs' ? 'default' : 'ghost'}
@@ -1340,9 +1357,24 @@ export default function ChatHub() {
           >
             <Briefcase className="h-3 w-3 mr-1" />
             {isTradie ? 'My Jobs' : 'Jobs'}
-            {smsUnreadCount > 0 && (
+            {jobSmsUnreadCount > 0 && (
               <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
-                {smsUnreadCount}
+                {jobSmsUnreadCount}
+              </Badge>
+            )}
+          </Button>
+          <Button
+            variant={filter === 'enquiries' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setFilter('enquiries')}
+            className="text-xs"
+            data-testid="filter-enquiries"
+          >
+            <MessageCircle className="h-3 w-3 mr-1" />
+            Enquiries
+            {enquiryCount > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+                {enquiryCount}
               </Badge>
             )}
           </Button>
@@ -1362,6 +1394,39 @@ export default function ChatHub() {
             )}
           </Button>
         </div>
+        {/* Job status sub-filter */}
+        {filter === 'jobs' && (
+          <div className="flex gap-1 mt-2 overflow-x-auto no-scrollbar">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'in_progress', label: 'In Progress' },
+              { value: 'done', label: 'Done' },
+              { value: 'invoiced', label: 'Invoiced' },
+              { value: 'pending', label: 'Pending' },
+            ].map(status => (
+              <Button
+                key={status.value}
+                variant={jobStatusFilter === status.value ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setJobStatusFilter(status.value)}
+                className="text-[10px] h-6 px-2 shrink-0"
+                data-testid={`filter-status-${status.value}`}
+              >
+                {status.value !== 'all' && (
+                  <Circle 
+                    className="h-2 w-2 mr-1" 
+                    style={{ 
+                      fill: STATUS_COLORS[status.value] || '#6B7280',
+                      color: STATUS_COLORS[status.value] || '#6B7280'
+                    }} 
+                  />
+                )}
+                {status.label}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       <OfflineBanner isConnected={smsSocketConnected} />
@@ -1378,24 +1443,36 @@ export default function ChatHub() {
                   <Briefcase className="h-7 w-7 text-blue-500/50" />
                 </div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">
-                  {isTradie ? 'No jobs assigned' : 'No jobs yet'}
+                  {jobStatusFilter !== 'all' ? `No ${STATUS_LABELS[jobStatusFilter]?.toLowerCase() || jobStatusFilter} jobs` : (isTradie ? 'No jobs assigned' : 'No jobs yet')}
                 </p>
                 <p className="text-xs text-muted-foreground/70 text-center mb-3">
-                  {isTradie 
-                    ? "When you're assigned a job, it'll appear here" 
-                    : 'Create your first job to start messaging clients'}
+                  {jobStatusFilter !== 'all' 
+                    ? 'Try changing the filter to see other jobs'
+                    : (isTradie 
+                      ? "When you're assigned a job, it'll appear here" 
+                      : 'Create your first job to start messaging clients')}
                 </p>
-                {!isTradie && (
+                {!isTradie && jobStatusFilter === 'all' && (
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="gap-1.5"
-                    onClick={() => setLocation('/jobs/new')}
+                    onClick={() => setLocation('/jobs')}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     New Job
                   </Button>
                 )}
+              </>
+            ) : filter === 'enquiries' ? (
+              <>
+                <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                  <MessageCircle className="h-7 w-7 text-orange-500/50" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">No new enquiries</p>
+                <p className="text-xs text-muted-foreground/70 text-center">
+                  When clients text your business number, they'll appear here
+                </p>
               </>
             ) : (
               <>
