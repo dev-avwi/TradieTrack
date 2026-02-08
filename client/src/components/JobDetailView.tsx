@@ -1395,20 +1395,6 @@ export default function JobDetailView({
               </Button>
             )}
 
-            {/* Scheduled → Start (Begin work on site) */}
-            {job.status === 'scheduled' && (
-              <Button
-                onClick={() => setShowSafetyCheck(true)}
-                disabled={updateJobMutation.isPending}
-                data-testid="button-start-job"
-                className="w-full text-white"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                {updateJobMutation.isPending ? 'Starting...' : 'Start Job'}
-              </Button>
-            )}
-
             {/* In Progress → Complete (Finish work) */}
             {job.status === 'in_progress' && onCompleteJob && (
               <Button
@@ -1422,35 +1408,51 @@ export default function JobDetailView({
               </Button>
             )}
 
-            {/* Done status badge (non-tradie) */}
-            {job.status === 'done' && !isTradie && (
-              <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">Job Completed</span>
-              </div>
-            )}
-            
-            {/* Staff tradie sees confirmation when job is done */}
-            {job.status === 'done' && isTradie && (
+            {/* Done status badge */}
+            {job.status === 'done' && (
               <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400">
                 <CheckCircle className="h-5 w-5" />
                 <span className="font-medium">Job Completed</span>
               </div>
             )}
 
-            {/* View Job Chat - compact link to chat hub */}
-            {currentUser && !isSolo && (
-              <div ref={chatSectionRef} data-testid="section-job-chat">
+            {/* Quick actions row - Job Chat + Contact Client side by side */}
+            <div className="grid grid-cols-2 gap-2">
+              {currentUser && !isSolo && (
+                <div ref={chatSectionRef} data-testid="section-job-chat">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => navigate(`/chat?job=${jobId}`)}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Job Chat
+                  </Button>
+                </div>
+              )}
+              {client?.email && (
                 <Button
                   variant="outline"
                   className="w-full gap-2"
-                  onClick={() => navigate(`/chat?job=${jobId}`)}
+                  onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
+                  data-testid="button-email-client"
+                >
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Button>
+              )}
+              {client?.phone && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
+                  data-testid="button-sms-client"
                 >
                   <MessageSquare className="h-4 w-4" />
-                  View Job Chat
+                  SMS
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <JobFlowWizard
@@ -1880,44 +1882,6 @@ export default function JobDetailView({
             <JobSignature jobId={jobId} />
           )}
 
-          {/* Contact Client - Email/SMS side by side */}
-          {client && (client.email || client.phone) && (
-            <Card data-testid="card-contact-client">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Contact Client
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  {client.email && (
-                    <Button
-                      variant="outline"
-                      className="flex items-center justify-center gap-2"
-                      onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
-                      data-testid="button-email-client"
-                    >
-                      <Mail className="h-4 w-4" />
-                      Email
-                    </Button>
-                  )}
-                  {client.phone && (
-                    <Button
-                      variant="outline"
-                      className="flex items-center justify-center gap-2"
-                      onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
-                      data-testid="button-sms-client"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      SMS
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Voice Notes - show for ALL job statuses so team sync works */}
           <JobVoiceNotes 
             jobId={jobId} 
@@ -1927,98 +1891,6 @@ export default function JobDetailView({
 
           {/* Uploaded Documents - external quotes, invoices, PDFs */}
           <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
-
-          {/* Job Activity Feed - shows history of events for this job */}
-          <Card data-testid="job-activity-feed">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <History className="h-4 w-4" />
-                Activity History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {activitiesLoading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : jobActivities.length === 0 ? (
-                <div className="text-center py-6">
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-                    style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
-                  >
-                    <History className="h-6 w-6 text-muted-foreground/40" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-1">No activity yet</p>
-                  <p className="text-xs text-muted-foreground/70">
-                    Status changes, emails sent, and other events will appear here
-                  </p>
-                </div>
-              ) : (
-                <div className="relative">
-                  {(() => {
-                    const displayedActivities = showAllActivities ? jobActivities : jobActivities.slice(0, 3);
-                    return (
-                      <>
-                        {displayedActivities.length > 1 && (
-                          <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
-                        )}
-                        <div className="space-y-1">
-                          {displayedActivities.map((activity, index) => {
-                            const Icon = activityIcons[activity.type] || Briefcase;
-                            const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
-                            
-                            return (
-                              <div 
-                                key={activity.id}
-                                className="relative flex items-start gap-3 p-2 rounded-lg"
-                                data-testid={`activity-item-${activity.id}`}
-                              >
-                                <div className="relative z-10">
-                                  <div 
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                                    style={{ backgroundColor: colors.bg }}
-                                  >
-                                    <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
-                                  </div>
-                                  {activity.status === 'success' && (
-                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
-                                      <CheckCircle2 className="h-1.5 w-1.5 text-white" />
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <div className="flex-1 min-w-0 pt-0.5">
-                                  <p className="text-sm font-medium truncate">{activity.title}</p>
-                                  {activity.description && (
-                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
-                                  )}
-                                  <p className="text-[10px] text-muted-foreground/70 mt-1">
-                                    {formatHistoryDate(activity.timestamp)}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {jobActivities.length > 3 && (
-                          <div className="pt-2">
-                            <Button
-                              variant="ghost"
-                              className="w-full text-xs"
-                              onClick={() => setShowAllActivities(!showAllActivities)}
-                            >
-                              {showAllActivities ? 'Show less' : `View all (${jobActivities.length})`}
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
         </div>
 
@@ -2459,6 +2331,98 @@ export default function JobDetailView({
             jobId={jobId} 
             jobStatus={job.status}
           />
+
+          {/* Job Activity Feed - shows history of events for this job */}
+          <Card data-testid="job-activity-feed">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Activity History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activitiesLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : jobActivities.length === 0 ? (
+                <div className="text-center py-6">
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                    style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
+                  >
+                    <History className="h-6 w-6 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-1">No activity yet</p>
+                  <p className="text-xs text-muted-foreground/70">
+                    Status changes, emails sent, and other events will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="relative">
+                  {(() => {
+                    const displayedActivities = showAllActivities ? jobActivities : jobActivities.slice(0, 3);
+                    return (
+                      <>
+                        {displayedActivities.length > 1 && (
+                          <div className="absolute left-[14px] top-6 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
+                        )}
+                        <div className="space-y-1">
+                          {displayedActivities.map((activity, index) => {
+                            const Icon = activityIcons[activity.type] || Briefcase;
+                            const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+                            
+                            return (
+                              <div 
+                                key={activity.id}
+                                className="relative flex items-start gap-3 p-2 rounded-lg"
+                                data-testid={`activity-item-${activity.id}`}
+                              >
+                                <div className="relative z-10">
+                                  <div 
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                    style={{ backgroundColor: colors.bg }}
+                                  >
+                                    <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+                                  </div>
+                                  {activity.status === 'success' && (
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                                      <CheckCircle2 className="h-1.5 w-1.5 text-white" />
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 min-w-0 pt-0.5">
+                                  <p className="text-sm font-medium truncate">{activity.title}</p>
+                                  {activity.description && (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{activity.description}</p>
+                                  )}
+                                  <p className="text-[10px] text-muted-foreground/70 mt-1">
+                                    {formatHistoryDate(activity.timestamp)}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {jobActivities.length > 3 && (
+                          <div className="pt-2">
+                            <Button
+                              variant="ghost"
+                              className="w-full text-xs"
+                              onClick={() => setShowAllActivities(!showAllActivities)}
+                            >
+                              {showAllActivities ? 'Show less' : `View all (${jobActivities.length})`}
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
