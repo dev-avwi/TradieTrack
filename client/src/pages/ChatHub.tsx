@@ -677,7 +677,6 @@ export default function ChatHub() {
       setSelectedConversation(null);
       setSelectedSmsConversation(null);
       setActiveJobContext(null);
-      setFilter('jobs');
     },
     onError: (error: any) => {
       toast({
@@ -1371,18 +1370,18 @@ export default function ChatHub() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex gap-0.5">
           <Button
             variant={filter === 'jobs' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('jobs')}
-            className="text-xs"
+            className="text-xs h-7 px-2.5 gap-1"
             data-testid="filter-jobs"
           >
-            <Briefcase className="h-3 w-3 mr-1" />
+            <Briefcase className="h-3 w-3" />
             {isTradie ? 'My Jobs' : 'Jobs'}
             {jobSmsUnreadCount > 0 && (
-              <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
                 {jobSmsUnreadCount}
               </Badge>
             )}
@@ -1391,13 +1390,13 @@ export default function ChatHub() {
             variant={filter === 'enquiries' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('enquiries')}
-            className="text-xs"
+            className="text-xs h-7 px-2.5 gap-1"
             data-testid="filter-enquiries"
           >
-            <MessageCircle className="h-3 w-3 mr-1" />
+            <MessageCircle className="h-3 w-3" />
             Enquiries
             {enquiryCount > 0 && (
-              <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
                 {enquiryCount}
               </Badge>
             )}
@@ -1406,13 +1405,13 @@ export default function ChatHub() {
             variant={filter === 'team' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('team')}
-            className="text-xs"
+            className="text-xs h-7 px-2.5 gap-1"
             data-testid="filter-team"
           >
-            <Users className="h-3 w-3 mr-1" />
+            <Users className="h-3 w-3" />
             Team
             {(unreadCounts.teamChat + unreadCounts.directMessages) > 0 && (
-              <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
                 {unreadCounts.teamChat + unreadCounts.directMessages}
               </Badge>
             )}
@@ -2108,37 +2107,6 @@ export default function ChatHub() {
           {/* Sticky composer - only show if there's an SMS conversation or if we can start one */}
           {selectedSmsConversation ? (
             <div className="shrink-0 border-t bg-background">
-              {isJobView && job && (
-                <div className="px-3 py-2 border-b flex gap-1.5 overflow-x-auto no-scrollbar">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1.5 bg-background text-xs"
-                    onClick={() => setLocation(`/quotes/new?jobId=${job.id}&clientId=${job.clientId || ''}`)}
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    Send Quote
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1.5 bg-background text-xs"
-                    onClick={() => setLocation(`/invoices/new?jobId=${job.id}&clientId=${job.clientId || ''}`)}
-                  >
-                    <Receipt className="h-3.5 w-3.5" />
-                    Send Invoice
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1.5 bg-background text-xs"
-                    onClick={() => setLocation(`/jobs/${job.id}?tab=schedule`)}
-                  >
-                    <Bell className="h-3.5 w-3.5" />
-                    Set Reminder
-                  </Button>
-                </div>
-              )}
               {/* Quick Actions - ServiceM8 style with primary actions + template picker */}
               <div className="px-3 py-2 border-b bg-muted/30">
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
@@ -2174,7 +2142,34 @@ export default function ChatHub() {
                         <ChevronDown className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
+                    <DropdownMenuContent align="start" className="w-56 max-h-72 overflow-y-auto">
+                      {isJobView && job && (
+                        <>
+                          <DropdownMenuLabel className="text-xs">Job Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => setLocation(`/quotes/new?jobId=${job.id}&clientId=${job.clientId || ''}`)}
+                            className="gap-2"
+                          >
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">Create Quote</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setLocation(`/invoices/new?jobId=${job.id}&clientId=${job.clientId || ''}`)}
+                            className="gap-2"
+                          >
+                            <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">Create Invoice</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setLocation(`/jobs/${job.id}`)}
+                            className="gap-2"
+                          >
+                            <Bell className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">Set Reminder</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
                       <DropdownMenuLabel className="text-xs">More Quick Messages</DropdownMenuLabel>
                       {QUICK_ACTION_TEMPLATES.filter(t => !t.primary).map((template) => {
                         const Icon = template.icon;
