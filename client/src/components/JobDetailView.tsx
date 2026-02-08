@@ -1880,6 +1880,54 @@ export default function JobDetailView({
             <JobSignature jobId={jobId} />
           )}
 
+          {/* Contact Client - Email/SMS side by side */}
+          {client && (client.email || client.phone) && (
+            <Card data-testid="card-contact-client">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Contact Client
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2">
+                  {client.email && (
+                    <Button
+                      variant="outline"
+                      className="flex items-center justify-center gap-2"
+                      onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
+                      data-testid="button-email-client"
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </Button>
+                  )}
+                  {client.phone && (
+                    <Button
+                      variant="outline"
+                      className="flex items-center justify-center gap-2"
+                      onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
+                      data-testid="button-sms-client"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      SMS
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Voice Notes - show for ALL job statuses so team sync works */}
+          <JobVoiceNotes 
+            jobId={jobId} 
+            canUpload={job.status !== 'invoiced'} 
+            existingNotes={job.notes}
+          />
+
+          {/* Uploaded Documents - external quotes, invoices, PDFs */}
+          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
           {/* Job Activity Feed - shows history of events for this job */}
           <Card data-testid="job-activity-feed">
             <CardHeader className="pb-3">
@@ -2120,44 +2168,6 @@ export default function JobDetailView({
                       </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Contact Client - Email/SMS side by side */}
-          {client && (client.email || client.phone) && (
-            <Card data-testid="card-contact-client">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Contact Client
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  {client.email && (
-                    <Button
-                      variant="outline"
-                      className="flex items-center justify-center gap-2"
-                      onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
-                      data-testid="button-email-client"
-                    >
-                      <Mail className="h-4 w-4" />
-                      Email
-                    </Button>
-                  )}
-                  {client.phone && (
-                    <Button
-                      variant="outline"
-                      className="flex items-center justify-center gap-2"
-                      onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
-                      data-testid="button-sms-client"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      SMS
-                    </Button>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -2443,16 +2453,6 @@ export default function JobDetailView({
 
           {/* Photos - show for ALL job statuses so team sync works */}
           <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
-
-          {/* Voice Notes - show for ALL job statuses so team sync works */}
-          <JobVoiceNotes 
-            jobId={jobId} 
-            canUpload={job.status !== 'invoiced'} 
-            existingNotes={job.notes}
-          />
-
-          {/* Uploaded Documents - external quotes, invoices, PDFs */}
-          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
           {/* Safety Forms Section - Prominent before job starts */}
           <SafetyFormsSection 
