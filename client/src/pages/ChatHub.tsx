@@ -79,11 +79,16 @@ interface TeamChatMessage {
 interface TeamMember {
   id: string;
   userId: string;
-  name: string;
+  memberId?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
   role: string;
   profileImageUrl?: string | null;
-  status: string;
+  status?: string;
+  inviteStatus?: string;
+  themeColor?: string;
 }
 
 interface Job {
@@ -382,12 +387,10 @@ export default function ChatHub() {
 
   const { data: dmConversations = [], isLoading: dmLoading } = useQuery<Conversation[]>({
     queryKey: ['/api/direct-messages/conversations'],
-    enabled: showDirectFilter,
   });
 
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ['/api/team/members'],
-    enabled: showDirectFilter,
   });
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
@@ -864,6 +867,14 @@ export default function ChatHub() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const getTeamMemberName = (m: TeamMember) => {
+    if (m.firstName || m.lastName) return `${m.firstName || ''} ${m.lastName || ''}`.trim();
+    if (m.name) return m.name;
+    return m.email?.split('@')[0] || 'Team Member';
+  };
+
+  const isAcceptedMember = (m: TeamMember) => m.inviteStatus === 'accepted' || m.status === 'accepted';
+
   const getUserDisplayName = (user: User) => {
     if (user.firstName || user.lastName) {
       return `${user.firstName || ''} ${user.lastName || ''}`.trim();
@@ -892,7 +903,7 @@ export default function ChatHub() {
         id: 'team-chat',
         type: 'team',
         title: 'Team Chat',
-        subtitle: `${teamMembers.filter(m => m.status === 'accepted').length + 1} members`,
+        subtitle: `${teamMembers.filter(isAcceptedMember).length + 1} members`,
         avatarFallback: 'TC',
         lastMessage: lastTeamMsg?.message || 'Start a conversation with your team',
         lastMessageTime: lastTeamMsg?.createdAt,
@@ -900,24 +911,42 @@ export default function ChatHub() {
         data: null,
       });
       
-      // Direct messages under team filter
-      if (showDirectFilter) {
-        dmConversations.forEach(dm => {
-          const displayName = getUserDisplayName(dm.otherUser);
+      // Direct messages - show existing DM conversations first
+      const dmUserIds = new Set<string>();
+      dmConversations.forEach(dm => {
+        const displayName = getUserDisplayName(dm.otherUser);
+        dmUserIds.add(dm.otherUser.id);
+        items.push({
+          id: `dm-${dm.otherUser.id}`,
+          type: 'direct',
+          title: displayName,
+          avatar: dm.otherUser.profileImageUrl,
+          avatarFallback: getInitials(displayName),
+          lastMessage: dm.lastMessage?.content,
+          lastMessageTime: dm.lastMessage?.createdAt,
+          unreadCount: dm.unreadCount,
+          isOnline: true,
+          data: dm.otherUser,
+        });
+      });
+
+      // Show remaining team members without existing DM conversations
+      teamMembers
+        .filter(m => isAcceptedMember(m) && !dmUserIds.has(m.userId))
+        .forEach(member => {
+          const memberName = getTeamMemberName(member);
           items.push({
-            id: `dm-${dm.otherUser.id}`,
+            id: `dm-${member.userId}`,
             type: 'direct',
-            title: displayName,
-            avatar: dm.otherUser.profileImageUrl,
-            avatarFallback: getInitials(displayName),
-            lastMessage: dm.lastMessage?.content,
-            lastMessageTime: dm.lastMessage?.createdAt,
-            unreadCount: dm.unreadCount,
-            isOnline: true,
-            data: dm.otherUser,
+            title: memberName,
+            avatar: member.profileImageUrl,
+            avatarFallback: getInitials(memberName),
+            lastMessage: 'Start a conversation',
+            unreadCount: 0,
+            isOnline: false,
+            data: { id: member.userId, email: member.email, firstName: member.firstName || memberName.split(' ')[0] || '', lastName: member.lastName || memberName.split(' ').slice(1).join(' ') || '', profileImageUrl: member.profileImageUrl } as User,
           });
         });
-      }
     }
     
     // JOB-CENTRIC: Build job items with their associated SMS conversations
@@ -1053,7 +1082,7 @@ export default function ChatHub() {
     }
     
     return items;
-  }, [filter, jobStatusFilter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm, jobPhotosMap, allClients]);
+  }, [filter, jobStatusFilter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, searchTerm, jobPhotosMap, allClients]);
 
   // State for active job context when viewing client conversations
   const [activeJobContext, setActiveJobContext] = useState<Job | null>(null);
@@ -1324,7 +1353,7 @@ export default function ChatHub() {
   const jobSmsUnreadCount = smsConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0) - enquiryUnreadCount;
   const pinnedMessages = teamMessages.filter(m => m.isPinned);
   const conversationList = buildConversationList();
-  const isLoading = teamLoading || (showDirectFilter && dmLoading) || jobsLoading || smsLoading;
+  const isLoading = teamLoading || dmLoading || jobsLoading || smsLoading;
 
   // Personalized title for tradies (team members) vs owners
   const isTradie = !isOwner && !isManager;
@@ -1668,7 +1697,7 @@ export default function ChatHub() {
             <div className="flex-1 min-w-0">
               <h2 className="font-medium text-sm">Team Chat</h2>
               <p className="text-[11px] text-muted-foreground">
-                {teamMembers.filter(m => m.status === 'accepted').length + 1} members
+                {teamMembers.filter(isAcceptedMember).length + 1} members
               </p>
             </div>
             {pinnedMessages.length > 0 && (
@@ -2291,24 +2320,25 @@ export default function ChatHub() {
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
                 <Users className="h-3 w-3" />
-                Members ({teamMembers.filter(m => m.status === 'accepted').length + 1})
+                Members ({teamMembers.filter(isAcceptedMember).length + 1})
               </h4>
               <div className="space-y-2">
-                {teamMembers.filter(m => m.status === 'accepted').map((member) => {
+                {teamMembers.filter(isAcceptedMember).map((member) => {
+                  const memberName = getTeamMemberName(member);
                   const handleStartDM = () => {
                     const user: User = {
                       id: member.userId,
                       email: member.email,
-                      firstName: member.name.split(' ')[0],
-                      lastName: member.name.split(' ').slice(1).join(' '),
+                      firstName: member.firstName || memberName.split(' ')[0],
+                      lastName: member.lastName || memberName.split(' ').slice(1).join(' '),
                       profileImageUrl: member.profileImageUrl,
                     };
                     const dmConversation: ConversationItem = {
                       id: `dm-${member.userId}`,
                       type: 'direct',
-                      title: member.name,
+                      title: memberName,
                       avatar: member.profileImageUrl,
-                      avatarFallback: getInitials(member.name),
+                      avatarFallback: getInitials(memberName),
                       unreadCount: 0,
                       data: user,
                     };
@@ -2329,12 +2359,12 @@ export default function ChatHub() {
                       <div className="relative">
                         <Avatar className="h-7 w-7">
                           <AvatarImage src={member.profileImageUrl || undefined} />
-                          <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                          <AvatarFallback className="text-[10px]">{getInitials(memberName)}</AvatarFallback>
                         </Avatar>
                         <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{member.name}</p>
+                        <p className="text-xs font-medium truncate">{memberName}</p>
                         <p className="text-[10px] text-muted-foreground capitalize">{member.role}</p>
                       </div>
                       <Button 
