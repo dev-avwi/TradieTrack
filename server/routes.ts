@@ -5219,8 +5219,6 @@ Be specific about materials, colors, and features that would be included.`
       res.status(500).json({ error: "Failed to update SMS branding settings" });
     }
   });
-
-
   // Integration Settings Routes
   app.get("/api/integrations/settings", requireAuth, async (req: any, res) => {
     try {
@@ -13728,8 +13726,6 @@ Be specific about materials, colors, and features that would be included.`
       res.status(500).json({ error: "Failed to fetch activity" });
     }
   });
-
-
   // Test data endpoint (for development only)
   app.post("/api/test-data", requireAuth, requireDevelopment, async (req: any, res) => {
     try {
@@ -27809,7 +27805,7 @@ Respond with JSON in this format:
         `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=au&limit=5&addressdetails=1`,
         {
           headers: {
-            "User-Agent": "TradieTrack/1.0 (tradietrack.com.au)",
+            "User-Agent": "JobRunner/1.0 (jobrunner.com.au)",
           },
         }
       );
@@ -27819,10 +27815,14 @@ Respond with JSON in this format:
       }
       
       const data = await response.json();
+      const userNumberMatch = query.trim().match(/^(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)\s+/);
+      const userStreetNumber = userNumberMatch ? userNumberMatch[1] : null;
+      
       const results = data.map((item: any) => {
         const addr = item.address || {};
         const parts: string[] = [];
-        if (addr.house_number && addr.road) parts.push(`${addr.house_number} ${addr.road}`);
+        const houseNumber = addr.house_number || userStreetNumber;
+        if (houseNumber && addr.road) parts.push(`${houseNumber} ${addr.road}`);
         else if (addr.road) parts.push(addr.road);
         const locality = addr.suburb || addr.city || addr.town || addr.village;
         if (locality) parts.push(locality);
