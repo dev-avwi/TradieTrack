@@ -1437,11 +1437,17 @@ export default function JobDetailView({
               </div>
             )}
 
-            {/* Invoiced - Show status badge */}
-            {job.status === 'invoiced' && (
-              <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">
-                <FileText className="h-5 w-5" />
-                <span className="font-medium">Job Invoiced</span>
+            {/* View Job Chat - compact link to chat hub */}
+            {currentUser && !isSolo && (
+              <div ref={chatSectionRef} data-testid="section-job-chat">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => navigate(`/chat?job=${jobId}`)}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  View Job Chat
+                </Button>
               </div>
             )}
           </div>
@@ -1873,15 +1879,6 @@ export default function JobDetailView({
             <JobSignature jobId={jobId} />
           )}
 
-          {/* Job Discussion - only show for team mode (not solo owners) */}
-          {currentUser && !isSolo && (
-            <div ref={chatSectionRef} data-testid="section-job-chat">
-              <JobChat 
-                jobId={jobId} 
-                currentUserId={currentUser.id}
-              />
-            </div>
-          )}
 
 
         </div>

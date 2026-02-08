@@ -728,6 +728,53 @@ export default function ChatHub() {
       }
     }
     
+    const jobId = params.get('job');
+    if (jobId && jobs.length > 0) {
+      const targetJob = jobs.find(j => j.id === jobId);
+      if (targetJob) {
+        setFilter('jobs');
+        setActiveJobContext(targetJob);
+        const clientLookup = new Map<string, any>();
+        allClients.forEach((c: any) => clientLookup.set(c.id, c));
+        const client = targetJob.clientId ? clientLookup.get(targetJob.clientId) : undefined;
+        const clientPhone = client?.phone;
+        const clientName = client?.name || targetJob.title;
+        
+        const jobSms = smsConversations.find(s => s.jobId === jobId || (targetJob.clientId && s.clientId === targetJob.clientId));
+        
+        if (jobSms) {
+          setSelectedSmsConversation(jobSms);
+        } else if (clientPhone) {
+          setSelectedSmsConversation({
+            id: 'new',
+            businessOwnerId: '',
+            clientId: targetJob.clientId || null,
+            clientPhone: clientPhone,
+            clientName: clientName,
+            jobId: jobId,
+            lastMessageAt: null,
+            unreadCount: 0,
+            deletedAt: null,
+          });
+        }
+        
+        setSelectedConversation({
+          id: `job-${jobId}`,
+          type: 'job',
+          title: targetJob.title,
+          subtitle: targetJob.address || undefined,
+          avatarFallback: targetJob.title.slice(0, 2).toUpperCase(),
+          unreadCount: 0,
+          jobId: jobId,
+          jobStatus: targetJob.status,
+          clientName: clientName,
+          clientPhone: clientPhone,
+          data: targetJob,
+        });
+        setMobileShowChat(true);
+      }
+    }
+    
     if (smsClientId || smsPhone) {
       const existingConvo = smsConversations.find(c => 
         (smsClientId && c.clientId === smsClientId) ||
@@ -775,7 +822,7 @@ export default function ChatHub() {
         setMobileShowChat(true);
       }
     }
-  }, [searchString, teamMembers, smsConversations]);
+  }, [searchString, teamMembers, smsConversations, jobs, allClients]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
