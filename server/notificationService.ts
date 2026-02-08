@@ -1,5 +1,5 @@
 /**
- * Unified Notification Service for TradieTrack
+ * Unified Notification Service for JobRunner
  * Handles Email and SMS notifications
  * 
  * This service provides a single point of control for all client communications.
@@ -55,18 +55,34 @@ const sendSMS = async (options: { to: string; message: string }): Promise<{ succ
 };
 
 const smsTemplates = {
-  quoteReady: (clientName: string, businessName: string, quoteNumber: string, _businessPhone?: string) =>
-    `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready.`,
-  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string, _businessPhone?: string) =>
-    `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready.`,
-  paymentReceived: (clientName: string, amount: string, businessName: string) =>
-    `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}`,
-  jobScheduled: (clientName: string, businessName: string, date: string) =>
-    `Hi ${clientName}, ${businessName} has scheduled your job for ${date}.`,
-  jobComplete: (clientName: string, businessName: string) =>
-    `Hi ${clientName}, your job with ${businessName} is complete.`,
-  reminder: (clientName: string, businessName: string, message: string) =>
-    `Hi ${clientName}, reminder from ${businessName}: ${message}`
+  quoteReady: (clientName: string, businessName: string, quoteNumber: string, businessPhone?: string) => {
+    const firstName = clientName.split(' ')[0];
+    const phoneNote = businessPhone ? ` Questions? Call ${businessPhone}` : '';
+    return `Hi ${firstName}, your quote #${quoteNumber} from ${businessName} is ready for review.${phoneNote}`;
+  },
+  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string, businessPhone?: string) => {
+    const firstName = clientName.split(' ')[0];
+    const phoneNote = businessPhone ? ` Questions? Call ${businessPhone}` : '';
+    return `Hi ${firstName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready for payment.${phoneNote}`;
+  },
+  paymentReceived: (clientName: string, amount: string, businessName: string, receiptUrl?: string, businessPhone?: string) => {
+    const firstName = clientName.split(' ')[0];
+    const receiptNote = receiptUrl ? ` Receipt: ${receiptUrl}` : '';
+    return `Thanks ${firstName}! Your payment of ${amount} has been received. - ${businessName}${receiptNote}`;
+  },
+  jobScheduled: (clientName: string, businessName: string, date: string, businessPhone?: string) => {
+    const firstName = clientName.split(' ')[0];
+    const phoneNote = businessPhone ? ` Need to reschedule? Call ${businessPhone}` : '';
+    return `Hi ${firstName}, ${businessName} has confirmed your job for ${date}.${phoneNote}`;
+  },
+  jobComplete: (clientName: string, businessName: string, businessPhone?: string) => {
+    const firstName = clientName.split(' ')[0];
+    return `Hi ${firstName}, great news - your job with ${businessName} is now complete! Thanks for choosing us.`;
+  },
+  reminder: (clientName: string, businessName: string, message: string) => {
+    const firstName = clientName.split(' ')[0];
+    return `Hi ${firstName}, reminder from ${businessName}: ${message}`;
+  }
 };
 
 export type NotificationChannel = 'email' | 'sms' | 'both';
@@ -118,18 +134,21 @@ export async function notifyQuoteReady(
       const emailResult = await sendEmail({
         to: clientEmail,
         subject: `Quote #${quoteNumber} from ${businessName}`,
-        text: `Hi ${clientName},\n\nYour quote #${quoteNumber} for ${quoteTotal} is ready.\n\nView and accept your quote: ${viewQuoteUrl}\n\nThanks,\n${businessName}`,
+        text: `Hi ${clientName.split(' ')[0]},\n\nYour quote #${quoteNumber} for ${quoteTotal} from ${businessName} is ready for review.\n\nView your quote: ${viewQuoteUrl}\n\nThanks,\n${businessName}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Your Quote is Ready</h2>
-            <p>Hi ${clientName},</p>
-            <p>Your quote <strong>#${quoteNumber}</strong> for <strong>${quoteTotal}</strong> is ready for review.</p>
-            <p style="margin: 24px 0;">
-              <a href="${viewQuoteUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                View Quote
-              </a>
-            </p>
-            <p>Thanks,<br>${businessName}</p>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="background: #2563eb; padding: 24px 32px;">
+              <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${businessName}</h2>
+              <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">Quote #${quoteNumber}</p>
+            </div>
+            <div style="padding: 32px;">
+              <p style="margin: 0 0 16px 0; color: #1e293b; font-size: 16px;">Hi ${clientName.split(' ')[0]},</p>
+              <p style="margin: 0 0 24px 0; color: #475569; font-size: 15px; line-height: 1.6;">Your quote for <strong>${quoteTotal}</strong> is ready for review.</p>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${viewQuoteUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 15px;">View & Accept Quote</a>
+              </div>
+              <p style="margin: 24px 0 0 0; color: #64748b; font-size: 14px;">Thanks,<br><strong>${businessName}</strong></p>
+            </div>
           </div>
         `,
         replyTo: businessEmail
@@ -187,19 +206,25 @@ export async function notifyInvoiceSent(
       const emailResult = await sendEmail({
         to: clientEmail,
         subject: `Invoice #${invoiceNumber} from ${businessName} - Due ${dueDate}`,
-        text: `Hi ${clientName},\n\nInvoice #${invoiceNumber} for ${invoiceTotal} is due on ${dueDate}.\n\nPay now: ${paymentUrl}\n\nThanks,\n${businessName}`,
+        text: `Hi ${clientName.split(' ')[0]},\n\nInvoice #${invoiceNumber} for ${invoiceTotal} from ${businessName} is due on ${dueDate}.\n\nPay now: ${paymentUrl}\n\nThanks,\n${businessName}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Invoice Ready</h2>
-            <p>Hi ${clientName},</p>
-            <p>Invoice <strong>#${invoiceNumber}</strong> for <strong>${invoiceTotal}</strong> is ready.</p>
-            <p><strong>Due Date:</strong> ${dueDate}</p>
-            <p style="margin: 24px 0;">
-              <a href="${paymentUrl}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                Pay Now
-              </a>
-            </p>
-            <p>Thanks,<br>${businessName}</p>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="background: #2563eb; padding: 24px 32px;">
+              <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${businessName}</h2>
+              <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">Invoice #${invoiceNumber}</p>
+            </div>
+            <div style="padding: 32px;">
+              <p style="margin: 0 0 16px 0; color: #1e293b; font-size: 16px;">Hi ${clientName.split(' ')[0]},</p>
+              <p style="margin: 0 0 16px 0; color: #475569; font-size: 15px; line-height: 1.6;">Your invoice for <strong>${invoiceTotal}</strong> is ready for payment.</p>
+              <div style="background-color: #f0fdf4; border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid #16a34a; margin: 0 0 24px 0;">
+                <p style="margin: 0; color: #16a34a; font-size: 14px; font-weight: 600;">Payment Due</p>
+                <p style="margin: 8px 0 0 0; color: #1e293b; font-size: 18px; font-weight: 700;">${dueDate}</p>
+              </div>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${paymentUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 15px;">Pay Now</a>
+              </div>
+              <p style="margin: 24px 0 0 0; color: #64748b; font-size: 14px;">Thanks,<br><strong>${businessName}</strong></p>
+            </div>
           </div>
         `,
         replyTo: businessEmail
