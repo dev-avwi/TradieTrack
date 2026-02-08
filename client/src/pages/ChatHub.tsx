@@ -493,13 +493,21 @@ export default function ChatHub() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       setSmsNewMessage('');
       queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
       if (selectedSmsConversation) {
         queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', selectedSmsConversation.id, 'messages'] });
       }
+      if (data?.conversationId && (!selectedSmsConversation || selectedSmsConversation.id === 'new')) {
+        queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations', data.conversationId, 'messages'] });
+        setSelectedSmsConversation(prev => prev ? { ...prev, id: data.conversationId } : prev);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+      toast({
+        title: "Message sent",
+        description: "Your SMS has been delivered.",
+      });
     },
     onError: (error: any) => {
       toast({
