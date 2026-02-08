@@ -20,7 +20,7 @@ import {
   AlertTriangle 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useIntegrationHealth, isTwilioReady, isSendGridReady } from "@/hooks/use-integration-health";
+import { useIntegrationHealth, isTwilioReady, isSendGridReady, isEmailReady } from "@/hooks/use-integration-health";
 
 interface UnifiedSendModalProps {
   open: boolean;
@@ -77,7 +77,7 @@ export function UnifiedSendModal({
 
   const { data: integrationHealth } = useIntegrationHealth();
   const twilioConnected = isTwilioReady(integrationHealth);
-  const sendGridConnected = isSendGridReady(integrationHealth);
+  const sendGridConnected = isSendGridReady(integrationHealth) || isEmailReady(integrationHealth);
 
   useEffect(() => {
     if (open) {

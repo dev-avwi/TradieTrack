@@ -48,7 +48,6 @@ import {
   UserPlus
 } from "lucide-react";
 import AIQuoteGenerator from "@/components/AIQuoteGenerator";
-import { QuoteTemplatePicker } from "@/components/QuoteTemplatePicker";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
@@ -142,17 +141,38 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   // Fetch document templates for template selector
   const { data: documentTemplates = [] } = useDocumentTemplates('quote');
   
+  // Fetch quote templates for unified search
+  const { data: quoteTemplates = [] } = useQuery<any[]>({
+    queryKey: ['/api/quote-templates'],
+  });
+  
   // Track selected document template
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplateSource, setSelectedTemplateSource] = useState<'document' | 'quote' | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   
-  // Filter templates by search
-  const filteredTemplates = documentTemplates.filter(template => {
+  // Merge document templates and quote templates into a unified searchable list
+  const allSearchableTemplates = useMemo(() => {
+    const docTemplates = documentTemplates.map(t => ({ ...t, _source: 'document' as const }));
+    const qtTemplates = quoteTemplates.map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      tradeType: t.tradeType || 'general',
+      items: t.items,
+      _source: 'quote' as const,
+    }));
+    return [...docTemplates, ...qtTemplates];
+  }, [documentTemplates, quoteTemplates]);
+
+  // Filter templates by search across both types
+  const filteredTemplates = allSearchableTemplates.filter(template => {
     if (!templateSearch.trim()) return true;
     const search = templateSearch.toLowerCase();
     return template.name.toLowerCase().includes(search) || 
-           template.tradeType?.toLowerCase().includes(search);
+           template.tradeType?.toLowerCase().includes(search) ||
+           (template.description && template.description.toLowerCase().includes(search));
   });
 
   const form = useForm<QuoteFormData>({
@@ -720,20 +740,22 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                   Quote Details
                 </div>
 
-                {/* Template Selector with Search */}
-                {documentTemplates.length > 0 && (
+                {/* Unified Template Selector with Search (Job + Quote templates) */}
+                {(documentTemplates.length > 0 || quoteTemplates.length > 0) && (
                   <div className="relative">
                     <Label className="text-xs text-muted-foreground">Template</Label>
                     
-                    {/* Selected template display */}
                     {selectedTemplateId && !templateSearch && (
                       <div className="flex items-center gap-2 mt-1 p-3 rounded-xl border bg-muted/30">
                         <Check className="h-4 w-4 text-green-600" />
                         <span className="text-sm font-medium flex-1">
-                          {documentTemplates.find(t => t.id === selectedTemplateId)?.name}
+                          {allSearchableTemplates.find(t => t.id === selectedTemplateId)?.name}
                         </span>
+                        <Badge variant={selectedTemplateSource === 'document' ? 'default' : 'outline'} className="text-xs">
+                          {selectedTemplateSource === 'document' ? 'Job' : 'Quote'}
+                        </Badge>
                         <Badge variant="secondary" className="text-xs">
-                          {documentTemplates.find(t => t.id === selectedTemplateId)?.tradeType}
+                          {allSearchableTemplates.find(t => t.id === selectedTemplateId)?.tradeType}
                         </Badge>
                         <Button
                           type="button"
@@ -741,6 +763,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                           size="icon"
                           onClick={() => {
                             setSelectedTemplateId(null);
+                            setSelectedTemplateSource(null);
                           }}
                         >
                           <X className="h-4 w-4" />
@@ -748,12 +771,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                       </div>
                     )}
                     
-                    {/* Search input - only show when no template selected */}
                     {!selectedTemplateId && (
                       <div className="relative mt-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                         <Input
-                          placeholder="Search templates..."
+                          placeholder="Search job & quote templates..."
                           value={templateSearch}
                           onChange={(e) => {
                             setTemplateSearch(e.target.value);
@@ -784,20 +806,45 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                       <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-lg z-50 max-h-[300px] overflow-y-auto bg-background border-border">
                         {filteredTemplates.map((template) => (
                           <div
-                            key={template.id}
+                            key={`${template._source}-${template.id}`}
                             className="p-3 cursor-pointer border-b last:border-b-0 border-border hover-elevate overflow-visible flex items-center justify-between gap-2"
                             onClick={() => {
                               setSelectedTemplateId(template.id);
+                              setSelectedTemplateSource(template._source);
                               setTemplateSearch("");
                               setShowTemplateDropdown(false);
-                              handleApplyTemplate(template);
+                              if (template._source === 'document') {
+                                handleApplyTemplate(template as DocumentTemplate);
+                              } else {
+                                const items = Array.isArray(template.items) ? (template.items as any[]) : [];
+                                const lineItemsFromTemplate = items
+                                  .filter((item: any) => item.description || item.label)
+                                  .map((item: any) => ({
+                                    description: item.description || item.label || "",
+                                    quantity: String(item.quantity || item.qty || item.defaultQty || 1),
+                                    unitPrice: String(item.unitPrice || item.estimatedPrice || item.price || 0),
+                                    cost: "",
+                                  }));
+                                if (lineItemsFromTemplate.length > 0) {
+                                  lineItemsFromTemplate.forEach((item: any) => appendLineItem(item));
+                                  toast({
+                                    title: "Template applied",
+                                    description: `Added ${lineItemsFromTemplate.length} items from "${template.name}"`,
+                                  });
+                                }
+                              }
                             }}
                             data-testid={`template-option-${template.id}`}
                           >
                             <span className="font-medium text-sm">{template.name}</span>
-                            <Badge variant="secondary" className="text-xs flex-shrink-0">
-                              {template.tradeType}
-                            </Badge>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Badge variant={template._source === 'document' ? 'default' : 'outline'} className="text-xs">
+                                {template._source === 'document' ? 'Job' : 'Quote'}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {template.tradeType}
+                              </Badge>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -809,14 +856,6 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     )}
                   </div>
                 )}
-                
-                <div className="pt-2 border-t">
-                  <QuoteTemplatePicker
-                    onApplyTemplate={(items) => {
-                      items.forEach(item => appendLineItem(item));
-                    }}
-                  />
-                </div>
 
                 <div>
                   <Label htmlFor="title" className="text-xs text-muted-foreground">Title</Label>

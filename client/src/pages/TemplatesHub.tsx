@@ -51,6 +51,7 @@ import {
   ClipboardCheck,
   Search,
   Calendar,
+  MessageSquare,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,6 +63,9 @@ import { FormBuilder } from "@/components/CustomFormBuilder";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { TemplateId, TemplateCustomization, DOCUMENT_TEMPLATES, DOCUMENT_ACCENT_COLOR } from "@/lib/document-templates";
 import { Check, Settings } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useBusinessTemplates, getPurposesForFamily, PURPOSE_LABELS } from "@/hooks/use-business-templates";
+import type { BusinessTemplate, BusinessTemplatePurpose } from "@/hooks/use-business-templates";
 
 const FONT_FAMILIES = [
   { value: "Inter", label: "Inter" },
@@ -1253,7 +1257,7 @@ function LineItemsCatalogSection() {
           {catalogItems.length === 0 ? "No catalog items yet. Add items you use frequently." : "No matching items found."}
         </p>
       ) : (
-        <ScrollArea className="h-[200px]">
+        <ScrollArea className="h-[400px]">
           <div className="space-y-2 pr-3">
             {filteredItems.map((item) => (
               <div
@@ -1263,7 +1267,7 @@ function LineItemsCatalogSection() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{item.name}</p>
+                    <p className="font-medium break-words">{item.name}</p>
                     {item.description && (
                       <p className="text-sm text-muted-foreground truncate">
                         {item.description}
@@ -1532,22 +1536,58 @@ function ComponentsTab() {
   );
 }
 
+// Type to represent both custom forms and system templates in a unified way
+interface FormItem extends CustomForm {
+  isSystemTemplate?: boolean;
+  templateKey?: string;
+}
+
 function FormsTab() {
   const { data: business } = useBusinessSettings();
   const { toast } = useToast();
   const [safetyFormsOpen, setSafetyFormsOpen] = useState(true);
   const [complianceFormsOpen, setComplianceFormsOpen] = useState(true);
   const [inspectionFormsOpen, setInspectionFormsOpen] = useState(true);
-  const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
+  const [selectedForm, setSelectedForm] = useState<FormItem | null>(null);
   const [editFormId, setEditFormId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
+  const [formToDelete, setFormToDelete] = useState<FormItem | null>(null);
   const [formSearch, setFormSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
-  const { data: forms = [], isLoading } = useQuery<CustomForm[]>({
+  // Fetch custom forms
+  const { data: customForms = [], isLoading: isLoadingCustomForms } = useQuery<CustomForm[]>({
     queryKey: ["/api/custom-forms"],
   });
+
+  // Fetch safety form templates
+  const { data: safetyTemplates = [], isLoading: isLoadingSafetyTemplates } = useQuery<any[]>({
+    queryKey: ["/api/safety-form-templates"],
+  });
+
+  // Combine and transform data
+  const forms: FormItem[] = [
+    // Add custom forms as-is
+    ...customForms,
+    // Transform safety templates to have 'id' field and mark as system template
+    ...safetyTemplates.map((template: any) => ({
+      id: template.templateKey,
+      name: template.name,
+      description: template.description || '',
+      formType: template.formType,
+      fields: template.fields || [],
+      settings: template.settings || {},
+      requiresSignature: template.requiresSignature || false,
+      isActive: true,
+      userId: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isSystemTemplate: true,
+      templateKey: template.templateKey,
+    })),
+  ];
+
+  const isLoading = isLoadingCustomForms || isLoadingSafetyTemplates;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -1567,14 +1607,41 @@ function FormsTab() {
     },
   });
 
-  const handleEditForm = (form: CustomForm) => {
-    setEditFormId(form.id);
+  const createFromTemplateMutation = useMutation({
+    mutationFn: async (templateKey: string) => {
+      return apiRequest("POST", `/api/safety-form-templates/${templateKey}/create`, {});
+    },
+    onSuccess: (newForm) => {
+      toast({ title: "Form created from template" });
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-forms"] });
+      // Select the newly created form
+      setSelectedForm(newForm);
+      setEditFormId(newForm.id);
+    },
+    onError: () => {
+      toast({ title: "Failed to create form from template", variant: "destructive" });
+    },
+  });
+
+  const handleEditForm = (form: FormItem) => {
+    if (!form.isSystemTemplate) {
+      setEditFormId(form.id);
+    }
   };
 
-  const handleDeleteForm = (form: CustomForm, e: React.MouseEvent) => {
+  const handleDeleteForm = (form: FormItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFormToDelete(form);
-    setDeleteConfirmOpen(true);
+    if (!form.isSystemTemplate) {
+      setFormToDelete(form);
+      setDeleteConfirmOpen(true);
+    }
+  };
+
+  const handleUseTemplate = (form: FormItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (form.isSystemTemplate && form.templateKey) {
+      createFromTemplateMutation.mutate(form.templateKey);
+    }
   };
 
   const searchLower = formSearch.toLowerCase();
@@ -1610,7 +1677,7 @@ function FormsTab() {
 
   const FORMS_VISIBLE_DEFAULT = 5;
 
-  const renderFormRow = (form: CustomForm) => (
+  const renderFormRow = (form: FormItem) => (
     <div
       key={form.id}
       className={`flex items-center justify-between gap-2 py-2 px-3 border-b last:border-b-0 cursor-pointer transition-colors ${selectedForm?.id === form.id ? 'bg-primary/5' : 'hover-elevate'}`}
@@ -1633,28 +1700,47 @@ function FormsTab() {
             Sig
           </Badge>
         )}
+        {form.isSystemTemplate && (
+          <Badge variant="outline" className="text-xs flex-shrink-0">
+            Template
+          </Badge>
+        )}
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEditForm(form);
-          }}
-          data-testid={`button-edit-form-${form.id}`}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="text-destructive"
-          onClick={(e) => handleDeleteForm(form, e)}
-          data-testid={`button-delete-form-${form.id}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {form.isSystemTemplate ? (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={(e) => handleUseTemplate(form, e)}
+            data-testid={`button-use-template-${form.id}`}
+            disabled={createFromTemplateMutation.isPending}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        ) : (
+          <>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditForm(form);
+              }}
+              data-testid={`button-edit-form-${form.id}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-destructive"
+              onClick={(e) => handleDeleteForm(form, e)}
+              data-testid={`button-delete-form-${form.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1662,7 +1748,7 @@ function FormsTab() {
   const renderFormSection = (
     title: string,
     description: string,
-    forms: CustomForm[],
+    forms: FormItem[],
     icon: React.ReactNode,
     isOpen: boolean,
     setIsOpen: (open: boolean) => void,
@@ -1974,6 +2060,482 @@ function FormsTab() {
   );
 }
 
+const SMS_MERGE_FIELDS = [
+  '{{clientName}}',
+  '{{jobTitle}}',
+  '{{amount}}',
+  '{{invoiceNumber}}',
+  '{{quoteNumber}}',
+  '{{businessName}}',
+  '{{dueDate}}',
+];
+
+const SMS_MAX_CHARS = 320;
+
+function SmsTemplatesTab() {
+  const { templates, getTemplatesForFamily, createTemplate, updateTemplate, deleteTemplate, activateTemplate, isLoading } = useBusinessTemplates();
+  const { toast } = useToast();
+  const smsTemplates = getTemplatesForFamily('sms');
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  const [selectedTemplate, setSelectedTemplate] = useState<BusinessTemplate | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<BusinessTemplate | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<BusinessTemplate | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    purpose: 'sms_quote_sent' as BusinessTemplatePurpose,
+    content: '',
+  });
+
+  const smsPurposes = getPurposesForFamily('sms');
+
+  const grouped = smsPurposes.reduce((acc, purpose) => {
+    acc[purpose] = smsTemplates.filter(t => t.purpose === purpose);
+    return acc;
+  }, {} as Record<string, BusinessTemplate[]>);
+
+  const resetFormData = () => {
+    setFormData({
+      name: '',
+      purpose: 'sms_quote_sent',
+      content: '',
+    });
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingTemplate(null);
+    resetFormData();
+  };
+
+  const handleEditTemplate = (template: BusinessTemplate) => {
+    setEditingTemplate(template);
+    setFormData({
+      name: template.name,
+      purpose: template.purpose,
+      content: template.content || '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDeleteTemplate = (template: BusinessTemplate) => {
+    setTemplateToDelete(template);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!templateToDelete) return;
+    try {
+      await deleteTemplate(templateToDelete.id);
+      toast({ title: "SMS template deleted" });
+      if (selectedTemplate?.id === templateToDelete.id) setSelectedTemplate(null);
+    } catch {
+      toast({ title: "Failed to delete template", variant: "destructive" });
+    }
+    setDeleteConfirmOpen(false);
+    setTemplateToDelete(null);
+  };
+
+  const handleActivate = async (template: BusinessTemplate) => {
+    try {
+      await activateTemplate(template.id);
+      toast({ title: `"${template.name}" set as active` });
+    } catch {
+      toast({ title: "Failed to activate template", variant: "destructive" });
+    }
+  };
+
+  const insertMergeField = (field: string) => {
+    const textarea = contentRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = formData.content.substring(0, start) + field + formData.content.substring(end);
+      if (newContent.length <= SMS_MAX_CHARS) {
+        setFormData(prev => ({ ...prev, content: newContent }));
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + field.length, start + field.length);
+        }, 0);
+      }
+    } else {
+      const newContent = formData.content + field;
+      if (newContent.length <= SMS_MAX_CHARS) {
+        setFormData(prev => ({ ...prev, content: newContent }));
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      toast({ title: "Template name is required", variant: "destructive" });
+      return;
+    }
+    if (!formData.content.trim()) {
+      toast({ title: "Template content is required", variant: "destructive" });
+      return;
+    }
+    try {
+      if (editingTemplate) {
+        await updateTemplate({
+          id: editingTemplate.id,
+          data: {
+            name: formData.name,
+            purpose: formData.purpose,
+            content: formData.content,
+          },
+        });
+        toast({ title: "SMS template updated" });
+      } else {
+        await createTemplate({
+          family: 'sms',
+          name: formData.name,
+          purpose: formData.purpose,
+          content: formData.content,
+        });
+        toast({ title: "SMS template created" });
+      }
+      handleCloseDialog();
+    } catch {
+      toast({ title: `Failed to ${editingTemplate ? 'update' : 'create'} template`, variant: "destructive" });
+    }
+  };
+
+  const highlightMergeFields = (text: string) => {
+    const parts = text.split(/(\{\{[^}]+\}\})/g);
+    return parts.map((part, i) => {
+      if (part.match(/^\{\{[^}]+\}\}$/)) {
+        return (
+          <span key={i} className="inline-block px-1 rounded bg-primary/10 text-primary font-medium text-xs">
+            {part}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  const charCount = formData.content.length;
+  const smsSegments = charCount <= 160 ? 1 : Math.ceil(charCount / 153);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold">SMS Templates</h2>
+            <p className="text-sm text-muted-foreground">
+              Text message templates for client notifications
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Create
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {smsTemplates.length} template{smsTemplates.length !== 1 ? "s" : ""}
+        </p>
+
+        {smsTemplates.length === 0 ? (
+          <Card className="p-6 text-center">
+            <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+            <h3 className="font-semibold mb-2">No SMS templates</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create SMS templates for automated client notifications
+            </p>
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Create Template
+            </Button>
+          </Card>
+        ) : (
+          <ScrollArea className="h-[500px]">
+            <div className="space-y-4 pr-3">
+              {smsPurposes.map((purpose) => {
+                const purposeTemplates = grouped[purpose] || [];
+                if (purposeTemplates.length === 0) return null;
+                return (
+                  <div key={purpose}>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
+                      {PURPOSE_LABELS[purpose]}
+                    </p>
+                    <div className="space-y-2">
+                      {purposeTemplates.map((template) => {
+                        const isSelected = selectedTemplate?.id === template.id;
+                        return (
+                          <div
+                            key={template.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                              isSelected ? 'ring-2 ring-primary bg-primary/5' : 'bg-muted/30 hover-elevate'
+                            }`}
+                            onClick={() => setSelectedTemplate(template)}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium truncate">{template.name}</p>
+                                {template.isActive && (
+                                  <Badge variant="default" className="text-xs">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                                {template.content}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <Badge variant="outline" className="text-xs">
+                                  {PURPOSE_LABELS[template.purpose]}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {template.content?.length || 0} chars
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!template.isActive && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  title="Set as active"
+                                  onClick={(e) => { e.stopPropagation(); handleActivate(template); }}
+                                >
+                                  <Star className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => { e.stopPropagation(); handleEditTemplate(template); }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="text-destructive"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(template); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Template Preview</h2>
+          <p className="text-sm text-muted-foreground">
+            {selectedTemplate ? selectedTemplate.name : "Select a template to preview"}
+          </p>
+        </div>
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="bg-muted/30 p-4">
+              <div className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '600px', overflow: 'auto' }}>
+                <div className="p-6">
+                  {selectedTemplate ? (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-bold text-lg">{selectedTemplate.name}</h3>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <Badge variant="secondary">
+                            {PURPOSE_LABELS[selectedTemplate.purpose]}
+                          </Badge>
+                          {selectedTemplate.isActive && (
+                            <Badge variant="default" className="text-xs">
+                              <Check className="h-3 w-3 mr-1" />
+                              Active
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {selectedTemplate.content?.length || 0} / {SMS_MAX_CHARS} chars
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium text-sm mb-3">Message Content</h4>
+                        <div className="p-4 rounded-lg bg-muted/50 border">
+                          <div className="flex items-start gap-3">
+                            <MessageSquare className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {highlightMergeFields(selectedTemplate.content || '')}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {(selectedTemplate.content?.length || 0) <= 160
+                            ? '1 SMS segment'
+                            : `${Math.ceil((selectedTemplate.content?.length || 0) / 153)} SMS segments`}
+                        </p>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium text-sm mb-2">Merge Fields Used</h4>
+                        <div className="flex gap-2 flex-wrap">
+                          {SMS_MERGE_FIELDS.filter(f => selectedTemplate.content?.includes(f)).map(field => (
+                            <Badge key={field} variant="outline" className="text-xs font-mono">
+                              {field}
+                            </Badge>
+                          ))}
+                          {!SMS_MERGE_FIELDS.some(f => selectedTemplate.content?.includes(f)) && (
+                            <p className="text-xs text-muted-foreground">No merge fields used</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                      <p className="font-medium">Select a template</p>
+                      <p className="text-sm mt-1">Click a template from the list to preview its content</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTemplate ? "Edit SMS Template" : "Create SMS Template"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="sms-template-name">Template Name</Label>
+              <Input
+                id="sms-template-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Quote Sent Notification"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sms-template-purpose">Purpose</Label>
+              <Select
+                value={formData.purpose}
+                onValueChange={(v) => setFormData({ ...formData, purpose: v as BusinessTemplatePurpose })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {smsPurposes.map(p => (
+                    <SelectItem key={p} value={p}>{PURPOSE_LABELS[p]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="sms-template-content">Message Content</Label>
+                <span className={`text-xs ${charCount > SMS_MAX_CHARS ? 'text-destructive font-medium' : charCount > 160 ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground'}`}>
+                  {charCount} / {SMS_MAX_CHARS}
+                  {charCount > 0 && ` (${smsSegments} SMS${smsSegments > 1 ? ' segments' : ''})`}
+                </span>
+              </div>
+              <Textarea
+                ref={contentRef}
+                id="sms-template-content"
+                value={formData.content}
+                onChange={(e) => {
+                  if (e.target.value.length <= SMS_MAX_CHARS) {
+                    setFormData({ ...formData, content: e.target.value });
+                  }
+                }}
+                placeholder="Hi {{clientName}}, your quote #{{quoteNumber}} is ready..."
+                rows={4}
+                className="resize-none text-sm"
+              />
+              {charCount <= 160 && (
+                <p className="text-xs text-muted-foreground">
+                  Keep under 160 characters for a single SMS segment
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Available Merge Fields (click to insert)</Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {SMS_MERGE_FIELDS.map(field => (
+                  <Badge
+                    key={field}
+                    variant="outline"
+                    className="text-xs font-mono cursor-pointer"
+                    onClick={() => insertMergeField(field)}
+                  >
+                    {field}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!formData.name.trim() || !formData.content.trim()}
+            >
+              {editingTemplate ? "Save Changes" : "Create Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete SMS Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{templateToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTemplateToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 function QuoteTemplatesTab() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -2054,9 +2616,9 @@ function QuoteTemplatesTab() {
   const handleEditTemplate = (template: QuoteTemplate) => {
     setEditingTemplate(template);
     const items = Array.isArray(template.items) ? (template.items as any[]).map(item => ({
-      description: item.description || "",
-      quantity: String(item.quantity || "1"),
-      unitPrice: String(item.unitPrice || "0"),
+      description: item.description || item.label || "",
+      quantity: String(item.quantity || item.qty || item.defaultQty || "1"),
+      unitPrice: String(item.unitPrice || item.estimatedPrice || item.price || "0"),
       unit: item.unit || "item",
       category: item.category || "labour",
     })) : [{ description: "", quantity: "1", unitPrice: "0", unit: "item", category: "labour" }];
@@ -2201,13 +2763,13 @@ function QuoteTemplatesTab() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium truncate">{template.name}</p>
+                              <p className="font-medium break-words">{template.name}</p>
                               {template.isDefault && (
                                 <Badge variant="secondary" className="text-xs">Built-in</Badge>
                               )}
                             </div>
                             {template.description && (
-                              <p className="text-sm text-muted-foreground truncate mt-0.5">{template.description}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{template.description}</p>
                             )}
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="outline" className="text-xs">{items.length} items</Badge>
@@ -2279,10 +2841,10 @@ function QuoteTemplatesTab() {
                           </div>
                           {(Array.isArray(selectedTemplate.items) ? selectedTemplate.items as any[] : []).map((item: any, index: number) => (
                             <div key={index} className="grid grid-cols-12 gap-2 text-sm py-2 border-b last:border-b-0 px-2">
-                              <div className="col-span-6 truncate">{item.description}</div>
-                              <div className="col-span-2 text-right">{item.quantity}</div>
-                              <div className="col-span-2 text-right text-muted-foreground">{item.unit}</div>
-                              <div className="col-span-2 text-right">${parseFloat(item.unitPrice || 0).toFixed(2)}</div>
+                              <div className="col-span-6 truncate">{item.description || item.label}</div>
+                              <div className="col-span-2 text-right">{item.quantity || item.qty || item.defaultQty || 1}</div>
+                              <div className="col-span-2 text-right text-muted-foreground">{item.unit || 'item'}</div>
+                              <div className="col-span-2 text-right">${parseFloat(item.unitPrice || item.estimatedPrice || item.price || 0).toFixed(2)}</div>
                             </div>
                           ))}
                         </div>
@@ -2460,6 +3022,10 @@ export default function TemplatesHub() {
               <Layers className="h-4 w-4" />
               Components
             </TabsTrigger>
+            <TabsTrigger value="sms-templates" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              SMS
+            </TabsTrigger>
             <TabsTrigger value="forms" className="gap-2">
               <FileText className="h-4 w-4" />
               Forms
@@ -2476,6 +3042,10 @@ export default function TemplatesHub() {
           
           <TabsContent value="components">
             <ComponentsTab />
+          </TabsContent>
+          
+          <TabsContent value="sms-templates">
+            <SmsTemplatesTab />
           </TabsContent>
           
           <TabsContent value="forms">

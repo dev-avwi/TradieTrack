@@ -58,11 +58,11 @@ export function QuoteTemplatePicker({ onApplyTemplate }: QuoteTemplatePickerProp
     if (!selectedTemplate) return;
     const items = Array.isArray(selectedTemplate.items) ? (selectedTemplate.items as any[]) : [];
     const lineItems: LineItem[] = items
-      .filter((item: any) => item.description)
+      .filter((item: any) => item.description || item.label)
       .map((item: any) => ({
-        description: item.description,
-        quantity: String(item.quantity || 1),
-        unitPrice: String(item.unitPrice || 0),
+        description: item.description || item.label || "",
+        quantity: String(item.quantity || item.qty || item.defaultQty || 1),
+        unitPrice: String(item.unitPrice || item.estimatedPrice || item.price || 0),
       }));
 
     if (lineItems.length > 0) {
@@ -130,11 +130,11 @@ export function QuoteTemplatePicker({ onApplyTemplate }: QuoteTemplatePickerProp
                 <div className="space-y-1 pr-4">
                   {(Array.isArray(selectedTemplate.items) ? selectedTemplate.items as any[] : []).map((item: any, index: number) => (
                     <div key={index} className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-muted/50 text-sm">
-                      <span className="flex-1 min-w-0 truncate">{item.description}</span>
+                      <span className="flex-1 min-w-0 truncate">{item.description || item.label}</span>
                       <div className="flex items-center gap-3 shrink-0 text-muted-foreground">
-                        <span>x{item.quantity || 1}</span>
-                        {parseFloat(item.unitPrice || 0) > 0 && (
-                          <span>${parseFloat(item.unitPrice).toFixed(2)}</span>
+                        <span>x{item.quantity || item.qty || item.defaultQty || 1}</span>
+                        {parseFloat(item.unitPrice || item.estimatedPrice || item.price || 0) > 0 && (
+                          <span>${parseFloat(item.unitPrice || item.estimatedPrice || item.price || 0).toFixed(2)}</span>
                         )}
                       </div>
                     </div>

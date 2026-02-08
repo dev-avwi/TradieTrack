@@ -24,6 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   FileEdit, 
   Plus, 
@@ -38,7 +45,12 @@ import {
   Eye,
   Camera,
   Image as ImageIcon,
-  X
+  X,
+  Package,
+  Minus,
+  RefreshCw,
+  Wrench,
+  CirclePlus
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -77,6 +89,49 @@ interface VariationSummary {
   totalVariations: number;
 }
 
+type MaterialAction = 'removed' | 'replaced' | 'added' | 'modified';
+
+interface VariationMaterial {
+  id: string;
+  name: string;
+  quantity: string;
+  action: MaterialAction;
+  replacedWith?: string;
+}
+
+interface NotesWithMaterials {
+  text: string;
+  materials: VariationMaterial[];
+}
+
+function parseNotesWithMaterials(notes: string | null): NotesWithMaterials {
+  if (!notes) return { text: '', materials: [] };
+  try {
+    const parsed = JSON.parse(notes);
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.materials)) {
+      return { text: parsed.text || '', materials: parsed.materials };
+    }
+  } catch {}
+  return { text: notes, materials: [] };
+}
+
+function serializeNotesWithMaterials(text: string, materials: VariationMaterial[]): string {
+  if (materials.length === 0 && !text) return '';
+  if (materials.length === 0) return text;
+  return JSON.stringify({ text, materials });
+}
+
+function generateMaterialId(): string {
+  return `m_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+const ACTION_CONFIG: Record<MaterialAction, { label: string; className: string; icon: typeof Minus }> = {
+  removed: { label: 'Removed', className: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30', icon: Minus },
+  replaced: { label: 'Replaced', className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30', icon: RefreshCw },
+  added: { label: 'Added', className: 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30', icon: CirclePlus },
+  modified: { label: 'Modified', className: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30', icon: Wrench },
+};
+
 interface JobVariationsProps {
   jobId: string;
   canEdit?: boolean;
@@ -101,6 +156,8 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [approverName, setApproverName] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [addingMaterialFor, setAddingMaterialFor] = useState<string | null>(null);
+  const [materialForm, setMaterialForm] = useState({ name: '', quantity: '1', action: 'added' as MaterialAction, replacedWith: '' });
   
   const { toast } = useToast();
 
@@ -199,6 +256,59 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
       toast({ title: 'Error', description: error.message || 'Failed to reject variation.', variant: 'destructive' });
     },
   });
+
+  const addMaterialMutation = useMutation({
+    mutationFn: async ({ variationId, material }: { variationId: string; material: VariationMaterial }) => {
+      const variation = variations.find(v => v.id === variationId);
+      if (!variation) throw new Error('Variation not found');
+      const parsed = parseNotesWithMaterials(variation.notes);
+      const updatedMaterials = [...parsed.materials, material];
+      const newNotes = serializeNotesWithMaterials(parsed.text, updatedMaterials);
+      return apiRequest('PATCH', `/api/variations/${variationId}`, { notes: newNotes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'variations'] });
+      setAddingMaterialFor(null);
+      setMaterialForm({ name: '', quantity: '1', action: 'added', replacedWith: '' });
+      toast({ title: 'Material added', description: 'Material linked to variation.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to add material.', variant: 'destructive' });
+    },
+  });
+
+  const removeMaterialMutation = useMutation({
+    mutationFn: async ({ variationId, materialId }: { variationId: string; materialId: string }) => {
+      const variation = variations.find(v => v.id === variationId);
+      if (!variation) throw new Error('Variation not found');
+      const parsed = parseNotesWithMaterials(variation.notes);
+      const updatedMaterials = parsed.materials.filter(m => m.id !== materialId);
+      const newNotes = serializeNotesWithMaterials(parsed.text, updatedMaterials);
+      return apiRequest('PATCH', `/api/variations/${variationId}`, { notes: newNotes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'variations'] });
+      toast({ title: 'Material removed', description: 'Material unlinked from variation.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to remove material.', variant: 'destructive' });
+    },
+  });
+
+  const handleAddMaterial = (variationId: string) => {
+    if (!materialForm.name.trim()) {
+      toast({ title: 'Error', description: 'Material name is required.', variant: 'destructive' });
+      return;
+    }
+    const material: VariationMaterial = {
+      id: generateMaterialId(),
+      name: materialForm.name.trim(),
+      quantity: materialForm.quantity || '1',
+      action: materialForm.action,
+      ...(materialForm.action === 'replaced' && materialForm.replacedWith ? { replacedWith: materialForm.replacedWith.trim() } : {}),
+    };
+    addMaterialMutation.mutate({ variationId, material });
+  };
 
   const resetForm = () => {
     setFormData({ title: '', description: '', reason: '', additionalAmount: '', photos: [] });
@@ -393,6 +503,123 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{variation.description}</p>
                 )}
                 
+                {(() => {
+                  const { text: notesText, materials } = parseNotesWithMaterials(variation.notes);
+                  return (
+                    <>
+                    {notesText && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{notesText}</p>
+                    )}
+                    {materials.length > 0 ? (
+                    <div className="mb-3 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <Package className="h-3 w-3" />
+                        Materials
+                      </div>
+                      <div className="space-y-1">
+                        {materials.map((mat) => {
+                          const config = ACTION_CONFIG[mat.action];
+                          const ActionIcon = config.icon;
+                          return (
+                            <div key={mat.id} className="flex items-center gap-2 group/mat">
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${config.className} border`}>
+                                <ActionIcon className="h-2.5 w-2.5 mr-0.5" />
+                                {config.label}
+                              </Badge>
+                              <span className="text-xs">
+                                {mat.name}
+                                {mat.action === 'replaced' && mat.replacedWith && (
+                                  <span className="text-muted-foreground"> → {mat.replacedWith}</span>
+                                )}
+                              </span>
+                              {mat.quantity && mat.quantity !== '1' && (
+                                <span className="text-xs text-muted-foreground">x{mat.quantity}</span>
+                              )}
+                              {canEdit && variation.status === 'draft' && (
+                                <button
+                                  type="button"
+                                  className="invisible group-hover/mat:visible ml-auto text-muted-foreground/50 hover:text-destructive"
+                                  onClick={() => removeMaterialMutation.mutate({ variationId: variation.id, materialId: mat.id })}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                    </>
+                  );
+                })()}
+
+                {addingMaterialFor === variation.id && (
+                  <div className="mb-3 p-2 rounded-md border bg-muted/30 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Input
+                        value={materialForm.name}
+                        onChange={(e) => setMaterialForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Material name"
+                        className="flex-1 min-w-[120px]"
+                      />
+                      <Input
+                        value={materialForm.quantity}
+                        onChange={(e) => setMaterialForm(prev => ({ ...prev, quantity: e.target.value }))}
+                        placeholder="Qty"
+                        type="number"
+                        min="1"
+                        className="w-16"
+                      />
+                      <Select
+                        value={materialForm.action}
+                        onValueChange={(val) => setMaterialForm(prev => ({ ...prev, action: val as MaterialAction }))}
+                      >
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="added">Added</SelectItem>
+                          <SelectItem value="removed">Removed</SelectItem>
+                          <SelectItem value="replaced">Replaced</SelectItem>
+                          <SelectItem value="modified">Modified</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {materialForm.action === 'replaced' && (
+                      <Input
+                        value={materialForm.replacedWith}
+                        onChange={(e) => setMaterialForm(prev => ({ ...prev, replacedWith: e.target.value }))}
+                        placeholder="Replaced with..."
+                      />
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleAddMaterial(variation.id)}
+                        disabled={addMaterialMutation.isPending || !materialForm.name.trim()}
+                      >
+                        {addMaterialMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Plus className="h-3 w-3 mr-1" />
+                        )}
+                        Add
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setAddingMaterialFor(null);
+                          setMaterialForm({ name: '', quantity: '1', action: 'added', replacedWith: '' });
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                   <span>
                     {format(new Date(variation.createdAt), 'dd MMM yyyy')}
@@ -422,6 +649,17 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
                       >
                         <Edit className="h-3 w-3 mr-1" />
                         Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAddingMaterialFor(addingMaterialFor === variation.id ? null : variation.id);
+                          setMaterialForm({ name: '', quantity: '1', action: 'added', replacedWith: '' });
+                        }}
+                      >
+                        <Package className="h-3 w-3 mr-1" />
+                        Material
                       </Button>
                       <Button
                         size="sm"
@@ -1002,6 +1240,51 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
                     <p className="text-sm text-red-600 dark:text-red-400">{showViewDialog.rejectionReason}</p>
                   </div>
                 )}
+
+                {(() => {
+                  const { text: notesText, materials } = parseNotesWithMaterials(showViewDialog.notes);
+                  return (
+                    <>
+                    {notesText && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Notes</Label>
+                        <p className="text-sm">{notesText}</p>
+                      </div>
+                    )}
+                    {materials.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-sm font-medium">
+                        <Package className="h-4 w-4" />
+                        Materials
+                      </div>
+                      <div className="space-y-1.5">
+                        {materials.map((mat) => {
+                          const config = ACTION_CONFIG[mat.action];
+                          const ActionIcon = config.icon;
+                          return (
+                            <div key={mat.id} className="flex items-center gap-2">
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${config.className} border`}>
+                                <ActionIcon className="h-2.5 w-2.5 mr-0.5" />
+                                {config.label}
+                              </Badge>
+                              <span className="text-sm">
+                                {mat.name}
+                                {mat.action === 'replaced' && mat.replacedWith && (
+                                  <span className="text-muted-foreground"> → {mat.replacedWith}</span>
+                                )}
+                              </span>
+                              {mat.quantity && mat.quantity !== '1' && (
+                                <span className="text-sm text-muted-foreground">x{mat.quantity}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                    </>
+                  );
+                })()}
               </div>
             )}
             <DialogFooter>

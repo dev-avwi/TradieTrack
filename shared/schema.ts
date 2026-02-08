@@ -3371,6 +3371,7 @@ export const jobMaterials = pgTable("job_materials", {
   supplier: text("supplier"),
   trackingNumber: text("tracking_number"),
   trackingCarrier: text("tracking_carrier"),
+  trackingUrl: text("tracking_url"),
   status: text("status").default('needed'),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),

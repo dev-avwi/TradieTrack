@@ -141,6 +141,7 @@ interface JobMaterial {
   supplier?: string;
   trackingNumber?: string;
   trackingCarrier?: string;
+  trackingUrl?: string;
   status: string;
   notes?: string;
   createdAt: string;
@@ -219,6 +220,7 @@ export default function JobDetailView({
   const [materialSupplier, setMaterialSupplier] = useState('');
   const [materialTrackingNumber, setMaterialTrackingNumber] = useState('');
   const [materialTrackingCarrier, setMaterialTrackingCarrier] = useState('');
+  const [materialTrackingUrl, setMaterialTrackingUrl] = useState('');
   const [materialNotes, setMaterialNotes] = useState('');
   
   // Update current time every second for live timer display
@@ -759,6 +761,7 @@ export default function JobDetailView({
       setMaterialSupplier('');
       setMaterialTrackingNumber('');
       setMaterialTrackingCarrier('');
+      setMaterialTrackingUrl('');
       setMaterialNotes('');
       toast({ title: 'Material added' });
     },
@@ -1485,7 +1488,7 @@ export default function JobDetailView({
                       <SelectItem value="unassigned">
                         Unassigned
                       </SelectItem>
-                      {teamMembers.filter(m => m.isActive).map((member) => {
+                      {teamMembers.filter(m => m.isActive && m.roleName?.toLowerCase() !== 'administrator').map((member) => {
                         const onOtherJob = isWorkerOnOtherJob(member.memberId);
                         return (
                           <SelectItem 
@@ -1929,61 +1932,11 @@ export default function JobDetailView({
               </Button>
             )}
 
-            {/* Done → Smart Actions or Create Quote/Invoice (hidden for staff) */}
+            {/* Done status message (hidden for staff) */}
             {job.status === 'done' && !isTradie && (
-              <>
-                {showSmartActions && smartActions.length > 0 ? (
-                  <SmartActionsPanel
-                    title="What's Next?"
-                    subtitle="Choose your next steps - you control what happens"
-                    actions={smartActions}
-                    onActionToggle={handleActionToggle}
-                    onActionPreview={handleActionPreview}
-                    onActionEdit={handleActionEdit}
-                    onExecuteAll={handleExecuteActions}
-                    onSkipAll={handleSkipAll}
-                    isExecuting={isExecutingActions}
-                    entityType="job"
-                    entityStatus={job.status}
-                  />
-                ) : (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={initializeSmartActions}
-                      className="w-full"
-                      variant="outline"
-                      data-testid="button-show-smart-actions"
-                    >
-                      <Zap className="h-4 w-4 mr-2" />
-                      See Suggested Actions
-                    </Button>
-                    <div className="flex gap-2">
-                      {onCreateQuote && (
-                        <Button
-                          variant="outline"
-                          onClick={() => onCreateQuote(jobId)}
-                          data-testid="button-create-quote"
-                          className="flex-1"
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Quote
-                        </Button>
-                      )}
-                      {onCreateInvoice && (
-                        <Button
-                          variant="outline"
-                          onClick={() => onCreateInvoice(jobId)}
-                          data-testid="button-create-invoice"
-                          className="flex-1"
-                        >
-                          <Receipt className="h-4 w-4 mr-2" />
-                          Invoice
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
+              <div className="text-center text-sm text-muted-foreground py-2">
+                Job completed
+              </div>
             )}
             
             {/* Staff tradie sees confirmation when job is done */}
@@ -2273,6 +2226,11 @@ export default function JobDetailView({
                     </Select>
                   </div>
                   <Input
+                    placeholder="Tracking URL (optional)"
+                    value={materialTrackingUrl}
+                    onChange={(e) => setMaterialTrackingUrl(e.target.value)}
+                  />
+                  <Input
                     placeholder="Notes (optional)"
                     value={materialNotes}
                     onChange={(e) => setMaterialNotes(e.target.value)}
@@ -2290,6 +2248,7 @@ export default function JobDetailView({
                           supplier: materialSupplier || undefined,
                           trackingNumber: materialTrackingNumber || undefined,
                           trackingCarrier: materialTrackingCarrier || undefined,
+                          trackingUrl: materialTrackingUrl || undefined,
                           notes: materialNotes || undefined,
                         });
                       }}
@@ -2365,6 +2324,21 @@ export default function JobDetailView({
                               </div>
                             );
                           })()}
+                          {mat.trackingUrl && (
+                            <div className="flex items-center gap-1 mt-1 text-xs">
+                              <Link2 className="h-3 w-3 text-muted-foreground" />
+                              <a
+                                href={mat.trackingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Tracking Link
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Select
