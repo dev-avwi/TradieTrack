@@ -1644,7 +1644,7 @@ export default function JobDetailView({
           </Card>
 
           {(linkedQuote?.lineItems?.length > 0 || jobVariations.length > 0 || jobMaterials.length > 0) && (
-            <Card className="border-trade/30 bg-trade/5" data-testid="card-job-brief">
+            <Card data-testid="card-job-brief">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
@@ -1912,7 +1912,7 @@ export default function JobDetailView({
 
           {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
           {(job.status === 'done' || job.status === 'in_progress') && linkedQuote && linkedQuote.status === 'accepted' && !linkedInvoice && (
-            <Card className="border-trade/30 bg-trade/5" data-testid="card-quick-collect">
+            <Card data-testid="card-quick-collect">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -2008,7 +2008,7 @@ export default function JobDetailView({
 
           {/* Receipt Display - Shows after payment received */}
           {linkedReceipts.length > 0 && !isTradie && (
-            <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" data-testid="card-payment-received">
+            <Card data-testid="card-payment-received">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
@@ -2046,7 +2046,7 @@ export default function JobDetailView({
           )}
 
           {/* Materials Tracking */}
-          <Card className="border-trade/30 bg-trade/5" data-testid="card-materials">
+          <Card data-testid="card-materials">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
