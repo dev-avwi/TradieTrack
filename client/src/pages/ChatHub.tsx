@@ -418,7 +418,6 @@ export default function ChatHub() {
 
   const { data: allClients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
-    enabled: newSmsDialogOpen,
   });
 
   const { data: directMessages = [], refetch: refetchDirectMessages } = useQuery<DirectMessage[]>({
@@ -861,6 +860,10 @@ export default function ChatHub() {
           clientSmsMap.set(sms.clientId, sms);
         }
       });
+
+      // Build clientId -> Client lookup for showing client names on job cards
+      const clientLookup = new Map<string, Client>();
+      allClients.forEach(c => clientLookup.set(c.id, c));
       
       // Create job-centric conversation items
       jobs.forEach(job => {
@@ -871,15 +874,19 @@ export default function ChatHub() {
         
         // Get site photo for this job if available
         const sitePhotoUrl = jobPhotosMap[job.id];
+
+        // Resolve client name from SMS, clients list, or fallback
+        const resolvedClientName = smsConvo?.clientName || (job.clientId ? clientLookup.get(job.clientId)?.name : undefined);
+        const resolvedClientPhone = smsConvo?.clientPhone || (job.clientId ? clientLookup.get(job.clientId)?.phone : undefined);
         
         items.push({
           id: `job-${job.id}`,
           type: 'job',
           title: job.title,
-          subtitle: smsConvo?.clientName || smsConvo?.clientPhone || job.address,
+          subtitle: job.address || undefined,
           avatar: sitePhotoUrl || null,
           avatarFallback: job.title.slice(0, 2).toUpperCase(),
-          lastMessage: undefined, // Will show job status instead
+          lastMessage: undefined,
           lastMessageTime: smsConvo?.lastMessageAt || job.scheduledAt || undefined,
           unreadCount: smsConvo?.unreadCount || 0,
           status: job.status,
@@ -887,8 +894,8 @@ export default function ChatHub() {
           jobStatus: job.status,
           jobAddress: job.address,
           clientId: job.clientId || smsConvo?.clientId || undefined,
-          clientPhone: smsConvo?.clientPhone,
-          clientName: smsConvo?.clientName || undefined,
+          clientPhone: resolvedClientPhone || undefined,
+          clientName: resolvedClientName || undefined,
           smsConversation: smsConvo,
           data: job,
         });
@@ -950,7 +957,7 @@ export default function ChatHub() {
     }
     
     return items;
-  }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm, jobPhotosMap]);
+  }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm, jobPhotosMap, allClients]);
 
   // State for active job context when viewing client conversations
   const [activeJobContext, setActiveJobContext] = useState<Job | null>(null);
@@ -1396,8 +1403,21 @@ export default function ChatHub() {
                         </div>
                       </div>
                       
-                      {/* Second line: subtitle or client name */}
-                      {item.subtitle && (
+                      {/* Job cards: show client name + address */}
+                      {item.type === 'job' && item.clientName && (
+                        <p className="text-xs truncate mt-0.5">
+                          <User className="h-3 w-3 inline mr-1 text-muted-foreground" />
+                          {item.clientName}
+                        </p>
+                      )}
+                      {item.type === 'job' && item.subtitle && (
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          {item.subtitle}
+                        </p>
+                      )}
+                      
+                      {/* Non-job items: standard subtitle */}
+                      {item.type !== 'job' && item.subtitle && (
                         <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {item.subtitle}
                         </p>
@@ -1405,7 +1425,7 @@ export default function ChatHub() {
                       
                       {/* Job status badge */}
                       {item.type === 'job' && item.jobStatus && (
-                        <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex items-center gap-2 mt-1">
                           <Badge 
                             variant="secondary" 
                             className="text-[10px] h-5 px-1.5"
