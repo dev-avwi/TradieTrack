@@ -659,15 +659,36 @@ export async function getSmsConversationsForUser(
   businessOwnerId: string,
   userRole: string
 ): Promise<SmsConversation[]> {
+  let conversations: SmsConversation[];
   if (['owner', 'admin', 'manager'].includes(userRole.toLowerCase())) {
-    // Owners/admins/managers see all conversations
-    return storage.getSmsConversationsByBusiness(businessOwnerId);
+    conversations = await storage.getSmsConversationsByBusiness(businessOwnerId);
   } else {
-    // Workers only see conversations linked to jobs they're assigned to
     const assignedJobs = await storage.getJobsByAssignee(userId);
     const jobIds = assignedJobs.map(j => j.id);
-    return storage.getSmsConversationsByJobIds(jobIds);
+    conversations = await storage.getSmsConversationsByJobIds(jobIds);
   }
+
+  // Auto-link unlinked conversations to existing clients by phone number match
+  const unlinked = conversations.filter(c => !c.clientId && c.clientPhone);
+  if (unlinked.length > 0) {
+    for (const conv of unlinked) {
+      try {
+        const client = await storage.getClientByPhone(businessOwnerId, conv.clientPhone);
+        if (client) {
+          await storage.updateSmsConversation(conv.id, {
+            clientId: client.id,
+            clientName: client.name,
+          });
+          conv.clientId = client.id;
+          conv.clientName = client.name;
+        }
+      } catch (e) {
+        // Non-critical, skip silently
+      }
+    }
+  }
+
+  return conversations;
 }
 
 /**

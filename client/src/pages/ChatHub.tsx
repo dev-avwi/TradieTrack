@@ -715,9 +715,7 @@ export default function ChatHub() {
     });
   };
 
-  const isUnknownClient = selectedSmsConversation && 
-    (!selectedSmsConversation.clientId || 
-     (selectedSmsConversation.clientName?.toLowerCase().includes('unknown')));
+  const isUnknownClient = selectedSmsConversation && !selectedSmsConversation.clientId;
 
   const applySmsTemplateFields = (text: string, conversation: SmsConversation) => {
     if (!text) return text;
