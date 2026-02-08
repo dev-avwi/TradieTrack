@@ -489,8 +489,15 @@ export default function ChatHub() {
     onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       if (selectedConversation) {
+        const assignedMemberForUpdate = variables.memberId === currentUser?.id 
+          ? null
+          : teamMembers.find((m: any) => m.id === variables.memberId || m.memberId === variables.memberId || m.userId === variables.memberId);
+        const newWorkerName = variables.memberId === currentUser?.id 
+          ? getUserDisplayName(currentUser)
+          : (assignedMemberForUpdate ? getTeamMemberName(assignedMemberForUpdate) : undefined);
         setSelectedConversation({
           ...selectedConversation,
+          assignedWorkerName: newWorkerName,
           data: { ...selectedConversation.data, assignedTo: variables.memberId },
         });
       }
@@ -501,10 +508,11 @@ export default function ChatHub() {
       if (pendingQuickAction) {
         const template = QUICK_ACTION_TEMPLATES.find(t => t.id === pendingQuickAction);
         if (template) {
-          const isSelfAssigned = variables.memberId === currentUser?.id;
+          const isSelfAssigned = variables.memberId === currentUser?.id ||
+            teamMembers.some((m: any) => (m.id === variables.memberId || m.memberId === variables.memberId) && m.userId === currentUser?.id);
           let workerFirstName: string | null = null;
           if (!isSelfAssigned) {
-            const assignedMember = teamMembers.find((m: any) => m.id === variables.memberId);
+            const assignedMember = teamMembers.find((m: any) => m.id === variables.memberId || m.memberId === variables.memberId || m.userId === variables.memberId);
             workerFirstName = assignedMember ? (assignedMember.firstName || getTeamMemberName(assignedMember).split(' ')[0]) : null;
           }
           const namedMsg = workerFirstName ? getWorkerNamedMessage(template.id, workerFirstName) : null;
@@ -834,8 +842,8 @@ export default function ChatHub() {
         const user: User = {
           id: member.userId,
           email: member.email,
-          firstName: member.name.split(' ')[0],
-          lastName: member.name.split(' ').slice(1).join(' '),
+          firstName: (member.firstName || member.name?.split(' ')[0]) || '',
+          lastName: (member.lastName || member.name?.split(' ').slice(1).join(' ')) || '',
           profileImageUrl: member.profileImageUrl,
         };
         setSelectedDirectUser(user);
@@ -912,7 +920,7 @@ export default function ChatHub() {
           type: 'client',
           title: existingConvo.clientName || existingConvo.clientPhone,
           subtitle: existingConvo.clientName ? existingConvo.clientPhone : undefined,
-          avatarFallback: (existingConvo.clientName || existingConvo.clientPhone).slice(0, 2).toUpperCase(),
+          avatarFallback: (existingConvo.clientName || existingConvo.clientPhone || '??').slice(0, 2).toUpperCase(),
           unreadCount: existingConvo.unreadCount,
           clientId: existingConvo.clientId || undefined,
           clientPhone: existingConvo.clientPhone,
@@ -1149,7 +1157,7 @@ export default function ChatHub() {
             type: 'unassigned',
             title: sms.clientName || sms.clientPhone,
             subtitle: 'New enquiry - tap to create job',
-            avatarFallback: (sms.clientName || sms.clientPhone).slice(0, 2).toUpperCase(),
+            avatarFallback: (sms.clientName || sms.clientPhone || '??').slice(0, 2).toUpperCase(),
             lastMessageTime: sms.lastMessageAt || undefined,
             unreadCount: sms.unreadCount,
             clientId: sms.clientId || undefined,
@@ -1393,7 +1401,7 @@ export default function ChatHub() {
         id: existingConvo.id,
         type: 'client',
         title: existingConvo.clientName || existingConvo.clientPhone,
-        avatarFallback: (existingConvo.clientName || existingConvo.clientPhone).slice(0, 2).toUpperCase(),
+        avatarFallback: (existingConvo.clientName || existingConvo.clientPhone || '??').slice(0, 2).toUpperCase(),
         unreadCount: existingConvo.unreadCount,
         clientId: existingConvo.clientId || undefined,
         clientPhone: existingConvo.clientPhone,
@@ -2270,13 +2278,16 @@ export default function ChatHub() {
                         onClick={() => {
                           if ((template.id === 'omw' || template.id === 'running-late') && 
                               selectedConversation?.type === 'job' && 
-                              !selectedConversation?.data?.assignedTo) {
+                              !selectedConversation?.data?.assignedTo &&
+                              (isOwner || isManager)) {
                             setPendingQuickAction(template.id);
                             setAssignWorkerDialogOpen(true);
                             return;
                           }
-                          const isOwnerAssigned = selectedConversation?.data?.assignedTo === currentUser?.id;
-                          const workerName = (!isOwnerAssigned && selectedConversation?.assignedWorkerName) 
+                          const assignedToId = selectedConversation?.data?.assignedTo;
+                          const isSelfAssigned = assignedToId === currentUser?.id || 
+                            teamMembers.some((m: any) => (m.id === assignedToId || m.memberId === assignedToId || m.userId === assignedToId) && m.userId === currentUser?.id);
+                          const workerName = (!isSelfAssigned && selectedConversation?.assignedWorkerName) 
                             ? selectedConversation.assignedWorkerName.split(' ')[0] : null;
                           const namedMsg = workerName ? getWorkerNamedMessage(template.id, workerName) : null;
                           const baseMessage = namedMsg || template.message;
@@ -2828,7 +2839,7 @@ export default function ChatHub() {
                 </div>
               </Button>
             )}
-            {teamMembers.filter(isAcceptedMember).filter(m => m.userId !== currentUser?.id).map((member) => (
+            {(isOwner || isManager) && teamMembers.filter(isAcceptedMember).filter(m => m.userId !== currentUser?.id).map((member) => (
               <Button
                 key={member.id}
                 variant="outline"
@@ -2858,8 +2869,10 @@ export default function ChatHub() {
                 if (pendingQuickAction) {
                   const template = QUICK_ACTION_TEMPLATES.find(t => t.id === pendingQuickAction);
                   if (template) {
-                    const isOwnerAssigned = selectedConversation?.data?.assignedTo === currentUser?.id;
-                    const workerName = (!isOwnerAssigned && selectedConversation?.assignedWorkerName)
+                    const assignedToId = selectedConversation?.data?.assignedTo;
+                    const isSelfAssigned = assignedToId === currentUser?.id ||
+                      teamMembers.some((m: any) => (m.id === assignedToId || m.memberId === assignedToId || m.userId === assignedToId) && m.userId === currentUser?.id);
+                    const workerName = (!isSelfAssigned && selectedConversation?.assignedWorkerName)
                       ? selectedConversation.assignedWorkerName.split(' ')[0] : null;
                     const namedMsg = workerName ? getWorkerNamedMessage(template.id, workerName) : null;
                     const baseMessage = namedMsg || template.message;
