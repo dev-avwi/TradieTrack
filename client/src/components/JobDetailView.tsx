@@ -1378,6 +1378,74 @@ export default function JobDetailView({
       <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0 mt-4">
         {/* Left column - Primary content */}
         <div className="space-y-4 lg:col-span-3">
+          {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
+          <div className="flex flex-col gap-2 pb-2">
+            {/* Pending → Schedule */}
+            {job.status === 'pending' && (
+              <Button
+                onClick={() => updateJobMutation.mutate({ status: 'scheduled' })}
+                disabled={updateJobMutation.isPending}
+                data-testid="button-schedule-job"
+                className="w-full text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                {updateJobMutation.isPending ? 'Scheduling...' : 'Schedule Job'}
+              </Button>
+            )}
+
+            {/* Scheduled → Start (Begin work on site) */}
+            {job.status === 'scheduled' && (
+              <Button
+                onClick={() => setShowSafetyCheck(true)}
+                disabled={updateJobMutation.isPending}
+                data-testid="button-start-job"
+                className="w-full text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                {updateJobMutation.isPending ? 'Starting...' : 'Start Job'}
+              </Button>
+            )}
+
+            {/* In Progress → Complete (Finish work) */}
+            {job.status === 'in_progress' && onCompleteJob && (
+              <Button
+                onClick={() => onCompleteJob(jobId)}
+                data-testid="button-complete-job"
+                className="w-full text-white"
+                style={{ backgroundColor: 'hsl(var(--trade))' }}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Go Complete Job
+              </Button>
+            )}
+
+            {/* Done status badge (non-tradie) */}
+            {job.status === 'done' && !isTradie && (
+              <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Job Completed</span>
+              </div>
+            )}
+            
+            {/* Staff tradie sees confirmation when job is done */}
+            {job.status === 'done' && isTradie && (
+              <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Job Completed</span>
+              </div>
+            )}
+
+            {/* Invoiced - Show status badge */}
+            {job.status === 'invoiced' && (
+              <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">
+                <FileText className="h-5 w-5" />
+                <span className="font-medium">Job Invoiced</span>
+              </div>
+            )}
+          </div>
+
           <JobFlowWizard
             status={job.status}
             hasQuote={!!linkedQuote}
@@ -1889,70 +1957,6 @@ export default function JobDetailView({
             </CardContent>
           </Card>
 
-          {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
-          <div className="flex flex-col gap-2 pt-2">
-            {/* Pending → Schedule */}
-            {job.status === 'pending' && (
-              <Button
-                onClick={() => updateJobMutation.mutate({ status: 'scheduled' })}
-                disabled={updateJobMutation.isPending}
-                data-testid="button-schedule-job"
-                className="w-full text-white"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                {updateJobMutation.isPending ? 'Scheduling...' : 'Schedule Job'}
-              </Button>
-            )}
-
-            {/* Scheduled → Start (Begin work on site) */}
-            {job.status === 'scheduled' && (
-              <Button
-                onClick={() => setShowSafetyCheck(true)}
-                disabled={updateJobMutation.isPending}
-                data-testid="button-start-job"
-                className="w-full text-white"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                {updateJobMutation.isPending ? 'Starting...' : 'Start Job'}
-              </Button>
-            )}
-
-            {/* In Progress → Complete (Finish work) */}
-            {job.status === 'in_progress' && onCompleteJob && (
-              <Button
-                onClick={() => onCompleteJob(jobId)}
-                data-testid="button-complete-job"
-                className="w-full text-white"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Go Complete Job
-              </Button>
-            )}
-
-            {/* Done status message (hidden for staff) */}
-            {job.status === 'done' && !isTradie && (
-              <div className="text-center text-sm text-muted-foreground py-2">
-                Job completed
-              </div>
-            )}
-            
-            {/* Staff tradie sees confirmation when job is done */}
-            {job.status === 'done' && isTradie && (
-              <div className="text-center text-sm text-muted-foreground py-2">
-                Job marked as complete
-              </div>
-            )}
-
-            {/* Invoiced - Show status only */}
-            {job.status === 'invoiced' && (
-              <div className="text-center text-sm text-muted-foreground py-2">
-                This job has been invoiced
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Right column - Secondary/supporting content */}

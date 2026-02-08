@@ -52,6 +52,7 @@ import {
   Search,
   Calendar,
   MessageSquare,
+  Mail,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -2060,7 +2061,7 @@ function FormsTab() {
   );
 }
 
-const SMS_MERGE_FIELDS = [
+const MESSAGING_MERGE_FIELDS = [
   '{{clientName}}',
   '{{jobTitle}}',
   '{{amount}}',
@@ -2072,11 +2073,15 @@ const SMS_MERGE_FIELDS = [
 
 const SMS_MAX_CHARS = 320;
 
-function SmsTemplatesTab() {
+function MessagingTemplatesTab() {
   const { templates, getTemplatesForFamily, createTemplate, updateTemplate, deleteTemplate, activateTemplate, isLoading } = useBusinessTemplates();
   const { toast } = useToast();
-  const smsTemplates = getTemplatesForFamily('sms');
   const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  const [channel, setChannel] = useState<'email' | 'sms'>('email');
+  const channelTemplates = getTemplatesForFamily(channel);
+  const channelPurposes = getPurposesForFamily(channel);
+  const channelLabel = channel === 'email' ? 'Email' : 'SMS';
 
   const [selectedTemplate, setSelectedTemplate] = useState<BusinessTemplate | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -2085,21 +2090,32 @@ function SmsTemplatesTab() {
   const [templateToDelete, setTemplateToDelete] = useState<BusinessTemplate | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    purpose: 'sms_quote_sent' as BusinessTemplatePurpose,
+    purpose: 'quote_sent' as BusinessTemplatePurpose,
+    subject: '',
     content: '',
   });
 
-  const smsPurposes = getPurposesForFamily('sms');
+  const handleChannelSwitch = (newChannel: 'email' | 'sms') => {
+    setChannel(newChannel);
+    setSelectedTemplate(null);
+    setFormData({
+      name: '',
+      purpose: newChannel === 'email' ? 'quote_sent' : 'sms_quote_sent',
+      subject: '',
+      content: '',
+    });
+  };
 
-  const grouped = smsPurposes.reduce((acc, purpose) => {
-    acc[purpose] = smsTemplates.filter(t => t.purpose === purpose);
+  const grouped = channelPurposes.reduce((acc, purpose) => {
+    acc[purpose] = channelTemplates.filter(t => t.purpose === purpose);
     return acc;
   }, {} as Record<string, BusinessTemplate[]>);
 
   const resetFormData = () => {
     setFormData({
       name: '',
-      purpose: 'sms_quote_sent',
+      purpose: channel === 'email' ? 'quote_sent' : 'sms_quote_sent',
+      subject: '',
       content: '',
     });
   };
@@ -2115,6 +2131,7 @@ function SmsTemplatesTab() {
     setFormData({
       name: template.name,
       purpose: template.purpose,
+      subject: template.subject || '',
       content: template.content || '',
     });
     setDialogOpen(true);
@@ -2129,7 +2146,7 @@ function SmsTemplatesTab() {
     if (!templateToDelete) return;
     try {
       await deleteTemplate(templateToDelete.id);
-      toast({ title: "SMS template deleted" });
+      toast({ title: `${channelLabel} template deleted` });
       if (selectedTemplate?.id === templateToDelete.id) setSelectedTemplate(null);
     } catch {
       toast({ title: "Failed to delete template", variant: "destructive" });
@@ -2153,18 +2170,16 @@ function SmsTemplatesTab() {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       const newContent = formData.content.substring(0, start) + field + formData.content.substring(end);
-      if (newContent.length <= SMS_MAX_CHARS) {
-        setFormData(prev => ({ ...prev, content: newContent }));
-        setTimeout(() => {
-          textarea.focus();
-          textarea.setSelectionRange(start + field.length, start + field.length);
-        }, 0);
-      }
+      if (channel === 'sms' && newContent.length > SMS_MAX_CHARS) return;
+      setFormData(prev => ({ ...prev, content: newContent }));
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + field.length, start + field.length);
+      }, 0);
     } else {
       const newContent = formData.content + field;
-      if (newContent.length <= SMS_MAX_CHARS) {
-        setFormData(prev => ({ ...prev, content: newContent }));
-      }
+      if (channel === 'sms' && newContent.length > SMS_MAX_CHARS) return;
+      setFormData(prev => ({ ...prev, content: newContent }));
     }
   };
 
@@ -2178,24 +2193,26 @@ function SmsTemplatesTab() {
       return;
     }
     try {
+      const payload: Partial<BusinessTemplate> = {
+        name: formData.name,
+        purpose: formData.purpose,
+        content: formData.content,
+      };
+      if (channel === 'email') {
+        payload.subject = formData.subject || null;
+      }
       if (editingTemplate) {
         await updateTemplate({
           id: editingTemplate.id,
-          data: {
-            name: formData.name,
-            purpose: formData.purpose,
-            content: formData.content,
-          },
+          data: payload,
         });
-        toast({ title: "SMS template updated" });
+        toast({ title: `${channelLabel} template updated` });
       } else {
         await createTemplate({
-          family: 'sms',
-          name: formData.name,
-          purpose: formData.purpose,
-          content: formData.content,
+          family: channel,
+          ...payload,
         });
-        toast({ title: "SMS template created" });
+        toast({ title: `${channelLabel} template created` });
       }
       handleCloseDialog();
     } catch {
@@ -2229,208 +2246,263 @@ function SmsTemplatesTab() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-lg font-semibold">SMS Templates</h2>
-            <p className="text-sm text-muted-foreground">
-              Text message templates for client notifications
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Create
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        <Button size="sm" variant={channel === 'email' ? 'default' : 'ghost'} onClick={() => handleChannelSwitch('email')}>
+          <Mail className="h-4 w-4 mr-1" /> Email
+        </Button>
+        <Button size="sm" variant={channel === 'sms' ? 'default' : 'ghost'} onClick={() => handleChannelSwitch('sms')}>
+          <MessageSquare className="h-4 w-4 mr-1" /> SMS
+        </Button>
+      </div>
 
-        <p className="text-xs text-muted-foreground">
-          {smsTemplates.length} template{smsTemplates.length !== 1 ? "s" : ""}
-        </p>
-
-        {smsTemplates.length === 0 ? (
-          <Card className="p-6 text-center">
-            <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-semibold mb-2">No SMS templates</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create SMS templates for automated client notifications
-            </p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold">{channelLabel} Templates</h2>
+              <p className="text-sm text-muted-foreground">
+                {channel === 'email' ? 'Email templates for client communications' : 'Text message templates for client notifications'}
+              </p>
+            </div>
             <Button size="sm" onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
-              Create Template
+              Create
             </Button>
-          </Card>
-        ) : (
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-4 pr-3">
-              {smsPurposes.map((purpose) => {
-                const purposeTemplates = grouped[purpose] || [];
-                if (purposeTemplates.length === 0) return null;
-                return (
-                  <div key={purpose}>
-                    <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-                      {PURPOSE_LABELS[purpose]}
-                    </p>
-                    <div className="space-y-2">
-                      {purposeTemplates.map((template) => {
-                        const isSelected = selectedTemplate?.id === template.id;
-                        return (
-                          <div
-                            key={template.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                              isSelected ? 'ring-2 ring-primary bg-primary/5' : 'bg-muted/30 hover-elevate'
-                            }`}
-                            onClick={() => setSelectedTemplate(template)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium truncate">{template.name}</p>
-                                {template.isActive && (
-                                  <Badge variant="default" className="text-xs">
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Active
-                                  </Badge>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {channelTemplates.length} template{channelTemplates.length !== 1 ? "s" : ""}
+          </p>
+
+          {channelTemplates.length === 0 ? (
+            <Card className="p-6 text-center">
+              {channel === 'email' ? (
+                <Mail className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+              ) : (
+                <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+              )}
+              <h3 className="font-semibold mb-2">No {channelLabel.toLowerCase()} templates</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create {channelLabel.toLowerCase()} templates for automated client {channel === 'email' ? 'communications' : 'notifications'}
+              </p>
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Create Template
+              </Button>
+            </Card>
+          ) : (
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-4 pr-3">
+                {channelPurposes.map((purpose) => {
+                  const purposeTemplates = grouped[purpose] || [];
+                  if (purposeTemplates.length === 0) return null;
+                  return (
+                    <div key={purpose}>
+                      <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">
+                        {PURPOSE_LABELS[purpose]}
+                      </p>
+                      <div className="space-y-2">
+                        {purposeTemplates.map((template) => {
+                          const isSelected = selectedTemplate?.id === template.id;
+                          return (
+                            <div
+                              key={template.id}
+                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                                isSelected ? 'ring-2 ring-primary bg-primary/5' : 'bg-muted/30 hover-elevate'
+                              }`}
+                              onClick={() => setSelectedTemplate(template)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium truncate">{template.name}</p>
+                                  {template.isActive && (
+                                    <Badge variant="default" className="text-xs">
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Active
+                                    </Badge>
+                                  )}
+                                </div>
+                                {channel === 'email' && template.subject && (
+                                  <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                                    Subject: {template.subject}
+                                  </p>
                                 )}
+                                <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                                  {template.content}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <Badge variant="outline" className="text-xs">
+                                    {PURPOSE_LABELS[template.purpose]}
+                                  </Badge>
+                                  {channel === 'sms' && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {template.content?.length || 0} chars
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
-                                {template.content}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <Badge variant="outline" className="text-xs">
-                                  {PURPOSE_LABELS[template.purpose]}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {template.content?.length || 0} chars
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {!template.isActive && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                {!template.isActive && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    title="Set as active"
+                                    onClick={(e) => { e.stopPropagation(); handleActivate(template); }}
+                                  >
+                                    <Star className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  title="Set as active"
-                                  onClick={(e) => { e.stopPropagation(); handleActivate(template); }}
+                                  onClick={(e) => { e.stopPropagation(); handleEditTemplate(template); }}
                                 >
-                                  <Star className="h-4 w-4" />
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
-                              )}
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={(e) => { e.stopPropagation(); handleEditTemplate(template); }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="text-destructive"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(template); }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(template); }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Template Preview</h2>
+            <p className="text-sm text-muted-foreground">
+              {selectedTemplate ? selectedTemplate.name : "Select a template to preview"}
+            </p>
+          </div>
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="bg-muted/30 p-4">
+                <div className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '600px', overflow: 'auto' }}>
+                  <div className="p-6">
+                    {selectedTemplate ? (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-bold text-lg">{selectedTemplate.name}</h3>
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <Badge variant="secondary">
+                              {PURPOSE_LABELS[selectedTemplate.purpose]}
+                            </Badge>
+                            {selectedTemplate.isActive && (
+                              <Badge variant="default" className="text-xs">
+                                <Check className="h-3 w-3 mr-1" />
+                                Active
+                              </Badge>
+                            )}
+                            {channel === 'sms' && (
+                              <span className="text-xs text-muted-foreground">
+                                {selectedTemplate.content?.length || 0} / {SMS_MAX_CHARS} chars
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {channel === 'email' && selectedTemplate.subject && (
+                          <div className="border-t pt-4">
+                            <h4 className="font-medium text-sm mb-2">Subject Line</h4>
+                            <div className="p-3 rounded-lg bg-muted/50 border">
+                              <p className="text-sm font-medium">
+                                {highlightMergeFields(selectedTemplate.subject)}
+                              </p>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
-      </div>
+                        )}
 
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Template Preview</h2>
-          <p className="text-sm text-muted-foreground">
-            {selectedTemplate ? selectedTemplate.name : "Select a template to preview"}
-          </p>
-        </div>
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="bg-muted/30 p-4">
-              <div className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden" style={{ maxHeight: '600px', overflow: 'auto' }}>
-                <div className="p-6">
-                  {selectedTemplate ? (
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-bold text-lg">{selectedTemplate.name}</h3>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <Badge variant="secondary">
-                            {PURPOSE_LABELS[selectedTemplate.purpose]}
-                          </Badge>
-                          {selectedTemplate.isActive && (
-                            <Badge variant="default" className="text-xs">
-                              <Check className="h-3 w-3 mr-1" />
-                              Active
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {selectedTemplate.content?.length || 0} / {SMS_MAX_CHARS} chars
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium text-sm mb-3">Message Content</h4>
-                        <div className="p-4 rounded-lg bg-muted/50 border">
-                          <div className="flex items-start gap-3">
-                            <MessageSquare className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                              {highlightMergeFields(selectedTemplate.content || '')}
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium text-sm mb-3">
+                            {channel === 'email' ? 'Email Body' : 'Message Content'}
+                          </h4>
+                          <div className="p-4 rounded-lg bg-muted/50 border">
+                            <div className="flex items-start gap-3">
+                              {channel === 'email' ? (
+                                <Mail className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                              ) : (
+                                <MessageSquare className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                              )}
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                {highlightMergeFields(selectedTemplate.content || '')}
+                              </p>
+                            </div>
+                          </div>
+                          {channel === 'sms' && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {(selectedTemplate.content?.length || 0) <= 160
+                                ? '1 SMS segment'
+                                : `${Math.ceil((selectedTemplate.content?.length || 0) / 153)} SMS segments`}
                             </p>
+                          )}
+                        </div>
+
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium text-sm mb-2">Merge Fields Used</h4>
+                          <div className="flex gap-2 flex-wrap">
+                            {MESSAGING_MERGE_FIELDS.filter(f => {
+                              const inContent = selectedTemplate.content?.includes(f);
+                              const inSubject = channel === 'email' && selectedTemplate.subject?.includes(f);
+                              return inContent || inSubject;
+                            }).map(field => (
+                              <Badge key={field} variant="outline" className="text-xs font-mono">
+                                {field}
+                              </Badge>
+                            ))}
+                            {!MESSAGING_MERGE_FIELDS.some(f => {
+                              const inContent = selectedTemplate.content?.includes(f);
+                              const inSubject = channel === 'email' && selectedTemplate.subject?.includes(f);
+                              return inContent || inSubject;
+                            }) && (
+                              <p className="text-xs text-muted-foreground">No merge fields used</p>
+                            )}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {(selectedTemplate.content?.length || 0) <= 160
-                            ? '1 SMS segment'
-                            : `${Math.ceil((selectedTemplate.content?.length || 0) / 153)} SMS segments`}
-                        </p>
                       </div>
-
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium text-sm mb-2">Merge Fields Used</h4>
-                        <div className="flex gap-2 flex-wrap">
-                          {SMS_MERGE_FIELDS.filter(f => selectedTemplate.content?.includes(f)).map(field => (
-                            <Badge key={field} variant="outline" className="text-xs font-mono">
-                              {field}
-                            </Badge>
-                          ))}
-                          {!SMS_MERGE_FIELDS.some(f => selectedTemplate.content?.includes(f)) && (
-                            <p className="text-xs text-muted-foreground">No merge fields used</p>
-                          )}
-                        </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        {channel === 'email' ? (
+                          <Mail className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        ) : (
+                          <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        )}
+                        <p className="font-medium">Select a template</p>
+                        <p className="text-sm mt-1">Click a template from the list to preview its content</p>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">Select a template</p>
-                      <p className="text-sm mt-1">Click a template from the list to preview its content</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingTemplate ? "Edit SMS Template" : "Create SMS Template"}</DialogTitle>
+            <DialogTitle>{editingTemplate ? `Edit ${channelLabel} Template` : `Create ${channelLabel} Template`}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="sms-template-name">Template Name</Label>
+              <Label htmlFor="msg-template-name">Template Name</Label>
               <Input
-                id="sms-template-name"
+                id="msg-template-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Quote Sent Notification"
@@ -2438,7 +2510,7 @@ function SmsTemplatesTab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sms-template-purpose">Purpose</Label>
+              <Label htmlFor="msg-template-purpose">Purpose</Label>
               <Select
                 value={formData.purpose}
                 onValueChange={(v) => setFormData({ ...formData, purpose: v as BusinessTemplatePurpose })}
@@ -2447,35 +2519,57 @@ function SmsTemplatesTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {smsPurposes.map(p => (
+                  {channelPurposes.map(p => (
                     <SelectItem key={p} value={p}>{PURPOSE_LABELS[p]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
+            {channel === 'email' && (
+              <div className="space-y-2">
+                <Label htmlFor="msg-template-subject">Subject Line</Label>
+                <Input
+                  id="msg-template-subject"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  placeholder="e.g., Your Quote from {{businessName}}"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="sms-template-content">Message Content</Label>
-                <span className={`text-xs ${charCount > SMS_MAX_CHARS ? 'text-destructive font-medium' : charCount > 160 ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground'}`}>
-                  {charCount} / {SMS_MAX_CHARS}
-                  {charCount > 0 && ` (${smsSegments} SMS${smsSegments > 1 ? ' segments' : ''})`}
-                </span>
+                <Label htmlFor="msg-template-content">
+                  {channel === 'email' ? 'Email Body' : 'Message Content'}
+                </Label>
+                {channel === 'sms' && (
+                  <span className={`text-xs ${charCount > SMS_MAX_CHARS ? 'text-destructive font-medium' : charCount > 160 ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground'}`}>
+                    {charCount} / {SMS_MAX_CHARS}
+                    {charCount > 0 && ` (${smsSegments} SMS${smsSegments > 1 ? ' segments' : ''})`}
+                  </span>
+                )}
               </div>
               <Textarea
                 ref={contentRef}
-                id="sms-template-content"
+                id="msg-template-content"
                 value={formData.content}
                 onChange={(e) => {
-                  if (e.target.value.length <= SMS_MAX_CHARS) {
+                  if (channel === 'sms') {
+                    if (e.target.value.length <= SMS_MAX_CHARS) {
+                      setFormData({ ...formData, content: e.target.value });
+                    }
+                  } else {
                     setFormData({ ...formData, content: e.target.value });
                   }
                 }}
-                placeholder="Hi {{clientName}}, your quote #{{quoteNumber}} is ready..."
-                rows={4}
+                placeholder={channel === 'email'
+                  ? "Hi {{clientName}},\n\nPlease find your quote attached..."
+                  : "Hi {{clientName}}, your quote #{{quoteNumber}} is ready..."}
+                rows={channel === 'email' ? 8 : 4}
                 className="resize-none text-sm"
               />
-              {charCount <= 160 && (
+              {channel === 'sms' && charCount <= 160 && (
                 <p className="text-xs text-muted-foreground">
                   Keep under 160 characters for a single SMS segment
                 </p>
@@ -2485,7 +2579,7 @@ function SmsTemplatesTab() {
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Available Merge Fields (click to insert)</Label>
               <div className="flex gap-1.5 flex-wrap">
-                {SMS_MERGE_FIELDS.map(field => (
+                {MESSAGING_MERGE_FIELDS.map(field => (
                   <Badge
                     key={field}
                     variant="outline"
@@ -2516,7 +2610,7 @@ function SmsTemplatesTab() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete SMS Template</AlertDialogTitle>
+            <AlertDialogTitle>Delete {channelLabel} Template</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{templateToDelete?.name}"? This action cannot be undone.
             </AlertDialogDescription>
@@ -3024,7 +3118,7 @@ export default function TemplatesHub() {
             </TabsTrigger>
             <TabsTrigger value="sms-templates" className="gap-2">
               <MessageSquare className="h-4 w-4" />
-              SMS
+              Messaging
             </TabsTrigger>
             <TabsTrigger value="forms" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -3045,7 +3139,7 @@ export default function TemplatesHub() {
           </TabsContent>
           
           <TabsContent value="sms-templates">
-            <SmsTemplatesTab />
+            <MessagingTemplatesTab />
           </TabsContent>
           
           <TabsContent value="forms">
