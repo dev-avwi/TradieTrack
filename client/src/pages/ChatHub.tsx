@@ -1635,7 +1635,7 @@ export default function ChatHub() {
     }
 
     // Job-centric or unassigned SMS view
-    if ((selectedConversation.type === 'job' || selectedConversation.type === 'unassigned') && (selectedSmsConversation || selectedConversation.type === 'job')) {
+    if ((selectedConversation.type === 'job' || selectedConversation.type === 'unassigned' || selectedConversation.type === 'client') && (selectedSmsConversation || selectedConversation.type === 'job')) {
       const isJobView = selectedConversation.type === 'job';
       // Get job from activeJobContext or from the selected conversation's data
       const job = isJobView ? (activeJobContext || selectedConversation.data) : null;
@@ -1771,6 +1771,11 @@ export default function ChatHub() {
           </div>
 
           <OfflineBanner isConnected={smsSocketConnected} />
+
+          <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span>Messages are sent from a shared JobRunner number. Your client sees this number, not your personal number.</span>
+          </div>
 
           {selectedSmsConversation && isUnknownClient && selectedSmsConversation.id !== 'new' && (
             <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">

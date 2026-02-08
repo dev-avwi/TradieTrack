@@ -200,6 +200,7 @@ export default function JobDetailView({
   const [showQuickCollect, setShowQuickCollect] = useState(false);
   const [showBeforePhotoPrompt, setShowBeforePhotoPrompt] = useState(false);
   const [showUnifiedSendModal, setShowUnifiedSendModal] = useState(false);
+  const [unifiedSendDefaultTab, setUnifiedSendDefaultTab] = useState<'email' | 'sms'>('email');
   const [showManualSms, setShowManualSms] = useState(false);
   const [pendingTimerStart, setPendingTimerStart] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -313,6 +314,19 @@ export default function JobDetailView({
     queryKey: ['/api/team/members'],
     enabled: !isTradie && !isSolo,
   });
+
+  // Fetch all jobs to check worker availability (for assignment dropdown)
+  const { data: allJobs = [] } = useQuery<Job[]>({
+    queryKey: ['/api/jobs'],
+    enabled: !isTradie && !isSolo && teamMembers.length > 0,
+  });
+
+  // Helper function to check if a worker is on another active job
+  const isWorkerOnOtherJob = (memberId: string): boolean => {
+    return allJobs.some(
+      (j) => j.assignedTo === memberId && j.status === 'in_progress' && j.id !== jobId
+    );
+  };
 
   // Fetch job photos - enable for all job statuses to support team sync
   const { data: jobPhotos = [] } = useQuery<{ id: string }[]>({
@@ -1471,15 +1485,25 @@ export default function JobDetailView({
                       <SelectItem value="unassigned">
                         Unassigned
                       </SelectItem>
-                      {teamMembers.filter(m => m.isActive).map((member) => (
-                        <SelectItem 
-                          key={member.memberId} 
-                          value={member.memberId}
-                          data-testid={`option-worker-${member.memberId}`}
-                        >
-                          {member.firstName} {member.lastName} ({member.roleName})
-                        </SelectItem>
-                      ))}
+                      {teamMembers.filter(m => m.isActive).map((member) => {
+                        const onOtherJob = isWorkerOnOtherJob(member.memberId);
+                        return (
+                          <SelectItem 
+                            key={member.memberId} 
+                            value={member.memberId}
+                            data-testid={`option-worker-${member.memberId}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{member.firstName} {member.lastName} ({member.roleName})</span>
+                              {onOtherJob ? (
+                                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">On a job</span>
+                              ) : (
+                                <span className="text-xs text-green-600 dark:text-green-400 font-medium">Available</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1994,103 +2018,6 @@ export default function JobDetailView({
             />
           )}
 
-          {/* Linked Documents Section - Shows quote/invoice status */}
-          {(linkedQuote || linkedInvoice) && (
-            <Card data-testid="card-linked-documents">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Linked Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {linkedQuote && (
-                  <button
-                    onClick={() => navigate(`/quotes/${linkedQuote.id}`)}
-                    className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-                    data-testid="button-view-linked-quote"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">
-                          Quote #{linkedQuote.quoteNumber}
-                        </span>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${
-                            linkedQuote.status === 'accepted' 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                              : linkedQuote.status === 'sent'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                          }`}
-                        >
-                          {linkedQuote.status === 'accepted' ? 'Accepted' : 
-                           linkedQuote.status === 'sent' ? 'Sent' : 'Draft'}
-                        </Badge>
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                      {linkedQuote.title} • ${parseFloat(linkedQuote.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                    </p>
-                  </button>
-                )}
-
-                {linkedInvoice && (
-                  <button
-                    onClick={() => navigate(`/invoices/${linkedInvoice.id}`)}
-                    className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-                    data-testid="button-view-linked-invoice"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">
-                          Invoice #{linkedInvoice.invoiceNumber}
-                        </span>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${
-                            linkedInvoice.status === 'paid' 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                              : linkedInvoice.status === 'sent'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                              : linkedInvoice.status === 'overdue'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                          }`}
-                        >
-                          {linkedInvoice.status === 'paid' ? 'Paid' : 
-                           linkedInvoice.status === 'sent' ? 'Sent' : 
-                           linkedInvoice.status === 'overdue' ? 'Overdue' : 'Draft'}
-                        </Badge>
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                      {linkedInvoice.title} • ${parseFloat(linkedInvoice.total || '0').toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                    </p>
-                  </button>
-                )}
-
-                {/* Prominent CTA: Create Invoice from Accepted Quote - hidden for staff tradies */}
-                {linkedQuote?.status === 'accepted' && !linkedInvoice && !isTradie && (
-                  <Button
-                    onClick={() => navigate(`/invoices/new?quoteId=${linkedQuote.id}&jobId=${jobId}`)}
-                    className="w-full mt-2 text-white"
-                    style={{ backgroundColor: 'hsl(var(--trade))' }}
-                    data-testid="button-create-invoice-from-quote"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Create Invoice from Accepted Quote
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
           {(job.status === 'done' || job.status === 'in_progress') && linkedQuote && linkedQuote.status === 'accepted' && !linkedInvoice && (
             <Card className="border-trade/30 bg-trade/5" data-testid="card-quick-collect">
@@ -2241,7 +2168,7 @@ export default function JobDetailView({
                     <Button
                       variant="outline"
                       className="flex items-center justify-center gap-2"
-                      onClick={() => setShowUnifiedSendModal(true)}
+                      onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
                       data-testid="button-email-client"
                     >
                       <Mail className="h-4 w-4" />
@@ -2252,9 +2179,7 @@ export default function JobDetailView({
                     <Button
                       variant="outline"
                       className="flex items-center justify-center gap-2"
-                      onClick={() => {
-                        setShowUnifiedSendModal(true);
-                      }}
+                      onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
                       data-testid="button-sms-client"
                     >
                       <MessageSquare className="h-4 w-4" />
@@ -2409,13 +2334,37 @@ export default function JobDetailView({
                               <span className="font-medium">${parseFloat(mat.totalCost).toFixed(2)}</span>
                             )}
                           </div>
-                          {mat.trackingNumber && (
-                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                              <Truck className="h-3 w-3" />
-                              <span>{mat.trackingCarrier === 'auspost' ? 'AusPost' : mat.trackingCarrier === 'startrack' ? 'StarTrack' : mat.trackingCarrier?.toUpperCase() || ''}</span>
-                              <span className="font-mono">{mat.trackingNumber}</span>
-                            </div>
-                          )}
+                          {mat.trackingNumber && (() => {
+                            const trackingUrls: Record<string, string> = {
+                              auspost: `https://auspost.com.au/mypost/track/#/details/${mat.trackingNumber}`,
+                              startrack: `https://startrack.com.au/track/#/details/${mat.trackingNumber}`,
+                              tnt: `https://www.tnt.com/express/en_au/site/tracking.html?searchType=con&cons=${mat.trackingNumber}`,
+                              toll: `https://www.toll.com.au/tracking/search?q=${mat.trackingNumber}`,
+                            };
+                            const carrierLabel = mat.trackingCarrier === 'auspost' ? 'AusPost' : mat.trackingCarrier === 'startrack' ? 'StarTrack' : mat.trackingCarrier?.toUpperCase() || '';
+                            const url = mat.trackingCarrier ? trackingUrls[mat.trackingCarrier as keyof typeof trackingUrls] : null;
+                            return (
+                              <div className="flex items-center gap-1 mt-1 text-xs">
+                                <Truck className="h-3 w-3 text-muted-foreground" />
+                                {url ? (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline flex items-center gap-1"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {carrierLabel} {mat.trackingNumber}
+                                    <ExternalLink className="h-2.5 w-2.5" />
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    {carrierLabel} <span className="font-mono">{mat.trackingNumber}</span>
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <Select
@@ -2486,6 +2435,7 @@ export default function JobDetailView({
               geofenceRadius={job.geofenceRadius}
               geofenceAutoClockIn={job.geofenceAutoClockIn}
               geofenceAutoClockOut={job.geofenceAutoClockOut}
+              assignedTo={job.assignedTo}
             />
           )}
 
@@ -2975,6 +2925,7 @@ export default function JobDetailView({
           recipientEmail={client.email}
           recipientPhone={client.phone}
           documentTitle={job?.title}
+          defaultTab={unifiedSendDefaultTab}
         />
       )}
 

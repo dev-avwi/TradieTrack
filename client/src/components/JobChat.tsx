@@ -199,7 +199,7 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
       )}
       
       <CardContent className="p-0">
-        <div className="flex flex-col h-[500px]">
+        <div className="flex flex-col h-[320px]">
           <ScrollArea className="flex-1 px-4" ref={scrollRef}>
             {isLoading ? (
               <div className="flex items-center justify-center h-full">

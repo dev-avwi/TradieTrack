@@ -32,6 +32,7 @@ interface UnifiedSendModalProps {
   recipientPhone?: string;
   documentTitle?: string;
   previewUrl?: string;
+  defaultTab?: 'email' | 'sms';
 }
 
 const SMS_TEMPLATES = {
@@ -64,10 +65,11 @@ export function UnifiedSendModal({
   recipientPhone,
   documentTitle,
   previewUrl,
+  defaultTab,
 }: UnifiedSendModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'email' | 'sms'>('email');
+  const [activeTab, setActiveTab] = useState<'email' | 'sms'>(defaultTab || 'email');
   const [smsMessage, setSmsMessage] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
@@ -85,6 +87,12 @@ export function UnifiedSendModal({
       setSmsMessage(SMS_TEMPLATES[documentType]?.[0]?.message || '');
     }
   }, [open, documentType, recipientName]);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab, open]);
 
   const sendEmailMutation = useMutation({
     mutationFn: async () => {

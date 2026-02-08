@@ -35,7 +35,10 @@ import {
   DollarSign,
   Clock,
   Edit,
-  Eye
+  Eye,
+  Camera,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -93,7 +96,9 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
     description: '',
     reason: '',
     additionalAmount: '',
+    photos: [] as File[],
   });
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [approverName, setApproverName] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   
@@ -196,7 +201,9 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
   });
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', reason: '', additionalAmount: '' });
+    setFormData({ title: '', description: '', reason: '', additionalAmount: '', photos: [] });
+    photoPreviews.forEach(url => URL.revokeObjectURL(url));
+    setPhotoPreviews([]);
   };
 
   const openEditDialog = (variation: JobVariation) => {
@@ -206,24 +213,76 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
       description: variation.description || '',
       reason: variation.reason || '',
       additionalAmount: variation.additionalAmount,
+      photos: [],
     });
+    setPhotoPreviews([]);
     setShowEditDialog(true);
   };
 
-  const handleSubmit = () => {
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const uploadPhotosForVariation = async (variationId: string, photos: File[]) => {
+    for (const photo of photos) {
+      try {
+        const base64 = await fileToBase64(photo);
+        await apiRequest('POST', `/api/jobs/${jobId}/photos`, {
+          fileName: photo.name,
+          fileBase64: base64,
+          mimeType: photo.type,
+          category: 'general',
+          caption: `Variation photo`,
+        });
+      } catch (err) {
+        console.error('Failed to upload variation photo:', err);
+      }
+    }
+    if (photos.length > 0) {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'photos'] });
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!formData.title.trim()) {
       toast({ title: 'Error', description: 'Title is required.', variant: 'destructive' });
       return;
     }
-    createMutation.mutate(formData);
+    const { photos, ...variationData } = formData;
+    createMutation.mutate(variationData, {
+      onSuccess: async (response: any) => {
+        if (photos.length > 0) {
+          let variationId = '';
+          try {
+            const data = await response.json();
+            variationId = data?.id || '';
+          } catch {}
+          await uploadPhotosForVariation(variationId, photos);
+          toast({ title: 'Photos uploaded', description: `${photos.length} photo(s) uploaded for this variation.` });
+        }
+      },
+    });
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!editingVariation || !formData.title.trim()) {
       toast({ title: 'Error', description: 'Title is required.', variant: 'destructive' });
       return;
     }
-    updateMutation.mutate({ id: editingVariation.id, data: formData });
+    const { photos, ...variationData } = formData;
+    updateMutation.mutate({ id: editingVariation.id, data: variationData }, {
+      onSuccess: async () => {
+        if (photos.length > 0) {
+          await uploadPhotosForVariation(editingVariation.id, photos);
+          toast({ title: 'Photos uploaded', description: `${photos.length} photo(s) uploaded for this variation.` });
+        }
+      },
+    });
   };
 
   const formatCurrency = (amount: string | number) => {
@@ -502,8 +561,80 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
               </div>
               <div className="space-y-2">
                 <Label>Photos</Label>
-                <div className="p-4 rounded-lg border border-dashed bg-muted/30 text-center">
-                  <p className="text-sm text-muted-foreground">Photo upload coming soon</p>
+                <div className="space-y-2">
+                  {photoPreviews.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {photoPreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img src={preview} alt={`Photo ${index + 1}`} className="h-16 w-16 rounded-md object-cover border" />
+                          <button
+                            type="button"
+                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs"
+                            onClick={() => {
+                              const newPhotos = [...formData.photos];
+                              newPhotos.splice(index, 1);
+                              setFormData({ ...formData, photos: newPhotos });
+                              const newPreviews = [...photoPreviews];
+                              URL.revokeObjectURL(newPreviews[index]);
+                              newPreviews.splice(index, 1);
+                              setPhotoPreviews(newPreviews);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.capture = 'environment';
+                        input.multiple = true;
+                        input.onchange = (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0) {
+                            setFormData(prev => ({ ...prev, photos: [...prev.photos, ...files] }));
+                            const previews = files.map(f => URL.createObjectURL(f));
+                            setPhotoPreviews(prev => [...prev, ...previews]);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Camera className="h-4 w-4 mr-1" />
+                      Camera
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.multiple = true;
+                        input.onchange = (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0) {
+                            setFormData(prev => ({ ...prev, photos: [...prev.photos, ...files] }));
+                            const previews = files.map(f => URL.createObjectURL(f));
+                            setPhotoPreviews(prev => [...prev, ...previews]);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                      Gallery
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -576,6 +707,84 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
                     placeholder="0.00"
                     className="pl-9"
                   />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Photos</Label>
+                <div className="space-y-2">
+                  {photoPreviews.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {photoPreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img src={preview} alt={`Photo ${index + 1}`} className="h-16 w-16 rounded-md object-cover border" />
+                          <button
+                            type="button"
+                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs"
+                            onClick={() => {
+                              const newPhotos = [...formData.photos];
+                              newPhotos.splice(index, 1);
+                              setFormData({ ...formData, photos: newPhotos });
+                              const newPreviews = [...photoPreviews];
+                              URL.revokeObjectURL(newPreviews[index]);
+                              newPreviews.splice(index, 1);
+                              setPhotoPreviews(newPreviews);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.capture = 'environment';
+                        input.multiple = true;
+                        input.onchange = (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0) {
+                            setFormData(prev => ({ ...prev, photos: [...prev.photos, ...files] }));
+                            const previews = files.map(f => URL.createObjectURL(f));
+                            setPhotoPreviews(prev => [...prev, ...previews]);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Camera className="h-4 w-4 mr-1" />
+                      Camera
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.multiple = true;
+                        input.onchange = (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0) {
+                            setFormData(prev => ({ ...prev, photos: [...prev.photos, ...files] }));
+                            const previews = files.map(f => URL.createObjectURL(f));
+                            setPhotoPreviews(prev => [...prev, ...previews]);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                      Gallery
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
