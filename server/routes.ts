@@ -23608,7 +23608,7 @@ Respond with JSON in this format:
       const userId = req.userId!;
       const businessOwnerId = req.businessOwnerId || userId;
       const { id } = req.params;
-      const { clientId, clientName } = req.body;
+      const { clientId, clientName, jobId } = req.body;
       
       // Verify ownership - conversation must belong to this business
       const conversation = await storage.getSmsConversation(id);
@@ -23619,9 +23619,10 @@ Respond with JSON in this format:
         return res.status(403).json({ error: 'Unauthorized access to this conversation' });
       }
       
-      const updates: { clientId?: string; clientName?: string } = {};
+      const updates: { clientId?: string; clientName?: string; jobId?: string } = {};
       if (clientId !== undefined) updates.clientId = clientId;
       if (clientName !== undefined) updates.clientName = clientName;
+      if (jobId !== undefined) updates.jobId = jobId;
       
       const updated = await storage.updateSmsConversation(id, updates);
       res.json(updated);

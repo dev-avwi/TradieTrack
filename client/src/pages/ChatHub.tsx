@@ -47,6 +47,8 @@ import {
   Circle,
   Navigation,
   ChevronDown,
+  Receipt,
+  Bell,
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -664,6 +666,28 @@ export default function ChatHub() {
     },
   });
 
+  const linkJobMutation = useMutation({
+    mutationFn: async ({ conversationId, jobId }: { conversationId: string; jobId: string }) => {
+      return apiRequest('PATCH', `/api/sms/conversations/${conversationId}`, { jobId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({ title: "Job linked", description: "This conversation has been linked to the job" });
+      setSelectedConversation(null);
+      setSelectedSmsConversation(null);
+      setActiveJobContext(null);
+      setFilter('jobs');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to link job",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleOpenCreateClientDialog = () => {
     if (selectedSmsConversation) {
       setNewClientPhone(selectedSmsConversation.clientPhone);
@@ -1032,7 +1056,7 @@ export default function ChatHub() {
     }
     
     return items;
-  }, [filter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm, jobPhotosMap, allClients]);
+  }, [filter, jobStatusFilter, teamMessages, dmConversations, smsConversations, jobs, teamMembers, unreadCounts, showDirectFilter, searchTerm, jobPhotosMap, allClients]);
 
   // State for active job context when viewing client conversations
   const [activeJobContext, setActiveJobContext] = useState<Job | null>(null);
@@ -1347,7 +1371,7 @@ export default function ChatHub() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           <Button
             variant={filter === 'jobs' ? 'default' : 'ghost'}
             size="sm"
@@ -1880,9 +1904,44 @@ export default function ChatHub() {
                   <h2 className="font-medium text-sm truncate">
                     {selectedSmsConversation?.clientName || selectedSmsConversation?.clientPhone || 'New Enquiry'}
                   </h2>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {selectedSmsConversation?.clientName ? selectedSmsConversation.clientPhone : 'No job linked'}
-                  </p>
+                  {selectedSmsConversation?.clientName ? (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {selectedSmsConversation.clientPhone}
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-muted-foreground">No job linked</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5 gap-1 text-primary">
+                            <Briefcase className="h-2.5 w-2.5" />
+                            Link to Job
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-64 max-h-64 overflow-y-auto">
+                          <DropdownMenuLabel className="text-xs">Select a job</DropdownMenuLabel>
+                          {jobs.length === 0 ? (
+                            <DropdownMenuItem disabled>No jobs available</DropdownMenuItem>
+                          ) : (
+                            jobs.slice(0, 20).map(job => (
+                              <DropdownMenuItem
+                                key={job.id}
+                                onClick={() => {
+                                  if (selectedSmsConversation && selectedSmsConversation.id !== 'new') {
+                                    linkJobMutation.mutate({ conversationId: selectedSmsConversation.id, jobId: job.id });
+                                  }
+                                }}
+                                className="flex flex-col items-start gap-0.5"
+                              >
+                                <span className="text-sm font-medium truncate w-full">{job.title}</span>
+                                {job.address && <span className="text-[10px] text-muted-foreground truncate w-full">{job.address}</span>}
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -2049,6 +2108,37 @@ export default function ChatHub() {
           {/* Sticky composer - only show if there's an SMS conversation or if we can start one */}
           {selectedSmsConversation ? (
             <div className="shrink-0 border-t bg-background">
+              {isJobView && job && (
+                <div className="px-3 py-2 border-b flex gap-1.5 overflow-x-auto no-scrollbar">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5 bg-background text-xs"
+                    onClick={() => setLocation(`/quotes/new?jobId=${job.id}&clientId=${job.clientId || ''}`)}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Send Quote
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5 bg-background text-xs"
+                    onClick={() => setLocation(`/invoices/new?jobId=${job.id}&clientId=${job.clientId || ''}`)}
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    Send Invoice
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5 bg-background text-xs"
+                    onClick={() => setLocation(`/jobs/${job.id}?tab=schedule`)}
+                  >
+                    <Bell className="h-3.5 w-3.5" />
+                    Set Reminder
+                  </Button>
+                </div>
+              )}
               {/* Quick Actions - ServiceM8 style with primary actions + template picker */}
               <div className="px-3 py-2 border-b bg-muted/30">
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
