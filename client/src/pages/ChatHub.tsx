@@ -209,6 +209,7 @@ interface ConversationItem {
   clientName?: string;
   smsConversation?: SmsConversation;
   isOnline?: boolean;
+  themeColor?: string;
   data: any;
 }
 
@@ -854,6 +855,7 @@ export default function ChatHub() {
           avatar: member.profileImageUrl,
           avatarFallback: getInitials(member.name),
           unreadCount: 0,
+          themeColor: member.themeColor,
           data: user,
         });
         setMobileShowChat(true);
@@ -1025,6 +1027,7 @@ export default function ChatHub() {
           lastMessageTime: dm.lastMessage?.createdAt,
           unreadCount: dm.unreadCount,
           isOnline: true,
+          themeColor: teamMembers.find(m => m.userId === dm.otherUser.id)?.themeColor,
           data: dm.otherUser,
         });
       });
@@ -1043,6 +1046,7 @@ export default function ChatHub() {
             lastMessage: 'Start a conversation',
             unreadCount: 0,
             isOnline: false,
+            themeColor: member.themeColor,
             data: { id: member.userId, email: member.email, firstName: member.firstName || memberName.split(' ')[0] || '', lastName: member.lastName || memberName.split(' ').slice(1).join(' ') || '', profileImageUrl: member.profileImageUrl } as User,
           });
         });
@@ -1697,7 +1701,7 @@ export default function ChatHub() {
                       ) : (
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={item.avatar || undefined} />
-                          <AvatarFallback className="text-xs">{item.avatarFallback}</AvatarFallback>
+                          <AvatarFallback className="text-xs" style={item.themeColor ? { backgroundColor: item.themeColor, color: 'white' } : undefined}>{item.avatarFallback}</AvatarFallback>
                         </Avatar>
                       )}
                       {item.isOnline && (
@@ -1905,7 +1909,7 @@ export default function ChatHub() {
             <div className="relative shrink-0">
               <Avatar className="h-9 w-9">
                 <AvatarImage src={selectedDirectUser.profileImageUrl || undefined} />
-                <AvatarFallback className="text-xs">{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
+                <AvatarFallback className="text-xs" style={selectedConversation?.themeColor ? { backgroundColor: selectedConversation.themeColor, color: 'white' } : undefined}>{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-background" />
             </div>
@@ -2522,6 +2526,7 @@ export default function ChatHub() {
                       avatar: member.profileImageUrl,
                       avatarFallback: getInitials(memberName),
                       unreadCount: 0,
+                      themeColor: member.themeColor,
                       data: user,
                     };
                     setSelectedConversation(dmConversation);
@@ -2541,7 +2546,7 @@ export default function ChatHub() {
                       <div className="relative">
                         <Avatar className="h-7 w-7">
                           <AvatarImage src={member.profileImageUrl || undefined} />
-                          <AvatarFallback className="text-[10px]">{getInitials(memberName)}</AvatarFallback>
+                          <AvatarFallback className="text-[10px]" style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>{getInitials(memberName)}</AvatarFallback>
                         </Avatar>
                         <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-background" />
                       </div>
@@ -2612,7 +2617,7 @@ export default function ChatHub() {
             <div className="flex flex-col items-center mb-4">
               <Avatar className="h-16 w-16 mb-2">
                 <AvatarImage src={selectedDirectUser.profileImageUrl || undefined} />
-                <AvatarFallback>{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
+                <AvatarFallback style={selectedConversation?.themeColor ? { backgroundColor: selectedConversation.themeColor, color: 'white' } : undefined}>{getInitials(getUserDisplayName(selectedDirectUser))}</AvatarFallback>
               </Avatar>
               <h4 className="font-medium">{getUserDisplayName(selectedDirectUser)}</h4>
               <p className="text-sm text-muted-foreground">{selectedDirectUser.email}</p>
@@ -2831,7 +2836,7 @@ export default function ChatHub() {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={currentUser.profileImageUrl || undefined} />
-                  <AvatarFallback>{getInitials(getUserDisplayName(currentUser))}</AvatarFallback>
+                  <AvatarFallback style={teamMembers.find(m => m.userId === currentUser.id)?.themeColor ? { backgroundColor: teamMembers.find(m => m.userId === currentUser.id)!.themeColor!, color: 'white' } : undefined}>{getInitials(getUserDisplayName(currentUser))}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-medium">{getUserDisplayName(currentUser)}</span>
@@ -2853,7 +2858,7 @@ export default function ChatHub() {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={member.profileImageUrl || undefined} />
-                  <AvatarFallback>{getInitials(getTeamMemberName(member))}</AvatarFallback>
+                  <AvatarFallback style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>{getInitials(getTeamMemberName(member))}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-medium">{getTeamMemberName(member)}</span>

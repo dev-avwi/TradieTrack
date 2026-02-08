@@ -154,6 +154,7 @@ interface TeamMemberData {
   hourlyRate?: string;
   customPermissions?: string[];
   useCustomPermissions?: boolean;
+  themeColor?: string;
 }
 
 interface ActivityFeedItem {
@@ -481,7 +482,7 @@ function LiveOpsTab() {
                           >
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={member.profileImageUrl} />
-                              <AvatarFallback>
+                              <AvatarFallback style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>
                                 {getInitials(member.firstName, member.lastName, member.email)}
                               </AvatarFallback>
                             </Avatar>
@@ -798,7 +799,7 @@ function LiveOpsTab() {
                   <div className="relative">
                     <Avatar className="h-16 w-16">
                       <AvatarImage src={selectedMember.profileImageUrl} />
-                      <AvatarFallback className="text-lg">
+                      <AvatarFallback className="text-lg" style={selectedMember.themeColor ? { backgroundColor: selectedMember.themeColor, color: 'white' } : undefined}>
                         {getInitials(selectedMember.firstName, selectedMember.lastName, selectedMember.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -1374,7 +1375,7 @@ function TeamAdminTab() {
                   <div className="flex items-center gap-3 sm:gap-4">
                     <Avatar className={`h-10 w-10 sm:h-12 sm:w-12 shrink-0 ${isPending ? 'opacity-70' : ''}`}>
                       <AvatarImage src={member.profileImageUrl} />
-                      <AvatarFallback className={isPending ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300' : ''}>
+                      <AvatarFallback className={isPending ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300' : ''} style={!isPending && member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>
                         {getInitials(member.firstName, member.lastName, member.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -2587,7 +2588,7 @@ function PerformanceTab() {
                   </div>
                   <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
                     <AvatarImage src={member.profileImageUrl} />
-                    <AvatarFallback className="text-xs sm:text-sm">
+                    <AvatarFallback className="text-xs sm:text-sm" style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>
                       {getInitials(member.firstName, member.lastName, member.email)}
                     </AvatarFallback>
                   </Avatar>
