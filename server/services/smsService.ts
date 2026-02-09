@@ -90,17 +90,32 @@ export async function getOrCreateConversation(options: {
 }
 
 /**
+ * Look up the registered alphanumeric sender ID for a business owner
+ */
+export async function getAlphanumericSenderId(businessOwnerId?: string): Promise<string | undefined> {
+  if (!businessOwnerId) return undefined;
+  try {
+    const settings = await storage.getBusinessSettings(businessOwnerId);
+    return settings?.twilioSenderId || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Send SMS via the platform Twilio account
  */
 async function sendSmsPlatform(
   to: string,
   message: string,
-  mediaUrls?: string[]
+  mediaUrls?: string[],
+  businessOwnerId?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean }> {
   const formattedTo = formatPhoneNumber(to);
   const validMediaUrls = mediaUrls?.slice(0, 10) || [];
+  const alphanumericSenderId = await getAlphanumericSenderId(businessOwnerId);
   
-  return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined });
+  return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined, alphanumericSenderId });
 }
 
 /**
@@ -134,7 +149,8 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
   const result = await sendSmsPlatform(
     conversation.clientPhone,
     options.message,
-    validMediaUrls.length > 0 ? validMediaUrls : undefined
+    validMediaUrls.length > 0 ? validMediaUrls : undefined,
+    options.businessOwnerId
   );
   
   // Update message with result

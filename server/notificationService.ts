@@ -8,9 +8,10 @@
 
 import { sendEmail, EmailOptions } from './emailService';
 import { sendSMS as sendTwilioSMS, isTwilioInitialized, initializeTwilio } from './twilioClient';
+import { getAlphanumericSenderId } from './services/smsService';
 
 // Real SMS sending via Twilio - NO silent success fallbacks in production
-const sendSMS = async (options: { to: string; message: string }): Promise<{ success: boolean; error?: string; simulated?: boolean }> => {
+const sendSMS = async (options: { to: string; message: string; businessOwnerId?: string }): Promise<{ success: boolean; error?: string; simulated?: boolean }> => {
   try {
     // Ensure Twilio is initialized
     if (!isTwilioInitialized()) {
@@ -27,10 +28,13 @@ const sendSMS = async (options: { to: string; message: string }): Promise<{ succ
         };
       }
     }
+
+    const alphanumericSenderId = await getAlphanumericSenderId(options.businessOwnerId);
     
     const result = await sendTwilioSMS({
       to: options.to,
-      message: options.message
+      message: options.message,
+      alphanumericSenderId
     });
     
     // Return actual result - don't mask failures
@@ -101,6 +105,7 @@ export interface NotifyClientOptions {
   businessEmail?: string;
   businessPhone?: string;
   channel?: NotificationChannel;
+  businessOwnerId?: string;
 }
 
 export interface NotificationResult {

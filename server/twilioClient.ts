@@ -242,6 +242,7 @@ interface SendSMSOptions {
   to: string;
   message: string;
   mediaUrls?: string[]; // MMS media URLs (max 10, each up to 5MB)
+  alphanumericSenderId?: string; // Registered alphanumeric sender ID (e.g., "JobRunner")
 }
 
 interface SMSResult {
@@ -253,7 +254,7 @@ interface SMSResult {
 }
 
 export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
-  const { to, message, mediaUrls } = options;
+  const { to, message, mediaUrls, alphanumericSenderId } = options;
 
   // Format Australian phone number
   let formattedTo = to.replace(/\s+/g, '').replace(/^0/, '+61');
@@ -281,10 +282,13 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   }
 
   try {
-    // Build message options
+    // Use alphanumeric sender ID for plain SMS when configured (case-sensitive per Twilio)
+    // MMS requires a phone number so always fall back to phone number for MMS
+    const fromValue = (!isMMS && alphanumericSenderId) ? alphanumericSenderId : twilioPhoneNumber;
+
     const messageOptions: any = {
       body: message,
-      from: twilioPhoneNumber,
+      from: fromValue,
       to: formattedTo
     };
 
