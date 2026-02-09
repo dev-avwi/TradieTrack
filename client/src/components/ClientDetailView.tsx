@@ -161,7 +161,7 @@ export default function ClientDetailView({
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['/api/clients', clientId],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}`);
+      const response = await fetch(`/api/clients/${clientId}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch client');
       return response.json();
     }
@@ -170,7 +170,7 @@ export default function ClientDetailView({
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['/api/clients', clientId, 'jobs'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/jobs`);
+      const response = await fetch(`/api/clients/${clientId}/jobs`, { credentials: 'include' });
       if (!response.ok) return [];
       return response.json();
     },
@@ -205,7 +205,7 @@ export default function ClientDetailView({
       const allJobPhotos: any[] = [];
       for (const job of jobs) {
         try {
-          const response = await fetch(`/api/jobs/${job.id}/photos`);
+          const response = await fetch(`/api/jobs/${job.id}/photos`, { credentials: 'include' });
           if (response.ok) {
             const photos = await response.json();
             allJobPhotos.push(...photos.map((p: any) => ({ ...p, jobId: job.id, jobTitle: job.title })));
@@ -222,7 +222,7 @@ export default function ClientDetailView({
   const { data: clientAssets, isLoading: assetsLoading } = useQuery({
     queryKey: ['/api/clients', clientId, 'assets'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/assets`);
+      const response = await fetch(`/api/clients/${clientId}/assets`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch assets');
       return response.json();
     },
@@ -238,7 +238,7 @@ export default function ClientDetailView({
   }>({
     queryKey: ['/api/clients', clientId, 'saved-signature'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/saved-signature`);
+      const response = await fetch(`/api/clients/${clientId}/saved-signature`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch saved signature');
       return response.json();
     },
