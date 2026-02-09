@@ -22822,7 +22822,10 @@ Respond with JSON in this format:
         return res.status(404).json({ error: 'User not found' });
       }
       
+      const businessOwnerId = sender.businessOwnerId || userId;
+      
       const message = await storage.createDirectMessage({
+        businessOwnerId,
         senderId: userId,
         recipientId,
         content: content?.trim() || '',
@@ -22933,6 +22936,7 @@ Respond with JSON in this format:
       const validatedData = insertTeamChatSchema.parse({
         ...req.body,
         businessOwnerId: context.businessOwnerId,
+        businessOwnerId,
         senderId: userId,
       });
       
