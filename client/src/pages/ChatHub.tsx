@@ -1618,7 +1618,7 @@ export default function ChatHub() {
       <OfflineBanner />
 
       {/* Conversation list with separators */}
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="flex-1 pl-2 pr-3">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
