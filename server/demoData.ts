@@ -1961,7 +1961,7 @@ export async function createDemoActivityLogs(userId: string): Promise<void> {
         description: client ? `To ${client.name} - $${quote.total}` : `$${quote.total}`,
         entityType: 'quote',
         entityId: quote.id,
-        metadata: { clientName: client?.name, total: quote.total, status: quote.status },
+        metadata: { clientName: client?.name, total: quote.total, status: quote.status, ...(type === 'quote_sent' && client ? { deliveryMethod: 'email', clientEmail: client.email } : {}) },
         createdAt: eventDate,
       });
     }
@@ -1994,7 +1994,7 @@ export async function createDemoActivityLogs(userId: string): Promise<void> {
         description: client ? `To ${client.name} - $${invoice.total}` : `$${invoice.total}`,
         entityType: 'invoice',
         entityId: invoice.id,
-        metadata: { clientName: client?.name, total: invoice.total, status: invoice.status },
+        metadata: { clientName: client?.name, total: invoice.total, status: invoice.status, ...(type === 'invoice_sent' && client ? { deliveryMethod: 'email', clientEmail: client.email } : {}) },
         createdAt: eventDate,
       });
     }

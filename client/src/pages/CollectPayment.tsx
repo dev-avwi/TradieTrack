@@ -469,10 +469,18 @@ export default function CollectPayment() {
       });
     },
     onError: (error: any) => {
+      const isStripeError = error.message?.includes('stripeNotConnected') || error.message?.includes('Stripe account not connected');
       toast({
-        title: "Failed to create payment request",
-        description: error.message || "Please try again",
+        title: isStripeError ? "Stripe Not Connected" : "Failed to create payment request",
+        description: isStripeError 
+          ? "Connect your Stripe account in Settings > Payments to accept online payments." 
+          : (error.message || "Please try again"),
         variant: "destructive",
+        action: isStripeError ? (
+          <ToastAction altText="Go to Settings" onClick={() => navigate('/settings')}>
+            Go to Settings
+          </ToastAction>
+        ) : undefined,
       });
     },
   });
@@ -506,10 +514,18 @@ export default function CollectPayment() {
       });
     },
     onError: (error: any) => {
+      const isStripeError = error.message?.includes('stripeNotConnected') || error.message?.includes('Stripe account not connected');
       toast({
-        title: "Failed to create payment request",
-        description: error.message || "Please try again",
+        title: isStripeError ? "Stripe Not Connected" : "Failed to create payment request",
+        description: isStripeError 
+          ? "Connect your Stripe account in Settings > Payments to accept online payments." 
+          : (error.message || "Please try again"),
         variant: "destructive",
+        action: isStripeError ? (
+          <ToastAction altText="Go to Settings" onClick={() => navigate('/settings')}>
+            Go to Settings
+          </ToastAction>
+        ) : undefined,
       });
     },
   });

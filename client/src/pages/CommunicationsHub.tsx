@@ -425,7 +425,7 @@ export default function CommunicationsHub() {
   });
   
   const { data: activityLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery<ActivityLog[]>({
-    queryKey: ['/api/activity/recent/100'],
+    queryKey: ['/api/activity/recent/200'],
   });
   
   const isLoading = smsLoading || logsLoading;
@@ -441,6 +441,9 @@ export default function CommunicationsHub() {
               log.type === 'invoice_sent' ||
               log.type === 'receipt_sent')) {
           return false;
+        }
+        if (log.type === 'quote_sent' || log.type === 'invoice_sent' || log.type === 'receipt_sent') {
+          return true;
         }
         const metadata = (log.metadata || {}) as Record<string, any>;
         const hasDeliveryEvidence = metadata.deliveryMethod || 

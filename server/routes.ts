@@ -12518,6 +12518,14 @@ Be specific about materials, colors, and features that would be included.`
   
   // Send payment link email to customer
   app.post("/api/invoices/:id/send-payment-link", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    const business = await storage.getBusinessSettings(req.userId);
+    const canAcceptPayments = !!(business?.stripeConnectAccountId && business?.connectChargesEnabled);
+    if (!canAcceptPayments) {
+      return res.status(400).json({
+        error: "Stripe account not connected. Go to Settings > Payments to connect your Stripe account before sending payment links.",
+        stripeNotConnected: true
+      });
+    }
     const { handleSendPaymentLink } = await import('./emailRoutes');
     return handleSendPaymentLink(req, res, storage);
   });
@@ -13201,6 +13209,15 @@ Be specific about materials, colors, and features that would be included.`
   // Generate and persist payment link for invoice (uses custom tradie-branded payment page, NOT Stripe Checkout)
   app.post("/api/invoices/:id/generate-payment-link", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const businessForStripeCheck = await storage.getBusinessSettings(req.userId);
+      const canAcceptPayments = !!(businessForStripeCheck?.stripeConnectAccountId && businessForStripeCheck?.connectChargesEnabled);
+      if (!canAcceptPayments) {
+        return res.status(400).json({
+          error: "Stripe account not connected. Go to Settings > Payments to connect your Stripe account before sending payment links.",
+          stripeNotConnected: true
+        });
+      }
+
       // Get invoice with line items
       const invoice = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
       if (!invoice) {
@@ -13286,6 +13303,15 @@ Be specific about materials, colors, and features that would be included.`
 
   app.post("/api/payment-links", paymentRateLimiter, requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const businessForStripeCheck = await storage.getBusinessSettings(req.userId);
+      const canAcceptPayments = !!(businessForStripeCheck?.stripeConnectAccountId && businessForStripeCheck?.connectChargesEnabled);
+      if (!canAcceptPayments) {
+        return res.status(400).json({
+          error: "Stripe account not connected. Go to Settings > Payments to connect your Stripe account before sending payment links.",
+          stripeNotConnected: true
+        });
+      }
+
       // Validate request body with Zod
       const validationResult = paymentLinkSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -13375,6 +13401,15 @@ Be specific about materials, colors, and features that would be included.`
 
   app.post("/api/payment-links/send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const businessForStripeCheck = await storage.getBusinessSettings(req.userId);
+      const canAcceptPayments = !!(businessForStripeCheck?.stripeConnectAccountId && businessForStripeCheck?.connectChargesEnabled);
+      if (!canAcceptPayments) {
+        return res.status(400).json({
+          error: "Stripe account not connected. Go to Settings > Payments to connect your Stripe account before sending payment links.",
+          stripeNotConnected: true
+        });
+      }
+
       // Validate request body with Zod
       const validationResult = paymentLinkSendSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -13910,6 +13945,15 @@ Be specific about materials, colors, and features that would be included.`
   // Create a new payment request
   app.post("/api/payment-requests", requireAuth, async (req: any, res) => {
     try {
+      const businessForStripeCheck = await storage.getBusinessSettings(req.userId);
+      const canAcceptPayments = !!(businessForStripeCheck?.stripeConnectAccountId && businessForStripeCheck?.connectChargesEnabled);
+      if (!canAcceptPayments) {
+        return res.status(400).json({
+          error: "Stripe account not connected. Go to Settings > Payments to connect your Stripe account before sending payment links.",
+          stripeNotConnected: true
+        });
+      }
+
       const { amount, description, reference, invoiceId, jobId, clientId, expiresInHours = 24 } = req.body;
       
       if (!amount || amount <= 0) {
