@@ -434,13 +434,22 @@ export default function CommunicationsHub() {
   
   if (activityLogs && Array.isArray(activityLogs)) {
     const sentLogs = activityLogs
-      .filter(log => 
-        log.type?.includes('sent') || 
-        log.type?.includes('email') ||
-        log.type === 'quote_sent' ||
-        log.type === 'invoice_sent' ||
-        log.type === 'receipt_sent'
-      );
+      .filter(log => {
+        if (!(log.type?.includes('sent') || 
+              log.type?.includes('email') ||
+              log.type === 'quote_sent' ||
+              log.type === 'invoice_sent' ||
+              log.type === 'receipt_sent')) {
+          return false;
+        }
+        const metadata = (log.metadata || {}) as Record<string, any>;
+        const hasDeliveryEvidence = metadata.deliveryMethod || 
+          metadata.clientEmail || metadata.recipientEmail || 
+          metadata.clientPhone || metadata.recipientPhone ||
+          metadata.emailSubject || metadata.smsMessageId ||
+          metadata.sendgridId || metadata.twilioSid;
+        return !!hasDeliveryEvidence;
+      });
 
     const seenEntityKeys = new Set<string>();
     const deduplicatedLogs = sentLogs.filter(log => {
