@@ -656,6 +656,29 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            {/* Navigation buttons for linked documents */}
+            {quote.jobId && job && (
+              <Button 
+                variant="outline"
+                onClick={() => setLocation(`/jobs/${quote.jobId}`)}
+                className="w-full sm:w-auto"
+                data-testid="button-view-linked-job"
+              >
+                <Briefcase className="h-4 w-4 mr-2" />
+                View Job
+              </Button>
+            )}
+            {quote.status === 'accepted' && linkedInvoice && (
+              <Button 
+                variant="outline"
+                onClick={() => setLocation(`/invoices/${linkedInvoice.id}`)}
+                className="w-full sm:w-auto"
+                data-testid="button-view-linked-invoice"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                View Invoice
+              </Button>
+            )}
             {/* Primary action - Send Quote via Email with PDF */}
             {(quote.status === 'draft' || quote.status === 'sent') && client?.email && (
               emailConnected ? (
@@ -712,18 +735,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 Create Job
               </Button>
             )}
-            {/* Convert to Invoice / View Invoice - for accepted quotes */}
-            {quote.status === 'accepted' && linkedInvoice ? (
-              <Button 
-                onClick={() => setLocation(`/invoices/${linkedInvoice.id}`)}
-                variant="outline"
-                className="w-full sm:w-auto"
-                data-testid="button-view-linked-invoice"
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                View Invoice
-              </Button>
-            ) : quote.status === 'accepted' && !isLinkedInvoiceLoading && (
+            {/* Convert to Invoice - for accepted quotes without linked invoice */}
+            {quote.status === 'accepted' && !linkedInvoice && !isLinkedInvoiceLoading && (
               <Button 
                 onClick={handleConvertToInvoice}
                 variant="outline"
@@ -733,18 +746,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               >
                 <Receipt className="h-4 w-4 mr-2" />
                 {convertToInvoiceMutation.isPending ? 'Converting...' : 'Convert to Invoice'}
-              </Button>
-            )}
-            {/* View linked job if exists */}
-            {quote.jobId && job && (
-              <Button 
-                variant="outline"
-                onClick={() => setLocation(`/jobs/${quote.jobId}`)}
-                className="w-full sm:w-auto"
-                data-testid="button-view-linked-job"
-              >
-                <Briefcase className="h-4 w-4 mr-2" />
-                View Job
               </Button>
             )}
           </div>

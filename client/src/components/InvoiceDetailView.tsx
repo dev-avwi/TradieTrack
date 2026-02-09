@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -890,6 +890,29 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            {/* Navigation buttons for linked documents */}
+            {invoice.jobId && job && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/jobs/${invoice.jobId}`)}
+                className="w-full sm:w-auto"
+                data-testid="button-view-linked-job"
+              >
+                <Briefcase className="h-4 w-4 mr-2" />
+                View Job
+              </Button>
+            )}
+            {invoice.quoteId && linkedQuote && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/quotes/${invoice.quoteId}`)}
+                className="w-full sm:w-auto"
+                data-testid="button-view-linked-quote"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Quote
+              </Button>
+            )}
             {/* Primary action - Send Invoice via Email with PDF */}
             {(invoice.status === 'draft' || invoice.status === 'sent') && client?.email && (
               <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
