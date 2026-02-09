@@ -1421,7 +1421,7 @@ export default function JobDetailView({
               {currentUser && !isSolo && (
                 <div ref={chatSectionRef} data-testid="section-job-chat" className="flex-1">
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     className="w-full gap-2"
                     onClick={() => navigate(`/chat?job=${jobId}`)}
                   >
@@ -1432,7 +1432,7 @@ export default function JobDetailView({
               )}
               {client?.email && (
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   className="flex-1 gap-2"
                   onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
                   data-testid="button-email-client"
@@ -1443,7 +1443,7 @@ export default function JobDetailView({
               )}
               {client?.phone && (
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   className="flex-1 gap-2"
                   onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
                   data-testid="button-sms-client"
