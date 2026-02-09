@@ -42,7 +42,8 @@ import {
   Building2,
   Info,
   Send,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
@@ -750,7 +751,30 @@ export default function CollectPayment() {
     return client?.name;
   };
 
-  const pendingRequests = paymentRequests?.filter(r => r.status === 'pending') || [];
+  const getJobTitle = (jobId: string | null | undefined) => {
+    if (!jobId || !jobs) return null;
+    const job = jobs.find(j => j.id === jobId);
+    return job?.title;
+  };
+
+  const handleRegenerate = (request: PaymentRequest) => {
+    cancelMutation.mutate(request.id);
+    createMutation.mutate({
+      amount: parseFloat(request.amount),
+      description: request.description,
+      clientId: request.clientId || undefined,
+      invoiceId: request.invoiceId || undefined,
+      jobId: request.jobId || undefined,
+      expiresInHours: 24,
+    });
+  };
+
+  const isExpiredRequest = (r: PaymentRequest) => {
+    return r.expiresAt && new Date(r.expiresAt) < new Date();
+  };
+
+  const pendingRequests = paymentRequests?.filter(r => r.status === 'pending' && !isExpiredRequest(r)) || [];
+  const expiredRequests = paymentRequests?.filter(r => r.status === 'pending' && isExpiredRequest(r)) || [];
   const completedRequests = paymentRequests?.filter(r => r.status !== 'pending') || [];
   
   const totalPending = pendingRequests.reduce((sum, r) => sum + parseFloat(r.amount), 0);
@@ -939,7 +963,7 @@ export default function CollectPayment() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : pendingRequests.length === 0 && completedRequests.length === 0 ? (
+        ) : pendingRequests.length === 0 && expiredRequests.length === 0 && completedRequests.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="rounded-full bg-muted p-4 mb-4">
@@ -971,15 +995,31 @@ export default function CollectPayment() {
                             <div className="h-10 w-px bg-border" />
                             <div>
                               <p className="text-sm font-medium truncate max-w-[200px]">{request.description}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                 {request.clientId && getClientName(request.clientId) && (
                                   <span>{getClientName(request.clientId)}</span>
                                 )}
-                                {request.clientId && request.invoiceId && (
-                                  <span>•</span>
+                                {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
+                                  <>
+                                    {request.clientId && getClientName(request.clientId) && <span>•</span>}
+                                    <span
+                                      className="text-primary cursor-pointer hover:underline"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
+                                    >
+                                      {getInvoiceNumber(request.invoiceId)}
+                                    </span>
+                                  </>
                                 )}
-                                {request.invoiceId && (
-                                  <span>{getInvoiceNumber(request.invoiceId)}</span>
+                                {request.jobId && getJobTitle(request.jobId) && (
+                                  <>
+                                    {(request.clientId || request.invoiceId) && <span>•</span>}
+                                    <span
+                                      className="text-primary cursor-pointer hover:underline"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
+                                    >
+                                      {getJobTitle(request.jobId)}
+                                    </span>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -996,6 +1036,84 @@ export default function CollectPayment() {
                             >
                               <Share2 className="h-4 w-4 mr-1" />
                               Share
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => cancelMutation.mutate(request.id)}
+                              data-testid={`button-cancel-${request.id}`}
+                            >
+                              <XCircle className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {expiredRequests.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">EXPIRED REQUESTS</h3>
+                <div className="space-y-2">
+                  {expiredRequests.map((request) => (
+                    <Card key={request.id} className="opacity-75" data-testid={`request-expired-${request.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-bold text-lg">${parseFloat(request.amount).toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                              </p>
+                            </div>
+                            <div className="h-10 w-px bg-border" />
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-sm font-medium truncate max-w-[180px]">{request.description}</p>
+                                {getStatusBadge('expired')}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                {request.clientId && getClientName(request.clientId) && (
+                                  <span>{getClientName(request.clientId)}</span>
+                                )}
+                                {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
+                                  <>
+                                    {request.clientId && getClientName(request.clientId) && <span>•</span>}
+                                    <span
+                                      className="text-primary cursor-pointer hover:underline"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
+                                    >
+                                      {getInvoiceNumber(request.invoiceId)}
+                                    </span>
+                                  </>
+                                )}
+                                {request.jobId && getJobTitle(request.jobId) && (
+                                  <>
+                                    {(request.clientId || request.invoiceId) && <span>•</span>}
+                                    <span
+                                      className="text-primary cursor-pointer hover:underline"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
+                                    >
+                                      {getJobTitle(request.jobId)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRegenerate(request)}
+                              disabled={createMutation.isPending || cancelMutation.isPending}
+                              data-testid={`button-regenerate-${request.id}`}
+                            >
+                              <RefreshCw className={`h-4 w-4 mr-1 ${createMutation.isPending ? 'animate-spin' : ''}`} />
+                              Regenerate
                             </Button>
                             <Button
                               size="icon"
