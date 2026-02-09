@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { SignaturePad, SignatureDisplay } from "@/components/ui/signature-pad";
@@ -683,7 +684,7 @@ export default function Settings({
     {
       id: 'payment_terms',
       label: 'Payment terms specified',
-      status: paymentData.paymentInstructions ? 'pass' : 'warning',
+      status: paymentData.defaultPaymentTermsDays > 0 ? 'pass' : 'warning',
       description: 'Clear payment terms help with debt recovery'
     }
   ];
@@ -725,7 +726,7 @@ export default function Settings({
         return () => {
           setActiveTab('payment');
           localStorage.setItem('tradietrack-settings-tab', 'payment');
-          setTimeout(() => scrollToElement('[data-testid="textarea-payment-instructions"]'), 300);
+          setTimeout(() => scrollToElement('[data-testid="input-payment-terms-days"]'), 300);
         };
       default:
         return null;
@@ -1627,12 +1628,13 @@ export default function Settings({
         </TabsContent>
 
         <TabsContent value="payment" className="space-y-6">
+          {/* Card 1: Rates & Defaults */}
           <Card>
             <CardHeader>
-              <CardTitle>Payment Settings</CardTitle>
+              <CardTitle>Rates & Defaults</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="hourly-rate">Default Hourly Rate ($)</Label>
                   <Input
@@ -1665,37 +1667,7 @@ export default function Settings({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="payment-instructions">Payment Instructions</Label>
-                <textarea
-                  id="payment-instructions"
-                  className="w-full min-h-[100px] p-3 text-sm rounded-md border border-input bg-background"
-                  value={paymentData.paymentInstructions}
-                  onChange={(e) => setPaymentData(prev => ({ ...prev, paymentInstructions: e.target.value }))}
-                  placeholder="Bank details, PayID, or other payment instructions..."
-                  data-testid="textarea-payment-instructions"
-                />
-                <p className="text-xs text-muted-foreground">
-                  These instructions will appear on invoices and quotes
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bank-details">Bank Account Details</Label>
-                <textarea
-                  id="bank-details"
-                  className="w-full min-h-[80px] p-3 text-sm rounded-md border border-input bg-background"
-                  value={paymentData.bankDetails}
-                  onChange={(e) => setPaymentData(prev => ({ ...prev, bankDetails: e.target.value }))}
-                  placeholder="BSB: 000-000&#10;Account: 12345678&#10;Account Name: Your Business Name"
-                  data-testid="textarea-bank-details"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Bank transfer details shown on invoices
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="payment-terms-days">Payment Due (Days)</Label>
                   <Input
@@ -1705,7 +1677,6 @@ export default function Settings({
                     onChange={(e) => setPaymentData(prev => ({ ...prev, defaultPaymentTermsDays: Number(e.target.value) }))}
                     data-testid="input-payment-terms-days"
                   />
-                  <p className="text-xs text-muted-foreground">Default due date for invoices</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="late-fee-rate">Late Fee Rate</Label>
@@ -1716,7 +1687,6 @@ export default function Settings({
                     placeholder="1.5% per month"
                     data-testid="input-late-fee-rate"
                   />
-                  <p className="text-xs text-muted-foreground">Interest on overdue invoices</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="warranty-period">Warranty Period</Label>
@@ -1727,85 +1697,75 @@ export default function Settings({
                     placeholder="12 months"
                     data-testid="input-warranty-period"
                   />
-                  <p className="text-xs text-muted-foreground">Default warranty on work</p>
                 </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={handleSave}
+                  disabled={saveSettingsMutation.isPending}
+                  data-testid="button-save-rates"
+                >
+                  {saveSettingsMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Rates
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
 
+          {/* Card 2: Bank & Payment Methods */}
+          <PaymentMethodsSettings />
+
+          {/* Card 3: Documents & Signature */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Document Terms & Conditions
+                Documents & Signature
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Legal terms that appear on your quotes and invoices. These protect your business.
-              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="quote-terms">Quote Terms & Conditions</Label>
-                <textarea
+                <Textarea
                   id="quote-terms"
-                  className="w-full min-h-[150px] p-3 text-sm rounded-md border border-input bg-background font-mono"
+                  className="min-h-[120px] font-mono"
                   value={paymentData.quoteTerms}
                   onChange={(e) => setPaymentData(prev => ({ ...prev, quoteTerms: e.target.value }))}
-                  placeholder="1. ACCEPTANCE: This quote is valid for 30 days from the date of issue.&#10;2. PAYMENT: A deposit may be required before work commences.&#10;3. VARIATIONS: Any variations must be agreed in writing.&#10;4. WARRANTY: Work is guaranteed for 12 months from completion."
+                  placeholder="Enter your quote terms..."
                   data-testid="textarea-quote-terms"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Leave blank to use our standard Australian trade terms. Custom terms will replace the defaults.
-                </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="invoice-terms">Invoice Terms & Conditions</Label>
-                <textarea
+                <Textarea
                   id="invoice-terms"
-                  className="w-full min-h-[150px] p-3 text-sm rounded-md border border-input bg-background font-mono"
+                  className="min-h-[120px] font-mono"
                   value={paymentData.invoiceTerms}
                   onChange={(e) => setPaymentData(prev => ({ ...prev, invoiceTerms: e.target.value }))}
-                  placeholder="1. PAYMENT TERMS: Payment is due within 14 days of invoice date.&#10;2. LATE PAYMENT: Overdue accounts incur interest at 1.5% per month.&#10;3. DISPUTES: Disputes must be raised within 7 days.&#10;4. OWNERSHIP: Goods remain supplier's property until paid in full."
+                  placeholder="Enter your invoice terms..."
                   data-testid="textarea-invoice-terms"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Leave blank to use our standard terms. Your late fee rate will be automatically included.
-                </p>
               </div>
 
-              <div 
-                className="p-4 rounded-lg border"
-                style={{ 
-                  backgroundColor: 'hsl(var(--trade) / 0.05)',
-                  borderColor: 'hsl(var(--trade) / 0.2)'
-                }}
-              >
-                <p className="text-sm" style={{ color: 'hsl(var(--trade) / 0.9)' }}>
-                  <strong>Legal Note:</strong> These terms help protect your business and set clear expectations with clients.
-                  For complex projects, consider having a lawyer review your terms. TradieTrack's default terms cover
-                  common Australian trade business requirements including acceptance, payment, variations, and warranty.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              <Separator />
 
-          {/* Payment Methods & Fees Card */}
-          <PaymentMethodsSettings />
-
-          {/* Digital Signature Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PenTool className="h-5 w-5" />
-                Digital Signature
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Add your signature to quotes and invoices for a professional touch
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
               <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <PenTool className="h-5 w-5" />
+                  <Label className="text-base font-semibold">Digital Signature</Label>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Your Signature</Label>
                   {signatureData.defaultSignature ? (
@@ -1846,66 +1806,40 @@ export default function Settings({
                     placeholder="e.g., John Smith, Director"
                     data-testid="input-signature-name"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    This name will appear below your signature on documents
-                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm">Automatically Include Signature On:</Label>
+                  
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="signature-quotes" className="font-medium">Quotes</Label>
+                    </div>
+                    <Switch
+                      id="signature-quotes"
+                      checked={signatureData.includeSignatureOnQuotes}
+                      onCheckedChange={(checked) => 
+                        setSignatureData(prev => ({ ...prev, includeSignatureOnQuotes: checked }))
+                      }
+                      data-testid="switch-signature-quotes"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="signature-invoices" className="font-medium">Invoices</Label>
+                    </div>
+                    <Switch
+                      id="signature-invoices"
+                      checked={signatureData.includeSignatureOnInvoices}
+                      onCheckedChange={(checked) => 
+                        setSignatureData(prev => ({ ...prev, includeSignatureOnInvoices: checked }))
+                      }
+                      data-testid="switch-signature-invoices"
+                    />
+                  </div>
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <Label className="text-base">Automatically Include Signature On:</Label>
-                
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="signature-quotes" className="font-medium">Quotes</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Add your signature to all quotes automatically
-                    </p>
-                  </div>
-                  <Switch
-                    id="signature-quotes"
-                    checked={signatureData.includeSignatureOnQuotes}
-                    onCheckedChange={(checked) => 
-                      setSignatureData(prev => ({ ...prev, includeSignatureOnQuotes: checked }))
-                    }
-                    data-testid="switch-signature-quotes"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="signature-invoices" className="font-medium">Invoices</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Add your signature to all invoices automatically
-                    </p>
-                  </div>
-                  <Switch
-                    id="signature-invoices"
-                    checked={signatureData.includeSignatureOnInvoices}
-                    onCheckedChange={(checked) => 
-                      setSignatureData(prev => ({ ...prev, includeSignatureOnInvoices: checked }))
-                    }
-                    data-testid="switch-signature-invoices"
-                  />
-                </div>
-              </div>
-
-              {!signatureData.defaultSignature && (
-                <div 
-                  className="p-4 rounded-lg border"
-                  style={{ 
-                    backgroundColor: 'hsl(var(--trade) / 0.05)',
-                    borderColor: 'hsl(var(--trade) / 0.2)'
-                  }}
-                >
-                  <p className="text-sm" style={{ color: 'hsl(var(--trade) / 0.9)' }}>
-                    <strong>Tip:</strong> Draw your signature above and click "Save Signature" to store it.
-                    Your signature adds a professional touch to quotes and invoices and can help with client trust.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1915,7 +1849,7 @@ export default function Settings({
             <CardHeader>
               <CardTitle>Notifications You Receive</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Control which email notifications TradieTrack sends to you
+                Control which email notifications JobRunner sends to you
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -2600,7 +2534,7 @@ function SupportTab() {
             Need Help?
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Get in touch with our team for any questions or issues with TradieTrack
+            Get in touch with our team for any questions or issues with JobRunner
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -2821,7 +2755,7 @@ function SupportTab() {
                   <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-overdue-invoices">
                     <p className="font-medium text-sm">How do I chase overdue invoices?</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      TradieTrack shows overdue invoices on your Dashboard. You can send reminder 
+                      JobRunner shows overdue invoices on your Dashboard. You can send reminder 
                       emails from the invoice page. Consider enabling automated reminders in Settings.
                     </p>
                   </div>
@@ -2902,7 +2836,7 @@ function SupportTab() {
                     <p className="font-medium text-sm">Feature request or bug report?</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       We love feedback! Email us at admin@avwebinnovation.com with your ideas or any 
-                      bugs you find. We're always working to make TradieTrack better for Aussie tradies.
+                      bugs you find. We're always working to make JobRunner better for Aussie tradies.
                     </p>
                   </div>
                 </AccordionContent>
@@ -2916,7 +2850,7 @@ function SupportTab() {
           <div className="space-y-4">
             <h3 className="font-semibold flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Learn TradieTrack
+              Learn JobRunner
             </h3>
             <div className="p-4 rounded-lg border-2 bg-gradient-to-r from-primary/5 to-primary/10">
               <div className="flex items-start gap-4">
@@ -2926,7 +2860,7 @@ function SupportTab() {
                 <div className="space-y-2 flex-1">
                   <h4 className="font-semibold">Take the App Tour</h4>
                   <p className="text-sm text-muted-foreground">
-                    New to TradieTrack? Our quick walkthrough will show you how to create jobs, 
+                    New to JobRunner? Our quick walkthrough will show you how to create jobs, 
                     send quotes, and get paid faster.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -2969,10 +2903,10 @@ function SupportTab() {
 
           <Separator />
 
-          {/* About TradieTrack */}
+          {/* About JobRunner */}
           <div className="text-center space-y-2 py-4">
             <p className="text-sm text-muted-foreground">
-              TradieTrack is built by AV Web Innovation
+              JobRunner is built by AV Web Innovation
             </p>
             <p className="text-xs text-muted-foreground">
               Made in Australia for Australian tradies
@@ -3353,11 +3287,8 @@ function PaymentMethodsSettings() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wallet className="h-5 w-5" />
-          Payment Methods & Fees
+          Bank & Payment Methods
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Accept multiple payment methods and reduce processing fees. Offer bank transfer for lower costs or pass card fees to customers.
-        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Bank Transfer Details */}
@@ -3366,9 +3297,6 @@ function PaymentMethodsSettings() {
             <Banknote className="h-4 w-4" />
             Bank Transfer Details
           </Label>
-          <p className="text-sm text-muted-foreground -mt-2">
-            Customers can pay directly to your bank account (no fees!)
-          </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
