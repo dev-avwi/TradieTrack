@@ -7880,6 +7880,7 @@ Be specific about materials, colors, and features that would be included.`
           title: log.title || 'Activity',
           description: log.description || '',
           timestamp: log.createdAt,
+          createdAt: log.createdAt,
           status: 'success' as const,
           entityType: log.entityType,
           entityId: log.entityId,
