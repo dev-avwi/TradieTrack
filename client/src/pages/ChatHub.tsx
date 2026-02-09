@@ -271,8 +271,21 @@ function ConversationSkeleton() {
   );
 }
 
-function OfflineBanner({ isConnected }: { isConnected: boolean }) {
-  if (isConnected) return null;
+function OfflineBanner() {
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  if (isOnline) return null;
   
   return (
     <div className="shrink-0 px-4 py-2 bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800">
@@ -1174,7 +1187,7 @@ export default function ChatHub() {
       });
     }
     
-    // Sort: Team first, then by unread, then by time
+    // Sort: Team first, then by unread, then by most recent message time
     items.sort((a, b) => {
       if (a.type === 'team' && b.type !== 'team') return -1;
       if (b.type === 'team' && a.type !== 'team') return 1;
@@ -1183,6 +1196,11 @@ export default function ChatHub() {
       
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+
+      const aHasMessages = a.smsConversation?.lastMessageAt != null;
+      const bHasMessages = b.smsConversation?.lastMessageAt != null;
+      if (aHasMessages && !bHasMessages) return -1;
+      if (bHasMessages && !aHasMessages) return 1;
       
       const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
       const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
@@ -1597,7 +1615,7 @@ export default function ChatHub() {
         )}
       </div>
 
-      <OfflineBanner isConnected={smsSocketConnected} />
+      <OfflineBanner />
 
       {/* Conversation list with separators */}
       <ScrollArea className="flex-1 px-2">
@@ -1722,7 +1740,9 @@ export default function ChatHub() {
                             </span>
                           )}
                           {hasUnread && (
-                            <div className="w-2 h-2 rounded-full bg-primary" />
+                            <span className="min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                              {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -2157,12 +2177,7 @@ export default function ChatHub() {
             </div>
           </div>
 
-          <OfflineBanner isConnected={smsSocketConnected} />
-
-          <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2">
-            <Info className="h-3.5 w-3.5 shrink-0" />
-            <span>Messages are sent from a shared JobRunner number. Your client sees this number, not your personal number.</span>
-          </div>
+          <OfflineBanner />
 
           {selectedSmsConversation && isUnknownClient && selectedSmsConversation.id !== 'new' && (
             <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">

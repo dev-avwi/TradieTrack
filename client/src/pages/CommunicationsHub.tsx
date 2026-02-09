@@ -433,15 +433,29 @@ export default function CommunicationsHub() {
   const communications: CommunicationItem[] = [];
   
   if (activityLogs && Array.isArray(activityLogs)) {
-    activityLogs
+    const sentLogs = activityLogs
       .filter(log => 
         log.type?.includes('sent') || 
         log.type?.includes('email') ||
         log.type === 'quote_sent' ||
         log.type === 'invoice_sent' ||
         log.type === 'receipt_sent'
-      )
-      .forEach(log => {
+      );
+
+    const seenEntityKeys = new Set<string>();
+    const deduplicatedLogs = sentLogs.filter(log => {
+      const metadata = (log.metadata || {}) as Record<string, any>;
+      const deliveryMethod = metadata.deliveryMethod;
+      if (log.entityId && log.entityType) {
+        const timestamp = log.createdAt ? new Date(log.createdAt).toISOString().slice(0, 16) : '';
+        const key = `${log.entityType}-${log.entityId}-${deliveryMethod || 'email'}-${timestamp}`;
+        if (seenEntityKeys.has(key)) return false;
+        seenEntityKeys.add(key);
+      }
+      return true;
+    });
+
+    deduplicatedLogs.forEach(log => {
         const metadata = (log.metadata || {}) as Record<string, any>;
         const entityType = log.entityType as string | undefined;
         
