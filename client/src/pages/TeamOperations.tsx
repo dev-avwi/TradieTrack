@@ -577,14 +577,14 @@ function LiveOpsTab() {
                                     width: 24px;
                                     height: 24px;
                                     border-radius: 50%;
-                                    background: ${statusDisplay.markerBg};
+                                    background: ${member?.themeColor || statusDisplay.markerBg};
                                     border: 2px solid white;
                                     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                                     font-family: system-ui, -apple-system, sans-serif;
                                     cursor: pointer;
                                   ">
                                     <span style="
-                                      color: ${statusDisplay.markerText};
+                                      color: #fff;
                                       font-size: 9px;
                                       font-weight: 700;
                                       letter-spacing: 0.2px;
@@ -606,7 +606,7 @@ function LiveOpsTab() {
                                     <div className="flex items-center gap-3 mb-3">
                                       <div 
                                         className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base border-2 border-white shadow-md"
-                                        style={{ background: statusDisplay.markerBg }}
+                                        style={{ background: member?.themeColor || statusDisplay.markerBg }}
                                       >
                                         {initials}
                                       </div>

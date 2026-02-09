@@ -1398,9 +1398,9 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                     <div 
                       className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg border-2"
                       style={{
-                        backgroundColor: member.isActive 
+                        backgroundColor: member.themeColor || (member.isActive 
                           ? (member.isDriving ? ACTIVITY_COLORS.driving : member.activityStatus === 'working' ? ACTIVITY_COLORS.working : ACTIVITY_COLORS.online)
-                          : ACTIVITY_COLORS.offline,
+                          : ACTIVITY_COLORS.offline),
                         backgroundImage: member.profileImageUrl ? `url(${member.profileImageUrl})` : undefined,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
@@ -2049,9 +2049,10 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
             <div className="flex gap-2 w-max">
               {sortedTeamLocations.map((member) => {
                 const initials = member.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                const color = member.isActive 
+                const activityFallback = member.isActive 
                   ? (member.isDriving ? ACTIVITY_COLORS.driving : member.activityStatus === 'working' ? ACTIVITY_COLORS.working : ACTIVITY_COLORS.online)
                   : ACTIVITY_COLORS.offline;
+                const color = member.themeColor || activityFallback;
                 
                 return (
                   <div
