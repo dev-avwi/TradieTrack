@@ -181,6 +181,8 @@ interface JobData {
   clientName?: string;
   assignedTo?: string;
   scheduledAt?: string;
+  scheduledTime?: string;
+  estimatedDuration?: number;
 }
 
 interface MemberWithJobs extends TeamMemberData {
@@ -1958,7 +1960,220 @@ function SchedulingTab() {
     });
   }, [jobs, today]);
 
+
   const [peopleControlTab, setPeopleControlTab] = useState<'timeoff' | 'availability'>('timeoff');
+  const [boardView, setBoardView] = useState<'jobs' | 'team'>('jobs');
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+  const assignJobMutation = useMutation({
+    mutationFn: async ({ jobId, assignedTo, scheduledAt }: { jobId: string; assignedTo?: string | null; scheduledAt?: string }) => {
+      const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, { assignedTo, ...(scheduledAt ? { scheduledAt } : {}) });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({ title: "Job assignment updated" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to update assignment", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const weekJobs = useMemo(() => {
+    const grouped: Record<string, JobData[]> = {};
+    weekDays.forEach((day) => {
+      const key = format(day, 'yyyy-MM-dd');
+      grouped[key] = [];
+    });
+    jobs.filter(j => j.status !== 'completed' && j.status !== 'cancelled' && j.scheduledAt).forEach(j => {
+      const jobDate = new Date(j.scheduledAt!);
+      const key = format(jobDate, 'yyyy-MM-dd');
+      if (grouped[key]) {
+        grouped[key].push(j);
+      }
+    });
+    return grouped;
+  }, [jobs, weekDays]);
+
+  const backlogJobs = useMemo(() => {
+    return jobs.filter(j =>
+      !j.scheduledAt &&
+      (j.status === 'pending' || j.status === 'scheduled')
+    );
+  }, [jobs]);
+
+  const allUnassignedJobs = useMemo(() => {
+    return jobs.filter(j => !j.assignedTo && j.status !== 'completed' && j.status !== 'cancelled');
+  }, [jobs]);
+
+  const getJobTime = (job: JobData) => {
+    if (job.scheduledTime) return job.scheduledTime;
+    if (job.scheduledAt) {
+      const d = new Date(job.scheduledAt);
+      const hours = d.getHours();
+      const mins = d.getMinutes();
+      if (hours !== 0 || mins !== 0) return format(d, 'h:mm a');
+    }
+    return null;
+  };
+
+  const getJobStatusStyle = (status: string) => {
+    switch (status) {
+      case 'in_progress':
+        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+      case 'scheduled':
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+      case 'pending':
+        return 'bg-muted text-muted-foreground';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getJobStatusLabel = (status: string) => {
+    switch (status) {
+      case 'in_progress': return 'In Progress';
+      case 'scheduled': return 'Scheduled';
+      case 'pending': return 'Pending';
+      default: return status;
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, type: 'job' | 'member', id: string, sourceDay?: string) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ type, id, sourceDay }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverTarget(targetId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTarget(null);
+  };
+
+  const handleDropOnJob = (e: React.DragEvent, jobId: string) => {
+    e.preventDefault();
+    setDragOverTarget(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.type === 'member') {
+        assignJobMutation.mutate({ jobId, assignedTo: data.id });
+      }
+    } catch {}
+  };
+
+  const handleDropOnDayColumn = (e: React.DragEvent, dayDate: string) => {
+    e.preventDefault();
+    setDragOverTarget(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.type === 'job') {
+        const scheduledAt = new Date(dayDate + 'T09:00:00').toISOString();
+        assignJobMutation.mutate({ jobId: data.id, scheduledAt });
+      }
+    } catch {}
+  };
+
+  const handleDropOnTeamCell = (e: React.DragEvent, memberId: string, dayDate: string) => {
+    e.preventDefault();
+    setDragOverTarget(null);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.type === 'job') {
+        const scheduledAt = new Date(dayDate + 'T09:00:00').toISOString();
+        assignJobMutation.mutate({ jobId: data.id, assignedTo: memberId, scheduledAt });
+      }
+    } catch {}
+  };
+
+  const getMemberById = (userId: string) => {
+    return acceptedMembers.find(m => m.userId === userId);
+  };
+
+  const renderJobCard = (job: JobData, options?: { draggable?: boolean; compact?: boolean }) => {
+    const isDraggable = options?.draggable !== false;
+    const isCompact = options?.compact;
+    const isUnassigned = !job.assignedTo;
+    const assignedMember = job.assignedTo ? getMemberById(job.assignedTo) : null;
+    const jobTime = getJobTime(job);
+    const isDropTarget = dragOverTarget === `job-${job.id}`;
+
+    return (
+      <div
+        key={job.id}
+        draggable={isDraggable}
+        onDragStart={isDraggable ? (e) => handleDragStart(e, 'job', job.id, job.scheduledAt ? format(new Date(job.scheduledAt), 'yyyy-MM-dd') : undefined) : undefined}
+        onDragOver={isUnassigned ? (e) => handleDragOver(e, `job-${job.id}`) : undefined}
+        onDragLeave={isUnassigned ? handleDragLeave : undefined}
+        onDrop={isUnassigned ? (e) => handleDropOnJob(e, job.id) : undefined}
+        className={`p-2 rounded-md border text-left ${
+          isUnassigned
+            ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/50 dark:border-amber-800/30'
+            : job.status === 'in_progress'
+              ? 'bg-green-50/30 dark:bg-green-900/5 border-green-200/50 dark:border-green-800/30'
+              : 'border-border'
+        } ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${
+          isDropTarget ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''
+        }`}
+        data-testid={`job-card-${job.id}`}
+      >
+        <div className="flex items-start gap-1.5">
+          <div className="flex-1 min-w-0">
+            <p className={`font-medium truncate ${isCompact ? 'text-[11px]' : 'text-xs'}`}>{job.title}</p>
+            {!isCompact && (
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {jobTime && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <Clock className="h-2.5 w-2.5" />
+                    {jobTime}
+                  </span>
+                )}
+                {job.estimatedDuration && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h${job.estimatedDuration % 60 ? ` ${job.estimatedDuration % 60}m` : ''}` : `${job.estimatedDuration}m`}
+                  </span>
+                )}
+                {job.clientName && (
+                  <span className="text-[10px] text-muted-foreground truncate">{job.clientName}</span>
+                )}
+              </div>
+            )}
+          </div>
+          {assignedMember && (
+            <Avatar className="h-5 w-5 shrink-0">
+              <AvatarImage src={assignedMember.profileImageUrl} />
+              <AvatarFallback
+                className="text-[8px]"
+                style={assignedMember.themeColor ? { backgroundColor: assignedMember.themeColor, color: 'white' } : undefined}
+              >
+                {getInitials(assignedMember.firstName, assignedMember.lastName, assignedMember.email)}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          {isUnassigned && (
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+          )}
+        </div>
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          <Badge
+            variant="secondary"
+            className={`text-[9px] px-1 py-0 border-0 ${getJobStatusStyle(job.status)}`}
+          >
+            {getJobStatusLabel(job.status)}
+          </Badge>
+          {isCompact && job.clientName && (
+            <span className="text-[9px] text-muted-foreground truncate">{job.clientName}</span>
+          )}
+          {isCompact && jobTime && (
+            <span className="text-[9px] text-muted-foreground">{jobTime}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 space-y-4">
@@ -1985,251 +2200,267 @@ function SchedulingTab() {
         <CardHeader className="py-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4" />
-              Today's Schedule
+              <CalendarDays className="h-4 w-4" />
+              Weekly Dispatch Board
             </CardTitle>
-            <span className="text-xs text-muted-foreground">{format(today, 'EEEE, MMM d')}</span>
+            <div className="flex items-center gap-1 flex-wrap">
+              <span className="text-xs text-muted-foreground mr-2">
+                {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
+              </span>
+              <Button
+                size="sm"
+                variant={boardView === 'jobs' ? 'default' : 'ghost'}
+                onClick={() => setBoardView('jobs')}
+                className="text-xs"
+              >
+                <Briefcase className="h-3 w-3 mr-1" />
+                Jobs Board
+              </Button>
+              <Button
+                size="sm"
+                variant={boardView === 'team' ? 'default' : 'ghost'}
+                onClick={() => setBoardView('team')}
+                className="text-xs"
+              >
+                <Users className="h-3 w-3 mr-1" />
+                Team Board
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          {acceptedMembers.length > 0 ? (
-            <div className="space-y-2">
-              {acceptedMembers.map((member) => {
-                const memberJobs = getMemberJobsForDay(member.userId, today);
-                const dayTimeOff = getMemberTimeOffForDay(member.id, today);
-                const hasApprovedTimeOff = dayTimeOff.some(t => t.status === 'approved');
-                const timeOffEntry = dayTimeOff.find(t => t.status === 'approved');
-
-                return (
+          {boardView === 'jobs' ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5 flex-wrap pb-2 border-b border-border">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-1">Team:</span>
+                {acceptedMembers.map((member) => (
                   <div
                     key={member.id}
-                    className={`flex items-start gap-3 p-2.5 rounded-md border ${
-                      hasApprovedTimeOff
-                        ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200/50 dark:border-red-800/30'
-                        : memberJobs.length > 0
-                          ? 'border-border'
-                          : 'border-border bg-muted/20'
-                    }`}
-                    data-testid={`dispatch-member-${member.id}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, 'member', member.userId)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/50 cursor-grab active:cursor-grabbing border border-transparent"
+                    title={`${member.firstName} ${member.lastName} - drag onto a job to assign`}
                   >
-                    <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+                    <Avatar className="h-5 w-5">
                       <AvatarImage src={member.profileImageUrl} />
                       <AvatarFallback
-                        className="text-xs"
+                        className="text-[8px]"
                         style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}
                       >
                         {getInitials(member.firstName, member.lastName, member.email)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{member.firstName} {member.lastName}</p>
-                      {hasApprovedTimeOff ? (
-                        <Badge variant="secondary" className="text-xs mt-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
-                          Off Today {timeOffEntry?.reason ? `\u2022 ${timeOffEntry.reason.replace('_', ' ')}` : ''}
-                        </Badge>
-                      ) : memberJobs.length > 0 ? (
-                        <div className="flex flex-col gap-1 mt-1">
-                          {memberJobs.map((job) => (
-                            <div key={job.id} className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="secondary" className="text-xs border-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                                {job.title}
-                              </Badge>
-                              {job.clientName && (
-                                <span className="text-xs text-muted-foreground truncate">{job.clientName}</span>
-                              )}
-                              {job.scheduledAt && (
-                                <span className="text-xs text-muted-foreground">{format(new Date(job.scheduledAt), 'h:mm a')}</span>
-                              )}
-                              <Badge
-                                variant="secondary"
-                                className={`text-[10px] border-0 ${
-                                  job.status === 'in_progress'
-                                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                                    : 'bg-muted text-muted-foreground'
-                                }`}
-                              >
-                                {job.status === 'in_progress' ? 'In Progress' : job.status === 'scheduled' ? 'Scheduled' : job.status}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground mt-0.5 block">Available</span>
-                      )}
-                    </div>
+                    <span className="text-[10px] font-medium">{member.firstName}</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
 
-              {todayUnassignedJobs.length > 0 && (
-                <>
-                  <Separator className="my-2" />
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Unassigned ({todayUnassignedJobs.length})
-                    </p>
-                    <div className="space-y-1.5">
-                      {todayUnassignedJobs.map((job) => (
-                        <div key={job.id} className="flex items-center gap-2 p-2 rounded-md bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                          <span className="text-sm truncate flex-1">{job.title}</span>
-                          {job.clientName && (
-                            <span className="text-xs text-muted-foreground truncate">{job.clientName}</span>
-                          )}
-                          {job.scheduledAt && (
-                            <span className="text-xs text-muted-foreground shrink-0">{format(new Date(job.scheduledAt), 'h:mm a')}</span>
-                          )}
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="min-w-[700px] px-4 sm:px-0">
+                  <div className="grid grid-cols-7 gap-2">
+                    {weekDays.map((day) => {
+                      const dayKey = format(day, 'yyyy-MM-dd');
+                      const isCurrentDay = isSameDay(day, today);
+                      const dayJobs = weekJobs[dayKey] || [];
+                      const unassigned = dayJobs.filter(j => !j.assignedTo);
+                      const assigned = dayJobs.filter(j => !!j.assignedTo);
+                      const isDropZone = dragOverTarget === `day-${dayKey}`;
+
+                      return (
+                        <div
+                          key={dayKey}
+                          className={`flex flex-col rounded-md border ${
+                            isCurrentDay ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border'
+                          }`}
+                          onDragOver={(e) => handleDragOver(e, `day-${dayKey}`)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDropOnDayColumn(e, dayKey)}
+                        >
+                          <div className={`p-1.5 text-center text-xs font-medium border-b ${
+                            isCurrentDay
+                              ? 'bg-primary/10 text-foreground'
+                              : 'bg-muted/50 text-muted-foreground'
+                          }`}>
+                            <div>{format(day, 'EEE')}</div>
+                            <div className={isCurrentDay ? 'font-bold' : ''}>{format(day, 'MMM d')}</div>
+                          </div>
+                          <div className={`p-1.5 space-y-1.5 min-h-[100px] flex-1 ${
+                            isDropZone ? 'bg-primary/5 outline-dashed outline-1 outline-primary/30' : ''
+                          }`}>
+                            {unassigned.length > 0 && (
+                              <div className="space-y-1">
+                                {unassigned.map((job) => renderJobCard(job, { compact: true }))}
+                              </div>
+                            )}
+                            {assigned.length > 0 && (
+                              <div className="space-y-1">
+                                {assigned.map((job) => renderJobCard(job, { compact: true }))}
+                              </div>
+                            )}
+                            {dayJobs.length === 0 && (
+                              <div className="flex items-center justify-center h-full">
+                                <span className="text-[10px] text-muted-foreground/50">No jobs</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                </>
+                </div>
+              </div>
+
+              {backlogJobs.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    Backlog ({backlogJobs.length}) - drag to a day to schedule
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {backlogJobs.map((job) => renderJobCard(job))}
+                  </div>
+                </div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">Add team members to see today's schedule</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="py-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Weekly Roster
-            </CardTitle>
-            <span className="text-xs text-muted-foreground">
-              {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {acceptedMembers.length > 0 ? (
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <div className="min-w-[640px] px-4 sm:px-0">
-                <div className="grid grid-cols-[140px_repeat(7,1fr)] gap-px bg-border rounded-md overflow-hidden">
-                  <div className="bg-muted/50 p-2 text-xs font-medium text-muted-foreground">
-                    Team Member
-                  </div>
-                  {weekDays.map((day, i) => {
-                    const isCurrentDay = isSameDay(day, today);
-                    const isWeekend = !isWeekday(day);
-                    return (
-                      <div
-                        key={i}
-                        className={`p-1.5 text-center text-xs font-medium ${
-                          isCurrentDay
-                            ? 'bg-primary/10'
-                            : isWeekend
-                              ? 'bg-muted/70'
-                              : 'bg-muted/50'
-                        } text-muted-foreground`}
-                      >
-                        <div>{format(day, 'EEE')}</div>
-                        <div className={isCurrentDay ? 'font-bold text-foreground' : ''}>{format(day, 'd')}</div>
+            <div className="space-y-3">
+              {acceptedMembers.length > 0 ? (
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="min-w-[700px] px-4 sm:px-0">
+                    <div className="grid grid-cols-[140px_repeat(7,1fr)] gap-px bg-border rounded-md overflow-hidden">
+                      <div className="bg-muted/50 p-2 text-xs font-medium text-muted-foreground">
+                        Team Member
                       </div>
-                    );
-                  })}
-
-                  {acceptedMembers.map((member) => (
-                    <>
-                      <div
-                        key={`name-${member.id}`}
-                        className="bg-card p-2 flex items-center gap-2 border-t border-border"
-                      >
-                        <Avatar className="h-6 w-6 shrink-0">
-                          <AvatarImage src={member.profileImageUrl} />
-                          <AvatarFallback
-                            className="text-[10px]"
-                            style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}
-                          >
-                            {getInitials(member.firstName, member.lastName, member.email)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs font-medium truncate">
-                          {member.firstName}
-                        </span>
-                      </div>
-                      {weekDays.map((day, dayIndex) => {
-                        const dayTimeOff = getMemberTimeOffForDay(member.id, day);
-                        const hasApprovedTimeOff = dayTimeOff.some(t => t.status === 'approved');
-                        const hasPendingTimeOff = dayTimeOff.some(t => t.status === 'pending');
-                        const memberJobs = getMemberJobsForDay(member.userId, day);
-                        const isAvail = isWeekday(day) && !hasApprovedTimeOff;
+                      {weekDays.map((day, i) => {
                         const isCurrentDay = isSameDay(day, today);
                         const isWeekend = !isWeekday(day);
-
-                        let cellBg = 'bg-card';
-                        if (hasApprovedTimeOff) {
-                          cellBg = 'bg-red-50 dark:bg-red-900/10';
-                        } else if (isWeekend) {
-                          cellBg = 'bg-muted/40';
-                        } else if (memberJobs.length > 0) {
-                          cellBg = 'bg-blue-50/30 dark:bg-blue-900/5';
-                        } else if (isAvail) {
-                          cellBg = 'bg-green-50/30 dark:bg-green-900/5';
-                        }
-
                         return (
                           <div
-                            key={`${member.id}-${dayIndex}`}
-                            className={`${cellBg} p-1 border-t border-border flex flex-col items-center justify-center gap-0.5 min-h-[48px] ${
-                              isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
-                            }`}
-                            data-testid={`roster-cell-${member.id}-${dayIndex}`}
+                            key={i}
+                            className={`p-1.5 text-center text-xs font-medium ${
+                              isCurrentDay
+                                ? 'bg-primary/10'
+                                : isWeekend
+                                  ? 'bg-muted/70'
+                                  : 'bg-muted/50'
+                            } text-muted-foreground`}
                           >
-                            {hasApprovedTimeOff && (
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
-                                Off
-                              </Badge>
-                            )}
-                            {hasPendingTimeOff && !hasApprovedTimeOff && (
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
-                                Pending
-                              </Badge>
-                            )}
-                            {isWeekend && !hasApprovedTimeOff && !hasPendingTimeOff && (
-                              <span className="text-[10px] text-muted-foreground/50">-</span>
-                            )}
-                            {!hasApprovedTimeOff && !hasPendingTimeOff && !isWeekend && memberJobs.length === 0 && (
-                              <span className="text-[10px] text-green-600/60 dark:text-green-400/60">Free</span>
-                            )}
-                            {memberJobs.length > 0 && (
-                              <>
-                                {memberJobs.length <= 2 ? (
-                                  memberJobs.map((job) => (
-                                    <Badge
-                                      key={job.id}
-                                      variant="secondary"
-                                      className="text-[9px] px-1 py-0 max-w-full truncate border-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-                                    >
-                                      {job.title.length > 10 ? job.title.slice(0, 10) + '\u2026' : job.title}
-                                    </Badge>
-                                  ))
-                                ) : (
-                                  <>
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-[9px] px-1 py-0 max-w-full truncate border-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-                                    >
-                                      {memberJobs[0].title.length > 10 ? memberJobs[0].title.slice(0, 10) + '\u2026' : memberJobs[0].title}
-                                    </Badge>
-                                    <span className="text-[9px] text-blue-600 dark:text-blue-400">+{memberJobs.length - 1} more</span>
-                                  </>
-                                )}
-                              </>
-                            )}
+                            <div>{format(day, 'EEE')}</div>
+                            <div className={isCurrentDay ? 'font-bold text-foreground' : ''}>{format(day, 'd')}</div>
                           </div>
                         );
                       })}
-                    </>
-                  ))}
+
+                      {acceptedMembers.flatMap((member) => [
+                          <div key={`name-${member.id}`} className="bg-card p-2 flex items-center gap-2 border-t border-border">
+                            <Avatar className="h-6 w-6 shrink-0">
+                              <AvatarImage src={member.profileImageUrl} />
+                              <AvatarFallback
+                                className="text-[10px]"
+                                style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}
+                              >
+                                {getInitials(member.firstName, member.lastName, member.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs font-medium truncate">{member.firstName}</span>
+                          </div>,
+                          ...weekDays.map((day, dayIndex) => {
+                            const dayKey = format(day, 'yyyy-MM-dd');
+                            const dayTimeOff = getMemberTimeOffForDay(member.id, day);
+                            const hasApprovedTimeOff = dayTimeOff.some(t => t.status === 'approved');
+                            const hasPendingTimeOff = dayTimeOff.some(t => t.status === 'pending');
+                            const memberJobs = getMemberJobsForDay(member.userId, day);
+                            const isAvail = isWeekday(day) && !hasApprovedTimeOff;
+                            const isCurrentDay = isSameDay(day, today);
+                            const isWeekend = !isWeekday(day);
+                            const cellId = `team-${member.userId}-${dayKey}`;
+                            const isDropZone = dragOverTarget === cellId;
+
+                            let cellBg = 'bg-card';
+                            if (hasApprovedTimeOff) {
+                              cellBg = 'bg-red-50 dark:bg-red-900/10';
+                            } else if (isWeekend) {
+                              cellBg = 'bg-muted/40';
+                            } else if (memberJobs.length > 0) {
+                              cellBg = 'bg-blue-50/30 dark:bg-blue-900/5';
+                            } else if (isAvail) {
+                              cellBg = 'bg-green-50/30 dark:bg-green-900/5';
+                            }
+
+                            return (
+                              <div
+                                key={`${member.id}-${dayIndex}`}
+                                className={`${cellBg} p-1 border-t border-border flex flex-col items-center justify-center gap-0.5 min-h-[60px] ${
+                                  isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
+                                } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''}`}
+                                onDragOver={isAvail ? (e) => handleDragOver(e, cellId) : undefined}
+                                onDragLeave={isAvail ? handleDragLeave : undefined}
+                                onDrop={isAvail ? (e) => handleDropOnTeamCell(e, member.userId, dayKey) : undefined}
+                                data-testid={`roster-cell-${member.id}-${dayIndex}`}
+                              >
+                                {hasApprovedTimeOff && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
+                                    Off
+                                  </Badge>
+                                )}
+                                {hasPendingTimeOff && !hasApprovedTimeOff && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+                                    Pending
+                                  </Badge>
+                                )}
+                                {isWeekend && !hasApprovedTimeOff && !hasPendingTimeOff && (
+                                  <span className="text-[10px] text-muted-foreground/50">-</span>
+                                )}
+                                {!hasApprovedTimeOff && !hasPendingTimeOff && !isWeekend && memberJobs.length === 0 && (
+                                  <span className="text-[10px] text-green-600/60 dark:text-green-400/60">Free</span>
+                                )}
+                                {memberJobs.length > 0 && (
+                                  <div className="w-full space-y-0.5">
+                                    {memberJobs.slice(0, 2).map((job) => {
+                                      const jTime = getJobTime(job);
+                                      return (
+                                        <div
+                                          key={job.id}
+                                          draggable
+                                          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, 'job', job.id, dayKey); }}
+                                          className="px-1 py-0.5 rounded bg-blue-100/80 dark:bg-blue-900/30 cursor-grab active:cursor-grabbing"
+                                        >
+                                          <p className="text-[9px] font-medium text-blue-700 dark:text-blue-400 truncate">{job.title}</p>
+                                          {jTime && (
+                                            <p className="text-[8px] text-blue-600/70 dark:text-blue-400/70">{jTime}</p>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                    {memberJobs.length > 2 && (
+                                      <span className="text-[9px] text-blue-600 dark:text-blue-400 px-1">+{memberJobs.length - 2} more</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        ]
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">No team members yet</p>
+              )}
+
+              {allUnassignedJobs.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    Unassigned Jobs ({allUnassignedJobs.length}) - drag into a team member's day
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {allUnassignedJobs.map((job) => renderJobCard(job))}
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">No team members yet</p>
           )}
         </CardContent>
       </Card>
