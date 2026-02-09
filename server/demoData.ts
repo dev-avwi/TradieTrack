@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { storage } from './storage';
+import { storage, db } from './storage';
+import { activityLogs } from '@shared/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 // ============================================
 // DEMO USER CREDENTIALS
@@ -1802,6 +1804,21 @@ export async function forceResetDemoData(): Promise<{ success: boolean; message:
 export async function createDemoActivityLogs(userId: string): Promise<void> {
   try {
     console.log('[DemoActivity] Creating activity logs for Recent Activity...');
+    
+    // Clean up existing demo activity logs (preserve real delivery logs like email/SMS sends)
+    await db.delete(activityLogs).where(
+      and(
+        eq(activityLogs.userId, userId),
+        sql`NOT (
+          metadata->>'clientEmail' IS NOT NULL OR 
+          metadata->>'recipientEmail' IS NOT NULL OR 
+          metadata->>'deliveryMethod' IS NOT NULL OR 
+          metadata->>'smsMessageId' IS NOT NULL OR 
+          metadata->>'clientPhone' IS NOT NULL OR 
+          metadata->>'emailSubject' IS NOT NULL
+        )`
+      )
+    );
     
     // Get recent jobs, quotes, and invoices
     const jobs = await storage.getJobs(userId);
