@@ -1203,11 +1203,41 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
     };
     
+    const logQuoteEmailActivity = async (deliveryMethod: string) => {
+      try {
+        const quoteNum = quoteWithItems.number || quoteWithItems.id.slice(0, 8);
+        const loggedSubject = customSubject || subject;
+        const loggedBody = customMessage || `Quote ${quoteNum} sent to ${client.name}`;
+        await storage.createActivityLog({
+          userId: req.userId,
+          type: 'quote_sent',
+          title: `Quote #${quoteNum} sent`,
+          description: `Sent to ${client.name}`,
+          entityType: 'quote',
+          entityId: quoteWithItems.id,
+          metadata: {
+            quoteNumber: quoteNum,
+            quoteTitle: quoteWithItems.title,
+            clientName: client.name,
+            clientEmail: client.email,
+            recipientEmail: client.email,
+            total: quoteWithItems.total,
+            deliveryMethod,
+            emailSubject: loggedSubject,
+            emailBody: loggedBody,
+          }
+        });
+      } catch (activityError) {
+        console.error('Failed to log quote email activity:', activityError);
+      }
+    };
+
     // Automatic mode sends directly via SendGrid
     if (emailSendingMode === 'automatic') {
       console.log('[Email] Sending quote via SendGrid (automatic mode)');
       
       await sendViaSendGrid();
+      await logQuoteEmailActivity('email');
       
       res.json({
         success: true,
@@ -1233,6 +1263,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         // Gmail failed - fallback to SendGrid
         console.log('[Email] Gmail draft failed, falling back to SendGrid:', draftResult.error);
         await sendViaSendGrid();
+        await logQuoteEmailActivity('email');
         
         return res.json({
           success: true,
@@ -1245,6 +1276,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       
       // Update quote status to sent (user created the draft, we assume they'll send it)
       await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+      await logQuoteEmailActivity('gmail');
       
       // Return success with draft URL for user to open Gmail
       res.json({
@@ -1489,12 +1521,43 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       });
       await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
     };
+
+    const logInvoiceEmailActivity = async (deliveryMethod: string) => {
+      try {
+        const invoiceNum = invoiceWithItems.number || invoiceWithItems.id.slice(0, 8);
+        const loggedSubject = customSubject || subject;
+        const loggedBody = customMessage || `Invoice ${invoiceNum} sent to ${client.name}`;
+        const amount = invoiceWithItems.total;
+        await storage.createActivityLog({
+          userId: req.userId,
+          type: 'invoice_sent',
+          title: `Invoice #${invoiceNum} sent`,
+          description: `Sent to ${client.name}`,
+          entityType: 'invoice',
+          entityId: invoiceWithItems.id,
+          metadata: {
+            invoiceNumber: invoiceNum,
+            invoiceTitle: invoiceWithItems.title,
+            clientName: client.name,
+            clientEmail: client.email,
+            recipientEmail: client.email,
+            total: amount,
+            deliveryMethod,
+            emailSubject: loggedSubject,
+            emailBody: loggedBody,
+          }
+        });
+      } catch (activityError) {
+        console.error('Failed to log invoice email activity:', activityError);
+      }
+    };
     
     // Automatic mode sends directly via SendGrid
     if (emailSendingMode === 'automatic') {
       console.log('[Email] Sending invoice via SendGrid (automatic mode)');
       
       await sendViaSendGrid();
+      await logInvoiceEmailActivity('email');
       
       res.json({
         success: true,
@@ -1520,6 +1583,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         // Gmail failed - fallback to SendGrid
         console.log('[Email] Gmail draft failed for invoice, falling back to SendGrid:', draftResult.error);
         await sendViaSendGrid();
+        await logInvoiceEmailActivity('email');
         
         return res.json({
           success: true,
@@ -1532,6 +1596,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       
       // Update invoice status to sent (user created the draft, we assume they'll send it)
       await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
+      await logInvoiceEmailActivity('gmail');
       
       // Return success with draft URL for user to open Gmail
       res.json({
