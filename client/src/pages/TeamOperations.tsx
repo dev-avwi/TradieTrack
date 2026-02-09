@@ -75,6 +75,7 @@ import {
   Coffee,
   Wrench,
   X,
+  Info,
   Phone,
   Mail,
   Navigation,
@@ -1805,6 +1806,9 @@ function SchedulingTab() {
   const [timeOffNotes, setTimeOffNotes] = useState("");
   const [timeOffSectionOpen, setTimeOffSectionOpen] = useState(true);
   const [availabilitySectionOpen, setAvailabilitySectionOpen] = useState(false);
+  const [schedulingTipDismissed, setSchedulingTipDismissed] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('team-scheduler-onboarding-dismissed') === 'true'
+  );
 
   const { data: teamMembers = [] } = useQuery<TeamMemberData[]>({
     queryKey: ['/api/team/members'],
@@ -2176,23 +2180,52 @@ function SchedulingTab() {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant="secondary" className="text-xs gap-1">
-          <UserCheck className="h-3 w-3" />
-          {todaySummary.workingToday} Working
-        </Badge>
-        <Badge variant="secondary" className="text-xs gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
-          <UserX className="h-3 w-3" />
-          {todaySummary.offToday} Off
-        </Badge>
-        <Badge variant="secondary" className="text-xs gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-0">
-          <Briefcase className="h-3 w-3" />
-          {todaySummary.onJob} On Job
-        </Badge>
-        <Badge variant="secondary" className="text-xs gap-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
-          <Clock className="h-3 w-3" />
-          {todaySummary.available} Free
-        </Badge>
+      {!schedulingTipDismissed && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+          <Info className="h-5 w-5 text-primary flex-shrink-0" />
+          <p className="text-sm flex-1">
+            <span className="font-medium">Tip:</span> Drag unassigned jobs onto a team member's day to assign and schedule them. Hover over empty cells to see where you can drop.
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              localStorage.setItem('team-scheduler-onboarding-dismissed', 'true');
+              setSchedulingTipDismissed(true);
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-xs gap-1">
+            <UserCheck className="h-3 w-3" />
+            {todaySummary.workingToday} Working
+          </Badge>
+          <Badge variant="secondary" className="text-xs gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
+            <UserX className="h-3 w-3" />
+            {todaySummary.offToday} Off
+          </Badge>
+          <Badge variant="secondary" className="text-xs gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-0">
+            <Briefcase className="h-3 w-3" />
+            {todaySummary.onJob} On Job
+          </Badge>
+          <Badge variant="secondary" className="text-xs gap-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+            <Clock className="h-3 w-3" />
+            {todaySummary.available} Available
+          </Badge>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {allUnassignedJobs.length > 0 && (
+            <Badge variant="secondary" className="text-xs gap-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+              <AlertTriangle className="h-3 w-3" />
+              {allUnassignedJobs.length} unassigned
+            </Badge>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -2277,9 +2310,11 @@ function SchedulingTab() {
                             return (
                               <div
                                 key={`${member.id}-${dayIndex}`}
-                                className={`${cellBg} p-1 border-t border-border flex flex-col items-center justify-center gap-0.5 min-h-[60px] ${
+                                className={`${cellBg} p-1 border-t border-border flex flex-col items-center justify-center gap-0.5 min-h-[60px] group ${
                                   isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
-                                } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''}`}
+                                } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''} ${
+                                  isAvail && memberJobs.length === 0 && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-default' : ''
+                                }`}
                                 onDragOver={isAvail ? (e) => handleDragOver(e, cellId) : undefined}
                                 onDragLeave={isAvail ? handleDragLeave : undefined}
                                 onDrop={isAvail ? (e) => handleDropOnTeamCell(e, member.userId, dayKey) : undefined}
@@ -2299,7 +2334,9 @@ function SchedulingTab() {
                                   <span className="text-[10px] text-muted-foreground/50">-</span>
                                 )}
                                 {!hasApprovedTimeOff && !hasPendingTimeOff && !isWeekend && memberJobs.length === 0 && (
-                                  <span className="text-[10px] text-green-600/60 dark:text-green-400/60">Free</span>
+                                  <div className="group/cell w-full h-full flex items-center justify-center">
+                                    <Plus className="h-3 w-3 text-muted-foreground/0 group-hover/cell:text-muted-foreground/40 transition-colors" />
+                                  </div>
                                 )}
                                 {memberJobs.length > 0 && (
                                   <div className="w-full space-y-0.5">
@@ -2337,10 +2374,11 @@ function SchedulingTab() {
               )}
 
               {allUnassignedJobs.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <AlertTriangle className="h-3 w-3 text-amber-500" />
-                    Unassigned Jobs ({allUnassignedJobs.length}) - drag into a team member's day
+                <div className="mt-3 pt-3 border-t border-amber-300/50 dark:border-amber-700/50 bg-amber-50/30 dark:bg-amber-900/10 -mx-4 px-4 pb-3 sm:-mx-0 sm:px-0 sm:bg-transparent rounded-b-md">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <span className="text-amber-700 dark:text-amber-400">Unassigned Jobs ({allUnassignedJobs.length})</span>
+                    <span className="text-xs text-muted-foreground font-normal ml-1">drag into a team member's day</span>
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {allUnassignedJobs.map((job) => renderJobCard(job))}

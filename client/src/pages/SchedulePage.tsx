@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,10 @@ import {
   Users,
   LayoutGrid,
   Route,
-  Loader2
+  Loader2,
+  X,
+  ArrowRight,
+  Info
 } from "lucide-react";
 import {
   format,
@@ -265,6 +268,9 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
   const [view, setView] = useState<'week' | 'month' | 'dispatch'>('week');
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
+  const [dispatchTipDismissed, setDispatchTipDismissed] = useState(() => 
+    typeof window !== 'undefined' && localStorage.getItem('dispatch-onboarding-dismissed') === 'true'
+  );
   const { toast } = useToast();
 
   const { data: jobs = [] } = useQuery<Job[]>({
@@ -915,219 +921,287 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
         />
       )}
 
-      {view === 'dispatch' && (
-        <div className="flex flex-col lg:flex-row gap-4 mt-3">
-          <div className="flex-1">
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <div className="min-w-[800px]">
-                    <div className="flex border-b bg-muted/30">
-                      <div className="w-16 flex-shrink-0 p-2 text-xs font-medium text-muted-foreground">
-                        Time
-                      </div>
-                      {teamMembersWithJobs.map(member => (
-                        <div 
-                          key={member.id}
-                          className="flex-1 min-w-[180px] p-3 border-l"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={member.profileImageUrl} />
-                              <AvatarFallback className="text-xs" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                                {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {member.firstName} {member.lastName}
-                              </p>
-                              <div className="flex items-center gap-1">
-                                <Timer className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">
-                                  {member.totalHours}h / {member.capacity}h
-                                </span>
-                                {member.totalHours > member.capacity && (
-                                  <AlertCircle className="h-3 w-3 text-destructive" />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div 
-                              className="h-full rounded-full transition-all"
-                              style={{ 
-                                width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
-                                backgroundColor: member.totalHours > member.capacity 
-                                  ? 'hsl(var(--destructive))' 
-                                  : 'hsl(var(--trade))'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+      {view === 'dispatch' && (() => {
+        const hasScheduledJobs = scheduledJobsForDate.length > 0;
 
-                    <ScrollArea className="h-[600px]">
-                      <div className="relative">
-                        {WORK_HOURS.map(hour => (
-                          <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
-                            <div className="w-16 flex-shrink-0 p-2 text-xs text-muted-foreground border-r bg-muted/10">
-                              {formatTime(hour)}
-                            </div>
-                            {teamMembersWithJobs.map(member => {
-                              const slotId = `${member.id}-${hour}`;
-                              const isOver = dragOverSlot === slotId;
-                              
-                              return (
-                                <div
-                                  key={slotId}
-                                  className={`flex-1 min-w-[180px] border-l relative transition-colors ${
-                                    isOver ? 'bg-primary/10' : 'hover:bg-muted/30'
-                                  }`}
-                                  onDragOver={(e) => handleDragOver(e, slotId)}
-                                  onDragLeave={handleDragLeave}
-                                  onDrop={(e) => handleDrop(e, member.memberId, hour)}
-                                  data-testid={`slot-${member.id}-${hour}`}
-                                >
-                                  {isOver && (
-                                    <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
-                                      <span className="text-xs text-primary font-medium">Drop here</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
+        return (
+          <div className="mt-3 space-y-3">
+            {!dispatchTipDismissed && (
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                <Info className="h-5 w-5 text-primary flex-shrink-0" />
+                <p className="text-sm flex-1">
+                  <span className="font-medium">Tip:</span> Drag jobs from the Unscheduled panel onto a team member's time slot to schedule them.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    localStorage.setItem('dispatch-onboarding-dismissed', 'true');
+                    setDispatchTipDismissed(true);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
-                        {teamMembersWithJobs.map((member, memberIndex) => (
-                          member.jobs.map(job => {
-                            const { top, height } = getJobPosition(job);
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="w-full lg:w-72 flex-shrink-0 order-first">
+                <Card className={unscheduledJobs.length > 0 ? 'ring-2 ring-amber-400/50' : ''}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Unscheduled Jobs
+                      {unscheduledJobs.length > 0 && (
+                        <ArrowRight className="h-4 w-4 text-amber-500 ml-1" />
+                      )}
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto"
+                        style={unscheduledJobs.length > 0 ? {
+                          backgroundColor: 'hsl(45 93% 47% / 0.15)',
+                          color: 'hsl(45 93% 37%)',
+                        } : {}}
+                      >
+                        {unscheduledJobs.length}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent 
+                    className="p-2"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleUnscheduledDrop}
+                  >
+                    <ScrollArea className="h-[500px]">
+                      <div className="space-y-2 pr-2">
+                        {unscheduledJobs.length > 0 ? (
+                          unscheduledJobs.map(job => {
                             const statusStyle = getStatusStyle(job.status);
-                            const leftOffset = 64 + memberIndex * 180;
-
                             return (
                               <div
                                 key={job.id}
                                 draggable
-                                onDragStart={() => handleDragStart(job, member.memberId)}
+                                onDragStart={() => handleDragStart(job, null)}
                                 onDragEnd={() => setDraggedJob(null)}
                                 onClick={() => onViewJob?.(job.id)}
-                                className={`absolute mx-1 rounded-lg border cursor-grab active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border}`}
-                                style={{
-                                  top: top + 1,
-                                  left: leftOffset,
-                                  width: 'calc(100% / ' + teamMembersWithJobs.length + ' - 12px)',
-                                  minWidth: 168,
-                                  height: height - 2,
-                                  zIndex: draggedJob?.job.id === job.id ? 50 : 10,
-                                  opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
-                                }}
-                                data-testid={`scheduled-job-${job.id}`}
+                                className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate transition-all ${statusStyle.bg} ${statusStyle.border}`}
+                                data-testid={`unscheduled-job-${job.id}`}
                               >
-                                <div className="p-2 h-full flex flex-col">
-                                  <div className="flex items-start gap-1">
-                                    <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                        {job.title}
-                                      </h4>
-                                      <p className="text-xs text-muted-foreground truncate">
-                                        {job.clientName}
-                                      </p>
-                                    </div>
+                                <div className="flex items-start gap-2">
+                                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
+                                      {job.title}
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {job.clientName}
+                                    </p>
+                                    {job.address && (
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{job.address}</span>
+                                      </div>
+                                    )}
                                   </div>
-                                  {height > 60 && (
-                                    <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
-                                      <Clock className="h-3 w-3" />
-                                      <span>{job.scheduledTime || '9:00'}</span>
-                                      {job.estimatedDuration && (
-                                        <span>({Math.round(job.estimatedDuration / 60)}h)</span>
-                                      )}
-                                    </div>
-                                  )}
-                                  {height > 80 && job.address && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                                      <span className="truncate">{job.address}</span>
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             );
                           })
-                        ))}
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                            <Briefcase className="h-8 w-8 mb-2 opacity-30" />
+                            <p className="text-sm">No unscheduled jobs</p>
+                            <p className="text-xs mt-1">All jobs are scheduled</p>
+                          </div>
+                        )}
                       </div>
                     </ScrollArea>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <div className="w-full lg:w-80 flex-shrink-0">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  Unscheduled Jobs
-                  <Badge variant="secondary" className="ml-auto">{unscheduledJobs.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent 
-                className="p-2"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleUnscheduledDrop}
-              >
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-2 pr-2">
-                    {unscheduledJobs.length > 0 ? (
-                      unscheduledJobs.map(job => {
-                        const statusStyle = getStatusStyle(job.status);
-                        return (
-                          <div
-                            key={job.id}
-                            draggable
-                            onDragStart={() => handleDragStart(job, null)}
-                            onDragEnd={() => setDraggedJob(null)}
-                            onClick={() => onViewJob?.(job.id)}
-                            className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${statusStyle.bg} ${statusStyle.border}`}
-                            data-testid={`unscheduled-job-${job.id}`}
-                          >
-                            <div className="flex items-start gap-2">
-                              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                  {job.title}
-                                </h4>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {job.clientName}
-                                </p>
-                                {job.address && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                                    <span className="truncate">{job.address}</span>
-                                  </div>
-                                )}
-                              </div>
+              <div className="flex-1">
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto relative">
+                      <div className="min-w-[800px]">
+                        <div className="flex border-b bg-muted/30">
+                          <div className="w-16 flex-shrink-0 p-2">
+                            <span className="text-xs font-medium text-muted-foreground">Time</span>
+                          </div>
+                          <div className="flex-1 flex items-center border-l px-3 py-1">
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Users className="h-3.5 w-3.5" />
+                              <span>{teamMembersWithJobs.length} team member{teamMembersWithJobs.length !== 1 ? 's' : ''}</span>
+                              {teamMembersWithJobs.length > 4 && (
+                                <span className="ml-1 opacity-60">(scroll right to see all)</span>
+                              )}
                             </div>
                           </div>
-                        );
-                      })
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                        <Briefcase className="h-8 w-8 mb-2 opacity-30" />
-                        <p className="text-sm">No unscheduled jobs</p>
+                        </div>
+                        <div className="flex border-b bg-muted/30">
+                          <div className="w-16 flex-shrink-0" />
+                          {teamMembersWithJobs.map(member => (
+                            <div 
+                              key={member.id}
+                              className="flex-1 min-w-[180px] p-3 border-l"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={member.profileImageUrl} />
+                                  <AvatarFallback className="text-xs" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                    {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {member.firstName} {member.lastName}
+                                  </p>
+                                  <div className="flex items-center gap-1">
+                                    <Timer className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">
+                                      {member.totalHours}h / {member.capacity}h
+                                    </span>
+                                    {member.totalHours > member.capacity && (
+                                      <AlertCircle className="h-3 w-3 text-destructive" />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all"
+                                  style={{ 
+                                    width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
+                                    backgroundColor: member.totalHours > member.capacity 
+                                      ? 'hsl(var(--destructive))' 
+                                      : 'hsl(var(--trade))'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <ScrollArea className="h-[600px]">
+                          <div className="relative">
+                            {!hasScheduledJobs && (
+                              <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none">
+                                <div className="text-center p-6 max-w-sm">
+                                  <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                                  <p className="text-sm text-muted-foreground font-medium mb-1">
+                                    No jobs scheduled for today
+                                  </p>
+                                  <p className="text-xs text-muted-foreground/70">
+                                    Drag jobs from the panel on the left, or click + New Job to get started.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {WORK_HOURS.map(hour => (
+                              <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
+                                <div className="w-16 flex-shrink-0 p-2 text-xs text-muted-foreground border-r bg-muted/10">
+                                  {formatTime(hour)}
+                                </div>
+                                {teamMembersWithJobs.map(member => {
+                                  const slotId = `${member.id}-${hour}`;
+                                  const isOver = dragOverSlot === slotId;
+                                  
+                                  return (
+                                    <div
+                                      key={slotId}
+                                      className={`flex-1 min-w-[180px] border-l relative transition-colors group ${
+                                        isOver ? 'bg-primary/10' : ''
+                                      }`}
+                                      onDragOver={(e) => handleDragOver(e, slotId)}
+                                      onDragLeave={handleDragLeave}
+                                      onDrop={(e) => handleDrop(e, member.memberId, hour)}
+                                      data-testid={`slot-${member.id}-${hour}`}
+                                    >
+                                      {isOver && (
+                                        <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
+                                          <span className="text-xs text-primary font-medium">Drop here</span>
+                                        </div>
+                                      )}
+                                      {!isOver && (
+                                        <div className="absolute inset-1 border border-dashed border-transparent group-hover:border-muted-foreground/20 rounded-lg flex items-center justify-center transition-colors">
+                                          <Plus className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/25 transition-colors" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+
+                            {teamMembersWithJobs.map((member, memberIndex) => (
+                              member.jobs.map(job => {
+                                const { top, height } = getJobPosition(job);
+                                const statusStyle = getStatusStyle(job.status);
+                                const leftOffset = 64 + memberIndex * 180;
+
+                                return (
+                                  <div
+                                    key={job.id}
+                                    draggable
+                                    onDragStart={() => handleDragStart(job, member.memberId)}
+                                    onDragEnd={() => setDraggedJob(null)}
+                                    onClick={() => onViewJob?.(job.id)}
+                                    className={`absolute mx-1 rounded-lg border cursor-grab active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border}`}
+                                    style={{
+                                      top: top + 1,
+                                      left: leftOffset,
+                                      width: 'calc(100% / ' + teamMembersWithJobs.length + ' - 12px)',
+                                      minWidth: 168,
+                                      height: height - 2,
+                                      zIndex: draggedJob?.job.id === job.id ? 50 : 10,
+                                      opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
+                                    }}
+                                    data-testid={`scheduled-job-${job.id}`}
+                                  >
+                                    <div className="p-2 h-full flex flex-col">
+                                      <div className="flex items-start gap-1">
+                                        <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1 min-w-0">
+                                          <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
+                                            {job.title}
+                                          </h4>
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {job.clientName}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      {height > 60 && (
+                                        <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
+                                          <Clock className="h-3 w-3" />
+                                          <span>{job.scheduledTime || '9:00'}</span>
+                                          {job.estimatedDuration && (
+                                            <span>({Math.round(job.estimatedDuration / 60)}h)</span>
+                                          )}
+                                        </div>
+                                      )}
+                                      {height > 80 && job.address && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{job.address}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ))}
+                          </div>
+                        </ScrollArea>
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </PageShell>
   );

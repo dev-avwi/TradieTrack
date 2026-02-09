@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,7 +15,12 @@ import {
   MapPin,
   GripVertical,
   User,
-  CalendarDays
+  CalendarDays,
+  Info,
+  X,
+  ArrowRight,
+  Briefcase,
+  Plus
 } from "lucide-react";
 import {
   format,
@@ -135,6 +140,9 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
   );
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+  const [teamOnboardingDismissed, setTeamOnboardingDismissed] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('team-scheduler-onboarding-dismissed') === 'true'
+  );
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -306,8 +314,29 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
 
   const isToday = (date: Date) => isSameDay(date, new Date());
 
+  const hasAnyScheduledJobs = weekJobs.length > 0;
+
   return (
     <div className="flex flex-col h-full" data-testid="team-scheduler">
+      {!teamOnboardingDismissed && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5 mb-4">
+          <Info className="h-5 w-5 text-primary flex-shrink-0" />
+          <p className="text-sm flex-1">
+            <span className="font-medium">Tip:</span> Drag unassigned jobs onto a team member's day to assign and schedule them.
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              localStorage.setItem('team-scheduler-onboarding-dismissed', 'true');
+              setTeamOnboardingDismissed(true);
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Button
@@ -342,9 +371,30 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
         </h3>
       </div>
 
+      <div className="flex items-center gap-4 mb-3 text-sm flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Briefcase className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground">
+            {weekJobs.length} job{weekJobs.length !== 1 ? 's' : ''} this week
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant="secondary"
+            className="text-xs"
+            style={unassignedJobs.length > 0 ? {
+              backgroundColor: 'hsl(45 93% 47% / 0.15)',
+              color: 'hsl(45 93% 37%)',
+            } : {}}
+          >
+            {unassignedJobs.length} unassigned
+          </Badge>
+        </div>
+      </div>
+
       <div className="flex gap-4 flex-1 min-h-0">
         <Card 
-          className="w-48 flex-shrink-0"
+          className={`w-52 flex-shrink-0 ${unassignedJobs.length > 0 ? 'ring-2 ring-amber-400/50' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setDragOverCell('unassigned'); }}
           onDragLeave={handleDragLeave}
           onDrop={(e) => {
@@ -356,13 +406,28 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
             <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
               <GripVertical className="h-4 w-4" />
               Unassigned Jobs
+              {unassignedJobs.length > 0 && (
+                <ArrowRight className="h-3.5 w-3.5 text-amber-500" />
+              )}
+              <Badge
+                variant="secondary"
+                className="ml-auto text-[10px]"
+                style={unassignedJobs.length > 0 ? {
+                  backgroundColor: 'hsl(45 93% 47% / 0.15)',
+                  color: 'hsl(45 93% 37%)',
+                } : {}}
+              >
+                {unassignedJobs.length}
+              </Badge>
             </h4>
-            <ScrollArea className="h-[calc(100vh-280px)]">
+            <ScrollArea className="h-[calc(100vh-320px)]">
               <div className="space-y-2 pr-2">
                 {unassignedJobs.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    No unassigned jobs
-                  </p>
+                  <div className="text-center py-4">
+                    <Briefcase className="h-6 w-6 mx-auto text-muted-foreground/30 mb-2" />
+                    <p className="text-xs text-muted-foreground">No unassigned jobs</p>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1">All jobs are assigned</p>
+                  </div>
                 ) : (
                   unassignedJobs.map(job => {
                     const client = clientsMap.get(job.clientId);
@@ -431,6 +496,32 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
                   ))}
                 </div>
 
+                {allMembers.length > 0 && !hasAnyScheduledJobs && (
+                  <div className="p-6 text-center border-b bg-muted/5">
+                    {unassignedJobs.length > 0 ? (
+                      <>
+                        <CalendarDays className="h-10 w-10 mx-auto text-amber-400/60 mb-2" />
+                        <p className="text-sm text-muted-foreground font-medium">
+                          You have {unassignedJobs.length} unassigned job{unassignedJobs.length !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">
+                          Drag them onto a team member's day to schedule.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
+                        <p className="text-sm text-muted-foreground font-medium">
+                          No jobs yet
+                        </p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">
+                          Create your first job to start scheduling your team.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {allMembers.map((member) => (
                   <div 
                     key={member.id} 
@@ -463,7 +554,7 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
                         <div
                           key={dayIdx}
                           className={`
-                            p-2 border-r last:border-r-0 min-h-[100px] transition-colors
+                            p-2 border-r last:border-r-0 min-h-[100px] transition-colors group
                             ${isToday(day) ? 'bg-primary/5' : ''}
                             ${isDragOver ? 'bg-primary/10 ring-2 ring-primary ring-inset' : ''}
                           `}
@@ -472,7 +563,7 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
                           onDrop={(e) => handleDrop(e, member.memberId, day)}
                           data-testid={`cell-${cellId}`}
                         >
-                          <div className="space-y-1">
+                          <div className="space-y-1 h-full">
                             {cellJobs.map(job => {
                               const client = clientsMap.get(job.clientId);
                               const statusStyle = getStatusStyle(job.status);
@@ -533,6 +624,12 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
                                 <span className="text-xs text-primary/60">Drop here</span>
                               </div>
                             )}
+
+                            {cellJobs.length === 0 && !isDragOver && (
+                              <div className="h-full min-h-[80px] border border-dashed border-transparent group-hover:border-muted-foreground/20 rounded flex items-center justify-center transition-colors">
+                                <Plus className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/25 transition-colors" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -555,8 +652,8 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
         </Card>
       </div>
 
-      <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground flex-wrap gap-2">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-amber-100 border-l-2 border-amber-500" />
             <span>Pending</span>
@@ -574,10 +671,6 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
             <span>Completed</span>
           </div>
         </div>
-        <p>
-          {weekJobs.length} job{weekJobs.length !== 1 ? 's' : ''} this week · 
-          {unassignedJobs.length} unassigned
-        </p>
       </div>
     </div>
   );
