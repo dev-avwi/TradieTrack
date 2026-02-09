@@ -531,9 +531,9 @@ function Router({
         <Redirect to="/team-operations" />
       </Route>
       
-      <Route path="/team-operations" component={() => (
+      <Route path="/team-operations">
         <TeamOperations />
-      )} />
+      </Route>
       
       <Route path="/team-chat" component={() => (
         <TeamChatPage />

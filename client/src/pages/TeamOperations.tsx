@@ -1962,7 +1962,6 @@ function SchedulingTab() {
 
 
   const [peopleControlTab, setPeopleControlTab] = useState<'timeoff' | 'availability'>('timeoff');
-  const [boardView, setBoardView] = useState<'jobs' | 'team'>('jobs');
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
   const assignJobMutation = useMutation({
@@ -2201,128 +2200,16 @@ function SchedulingTab() {
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarDays className="h-4 w-4" />
-              Weekly Dispatch Board
+              Team Schedule Board
             </CardTitle>
             <div className="flex items-center gap-1 flex-wrap">
               <span className="text-xs text-muted-foreground mr-2">
                 {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
               </span>
-              <Button
-                size="sm"
-                variant={boardView === 'jobs' ? 'default' : 'ghost'}
-                onClick={() => setBoardView('jobs')}
-                className="text-xs"
-              >
-                <Briefcase className="h-3 w-3 mr-1" />
-                Jobs Board
-              </Button>
-              <Button
-                size="sm"
-                variant={boardView === 'team' ? 'default' : 'ghost'}
-                onClick={() => setBoardView('team')}
-                className="text-xs"
-              >
-                <Users className="h-3 w-3 mr-1" />
-                Team Board
-              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          {boardView === 'jobs' ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5 flex-wrap pb-2 border-b border-border">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-1">Team:</span>
-                {acceptedMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, 'member', member.userId)}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/50 cursor-grab active:cursor-grabbing border border-transparent"
-                    title={`${member.firstName} ${member.lastName} - drag onto a job to assign`}
-                  >
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={member.profileImageUrl} />
-                      <AvatarFallback
-                        className="text-[8px]"
-                        style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}
-                      >
-                        {getInitials(member.firstName, member.lastName, member.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-[10px] font-medium">{member.firstName}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="overflow-x-auto -mx-4 sm:mx-0">
-                <div className="min-w-[700px] px-4 sm:px-0">
-                  <div className="grid grid-cols-7 gap-2">
-                    {weekDays.map((day) => {
-                      const dayKey = format(day, 'yyyy-MM-dd');
-                      const isCurrentDay = isSameDay(day, today);
-                      const dayJobs = weekJobs[dayKey] || [];
-                      const unassigned = dayJobs.filter(j => !j.assignedTo);
-                      const assigned = dayJobs.filter(j => !!j.assignedTo);
-                      const isDropZone = dragOverTarget === `day-${dayKey}`;
-
-                      return (
-                        <div
-                          key={dayKey}
-                          className={`flex flex-col rounded-md border ${
-                            isCurrentDay ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border'
-                          }`}
-                          onDragOver={(e) => handleDragOver(e, `day-${dayKey}`)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDropOnDayColumn(e, dayKey)}
-                        >
-                          <div className={`p-1.5 text-center text-xs font-medium border-b ${
-                            isCurrentDay
-                              ? 'bg-primary/10 text-foreground'
-                              : 'bg-muted/50 text-muted-foreground'
-                          }`}>
-                            <div>{format(day, 'EEE')}</div>
-                            <div className={isCurrentDay ? 'font-bold' : ''}>{format(day, 'MMM d')}</div>
-                          </div>
-                          <div className={`p-1.5 space-y-1.5 min-h-[100px] flex-1 ${
-                            isDropZone ? 'bg-primary/5 outline-dashed outline-1 outline-primary/30' : ''
-                          }`}>
-                            {unassigned.length > 0 && (
-                              <div className="space-y-1">
-                                {unassigned.map((job) => renderJobCard(job, { compact: true }))}
-                              </div>
-                            )}
-                            {assigned.length > 0 && (
-                              <div className="space-y-1">
-                                {assigned.map((job) => renderJobCard(job, { compact: true }))}
-                              </div>
-                            )}
-                            {dayJobs.length === 0 && (
-                              <div className="flex items-center justify-center h-full">
-                                <span className="text-[10px] text-muted-foreground/50">No jobs</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {backlogJobs.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <AlertTriangle className="h-3 w-3 text-amber-500" />
-                    Backlog ({backlogJobs.length}) - drag to a day to schedule
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {backlogJobs.map((job) => renderJobCard(job))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
             <div className="space-y-3">
               {acceptedMembers.length > 0 ? (
                 <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -2461,7 +2348,6 @@ function SchedulingTab() {
                 </div>
               )}
             </div>
-          )}
         </CardContent>
       </Card>
 
