@@ -1947,54 +1947,150 @@ function SchedulingTab() {
     t.status === 'approved' && isAfter(new Date(t.endDate), new Date())
   );
 
+  const todayUnassignedJobs = useMemo(() => {
+    return jobs.filter(j => {
+      if (j.assignedTo) return false;
+      if (j.status === 'completed' || j.status === 'cancelled') return false;
+      if (j.scheduledAt) {
+        return isSameDay(new Date(j.scheduledAt), today);
+      }
+      return j.status === 'pending' || j.status === 'scheduled';
+    });
+  }, [jobs, today]);
+
+  const [peopleControlTab, setPeopleControlTab] = useState<'timeoff' | 'availability'>('timeoff');
+
   return (
     <div className="p-4 space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
-              <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{todaySummary.workingToday}</p>
-              <p className="text-xs text-muted-foreground truncate">Working Today</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg shrink-0">
-              <UserX className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{todaySummary.offToday}</p>
-              <p className="text-xs text-muted-foreground truncate">Off Today</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-              <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{todaySummary.onJob}</p>
-              <p className="text-xs text-muted-foreground truncate">On Job</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
-              <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{todaySummary.available}</p>
-              <p className="text-xs text-muted-foreground truncate">Available</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="secondary" className="text-xs gap-1">
+          <UserCheck className="h-3 w-3" />
+          {todaySummary.workingToday} Working
+        </Badge>
+        <Badge variant="secondary" className="text-xs gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
+          <UserX className="h-3 w-3" />
+          {todaySummary.offToday} Off
+        </Badge>
+        <Badge variant="secondary" className="text-xs gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-0">
+          <Briefcase className="h-3 w-3" />
+          {todaySummary.onJob} On Job
+        </Badge>
+        <Badge variant="secondary" className="text-xs gap-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+          <Clock className="h-3 w-3" />
+          {todaySummary.available} Free
+        </Badge>
       </div>
+
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              Today's Schedule
+            </CardTitle>
+            <span className="text-xs text-muted-foreground">{format(today, 'EEEE, MMM d')}</span>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {acceptedMembers.length > 0 ? (
+            <div className="space-y-2">
+              {acceptedMembers.map((member) => {
+                const memberJobs = getMemberJobsForDay(member.userId, today);
+                const dayTimeOff = getMemberTimeOffForDay(member.id, today);
+                const hasApprovedTimeOff = dayTimeOff.some(t => t.status === 'approved');
+                const timeOffEntry = dayTimeOff.find(t => t.status === 'approved');
+
+                return (
+                  <div
+                    key={member.id}
+                    className={`flex items-start gap-3 p-2.5 rounded-md border ${
+                      hasApprovedTimeOff
+                        ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200/50 dark:border-red-800/30'
+                        : memberJobs.length > 0
+                          ? 'border-border'
+                          : 'border-border bg-muted/20'
+                    }`}
+                    data-testid={`dispatch-member-${member.id}`}
+                  >
+                    <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+                      <AvatarImage src={member.profileImageUrl} />
+                      <AvatarFallback
+                        className="text-xs"
+                        style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}
+                      >
+                        {getInitials(member.firstName, member.lastName, member.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{member.firstName} {member.lastName}</p>
+                      {hasApprovedTimeOff ? (
+                        <Badge variant="secondary" className="text-xs mt-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
+                          Off Today {timeOffEntry?.reason ? `\u2022 ${timeOffEntry.reason.replace('_', ' ')}` : ''}
+                        </Badge>
+                      ) : memberJobs.length > 0 ? (
+                        <div className="flex flex-col gap-1 mt-1">
+                          {memberJobs.map((job) => (
+                            <div key={job.id} className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="secondary" className="text-xs border-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                {job.title}
+                              </Badge>
+                              {job.clientName && (
+                                <span className="text-xs text-muted-foreground truncate">{job.clientName}</span>
+                              )}
+                              {job.scheduledAt && (
+                                <span className="text-xs text-muted-foreground">{format(new Date(job.scheduledAt), 'h:mm a')}</span>
+                              )}
+                              <Badge
+                                variant="secondary"
+                                className={`text-[10px] border-0 ${
+                                  job.status === 'in_progress'
+                                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                                    : 'bg-muted text-muted-foreground'
+                                }`}
+                              >
+                                {job.status === 'in_progress' ? 'In Progress' : job.status === 'scheduled' ? 'Scheduled' : job.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground mt-0.5 block">Available</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {todayUnassignedJobs.length > 0 && (
+                <>
+                  <Separator className="my-2" />
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      Unassigned ({todayUnassignedJobs.length})
+                    </p>
+                    <div className="space-y-1.5">
+                      {todayUnassignedJobs.map((job) => (
+                        <div key={job.id} className="flex items-center gap-2 p-2 rounded-md bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                          <span className="text-sm truncate flex-1">{job.title}</span>
+                          {job.clientName && (
+                            <span className="text-xs text-muted-foreground truncate">{job.clientName}</span>
+                          )}
+                          {job.scheduledAt && (
+                            <span className="text-xs text-muted-foreground shrink-0">{format(new Date(job.scheduledAt), 'h:mm a')}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4 text-center">Add team members to see today's schedule</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="py-3">
@@ -2003,32 +2099,35 @@ function SchedulingTab() {
               <CalendarDays className="h-4 w-4" />
               Weekly Roster
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
-            </p>
+            </span>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           {acceptedMembers.length > 0 ? (
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <div className="min-w-[640px] px-4 sm:px-0">
-                <div className="grid grid-cols-[160px_repeat(7,1fr)] gap-px bg-border rounded-md overflow-hidden">
+                <div className="grid grid-cols-[140px_repeat(7,1fr)] gap-px bg-border rounded-md overflow-hidden">
                   <div className="bg-muted/50 p-2 text-xs font-medium text-muted-foreground">
                     Team Member
                   </div>
                   {weekDays.map((day, i) => {
-                    const isToday = isSameDay(day, today);
+                    const isCurrentDay = isSameDay(day, today);
+                    const isWeekend = !isWeekday(day);
                     return (
                       <div
                         key={i}
-                        className={`p-2 text-center text-xs font-medium ${
-                          isToday
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted/50 text-muted-foreground'
-                        }`}
+                        className={`p-1.5 text-center text-xs font-medium ${
+                          isCurrentDay
+                            ? 'bg-primary/10'
+                            : isWeekend
+                              ? 'bg-muted/70'
+                              : 'bg-muted/50'
+                        } text-muted-foreground`}
                       >
                         <div>{format(day, 'EEE')}</div>
-                        <div className={isToday ? 'font-bold' : ''}>{format(day, 'd')}</div>
+                        <div className={isCurrentDay ? 'font-bold text-foreground' : ''}>{format(day, 'd')}</div>
                       </div>
                     );
                   })}
@@ -2039,17 +2138,17 @@ function SchedulingTab() {
                         key={`name-${member.id}`}
                         className="bg-card p-2 flex items-center gap-2 border-t border-border"
                       >
-                        <Avatar className="h-7 w-7 shrink-0">
+                        <Avatar className="h-6 w-6 shrink-0">
                           <AvatarImage src={member.profileImageUrl} />
                           <AvatarFallback
-                            className="text-xs"
+                            className="text-[10px]"
                             style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}
                           >
                             {getInitials(member.firstName, member.lastName, member.email)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium truncate">
-                          {member.firstName} {member.lastName}
+                        <span className="text-xs font-medium truncate">
+                          {member.firstName}
                         </span>
                       </div>
                       {weekDays.map((day, dayIndex) => {
@@ -2059,51 +2158,67 @@ function SchedulingTab() {
                         const memberJobs = getMemberJobsForDay(member.userId, day);
                         const isAvail = isWeekday(day) && !hasApprovedTimeOff;
                         const isCurrentDay = isSameDay(day, today);
+                        const isWeekend = !isWeekday(day);
 
                         let cellBg = 'bg-card';
                         if (hasApprovedTimeOff) {
                           cellBg = 'bg-red-50 dark:bg-red-900/10';
-                        } else if (!isWeekday(day)) {
-                          cellBg = 'bg-muted/30';
+                        } else if (isWeekend) {
+                          cellBg = 'bg-muted/40';
+                        } else if (memberJobs.length > 0) {
+                          cellBg = 'bg-blue-50/30 dark:bg-blue-900/5';
                         } else if (isAvail) {
-                          cellBg = 'bg-green-50/50 dark:bg-green-900/10';
+                          cellBg = 'bg-green-50/30 dark:bg-green-900/5';
                         }
 
                         return (
                           <div
                             key={`${member.id}-${dayIndex}`}
-                            className={`${cellBg} p-1.5 border-t border-border flex flex-col items-center justify-center gap-1 min-h-[52px] ${
+                            className={`${cellBg} p-1 border-t border-border flex flex-col items-center justify-center gap-0.5 min-h-[48px] ${
                               isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
                             }`}
                             data-testid={`roster-cell-${member.id}-${dayIndex}`}
                           >
                             {hasApprovedTimeOff && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">
                                 Off
                               </Badge>
                             )}
                             {hasPendingTimeOff && !hasApprovedTimeOff && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
                                 Pending
                               </Badge>
                             )}
-                            {!hasApprovedTimeOff && !hasPendingTimeOff && isWeekday(day) && memberJobs.length === 0 && (
-                              <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />
+                            {isWeekend && !hasApprovedTimeOff && !hasPendingTimeOff && (
+                              <span className="text-[10px] text-muted-foreground/50">-</span>
                             )}
-                            {!isWeekday(day) && !hasApprovedTimeOff && !hasPendingTimeOff && (
-                              <span className="text-[10px] text-muted-foreground">-</span>
+                            {!hasApprovedTimeOff && !hasPendingTimeOff && !isWeekend && memberJobs.length === 0 && (
+                              <span className="text-[10px] text-green-600/60 dark:text-green-400/60">Free</span>
                             )}
-                            {memberJobs.slice(0, 2).map((job) => (
-                              <Badge
-                                key={job.id}
-                                variant="secondary"
-                                className="text-[10px] px-1.5 py-0 max-w-full truncate border-0"
-                              >
-                                {job.title}
-                              </Badge>
-                            ))}
-                            {memberJobs.length > 2 && (
-                              <span className="text-[10px] text-muted-foreground">+{memberJobs.length - 2}</span>
+                            {memberJobs.length > 0 && (
+                              <>
+                                {memberJobs.length <= 2 ? (
+                                  memberJobs.map((job) => (
+                                    <Badge
+                                      key={job.id}
+                                      variant="secondary"
+                                      className="text-[9px] px-1 py-0 max-w-full truncate border-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                                    >
+                                      {job.title.length > 10 ? job.title.slice(0, 10) + '\u2026' : job.title}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <>
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[9px] px-1 py-0 max-w-full truncate border-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                                    >
+                                      {memberJobs[0].title.length > 10 ? memberJobs[0].title.slice(0, 10) + '\u2026' : memberJobs[0].title}
+                                    </Badge>
+                                    <span className="text-[9px] text-blue-600 dark:text-blue-400">+{memberJobs.length - 1} more</span>
+                                  </>
+                                )}
+                              </>
                             )}
                           </div>
                         );
@@ -2114,176 +2229,68 @@ function SchedulingTab() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No team members yet</p>
-            </div>
+            <p className="text-sm text-muted-foreground py-4 text-center">No team members yet</p>
           )}
         </CardContent>
       </Card>
 
-      <Collapsible open={availabilitySectionOpen} onOpenChange={setAvailabilitySectionOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover-elevate py-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Edit Availability
-                </CardTitle>
-                {availabilitySectionOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <Label className="text-sm text-muted-foreground shrink-0">Select member:</Label>
-                <Select value={selectedMember || ""} onValueChange={setSelectedMember}>
-                  <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-member-availability">
-                    <SelectValue placeholder="Select member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {acceptedMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.firstName} {member.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedMember ? (
-                <div className="space-y-2">
-                  {DAY_NAMES.map((day, index) => {
-                    const dayAvailability = availability.find(a => a.dayOfWeek === index);
-                    const isAvailable = dayAvailability?.isAvailable ?? (index > 0 && index < 6);
-                    const startTime = dayAvailability?.startTime || '08:00';
-                    const endTime = dayAvailability?.endTime || '17:00';
-
-                    return (
-                      <div
-                        key={day}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 p-2.5 border rounded-md"
-                        data-testid={`availability-${index}`}
-                      >
-                        <div className="flex items-center gap-3 sm:w-28">
-                          <Switch
-                            checked={isAvailable}
-                            onCheckedChange={(checked) => {
-                              updateAvailabilityMutation.mutate({
-                                teamMemberId: selectedMember,
-                                dayOfWeek: index,
-                                isAvailable: checked,
-                              });
-                            }}
-                            data-testid={`switch-available-${index}`}
-                          />
-                          <span className={`font-medium text-sm ${!isAvailable ? 'text-muted-foreground' : ''}`}>
-                            {day}
-                          </span>
-                        </div>
-                        {isAvailable && (
-                          <div className="flex items-center gap-2 ml-8 sm:ml-0">
-                            <Input
-                              type="time"
-                              value={startTime}
-                              onChange={(e) => {
-                                updateAvailabilityMutation.mutate({
-                                  teamMemberId: selectedMember,
-                                  dayOfWeek: index,
-                                  isAvailable: true,
-                                  startTime: e.target.value,
-                                  endTime,
-                                });
-                              }}
-                              className="w-24 sm:w-28"
-                              data-testid={`input-start-${index}`}
-                            />
-                            <span className="text-muted-foreground text-sm">to</span>
-                            <Input
-                              type="time"
-                              value={endTime}
-                              onChange={(e) => {
-                                updateAvailabilityMutation.mutate({
-                                  teamMemberId: selectedMember,
-                                  dayOfWeek: index,
-                                  isAvailable: true,
-                                  startTime,
-                                  endTime: e.target.value,
-                                });
-                              }}
-                              className="w-24 sm:w-28"
-                              data-testid={`input-end-${index}`}
-                            />
-                          </div>
-                        )}
-                        {!isAvailable && (
-                          <span className="text-sm text-muted-foreground ml-8 sm:ml-0">Not available</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Select a team member to edit their weekly availability
-                </p>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
-      <Collapsible open={timeOffSectionOpen} onOpenChange={setTimeOffSectionOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover-elevate py-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Time Off
-                  {pendingTimeOff.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {pendingTimeOff.length} pending
-                    </Badge>
-                  )}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTimeOffDialogOpen(true);
-                    }}
-                    data-testid="button-request-timeoff"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Request
-                  </Button>
-                  {timeOffSectionOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0 space-y-4">
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                People & Time
+              </CardTitle>
               {pendingTimeOff.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-muted-foreground">Pending Requests</p>
+                <Badge variant="secondary" className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-0">
+                  {pendingTimeOff.length} pending
+                </Badge>
+              )}
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setTimeOffDialogOpen(true)}
+              data-testid="button-request-timeoff"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Request
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex gap-1 mb-3">
+            <Button
+              size="sm"
+              variant={peopleControlTab === 'timeoff' ? 'default' : 'ghost'}
+              onClick={() => setPeopleControlTab('timeoff')}
+              className="text-xs"
+            >
+              <Calendar className="h-3 w-3 mr-1" />
+              Time Off
+            </Button>
+            <Button
+              size="sm"
+              variant={peopleControlTab === 'availability' ? 'default' : 'ghost'}
+              onClick={() => setPeopleControlTab('availability')}
+              className="text-xs"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              Availability
+            </Button>
+          </div>
+
+          {peopleControlTab === 'timeoff' && (
+            <div className="space-y-3">
+              {pendingTimeOff.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Approval</p>
                   {pendingTimeOff.map((request) => {
                     const member = teamMembers.find(m => m.id === request.teamMemberId);
                     return (
                       <div
                         key={request.id}
-                        className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border rounded-md"
+                        className="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 border rounded-md bg-amber-50/30 dark:bg-amber-900/5 border-amber-200/50 dark:border-amber-800/30"
                         data-testid={`timeoff-${request.id}`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -2302,7 +2309,7 @@ function SchedulingTab() {
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {format(new Date(request.startDate), 'MMM d')} - {format(new Date(request.endDate), 'MMM d, yyyy')}
-                              <span className="ml-2 capitalize">{request.reason.replace('_', ' ')}</span>
+                              <span className="ml-1.5 capitalize">{request.reason.replace('_', ' ')}</span>
                             </p>
                           </div>
                         </div>
@@ -2333,8 +2340,8 @@ function SchedulingTab() {
               )}
 
               {upcomingTimeOff.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Upcoming Approved</p>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upcoming Approved</p>
                   {upcomingTimeOff.map((leave) => {
                     const member = teamMembers.find(m => m.id === leave.teamMemberId);
                     return (
@@ -2359,14 +2366,106 @@ function SchedulingTab() {
               )}
 
               {pendingTimeOff.length === 0 && upcomingTimeOff.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No time off requests
+                <p className="text-xs text-muted-foreground text-center py-3">No time off requests</p>
+              )}
+            </div>
+          )}
+
+          {peopleControlTab === 'availability' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground shrink-0">Member:</Label>
+                <Select value={selectedMember || ""} onValueChange={setSelectedMember}>
+                  <SelectTrigger className="flex-1 sm:w-[200px] sm:flex-none" data-testid="select-member-availability">
+                    <SelectValue placeholder="Select member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {acceptedMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedMember ? (
+                <div className="space-y-1.5">
+                  {DAY_NAMES.map((day, index) => {
+                    const dayAvailability = availability.find(a => a.dayOfWeek === index);
+                    const isAvailable = dayAvailability?.isAvailable ?? (index > 0 && index < 6);
+                    const startTime = dayAvailability?.startTime || '08:00';
+                    const endTime = dayAvailability?.endTime || '17:00';
+
+                    return (
+                      <div
+                        key={day}
+                        className="flex items-center gap-2 p-2 border rounded-md"
+                        data-testid={`availability-${index}`}
+                      >
+                        <Switch
+                          checked={isAvailable}
+                          onCheckedChange={(checked) => {
+                            updateAvailabilityMutation.mutate({
+                              teamMemberId: selectedMember,
+                              dayOfWeek: index,
+                              isAvailable: checked,
+                            });
+                          }}
+                          data-testid={`switch-available-${index}`}
+                        />
+                        <span className={`text-sm font-medium w-12 shrink-0 ${!isAvailable ? 'text-muted-foreground' : ''}`}>
+                          {day.slice(0, 3)}
+                        </span>
+                        {isAvailable ? (
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
+                            <Input
+                              type="time"
+                              value={startTime}
+                              onChange={(e) => {
+                                updateAvailabilityMutation.mutate({
+                                  teamMemberId: selectedMember,
+                                  dayOfWeek: index,
+                                  isAvailable: true,
+                                  startTime: e.target.value,
+                                  endTime,
+                                });
+                              }}
+                              className="w-[100px]"
+                              data-testid={`input-start-${index}`}
+                            />
+                            <span className="text-xs text-muted-foreground">-</span>
+                            <Input
+                              type="time"
+                              value={endTime}
+                              onChange={(e) => {
+                                updateAvailabilityMutation.mutate({
+                                  teamMemberId: selectedMember,
+                                  dayOfWeek: index,
+                                  isAvailable: true,
+                                  startTime,
+                                  endTime: e.target.value,
+                                });
+                              }}
+                              className="w-[100px]"
+                              data-testid={`input-end-${index}`}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Off</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-3">
+                  Select a member to edit availability
                 </p>
               )}
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={timeOffDialogOpen} onOpenChange={setTimeOffDialogOpen}>
         <DialogContent data-testid="dialog-request-timeoff">
