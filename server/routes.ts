@@ -17396,7 +17396,7 @@ Respond with JSON in this format:
 
   // ===== TEAM MANAGEMENT ROUTES =====
   
-  // Distinct color palette for team members - auto-assigned based on index
+  // Unified color palette for team members - 20 visually distinct colors
   const TEAM_MEMBER_COLOR_PALETTE = [
     '#3B82F6', // Blue
     '#22C55E', // Green
@@ -17410,7 +17410,44 @@ Respond with JSON in this format:
     '#84CC16', // Lime
     '#06B6D4', // Cyan
     '#A855F7', // Violet
+    '#10B981', // Emerald
+    '#FACC15', // Yellow
+    '#FB7185', // Rose
+    '#0EA5E9', // Sky
+    '#D946EF', // Fuchsia
+    '#78716C', // Stone
+    '#2DD4BF', // Mint
+    '#E11D48', // Crimson
   ];
+
+  async function getRandomAvailableTeamColor(businessOwnerId: string, excludeUserId?: string): Promise<string> {
+    const teamMembers = await storage.getTeamMembers(businessOwnerId);
+    const owner = await storage.getUser(businessOwnerId);
+
+    const usedColors = new Set<string>();
+    if (owner?.themeColor) {
+      usedColors.add(owner.themeColor.toUpperCase());
+    }
+
+    for (const member of teamMembers) {
+      if (member.memberId && member.memberId !== excludeUserId) {
+        const memberUser = await storage.getUser(member.memberId);
+        if (memberUser?.themeColor) {
+          usedColors.add(memberUser.themeColor.toUpperCase());
+        }
+      }
+    }
+
+    const availableColors = TEAM_MEMBER_COLOR_PALETTE.filter(
+      c => !usedColors.has(c.toUpperCase())
+    );
+
+    if (availableColors.length > 0) {
+      return availableColors[Math.floor(Math.random() * availableColors.length)];
+    }
+
+    return TEAM_MEMBER_COLOR_PALETTE[Math.floor(Math.random() * TEAM_MEMBER_COLOR_PALETTE.length)];
+  }
 
   // Get all team members for the current user (business owner)
   app.get("/api/team/members", requireAuth, async (req: any, res) => {
@@ -17429,17 +17466,17 @@ Respond with JSON in this format:
       // Fetch user data for members that have accepted invites
       // Auto-persist default colors if not already set
       const memberUserPromises = teamMembers.map(async (member, index) => {
-        const defaultColor = TEAM_MEMBER_COLOR_PALETTE[index % TEAM_MEMBER_COLOR_PALETTE.length];
-        let themeColor = defaultColor;
+        let themeColor = TEAM_MEMBER_COLOR_PALETTE[index % TEAM_MEMBER_COLOR_PALETTE.length];
         
         if (member.memberId) {
           const memberUser = await storage.getUser(member.memberId);
           if (memberUser?.themeColor) {
             themeColor = memberUser.themeColor;
           } else if (memberUser) {
-            // Auto-persist default color so it's consistent across all endpoints
-            await storage.updateUser(member.memberId, { themeColor: defaultColor });
-            console.log(`[TeamMembers] Auto-assigned color ${defaultColor} to ${memberUser.email}`);
+            const randomColor = await getRandomAvailableTeamColor(userId, member.memberId);
+            await storage.updateUser(member.memberId, { themeColor: randomColor });
+            themeColor = randomColor;
+            console.log(`[TeamMembers] Auto-assigned random color ${randomColor} to ${memberUser.email}`);
           }
         }
         
@@ -17457,6 +17494,21 @@ Respond with JSON in this format:
       });
       
       const enrichedMembers = await Promise.all(memberUserPromises);
+      
+      // Fix duplicate colors: reassign duplicates to available colors
+      const seenColors = new Set<string>();
+      for (const member of enrichedMembers) {
+        const colorUpper = member.themeColor?.toUpperCase();
+        if (colorUpper && seenColors.has(colorUpper) && member.memberId) {
+          const newColor = await getRandomAvailableTeamColor(userId, member.memberId);
+          await storage.updateUser(member.memberId, { themeColor: newColor });
+          member.themeColor = newColor;
+          console.log(`[TeamMembers] Fixed duplicate color for member ${member.memberId}: ${colorUpper} -> ${newColor}`);
+        }
+        if (colorUpper) {
+          seenColors.add(colorUpper);
+        }
+      }
       
       res.json(enrichedMembers);
     } catch (error) {
@@ -17820,6 +17872,13 @@ Respond with JSON in this format:
         inviteAcceptedAt: new Date(),
         inviteToken: null, // Clear the token so it can't be reused
       });
+      
+      // Auto-assign a unique random color if user doesn't have one
+      if (!user.themeColor) {
+        const randomColor = await getRandomAvailableTeamColor(teamMember.businessOwnerId, user.id);
+        await storage.updateUser(user.id, { themeColor: randomColor });
+        console.log(`[TeamInvite] Auto-assigned color ${randomColor} to new team member ${user.email || user.id}`);
+      }
       
       // Auto-login the user if they just registered
       if (isNewUser) {
@@ -18336,24 +18395,7 @@ Respond with JSON in this format:
 
   // ===== THEME COLOR ROUTES =====
   
-  // Predefined color palette for team members (professional tradie colors)
-  const TEAM_COLOR_PALETTE = [
-    '#3B82F6', // Blue
-    '#10B981', // Emerald
-    '#F59E0B', // Amber
-    '#EF4444', // Red
-    '#8B5CF6', // Violet
-    '#EC4899', // Pink
-    '#06B6D4', // Cyan
-    '#84CC16', // Lime
-    '#F97316', // Orange
-    '#6366F1', // Indigo
-    '#14B8A6', // Teal
-    '#A855F7', // Purple
-    '#22C55E', // Green
-    '#FACC15', // Yellow
-    '#FB7185', // Rose
-  ];
+  // Use unified palette - same as TEAM_MEMBER_COLOR_PALETTE defined above
   
   // Get available colors for a team (colors not used by other members)
   app.get("/api/team/colors/available", requireAuth, async (req: any, res) => {
@@ -18388,7 +18430,7 @@ Respond with JSON in this format:
       const currentColor = currentUser?.themeColor || null;
       
       // Return palette with availability status
-      const colorOptions = TEAM_COLOR_PALETTE.map(color => ({
+      const colorOptions = TEAM_MEMBER_COLOR_PALETTE.map(color => ({
         color,
         available: !usedColors.has(color.toUpperCase()),
         isCurrentUser: currentColor?.toUpperCase() === color.toUpperCase(),
@@ -18398,7 +18440,7 @@ Respond with JSON in this format:
         colors: colorOptions,
         currentColor,
         usedCount: usedColors.size,
-        availableCount: TEAM_COLOR_PALETTE.length - usedColors.size,
+        availableCount: TEAM_MEMBER_COLOR_PALETTE.length - usedColors.size,
       });
     } catch (error) {
       console.error('Error fetching available colors:', error);
