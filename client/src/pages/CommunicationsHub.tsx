@@ -457,10 +457,9 @@ export default function CommunicationsHub() {
     const seenEntityKeys = new Set<string>();
     const deduplicatedLogs = sentLogs.filter(log => {
       const metadata = (log.metadata || {}) as Record<string, any>;
-      const deliveryMethod = metadata.deliveryMethod;
+      const deliveryMethod = metadata.deliveryMethod || 'email';
       if (log.entityId && log.entityType) {
-        const timestamp = log.createdAt ? new Date(log.createdAt).toISOString().slice(0, 16) : '';
-        const key = `${log.entityType}-${log.entityId}-${deliveryMethod || 'email'}-${timestamp}`;
+        const key = `${log.entityType}-${log.entityId}-${deliveryMethod}`;
         if (seenEntityKeys.has(key)) return false;
         seenEntityKeys.add(key);
       }

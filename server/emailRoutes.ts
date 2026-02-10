@@ -8,6 +8,32 @@ import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 
+const sendCooldowns = new Map<string, number>();
+const SEND_COOLDOWN_MS = 60_000; // 60 seconds
+
+function checkSendCooldown(userId: string, entityType: string, entityId: string): { blocked: boolean; remainingSeconds: number } {
+  const key = `${userId}-${entityType}-${entityId}`;
+  const lastSent = sendCooldowns.get(key);
+  if (lastSent) {
+    const elapsed = Date.now() - lastSent;
+    if (elapsed < SEND_COOLDOWN_MS) {
+      return { blocked: true, remainingSeconds: Math.ceil((SEND_COOLDOWN_MS - elapsed) / 1000) };
+    }
+  }
+  return { blocked: false, remainingSeconds: 0 };
+}
+
+function setSendCooldown(userId: string, entityType: string, entityId: string) {
+  const key = `${userId}-${entityType}-${entityId}`;
+  sendCooldowns.set(key, Date.now());
+  if (sendCooldowns.size > 1000) {
+    const now = Date.now();
+    for (const [k, v] of sendCooldowns) {
+      if (now - v > SEND_COOLDOWN_MS * 2) sendCooldowns.delete(k);
+    }
+  }
+}
+
 // Helper function to wrap template content in professional HTML email layout
 // Uses absolute TradieTrack logo URL as fallback for email client compatibility
 function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string, actionUrl?: string | null, actionLabel?: string): string {
@@ -136,6 +162,16 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
         title: "Quote Already Sent",
         message: `This quote was already sent on ${sentDate}.`,
         fix: "If you want to send it again, use the 'Resend' option instead."
+      });
+    }
+
+    // Cooldown check - prevent rapid duplicate sends
+    const quoteSendCooldown = checkSendCooldown(req.userId, 'quote', req.params.id);
+    if (quoteSendCooldown.blocked) {
+      return res.status(429).json({
+        title: "Already Sent",
+        message: `This quote was just sent. Please wait ${quoteSendCooldown.remainingSeconds} seconds before sending again.`,
+        fix: "Check your sent items — the quote may have already been delivered."
       });
     }
 
@@ -395,6 +431,9 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
         fix: "The email was sent successfully. You can manually update the quote status if needed."
       });
     }
+
+    // Set cooldown after successful send
+    setSendCooldown(req.userId, 'quote', req.params.id);
 
     // Log activity for dashboard feed with full email content for Communications Hub
     try {
@@ -1037,6 +1076,16 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       });
     }
     
+    // Cooldown check - prevent rapid duplicate sends
+    const cooldown = checkSendCooldown(req.userId, 'quote', req.params.id);
+    if (cooldown.blocked) {
+      return res.status(429).json({
+        title: "Already Sent",
+        message: `This quote was just sent. Please wait ${cooldown.remainingSeconds} seconds before sending again.`,
+        fix: "Check your sent items — the quote may have already been delivered."
+      });
+    }
+    
     // 3. Get client
     const client = await storage.getClient(quoteWithItems.clientId, req.userId);
     if (!client) {
@@ -1237,6 +1286,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       console.log('[Email] Sending quote via SendGrid (automatic mode)');
       
       await sendViaSendGrid();
+      setSendCooldown(req.userId, 'quote', req.params.id);
       await logQuoteEmailActivity('email');
       
       res.json({
@@ -1263,6 +1313,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         // Gmail failed - fallback to SendGrid
         console.log('[Email] Gmail draft failed, falling back to SendGrid:', draftResult.error);
         await sendViaSendGrid();
+        setSendCooldown(req.userId, 'quote', req.params.id);
         await logQuoteEmailActivity('email');
         
         return res.json({
@@ -1276,6 +1327,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       
       // Update quote status to sent (user created the draft, we assume they'll send it)
       await storage.updateQuote(req.params.id, req.userId, { status: 'sent' });
+      setSendCooldown(req.userId, 'quote', req.params.id);
       await logQuoteEmailActivity('gmail');
       
       // Return success with draft URL for user to open Gmail
@@ -1343,6 +1395,16 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         title: "Invoice Not Found",
         message: "We couldn't find this invoice.",
         fix: "The invoice may have been deleted. Go back to your Invoices list."
+      });
+    }
+    
+    // Cooldown check - prevent rapid duplicate sends
+    const invoiceCooldown = checkSendCooldown(req.userId, 'invoice', req.params.id);
+    if (invoiceCooldown.blocked) {
+      return res.status(429).json({
+        title: "Already Sent",
+        message: `This invoice was just sent. Please wait ${invoiceCooldown.remainingSeconds} seconds before sending again.`,
+        fix: "Check your sent items — the invoice may have already been delivered."
       });
     }
     
@@ -1557,6 +1619,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       console.log('[Email] Sending invoice via SendGrid (automatic mode)');
       
       await sendViaSendGrid();
+      setSendCooldown(req.userId, 'invoice', req.params.id);
       await logInvoiceEmailActivity('email');
       
       res.json({
@@ -1583,6 +1646,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         // Gmail failed - fallback to SendGrid
         console.log('[Email] Gmail draft failed for invoice, falling back to SendGrid:', draftResult.error);
         await sendViaSendGrid();
+        setSendCooldown(req.userId, 'invoice', req.params.id);
         await logInvoiceEmailActivity('email');
         
         return res.json({
@@ -1596,6 +1660,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       
       // Update invoice status to sent (user created the draft, we assume they'll send it)
       await storage.updateInvoice(req.params.id, req.userId, { status: 'sent' });
+      setSendCooldown(req.userId, 'invoice', req.params.id);
       await logInvoiceEmailActivity('gmail');
       
       // Return success with draft URL for user to open Gmail

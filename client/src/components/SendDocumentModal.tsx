@@ -321,9 +321,20 @@ export default function SendDocumentModal({
       return false;
     } catch (error: any) {
       console.error('Email send error:', error);
+      let errorMessage = "Couldn't connect to the server. Check your internet and try again.";
+      let errorTitle = "Connection error";
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.title) errorTitle = parsed.title;
+        if (parsed.message) errorMessage = parsed.message;
+      } catch {
+        if (error.message && !error.message.includes('<!DOCTYPE')) {
+          errorMessage = error.message;
+        }
+      }
       toast({
-        title: "Connection error",
-        description: "Couldn't connect to the server. Check your internet and try again.",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive"
       });
       return false;
