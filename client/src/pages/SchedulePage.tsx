@@ -583,7 +583,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
   const goToToday = () => setCurrentDate(new Date());
 
   return (
-    <PageShell data-testid="schedule-page">
+    <PageShell data-testid="schedule-page" className="!space-y-3">
       <PageHeader
         title="Schedule"
         subtitle="Plan and dispatch your jobs"
@@ -604,7 +604,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
       />
 
       <Card>
-        <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <CardContent className="p-3 space-y-2">
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
               <div className="flex items-center gap-1 p-1 bg-muted rounded-lg flex-1 sm:flex-none">
@@ -925,11 +925,11 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
         const hasScheduledJobs = scheduledJobsForDate.length > 0;
 
         return (
-          <div className="mt-3 space-y-3">
+          <div className="mt-2 space-y-2">
             {!dispatchTipDismissed && (
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
-                <Info className="h-5 w-5 text-primary flex-shrink-0" />
-                <p className="text-sm flex-1">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/20 bg-primary/5">
+                <Info className="h-4 w-4 text-primary flex-shrink-0" />
+                <p className="text-xs flex-1">
                   <span className="font-medium">Tip:</span> Drag jobs from the Unscheduled panel onto a team member's time slot to schedule them.
                 </p>
                 <Button
@@ -947,13 +947,13 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
 
             <div className="flex flex-col lg:flex-row gap-4">
               <div className="w-full lg:w-72 flex-shrink-0 order-first">
-                <Card className={unscheduledJobs.length > 0 ? 'ring-2 ring-amber-400/50' : ''}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
+                <Card>
+                  <CardHeader className="py-2 px-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
                       <Briefcase className="h-4 w-4" />
-                      Unscheduled Jobs
+                      Unscheduled
                       {unscheduledJobs.length > 0 && (
-                        <ArrowRight className="h-4 w-4 text-amber-500 ml-1" />
+                        <ArrowRight className="h-3.5 w-3.5 text-amber-500 ml-0.5" />
                       )}
                       <Badge
                         variant="secondary"
@@ -972,7 +972,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleUnscheduledDrop}
                   >
-                    <ScrollArea className="h-[500px]">
+                    <ScrollArea className="h-[calc(100vh-320px)] max-h-[600px] min-h-[200px]">
                       <div className="space-y-2 pr-2">
                         {unscheduledJobs.length > 0 ? (
                           unscheduledJobs.map(job => {
@@ -984,7 +984,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                                 onDragStart={() => handleDragStart(job, null)}
                                 onDragEnd={() => setDraggedJob(null)}
                                 onClick={() => onViewJob?.(job.id)}
-                                className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate transition-all ${statusStyle.bg} ${statusStyle.border}`}
+                                className={`p-2 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate transition-all ${statusStyle.bg} ${statusStyle.border}`}
                                 data-testid={`unscheduled-job-${job.id}`}
                               >
                                 <div className="flex items-start gap-2">
@@ -1008,10 +1008,10 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                             );
                           })
                         ) : (
-                          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                            <Briefcase className="h-8 w-8 mb-2 opacity-30" />
+                          <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                            <Briefcase className="h-7 w-7 mb-2 opacity-30" />
                             <p className="text-sm">No unscheduled jobs</p>
-                            <p className="text-xs mt-1">All jobs are scheduled</p>
+                            <p className="text-xs mt-0.5">All jobs are scheduled</p>
                           </div>
                         )}
                       </div>
@@ -1026,40 +1026,28 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                     <div className="overflow-x-auto relative">
                       <div className="min-w-[800px]">
                         <div className="flex border-b bg-muted/30">
-                          <div className="w-16 flex-shrink-0 p-2">
+                          <div className="w-16 flex-shrink-0 p-2 flex items-center">
                             <span className="text-xs font-medium text-muted-foreground">Time</span>
                           </div>
-                          <div className="flex-1 flex items-center border-l px-3 py-1">
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Users className="h-3.5 w-3.5" />
-                              <span>{teamMembersWithJobs.length} team member{teamMembersWithJobs.length !== 1 ? 's' : ''}</span>
-                              {teamMembersWithJobs.length > 4 && (
-                                <span className="ml-1 opacity-60">(scroll right to see all)</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex border-b bg-muted/30">
-                          <div className="w-16 flex-shrink-0" />
                           {teamMembersWithJobs.map(member => (
                             <div 
                               key={member.id}
-                              className="flex-1 min-w-[180px] p-3 border-l"
+                              className="flex-1 min-w-[180px] px-2 py-1.5 border-l"
                             >
                               <div className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8">
+                                <Avatar className="h-7 w-7">
                                   <AvatarImage src={member.profileImageUrl} />
-                                  <AvatarFallback className="text-xs" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                  <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
                                     {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">
+                                  <p className="text-xs font-medium truncate">
                                     {member.firstName} {member.lastName}
                                   </p>
                                   <div className="flex items-center gap-1">
                                     <Timer className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-[11px] text-muted-foreground">
                                       {member.totalHours}h / {member.capacity}h
                                     </span>
                                     {member.totalHours > member.capacity && (
@@ -1068,7 +1056,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                                   </div>
                                 </div>
                               </div>
-                              <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
                                 <div 
                                   className="h-full rounded-full transition-all"
                                   style={{ 
@@ -1083,13 +1071,13 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                           ))}
                         </div>
 
-                        <ScrollArea className="h-[600px]">
+                        <ScrollArea className="h-[calc(100vh-340px)] min-h-[400px]">
                           <div className="relative">
                             {!hasScheduledJobs && (
                               <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none">
-                                <div className="text-center p-6 max-w-sm">
-                                  <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                                  <p className="text-sm text-muted-foreground font-medium mb-1">
+                                <div className="text-center p-4 max-w-xs">
+                                  <CalendarIcon className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
+                                  <p className="text-sm text-muted-foreground font-medium mb-0.5">
                                     No jobs scheduled for today
                                   </p>
                                   <p className="text-xs text-muted-foreground/70">

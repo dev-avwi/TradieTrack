@@ -2179,12 +2179,12 @@ function SchedulingTab() {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-3">
       {!schedulingTipDismissed && (
-        <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
-          <Info className="h-5 w-5 text-primary flex-shrink-0" />
-          <p className="text-sm flex-1">
-            <span className="font-medium">Tip:</span> Drag unassigned jobs onto a team member's day to assign and schedule them. Hover over empty cells to see where you can drop.
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/20 bg-primary/5">
+          <Info className="h-4 w-4 text-primary flex-shrink-0" />
+          <p className="text-xs flex-1">
+            <span className="font-medium">Tip:</span> Drag unassigned jobs onto a team member's day to assign and schedule them.
           </p>
           <Button
             variant="ghost"
@@ -2374,7 +2374,7 @@ function SchedulingTab() {
               )}
 
               {allUnassignedJobs.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-amber-300/50 dark:border-amber-700/50 bg-amber-50/30 dark:bg-amber-900/10 -mx-4 px-4 pb-3 sm:-mx-0 sm:px-0 sm:bg-transparent rounded-b-md">
+                <div className="mt-3 pt-3 border-t">
                   <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                     <span className="text-amber-700 dark:text-amber-400">Unassigned Jobs ({allUnassignedJobs.length})</span>
