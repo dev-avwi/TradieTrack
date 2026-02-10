@@ -482,6 +482,8 @@ export default function TradieDashboard({
     return "Good evening";
   };
 
+  const completedUninvoicedJobs = (myJobs || []).filter((job: any) => job.status === 'done');
+
   // Get next job (first pending or in-progress job)
   const nextJob = todaysJobs.find((job: any) => 
     job.status === 'pending' || job.status === 'in_progress'
@@ -781,6 +783,51 @@ export default function TradieDashboard({
           </div>
         )}
       </div>
+
+      {completedUninvoicedJobs.length > 0 && (
+        <Card className="border-2" style={{ borderColor: 'hsl(142.1 76.2% 36.3% / 0.5)' }}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Receipt className="h-4 w-4" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                Ready to Invoice
+              </CardTitle>
+              <Badge variant="secondary" className="text-xs">
+                {completedUninvoicedJobs.length} {completedUninvoicedJobs.length === 1 ? 'job' : 'jobs'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              These jobs are done — send the invoice and get paid.
+            </p>
+            {completedUninvoicedJobs.slice(0, 3).map((job: any) => (
+              <div key={job.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border hover-elevate">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium truncate">{job.title}</span>
+                </div>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate?.(`/jobs/${job.id}?action=invoice`);
+                  }}
+                >
+                  <Receipt className="h-3.5 w-3.5 mr-1.5" />
+                  Invoice
+                </Button>
+              </div>
+            ))}
+            {completedUninvoicedJobs.length > 3 && (
+              <Button variant="ghost" className="w-full text-xs" onClick={() => onViewJobs?.()}>
+                View all {completedUninvoicedJobs.length} completed jobs
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card data-testid="tradie-quick-actions">

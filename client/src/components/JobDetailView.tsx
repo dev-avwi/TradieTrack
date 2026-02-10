@@ -223,6 +223,10 @@ export default function JobDetailView({
   const [materialTrackingCarrier, setMaterialTrackingCarrier] = useState('');
   const [materialTrackingUrl, setMaterialTrackingUrl] = useState('');
   const [materialNotes, setMaterialNotes] = useState('');
+  const [showSiteUpdateDialog, setShowSiteUpdateDialog] = useState(false);
+  const [siteUpdateNote, setSiteUpdateNote] = useState('');
+  const [siteUpdatePhoto, setSiteUpdatePhoto] = useState<File | null>(null);
+  const [siteUpdatePhotoPreview, setSiteUpdatePhotoPreview] = useState<string | null>(null);
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -713,6 +717,60 @@ export default function JobDetailView({
     }
   };
 
+  const [isSiteUpdateSubmitting, setIsSiteUpdateSubmitting] = useState(false);
+
+  const handleSiteUpdatePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSiteUpdatePhoto(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSiteUpdatePhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitSiteUpdate = async () => {
+    if (!siteUpdateNote.trim()) return;
+    setIsSiteUpdateSubmitting(true);
+    try {
+      const noteContent = `[Site Update] ${siteUpdateNote.trim()}`;
+      await apiRequest("POST", `/api/jobs/${jobId}/notes`, { content: noteContent });
+
+      if (siteUpdatePhoto && siteUpdatePhotoPreview) {
+        await apiRequest("POST", `/api/jobs/${jobId}/photos`, {
+          fileName: siteUpdatePhoto.name,
+          fileBase64: siteUpdatePhotoPreview.split(',')[1],
+          mimeType: siteUpdatePhoto.type,
+          category: 'progress',
+          caption: siteUpdateNote.trim(),
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'notes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'photos'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/activity-logs'] });
+
+      setSiteUpdateNote('');
+      setSiteUpdatePhoto(null);
+      setSiteUpdatePhotoPreview(null);
+      setShowSiteUpdateDialog(false);
+      toast({
+        title: "Site update logged",
+        description: "Your note and photo have been recorded",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to log site update",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSiteUpdateSubmitting(false);
+    }
+  };
+
   // Rename job mutation
   const renameJobMutation = useMutation({
     mutationFn: async (title: string) => {
@@ -1103,6 +1161,32 @@ export default function JobDetailView({
       </PageShell>
     );
   }
+
+  const groupActivitiesByDate = (activities: JobActivityItem[]) => {
+    const groups: { date: string; label: string; activities: JobActivityItem[] }[] = [];
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    activities.forEach(activity => {
+      const actDate = new Date(activity.timestamp);
+      const dateKey = actDate.toDateString();
+
+      let label: string;
+      if (dateKey === today.toDateString()) label = 'Today';
+      else if (dateKey === yesterday.toDateString()) label = 'Yesterday';
+      else label = format(actDate, 'EEE, d MMM');
+
+      const existing = groups.find(g => g.date === dateKey);
+      if (existing) {
+        existing.activities.push(activity);
+      } else {
+        groups.push({ date: dateKey, label, activities: [activity] });
+      }
+    });
+
+    return groups;
+  };
 
   if (jobError || !job) {
     return (
@@ -1643,6 +1727,21 @@ export default function JobDetailView({
             </CardContent>
           </Card>
 
+          {job.status !== 'invoiced' && job.status !== 'pending' && (
+            <Card data-testid="card-log-site-update">
+              <CardContent className="pt-4 pb-4">
+                <Button
+                  className="w-full gap-2"
+                  style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+                  onClick={() => setShowSiteUpdateDialog(true)}
+                >
+                  <PenLine className="h-4 w-4" />
+                  Log Site Update
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {(linkedQuote?.lineItems?.length > 0 || jobVariations.length > 0 || jobMaterials.length > 0) && (
             <Card data-testid="card-job-brief">
               <CardHeader className="pb-2">
@@ -1896,6 +1995,30 @@ export default function JobDetailView({
 
         {/* Right column - Secondary/supporting content */}
         <div className="space-y-4 lg:col-span-2 lg:flex lg:flex-col lg:[&>*:last-child]:flex-1">
+          {job.status === 'done' && !linkedInvoice && !isTradie && (
+            <Card className="border-2" style={{ borderColor: 'hsl(142.1 76.2% 36.3% / 0.5)' }} data-testid="card-create-invoice-prompt">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.15)' }}>
+                    <Receipt className="h-5 w-5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Job Complete — Get Paid</p>
+                    <p className="text-xs text-muted-foreground">Create and send an invoice to your client</p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  style={{ backgroundColor: 'hsl(142.1 76.2% 36.3%)', color: 'white' }}
+                  onClick={() => onCreateInvoice?.(jobId)}
+                  data-testid="button-create-invoice-prompt"
+                >
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Create Invoice
+                </Button>
+              </CardContent>
+            </Card>
+          )}
           {!isTradie && (
             <LinkedDocumentsCard
               linkedQuote={linkedQuote}
@@ -2335,12 +2458,12 @@ export default function JobDetailView({
         </div>
       </div>
 
-      {/* Full-width Activity History below both columns */}
+      {/* Full-width Job Timeline below both columns */}
       <Card className="mt-4" data-testid="job-activity-feed">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <History className="h-4 w-4" />
-            Activity History
+            Job Timeline
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -2365,45 +2488,56 @@ export default function JobDetailView({
             <div>
               {(() => {
                 const displayedActivities = showAllActivities ? jobActivities : jobActivities.slice(0, 6);
+                const dateGroups = groupActivitiesByDate(displayedActivities);
                 return (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {displayedActivities.map((activity) => {
-                        const Icon = activityIcons[activity.type] || Briefcase;
-                        const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
-                        
-                        return (
-                          <div 
-                            key={activity.id}
-                            className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/50"
-                            data-testid={`activity-item-${activity.id}`}
-                          >
-                            <div className="relative shrink-0">
-                              <div 
-                                className="w-7 h-7 rounded-lg flex items-center justify-center"
-                                style={{ backgroundColor: colors.bg }}
-                              >
-                                <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
-                              </div>
-                              {activity.status === 'success' && (
-                                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
-                                  <CheckCircle2 className="h-1.5 w-1.5 text-white" />
-                                </div>
-                              )}
+                    <div className="relative">
+                      <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
+
+                      {dateGroups.map((group, groupIndex) => (
+                        <div key={group.date}>
+                          <div className={`relative flex items-center gap-3 mb-3 ${groupIndex > 0 ? 'mt-4' : ''}`}>
+                            <div className="w-8 h-5 bg-card z-10 flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
                             </div>
-                            
-                            <div className="flex-1 min-w-0 pt-0.5">
-                              <p className="text-xs font-medium truncate">{activity.title}</p>
-                              {activity.description && (
-                                <p className="text-[11px] text-muted-foreground truncate mt-0.5">{activity.description}</p>
-                              )}
-                              <p className="text-[10px] text-muted-foreground/70 mt-1">
-                                {formatHistoryDate(activity.timestamp)}
-                              </p>
-                            </div>
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              {group.label}
+                            </span>
                           </div>
-                        );
-                      })}
+
+                          {group.activities.map((activity) => {
+                            const Icon = activityIcons[activity.type] || Briefcase;
+                            const colors = activityColors[activity.type] || { bg: 'hsl(var(--muted) / 0.5)', icon: 'hsl(var(--muted-foreground))' };
+
+                            return (
+                              <div
+                                key={activity.id}
+                                className="relative flex gap-3 pb-4 last:pb-0"
+                                data-testid={`activity-item-${activity.id}`}
+                              >
+                                <div className="relative z-10 shrink-0">
+                                  <div
+                                    className="w-8 h-8 rounded-full flex items-center justify-center bg-card border-2"
+                                    style={{ borderColor: colors.bg }}
+                                  >
+                                    <Icon className="h-3.5 w-3.5" style={{ color: colors.icon }} />
+                                  </div>
+                                </div>
+
+                                <div className="flex-1 min-w-0 pt-1">
+                                  <p className="text-sm font-medium">{activity.title}</p>
+                                  {activity.description && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">{activity.description}</p>
+                                  )}
+                                  <p className="text-[11px] text-muted-foreground/70 mt-1">
+                                    {formatHistoryDate(activity.timestamp)}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                     {jobActivities.length > 6 && (
                       <div className="pt-2">
@@ -2893,6 +3027,103 @@ export default function JobDetailView({
           recipientPhone={client.phone}
         />
       )}
+
+      {/* Log Site Update Dialog */}
+      <Dialog open={showSiteUpdateDialog} onOpenChange={(open) => {
+        setShowSiteUpdateDialog(open);
+        if (!open) {
+          setSiteUpdateNote('');
+          setSiteUpdatePhoto(null);
+          setSiteUpdatePhotoPreview(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              Log Site Update
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="What's happening on site right now?"
+              value={siteUpdateNote}
+              onChange={(e) => setSiteUpdateNote(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  className="gap-2"
+                  onClick={() => document.getElementById('site-update-photo-input')?.click()}
+                >
+                  <Camera className="h-4 w-4" />
+                  {siteUpdatePhoto ? 'Change Photo' : 'Add Photo (optional)'}
+                </Button>
+              </label>
+              <input
+                id="site-update-photo-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleSiteUpdatePhotoChange}
+              />
+              {siteUpdatePhotoPreview && (
+                <div className="relative">
+                  <img
+                    src={siteUpdatePhotoPreview}
+                    alt="Preview"
+                    className="w-full max-h-48 object-cover rounded-md"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={() => {
+                      setSiteUpdatePhoto(null);
+                      setSiteUpdatePhotoPreview(null);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSiteUpdateDialog(false);
+                setSiteUpdateNote('');
+                setSiteUpdatePhoto(null);
+                setSiteUpdatePhotoPreview(null);
+              }}
+              disabled={isSiteUpdateSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
+              onClick={handleSubmitSiteUpdate}
+              disabled={!siteUpdateNote.trim() || isSiteUpdateSubmitting}
+            >
+              {isSiteUpdateSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Update'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
