@@ -281,6 +281,7 @@ interface QuoteWithDetails {
   acceptanceUrl?: string; // Public URL for client to accept quote online
   jobSignatures?: DigitalSignature[]; // Signatures from linked job (for consistency with invoices)
   showSuccess?: boolean; // Show success confirmation overlay after accepting quote
+  beforePhotos?: Array<{ url: string; caption?: string; category: string }>;
 }
 
 interface InvoiceWithDetails {
@@ -294,6 +295,8 @@ interface InvoiceWithDetails {
   jobSignatures?: DigitalSignature[]; // Signatures from linked job (client/tradie completion signatures)
   termsTemplate?: string; // Custom terms & conditions from business templates
   warrantyTemplate?: string; // Custom warranty text from business templates
+  beforePhotos?: Array<{ url: string; caption?: string; category: string }>;
+  afterPhotos?: Array<{ url: string; caption?: string; category: string }>;
 }
 
 const formatCurrency = (amount: string | number): string => {
@@ -749,6 +752,41 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       color: #999;
     }
     
+    .photos-section {
+      margin: 20px 0;
+      page-break-inside: avoid;
+    }
+    .photos-section-title {
+      font-weight: 600;
+      font-size: 11px;
+      color: #333;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #eee;
+    }
+    .photos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .photo-item {
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+    .photo-item img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-caption {
+      font-size: 8px;
+      color: #666;
+      padding: 3px 5px;
+      background: #f9fafb;
+    }
+    
     .warning-banner {
       background: #fef3c7;
       border: 1px solid #f59e0b;
@@ -963,6 +1001,20 @@ ${business.paymentInstructions ? `<span style="font-size: 9px; color: #666;">${b
         <p style="font-size: 12px; font-weight: 600; color: ${accentColor}; margin: 0 0 8px 0;">Accept This Quote Online</p>
         <p style="font-size: 10px; color: #666; margin: 0 0 12px 0;">Click the link or scan the QR code to accept this quote</p>
         <a href="${acceptanceUrl}" style="display: inline-block; background: ${accentColor}; color: white; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 11px;">${acceptanceUrl}</a>
+      </div>
+    ` : ''}
+    
+    ${data.beforePhotos && data.beforePhotos.length > 0 ? `
+      <div class="photos-section">
+        <div class="photos-section-title">Before Photos — Site Assessment</div>
+        <div class="photos-grid">
+          ${data.beforePhotos.map(photo => `
+            <div class="photo-item">
+              <img src="${photo.url}" alt="${photo.caption || 'Before photo'}" />
+              ${photo.caption ? `<div class="photo-caption">${photo.caption}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
       </div>
     ` : ''}
     
@@ -1264,6 +1316,34 @@ ${(business as any).bankAccountNumber ? `<tr><td style="color: #6b7280; padding-
 </table>
 ` : ''}
 ${business.paymentInstructions || (!((business as any).bankBsb || (business as any).bankAccountNumber) ? 'Please contact us for payment options.' : '')}${invoice.dueDate ? ` Due by ${formatDate(invoice.dueDate)}.` : ''}${business.lateFeeRate ? ` Late payments may incur interest at ${business.lateFeeRate}.` : ''}
+        </div>
+      </div>
+    ` : ''}
+    
+    ${data.beforePhotos && data.beforePhotos.length > 0 ? `
+      <div class="photos-section">
+        <div class="photos-section-title">Before Photos</div>
+        <div class="photos-grid">
+          ${data.beforePhotos.map(photo => `
+            <div class="photo-item">
+              <img src="${photo.url}" alt="${photo.caption || 'Before photo'}" />
+              ${photo.caption ? `<div class="photo-caption">${photo.caption}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+    
+    ${data.afterPhotos && data.afterPhotos.length > 0 ? `
+      <div class="photos-section">
+        <div class="photos-section-title">After Photos — Completed Work</div>
+        <div class="photos-grid">
+          ${data.afterPhotos.map(photo => `
+            <div class="photo-item">
+              <img src="${photo.url}" alt="${photo.caption || 'After photo'}" />
+              ${photo.caption ? `<div class="photo-caption">${photo.caption}</div>` : ''}
+            </div>
+          `).join('')}
         </div>
       </div>
     ` : ''}

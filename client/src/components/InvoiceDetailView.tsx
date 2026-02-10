@@ -48,6 +48,8 @@ export default function InvoiceDetailView({
   const [isPrinting, setIsPrinting] = useState(false);
   const [showDemoPayment, setShowDemoPayment] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
+  const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
@@ -641,7 +643,11 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     
-    const pdfUrl = `/api/invoices/${invoiceId}/pdf`;
+    const photoParams = new URLSearchParams();
+    if (includeBeforePhotos) photoParams.set('includeBeforePhotos', 'true');
+    if (includeAfterPhotos) photoParams.set('includeAfterPhotos', 'true');
+    const photoQuery = photoParams.toString();
+    const pdfUrl = `/api/invoices/${invoiceId}/pdf${photoQuery ? '?' + photoQuery : ''}`;
     const filename = `Invoice-${invoice?.number || invoice?.id || invoiceId}.pdf`;
     
     // For iOS Safari: open window SYNCHRONOUSLY before any async operations
@@ -967,6 +973,30 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
               {copied ? 'Copied!' : 'Share'}
             </Button>
+            {invoice.jobId && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={includeBeforePhotos}
+                    onCheckedChange={setIncludeBeforePhotos}
+                    id="include-before-photos"
+                  />
+                  <Label htmlFor="include-before-photos" className="text-sm text-muted-foreground">
+                    Include before photos
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={includeAfterPhotos}
+                    onCheckedChange={setIncludeAfterPhotos}
+                    id="include-after-photos"
+                  />
+                  <Label htmlFor="include-after-photos" className="text-sm text-muted-foreground">
+                    Include after photos
+                  </Label>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1826,6 +1856,8 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           total={invoice.total || '0'}
           businessName={businessSettings?.businessName}
           publicUrl={getPublicPaymentUrl()}
+          includeBeforePhotos={includeBeforePhotos}
+          includeAfterPhotos={includeAfterPhotos}
         />
       )}
     </>

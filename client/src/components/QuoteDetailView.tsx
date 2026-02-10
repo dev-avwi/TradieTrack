@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image } from "lucide-react";
 import {
   Collapsible,
@@ -54,6 +56,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const [copied, setCopied] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [jobContextOpen, setJobContextOpen] = useState(false);
+  const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { data: integrationHealth } = useIntegrationHealth();
@@ -378,7 +381,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     
-    const pdfUrl = `/api/quotes/${quoteId}/pdf`;
+    const pdfUrl = `/api/quotes/${quoteId}/pdf${includeBeforePhotos ? '?includeBeforePhotos=true' : ''}`;
     const filename = `Quote-${quote?.number || quote?.id || quoteId}.pdf`;
     
     // For iOS Safari: open window SYNCHRONOUSLY before any async operations
@@ -724,6 +727,18 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
               {copied ? 'Copied!' : 'Share'}
             </Button>
+            {quote.jobId && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={includeBeforePhotos}
+                  onCheckedChange={setIncludeBeforePhotos}
+                  id="include-before-photos"
+                />
+                <Label htmlFor="include-before-photos" className="text-sm text-muted-foreground">
+                  Include before photos
+                </Label>
+              </div>
+            )}
             {/* Create Job from Quote - only for accepted quotes without a linked job */}
             {quote.status === 'accepted' && !quote.jobId && (
               <Button 
@@ -915,7 +930,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 </div>
               </div>
 
-              {/* Job Context Section - shows photos and notes from linked job */}
+              {/* Before Photos — Site Assessment (quotes only show before photos) */}
               {quote.jobId && (
                 <Collapsible
                   open={jobContextOpen}
@@ -933,7 +948,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                     >
                       <div className="flex items-center gap-3">
                         <Camera className="h-5 w-5" style={{ color: primaryColor }} />
-                        <span className="font-semibold text-gray-800">Job Context</span>
+                        <span className="font-semibold text-gray-800">Before Photos</span>
                         {job?.title && (
                           <span className="text-sm text-muted-foreground">({job.title})</span>
                         )}
@@ -953,33 +968,33 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                         borderRadius: template.borderRadius 
                       }}
                     >
-                      {/* Job Photos Section */}
+                      {/* Before Photos — Site Assessment */}
                       <div>
                         <div className="flex items-center gap-2 mb-3">
                           <Image className="h-4 w-4 text-muted-foreground" />
-                          <h4 className="font-medium text-sm text-gray-700">Photos</h4>
+                          <h4 className="font-medium text-sm text-gray-700">Site Assessment Photos</h4>
                         </div>
                         {photosLoading ? (
                           <div className="flex items-center justify-center py-6">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                           </div>
-                        ) : jobPhotos.length > 0 ? (
+                        ) : jobPhotos.filter(p => p.category === 'before').length > 0 ? (
                           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                            {jobPhotos.map((photo) => (
+                            {jobPhotos.filter(p => p.category === 'before').map((photo) => (
                               <div
                                 key={photo.id}
                                 className="relative aspect-square rounded-md overflow-hidden bg-muted group"
-                                title={photo.caption || photo.category || 'Job photo'}
+                                title={photo.caption || 'Before photo'}
                               >
                                 <img
                                   src={photo.url}
-                                  alt={photo.caption || 'Job photo'}
+                                  alt={photo.caption || 'Before photo'}
                                   className="w-full h-full object-cover"
                                   loading="lazy"
                                 />
-                                {photo.category && (
+                                {photo.caption && (
                                   <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-1.5 py-0.5 truncate">
-                                    {photo.category}
+                                    {photo.caption}
                                   </div>
                                 )}
                               </div>
@@ -988,7 +1003,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                         ) : (
                           <div className="text-center py-6 text-muted-foreground text-sm">
                             <Image className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>No photos attached to this job</p>
+                            <p>No before photos attached to this job</p>
                           </div>
                         )}
                       </div>
@@ -1234,6 +1249,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           total={quote.total || '0'}
           businessName={businessSettings?.businessName}
           publicUrl={getPublicQuoteUrl()}
+          includeBeforePhotos={includeBeforePhotos}
         />
       )}
     </>

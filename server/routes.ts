@@ -12095,6 +12095,15 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+      if (req.query.includeBeforePhotos === 'true' && job) {
+        const { getJobPhotos } = await import('./photoService');
+        const allPhotos = await getJobPhotos(job.id, userContext.effectiveUserId);
+        beforePhotos = allPhotos
+          .filter(p => p.category === 'before')
+          .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+      }
+      
       const businessForPdf = await resolveBusinessLogoForPdf(business);
       const html = generateQuotePDF({
         quote: quoteWithItems,
@@ -12104,6 +12113,7 @@ Be specific about materials, colors, and features that would be included.`
         job,
         jobSignatures,
         signature: acceptanceSignature,
+        beforePhotos,
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
@@ -12938,6 +12948,27 @@ Be specific about materials, colors, and features that would be included.`
         console.warn(`[Invoice PDF] Could not fetch templates for invoice ${invoiceId}:`, templateError);
       }
       
+      let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+      let afterPhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+      if (job) {
+        const includeBeforePhotos = req.query.includeBeforePhotos === 'true';
+        const includeAfterPhotos = req.query.includeAfterPhotos === 'true';
+        if (includeBeforePhotos || includeAfterPhotos) {
+          const { getJobPhotos } = await import('./photoService');
+          const allPhotos = await getJobPhotos(job.id, userContext.effectiveUserId);
+          if (includeBeforePhotos) {
+            beforePhotos = allPhotos
+              .filter(p => p.category === 'before')
+              .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+          }
+          if (includeAfterPhotos) {
+            afterPhotos = allPhotos
+              .filter(p => p.category === 'after')
+              .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+          }
+        }
+      }
+      
       let html: string;
       try {
         const businessForPdf = await resolveBusinessLogoForPdf(business);
@@ -12950,7 +12981,9 @@ Be specific about materials, colors, and features that would be included.`
           timeEntries,
           jobSignatures,
           termsTemplate,
-          warrantyTemplate
+          warrantyTemplate,
+          beforePhotos,
+          afterPhotos,
         });
       } catch (htmlError: any) {
         console.error(`[Invoice PDF] HTML generation failed for invoice ${invoiceId}:`, htmlError);

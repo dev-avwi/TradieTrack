@@ -48,6 +48,8 @@ interface SendDocumentModalProps {
   total: string;
   businessName?: string;
   publicUrl?: string;
+  includeBeforePhotos?: boolean;
+  includeAfterPhotos?: boolean;
 }
 
 interface AIEmailSuggestion {
@@ -116,7 +118,9 @@ export default function SendDocumentModal({
   documentTitle,
   total,
   businessName,
-  publicUrl
+  publicUrl,
+  includeBeforePhotos,
+  includeAfterPhotos,
 }: SendDocumentModalProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("compose");
@@ -286,7 +290,9 @@ export default function SendDocumentModal({
       
       const response = await apiRequest('POST', endpoint, {
         customSubject: subject,
-        customMessage: message
+        customMessage: message,
+        includeBeforePhotos,
+        includeAfterPhotos,
       });
 
       let result;

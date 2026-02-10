@@ -1029,7 +1029,7 @@ async function uploadPDFToStorage(
 // Create Gmail draft OR send directly via SendGrid based on user preference
 export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) => {
   try {
-    const { customSubject, customMessage } = req.body || {};
+    const { customSubject, customMessage, includeBeforePhotos } = req.body || {};
     
     // 1. Get business settings to check email sending preference
     let businessSettings = await storage.getBusinessSettings(req.userId);
@@ -1138,6 +1138,16 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     // Check Stripe Connect status for payment capability
     const canAcceptPayments = businessSettings.stripeAccountId && businessSettings.stripeDetailsSubmitted;
     
+    // Fetch before photos if requested
+    let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+    if (includeBeforePhotos && linkedJob) {
+      const { getJobPhotos } = await import('./photoService');
+      const allPhotos = await getJobPhotos(linkedJob.id, req.userId);
+      beforePhotos = allPhotos
+        .filter(p => p.category === 'before')
+        .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+    }
+    
     // 7. Generate PDF buffer
     const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
     const pdfBuffer = await generatePDFBuffer(generateQuotePDF({
@@ -1150,6 +1160,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       acceptanceUrl: quoteAcceptanceUrl || undefined,
       job: linkedJob,
       jobSignatures,
+      beforePhotos,
     }));
     
     // 8. Upload PDF to cloud storage
@@ -1351,7 +1362,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
 // Create Gmail draft OR send directly via SendGrid based on user preference
 export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any) => {
   try {
-    const { customSubject, customMessage } = req.body || {};
+    const { customSubject, customMessage, includeBeforePhotos, includeAfterPhotos } = req.body || {};
     
     // 1. Get business settings to check email sending preference
     let businessSettings = await storage.getBusinessSettings(req.userId);
@@ -1468,6 +1479,24 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       jobSignatures = [...jobSignatures, ...quoteSignatures];
     }
     
+    // Fetch photos if requested
+    let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+    let afterPhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+    if (linkedJob && (includeBeforePhotos || includeAfterPhotos)) {
+      const { getJobPhotos } = await import('./photoService');
+      const allPhotos = await getJobPhotos(linkedJob.id, req.userId);
+      if (includeBeforePhotos) {
+        beforePhotos = allPhotos
+          .filter(p => p.category === 'before')
+          .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+      }
+      if (includeAfterPhotos) {
+        afterPhotos = allPhotos
+          .filter(p => p.category === 'after')
+          .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+      }
+    }
+    
     // 7. Generate PDF buffer
     const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
     const pdfBuffer = await generatePDFBuffer(generateInvoicePDF({
@@ -1479,6 +1508,8 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       timeEntries,
       paymentUrl: paymentUrl || undefined,
       jobSignatures,
+      beforePhotos,
+      afterPhotos,
     }));
     
     // 8. Upload PDF to cloud storage
