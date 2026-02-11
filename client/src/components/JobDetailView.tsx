@@ -1472,7 +1472,7 @@ export default function JobDetailView({
       {/* Two-column layout on desktop, single column on mobile */}
       <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0 mt-4">
         {/* Left column - Primary content */}
-        <div className="space-y-4 lg:col-span-3">
+        <div className="flex flex-col gap-4 lg:col-span-3">
           {/* Action Buttons - follows 5-stage workflow: pending → scheduled → in_progress → done → invoiced */}
           <div className="flex flex-col gap-2 pb-2">
             {/* Pending → Schedule */}
@@ -2049,7 +2049,7 @@ export default function JobDetailView({
         </div>
 
         {/* Right column - Secondary/supporting content */}
-        <div className="space-y-4 lg:col-span-2">
+        <div className="flex flex-col gap-4 lg:col-span-2">
           {job.status === 'done' && !linkedInvoice && !isTradie && (
             <Card className="border-2" style={{ borderColor: 'hsl(142.1 76.2% 36.3% / 0.5)' }} data-testid="card-create-invoice-prompt">
               <CardContent className="py-4">
