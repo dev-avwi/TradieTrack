@@ -1988,13 +1988,10 @@ export default function JobDetailView({
             existingNotes={job.notes}
           />
 
-          {/* Uploaded Documents - external quotes, invoices, PDFs */}
-          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
-
         </div>
 
         {/* Right column - Secondary/supporting content */}
-        <div className="space-y-4 lg:col-span-2 lg:flex lg:flex-col lg:[&>*:last-child]:flex-1">
+        <div className="space-y-4 lg:col-span-2">
           {job.status === 'done' && !linkedInvoice && !isTradie && (
             <Card className="border-2" style={{ borderColor: 'hsl(142.1 76.2% 36.3% / 0.5)' }} data-testid="card-create-invoice-prompt">
               <CardContent className="py-4">
@@ -2449,11 +2446,14 @@ export default function JobDetailView({
           {/* Photos - show for ALL job statuses so team sync works */}
           <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
-          {/* Safety Forms Section - stretches to fill remaining space */}
+          {/* Safety Forms Section */}
           <SafetyFormsSection 
             jobId={jobId} 
             jobStatus={job.status}
           />
+
+          {/* Uploaded Documents - external quotes, invoices, PDFs */}
+          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         </div>
       </div>
