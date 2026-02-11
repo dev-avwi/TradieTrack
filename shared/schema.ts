@@ -3391,12 +3391,14 @@ export const automationSettings = pgTable("automation_settings", {
   jobReminderHoursBefore: integer("job_reminder_hours_before").default(24),
   jobReminderType: text("job_reminder_type").default('sms'), // sms, email, both
   // Quote Reminders
-  quoteFollowUpEnabled: boolean("quote_follow_up_enabled").default(true),
-  quoteFollowUpDays: integer("quote_follow_up_days").default(3), // Days after sending to follow up
+  quoteFollowUpEnabled: boolean("quote_follow_up_enabled").default(false),
+  quoteFollowUpDays: integer("quote_follow_up_days").default(3),
+  quoteFollowUpType: text("quote_follow_up_type").default('email'),
   // Invoice Reminders
-  invoiceReminderEnabled: boolean("invoice_reminder_enabled").default(true),
+  invoiceReminderEnabled: boolean("invoice_reminder_enabled").default(false),
   invoiceReminderDaysBeforeDue: integer("invoice_reminder_days_before_due").default(3),
-  invoiceOverdueReminderDays: integer("invoice_overdue_reminder_days").default(7), // Days after overdue
+  invoiceOverdueReminderDays: integer("invoice_overdue_reminder_days").default(7),
+  invoiceReminderType: text("invoice_reminder_type").default('email'),
   // Photo Requirements
   requirePhotoBeforeStart: boolean("require_photo_before_start").default(false),
   requirePhotoAfterComplete: boolean("require_photo_after_complete").default(false),
