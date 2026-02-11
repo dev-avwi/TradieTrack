@@ -308,9 +308,7 @@ export default function ActivityFeed({
               </p>
             </div>
           ) : (
-            <div className="relative">
-              <div className="absolute left-[18px] top-8 bottom-4 w-px bg-gradient-to-b from-border to-transparent" />
-              
+            <div>
               <div className="space-y-1">
                 {activities.slice(0, limit).map((activity) => {
                   const Icon = activityIcons[activity.activityType] || Bell;
