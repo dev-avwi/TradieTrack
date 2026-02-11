@@ -827,7 +827,7 @@ export default function Automations() {
                     </div>
                     <Switch
                       id="job-reminder-enabled"
-                      checked={settingsForm.jobReminderEnabled ?? true}
+                      checked={settingsForm.jobReminderEnabled ?? false}
                       onCheckedChange={(checked) => 
                         setSettingsForm(prev => ({ ...prev, jobReminderEnabled: checked }))
                       }
@@ -1350,7 +1350,10 @@ export default function Automations() {
               {/* Save Button */}
               <div className="flex justify-end">
                 <Button
-                  onClick={() => updateSettingsMutation.mutate(settingsForm)}
+                  onClick={() => {
+                    const { id, userId, createdAt, updatedAt, dailySummaryLastSent, ...settingsToSave } = settingsForm as any;
+                    updateSettingsMutation.mutate(settingsToSave);
+                  }}
                   disabled={updateSettingsMutation.isPending}
                   data-testid="button-save-settings"
                 >

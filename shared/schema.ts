@@ -3387,7 +3387,7 @@ export const automationSettings = pgTable("automation_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
   // Job Reminders
-  jobReminderEnabled: boolean("job_reminder_enabled").default(true),
+  jobReminderEnabled: boolean("job_reminder_enabled").default(false),
   jobReminderHoursBefore: integer("job_reminder_hours_before").default(24),
   jobReminderType: text("job_reminder_type").default('sms'), // sms, email, both
   // Quote Reminders

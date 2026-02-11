@@ -26869,12 +26869,12 @@ Respond with JSON in this format:
       if (!settings) {
         settings = await storage.createAutomationSettings({
           userId,
-          jobReminderEnabled: true,
+          jobReminderEnabled: false,
           jobReminderHoursBefore: 24,
           jobReminderType: 'sms',
-          quoteFollowUpEnabled: true,
+          quoteFollowUpEnabled: false,
           quoteFollowUpDays: 3,
-          invoiceReminderEnabled: true,
+          invoiceReminderEnabled: false,
           invoiceReminderDaysBeforeDue: 3,
           invoiceOverdueReminderDays: 7,
           requirePhotoBeforeStart: false,
@@ -26895,7 +26895,7 @@ Respond with JSON in this format:
   app.put("/api/automation-settings", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const updates = req.body;
+      const { id, userId: _uid, createdAt, updatedAt, dailySummaryLastSent, ...updates } = req.body;
       
       const settings = await storage.upsertAutomationSettings(userId, updates);
       res.json(settings);

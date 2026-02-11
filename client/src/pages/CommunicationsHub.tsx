@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { 
@@ -23,7 +23,15 @@ import {
   User,
   Phone,
   Calendar,
-  ArrowUpRight
+  ArrowUpRight,
+  Settings,
+  Bell,
+  Receipt,
+  Save,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Zap
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,8 +43,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { ActivityLog } from "@shared/schema";
+
+interface AutomationSettings {
+  id: string;
+  userId: string;
+  jobReminderEnabled: boolean;
+  jobReminderHoursBefore: number;
+  jobReminderType: 'sms' | 'email' | 'both';
+  quoteFollowUpEnabled: boolean;
+  quoteFollowUpDays: number;
+  quoteFollowUpType?: 'sms' | 'email' | 'both';
+  invoiceReminderEnabled: boolean;
+  invoiceReminderDaysBeforeDue: number;
+  invoiceOverdueReminderDays: number;
+  invoiceReminderType?: 'sms' | 'email' | 'both';
+  dailySummaryEnabled: boolean;
+  dailySummaryTime: string;
+  dailySummaryLastSent?: string;
+}
 
 interface CommunicationItem {
   id: string;
@@ -413,13 +450,91 @@ function CommunicationDetailSheet({
 }
 
 export default function CommunicationsHub() {
+  const { toast } = useToast();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<'all' | 'email' | 'sms'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<CommunicationItem | null>(null);
   const [showDetail, setShowDetail] = useState(false);
-  
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState<Partial<AutomationSettings>>({});
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewSubject, setPreviewSubject] = useState<string>('');
+
+  const { data: automationSettings, isLoading: settingsLoading } = useQuery<AutomationSettings>({
+    queryKey: ['/api/automation-settings'],
+  });
+
+  useEffect(() => {
+    if (automationSettings) {
+      setSettingsForm(automationSettings);
+    }
+  }, [automationSettings]);
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (data: Partial<AutomationSettings>) => {
+      return apiRequest('PUT', '/api/automation-settings', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/automation-settings'] });
+      toast({
+        title: "Settings saved",
+        description: "Your automation settings have been updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const previewSummaryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/email/daily-summary/preview', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to load preview');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setPreviewHtml(data.preview.html);
+      setPreviewSubject(data.preview.subject);
+      setPreviewDialogOpen(true);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to load daily summary preview",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendSummaryMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/email/daily-summary');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/automation-settings'] });
+      toast({
+        title: "Daily summary sent",
+        description: "The summary email has been sent to your business email",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send daily summary email",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: smsConversations = [], isLoading: smsLoading, refetch: refetchSms } = useQuery<any[]>({
     queryKey: ['/api/sms/conversations'],
   });
@@ -621,6 +736,374 @@ export default function CommunicationsHub() {
             Refresh
           </Button>
         </div>
+
+        <Card className="mb-6">
+          <button
+            className="w-full flex items-center justify-between gap-3 p-4 text-left"
+            onClick={() => setShowSettings(!showSettings)}
+            data-testid="button-toggle-settings"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Settings className="h-5 w-5" style={{ color: 'hsl(var(--primary))' }} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Auto Follow-ups & Reminders</h3>
+                <p className="text-xs text-muted-foreground">Configure automatic job reminders, quote follow-ups, and invoice reminders</p>
+              </div>
+            </div>
+            {showSettings ? <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />}
+          </button>
+
+          {showSettings && (
+            <CardContent className="pt-0 space-y-4">
+              <Separator />
+
+              {settingsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="border rounded-md p-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                        <Bell className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">Job Reminders</h4>
+                        <p className="text-xs text-muted-foreground">Automatically remind clients before scheduled jobs</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="ch-job-reminder-enabled">Enable job reminders</Label>
+                        <p className="text-xs text-muted-foreground">Send automatic reminders before scheduled jobs</p>
+                      </div>
+                      <Switch
+                        id="ch-job-reminder-enabled"
+                        checked={settingsForm.jobReminderEnabled ?? false}
+                        onCheckedChange={(checked) => setSettingsForm(prev => ({ ...prev, jobReminderEnabled: checked }))}
+                      />
+                    </div>
+                    {(settingsForm.jobReminderEnabled ?? false) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="ch-job-reminder-hours">Hours before job</Label>
+                          <Select
+                            value={String(settingsForm.jobReminderHoursBefore ?? 24)}
+                            onValueChange={(v) => setSettingsForm(prev => ({ ...prev, jobReminderHoursBefore: parseInt(v) }))}
+                          >
+                            <SelectTrigger id="ch-job-reminder-hours">
+                              <SelectValue placeholder="Select hours" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 hour before</SelectItem>
+                              <SelectItem value="2">2 hours before</SelectItem>
+                              <SelectItem value="4">4 hours before</SelectItem>
+                              <SelectItem value="12">12 hours before</SelectItem>
+                              <SelectItem value="24">24 hours before</SelectItem>
+                              <SelectItem value="48">48 hours before</SelectItem>
+                              <SelectItem value="72">72 hours before</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="ch-job-reminder-type">Send via</Label>
+                          <Select
+                            value={settingsForm.jobReminderType ?? 'sms'}
+                            onValueChange={(v) => setSettingsForm(prev => ({ ...prev, jobReminderType: v as 'sms' | 'email' | 'both' }))}
+                          >
+                            <SelectTrigger id="ch-job-reminder-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sms"><div className="flex items-center gap-2"><Phone className="h-4 w-4" />SMS only</div></SelectItem>
+                              <SelectItem value="email"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Email only</div></SelectItem>
+                              <SelectItem value="both"><div className="flex items-center gap-2"><MessageSquare className="h-4 w-4" />SMS and Email</div></SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border rounded-md p-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30">
+                        <FileText className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">Quote Follow-ups</h4>
+                        <p className="text-xs text-muted-foreground">Automatically follow up on quotes that haven't been responded to</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="ch-quote-followup-enabled">Enable quote follow-ups</Label>
+                        <p className="text-xs text-muted-foreground">Send reminders to clients who haven't responded</p>
+                      </div>
+                      <Switch
+                        id="ch-quote-followup-enabled"
+                        checked={settingsForm.quoteFollowUpEnabled ?? false}
+                        onCheckedChange={(checked) => setSettingsForm(prev => ({ ...prev, quoteFollowUpEnabled: checked }))}
+                      />
+                    </div>
+                    {(settingsForm.quoteFollowUpEnabled ?? false) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="ch-quote-followup-days">Days after sending</Label>
+                          <Select
+                            value={String(settingsForm.quoteFollowUpDays ?? 3)}
+                            onValueChange={(v) => setSettingsForm(prev => ({ ...prev, quoteFollowUpDays: parseInt(v) }))}
+                          >
+                            <SelectTrigger id="ch-quote-followup-days">
+                              <SelectValue placeholder="Select days" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 day</SelectItem>
+                              <SelectItem value="2">2 days</SelectItem>
+                              <SelectItem value="3">3 days</SelectItem>
+                              <SelectItem value="5">5 days</SelectItem>
+                              <SelectItem value="7">7 days</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="ch-quote-followup-type">Send via</Label>
+                          <Select
+                            value={settingsForm.quoteFollowUpType ?? 'email'}
+                            onValueChange={(v) => setSettingsForm(prev => ({ ...prev, quoteFollowUpType: v as 'sms' | 'email' | 'both' }))}
+                          >
+                            <SelectTrigger id="ch-quote-followup-type">
+                              <SelectValue placeholder="Select channel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="email"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Email only</div></SelectItem>
+                              <SelectItem value="sms"><div className="flex items-center gap-2"><Phone className="h-4 w-4" />SMS only</div></SelectItem>
+                              <SelectItem value="both"><div className="flex items-center gap-2"><MessageSquare className="h-4 w-4" />SMS and Email</div></SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border rounded-md p-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                        <Receipt className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">Invoice Reminders</h4>
+                        <p className="text-xs text-muted-foreground">Automatically remind clients about upcoming and overdue invoices</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="ch-invoice-reminder-enabled">Enable invoice reminders</Label>
+                        <p className="text-xs text-muted-foreground">Send payment reminders to clients</p>
+                      </div>
+                      <Switch
+                        id="ch-invoice-reminder-enabled"
+                        checked={settingsForm.invoiceReminderEnabled ?? false}
+                        onCheckedChange={(checked) => setSettingsForm(prev => ({ ...prev, invoiceReminderEnabled: checked }))}
+                      />
+                    </div>
+                    {(settingsForm.invoiceReminderEnabled ?? false) && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="ch-invoice-before">Days before due date</Label>
+                            <Select
+                              value={String(settingsForm.invoiceReminderDaysBeforeDue ?? 3)}
+                              onValueChange={(v) => setSettingsForm(prev => ({ ...prev, invoiceReminderDaysBeforeDue: parseInt(v) }))}
+                            >
+                              <SelectTrigger id="ch-invoice-before">
+                                <SelectValue placeholder="Select days" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 day before</SelectItem>
+                                <SelectItem value="2">2 days before</SelectItem>
+                                <SelectItem value="3">3 days before</SelectItem>
+                                <SelectItem value="5">5 days before</SelectItem>
+                                <SelectItem value="7">7 days before</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="ch-invoice-overdue">Days after overdue</Label>
+                            <Select
+                              value={String(settingsForm.invoiceOverdueReminderDays ?? 7)}
+                              onValueChange={(v) => setSettingsForm(prev => ({ ...prev, invoiceOverdueReminderDays: parseInt(v) }))}
+                            >
+                              <SelectTrigger id="ch-invoice-overdue">
+                                <SelectValue placeholder="Select days" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="3">3 days overdue</SelectItem>
+                                <SelectItem value="7">7 days overdue</SelectItem>
+                                <SelectItem value="14">14 days overdue</SelectItem>
+                                <SelectItem value="21">21 days overdue</SelectItem>
+                                <SelectItem value="30">30 days overdue</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="ch-invoice-type">Send via</Label>
+                          <Select
+                            value={settingsForm.invoiceReminderType ?? 'email'}
+                            onValueChange={(v) => setSettingsForm(prev => ({ ...prev, invoiceReminderType: v as 'sms' | 'email' | 'both' }))}
+                          >
+                            <SelectTrigger id="ch-invoice-type">
+                              <SelectValue placeholder="Select channel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="email"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Email only</div></SelectItem>
+                              <SelectItem value="sms"><div className="flex items-center gap-2"><Phone className="h-4 w-4" />SMS only</div></SelectItem>
+                              <SelectItem value="both"><div className="flex items-center gap-2"><MessageSquare className="h-4 w-4" />SMS and Email</div></SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border rounded-md p-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                        <Calendar className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">End-of-Day Summary Email</h4>
+                        <p className="text-xs text-muted-foreground">Receive a daily recap of jobs, invoices, quotes, and payments</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="ch-daily-summary-enabled">Enable daily summary emails</Label>
+                        <p className="text-xs text-muted-foreground">Receive an email summary at the end of each business day</p>
+                      </div>
+                      <Switch
+                        id="ch-daily-summary-enabled"
+                        checked={settingsForm.dailySummaryEnabled ?? false}
+                        onCheckedChange={(checked) => setSettingsForm(prev => ({ ...prev, dailySummaryEnabled: checked }))}
+                      />
+                    </div>
+                    {(settingsForm.dailySummaryEnabled ?? false) && (
+                      <>
+                        <div>
+                          <Label htmlFor="ch-daily-summary-time">Send time</Label>
+                          <Select
+                            value={settingsForm.dailySummaryTime ?? '18:00'}
+                            onValueChange={(v) => setSettingsForm(prev => ({ ...prev, dailySummaryTime: v }))}
+                          >
+                            <SelectTrigger id="ch-daily-summary-time" className="w-full sm:w-48">
+                              <SelectValue placeholder="Select time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="16:00">4:00 PM</SelectItem>
+                              <SelectItem value="17:00">5:00 PM</SelectItem>
+                              <SelectItem value="18:00">6:00 PM</SelectItem>
+                              <SelectItem value="19:00">7:00 PM</SelectItem>
+                              <SelectItem value="20:00">8:00 PM</SelectItem>
+                              <SelectItem value="21:00">9:00 PM</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">Summary will be sent at this time each day</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => previewSummaryMutation.mutate()}
+                            disabled={previewSummaryMutation.isPending}
+                          >
+                            {previewSummaryMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Eye className="h-4 w-4 mr-2" />
+                            )}
+                            Preview Summary
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => sendSummaryMutation.mutate()}
+                            disabled={sendSummaryMutation.isPending}
+                          >
+                            {sendSummaryMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            Send Now
+                          </Button>
+                        </div>
+                        {settingsForm.dailySummaryLastSent && (
+                          <p className="text-xs text-muted-foreground">
+                            Last sent: {new Date(settingsForm.dailySummaryLastSent).toLocaleString('en-AU')}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!settingsLoading && (
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={() => {
+                      const { id, userId, createdAt, updatedAt, dailySummaryLastSent, ...settingsToSave } = settingsForm as any;
+                      updateSettingsMutation.mutate(settingsToSave);
+                    }}
+                    disabled={updateSettingsMutation.isPending}
+                  >
+                    {updateSettingsMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Settings
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+
+        <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Daily Summary Preview</DialogTitle>
+              <DialogDescription>{previewSubject}</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 max-h-[60vh]">
+              <div className="p-4" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            </ScrollArea>
+            <DialogFooter className="flex-shrink-0">
+              <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>Close</Button>
+              <Button
+                onClick={() => { sendSummaryMutation.mutate(); setPreviewDialogOpen(false); }}
+                disabled={sendSummaryMutation.isPending}
+              >
+                {sendSummaryMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Send Now
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card>

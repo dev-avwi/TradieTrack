@@ -571,6 +571,7 @@ function Router({
       <Route path="/automations" component={() => (
         <Automations />
       )} />
+      {/* Automations controls moved to Communications Hub - route kept for backward compatibility */}
       
       <Route path="/recurring-jobs" component={() => (
         <RecurringJobs />

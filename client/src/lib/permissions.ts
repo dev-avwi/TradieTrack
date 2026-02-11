@@ -115,8 +115,8 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Payment Hub - owner/manager only
   { path: '/payment-hub', label: 'Payment Hub', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
-  // Automations - owner only
-  { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
+  // Automations - owner only (controls now in Communications Hub)
+  { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
   
   // Leads / CRM - owner/solo_owner/manager
   { path: '/leads', label: 'Leads', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
