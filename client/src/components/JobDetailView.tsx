@@ -2046,6 +2046,9 @@ export default function JobDetailView({
             existingNotes={job.notes}
           />
 
+          {/* Uploaded Documents - external quotes, invoices, PDFs */}
+          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
         </div>
 
         {/* Right column - Secondary/supporting content */}
@@ -2511,14 +2514,12 @@ export default function JobDetailView({
             clientName={client?.name || 'Client'}
           />
 
-          {/* Safety Forms Section */}
+          {/* Safety Forms Section - grows to fill remaining space */}
           <SafetyFormsSection 
             jobId={jobId} 
             jobStatus={job.status}
+            className="flex-grow"
           />
-
-          {/* Uploaded Documents - external quotes, invoices, PDFs */}
-          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         </div>
       </div>

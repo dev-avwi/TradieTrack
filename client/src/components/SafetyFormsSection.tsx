@@ -35,9 +35,10 @@ interface SafetyFormsSectionProps {
   jobId: string;
   jobStatus: string;
   onSafetyCheckRequired?: () => void;
+  className?: string;
 }
 
-export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: SafetyFormsSectionProps) {
+export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired, className }: SafetyFormsSectionProps) {
   const { toast } = useToast();
   const [showFormPicker, setShowFormPicker] = useState(false);
   const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
@@ -148,7 +149,7 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
 
   if (isLoading) {
     return (
-      <Card data-testid="card-safety-forms-loading">
+      <Card data-testid="card-safety-forms-loading" className={className}>
         <CardContent className="py-6">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -160,7 +161,7 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
 
   return (
     <>
-      <Card data-testid="card-safety-forms">
+      <Card data-testid="card-safety-forms" className={className}>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center justify-between gap-4">
             <span className="flex items-center gap-2">
