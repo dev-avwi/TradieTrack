@@ -20648,6 +20648,91 @@ Respond with JSON in this format:
     }
   });
   
+
+  // Copy photos from another job to this job
+  app.post("/api/jobs/:jobId/photos/copy", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.params.jobId;
+      const { sourceJobId, photoIds } = req.body;
+
+      // Validate request body
+      if (!sourceJobId || !Array.isArray(photoIds) || photoIds.length === 0) {
+        return res.status(400).json({ error: 'sourceJobId and photoIds array required' });
+      }
+
+      // Get user context to properly scope to business for team members
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId || userId;
+
+      // Verify target job exists and belongs to user
+      const targetJob = await storage.getJob(jobId, effectiveUserId);
+      if (!targetJob) {
+        return res.status(404).json({ error: 'Target job not found or access denied' });
+      }
+
+      // Verify source job exists and belongs to user
+      const sourceJob = await storage.getJob(sourceJobId, effectiveUserId);
+      if (!sourceJob) {
+        return res.status(404).json({ error: 'Source job not found or access denied' });
+      }
+
+      // Enforce same-client constraint
+      if (!targetJob.clientId || !sourceJob.clientId || targetJob.clientId !== sourceJob.clientId) {
+        return res.status(400).json({ error: "Photos can only be copied between jobs for the same client" });
+      }
+      // Get all photos from source job
+      const sourcePhotos = await storage.getJobPhotos(sourceJobId, effectiveUserId);
+      
+      // Filter to only requested photoIds
+      const photosToCopy = sourcePhotos.filter(photo => photoIds.includes(photo.id));
+
+      if (photosToCopy.length === 0) {
+        return res.status(400).json({ error: 'No valid photos found to copy' });
+      }
+
+      // Create copies of photos for target job
+      const copiedPhotos: any[] = [];
+      for (const sourcePhoto of photosToCopy) {
+        const newPhoto = await storage.createJobPhoto({
+          userId: effectiveUserId,
+          jobId: jobId,
+          objectStorageKey: sourcePhoto.objectStorageKey, // Use same storage key - no duplication
+          fileName: sourcePhoto.fileName,
+          fileSize: sourcePhoto.fileSize,
+          mimeType: sourcePhoto.mimeType,
+          category: 'general', // Set all copied photos to general category
+          caption: sourcePhoto.caption,
+          takenAt: sourcePhoto.takenAt,
+          uploadedBy: effectiveUserId, // Current user as the one who initiated the copy
+          sortOrder: 0,
+        });
+        copiedPhotos.push(newPhoto);
+      }
+
+      // Create activity log for copy action
+      try {
+        await logActivity(
+          effectiveUserId,
+          'photos_copied',
+          `${copiedPhotos.length} photo(s) copied from another job`,
+          `Copied from job ${sourceJobId}`,
+          'job',
+          jobId,
+          { sourceJobId, photoCount: copiedPhotos.length }
+        );
+      } catch (activityError) {
+        console.error('Failed to log photo copy activity:', activityError);
+      }
+
+      res.json({ success: true, copiedPhotos });
+    } catch (error: any) {
+      console.error('Error copying photos:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
   // View/stream a photo (for when signedUrl is not available)
   app.get("/api/jobs/:jobId/photos/:photoId/view", requireAuth, async (req: any, res) => {
     try {

@@ -21,6 +21,7 @@ import { LinkedDocumentsCard } from "./JobWorkflowComponents";
 import JobFlowWizard from "@/components/JobFlowWizard";
 import QuickCollectPayment from "./QuickCollectPayment";
 import { BeforePhotoPrompt } from "./BeforePhotoPrompt";
+import LinkedJobsCard from "./LinkedJobsCard";
 import { UnifiedSendModal } from "./UnifiedSendModal";
 import { ManualSmsComposer } from "./ManualSmsComposer";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -2501,6 +2502,13 @@ export default function JobDetailView({
 
           {/* Photos - show for ALL job statuses so team sync works */}
           <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
+
+          {/* Linked Jobs - Client history with photo copy */}
+          <LinkedJobsCard
+            jobId={jobId}
+            clientId={job.clientId}
+            clientName={client?.name || 'Client'}
+          />
 
           {/* Safety Forms Section */}
           <SafetyFormsSection 
