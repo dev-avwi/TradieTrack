@@ -46,11 +46,14 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
 
   const { data: submissions, isLoading: loadingSubmissions } = useQuery<FormSubmission[]>({
     queryKey: ['/api/jobs', jobId, 'form-submissions'],
+    enabled: !!jobId,
+    staleTime: 30000,
   });
 
   // Get user's trade type for filtering
   const { data: user } = useQuery<{ tradeType?: string }>({
     queryKey: ['/api/auth/me'],
+    staleTime: 30000,
   });
   const tradeType = user?.tradeType;
 
@@ -64,6 +67,8 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
       if (!response.ok) throw new Error('Failed to fetch forms');
       return response.json();
     },
+    enabled: !!user,
+    staleTime: 30000,
   });
 
   const isLoading = loadingSubmissions || loadingForms;
@@ -97,7 +102,7 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
     const hasSig = data?._signature;
 
     if (submission.status === 'approved') {
-      return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
+      return <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
     }
     if (submission.status === 'rejected') {
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
@@ -169,7 +174,7 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired }: 
               </Badge>
             )}
             {safetyStatus.status === 'complete' && (
-              <Badge className="bg-green-500 hover:bg-green-600 text-xs">
+              <Badge className="bg-green-500 text-xs">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Complete
               </Badge>

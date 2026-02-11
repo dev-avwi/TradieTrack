@@ -578,6 +578,7 @@ export default function JobDetailView({
   // Get user's trade type for filtering custom forms
   const { data: authUser } = useQuery<{ tradeType?: string }>({
     queryKey: ['/api/auth/me'],
+    staleTime: 30000,
   });
   const userTradeType = authUser?.tradeType;
 
@@ -591,7 +592,8 @@ export default function JobDetailView({
       if (!response.ok) throw new Error('Failed to fetch forms');
       return response.json();
     },
-    enabled: !!jobId,
+    enabled: !!authUser && !!jobId,
+    staleTime: 30000,
   });
 
   // Check if any safety forms exist and if any are completed
@@ -2044,6 +2046,8 @@ export default function JobDetailView({
             existingNotes={job.notes}
           />
 
+          {/* Uploaded Documents - external quotes, invoices, PDFs */}
+          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         </div>
 
@@ -2516,8 +2520,6 @@ export default function JobDetailView({
             jobStatus={job.status}
           />
 
-          {/* Uploaded Documents - external quotes, invoices, PDFs */}
-          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         </div>
       </div>
