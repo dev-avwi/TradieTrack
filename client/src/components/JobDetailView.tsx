@@ -1956,26 +1956,6 @@ export default function JobDetailView({
           {/* Job Variations / Change Orders - for tracking scope changes */}
           <JobVariations jobId={jobId} canEdit={job.status !== 'invoiced' && !isTradie} />
 
-          {/* Custom Forms - available for in_progress, done, invoiced jobs */}
-          {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
-            <Card>
-              <CardContent className="pt-4">
-                <JobForms jobId={jobId} />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-6">
-                <div className="text-center text-muted-foreground">
-                  <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">
-                    Forms can be filled once the job is started
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Client Signature - show for in_progress (for capturing before completion), done and invoiced jobs */}
           {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
             <JobSignature jobId={jobId} />
@@ -1987,6 +1967,38 @@ export default function JobDetailView({
             canUpload={job.status !== 'invoiced'} 
             existingNotes={job.notes}
           />
+
+          {/* Custom Forms - available for in_progress, done, invoiced jobs */}
+          {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Safety Forms
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <JobForms jobId={jobId} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Safety Forms
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center text-muted-foreground py-6">
+                  <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">
+                    Forms can be filled once the job is started
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         </div>
 

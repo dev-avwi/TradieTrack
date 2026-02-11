@@ -973,7 +973,11 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                       data-testid="job-context-trigger"
                     >
                       <div className="flex items-center gap-3">
-                        <Camera className="h-5 w-5" style={{ color: primaryColor }} />
+                        {includeBeforePhotos ? (
+                          <Camera className="h-5 w-5" style={{ color: primaryColor }} />
+                        ) : (
+                          <FileText className="h-5 w-5" style={{ color: primaryColor }} />
+                        )}
                         <span className="font-semibold text-gray-800">
                           {includeBeforePhotos && includeNotes ? 'PDF Includes' : includeBeforePhotos ? 'Site Photos' : 'Notes'}
                         </span>
