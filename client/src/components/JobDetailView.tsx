@@ -53,6 +53,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -214,6 +216,9 @@ export default function JobDetailView({
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
+  const [rescheduleTime, setRescheduleTime] = useState("09:00");
   const [materialName, setMaterialName] = useState('');
   const [materialQty, setMaterialQty] = useState('1');
   const [materialUnit, setMaterialUnit] = useState('each');
@@ -656,10 +661,12 @@ export default function JobDetailView({
   });
 
   const updateJobMutation = useMutation({
-    mutationFn: async (data: { status: string }) => {
+    mutationFn: async (data: { status?: string; scheduledAt?: string }) => {
       // Staff tradies use the status-specific endpoint (which only allows status updates on assigned jobs)
       // Owners and managers use the full update endpoint
-      const endpoint = isTradie 
+      // For non-status updates (like rescheduling), always use the full endpoint
+      const isStatusOnly = data.status && !data.scheduledAt;
+      const endpoint = isTradie && isStatusOnly
         ? `/api/jobs/${jobId}/status`
         : `/api/jobs/${jobId}`;
       return await apiRequest("PATCH", endpoint, data);
@@ -1622,12 +1629,72 @@ export default function JobDetailView({
                       <Calendar className="h-3 w-3" />
                       Scheduled
                     </div>
-                    <p className="font-medium">
-                      {format(new Date(job.scheduledAt), 'MMM d, yyyy')}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(job.scheduledAt), 'h:mm a')}
-                    </p>
+                    <Popover open={rescheduleOpen} onOpenChange={(open) => {
+                      setRescheduleOpen(open);
+                      if (open && job.scheduledAt) {
+                        const d = new Date(job.scheduledAt);
+                        setRescheduleDate(d);
+                        setRescheduleTime(format(d, 'HH:mm'));
+                      }
+                    }}>
+                      <PopoverTrigger asChild>
+                        <button className="text-left hover:bg-muted/50 rounded-md p-1 -m-1 transition-colors group">
+                          <p className="font-medium group-hover:text-primary">
+                            {format(new Date(job.scheduledAt), 'MMM d, yyyy')}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(job.scheduledAt), 'h:mm a')}
+                            <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary">
+                              (tap to reschedule)
+                            </span>
+                          </p>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <div className="p-3 border-b">
+                          <p className="font-medium text-sm">Reschedule Job</p>
+                          <p className="text-xs text-muted-foreground">Pick a new date and time</p>
+                        </div>
+                        <CalendarWidget
+                          mode="single"
+                          selected={rescheduleDate}
+                          onSelect={setRescheduleDate}
+                          initialFocus
+                        />
+                        <div className="p-3 border-t space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="time"
+                              value={rescheduleTime}
+                              onChange={(e) => setRescheduleTime(e.target.value)}
+                              className="flex-1"
+                            />
+                          </div>
+                          <Button
+                            className="w-full"
+                            disabled={!rescheduleDate || updateJobMutation.isPending}
+                            onClick={() => {
+                              if (!rescheduleDate) return;
+                              const [hours, minutes] = rescheduleTime.split(':').map(Number);
+                              const newDate = new Date(rescheduleDate);
+                              newDate.setHours(hours, minutes, 0, 0);
+                              updateJobMutation.mutate(
+                                { scheduledAt: newDate.toISOString() },
+                                { onSuccess: () => setRescheduleOpen(false) }
+                              );
+                            }}
+                          >
+                            {updateJobMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Calendar className="h-4 w-4 mr-2" />
+                            )}
+                            Confirm Reschedule
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
 
