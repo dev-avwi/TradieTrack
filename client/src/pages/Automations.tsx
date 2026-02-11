@@ -87,9 +87,11 @@ interface AutomationSettings {
   jobReminderType: 'sms' | 'email' | 'both';
   quoteFollowUpEnabled: boolean;
   quoteFollowUpDays: number;
+  quoteFollowUpType?: 'sms' | 'email' | 'both';
   invoiceReminderEnabled: boolean;
   invoiceReminderDaysBeforeDue: number;
   invoiceOverdueReminderDays: number;
+  invoiceReminderType?: 'sms' | 'email' | 'both';
   requirePhotoBeforeStart: boolean;
   requirePhotoAfterComplete: boolean;
   autoCheckInOnArrival: boolean;
@@ -922,7 +924,7 @@ export default function Automations() {
                     </div>
                     <Switch
                       id="quote-followup-enabled"
-                      checked={settingsForm.quoteFollowUpEnabled ?? true}
+                      checked={settingsForm.quoteFollowUpEnabled ?? false}
                       onCheckedChange={(checked) => 
                         setSettingsForm(prev => ({ ...prev, quoteFollowUpEnabled: checked }))
                       }
@@ -931,25 +933,60 @@ export default function Automations() {
                   </div>
                   
                   {settingsForm.quoteFollowUpEnabled !== false && (
-                    <div>
-                      <Label htmlFor="quote-followup-days">Days after sending quote</Label>
-                      <Select
-                        value={String(settingsForm.quoteFollowUpDays ?? 3)}
-                        onValueChange={(v) => 
-                          setSettingsForm(prev => ({ ...prev, quoteFollowUpDays: parseInt(v) }))
-                        }
-                      >
-                        <SelectTrigger id="quote-followup-days" className="w-full md:w-48" data-testid="select-quote-followup-days">
-                          <SelectValue placeholder="Select days" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 day</SelectItem>
-                          <SelectItem value="2">2 days</SelectItem>
-                          <SelectItem value="3">3 days</SelectItem>
-                          <SelectItem value="5">5 days</SelectItem>
-                          <SelectItem value="7">7 days</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="quote-followup-days">Days after sending quote</Label>
+                        <Select
+                          value={String(settingsForm.quoteFollowUpDays ?? 3)}
+                          onValueChange={(v) => 
+                            setSettingsForm(prev => ({ ...prev, quoteFollowUpDays: parseInt(v) }))
+                          }
+                        >
+                          <SelectTrigger id="quote-followup-days" data-testid="select-quote-followup-days">
+                            <SelectValue placeholder="Select days" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 day</SelectItem>
+                            <SelectItem value="2">2 days</SelectItem>
+                            <SelectItem value="3">3 days</SelectItem>
+                            <SelectItem value="5">5 days</SelectItem>
+                            <SelectItem value="7">7 days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="quote-followup-type">Send via</Label>
+                        <Select
+                          value={settingsForm.quoteFollowUpType ?? 'email'}
+                          onValueChange={(v) => 
+                            setSettingsForm(prev => ({ ...prev, quoteFollowUpType: v as 'sms' | 'email' | 'both' }))
+                          }
+                        >
+                          <SelectTrigger id="quote-followup-type" data-testid="select-quote-followup-type">
+                            <SelectValue placeholder="Select channel" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="email">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4" />
+                                Email only
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="sms">
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                SMS only
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="both">
+                              <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4" />
+                                SMS and Email
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -980,7 +1017,7 @@ export default function Automations() {
                     </div>
                     <Switch
                       id="invoice-reminder-enabled"
-                      checked={settingsForm.invoiceReminderEnabled ?? true}
+                      checked={settingsForm.invoiceReminderEnabled ?? false}
                       onCheckedChange={(checked) => 
                         setSettingsForm(prev => ({ ...prev, invoiceReminderEnabled: checked }))
                       }
@@ -989,44 +1026,79 @@ export default function Automations() {
                   </div>
                   
                   {settingsForm.invoiceReminderEnabled !== false && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="invoice-reminder-before">Days before due date</Label>
-                        <Select
-                          value={String(settingsForm.invoiceReminderDaysBeforeDue ?? 3)}
-                          onValueChange={(v) => 
-                            setSettingsForm(prev => ({ ...prev, invoiceReminderDaysBeforeDue: parseInt(v) }))
-                          }
-                        >
-                          <SelectTrigger id="invoice-reminder-before" data-testid="select-invoice-before">
-                            <SelectValue placeholder="Select days" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 day before</SelectItem>
-                            <SelectItem value="2">2 days before</SelectItem>
-                            <SelectItem value="3">3 days before</SelectItem>
-                            <SelectItem value="5">5 days before</SelectItem>
-                            <SelectItem value="7">7 days before</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="invoice-reminder-before">Days before due date</Label>
+                          <Select
+                            value={String(settingsForm.invoiceReminderDaysBeforeDue ?? 3)}
+                            onValueChange={(v) => 
+                              setSettingsForm(prev => ({ ...prev, invoiceReminderDaysBeforeDue: parseInt(v) }))
+                            }
+                          >
+                            <SelectTrigger id="invoice-reminder-before" data-testid="select-invoice-before">
+                              <SelectValue placeholder="Select days" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 day before</SelectItem>
+                              <SelectItem value="2">2 days before</SelectItem>
+                              <SelectItem value="3">3 days before</SelectItem>
+                              <SelectItem value="5">5 days before</SelectItem>
+                              <SelectItem value="7">7 days before</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="invoice-overdue-reminder">Days after overdue</Label>
+                          <Select
+                            value={String(settingsForm.invoiceOverdueReminderDays ?? 7)}
+                            onValueChange={(v) => 
+                              setSettingsForm(prev => ({ ...prev, invoiceOverdueReminderDays: parseInt(v) }))
+                            }
+                          >
+                            <SelectTrigger id="invoice-overdue-reminder" data-testid="select-invoice-overdue">
+                              <SelectValue placeholder="Select days" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="3">3 days overdue</SelectItem>
+                              <SelectItem value="7">7 days overdue</SelectItem>
+                              <SelectItem value="14">14 days overdue</SelectItem>
+                              <SelectItem value="21">21 days overdue</SelectItem>
+                              <SelectItem value="30">30 days overdue</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor="invoice-overdue-reminder">Days after overdue</Label>
+                      <div className="md:w-1/2">
+                        <Label htmlFor="invoice-reminder-type">Send via</Label>
                         <Select
-                          value={String(settingsForm.invoiceOverdueReminderDays ?? 7)}
+                          value={settingsForm.invoiceReminderType ?? 'email'}
                           onValueChange={(v) => 
-                            setSettingsForm(prev => ({ ...prev, invoiceOverdueReminderDays: parseInt(v) }))
+                            setSettingsForm(prev => ({ ...prev, invoiceReminderType: v as 'sms' | 'email' | 'both' }))
                           }
                         >
-                          <SelectTrigger id="invoice-overdue-reminder" data-testid="select-invoice-overdue">
-                            <SelectValue placeholder="Select days" />
+                          <SelectTrigger id="invoice-reminder-type" data-testid="select-invoice-reminder-type">
+                            <SelectValue placeholder="Select channel" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="3">3 days overdue</SelectItem>
-                            <SelectItem value="7">7 days overdue</SelectItem>
-                            <SelectItem value="14">14 days overdue</SelectItem>
-                            <SelectItem value="21">21 days overdue</SelectItem>
-                            <SelectItem value="30">30 days overdue</SelectItem>
+                            <SelectItem value="email">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4" />
+                                Email only
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="sms">
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                SMS only
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="both">
+                              <div className="flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4" />
+                                SMS and Email
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

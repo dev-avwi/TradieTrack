@@ -23533,7 +23533,11 @@ Respond with JSON in this format:
       const { getSmsConversationsForUser } = await import('./services/smsService');
       const conversations = await getSmsConversationsForUser(userId, businessOwnerId, userRole);
       
-      res.json(conversations);
+      const enriched = await Promise.all(conversations.map(async (conv: any) => {
+        const messages = await storage.getSmsMessages(conv.id);
+        return { ...conv, messages };
+      }));
+      res.json(enriched);
     } catch (error: any) {
       console.error('Error fetching SMS conversations:', error);
       res.status(500).json({ error: error.message });

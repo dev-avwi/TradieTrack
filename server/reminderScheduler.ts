@@ -6,7 +6,7 @@ import { processTimeBasedAutomations } from './automationService';
 import { runDailyBillingReminders } from './billingReminderService';
 import { notifyInstallmentDue } from './notifications';
 import { getProductionBaseUrl } from './urlHelper';
-import { jobs, quotes, invoices, smsAutomationRules, paymentSchedules, paymentInstallments, automationSettings, invoiceReminderLogs } from '@shared/schema';
+import { jobs, quotes, invoices, smsAutomationRules, smsAutomationLogs, paymentSchedules, paymentInstallments, automationSettings, invoiceReminderLogs } from '@shared/schema';
 import { and, or, eq, lt, isNull, gte, lte, not } from 'drizzle-orm';
 
 let reminderInterval: NodeJS.Timeout | null = null;
@@ -495,6 +495,7 @@ async function processAutoQuoteFollowUps(): Promise<void> {
       try {
         const followUpDays = settings.quoteFollowUpDays || 3;
         const cutoffDate = new Date(now.getTime() - followUpDays * 24 * 60 * 60 * 1000);
+        const channelType = (settings as any).quoteFollowUpType || 'email';
         
         const existingRules = await db.select().from(smsAutomationRules)
           .where(and(
@@ -515,31 +516,81 @@ async function processAutoQuoteFollowUps(): Promise<void> {
           const alreadySent = await storage.hasReminderBeenSent(quote.id, 'auto_quote_followup');
           if (alreadySent) continue;
           
+          try {
+            const existingAutoLogs = await db.select().from(smsAutomationLogs)
+              .where(and(
+                eq(smsAutomationLogs.entityType, 'quote'),
+                eq(smsAutomationLogs.entityId, quote.id),
+                eq(smsAutomationLogs.status, 'sent')
+              ));
+            if (existingAutoLogs.length > 0) continue;
+          } catch (e) { /* non-critical */ }
+          
           const client = await storage.getClientById(quote.clientId);
-          if (!client?.phone) continue;
+          if (!client) continue;
+          
+          const quoteLink = (quote as any).acceptanceToken 
+            ? `${getProductionBaseUrl()}/portal/quote/${(quote as any).acceptanceToken}` 
+            : '';
+          const quoteNumber = (quote as any).number || quote.id.slice(0, 8);
+          const quoteTitle = (quote as any).title || 'your project';
+          
+          let smsSent = false;
+          let emailSent = false;
           
           try {
-            const { sendSmsToClient } = await import('./services/smsService');
-            const quoteLink = (quote as any).acceptanceToken 
-              ? `${getProductionBaseUrl()}/portal/quote/${(quote as any).acceptanceToken}` 
-              : '';
-            const message = `Hi ${client.name || 'there'}, just following up on quote #${(quote as any).number || quote.id.slice(0, 8)} for "${(quote as any).title || 'your project'}".${quoteLink ? ` View and accept here: ${quoteLink}` : ' Let us know if you have questions!'}`;
+            if ((channelType === 'sms' || channelType === 'both') && client.phone) {
+              const { sendSmsToClient } = await import('./services/smsService');
+              const message = `Hi ${client.name || 'there'}, just following up on quote #${quoteNumber} for "${quoteTitle}".${quoteLink ? ` View and accept here: ${quoteLink}` : ' Let us know if you have questions!'}`;
+              
+              await sendSmsToClient({
+                businessOwnerId: settings.userId,
+                clientPhone: client.phone,
+                clientName: client.name,
+                message,
+              });
+              smsSent = true;
+            }
             
-            await sendSmsToClient({
-              businessOwnerId: settings.userId,
-              clientPhone: client.phone,
-              clientName: client.name,
-              message,
-            });
+            if ((channelType === 'email' || channelType === 'both') && client.email) {
+              const { sendQuoteEmail } = await import('./emailService');
+              const businessSettingsData = await storage.getBusinessSettings(settings.userId);
+              await sendQuoteEmail(
+                { ...quote, number: quoteNumber, title: quoteTitle },
+                client,
+                businessSettingsData || {},
+                quoteLink || null
+              );
+              emailSent = true;
+            }
+            
+            if (!smsSent && !emailSent) continue;
             
             await storage.createInvoiceReminderLog({
               invoiceId: quote.id,
               userId: settings.userId,
               reminderType: 'auto_quote_followup',
               daysPastDue: followUpDays,
-              sentVia: 'sms',
-              emailSent: false,
-              smsSent: true,
+              sentVia: channelType,
+              emailSent,
+              smsSent,
+            });
+            
+            await storage.createActivityLog({
+              userId: settings.userId,
+              type: 'quote_sent',
+              title: 'Auto follow-up sent',
+              description: `Automatic follow-up sent for quote #${quoteNumber}`,
+              entityType: 'quote',
+              entityId: quote.id,
+              metadata: {
+                deliveryMethod: channelType,
+                clientName: client.name,
+                clientPhone: client.phone,
+                clientEmail: client.email,
+                automated: true,
+                quoteNumber,
+              },
             });
             
             processed++;
@@ -576,6 +627,7 @@ async function processAutoInvoiceReminders(): Promise<void> {
         const targetDate = new Date(now.getTime() + daysBeforeDue * 24 * 60 * 60 * 1000);
         const targetStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
         const targetEnd = new Date(targetStart.getTime() + 24 * 60 * 60 * 1000);
+        const channelType = (settings as any).invoiceReminderType || 'email';
         
         const upcomingInvoices = await db.select().from(invoices)
           .where(and(
@@ -590,30 +642,69 @@ async function processAutoInvoiceReminders(): Promise<void> {
           if (alreadySent) continue;
           
           const client = await storage.getClientById(invoice.clientId);
-          if (!client?.phone) continue;
+          if (!client) continue;
+          
+          const invoiceNumber = (invoice as any).invoiceNumber || invoice.id;
+          const invoiceLink = (invoice as any).paymentToken 
+            ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}` 
+            : '';
+          
+          let smsSent = false;
+          let emailSent = false;
           
           try {
-            const { sendSmsToClient } = await import('./services/smsService');
-            const invoiceLink = (invoice as any).paymentToken 
-              ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}` 
-              : '';
-            const message = `Hi ${client.name || 'there'}, friendly reminder that invoice #${(invoice as any).invoiceNumber || invoice.id} for $${invoice.total} is due in ${daysBeforeDue} days.${invoiceLink ? ` Pay online: ${invoiceLink}` : ''}`;
+            if ((channelType === 'sms' || channelType === 'both') && client.phone) {
+              const { sendSmsToClient } = await import('./services/smsService');
+              const message = `Hi ${client.name || 'there'}, friendly reminder that invoice #${invoiceNumber} for $${invoice.total} is due in ${daysBeforeDue} days.${invoiceLink ? ` Pay online: ${invoiceLink}` : ''}`;
+              
+              await sendSmsToClient({
+                businessOwnerId: settings.userId,
+                clientPhone: client.phone,
+                clientName: client.name,
+                message,
+              });
+              smsSent = true;
+            }
             
-            await sendSmsToClient({
-              businessOwnerId: settings.userId,
-              clientPhone: client.phone,
-              clientName: client.name,
-              message,
-            });
+            if ((channelType === 'email' || channelType === 'both') && client.email) {
+              const { sendInvoiceEmail } = await import('./emailService');
+              const businessSettingsData = await storage.getBusinessSettings(settings.userId);
+              await sendInvoiceEmail(
+                { ...invoice, invoiceNumber },
+                client,
+                businessSettingsData || {},
+                invoiceLink || null
+              );
+              emailSent = true;
+            }
+            
+            if (!smsSent && !emailSent) continue;
             
             await storage.createInvoiceReminderLog({
               invoiceId: invoice.id,
               userId: settings.userId,
               reminderType: 'auto_predue_reminder',
               daysPastDue: -daysBeforeDue,
-              sentVia: 'sms',
-              emailSent: false,
-              smsSent: true,
+              sentVia: channelType,
+              emailSent,
+              smsSent,
+            });
+            
+            await storage.createActivityLog({
+              userId: settings.userId,
+              type: 'invoice_sent',
+              title: 'Auto reminder sent',
+              description: `Automatic reminder sent for invoice #${invoiceNumber}`,
+              entityType: 'invoice',
+              entityId: invoice.id,
+              metadata: {
+                deliveryMethod: channelType,
+                clientName: client.name,
+                clientPhone: client.phone,
+                clientEmail: client.email,
+                automated: true,
+                invoiceNumber,
+              },
             });
             
             processed++;
