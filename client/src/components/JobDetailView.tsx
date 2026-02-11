@@ -2046,9 +2046,6 @@ export default function JobDetailView({
             existingNotes={job.notes}
           />
 
-          {/* Uploaded Documents - external quotes, invoices, PDFs */}
-          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
-
         </div>
 
         {/* Right column - Secondary/supporting content */}
@@ -2520,6 +2517,8 @@ export default function JobDetailView({
             jobStatus={job.status}
           />
 
+          {/* Uploaded Documents - external quotes, invoices, PDFs */}
+          <JobDocuments jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
         </div>
       </div>

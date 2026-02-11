@@ -151,79 +151,79 @@ export function JobSignature({ jobId }: JobSignatureProps) {
             </div>
           </div>
         ) : (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-full gap-2"
-                data-testid="button-capture-signature"
-              >
-                <PenTool className="h-4 w-4" />
-                Capture Client Signature
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Capture Signature</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signerName">Client Name *</Label>
-                  <Input
-                    id="signerName"
-                    value={signerName}
-                    onChange={(e) => setSignerName(e.target.value)}
-                    placeholder="Enter client's name"
-                    data-testid="input-signer-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signerEmail">Client Email (optional)</Label>
-                  <Input
-                    id="signerEmail"
-                    type="email"
-                    value={signerEmail}
-                    onChange={(e) => setSignerEmail(e.target.value)}
-                    placeholder="client@email.com"
-                    data-testid="input-signer-email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Signature</Label>
-                  <SignaturePad
-                    onSave={setSignatureData}
-                    showControls={true}
-                    width={380}
-                    height={150}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSave}
-                  disabled={saveMutation.isPending || !signerName || !signatureData}
-                  data-testid="button-save-signature"
-                >
-                  {saveMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-2" />
-                  )}
-                  Save Signature
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            variant="outline" 
+            className="w-full gap-2"
+            onClick={() => setIsDialogOpen(true)}
+            data-testid="button-capture-signature"
+          >
+            <PenTool className="h-4 w-4" />
+            Capture Client Signature
+          </Button>
         )}
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Capture Signature</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="signerName">Client Name *</Label>
+                <Input
+                  id="signerName"
+                  value={signerName}
+                  onChange={(e) => setSignerName(e.target.value)}
+                  placeholder="Enter client's name"
+                  data-testid="input-signer-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signerEmail">Client Email (optional)</Label>
+                <Input
+                  id="signerEmail"
+                  type="email"
+                  value={signerEmail}
+                  onChange={(e) => setSignerEmail(e.target.value)}
+                  placeholder="client@email.com"
+                  data-testid="input-signer-email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Signature</Label>
+                <SignaturePad
+                  onSave={setSignatureData}
+                  showControls={true}
+                  width={380}
+                  height={150}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSave}
+                disabled={saveMutation.isPending || !signerName || !signatureData}
+                data-testid="button-save-signature"
+              >
+                {saveMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
+                Save Signature
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
