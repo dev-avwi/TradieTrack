@@ -134,16 +134,11 @@ export default function SendDocumentModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [selectedSmsTemplate, setSelectedSmsTemplate] = useState<string>("");
   const [phoneInput, setPhoneInput] = useState(clientPhone || "");
   const [showSmsSetupGuide, setShowSmsSetupGuide] = useState(false);
 
   const clientFirstName = clientName?.split(' ')[0] || 'there';
-
-  const { data: twilioStatus } = useQuery<TwilioStatus>({
-    queryKey: ['/api/sms/status'],
-    enabled: isOpen,
-    staleTime: 60000,
-  });
 
   const { data: templates = [] } = useQuery<MessageTemplate[]>({
     queryKey: ['/api/message-templates', 'email'],
@@ -159,6 +154,28 @@ export default function SendDocumentModal({
       return res.json();
     },
     enabled: isOpen,
+  });
+
+  const { data: smsTemplates = [] } = useQuery<MessageTemplate[]>({
+    queryKey: ['/api/message-templates', 'sms'],
+    queryFn: async () => {
+      const token = getSessionToken();
+      const headers: HeadersInit = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/message-templates?channel=sms', { 
+        credentials: 'include',
+        headers,
+      });
+      if (!res.ok) throw new Error('Failed to fetch templates');
+      return res.json();
+    },
+    enabled: isOpen,
+  });
+
+  const { data: twilioStatus } = useQuery<TwilioStatus>({
+    queryKey: ['/api/sms/status'],
+    enabled: isOpen,
+    staleTime: 60000,
   });
 
   const isSmsAvailable = twilioStatus?.connected === true;
@@ -245,6 +262,18 @@ export default function SendDocumentModal({
       toast({
         title: "Template applied",
         description: `"${template.name}" template loaded. Feel free to customise!`,
+      });
+    }
+  };
+
+  const handleSmsTemplateSelect = (templateId: string) => {
+    setSelectedSmsTemplate(templateId);
+    const template = smsTemplates.find((t: MessageTemplate) => t.id === templateId);
+    if (template) {
+      setSmsMessage(applyMergeFields(template.body));
+      toast({
+        title: "Template applied",
+        description: `"${template.name}" SMS template loaded. Feel free to customise!`,
       });
     }
   };
@@ -767,6 +796,24 @@ export default function SendDocumentModal({
                         </div>
                       )}
 
+                      {smsTemplates.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>SMS Template</Label>
+                          <Select value={selectedSmsTemplate} onValueChange={handleSmsTemplateSelect}>
+                            <SelectTrigger data-testid="select-sms-template">
+                              <SelectValue placeholder="Choose an SMS template..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {smsTemplates.map((t: MessageTemplate) => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
                       <div className="space-y-2">
                         <Label htmlFor="sms-message">Message</Label>
                         <Textarea
@@ -787,7 +834,7 @@ export default function SendDocumentModal({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSmsMessage(generateSmsMessage())}
+                        onClick={() => { setSmsMessage(generateSmsMessage()); setSelectedSmsTemplate(""); }}
                         className="text-xs"
                         data-testid="button-reset-sms"
                       >
