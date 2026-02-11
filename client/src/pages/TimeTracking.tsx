@@ -59,7 +59,7 @@ function PayrollReporting() {
         format: reportType,
         period: period,
       });
-      const res = await fetch(`/api/time-tracking/reports/payroll?${params}`);
+      const res = await fetch(`/api/time-tracking/reports/payroll?${params}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch payroll data');
       return res.json();
     },

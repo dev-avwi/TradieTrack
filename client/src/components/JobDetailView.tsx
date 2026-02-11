@@ -1604,7 +1604,15 @@ export default function JobDetailView({
                       <MapPin className="h-3 w-3" />
                       Address
                     </div>
-                    <p className="font-medium">{job.address}</p>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      {job.address}
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
                   </div>
                 )}
 
