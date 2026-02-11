@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Share2, Copy, Check, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -973,7 +973,9 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                       data-testid="job-context-trigger"
                     >
                       <div className="flex items-center gap-3">
-                        {includeBeforePhotos ? (
+                        {includeBeforePhotos && includeNotes ? (
+                          <Layers className="h-5 w-5" style={{ color: primaryColor }} />
+                        ) : includeBeforePhotos ? (
                           <Camera className="h-5 w-5" style={{ color: primaryColor }} />
                         ) : (
                           <FileText className="h-5 w-5" style={{ color: primaryColor }} />
