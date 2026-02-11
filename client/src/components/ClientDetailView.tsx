@@ -32,9 +32,11 @@ import {
   Pencil,
   X,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -263,6 +265,37 @@ export default function ClientDetailView({
         description: "Please try again",
         variant: "destructive",
       });
+    }
+  });
+
+  const [quickAddPopoverId, setQuickAddPopoverId] = useState<string | null>(null);
+  const [copyingToJobId, setCopyingToJobId] = useState<string | null>(null);
+
+  const copyPhotoToJobMutation = useMutation({
+    mutationFn: async ({ targetJobId, sourceJobId, photoId }: { targetJobId: string; sourceJobId: string; photoId: string }) => {
+      await apiRequest('POST', `/api/jobs/${targetJobId}/photos/copy`, {
+        sourceJobId,
+        photoIds: [photoId]
+      });
+    },
+    onSuccess: (_, variables) => {
+      const targetJob = jobs.find((j: any) => j.id === variables.targetJobId);
+      toast({
+        title: "Photo added to job",
+        description: `Photo copied to "${targetJob?.title || 'job'}"`,
+      });
+      setQuickAddPopoverId(null);
+      setCopyingToJobId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', variables.targetJobId, 'photos'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId, 'photos'] });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to copy photo",
+        description: "Please try again",
+        variant: "destructive",
+      });
+      setCopyingToJobId(null);
     }
   });
 
@@ -987,31 +1020,84 @@ export default function ClientDetailView({
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {allPhotos.map((photo: any) => (
-                    <div 
-                      key={photo.id}
-                      className="relative group aspect-square rounded-lg overflow-hidden border hover-elevate cursor-pointer"
-                      onClick={() => photo.signedUrl && window.open(photo.signedUrl, '_blank')}
-                    >
-                      {photo.signedUrl ? (
-                        <img 
-                          src={photo.signedUrl} 
-                          alt={photo.caption || photo.fileName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <Camera className="h-8 w-8 text-muted-foreground/30" />
+                  {allPhotos.map((photo: any) => {
+                    const otherJobs = jobs.filter((j: any) => j.id !== photo.jobId);
+                    return (
+                      <div 
+                        key={photo.id}
+                        className="relative group aspect-square rounded-lg overflow-hidden border cursor-pointer"
+                        onClick={() => photo.signedUrl && window.open(photo.signedUrl, '_blank')}
+                      >
+                        {photo.signedUrl ? (
+                          <img 
+                            src={photo.signedUrl} 
+                            alt={photo.caption || photo.fileName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <Camera className="h-8 w-8 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                          <div className="text-white text-xs flex-1 min-w-0">
+                            <p className="font-medium truncate">{photo.jobTitle || 'Job'}</p>
+                            {photo.caption && <p className="truncate opacity-75">{photo.caption}</p>}
+                          </div>
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                        <div className="text-white text-xs">
-                          <p className="font-medium truncate">{photo.jobTitle || 'Job'}</p>
-                          {photo.caption && <p className="truncate opacity-75">{photo.caption}</p>}
-                        </div>
+                        {otherJobs.length > 0 && (
+                          <div className="absolute top-1.5 right-1.5" style={{ visibility: quickAddPopoverId === photo.id ? 'visible' : undefined }}>
+                            <Popover open={quickAddPopoverId === photo.id} onOpenChange={(open) => {
+                              if (open) setQuickAddPopoverId(photo.id);
+                              else { setQuickAddPopoverId(null); setCopyingToJobId(null); }
+                            }}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="secondary"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                  style={quickAddPopoverId === photo.id ? { opacity: 1 } : undefined}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Add to another job"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-56 p-2" align="end" onClick={(e) => e.stopPropagation()}>
+                                <p className="text-xs font-medium text-muted-foreground px-2 py-1">Add to job</p>
+                                <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                                  {otherJobs.map((job: any) => (
+                                    <Button
+                                      key={job.id}
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full justify-start text-xs"
+                                      disabled={copyPhotoToJobMutation.isPending}
+                                      onClick={() => {
+                                        setCopyingToJobId(job.id);
+                                        copyPhotoToJobMutation.mutate({
+                                          targetJobId: job.id,
+                                          sourceJobId: photo.jobId,
+                                          photoId: photo.id
+                                        });
+                                      }}
+                                    >
+                                      {copyingToJobId === job.id && copyPhotoToJobMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                                      ) : (
+                                        <Briefcase className="h-3 w-3 mr-1.5 shrink-0" />
+                                      )}
+                                      <span className="truncate">{job.title || job.description || 'Untitled Job'}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

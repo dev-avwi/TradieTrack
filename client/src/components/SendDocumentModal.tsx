@@ -27,8 +27,7 @@ import {
   CheckCheck,
   FileText,
   MessageSquare,
-  Phone,
-  AlertCircle
+  Phone
 } from "lucide-react";
 import { SmsSetupPrompt } from "./SmsSetupPrompt";
 
@@ -628,9 +627,6 @@ export default function SendDocumentModal({
               >
                 <MessageSquare className="h-4 w-4" />
                 SMS
-                {!isSmsAvailable && (
-                  <AlertCircle className="h-3 w-3 text-amber-500" />
-                )}
               </Button>
               <Button
                 variant={deliveryMethod === 'both' ? 'default' : 'outline'}
@@ -651,9 +647,6 @@ export default function SendDocumentModal({
               >
                 <Send className="h-4 w-4" />
                 Both
-                {!isSmsAvailable && (
-                  <AlertCircle className="h-3 w-3 text-amber-500" />
-                )}
               </Button>
             </div>
             {showSmsSetupGuide && !isSmsAvailable && (
