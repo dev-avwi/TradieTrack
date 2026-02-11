@@ -9,7 +9,6 @@ import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobDocuments } from "./JobDocuments";
 import { JobVariations } from "./JobVariations";
-import JobMaterialsList from "./JobMaterialsList";
 import { JobSignature } from "./JobSignature";
 import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
 import { JobForms } from "./CustomFormRenderer";
@@ -1969,8 +1968,6 @@ export default function JobDetailView({
             existingNotes={job.notes}
           />
 
-          {/* Job Materials - track materials needed for this job */}
-          <JobMaterialsList jobId={jobId} canEdit={job.status !== 'invoiced' && !isTradie} />
 
         </div>
 
