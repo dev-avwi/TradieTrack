@@ -9,6 +9,7 @@ import JobPhotoGallery from "./JobPhotoGallery";
 import { JobVoiceNotes } from "./JobVoiceNotes";
 import { JobDocuments } from "./JobDocuments";
 import { JobVariations } from "./JobVariations";
+import JobMaterialsList from "./JobMaterialsList";
 import { JobSignature } from "./JobSignature";
 import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
 import { JobForms } from "./CustomFormRenderer";
@@ -1968,48 +1969,8 @@ export default function JobDetailView({
             existingNotes={job.notes}
           />
 
-          {/* Custom Forms - available for in_progress, done, invoiced jobs */}
-          {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') ? (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Safety Forms
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <JobForms jobId={jobId} />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Safety Forms
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-muted-foreground space-y-3">
-                  <p className="text-sm">
-                    Safety forms become available once the job is marked as <span className="font-medium text-foreground">In Progress</span>.
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    <p className="font-medium text-foreground">Available forms include:</p>
-                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                      <li>Pre-work safety checklists</li>
-                      <li>Site hazard assessments</li>
-                      <li>Post-work completion forms</li>
-                      <li>Digital sign-off sheets</li>
-                    </ul>
-                  </div>
-                  <p className="text-xs">
-                    Manage your form templates from <span className="font-medium">Settings &rarr; Safety Forms</span>.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Job Materials - track materials needed for this job */}
+          <JobMaterialsList jobId={jobId} canEdit={job.status !== 'invoiced' && !isTradie} />
 
         </div>
 
