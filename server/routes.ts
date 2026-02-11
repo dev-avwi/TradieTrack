@@ -12104,9 +12104,11 @@ Be specific about materials, colors, and features that would be included.`
           .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
       }
       
+      const excludeNotes = req.query.excludeNotes === 'true';
+      
       const businessForPdf = await resolveBusinessLogoForPdf(business);
       const html = generateQuotePDF({
-        quote: quoteWithItems,
+        quote: excludeNotes ? { ...quoteWithItems, notes: '' } : quoteWithItems,
         lineItems: quoteWithItems.lineItems || [],
         client,
         business: businessForPdf,

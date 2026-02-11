@@ -1029,7 +1029,7 @@ async function uploadPDFToStorage(
 // Create Gmail draft OR send directly via SendGrid based on user preference
 export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) => {
   try {
-    const { customSubject, customMessage, includeBeforePhotos } = req.body || {};
+    const { customSubject, customMessage, includeBeforePhotos, excludeNotes } = req.body || {};
     
     // 1. Get business settings to check email sending preference
     let businessSettings = await storage.getBusinessSettings(req.userId);
@@ -1151,7 +1151,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     // 7. Generate PDF buffer
     const businessForPdf = await resolveBusinessLogoForPdf(businessSettings);
     const pdfBuffer = await generatePDFBuffer(generateQuotePDF({
-      quote: quoteWithItems,
+      quote: excludeNotes ? { ...quoteWithItems, notes: '' } : quoteWithItems,
       lineItems: quoteWithItems.lineItems || [],
       client,
       business: businessForPdf,

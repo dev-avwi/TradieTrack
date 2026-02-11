@@ -57,6 +57,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [jobContextOpen, setJobContextOpen] = useState(false);
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(true);
   const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { data: integrationHealth } = useIntegrationHealth();
@@ -381,7 +382,10 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const handleSaveAsPDF = async () => {
     setIsPrinting(true);
     
-    const pdfUrl = `/api/quotes/${quoteId}/pdf${includeBeforePhotos ? '?includeBeforePhotos=true' : ''}`;
+    const pdfParams = new URLSearchParams();
+    if (includeBeforePhotos) pdfParams.set('includeBeforePhotos', 'true');
+    if (!includeNotes) pdfParams.set('excludeNotes', 'true');
+    const pdfUrl = `/api/quotes/${quoteId}/pdf${pdfParams.toString() ? '?' + pdfParams.toString() : ''}`;
     const filename = `Quote-${quote?.number || quote?.id || quoteId}.pdf`;
     
     // For iOS Safari: open window SYNCHRONOUSLY before any async operations
@@ -647,45 +651,21 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           <span className="text-foreground font-medium">{quote.number || `Q-${quote.id?.substring(0,8).toUpperCase()}`}</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 no-print">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={onBack || (() => setLocation('/documents?tab=quotes'))} data-testid="button-back">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+        <div className="space-y-3 mb-6 no-print">
+          {/* Row 1: Back + Title */}
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={onBack || (() => setLocation('/documents?tab=quotes'))} data-testid="button-back">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-              <h1 className="text-xl sm:text-2xl font-bold">Quote Details</h1>
-            </div>
+            <h1 className="text-xl font-bold">Quote Details</h1>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            {/* Navigation buttons for linked documents */}
-            {quote.jobId && job && (
-              <Button 
-                variant="outline"
-                onClick={() => setLocation(`/jobs/${quote.jobId}`)}
-                className="w-full sm:w-auto"
-                data-testid="button-view-linked-job"
-              >
-                <Briefcase className="h-4 w-4 mr-2" />
-                View Job
-              </Button>
-            )}
-            {quote.status === 'accepted' && linkedInvoice && (
-              <Button 
-                variant="outline"
-                onClick={() => setLocation(`/invoices/${linkedInvoice.id}`)}
-                className="w-full sm:w-auto"
-                data-testid="button-view-linked-invoice"
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                View Invoice
-              </Button>
-            )}
-            {/* Primary action - Send Quote via Email with PDF */}
+
+          {/* Row 2: Primary workflow actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Send / Resend - Primary action */}
             {(quote.status === 'draft' || quote.status === 'sent') && client?.email && (
               emailConnected ? (
-                <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
+                <Button onClick={() => setShowEmailCompose(true)} data-testid="button-send-email">
                   <Mail className="h-4 w-4 mr-2" />
                   {quote.status === 'draft' ? 'Send Quote' : 'Resend'}
                 </Button>
@@ -699,7 +679,6 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-7 px-2 text-xs text-amber-900 hover:bg-amber-200 dark:text-amber-300 dark:hover:bg-amber-900"
                     onClick={() => setLocation('/integrations')}
                     data-testid="button-setup-email"
                   >
@@ -710,58 +689,105 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             )}
             {/* Legacy onSend prop support */}
             {quote.status === 'draft' && onSend && !client?.email && (
-              <Button onClick={() => onSend(quote.id)} className="w-full sm:w-auto" data-testid={`button-send-${quote.id}`}>
+              <Button onClick={() => onSend(quote.id)} data-testid={`button-send-${quote.id}`}>
                 <Send className="h-4 w-4 mr-2" />
                 Send Quote
               </Button>
             )}
-            <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto" data-testid="button-print">
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-            <Button variant="outline" onClick={handleSaveAsPDF} className="w-full sm:w-auto" data-testid="button-save-pdf">
-              <Download className="h-4 w-4 mr-2" />
-              {quote.status === 'accepted' && quote.signature ? 'Download Signed Quote' : 'Save as PDF'}
-            </Button>
-            <Button variant="outline" onClick={handleShare} className="w-full sm:w-auto" data-testid="button-share">
-              {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
-              {copied ? 'Copied!' : 'Share'}
-            </Button>
-            {quote.jobId && (
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={includeBeforePhotos}
-                  onCheckedChange={setIncludeBeforePhotos}
-                  id="include-before-photos"
-                />
-                <Label htmlFor="include-before-photos" className="text-sm text-muted-foreground">
-                  Include before photos
-                </Label>
-              </div>
-            )}
-            {/* Create Job from Quote - only for accepted quotes without a linked job */}
+            {/* Create Job from Quote - accepted quotes without a linked job */}
             {quote.status === 'accepted' && !quote.jobId && (
               <Button 
                 onClick={() => setLocation(`/jobs/new?quoteId=${quote.id}&clientId=${quote.clientId}`)}
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                style={{ backgroundColor: 'hsl(142.1 76.2% 36.3%)', color: 'white' }}
                 data-testid="button-create-job-from-quote"
               >
                 <Briefcase className="h-4 w-4 mr-2" />
                 Create Job
               </Button>
             )}
-            {/* Convert to Invoice - for accepted quotes without linked invoice */}
+            {/* Convert to Invoice - accepted quotes without linked invoice */}
             {quote.status === 'accepted' && !linkedInvoice && !isLinkedInvoiceLoading && (
               <Button 
                 onClick={handleConvertToInvoice}
                 variant="outline"
                 disabled={convertToInvoiceMutation.isPending}
-                className="w-full sm:w-auto"
                 data-testid="button-convert-to-invoice"
               >
                 <Receipt className="h-4 w-4 mr-2" />
                 {convertToInvoiceMutation.isPending ? 'Converting...' : 'Convert to Invoice'}
               </Button>
+            )}
+
+            {/* Divider between workflow actions and document tools */}
+            <div className="hidden sm:block w-px h-6 bg-border" />
+
+            {/* Navigation to linked docs */}
+            {quote.jobId && job && (
+              <Button 
+                variant="outline"
+                onClick={() => setLocation(`/jobs/${quote.jobId}`)}
+                data-testid="button-view-linked-job"
+              >
+                <Briefcase className="h-4 w-4 mr-2" />
+                View Job
+              </Button>
+            )}
+            {quote.status === 'accepted' && linkedInvoice && (
+              <Button 
+                variant="outline"
+                onClick={() => setLocation(`/invoices/${linkedInvoice.id}`)}
+                data-testid="button-view-linked-invoice"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                View Invoice
+              </Button>
+            )}
+          </div>
+
+          {/* Row 3: Document output tools + content toggles */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
+              <Printer className="h-4 w-4 mr-1.5" />
+              Print
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSaveAsPDF} data-testid="button-save-pdf">
+              <Download className="h-4 w-4 mr-1.5" />
+              {quote.status === 'accepted' && quote.signature ? 'Signed PDF' : 'Save as PDF'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleShare} data-testid="button-share">
+              {copied ? <Check className="h-4 w-4 mr-1.5" /> : <Share2 className="h-4 w-4 mr-1.5" />}
+              {copied ? 'Copied!' : 'Share'}
+            </Button>
+
+            {/* Content toggles for PDF output */}
+            {(quote.jobId || quote.notes) && (
+              <>
+                <div className="hidden sm:block w-px h-6 bg-border" />
+                {quote.jobId && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={includeBeforePhotos}
+                      onCheckedChange={setIncludeBeforePhotos}
+                      id="include-before-photos"
+                    />
+                    <Label htmlFor="include-before-photos" className="text-xs text-muted-foreground whitespace-nowrap">
+                      Site photos
+                    </Label>
+                  </div>
+                )}
+                {quote.notes && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={includeNotes}
+                      onCheckedChange={setIncludeNotes}
+                      id="include-notes"
+                    />
+                    <Label htmlFor="include-notes" className="text-xs text-muted-foreground whitespace-nowrap">
+                      Notes
+                    </Label>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1250,6 +1276,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           businessName={businessSettings?.businessName}
           publicUrl={getPublicQuoteUrl()}
           includeBeforePhotos={includeBeforePhotos}
+          excludeNotes={!includeNotes}
         />
       )}
     </>
