@@ -481,22 +481,57 @@ function RootLayoutContent() {
   const isLoading = useAuthStore((state) => state.isLoading);
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const { colors, isDark } = useTheme();
-  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const [appReady, setAppReady] = useState(false);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const dataPreloaded = useRef(false);
 
   useEffect(() => {
     checkAuth();
     
-    // Minimum loading screen display time (3.5 seconds)
-    // This gives the dashboard and all data time to fully load before appearing
-    const timer = setTimeout(() => {
-      setMinLoadingComplete(true);
-    }, 3500);
+    const minTimer = setTimeout(() => {
+      setMinTimeElapsed(true);
+    }, 1500);
     
-    return () => clearTimeout(timer);
+    const maxTimer = setTimeout(() => {
+      setAppReady(true);
+    }, 8000);
+    
+    return () => {
+      clearTimeout(minTimer);
+      clearTimeout(maxTimer);
+    };
   }, []);
 
-  // Show loading screen until auth is ready AND minimum time has passed
-  if (!isInitialized || isLoading || !minLoadingComplete) {
+  useEffect(() => {
+    if (isInitialized && !isLoading && isAuthenticated && !dataPreloaded.current) {
+      dataPreloaded.current = true;
+      
+      const preloadData = async () => {
+        try {
+          const { useJobsStore, useDashboardStore, useClientsStore } = require('../src/lib/store');
+          await Promise.all([
+            useJobsStore.getState().fetchTodaysJobs(),
+            useDashboardStore.getState().fetchStats(),
+            useClientsStore.getState().fetchClients(),
+          ]);
+        } catch (error) {
+          console.log('[App] Data preload error (non-fatal):', error);
+        } finally {
+          setAppReady(true);
+        }
+      };
+      
+      preloadData();
+    }
+    
+    if (isInitialized && !isLoading && !isAuthenticated) {
+      setAppReady(true);
+    }
+  }, [isInitialized, isLoading, isAuthenticated]);
+
+  const showLoading = !isInitialized || isLoading || !appReady || !minTimeElapsed;
+  
+  if (showLoading) {
     return <LoadingScreen colors={colors} />;
   }
 
