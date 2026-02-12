@@ -23,6 +23,7 @@ import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from 
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
+import { MobileSendModal } from '../../../src/components/MobileSendModal';
 import { API_URL, api } from '../../../src/lib/api';
 import { getEmailPreference, setEmailPreference, EmailAppPreference } from '../../../src/lib/email-preference';
 import { format } from 'date-fns';
@@ -85,6 +86,10 @@ export default function InvoiceDetailScreen() {
   const [isSendingPaymentLinkEmail, setIsSendingPaymentLinkEmail] = useState(false);
   const [createReceiptOnPayment, setCreateReceiptOnPayment] = useState(false);
   const [showReceiptEmailCompose, setShowReceiptEmailCompose] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
+  const [showReceiptSendModal, setShowReceiptSendModal] = useState(false);
+  const [receiptSendModalDefaultTab, setReceiptSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
   
@@ -284,6 +289,20 @@ export default function InvoiceDetailScreen() {
         {
           text: 'TradieTrack: Edit Message',
           onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Send SMS',
+          onPress: () => {
+            setSendModalDefaultTab('sms');
+            setShowSendModal(true);
+          },
+        },
+        {
+          text: 'Email & SMS',
+          onPress: () => {
+            setSendModalDefaultTab('email');
+            setShowSendModal(true);
+          },
         },
         {
           text: 'Manual: Share',
@@ -821,10 +840,10 @@ ${businessName}`;
     
     const client = getClient(invoice.clientId);
     
-    if (!client?.email) {
+    if (!client?.email && !client?.phone) {
       Alert.alert(
-        'No Email Address',
-        'This client does not have an email address on file. Please add an email address to the client record first.',
+        'No Contact Info',
+        'This client does not have an email address or phone number on file. Please add at least one to the client record first.',
         [{ text: 'OK' }]
       );
       return;
@@ -833,7 +852,7 @@ ${businessName}`;
     // Show options for sending
     Alert.alert(
       'Send Receipt',
-      `To: ${client?.email || 'client'}`,
+      `To: ${client?.email || client?.phone || 'client'}`,
       [
         {
           text: 'TradieTrack: Send Now',
@@ -844,6 +863,20 @@ ${businessName}`;
         {
           text: 'TradieTrack: Edit Message',
           onPress: () => setShowReceiptEmailCompose(true),
+        },
+        {
+          text: 'Send SMS',
+          onPress: () => {
+            setReceiptSendModalDefaultTab('sms');
+            setShowReceiptSendModal(true);
+          },
+        },
+        {
+          text: 'Email & SMS',
+          onPress: () => {
+            setReceiptSendModalDefaultTab('email');
+            setShowReceiptSendModal(true);
+          },
         },
         {
           text: 'Manual: Share',
@@ -2685,6 +2718,40 @@ ${businessName}`;
         total={formatCurrency(invoice?.total || 0)}
         businessName={user?.businessName}
         onSend={handleSendReceiptWithCustomMessage}
+      />
+
+      {/* Send Invoice Modal (Email & SMS) */}
+      <MobileSendModal
+        visible={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        documentType="invoice"
+        documentId={id as string}
+        recipientName={client?.name || 'Client'}
+        recipientEmail={client?.email}
+        recipientPhone={client?.phone}
+        documentTitle={invoice?.invoiceNumber || 'Invoice'}
+        defaultTab={sendModalDefaultTab}
+        onSendSuccess={() => { 
+          loadData(); 
+          setShowSendModal(false); 
+        }}
+      />
+
+      {/* Send Receipt Modal (Email & SMS) */}
+      <MobileSendModal
+        visible={showReceiptSendModal}
+        onClose={() => setShowReceiptSendModal(false)}
+        documentType="receipt"
+        documentId={id as string}
+        recipientName={client?.name || 'Client'}
+        recipientEmail={client?.email}
+        recipientPhone={client?.phone}
+        documentTitle={`Receipt for ${invoice?.invoiceNumber || 'Invoice'}`}
+        defaultTab={receiptSendModalDefaultTab}
+        onSendSuccess={() => { 
+          loadData(); 
+          setShowReceiptSendModal(false); 
+        }}
       />
 
       {/* Template Selector Modal */}

@@ -7,12 +7,15 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
+import { spacing, radius, typography } from '../../src/lib/design-tokens';
 
 interface Client {
   id: string;
@@ -23,6 +26,17 @@ interface Client {
   company?: string;
 }
 
+type ScreenMode = 'select' | 'compose';
+
+const SMS_TEMPLATES = [
+  "G'day! Just reaching out to check in. Let me know if you need anything.",
+  "Hi! I've got some availability coming up. Would you like to book in a job?",
+  "Just following up on our chat. Let me know when suits for me to come by.",
+  "G'day! Quick question about your property - give me a call when you get a chance.",
+];
+
+const SMS_MAX_LENGTH = 160;
+
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
@@ -32,7 +46,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -43,7 +57,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.lg,
   },
   headerContent: {
     flex: 1,
@@ -62,7 +76,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.warningLight,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -85,8 +99,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
     paddingHorizontal: 14,
     borderRadius: 10,
     borderWidth: 1,
@@ -103,7 +117,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.mutedForeground,
-    marginHorizontal: 16,
+    marginHorizontal: spacing.lg,
     marginTop: 20,
     marginBottom: 8,
   },
@@ -111,7 +125,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    marginHorizontal: 16,
+    marginHorizontal: spacing.lg,
     marginBottom: 8,
     padding: 14,
     borderRadius: 12,
@@ -125,7 +139,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.lg,
   },
   clientAvatarText: {
     fontSize: 16,
@@ -192,15 +206,145 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.destructive,
     marginTop: 2,
   },
+  // Compose mode styles
+  composeContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  composeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+    backgroundColor: colors.muted,
+  },
+  composeHeaderContent: {
+    flex: 1,
+  },
+  composeHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  composeHeaderSubtitle: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  composeContent: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  templatesLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
+  },
+  templateChip: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    marginRight: spacing.sm,
+  },
+  templateChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  templateChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.foreground,
+    lineHeight: 18,
+  },
+  templateChipTextActive: {
+    color: '#fff',
+  },
+  templatesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  messageInputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+  },
+  messageInput: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 15,
+    color: colors.foreground,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: spacing.md,
+  },
+  charCount: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: spacing.lg,
+    textAlign: 'right',
+  },
+  charCountWarning: {
+    color: colors.destructive,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  sendButton: {
+    backgroundColor: colors.success || '#22c55e',
+  },
+  sendButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });
 
 export default function NewSmsConversation() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   
+  const [mode, setMode] = useState<ScreenMode>('select');
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -228,7 +372,7 @@ export default function NewSmsConversation() {
            client.company?.toLowerCase().includes(term);
   });
 
-  const handleClientSelect = async (client: Client) => {
+  const handleClientSelect = (client: Client) => {
     if (!client.phone) {
       Alert.alert(
         'No Phone Number',
@@ -240,49 +384,156 @@ export default function NewSmsConversation() {
       );
       return;
     }
+    
+    setSelectedClient(client);
+    setMessage('');
+    setMode('compose');
+  };
 
-    Alert.alert(
-      'Start SMS Conversation',
-      `Send SMS to ${client.firstName} ${client.lastName} at ${client.phone}?\n\nThis will send a real text message via Twilio. Standard SMS charges apply.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Send SMS', 
-          onPress: async () => {
-            try {
-              const response = await api.post('/api/sms/conversations', {
-                clientId: client.id,
-                phoneNumber: client.phone,
-                initialMessage: `Hi ${client.firstName}, this is a message from your tradie. How can I help you today?`
-              });
-              
-              if (response.data) {
-                Alert.alert('SMS Sent', `Started SMS conversation with ${client.firstName} ${client.lastName}`);
-                router.back();
-              } else {
-                Alert.alert(
-                  'Failed to Send SMS',
-                  'Could not start SMS conversation. Please check your Twilio configuration or try again later.',
-                  [{ text: 'OK' }]
-                );
-              }
-            } catch (error: any) {
-              console.error('Failed to create SMS conversation:', error);
-              Alert.alert(
-                'SMS Failed',
-                error?.message || 'Failed to send SMS. Please check your Twilio settings and try again.',
-                [{ text: 'OK' }]
-              );
-            }
-          }
-        }
-      ]
-    );
+  const handleUseTemplate = (template: string) => {
+    setMessage(template);
+  };
+
+  const handleSendSMS = async () => {
+    if (!selectedClient || !message.trim()) {
+      Alert.alert('Error', 'Please enter a message before sending.');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await api.post('/api/sms/conversations', {
+        clientId: selectedClient.id,
+        phoneNumber: selectedClient.phone,
+        initialMessage: message.trim()
+      });
+      
+      if (response.data) {
+        Alert.alert('Success', `SMS sent to ${selectedClient.firstName} ${selectedClient.lastName}`);
+        setMode('select');
+        setSelectedClient(null);
+        setMessage('');
+        router.back();
+      } else {
+        Alert.alert(
+          'Failed to Send SMS',
+          'Could not send SMS. Please check your Twilio configuration or try again later.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Failed to send SMS:', error);
+      Alert.alert(
+        'SMS Failed',
+        error?.message || 'Failed to send SMS. Please check your Twilio settings and try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleBack = () => {
+    setMode('select');
+    setSelectedClient(null);
+    setMessage('');
   };
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
+
+  const charCount = message.length;
+  const isOverLimit = charCount > SMS_MAX_LENGTH;
+
+  if (mode === 'compose' && selectedClient) {
+    return (
+      <>
+        <Stack.Screen options={{ title: 'Compose SMS' }} />
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.composeContainer}
+        >
+          <View style={styles.composeHeader}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              disabled={isSending}
+            >
+              <Feather name="chevron-left" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+            <View style={styles.composeHeaderContent}>
+              <Text style={styles.composeHeaderTitle}>
+                {selectedClient.firstName} {selectedClient.lastName}
+              </Text>
+              <Text style={styles.composeHeaderSubtitle}>{selectedClient.phone}</Text>
+            </View>
+          </View>
+
+          <ScrollView style={styles.composeContent} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+            <Text style={styles.templatesLabel}>Quick Templates</Text>
+            <View style={styles.templatesContainer}>
+              {SMS_TEMPLATES.map((template, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.templateChip,
+                    message === template && styles.templateChipActive
+                  ]}
+                  onPress={() => handleUseTemplate(template)}
+                  disabled={isSending}
+                >
+                  <Text
+                    style={[
+                      styles.templateChipText,
+                      message === template && styles.templateChipTextActive
+                    ]}
+                  >
+                    {template}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.messageInputLabel}>Custom Message</Text>
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Type your message..."
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              numberOfLines={4}
+              value={message}
+              onChangeText={setMessage}
+              editable={!isSending}
+              maxLength={160}
+            />
+            <Text style={[styles.charCount, isOverLimit && styles.charCountWarning]}>
+              {charCount} / {SMS_MAX_LENGTH} characters
+            </Text>
+          </ScrollView>
+
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.sendButton]}
+              onPress={handleSendSMS}
+              disabled={isSending || !message.trim() || isOverLimit}
+              activeOpacity={0.7}
+            >
+              {isSending ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Feather name="send" size={18} color="#fff" />
+                  <Text style={styles.sendButtonText}>Send SMS</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </>
+    );
+  }
 
   return (
     <>

@@ -37,6 +37,7 @@ import { Button } from '../../src/components/ui/Button';
 import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
+import { MobileSendModal } from '../../src/components/MobileSendModal';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
@@ -1770,6 +1771,9 @@ export default function JobDetailScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isDeletingJob, setIsDeletingJob] = useState(false);
   const [isSendingOnMyWay, setIsSendingOnMyWay] = useState(false);
+  
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { businessSettings, roleInfo, user, hasPermission } = useAuthStore();
@@ -3809,6 +3813,19 @@ export default function JobDetailScreen() {
               >
                 <Feather name="mail" size={iconSizes.md} color={colors.invoiced} />
                 <Text style={[styles.clientActionText, { color: colors.invoiced }]}>Email</Text>
+              </TouchableOpacity>
+            )}
+            {(client?.email || client?.phone) && (
+              <TouchableOpacity 
+                style={[styles.clientActionButton, { backgroundColor: `${colors.primary}15` }]}
+                onPress={() => {
+                  setSendModalDefaultTab(client?.email ? 'email' : 'sms');
+                  setShowSendModal(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather name="send" size={iconSizes.md} color={colors.primary} />
+                <Text style={[styles.clientActionText, { color: colors.primary }]}>Send</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -6120,6 +6137,20 @@ export default function JobDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Send Email/SMS Modal */}
+      <MobileSendModal
+        visible={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        documentType="job"
+        documentId={job?.id || id as string}
+        recipientName={client?.name || 'Client'}
+        recipientEmail={client?.email}
+        recipientPhone={client?.phone}
+        documentTitle={job?.title || 'Job Update'}
+        defaultTab={sendModalDefaultTab}
+        onSendSuccess={() => setShowSendModal(false)}
+      />
     </>
   );
 }

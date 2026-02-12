@@ -20,6 +20,7 @@ import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore, useInvoice
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
+import { MobileSendModal } from '../../../src/components/MobileSendModal';
 import { API_URL, api } from '../../../src/lib/api';
 
 interface LinkedInvoice {
@@ -86,6 +87,8 @@ export default function QuoteDetailScreen() {
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isMarkingSent, setIsMarkingSent] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
 
@@ -260,6 +263,20 @@ export default function QuoteDetailScreen() {
         {
           text: 'TradieTrack: Edit Message',
           onPress: () => setShowEmailCompose(true),
+        },
+        {
+          text: 'Send SMS',
+          onPress: () => {
+            setSendModalDefaultTab('sms');
+            setShowSendModal(true);
+          },
+        },
+        {
+          text: 'Email & SMS',
+          onPress: () => {
+            setSendModalDefaultTab('email');
+            setShowSendModal(true);
+          },
         },
         {
           text: 'Manual: Share',
@@ -1785,6 +1802,19 @@ ${businessName}`;
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <MobileSendModal
+        visible={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        documentType="quote"
+        documentId={id as string}
+        recipientName={getClient(quote?.clientId)?.name || 'Client'}
+        recipientEmail={getClient(quote?.clientId)?.email}
+        recipientPhone={getClient(quote?.clientId)?.phone}
+        documentTitle={quote?.quoteNumber || quote?.title || 'Quote'}
+        defaultTab={sendModalDefaultTab}
+        onSendSuccess={() => { loadData(); setShowSendModal(false); }}
+      />
     </>
   );
 }
