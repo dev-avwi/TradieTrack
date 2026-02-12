@@ -670,7 +670,49 @@ export default function JobChatScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         client.phone ? { text: 'Call', onPress: () => Linking.openURL(`tel:${client.phone}`) } : null,
-        client.phone ? { text: 'SMS', onPress: () => Linking.openURL(`sms:${client.phone}`) } : null,
+        client.phone ? { text: 'SMS', onPress: async () => {
+          const message = `Hi ${client.firstName}, just reaching out regarding your job.`;
+          try {
+            const response = await api.post('/api/sms/send', {
+              clientPhone: client.phone,
+              message,
+              clientId: client.id,
+            });
+            if (response.error) {
+              Alert.alert(
+                'Send via SMS App?',
+                'Could not send directly. Would you like to open your messaging app instead?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Open SMS App',
+                    onPress: () => {
+                      const url = `sms:${client.phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+                      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+                    },
+                  },
+                ]
+              );
+            } else {
+              Alert.alert('SMS Sent', `Message sent to ${client.firstName}`);
+            }
+          } catch {
+            Alert.alert(
+              'Send via SMS App?',
+              'Could not send directly. Would you like to open your messaging app instead?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Open SMS App',
+                  onPress: () => {
+                    const url = `sms:${client.phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+                    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+                  },
+                },
+              ]
+            );
+          }
+        }} : null,
         client.email ? { text: 'Email', onPress: () => Linking.openURL(`mailto:${client.email}`) } : null,
       ].filter(Boolean) as any[]
     );

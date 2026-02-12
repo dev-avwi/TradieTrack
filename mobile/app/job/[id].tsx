@@ -1948,15 +1948,29 @@ export default function JobDetailScreen() {
           return true;
 
         case 'send_invoice_email':
-          // Open native email app (Gmail/Outlook) so user can see and customize before sending
           if (client?.email && invoice?.id) {
-            const invoiceNumber = (invoice as any)?.number || invoice.id.slice(0, 8);
-            const total = invoice?.total ? `$${Number(invoice.total).toFixed(2)}` : '';
-            const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
-            const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
-            
-            await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-            Alert.alert('Email Ready', 'Your email app has opened with the invoice details. Review and send when ready.');
+            try {
+              const emailResponse = await api.post(`/api/invoices/${invoice.id}/send`, {
+                method: 'email',
+              });
+              if (emailResponse.error) {
+                const invoiceNumber = (invoice as any)?.number || invoice.id.slice(0, 8);
+                const total = invoice?.total ? `$${Number(invoice.total).toFixed(2)}` : '';
+                const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
+                const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
+                await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                Alert.alert('Email Ready', 'Your email app has opened with the invoice details. Review and send when ready.');
+              } else {
+                Alert.alert('Email Sent', `Invoice email sent to ${client.email}`);
+              }
+            } catch {
+              const invoiceNumber = (invoice as any)?.number || invoice.id.slice(0, 8);
+              const total = invoice?.total ? `$${Number(invoice.total).toFixed(2)}` : '';
+              const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
+              const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
+              await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+              Alert.alert('Email Ready', 'Your email app has opened with the invoice details. Review and send when ready.');
+            }
           } else if (client?.email) {
             await Linking.openURL(`mailto:${client.email}?subject=Invoice for ${job.title}`);
           } else {
@@ -1965,36 +1979,50 @@ export default function JobDetailScreen() {
           return true;
 
         case 'send_invoice_sms':
-          // Log SMS activity on server, then open native SMS
           if (client?.phone) {
-            const message = `Hi! Your invoice for ${job.title} is ready. Please check your email for payment details.`;
+            const invoiceSmsMessage = `Hi! Your invoice for ${job.title} is ready. Please check your email for payment details.`;
             try {
-              await api.post('/api/sms/send', {
-                to: client.phone,
-                message,
-                context: {
-                  type: 'invoice',
-                  entityId: invoice?.id,
-                  clientId: client.id,
-                }
+              const smsResponse = await api.post('/api/sms/send', {
+                clientPhone: client.phone,
+                message: invoiceSmsMessage,
+                clientId: client.id,
+                jobId: job.id,
               });
-            } catch (logError) {
-              console.log('SMS logging failed, continuing with native SMS:', logError);
+              if (smsResponse.error) {
+                fallbackToNativeSms(client.phone, invoiceSmsMessage);
+              } else {
+                Alert.alert('SMS Sent', `Invoice SMS sent to ${client.name || client.phone}`);
+              }
+            } catch {
+              fallbackToNativeSms(client.phone, invoiceSmsMessage);
             }
-            await Linking.openURL(`sms:${client.phone}?body=${encodeURIComponent(message)}`);
           }
           return true;
 
         case 'send_quote_email':
-          // Open native email app (Gmail/Outlook) so user can see and customize before sending
           if (client?.email && quote?.id) {
-            const quoteNumber = (quote as any)?.number || quote.id.slice(0, 8);
-            const total = (quote as any)?.total ? `$${Number((quote as any).total).toFixed(2)}` : '';
-            const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
-            const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
-            
-            await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-            Alert.alert('Email Ready', 'Your email app has opened with the quote details. Review and send when ready.');
+            try {
+              const quoteEmailResponse = await api.post(`/api/quotes/${quote.id}/send`, {
+                method: 'email',
+              });
+              if (quoteEmailResponse.error) {
+                const quoteNumber = (quote as any)?.number || quote.id.slice(0, 8);
+                const total = (quote as any)?.total ? `$${Number((quote as any).total).toFixed(2)}` : '';
+                const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
+                const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
+                await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                Alert.alert('Email Ready', 'Your email app has opened with the quote details. Review and send when ready.');
+              } else {
+                Alert.alert('Email Sent', `Quote email sent to ${client.email}`);
+              }
+            } catch {
+              const quoteNumber = (quote as any)?.number || quote.id.slice(0, 8);
+              const total = (quote as any)?.total ? `$${Number((quote as any).total).toFixed(2)}` : '';
+              const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
+              const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
+              await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+              Alert.alert('Email Ready', 'Your email app has opened with the quote details. Review and send when ready.');
+            }
           } else if (client?.email) {
             await Linking.openURL(`mailto:${client.email}?subject=Quote for ${job.title}`);
           } else {
@@ -2048,21 +2076,22 @@ export default function JobDetailScreen() {
 
             case 'send_sms':
               if (client?.phone) {
-                // Log SMS activity on server for audit trail
+                const smsMsg = `Re: ${job.title}`;
                 try {
-                  await api.post('/api/sms/send', {
-                    to: client.phone,
-                    message: `Re: ${job.title}`,
-                    context: {
-                      type: 'job',
-                      entityId: job.id,
-                      clientId: client.id,
-                    }
+                  const smsResp = await api.post('/api/sms/send', {
+                    clientPhone: client.phone,
+                    message: smsMsg,
+                    clientId: client.id,
+                    jobId: job.id,
                   });
-                } catch (logError) {
-                  console.log('SMS logging failed:', logError);
+                  if (smsResp.error) {
+                    fallbackToNativeSms(client.phone, smsMsg);
+                  } else {
+                    Alert.alert('SMS Sent', `Message sent to ${client.name || client.phone}`);
+                  }
+                } catch {
+                  fallbackToNativeSms(client.phone, smsMsg);
                 }
-                await Linking.openURL(`sms:${client.phone}`);
               }
               return true;
 
@@ -2732,9 +2761,49 @@ export default function JobDetailScreen() {
     }
   };
 
-  const handleSMS = () => {
+  const [isSendingSms, setIsSendingSms] = useState(false);
+
+  const fallbackToNativeSms = (phone: string, message?: string) => {
+    Alert.alert(
+      'Send via SMS App?',
+      'Could not send directly. Would you like to open your messaging app instead?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open SMS App',
+          onPress: () => {
+            const url = message 
+              ? `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`
+              : `sms:${phone}`;
+            Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSMS = async () => {
     if (client?.phone) {
-      Linking.openURL(`sms:${client.phone.replace(/\s/g, '')}`);
+      const phone = client.phone.replace(/\s/g, '');
+      const message = `Hi${client.name ? ` ${client.name.split(' ')[0]}` : ''}, just reaching out about ${job?.title || 'your job'}.`;
+      setIsSendingSms(true);
+      try {
+        const response = await api.post('/api/sms/send', {
+          clientPhone: phone,
+          message,
+          clientId: client.id,
+          jobId: job?.id,
+        });
+        if (response.error) {
+          fallbackToNativeSms(phone, message);
+        } else {
+          Alert.alert('SMS Sent', `Message sent to ${client.name || phone}`);
+        }
+      } catch {
+        fallbackToNativeSms(phone, message);
+      } finally {
+        setIsSendingSms(false);
+      }
     }
   };
 
@@ -3662,6 +3731,7 @@ export default function JobDetailScreen() {
         clientPhone={client?.phone}
         clientName={client?.name?.split(' ')[0]}
         isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
+        jobId={job.id}
       />
 
       {/* Safety & Compliance Section - Prominent before work starts */}

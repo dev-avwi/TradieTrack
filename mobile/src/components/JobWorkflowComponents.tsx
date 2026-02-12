@@ -1,8 +1,10 @@
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, iconSizes } from '../lib/design-tokens';
 import { JobUrgency } from '../lib/jobUrgency';
+import { api } from '../lib/api';
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
@@ -827,6 +829,7 @@ interface SmsContactCardProps {
   clientPhone?: string | null;
   clientName?: string;
   isOverdue?: boolean;
+  jobId: string;
 }
 
 export function SmsContactCard({
@@ -834,23 +837,57 @@ export function SmsContactCard({
   clientPhone,
   clientName,
   isOverdue = false,
+  jobId,
 }: SmsContactCardProps) {
   const { colors } = useTheme();
   const styles = createSmsCardStyles(colors);
+  const [isSending, setIsSending] = useState(false);
 
   if (!clientPhone || (jobStatus !== 'scheduled' && jobStatus !== 'in_progress')) {
     return null;
   }
 
-  const handleSendSms = () => {
+  const fallbackToNativeSms = (phone: string, message: string) => {
+    Alert.alert(
+      'Send via SMS App?',
+      'Could not send directly. Would you like to open your messaging app instead?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open SMS App',
+          onPress: () => {
+            const url = `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+            Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSendSms = async () => {
+    if (isSending) return;
+    
     const message = isOverdue 
       ? `Hi${clientName ? ` ${clientName}` : ''}, I'm running a bit late. I'll be there as soon as possible.`
       : `Hi${clientName ? ` ${clientName}` : ''}, I'm on my way to your job now.`;
     
-    const smsUrl = `sms:${clientPhone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-    Linking.openURL(smsUrl).catch(() => {
-      Linking.openURL(`sms:${clientPhone}`);
-    });
+    const endpoint = isOverdue 
+      ? `/api/jobs/${jobId}/running-late`
+      : `/api/jobs/${jobId}/on-my-way`;
+
+    setIsSending(true);
+    try {
+      const response = await api.post(endpoint, {});
+      if (response.error) {
+        fallbackToNativeSms(clientPhone!, message);
+      } else {
+        Alert.alert('SMS Sent', isOverdue ? 'Running late message sent to client.' : 'On my way message sent to client.');
+      }
+    } catch {
+      fallbackToNativeSms(clientPhone!, message);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const buttonLabel = isOverdue ? "Text Running Late" : "Text On My Way";
@@ -863,15 +900,22 @@ export function SmsContactCard({
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>Heading to the job?</Text>
-        <Text style={styles.subtitle}>Let the client know via your SMS app</Text>
+        <Text style={styles.subtitle}>Let the client know you're heading over</Text>
       </View>
       <TouchableOpacity 
         style={[styles.actionButton, { backgroundColor: buttonBg }]} 
         onPress={handleSendSms}
+        disabled={isSending}
         activeOpacity={0.8}
       >
-        <Feather name="message-square" size={14} color="#FFFFFF" />
-        <Text style={styles.actionButtonText}>{buttonLabel}</Text>
+        {isSending ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <>
+            <Feather name="message-square" size={14} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>{buttonLabel}</Text>
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );

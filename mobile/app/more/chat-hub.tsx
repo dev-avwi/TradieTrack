@@ -570,6 +570,48 @@ export default function ChatHubScreen() {
     );
   };
 
+  const handleSendSmsToClient = async (phone: string, clientName?: string, clientId?: string) => {
+    const message = `Hi${clientName ? ` ${clientName}` : ''}, just reaching out regarding your service.`;
+    try {
+      const response = await api.post('/api/sms/send', {
+        clientPhone: phone,
+        message,
+        clientId,
+      });
+      if (response.error) {
+        Alert.alert(
+          'Send via SMS App?',
+          'Could not send directly. Would you like to open your messaging app instead?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open SMS App',
+              onPress: () => {
+                Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('SMS Sent', `Message sent to ${clientName || phone}`);
+      }
+    } catch {
+      Alert.alert(
+        'Send via SMS App?',
+        'Could not send directly. Would you like to open your messaging app instead?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open SMS App',
+            onPress: () => {
+              Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+            },
+          },
+        ]
+      );
+    }
+  };
+
   const handleContactClient = (client: Client) => {
     const options: { text: string; onPress?: () => void; style?: 'cancel' }[] = [
       { text: 'Cancel', style: 'cancel' },
@@ -577,7 +619,7 @@ export default function ChatHubScreen() {
     
     if (client.phone) {
       options.push({ text: 'Call', onPress: () => Linking.openURL(`tel:${client.phone}`) });
-      options.push({ text: 'SMS', onPress: () => Linking.openURL(`sms:${client.phone}`) });
+      options.push({ text: 'SMS', onPress: () => handleSendSmsToClient(client.phone!, client.firstName, client.id) });
     }
     if (client.email) {
       options.push({ text: 'Email', onPress: () => Linking.openURL(`mailto:${client.email}`) });
@@ -683,7 +725,7 @@ export default function ChatHubScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.contactAction}
-                    onPress={() => Linking.openURL(`sms:${client.phone}`)}
+                    onPress={() => handleSendSmsToClient(client.phone!, client.firstName, client.id)}
                     data-testid={`button-sms-${item.id}`}
                   >
                     <Feather name="message-square" size={14} color={colors.info} />

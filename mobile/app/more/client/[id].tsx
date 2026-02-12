@@ -172,9 +172,54 @@ export default function ClientDetailScreen() {
     }
   };
 
-  const handleSms = () => {
+  const [isSendingSms, setIsSendingSms] = useState(false);
+
+  const handleSms = async () => {
     if (client?.phone) {
-      Linking.openURL(`sms:${client.phone}`);
+      const message = `Hi${client.firstName ? ` ${client.firstName}` : ''}, just reaching out regarding your service.`;
+      setIsSendingSms(true);
+      try {
+        const response = await api.post('/api/sms/send', {
+          clientPhone: client.phone,
+          message,
+          clientId: client.id,
+        });
+        if (response.error) {
+          Alert.alert(
+            'Send via SMS App?',
+            'Could not send directly. Would you like to open your messaging app instead?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open SMS App',
+                onPress: () => {
+                  const url = `sms:${client.phone}`;
+                  Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert('SMS Sent', `Message sent to ${client.firstName || client.phone}`);
+        }
+      } catch {
+        Alert.alert(
+          'Send via SMS App?',
+          'Could not send directly. Would you like to open your messaging app instead?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open SMS App',
+              onPress: () => {
+                const url = `sms:${client.phone}`;
+                Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+              },
+            },
+          ]
+        );
+      } finally {
+        setIsSendingSms(false);
+      }
     }
   };
 

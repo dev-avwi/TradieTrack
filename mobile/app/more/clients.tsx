@@ -18,6 +18,7 @@ import { useClientsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, usePageShell } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
+import api from '../../src/lib/api';
 
 type FilterKey = 'all' | 'with_email' | 'with_phone' | 'with_address';
 
@@ -239,8 +240,52 @@ export default function ClientsScreen() {
     Linking.openURL(`mailto:${email}`);
   };
 
-  const handleSms = (phone: string) => {
-    Linking.openURL(`sms:${phone}`);
+  const [isSendingSms, setIsSendingSms] = useState(false);
+
+  const handleSms = async (phone: string) => {
+    const message = `Hi, just reaching out regarding your service.`;
+    setIsSendingSms(true);
+    try {
+      const response = await api.post('/api/sms/send', {
+        clientPhone: phone,
+        message,
+      });
+      if (response.error) {
+        Alert.alert(
+          'Send via SMS App?',
+          'Could not send directly. Would you like to open your messaging app instead?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open SMS App',
+              onPress: () => {
+                const url = `sms:${phone}`;
+                Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('SMS Sent', `Message sent to ${phone}`);
+      }
+    } catch {
+      Alert.alert(
+        'Send via SMS App?',
+        'Could not send directly. Would you like to open your messaging app instead?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open SMS App',
+            onPress: () => {
+              const url = `sms:${phone}`;
+              Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+            },
+          },
+        ]
+      );
+    } finally {
+      setIsSendingSms(false);
+    }
   };
 
   const handleCreateJob = (clientId: string) => {
