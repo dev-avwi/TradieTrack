@@ -780,7 +780,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
   },
   customizeSection: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   customizeSectionHeader: {
     flexDirection: 'row',
@@ -916,6 +916,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     height: 220,
+  },
+  sectionDivider: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  dividerLine: {
+    height: 1,
+    backgroundColor: colors.border,
+    width: '100%',
+  },
+  templateListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  templateListHeaderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  templateListHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  templateListHeaderSubtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
 });
 
@@ -2198,6 +2231,24 @@ export default function TemplatesScreen() {
                   templateCustomization={templateCustomization}
                 />
               </View>
+            </View>
+          </View>
+
+          {/* Section Divider */}
+          <View style={styles.sectionDivider}>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Template Details Section Header */}
+          <View style={styles.templateListHeader}>
+            <View style={styles.templateListHeaderIcon}>
+              <Feather name="layers" size={20} color={colors.primary} />
+            </View>
+            <View>
+              <Text style={styles.templateListHeaderTitle}>Document Templates</Text>
+              <Text style={styles.templateListHeaderSubtitle}>
+                Pre-built templates for quotes, invoices, and jobs
+              </Text>
             </View>
           </View>
 

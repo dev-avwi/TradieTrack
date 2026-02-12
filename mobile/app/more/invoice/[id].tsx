@@ -38,10 +38,9 @@ interface Signature {
 }
 
 const TEMPLATE_OPTIONS = [
-  { id: 'professional', name: 'Professional', description: 'Clean, minimal design' },
-  { id: 'modern', name: 'Modern', description: 'Contemporary with accent colors' },
-  { id: 'classic', name: 'Classic', description: 'Traditional business style' },
-  { id: 'bold', name: 'Bold', description: 'Strong branding focus' },
+  { id: 'professional', name: 'Professional', description: 'Traditional layout with bordered tables' },
+  { id: 'modern', name: 'Modern', description: 'Clean design with bold brand colors' },
+  { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with subtle styling' },
 ];
 
 export default function InvoiceDetailScreen() {

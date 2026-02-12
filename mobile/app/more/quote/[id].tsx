@@ -46,10 +46,9 @@ interface Signature {
 }
 
 const TEMPLATE_OPTIONS = [
-  { id: 'professional', name: 'Professional', description: 'Clean, minimal design' },
-  { id: 'modern', name: 'Modern', description: 'Contemporary with accent colors' },
-  { id: 'classic', name: 'Classic', description: 'Traditional business style' },
-  { id: 'bold', name: 'Bold', description: 'Strong branding focus' },
+  { id: 'professional', name: 'Professional', description: 'Traditional layout with bordered tables' },
+  { id: 'modern', name: 'Modern', description: 'Clean design with bold brand colors' },
+  { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with subtle styling' },
 ];
 
 export default function QuoteDetailScreen() {
@@ -1173,43 +1172,43 @@ ${businessName}`;
           </View>
           
           {/* PDF Options */}
-          {(quote.jobId || quote.notes) && (
-            <View style={styles.pdfOptionsCard}>
-              <Text style={styles.pdfOptionsTitle}>PDF Options</Text>
-              <View style={styles.pdfOptionsRow}>
-                {quote.jobId && (
-                  <TouchableOpacity 
-                    style={[styles.pdfOption, includeBeforePhotos && styles.pdfOptionActive]}
-                    onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
-                  >
-                    <Feather 
-                      name={includeBeforePhotos ? "check-square" : "square"} 
-                      size={18} 
-                      color={includeBeforePhotos ? colors.primary : colors.mutedForeground} 
-                    />
-                    <Text style={[styles.pdfOptionText, includeBeforePhotos && { color: colors.primary }]}>
-                      Site photos
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {quote.notes && (
-                  <TouchableOpacity 
-                    style={[styles.pdfOption, includeNotes && styles.pdfOptionActive]}
-                    onPress={() => setIncludeNotes(!includeNotes)}
-                  >
-                    <Feather 
-                      name={includeNotes ? "check-square" : "square"} 
-                      size={18} 
-                      color={includeNotes ? colors.primary : colors.mutedForeground} 
-                    />
-                    <Text style={[styles.pdfOptionText, includeNotes && { color: colors.primary }]}>
-                      Notes
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+          <View style={styles.pdfOptionsCard}>
+            <Text style={styles.pdfOptionsTitle}>PDF Options</Text>
+            <View style={styles.pdfOptionsRow}>
+              <TouchableOpacity 
+                style={[styles.pdfOption, includeBeforePhotos && !!quote.jobId && styles.pdfOptionActive]}
+                onPress={() => quote.jobId && setIncludeBeforePhotos(!includeBeforePhotos)}
+                activeOpacity={quote.jobId ? 0.7 : 1}
+              >
+                <Feather 
+                  name={includeBeforePhotos && quote.jobId ? "check-square" : "square"} 
+                  size={18} 
+                  color={quote.jobId ? (includeBeforePhotos ? colors.primary : colors.mutedForeground) : `${colors.mutedForeground}40`} 
+                />
+                <Text style={[
+                  styles.pdfOptionText, 
+                  includeBeforePhotos && quote.jobId && { color: colors.primary },
+                  !quote.jobId && { color: `${colors.mutedForeground}40` }
+                ]}>
+                  Photos
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.pdfOption, includeNotes && !!quote.notes && styles.pdfOptionActive]}
+                onPress={() => quote.notes && setIncludeNotes(!includeNotes)}
+                activeOpacity={quote.notes ? 0.7 : 1}
+              >
+                <Feather 
+                  name={includeNotes && quote.notes ? "check-square" : "square"} 
+                  size={18} 
+                  color={!quote.notes ? `${colors.mutedForeground}40` : (includeNotes ? colors.primary : colors.mutedForeground)} 
+                />
+                <Text style={[styles.pdfOptionText, includeNotes && !!quote.notes && { color: colors.primary }, !quote.notes && { color: `${colors.mutedForeground}40` }]}>
+                  Notes
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
           
           {/* Quick Actions Row 2 - Draft status: Mark as Sent */}
           {quote.status === 'draft' && (
@@ -2494,8 +2493,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pdfOptionsCard: {
     backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 24,
+    padding: 10,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -2503,7 +2502,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: colors.mutedForeground,
-    marginBottom: 8,
+    marginBottom: 6,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
