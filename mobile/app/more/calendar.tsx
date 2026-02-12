@@ -24,7 +24,6 @@ type ViewMode = 'week' | 'month' | 'today';
 const SCHEDULE_TABS = [
   { key: 'week', label: 'Week', icon: 'calendar' },
   { key: 'month', label: 'Month', icon: 'grid' },
-  { key: 'dispatch', label: 'Dispatch', icon: 'clipboard' },
   { key: 'today', label: 'Today', icon: 'sun' },
 ] as const;
 
@@ -573,9 +572,7 @@ export default function CalendarScreen() {
                 key={tab.key}
                 style={[styles.tabButton, viewMode === tab.key && styles.tabButtonActive]}
                 onPress={() => {
-                  if (tab.key === 'dispatch') {
-                    router.push('/more/dispatch-board');
-                  } else if (tab.key === 'today') {
+                  if (tab.key === 'today') {
                     setViewMode('today');
                     setCurrentDate(new Date());
                     setSelectedDate(new Date());

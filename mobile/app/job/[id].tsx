@@ -4187,12 +4187,9 @@ export default function JobDetailScreen() {
             <Feather name="credit-card" size={iconSizes.lg} color={colors.destructive} />
           </View>
           <Text style={styles.costingTitle}>Job Expenses</Text>
-          <TouchableOpacity
-            onPress={() => router.push(`/more/expense-tracking?jobId=${job.id}`)}
-            style={{ marginLeft: 'auto', padding: spacing.xs }}
-          >
-            <Feather name="plus" size={iconSizes.lg} color={colors.primary} />
-          </TouchableOpacity>
+          <View style={{ marginLeft: 'auto', padding: spacing.xs }}>
+            <Feather name="plus" size={iconSizes.lg} color={colors.mutedForeground} />
+          </View>
         </View>
         
         {jobExpenses.length > 0 ? (
@@ -4225,11 +4222,11 @@ export default function JobDetailScreen() {
               ))}
             </View>
             {jobExpenses.length > 3 && (
-              <TouchableOpacity onPress={() => router.push(`/more/expense-tracking?jobId=${job.id}`)}>
-                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>
+              <View>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground, fontWeight: '500' }}>
                   +{jobExpenses.length - 3} more expenses
                 </Text>
-              </TouchableOpacity>
+              </View>
             )}
             <View style={{ 
               flexDirection: 'row', 
@@ -4253,21 +4250,21 @@ export default function JobDetailScreen() {
             <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: spacing.md }}>
               No expenses recorded for this job
             </Text>
-            <TouchableOpacity
+            <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: spacing.xs,
-                backgroundColor: colors.primary,
+                backgroundColor: colors.mutedForeground,
                 paddingVertical: spacing.sm,
                 paddingHorizontal: spacing.lg,
                 borderRadius: radius.lg,
+                opacity: 0.5,
               }}
-              onPress={() => router.push(`/more/expense-tracking?jobId=${job.id}`)}
             >
               <Feather name="plus" size={16} color={colors.primaryForeground} />
               <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Add Expense</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>
