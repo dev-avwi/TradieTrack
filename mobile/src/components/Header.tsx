@@ -255,7 +255,7 @@ export function Header({
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.brandName} numberOfLines={1}>TradieTrack</Text>
+              <Text style={styles.brandName} numberOfLines={1}>JobRunner</Text>
             </View>
           ) : null}
           

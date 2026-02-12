@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeColors } from '../../lib/theme';
 import { spacing, radius } from '../../lib/design-tokens';
 
-const STORAGE_KEY = 'tradietrack-banner-dismissed';
+const STORAGE_KEY = 'jobrunner-banner-dismissed';
 
 interface TrustBannerProps {
   businessName?: string;
@@ -54,7 +54,7 @@ export function TrustBanner({ businessName }: TrustBannerProps) {
         </View>
         <View style={styles.textContainer}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>TradieTrack</Text>
+            <Text style={styles.title}>JobRunner</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>Free During Beta</Text>
             </View>

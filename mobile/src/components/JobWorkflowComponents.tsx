@@ -862,9 +862,9 @@ export function SmsContactCard({
     const address = jobAddress || 'your location';
 
     if (isOverdue) {
-      return `Hi ${name}, ${trader} from ${business} here. Running a bit late for your job at ${address}. Apologies for the delay - will be there as soon as possible.`;
+      return `Hi ${name}, ${trader} from ${business} here. Running a bit late for your job at ${address}. Apologies for the delay - will be there as soon as possible.\n\nTrack arrival: [link will be added]`;
     }
-    return `Hi ${name}, ${trader} from ${business} is on the way to your job at ${address}. ETA approximately 15-20 minutes.`;
+    return `Hi ${name}, ${trader} from ${business} is on the way to your job at ${address}. ETA approximately 15-20 minutes.\n\nTrack arrival: [link will be added]`;
   };
 
   const handleOpenPreview = () => {

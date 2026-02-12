@@ -27,7 +27,7 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to TradieTrack!',
+    title: 'Welcome to JobRunner!',
     description: 'The all-in-one app for Australian tradespeople. Let\'s show you around.',
     icon: 'home',
     color: '#3b82f6',

@@ -290,7 +290,7 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
                 <Feather name="star" size={20} color={colors.primary} />
               </View>
               <View>
-                <Text style={styles.headerTitle}>TradieTrack AI</Text>
+                <Text style={styles.headerTitle}>JobRunner AI</Text>
                 <Text style={styles.headerSubtitle}>Your smart business mate</Text>
               </View>
             </View>

@@ -437,7 +437,7 @@ function PulsingLogo({
   );
 }
 
-export function LoadingScreen({ message = 'Loading TradieTrack...', showProgress = false }: LoadingScreenProps) {
+export function LoadingScreen({ message = 'Loading JobRunner...', showProgress = false }: LoadingScreenProps) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { businessSettings } = useAuthStore();
@@ -500,7 +500,7 @@ export function LoadingScreen({ message = 'Loading TradieTrack...', showProgress
         </View>
 
         <View style={styles.textContainer}>
-          <Text style={styles.appName}>TradieTrack</Text>
+          <Text style={styles.appName}>JobRunner</Text>
           {message && <Text style={styles.message}>{message}</Text>}
         </View>
 

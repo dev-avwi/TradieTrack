@@ -65,7 +65,7 @@ export function SidebarNav() {
     router.push(item.path as any);
   };
 
-  const businessName = businessSettings?.businessName || 'TradieTrack';
+  const businessName = businessSettings?.businessName || 'JobRunner';
   const logoUrl = businessSettings?.logoUrl;
   const initials = businessName
     .split(' ')
@@ -155,7 +155,7 @@ export function SidebarNav() {
               numberOfLines={1} 
               ellipsizeMode="tail"
             >
-              {businessName || 'TradieTrack'}
+              {businessName || 'JobRunner'}
             </Text>
             <Text style={themedStyles.businessTagline}>
               Profile Settings

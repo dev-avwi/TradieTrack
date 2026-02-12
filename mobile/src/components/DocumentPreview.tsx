@@ -84,7 +84,7 @@ export function DocumentPreview({
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}\n\nTotal: ${formatCurrency(document.total)}\n\nFrom ${businessSettings?.businessName || 'TradieTrack'}`,
+        message: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}\n\nTotal: ${formatCurrency(document.total)}\n\nFrom ${businessSettings?.businessName || 'JobRunner'}`,
         title: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}`,
       });
     } catch (error) {

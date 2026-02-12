@@ -591,13 +591,6 @@ export default function ChatHubScreen() {
     }
   };
 
-  const handleTwilioSetup = () => {
-    Alert.alert(
-      'Set Up SMS Messaging',
-      'To send and receive SMS messages with your clients, you need to connect Twilio.\n\n1. Go to Settings > Integrations on the web app\n2. Click "Connect Twilio"\n3. Follow the setup wizard\n\nTwilio allows you to send text message updates to clients about their jobs.',
-      [{ text: 'Got it' }]
-    );
-  };
 
   const handleSendSmsToClient = async (phone: string, clientName?: string, clientId?: string) => {
     const message = `Hi${clientName ? ` ${clientName}` : ''}, just reaching out regarding your service.`;
@@ -802,37 +795,6 @@ export default function ChatHubScreen() {
           </View>
         </View>
         
-        {!twilioConnected && activeFilter === 'customers' && (
-          <TouchableOpacity 
-            style={styles.twilioSetupBanner}
-            onPress={handleTwilioSetup}
-            activeOpacity={0.8}
-            data-testid="banner-twilio-setup"
-          >
-            <View style={styles.twilioSetupIcon}>
-              <Feather name="smartphone" size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.twilioSetupContent}>
-              <Text style={styles.twilioSetupTitle}>Set Up SMS Messaging</Text>
-              <Text style={styles.twilioSetupDescription}>
-                Connect Twilio to send job updates via text
-              </Text>
-            </View>
-            <View style={styles.twilioSetupButton}>
-              <Text style={styles.twilioSetupButtonText}>Learn How</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        
-        {twilioConnected && activeFilter === 'customers' && (
-          <View style={styles.twilioConnectedBanner}>
-            <Feather name="check-circle" size={16} color={colors.success} />
-            <Text style={styles.twilioConnectedText}>
-              SMS connected - Send texts directly to clients
-            </Text>
-          </View>
-        )}
-        
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
@@ -901,13 +863,11 @@ export default function ChatHubScreen() {
                 <Feather name="message-circle" size={28} color={colors.mutedForeground} />
               </View>
               <Text style={styles.emptyStateTitle}>
-                {activeFilter === 'customers' ? 'No customer conversations' : 'No conversations yet'}
+                {activeFilter === 'customers' ? 'No customer messages yet' : 'No conversations yet'}
               </Text>
               <Text style={styles.emptyStateText}>
                 {activeFilter === 'customers' 
-                  ? twilioConnected 
-                    ? 'Start messaging clients by sending them job updates via SMS.'
-                    : 'Set up Twilio to send SMS messages to your clients about their jobs.'
+                  ? 'Send SMS messages to clients from their job pages.'
                   : 'Create jobs to start job discussions, or use Team Chat to coordinate with your crew.'
                 }
               </Text>
@@ -916,9 +876,9 @@ export default function ChatHubScreen() {
             <>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>
-                  {activeFilter === 'all' ? 'All Conversations' : 
-                   activeFilter === 'jobs' ? 'Job Discussions' : 
-                   activeFilter === 'customers' ? 'Customer SMS' : 'Team'}
+                  {activeFilter === 'all' ? 'ALL CONVERSATIONS' : 
+                   activeFilter === 'jobs' ? 'JOB CONVERSATIONS' : 
+                   activeFilter === 'customers' ? 'CUSTOMER SMS' : 'TEAM'}
                 </Text>
               </View>
               {conversations.map(renderConversation)}

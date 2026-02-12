@@ -35,16 +35,20 @@ const SMS_TEMPLATES = {
   quote: [
     { id: 'sent', label: "Quote ready", message: "Hi! I've sent through your quote. Have a look and let me know if you've got any questions or want to go ahead." },
     { id: 'followup', label: "Follow up", message: "Hi! Just following up on the quote I sent. Let me know if you have any questions or need any changes." },
+    { id: 'accept', label: "Accept quote", message: "Hi! Your quote is ready to view and accept online. Check your email for the link, or reply to this message if you have any questions." },
   ],
   invoice: [
     { id: 'sent', label: "Invoice sent", message: "Hi! I've sent through your invoice. You can pay online using the link in the email. Thanks for your business!" },
     { id: 'reminder', label: "Payment reminder", message: "Hi! Just a friendly reminder that your invoice is due. Let me know if you have any questions." },
+    { id: 'overdue', label: "Overdue", message: "Hi! Just a reminder that your invoice is now overdue. You can pay online using the link in your email. Please let me know if you have any questions." },
   ],
   job: [
     { id: 'omw', label: "On my way", message: "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes." },
     { id: 'arrived', label: "Just arrived", message: "Hi! I've just arrived. I'm ready to get started on the job." },
     { id: 'done', label: "Job complete", message: "All done! The job's been completed. Let me know if you have any questions." },
     { id: 'confirm', label: "Confirm appointment", message: "Just confirming our appointment. Please reply to let me know you're still available." },
+    { id: 'running_late', label: "Running late", message: "Hi! Just letting you know I'm running a bit behind schedule. I'll be there as soon as I can. Sorry for the delay!" },
+    { id: 'photo_update', label: "Photo update", message: "Hi! Just wanted to share a progress update on the job. Check your email for photos of the work so far." },
   ],
   receipt: [
     { id: 'thanks', label: "Payment thanks", message: "Thanks for your payment! Your receipt has been sent to your email." },
@@ -79,7 +83,7 @@ export function MobileSendModal({
 
   useEffect(() => {
     if (visible) {
-      setEmailSubject(`Your ${typeLabel} from TradieTrack`);
+      setEmailSubject(`Your ${typeLabel} from JobRunner`);
       setEmailBody(`Hi ${recipientName},\n\nPlease find your ${documentType} attached.\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers!`);
       setSmsMessage(SMS_TEMPLATES[documentType]?.[0]?.message || '');
     }
@@ -298,6 +302,15 @@ export function MobileSendModal({
                   multiline
                   textAlignVertical="top"
                 />
+              </View>
+
+              <View style={styles.infoRow}>
+                <Feather name="link" size={14} color={colors.primary} />
+                <Text style={[styles.infoText, { color: colors.primary }]}>
+                  {documentType === 'quote' ? 'A link to view and accept the quote will be included' :
+                   documentType === 'invoice' ? 'A payment link will be included in the email' :
+                   'Document will be attached as PDF'}
+                </Text>
               </View>
 
               <TouchableOpacity
@@ -542,6 +555,22 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     chipTextActive: {
       color: colors.primary,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      backgroundColor: isDark ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.05)',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)',
+    },
+    infoText: {
+      ...typography.caption,
+      color: colors.mutedForeground,
+      flex: 1,
     },
     sendButton: {
       flexDirection: 'row',

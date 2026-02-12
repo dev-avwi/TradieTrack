@@ -274,7 +274,7 @@ export function EmailComposeModal({
         setTimeout(() => {
           Alert.alert(
             'Email Opened',
-            `Your ${type === 'quote' ? 'quote' : type === 'invoice' ? 'invoice' : 'receipt'} message is ready in ${appName}.\n\nNote: To attach the PDF, go back and use "Use TradieTrack" which sends it automatically.\n\nMark as sent?`,
+            `Your ${type === 'quote' ? 'quote' : type === 'invoice' ? 'invoice' : 'receipt'} message is ready in ${appName}.\n\nNote: To attach the PDF, go back and use "Use JobRunner" which sends it automatically.\n\nMark as sent?`,
             [
               { text: 'Not Yet', style: 'cancel' },
               { 
@@ -289,7 +289,7 @@ export function EmailComposeModal({
       } else {
         Alert.alert(
           'Email App Not Found',
-          `Couldn't open ${app === 'gmail' ? 'Gmail' : app === 'outlook' ? 'Outlook' : 'email app'}. Please make sure it's installed, or try "Use TradieTrack" to send with PDF attached.`,
+          `Couldn't open ${app === 'gmail' ? 'Gmail' : app === 'outlook' ? 'Outlook' : 'email app'}. Please make sure it's installed, or try "Use JobRunner" to send with PDF attached.`,
           [{ text: 'OK' }]
         );
       }
@@ -570,7 +570,7 @@ export function EmailComposeModal({
         {/* Footer with Send Options */}
         <View style={styles.footer}>
           <View style={styles.footerButtons}>
-            {/* Primary: Use TradieTrack (backend send) */}
+            {/* Primary: Use JobRunner (backend send) */}
             <TouchableOpacity
               onPress={handleSend}
               disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()}
@@ -585,7 +585,7 @@ export function EmailComposeModal({
               ) : (
                 <>
                   <Feather name="send" size={18} color={colors.primaryForeground} />
-                  <Text style={styles.footerButtonPrimaryText}>Use TradieTrack</Text>
+                  <Text style={styles.footerButtonPrimaryText}>Use JobRunner</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -611,7 +611,7 @@ export function EmailComposeModal({
             </TouchableOpacity>
           </View>
           <Text style={styles.footerHint}>
-            TradieTrack sends automatically with PDF attached. Email App lets you review first.
+            JobRunner sends automatically with PDF attached. Email App lets you review first.
           </Text>
         </View>
       </KeyboardAvoidingView>
