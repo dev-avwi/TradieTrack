@@ -11,7 +11,8 @@ import {
   Alert,
   Platform,
   AppState,
-  AppStateStatus
+  AppStateStatus,
+  InteractionManager
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1116,6 +1117,16 @@ export default function DashboardScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [heavySectionsReady, setHeavySectionsReady] = useState(false);
+  
+  useEffect(() => {
+    if (initialLoadComplete && !heavySectionsReady) {
+      const handle = InteractionManager.runAfterInteractions(() => {
+        setHeavySectionsReady(true);
+      });
+      return () => handle.cancel();
+    }
+  }, [initialLoadComplete, heavySectionsReady]);
   
   // Job Scheduler state for team owners
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -1848,8 +1859,15 @@ export default function DashboardScreen() {
         </View>
       </View>
 
+      {/* Deferred heavy sections - rendered after interactions settle to keep UI responsive */}
+      {!heavySectionsReady && (
+        <View style={{ paddingVertical: spacing.xl, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={colors.mutedForeground} />
+        </View>
+      )}
+
       {/* Job Scheduler - Team Owners Only (show loading state or content) */}
-      {isOwnerUser && (hasActiveTeam || isTeamDataLoading) && (
+      {heavySectionsReady && isOwnerUser && (hasActiveTeam || isTeamDataLoading) && (
         <View 
           style={styles.section}
           onLayout={(event) => setSchedulerY(event.nativeEvent.layout.y)}
@@ -2010,7 +2028,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Today's Schedule */}
-      <View style={styles.section}>
+      {heavySectionsReady && <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <View style={styles.sectionTitleIcon}>
@@ -2107,10 +2125,10 @@ export default function DashboardScreen() {
             ))}
           </View>
         )}
-      </View>
+      </View>}
 
       {/* This Week Section - Staff Only */}
-      {isStaffUser && thisWeeksJobs.length > 0 && (
+      {heavySectionsReady && isStaffUser && thisWeeksJobs.length > 0 && (
         <ThisWeekSection 
           jobs={thisWeeksJobs} 
           onViewJob={(id) => router.push(`/job/${id}`)} 
@@ -2118,7 +2136,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Recent Activity */}
-      <View style={styles.section}>
+      {heavySectionsReady && <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <View style={styles.sectionTitleIcon}>
@@ -2136,7 +2154,7 @@ export default function DashboardScreen() {
             }
           }}
         />
-      </View>
+      </View>}
 
       {/* Bottom Spacing */}
       <View style={{ height: spacing['4xl'] + 80 }} />
