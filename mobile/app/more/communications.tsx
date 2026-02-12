@@ -14,7 +14,7 @@ import {
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, iconSizes, typographySizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -91,12 +91,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: typography.sizes.lg,
+    fontSize: typographySizes.lg,
     fontWeight: '600',
     color: colors.foreground,
   },
   headerSubtitle: {
-    fontSize: typography.sizes.sm,
+    fontSize: typographySizes.sm,
     color: colors.mutedForeground,
     marginTop: 2,
   },
@@ -116,12 +116,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: typography.sizes.xl,
+    fontSize: typographySizes.xl,
     fontWeight: '700',
     color: colors.foreground,
   },
   statLabel: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     color: colors.mutedForeground,
     marginTop: 2,
   },
@@ -146,7 +146,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary,
   },
   tabText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typographySizes.sm,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
@@ -165,7 +165,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primaryForeground,
   },
   tabBadgeText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     fontWeight: '600',
     color: colors.muted,
   },
@@ -186,7 +186,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   searchInput: {
     flex: 1,
     paddingVertical: spacing.sm,
-    fontSize: typography.sizes.md,
+    fontSize: typographySizes.md,
     color: colors.foreground,
   },
   listContent: {
@@ -229,18 +229,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexWrap: 'wrap',
   },
   itemRecipient: {
-    fontSize: typography.sizes.md,
+    fontSize: typographySizes.md,
     fontWeight: '600',
     color: colors.foreground,
   },
   itemSubject: {
-    fontSize: typography.sizes.sm,
+    fontSize: typographySizes.sm,
     fontWeight: '500',
     color: colors.foreground,
     marginTop: 4,
   },
   itemBody: {
-    fontSize: typography.sizes.sm,
+    fontSize: typographySizes.sm,
     color: colors.mutedForeground,
     marginTop: 4,
     lineHeight: 20,
@@ -253,7 +253,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexWrap: 'wrap',
   },
   itemTime: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     color: colors.mutedForeground,
     flexDirection: 'row',
     alignItems: 'center',
@@ -269,7 +269,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.sm,
   },
   statusText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     fontWeight: '600',
   },
   typeBadge: {
@@ -281,7 +281,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   typeBadgeText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     color: colors.mutedForeground,
   },
   attachmentBadge: {
@@ -296,7 +296,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   attachmentText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     color: colors.mutedForeground,
   },
   entityLink: {
@@ -305,14 +305,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 4,
   },
   entityLinkText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     color: colors.primary,
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing['2xl'],
   },
   emptyIconContainer: {
     width: 80,
@@ -324,13 +324,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   emptyText: {
-    fontSize: typography.sizes.lg,
+    fontSize: typographySizes.lg,
     fontWeight: '600',
     color: colors.foreground,
     marginBottom: spacing.xs,
   },
   emptySubtext: {
-    fontSize: typography.sizes.sm,
+    fontSize: typographySizes.sm,
     color: colors.mutedForeground,
     textAlign: 'center',
     paddingHorizontal: spacing.xl,
@@ -339,7 +339,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing['2xl'],
   },
   modalOverlay: {
     flex: 1,
@@ -362,7 +362,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalTitle: {
     flex: 1,
-    fontSize: typography.sizes.lg,
+    fontSize: typographySizes.lg,
     fontWeight: '600',
     color: colors.foreground,
   },
@@ -376,7 +376,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   detailLabel: {
-    fontSize: typography.sizes.xs,
+    fontSize: typographySizes.xs,
     fontWeight: '600',
     color: colors.mutedForeground,
     marginBottom: spacing.xs,
@@ -384,7 +384,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.5,
   },
   detailValue: {
-    fontSize: typography.sizes.md,
+    fontSize: typographySizes.md,
     color: colors.foreground,
     lineHeight: 22,
   },
