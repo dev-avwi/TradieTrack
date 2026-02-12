@@ -1115,6 +1115,7 @@ export default function DashboardScreen() {
   const { clients, fetchClients } = useClientsStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
   // Job Scheduler state for team owners
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -1368,6 +1369,8 @@ export default function DashboardScreen() {
       fetchActivitiesRef.current(),
       fetchMyAllJobsRef.current(), // Also refresh staff's all jobs for My Stats
     ]);
+    // Mark initial load as complete on first data fetch
+    setInitialLoadComplete(true);
   }, []); // Empty deps - uses refs
 
   // Initial load only once on mount
@@ -1690,6 +1693,16 @@ export default function DashboardScreen() {
     paddingTop: responsiveShell.paddingTop,
     paddingBottom: responsiveShell.paddingBottom,
   }), [responsiveShell]);
+
+  // Show full-screen loading state until initial data is loaded
+  if (!initialLoadComplete) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 16, color: colors.mutedForeground, fontSize: 14 }}>Loading dashboard...</Text>
+      </View>
+    );
+  }
 
   return (
   <>

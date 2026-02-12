@@ -56,12 +56,12 @@ interface AINotification {
 }
 
 const SUGGESTED_PROMPTS = [
-  { text: "How can I follow up with overdue invoices?", icon: "alert-circle" as const },
-  { text: "Generate a weekly performance summary", icon: "bar-chart-2" as const },
-  { text: "What jobs need my attention today?", icon: "briefcase" as const },
-  { text: "Draft a quote for a bathroom renovation", icon: "file-text" as const },
-  { text: "Tips for improving my cash flow", icon: "trending-up" as const },
-  { text: "How do I track expenses efficiently?", icon: "dollar-sign" as const },
+  "How can I follow up with overdue invoices?",
+  "Generate a weekly performance summary",
+  "What jobs need my attention today?",
+  "Draft a quote for a bathroom renovation",
+  "Tips for improving my cash flow",
+  "How do I track expenses efficiently?"
 ];
 
 function ThinkingDots({ colors }: { colors: ThemeColors }) {
@@ -328,12 +328,10 @@ function SuggestedFollowups({
 
 function SuggestionCard({ 
   text, 
-  icon,
   onPress,
   isAISuggestion = false
 }: { 
   text: string; 
-  icon?: string;
   onPress: () => void;
   isAISuggestion?: boolean;
 }) {
@@ -349,12 +347,7 @@ function SuggestionCard({
         isAISuggestion && styles.aiSuggestionCard
       ]}
     >
-      {icon && (
-        <View style={styles.suggestionIconContainer}>
-          <Feather name={icon as any} size={16} color={isAISuggestion ? colors.primary : colors.mutedForeground} />
-        </View>
-      )}
-      <Text style={[styles.suggestionText, icon ? { flex: 1 } : undefined]}>{text}</Text>
+      <Text style={styles.suggestionText}>{text}</Text>
     </TouchableOpacity>
   );
 }
@@ -383,17 +376,10 @@ function ChatBubble({
       styles.chatBubble,
       isUser ? styles.userBubble : styles.assistantBubble
     ]}>
-      <View style={styles.chatBubbleLabelRow}>
-        {!isUser && (
-          <View style={styles.aiAvatarSmall}>
-            <Feather name="cpu" size={10} color={colors.primary} />
-          </View>
-        )}
-        <Text style={[styles.chatBubbleLabel, isUser && styles.userBubbleLabel]}>
-          {isUser ? 'You' : 'JobRunner AI'}
-        </Text>
-      </View>
-      <Text style={[styles.chatBubbleText, isUser && styles.userBubbleText]}>{message.content}</Text>
+      <Text style={styles.chatBubbleLabel}>
+        {isUser ? 'You' : 'JobRunner AI'}
+      </Text>
+      <Text style={styles.chatBubbleText}>{message.content}</Text>
       
       {message.richContent && message.richContent.length > 0 && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
@@ -697,31 +683,18 @@ export default function AIAssistantScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Hero Header Card */}
+          {/* Header Card */}
           <View style={styles.headerCard}>
-            <View style={styles.headerGradientOverlay} />
-            <View style={styles.headerTopRow}>
-              <View style={styles.headerIconContainer}>
-                <Feather name="cpu" size={22} color={colors.white} />
-              </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.headerTitle}>
-                  {userName ? `Hey ${userName}, how can I help?` : 'JobRunner AI Assistant'}
-                </Text>
-                <Text style={styles.headerSubtitle}>
-                  Your smart business companion
-                </Text>
-              </View>
+            <View style={styles.headerIconContainer}>
+              <Feather name="star" size={24} color={colors.primary} />
             </View>
-            <View style={styles.quickStatsRow}>
-              <View style={styles.quickStatChip}>
-                <Feather name="file-text" size={12} color={colors.primary} />
-                <Text style={styles.quickStatText}>3 overdue invoices</Text>
-              </View>
-              <View style={styles.quickStatChip}>
-                <Feather name="briefcase" size={12} color={colors.primary} />
-                <Text style={styles.quickStatText}>5 jobs today</Text>
-              </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>
+                {userName ? `Hi ${userName}!` : 'AI Assistant'}
+              </Text>
+              <Text style={styles.headerSubtitle}>
+                {userName ? 'How can I help you today?' : 'Get help with your business tasks'}
+              </Text>
             </View>
           </View>
 
@@ -765,9 +738,8 @@ export default function AIAssistantScreen() {
                 {SUGGESTED_PROMPTS.map((prompt, index) => (
                   <SuggestionCard
                     key={index}
-                    text={prompt.text}
-                    icon={prompt.icon}
-                    onPress={() => handleSuggestionPress(prompt.text)}
+                    text={prompt}
+                    onPress={() => handleSuggestionPress(prompt)}
                   />
                 ))}
               </View>
@@ -835,12 +807,7 @@ export default function AIAssistantScreen() {
                 
                 {isSending && (
                   <View style={[styles.chatBubble, styles.assistantBubble, styles.thinkingBubble]}>
-                    <View style={styles.chatBubbleLabelRow}>
-                      <View style={styles.aiAvatarSmall}>
-                        <Feather name="cpu" size={10} color={colors.primary} />
-                      </View>
-                      <Text style={styles.chatBubbleLabel}>JobRunner AI</Text>
-                    </View>
+                    <Text style={styles.chatBubbleLabel}>JobRunner AI</Text>
                     <ThinkingDots colors={colors} />
                   </View>
                 )}
@@ -896,32 +863,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 24,
   },
   headerCard: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  headerGradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: `${colors.white}10`,
-  },
-  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   headerIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: `${colors.white}20`,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -931,32 +886,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: colors.white,
+    fontWeight: '600',
+    color: colors.foreground,
     marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: `${colors.white}CC`,
-  },
-  quickStatsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  quickStatChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${colors.white}20`,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 5,
-  },
-  quickStatText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.white,
+    fontSize: 14,
+    color: colors.mutedForeground,
   },
   section: {
     marginBottom: 24,
@@ -975,26 +911,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   suggestionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
   suggestionCard: {
     backgroundColor: colors.muted,
     borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '48%' as any,
-  },
-  suggestionIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
+    padding: 14,
   },
   aiSuggestionCard: {
     backgroundColor: colors.primaryLight,
@@ -1031,53 +953,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 12,
   },
   chatBubble: {
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 12,
     maxWidth: '85%',
   },
   userBubble: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.muted,
     alignSelf: 'flex-end',
     marginLeft: 32,
-    borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: `${colors.primary}20`,
     alignSelf: 'flex-start',
     marginRight: 32,
-    borderBottomLeftRadius: 4,
-  },
-  chatBubbleLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 5,
-  },
-  aiAvatarSmall: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   chatBubbleLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.mutedForeground,
+    marginBottom: 4,
   },
   chatBubbleText: {
     fontSize: 14,
     color: colors.foreground,
     lineHeight: 20,
-  },
-  userBubbleText: {
-    color: colors.white,
-  },
-  userBubbleLabel: {
-    color: `${colors.white}AA`,
   },
   thinkingBubble: {
     minWidth: 100,

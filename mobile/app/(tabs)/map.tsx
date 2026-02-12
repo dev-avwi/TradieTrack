@@ -693,6 +693,10 @@ export default function MapScreen() {
   // Map ready state - prevents rendering markers until MapView is ready
   const [isMapReady, setIsMapReady] = useState(false);
   
+  // Initial data loading state - shows overlay until both jobs and team data are loaded
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const initialDataLoadedRef = useRef({ jobsLoaded: false, teamLoaded: false });
+  
   // Track if user has manually interacted with map (to prevent auto-zoom)
   const userHasInteractedRef = useRef(false);
   const isInitialFitDoneRef = useRef(false);
@@ -727,14 +731,14 @@ export default function MapScreen() {
       if (response.error) {
         console.log('[Map] Map jobs API error:', response.error);
         setMapJobs([]);
-        return;
+        return false;
       }
       
       const data = response.data;
       if (!Array.isArray(data)) {
         console.log('[Map] Map jobs response is not an array:', data);
         setMapJobs([]);
-        return;
+        return false;
       }
       
       // Transform API response to JobWithLocation format
@@ -751,9 +755,11 @@ export default function MapScreen() {
       
       console.log(`[Map] Loaded ${transformedJobs.length} geocoded jobs`);
       setMapJobs(transformedJobs);
+      return true;
     } catch (error) {
       console.log('[Map] Failed to fetch map jobs:', error);
       setMapJobs([]);
+      return false;
     } finally {
       setMapJobsLoading(false);
     }
@@ -984,7 +990,12 @@ export default function MapScreen() {
   }, [showJobs, showTeamMembers, filteredJobs, teamMembers, bottomNavHeight, headerCollapsed, canViewTeamMode]);
 
   useEffect(() => {
-    fetchMapJobs();
+    fetchMapJobs().then(() => {
+      initialDataLoadedRef.current.jobsLoaded = true;
+      if (initialDataLoadedRef.current.jobsLoaded && initialDataLoadedRef.current.teamLoaded) {
+        setInitialDataLoaded(true);
+      }
+    });
     requestLocation();
   }, [fetchMapJobs]);
 
@@ -999,12 +1010,22 @@ export default function MapScreen() {
     // Reset markers ready state when turning off team view
     if (!showTeamMembers || !canViewTeamMode) {
       setTeamMarkersReady(false);
+      // Mark team as loaded since we won't be fetching it
+      initialDataLoadedRef.current.teamLoaded = true;
+      if (initialDataLoadedRef.current.jobsLoaded && initialDataLoadedRef.current.teamLoaded) {
+        setInitialDataLoaded(true);
+      }
     }
     
     if (showTeamMembers && canViewTeamMode && isLive) {
       // Initial fetch with delayed marker rendering to prevent top-left flash
       fetchTeamLocations().then(() => {
         setLastLocationUpdate(new Date());
+        // Mark team data as loaded for initial data tracking
+        initialDataLoadedRef.current.teamLoaded = true;
+        if (initialDataLoadedRef.current.jobsLoaded && initialDataLoadedRef.current.teamLoaded) {
+          setInitialDataLoaded(true);
+        }
         // Delay setting markers ready to ensure coordinates are fully processed
         // This prevents the iOS react-native-maps bug where markers flash at (0,0)
         setTimeout(() => {
@@ -2168,10 +2189,30 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Loading Overlay */}
-      {mapJobsLoading && !filteredJobs.length && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
+      {/* Loading Overlay - shows until initial data is loaded */}
+      {!initialDataLoaded && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10,
+        }}>
+          <View style={{ alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{
+              marginTop: spacing.lg,
+              fontSize: 16,
+              fontWeight: '600',
+              color: colors.foreground,
+            }}>
+              Loading team...
+            </Text>
+          </View>
         </View>
       )}
 

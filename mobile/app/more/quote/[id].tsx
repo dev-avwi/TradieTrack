@@ -1668,7 +1668,7 @@ ${businessName}`;
               quantity: Number(item.quantity),
               unitPrice: Number(item.unitPrice),
             }))}
-            notes={quote.notes}
+            notes={includeNotes ? quote.notes : undefined}
             business={{
               businessName: businessSettings?.businessName || user?.businessName,
               abn: businessSettings?.abn || user?.abn,

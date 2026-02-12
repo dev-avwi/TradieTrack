@@ -226,14 +226,14 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
-    title: "AI Assistant",
+    title: "AI",
     url: "/more/ai-assistant",
-    icon: "cpu",
+    icon: "zap",
     description: "Smart business suggestions",
     color: "primary",
     bgColor: "primary",
     showInMore: true,
-    category: "communication",
+    category: "featured",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   // Team Chat and Direct Messages merged into Chat Hub
