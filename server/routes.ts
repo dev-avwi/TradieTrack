@@ -12971,11 +12971,13 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      const excludeNotes = req.query.excludeNotes === 'true';
+      
       let html: string;
       try {
         const businessForPdf = await resolveBusinessLogoForPdf(business);
         html = generateInvoicePDF({
-          invoice: invoiceWithItems,
+          invoice: excludeNotes ? { ...invoiceWithItems, notes: '' } : invoiceWithItems,
           lineItems: invoiceWithItems.lineItems || [],
           client,
           business: businessForPdf,

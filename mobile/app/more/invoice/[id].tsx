@@ -78,6 +78,9 @@ export default function InvoiceDetailScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
+  const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(true);
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
   const [paymentReference, setPaymentReference] = useState('');
@@ -1326,7 +1329,14 @@ ${businessName}`;
     }
     
     const fileUri = `${FileSystem.cacheDirectory}${invoice.invoiceNumber || 'invoice'}_${Date.now()}.pdf`;
-    const pdfUrl = `${API_URL}/api/invoices/${id}/pdf`;
+    
+    // Build PDF URL with query parameters for photo and notes options
+    const params = new URLSearchParams();
+    if (includeBeforePhotos) params.set('includeBeforePhotos', 'true');
+    if (includeAfterPhotos) params.set('includeAfterPhotos', 'true');
+    if (!includeNotes) params.set('excludeNotes', 'true');
+    const queryString = params.toString();
+    const pdfUrl = `${API_URL}/api/invoices/${id}/pdf${queryString ? `?${queryString}` : ''}`;
     
     console.log('[PDF] Downloading from:', pdfUrl);
     
@@ -1402,7 +1412,7 @@ ${businessName}`;
       console.log('[PDF] Download error details:', error);
       throw error;
     }
-  }, [invoice, id]);
+  }, [invoice, id, includeBeforePhotos, includeAfterPhotos, includeNotes]);
 
   const handleDownloadPdf = async () => {
     if (!invoice || isDownloadingPdf) return;
@@ -1847,6 +1857,60 @@ ${businessName}`;
               <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
             </TouchableOpacity>
           </View>
+
+          {/* PDF Options */}
+          {(invoice.jobId || invoice.notes) && (
+            <View style={styles.pdfOptionsCard}>
+              <Text style={styles.pdfOptionsTitle}>PDF Options</Text>
+              <View style={styles.pdfOptionsRow}>
+                {invoice.jobId && (
+                  <TouchableOpacity 
+                    style={[styles.pdfOption, includeBeforePhotos && styles.pdfOptionActive]}
+                    onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
+                  >
+                    <Feather 
+                      name={includeBeforePhotos ? "check-square" : "square"} 
+                      size={18} 
+                      color={includeBeforePhotos ? colors.primary : colors.mutedForeground} 
+                    />
+                    <Text style={[styles.pdfOptionText, includeBeforePhotos && { color: colors.primary }]}>
+                      Before photos
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {invoice.jobId && (
+                  <TouchableOpacity 
+                    style={[styles.pdfOption, includeAfterPhotos && styles.pdfOptionActive]}
+                    onPress={() => setIncludeAfterPhotos(!includeAfterPhotos)}
+                  >
+                    <Feather 
+                      name={includeAfterPhotos ? "check-square" : "square"} 
+                      size={18} 
+                      color={includeAfterPhotos ? colors.primary : colors.mutedForeground} 
+                    />
+                    <Text style={[styles.pdfOptionText, includeAfterPhotos && { color: colors.primary }]}>
+                      After photos
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {invoice.notes && (
+                  <TouchableOpacity 
+                    style={[styles.pdfOption, includeNotes && styles.pdfOptionActive]}
+                    onPress={() => setIncludeNotes(!includeNotes)}
+                  >
+                    <Feather 
+                      name={includeNotes ? "check-square" : "square"} 
+                      size={18} 
+                      color={includeNotes ? colors.primary : colors.mutedForeground} 
+                    />
+                    <Text style={[styles.pdfOptionText, includeNotes && { color: colors.primary }]}>
+                      Notes
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Payment Options - Only show if not paid - MOVED TO TOP for tradie visibility */}
           {invoice.status !== 'paid' && (
@@ -3152,6 +3216,42 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.primary,
     textAlign: 'center',
+  },
+  pdfOptionsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pdfOptionsTitle: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: colors.mutedForeground,
+    marginBottom: 8,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  pdfOptionsRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 16,
+  },
+  pdfOption: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  pdfOptionActive: {
+    backgroundColor: `${colors.primary}10`,
+  },
+  pdfOptionText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
   },
   overdueAlert: {
     flexDirection: 'row',

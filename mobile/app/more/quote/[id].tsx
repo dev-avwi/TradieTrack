@@ -84,6 +84,8 @@ export default function QuoteDetailScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(true);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isMarkingSent, setIsMarkingSent] = useState(false);
@@ -830,7 +832,11 @@ ${businessName}`;
     }
     
     const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}_${Date.now()}.pdf`;
-    const pdfUrl = `${API_URL}/api/quotes/${id}/pdf`;
+    const params = new URLSearchParams();
+    if (includeBeforePhotos) params.set('includeBeforePhotos', 'true');
+    if (!includeNotes) params.set('excludeNotes', 'true');
+    const queryString = params.toString();
+    const pdfUrl = `${API_URL}/api/quotes/${id}/pdf${queryString ? `?${queryString}` : ''}`;
     
     console.log('[PDF] Downloading from:', pdfUrl);
     
@@ -906,7 +912,7 @@ ${businessName}`;
       console.log('[PDF] Download error details:', error);
       throw error;
     }
-  }, [quote, id]);
+  }, [quote, id, includeBeforePhotos, includeNotes]);
 
   const handleDownloadPdf = async () => {
     if (!quote || isDownloadingPdf) return;
@@ -1165,6 +1171,45 @@ ${businessName}`;
               <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
             </TouchableOpacity>
           </View>
+          
+          {/* PDF Options */}
+          {(quote.jobId || quote.notes) && (
+            <View style={styles.pdfOptionsCard}>
+              <Text style={styles.pdfOptionsTitle}>PDF Options</Text>
+              <View style={styles.pdfOptionsRow}>
+                {quote.jobId && (
+                  <TouchableOpacity 
+                    style={[styles.pdfOption, includeBeforePhotos && styles.pdfOptionActive]}
+                    onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
+                  >
+                    <Feather 
+                      name={includeBeforePhotos ? "check-square" : "square"} 
+                      size={18} 
+                      color={includeBeforePhotos ? colors.primary : colors.mutedForeground} 
+                    />
+                    <Text style={[styles.pdfOptionText, includeBeforePhotos && { color: colors.primary }]}>
+                      Site photos
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {quote.notes && (
+                  <TouchableOpacity 
+                    style={[styles.pdfOption, includeNotes && styles.pdfOptionActive]}
+                    onPress={() => setIncludeNotes(!includeNotes)}
+                  >
+                    <Feather 
+                      name={includeNotes ? "check-square" : "square"} 
+                      size={18} 
+                      color={includeNotes ? colors.primary : colors.mutedForeground} 
+                    />
+                    <Text style={[styles.pdfOptionText, includeNotes && { color: colors.primary }]}>
+                      Notes
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
           
           {/* Quick Actions Row 2 - Draft status: Mark as Sent */}
           {quote.status === 'draft' && (
@@ -2444,6 +2489,42 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   shareSheetCancelText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  pdfOptionsCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pdfOptionsTitle: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: colors.mutedForeground,
+    marginBottom: 8,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  pdfOptionsRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 12,
+  },
+  pdfOption: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  pdfOptionActive: {
+    backgroundColor: `${colors.primary}10`,
+  },
+  pdfOptionText: {
+    fontSize: 14,
     color: colors.mutedForeground,
   },
 });
