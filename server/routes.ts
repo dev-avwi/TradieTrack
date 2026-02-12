@@ -524,6 +524,17 @@ async function gatherAIContext(userId: string, storage: any, userContext?: UserC
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // In-memory tracking tokens for ETA tracking (simple countdown-based)
+  const trackingTokens = new Map<string, {
+    businessName: string;
+    tradieName: string;
+    jobAddress: string;
+    suburb: string;
+    sentAt: Date;
+    estimatedMinutes: number;
+    status: 'on_the_way' | 'arrived' | 'completed';
+  }>();
+
   // Setup Google OAuth
   setupGoogleAuth(app);
 
@@ -11038,12 +11049,41 @@ Be specific about materials, colors, and features that would be included.`
       const user = await storage.getUser(req.userId);
       const tradieName = user?.firstName || businessName;
 
-      const message = `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ETA approximately 15-20 minutes.`;
+      const { customMessage } = req.body;
+
+      // Generate tracking token
+      const trackingToken = randomBytes(16).toString('hex');
+
+      // Extract suburb from address for privacy
+      const addressParts = (job.address || '').split(',');
+      const suburb = addressParts.length > 1 ? addressParts[addressParts.length - 2]?.trim() : addressParts[0]?.trim() || 'your area';
+
+      trackingTokens.set(trackingToken, {
+        businessName,
+        tradieName,
+        jobAddress: job.address || '',
+        suburb,
+        sentAt: new Date(),
+        estimatedMinutes: 20,
+        status: 'on_the_way'
+      });
+
+      // Auto-expire after 2 hours
+      setTimeout(() => trackingTokens.delete(trackingToken), 2 * 60 * 60 * 1000);
+
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
+        : `https://${req.headers.host}`;
+      const trackingUrl = `${baseUrl}/track/${trackingToken}`;
+
+      const baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ETA approximately 15-20 minutes.`;
+      const message = `${baseMessage}\n\nTrack arrival: ${trackingUrl}`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
       const smsResult = await sendSMS({
         to: client.phone,
-        message: message
+        message: message,
+        alphanumericSenderId: (businessName && businessName.length <= 11) ? businessName : 'JobRunner'
       });
 
       // Log activity
@@ -11072,7 +11112,8 @@ Be specific about materials, colors, and features that would be included.`
 
       res.json({ 
         success: true, 
-        message: 'On My Way notification sent'
+        message: 'On My Way notification sent',
+        trackingUrl
       });
     } catch (error: any) {
       console.error("Error sending on-my-way notification:", error);
@@ -11107,12 +11148,14 @@ Be specific about materials, colors, and features that would be included.`
       const user = await storage.getUser(req.userId);
       const tradieName = user?.firstName || businessName;
 
-      const message = `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - will be there as soon as possible.`;
+      const { customMessage } = req.body;
+      const message = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - will be there as soon as possible.`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
       const smsResult = await sendSMS({
         to: client.phone,
-        message: message
+        message: message,
+        alphanumericSenderId: (businessName && businessName.length <= 11) ? businessName : 'JobRunner'
       });
 
       // Log activity
@@ -24435,6 +24478,25 @@ Respond with JSON in this format:
   app.get("/api/track/:token", async (req, res) => {
     try {
       const { token } = req.params;
+      
+      // Check in-memory ETA tracking tokens first (from on-my-way SMS)
+      const etaInfo = trackingTokens.get(token);
+      if (etaInfo) {
+        const sentAt = etaInfo.sentAt;
+        const minutesSinceSent = Math.round((Date.now() - sentAt.getTime()) / 60000);
+        const remainingMinutes = Math.max(0, etaInfo.estimatedMinutes - minutesSinceSent);
+        
+        return res.json({
+          businessName: etaInfo.businessName,
+          tradieName: etaInfo.tradieName,
+          suburb: etaInfo.suburb,
+          sentAt: sentAt.toISOString(),
+          estimatedMinutes: etaInfo.estimatedMinutes,
+          remainingMinutes,
+          status: remainingMinutes <= 0 ? 'arriving_soon' : etaInfo.status,
+          trackingType: 'eta'
+        });
+      }
       
       // Rate limiting check
       const rateLimit = checkRateLimit(token);

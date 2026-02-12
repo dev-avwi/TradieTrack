@@ -3732,6 +3732,9 @@ export default function JobDetailScreen() {
         clientName={client?.name?.split(' ')[0]}
         isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
         jobId={job.id}
+        jobAddress={job.address}
+        businessName={businessSettings?.businessName}
+        tradieName={user?.firstName || user?.name?.split(' ')[0]}
       />
 
       {/* Safety & Compliance Section - Prominent before work starts */}

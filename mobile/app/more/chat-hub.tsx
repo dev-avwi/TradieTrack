@@ -34,6 +34,17 @@ interface Job {
   client?: Client;
 }
 
+interface SmsMessage {
+  id: string;
+  conversationId: string;
+  direction: 'inbound' | 'outbound';
+  body: string;
+  status: string;
+  createdAt: string;
+  fromNumber?: string;
+  toNumber?: string;
+}
+
 interface SmsConversation {
   id: string;
   clientId: string | null;
@@ -42,6 +53,15 @@ interface SmsConversation {
   jobId: string | null;
   lastMessageAt: string | null;
   unreadCount: number;
+  messages?: SmsMessage[];
+}
+
+interface UnreadCounts {
+  teamChat: number;
+  directMessages: number;
+  jobChats: number;
+  sms: number;
+  total: number;
 }
 
 interface TwilioStatus {
@@ -428,6 +448,7 @@ export default function ChatHubScreen() {
   const [clients, setClients] = useState<Client[]>([]);
   const [smsConversations, setSmsConversations] = useState<SmsConversation[]>([]);
   const [twilioStatus, setTwilioStatus] = useState<TwilioStatus | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<UnreadCounts | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -438,16 +459,18 @@ export default function ChatHubScreen() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [jobsRes, clientsRes, smsRes, twilioRes] = await Promise.all([
+      const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes] = await Promise.all([
         api.get<Job[]>('/api/jobs'),
         api.get<Client[]>('/api/clients'),
         api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] })),
         api.get<TwilioStatus>('/api/sms/status').catch(() => ({ data: null })),
+        api.get<UnreadCounts>('/api/chat/unread-counts').catch(() => ({ data: null })),
       ]);
       setJobs(jobsRes.data || []);
       setClients(clientsRes.data || []);
       setSmsConversations(smsRes.data || []);
       setTwilioStatus(twilioRes.data || null);
+      setUnreadCounts(unreadRes.data || null);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -492,13 +515,17 @@ export default function ChatHubScreen() {
     if (activeFilter === 'all' || activeFilter === 'jobs') {
       jobs.forEach(job => {
         const clientName = getClientName(job.clientId);
+        let lastMessage = 'No messages yet';
+        if (clientName) {
+          lastMessage = `${clientName} - ${(job.status || 'pending').replace('_', ' ')}`;
+        }
         items.push({
           id: `job-${job.id}`,
           type: 'job',
           title: job.title,
           subtitle: clientName || job.address || 'No client assigned',
           avatarFallback: job.title.substring(0, 2).toUpperCase(),
-          lastMessage: 'Tap to view job discussion',
+          lastMessage,
           unreadCount: 0,
           status: job.status,
           data: job,
@@ -509,14 +536,20 @@ export default function ChatHubScreen() {
     if (activeFilter === 'all' || activeFilter === 'customers') {
       smsConversations.forEach(sms => {
         const displayName = sms.clientName || sms.clientPhone;
+        const lastMsg = sms.messages && sms.messages.length > 0
+          ? sms.messages[sms.messages.length - 1]
+          : null;
+        const lastMessageText = lastMsg
+          ? (lastMsg.direction === 'outbound' ? 'You: ' : '') + lastMsg.body
+          : 'No messages yet';
         items.push({
           id: `sms-${sms.id}`,
           type: 'sms',
           title: displayName,
           subtitle: sms.jobId ? 'Linked to job' : 'SMS conversation',
           avatarFallback: displayName.substring(0, 2).toUpperCase(),
-          lastMessage: 'Tap to view SMS history',
-          lastMessageTime: sms.lastMessageAt || undefined,
+          lastMessage: lastMessageText,
+          lastMessageTime: lastMsg?.createdAt || sms.lastMessageAt || undefined,
           unreadCount: sms.unreadCount || 0,
           phone: sms.clientPhone,
           data: sms,
@@ -532,7 +565,7 @@ export default function ChatHubScreen() {
         subtitle: 'General team discussion',
         avatarFallback: 'TC',
         lastMessage: 'Tap to join team chat',
-        unreadCount: 0,
+        unreadCount: (unreadCounts?.teamChat || 0),
         data: null,
       });
     }
@@ -546,7 +579,7 @@ export default function ChatHubScreen() {
     }
     
     return items;
-  }, [jobs, clients, smsConversations, activeFilter, searchQuery]);
+  }, [jobs, clients, smsConversations, activeFilter, searchQuery, unreadCounts]);
 
   const handleConversationPress = (item: ConversationItem) => {
     if (item.type === 'team') {
@@ -554,11 +587,7 @@ export default function ChatHubScreen() {
     } else if (item.type === 'job') {
       router.push(`/job/chat?jobId=${item.data.id}` as any);
     } else if (item.type === 'sms') {
-      Alert.alert(
-        'SMS Conversations',
-        'View this conversation on the web app for full SMS messaging features.',
-        [{ text: 'OK' }]
-      );
+      router.push(`/more/sms-conversation?id=${item.data.id}&phone=${encodeURIComponent(item.phone || '')}&name=${encodeURIComponent(item.title)}` as any);
     }
   };
 
@@ -693,6 +722,12 @@ export default function ChatHubScreen() {
           {item.subtitle && (
             <Text style={styles.conversationSubtitle} numberOfLines={1}>
               {item.subtitle}
+            </Text>
+          )}
+
+          {item.lastMessage && (
+            <Text style={styles.conversationLastMessage} numberOfLines={1}>
+              {item.lastMessage}
             </Text>
           )}
           

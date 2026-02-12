@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, iconSizes } from '../lib/design-tokens';
@@ -830,6 +830,9 @@ interface SmsContactCardProps {
   clientName?: string;
   isOverdue?: boolean;
   jobId: string;
+  jobAddress?: string;
+  businessName?: string;
+  tradieName?: string;
 }
 
 export function SmsContactCard({
@@ -838,14 +841,36 @@ export function SmsContactCard({
   clientName,
   isOverdue = false,
   jobId,
+  jobAddress,
+  businessName,
+  tradieName,
 }: SmsContactCardProps) {
   const { colors } = useTheme();
   const styles = createSmsCardStyles(colors);
   const [isSending, setIsSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState('');
 
   if (!clientPhone || (jobStatus !== 'scheduled' && jobStatus !== 'in_progress')) {
     return null;
   }
+
+  const getDefaultMessage = () => {
+    const name = clientName || 'there';
+    const trader = tradieName || businessName || 'Your tradesperson';
+    const business = businessName || 'your tradesperson';
+    const address = jobAddress || 'your location';
+
+    if (isOverdue) {
+      return `Hi ${name}, ${trader} from ${business} here. Running a bit late for your job at ${address}. Apologies for the delay - will be there as soon as possible.`;
+    }
+    return `Hi ${name}, ${trader} from ${business} is on the way to your job at ${address}. ETA approximately 15-20 minutes.`;
+  };
+
+  const handleOpenPreview = () => {
+    setPreviewMessage(getDefaultMessage());
+    setShowPreview(true);
+  };
 
   const fallbackToNativeSms = (phone: string, message: string) => {
     Alert.alert(
@@ -867,24 +892,21 @@ export function SmsContactCard({
   const handleSendSms = async () => {
     if (isSending) return;
     
-    const message = isOverdue 
-      ? `Hi${clientName ? ` ${clientName}` : ''}, I'm running a bit late. I'll be there as soon as possible.`
-      : `Hi${clientName ? ` ${clientName}` : ''}, I'm on my way to your job now.`;
-    
     const endpoint = isOverdue 
       ? `/api/jobs/${jobId}/running-late`
       : `/api/jobs/${jobId}/on-my-way`;
 
     setIsSending(true);
+    setShowPreview(false);
     try {
-      const response = await api.post(endpoint, {});
+      const response = await api.post(endpoint, { customMessage: previewMessage });
       if (response.error) {
-        fallbackToNativeSms(clientPhone!, message);
+        fallbackToNativeSms(clientPhone!, previewMessage);
       } else {
         Alert.alert('SMS Sent', isOverdue ? 'Running late message sent to client.' : 'On my way message sent to client.');
       }
     } catch {
-      fallbackToNativeSms(clientPhone!, message);
+      fallbackToNativeSms(clientPhone!, previewMessage);
     } finally {
       setIsSending(false);
     }
@@ -892,6 +914,7 @@ export function SmsContactCard({
 
   const buttonLabel = isOverdue ? "Text Running Late" : "Text On My Way";
   const buttonBg = isOverdue ? '#ea580c' : colors.primary;
+  const modalTitle = isOverdue ? "Running Late" : "On My Way";
 
   return (
     <View style={styles.container}>
@@ -904,7 +927,7 @@ export function SmsContactCard({
       </View>
       <TouchableOpacity 
         style={[styles.actionButton, { backgroundColor: buttonBg }]} 
-        onPress={handleSendSms}
+        onPress={handleOpenPreview}
         disabled={isSending}
         activeOpacity={0.8}
       >
@@ -917,6 +940,104 @@ export function SmsContactCard({
           </>
         )}
       </TouchableOpacity>
+
+      <Modal
+        visible={showPreview}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowPreview(false)}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+              <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                <View style={styles.modalHeader}>
+                  <View style={[styles.modalHeaderIcon, { backgroundColor: `${buttonBg}15` }]}>
+                    <Feather name="message-square" size={20} color={buttonBg} />
+                  </View>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{modalTitle}</Text>
+                  <TouchableOpacity onPress={() => setShowPreview(false)} style={styles.modalCloseButton}>
+                    <Feather name="x" size={20} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.recipientRow, { backgroundColor: colors.muted }]}>
+                  <Feather name="user" size={16} color={colors.mutedForeground} />
+                  <View style={styles.recipientInfo}>
+                    <Text style={[styles.recipientName, { color: colors.foreground }]}>
+                      {clientName || 'Client'}
+                    </Text>
+                    <Text style={[styles.recipientPhone, { color: colors.mutedForeground }]}>
+                      {clientPhone}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.messageLabel, { color: colors.mutedForeground }]}>MESSAGE</Text>
+                <TextInput
+                  style={[styles.messageInput, { 
+                    backgroundColor: colors.background, 
+                    color: colors.foreground,
+                    borderColor: colors.border,
+                  }]}
+                  value={previewMessage}
+                  onChangeText={setPreviewMessage}
+                  multiline
+                  textAlignVertical="top"
+                />
+
+                <View style={[styles.infoRow, { backgroundColor: `${colors.scheduled}10` }]}>
+                  <Feather name="info" size={14} color={colors.scheduled} />
+                  <Text style={[styles.infoText, { color: colors.scheduled }]}>
+                    This will be sent via SMS to the client
+                  </Text>
+                </View>
+
+                {!isOverdue && (
+                  <View style={[styles.infoRow, { backgroundColor: `${colors.primary}10`, marginTop: -8 }]}>
+                    <Feather name="link" size={14} color={colors.primary} />
+                    <Text style={[styles.infoText, { color: colors.primary }]}>
+                      A tracking link will be included automatically
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.cancelButton, { borderColor: colors.border }]}
+                    onPress={() => setShowPreview(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.cancelButtonText, { color: colors.foreground }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.sendButton, { backgroundColor: buttonBg }]}
+                    onPress={handleSendSms}
+                    disabled={isSending || !previewMessage.trim()}
+                    activeOpacity={0.8}
+                  >
+                    {isSending ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Feather name="send" size={14} color="#FFFFFF" />
+                        <Text style={styles.sendButtonText}>Send</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -964,6 +1085,122 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    ...shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  modalHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    flex: 1,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recipientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  recipientInfo: {
+    flex: 1,
+  },
+  recipientName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  recipientPhone: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  messageLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+    paddingLeft: spacing.xs,
+  },
+  messageInput: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 120,
+    marginBottom: spacing.md,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  infoText: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  cancelButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sendButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    gap: spacing.xs,
+  },
+  sendButtonText: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
   },

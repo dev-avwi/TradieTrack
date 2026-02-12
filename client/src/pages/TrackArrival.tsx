@@ -35,7 +35,21 @@ interface TrackingData {
   worker: {
     name: string;
   };
+  trackingType?: undefined;
 }
+
+interface ETATrackingData {
+  trackingType: 'eta';
+  businessName: string;
+  tradieName: string;
+  suburb: string;
+  sentAt: string;
+  estimatedMinutes: number;
+  remainingMinutes: number;
+  status: 'on_the_way' | 'arrived' | 'completed' | 'arriving_soon';
+}
+
+type AnyTrackingData = TrackingData | ETATrackingData;
 
 const workerIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
@@ -107,6 +121,74 @@ function formatETA(etaString: string): string {
   }
 }
 
+function ETATrackingView({ data }: { data: ETATrackingData }) {
+  const [now, setNow] = useState(Date.now());
+  
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const sentAt = new Date(data.sentAt).getTime();
+  const arrivalTime = sentAt + data.estimatedMinutes * 60000;
+  const remainingMs = Math.max(0, arrivalTime - now);
+  const remainingMinutes = Math.ceil(remainingMs / 60000);
+  const isArrivingSoon = remainingMinutes <= 0;
+  const statusText = isArrivingSoon ? 'Arriving soon' : `Arriving in ${remainingMinutes} min`;
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-4">
+        <div className="text-center space-y-1">
+          <h1 className="text-xl font-bold">{data.businessName}</h1>
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Navigation className="h-7 w-7 text-primary" />
+                </div>
+                <span className="absolute bottom-0 right-0 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-primary"></span>
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">{data.tradieName} is on the way</h2>
+                <p className="text-sm text-muted-foreground">
+                  Heading to {data.suburb}
+                </p>
+              </div>
+
+              <div className="w-full bg-muted rounded-lg p-4">
+                <p className="text-2xl font-bold text-primary">
+                  {statusText}
+                </p>
+                {!isArrivingSoon && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Estimated {data.estimatedMinutes} min travel time
+                  </p>
+                )}
+              </div>
+
+              <Badge variant={isArrivingSoon ? "default" : "secondary"}>
+                {isArrivingSoon ? "Arriving Soon" : "On the Way"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-xs text-muted-foreground pt-4">
+          <p>Powered by TradieTrack</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface TrackArrivalProps {
   token: string;
 }
@@ -115,9 +197,9 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   
-  const { data, isLoading, error, refetch, isFetching } = useQuery<TrackingData>({
+  const { data, isLoading, error, refetch, isFetching } = useQuery<AnyTrackingData>({
     queryKey: ['/api/track', token],
-    refetchInterval: autoRefreshEnabled ? 30000 : false, // Auto-refresh every 30 seconds
+    refetchInterval: autoRefreshEnabled ? 30000 : false,
     retry: 1,
   });
 
@@ -157,13 +239,13 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
               <AlertCircle className="h-8 w-8 text-muted-foreground" />
             </div>
             <h2 className="text-xl font-semibold mb-2" data-testid="text-error-title">
-              {isExpired ? "Tracking Link Expired" : isNotFound ? "Tracking Link Not Found" : "Unable to Load"}
+              {isExpired ? "Tracking Link Expired" : isNotFound ? "This tracking link has expired" : "Unable to Load"}
             </h2>
             <p className="text-muted-foreground" data-testid="text-error-message">
               {isExpired 
                 ? "This tracking link has expired. Please contact the business for updated information."
                 : isNotFound
-                  ? "This tracking link doesn't exist or has been removed."
+                  ? "This tracking link has expired or is no longer available."
                   : "There was a problem loading the tracking information. Please try again later."}
             </p>
           </CardContent>
@@ -176,14 +258,18 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
     return null;
   }
 
-  const { job, business, worker, lastLocation, estimatedArrival, isActive } = data;
+  if (data.trackingType === 'eta') {
+    return <ETATrackingView data={data} />;
+  }
+
+  const trackingData = data as TrackingData;
+  const { job, business, worker, lastLocation, estimatedArrival, isActive } = trackingData;
   const jobCompleted = job.status === 'done' || job.status === 'completed';
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             {business.logoUrl ? (
               <img 
@@ -206,7 +292,6 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
           </div>
         </div>
 
-        {/* Status Card */}
         {jobCompleted ? (
           <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
             <CardContent className="pt-6">
@@ -228,7 +313,7 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
         ) : (
           <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <Navigation className="h-6 w-6 text-primary" />
@@ -270,7 +355,6 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
           </Card>
         )}
 
-        {/* Map */}
         {lastLocation && !jobCompleted && (
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
@@ -302,7 +386,6 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
           </Card>
         )}
 
-        {/* Job Details */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base" data-testid="text-job-title">{job.title}</CardTitle>
@@ -346,9 +429,8 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
           </CardContent>
         </Card>
 
-        {/* Auto-refresh toggle */}
         {!jobCompleted && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center justify-between flex-wrap gap-2 text-sm text-muted-foreground">
             <span data-testid="text-auto-refresh-status">
               Auto-refresh: {autoRefreshEnabled ? "On (every 30s)" : "Off"}
             </span>
@@ -363,7 +445,6 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
           </div>
         )}
 
-        {/* Footer */}
         <div className="text-center text-xs text-muted-foreground pt-4">
           <p>Powered by TradieTrack</p>
         </div>
