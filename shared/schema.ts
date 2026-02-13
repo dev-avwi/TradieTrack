@@ -1376,6 +1376,23 @@ export const timesheets = pgTable("timesheets", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Time Entry Edit Audit Trail
+export const timeEntryEdits = pgTable("time_entry_edits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
+  editedBy: varchar("edited_by").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  editedAt: timestamp("edited_at").defaultNow(),
+  editReason: text("edit_reason"),
+  fieldChanged: text("field_changed").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  editSource: text("edit_source").default('manual'),
+});
+
+export const insertTimeEntryEditSchema = createInsertSchema(timeEntryEdits).omit({ id: true, editedAt: true });
+export type InsertTimeEntryEdit = z.infer<typeof insertTimeEntryEditSchema>;
+export type TimeEntryEdit = typeof timeEntryEdits.$inferSelect;
+
 // Expense Tracking
 export const expenseCategories = pgTable("expense_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

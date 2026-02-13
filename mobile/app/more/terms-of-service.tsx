@@ -140,7 +140,7 @@ export default function TermsOfServiceScreen() {
       >
         <View style={styles.card}>
           <Text style={styles.paragraph}>
-            Welcome to TradieTrack. These Terms of Service ("Terms") constitute a legally binding agreement between you and TradieTrack Pty Ltd (ABN to be assigned) ("TradieTrack", "we", "us", or "our") governing your access to and use of our mobile application and related services.
+            Welcome to JobRunner. These Terms of Service ("Terms") constitute a legally binding agreement between you and JobRunner Pty Ltd (ABN to be assigned) ("JobRunner", "we", "us", or "our") governing your access to and use of our mobile application and related services.
           </Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             These Terms are governed by Australian law and are designed for Australian tradespeople and service businesses.
@@ -149,14 +149,14 @@ export default function TermsOfServiceScreen() {
 
         <View style={styles.highlightBox}>
           <Text style={styles.highlightText}>
-            By creating an account, accessing, or using TradieTrack, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy.
+            By creating an account, accessing, or using JobRunner, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
           <Text style={styles.paragraph}>
-            By accessing or using TradieTrack, you confirm that:
+            By accessing or using JobRunner, you confirm that:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="You are at least 18 years of age" colors={colors} styles={styles} />
@@ -166,14 +166,14 @@ export default function TermsOfServiceScreen() {
             <BulletItem text="You will maintain the accuracy of such information" colors={colors} styles={styles} />
           </View>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
-            If you do not agree to these Terms, you must not access or use TradieTrack. If you are accepting these Terms on behalf of a company or other legal entity, you represent that you have the authority to bind that entity.
+            If you do not agree to these Terms, you must not access or use JobRunner. If you are accepting these Terms on behalf of a company or other legal entity, you represent that you have the authority to bind that entity.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>2. Description of Service</Text>
           <Text style={styles.paragraph}>
-            TradieTrack is a comprehensive business management platform designed specifically for Australian tradespeople and service businesses. Our services include:
+            JobRunner is a comprehensive business management platform designed specifically for Australian tradespeople and service businesses. Our services include:
           </Text>
           
           <Text style={styles.subSectionTitle}>Job Management</Text>
@@ -218,7 +218,7 @@ export default function TermsOfServiceScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>3. Account Responsibilities</Text>
           <Text style={styles.paragraph}>
-            As a TradieTrack user, you are responsible for:
+            As a JobRunner user, you are responsible for:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Maintaining the confidentiality of your login credentials" colors={colors} styles={styles} />
@@ -252,7 +252,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Subscription Plans</Text>
           <Text style={styles.paragraph}>
-            TradieTrack offers both free and paid subscription plans. For paid plans:
+            JobRunner offers both free and paid subscription plans. For paid plans:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Subscriptions are available on monthly or annual billing cycles" colors={colors} styles={styles} />
@@ -273,14 +273,14 @@ export default function TermsOfServiceScreen() {
 
           <Text style={styles.subSectionTitle}>Transaction Fees</Text>
           <Text style={styles.paragraph}>
-            When you collect payments from your clients through TradieTrack, standard payment processing fees apply. These are disclosed before you enable payment collection.
+            When you collect payments from your clients through JobRunner, standard payment processing fees apply. These are disclosed before you enable payment collection.
           </Text>
 
           <Text style={styles.subSectionTitle}>Refunds</Text>
           <View style={styles.bulletList}>
             <BulletItem text="Monthly subscriptions: No refunds for partial months" colors={colors} styles={styles} />
             <BulletItem text="Annual subscriptions: Pro-rata refund within first 14 days" colors={colors} styles={styles} />
-            <BulletItem text="Refund requests should be sent to billing@tradietrack.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Refund requests should be sent to support@jobrunner.com.au" colors={colors} styles={styles} />
           </View>
 
           <Text style={styles.subSectionTitle}>Price Changes</Text>
@@ -294,18 +294,18 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Our Intellectual Property</Text>
           <Text style={styles.paragraph}>
-            TradieTrack, including all software, design, trademarks, logos, content, and documentation, is owned by TradieTrack Pty Ltd and is protected by Australian and international intellectual property laws.
+            JobRunner, including all software, design, trademarks, logos, content, and documentation, is owned by JobRunner Pty Ltd and is protected by Australian and international intellectual property laws.
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="We grant you a limited, non-exclusive, non-transferable licence to use the app" colors={colors} styles={styles} />
             <BulletItem text="This licence is solely for your internal business purposes" colors={colors} styles={styles} />
             <BulletItem text="You may not copy, modify, distribute, or create derivative works" colors={colors} styles={styles} />
-            <BulletItem text="All rights not expressly granted are reserved by TradieTrack" colors={colors} styles={styles} />
+            <BulletItem text="All rights not expressly granted are reserved by JobRunner" colors={colors} styles={styles} />
           </View>
 
           <Text style={styles.subSectionTitle}>Your Content</Text>
           <Text style={styles.paragraph}>
-            You retain ownership of all content you create or upload to TradieTrack ("Your Content"), including:
+            You retain ownership of all content you create or upload to JobRunner ("Your Content"), including:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Client information and job details" colors={colors} styles={styles} />
@@ -319,7 +319,42 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>6. Limitation of Liability</Text>
+          <Text style={styles.sectionTitle}>6. Invoice & Document Accuracy</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            You are responsible for reviewing all quotes, invoices, and other documents generated through the platform before sending them to clients. JobRunner provides calculation tools as a convenience but does not guarantee the accuracy of rates, quantities, totals, or GST calculations. You acknowledge that all financial documents should be verified before distribution.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>7. Time Tracking Disclaimer</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            Time tracking data may be affected by device performance, background app restrictions, GPS availability, battery life, and network connectivity. Recorded hours are provided as a guide and may not reflect exact working times. You are responsible for verifying all tracked time before submitting timesheets or generating invoices from time data.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>8. GPS & Location Data</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            GPS location data may be inaccurate or temporarily unavailable due to signal interference, indoor environments, weather conditions, or device limitations. The platform logs GPS accuracy metrics where available but does not guarantee location precision. JobRunner is not liable for disputes arising from GPS location discrepancies. Users should verify location records where accuracy is critical.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>9. Edited Records & Audit Trail</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            When time entries or other records are manually edited, the original values and the identity of the person who made the change are logged within the system. Users acknowledge that manual adjustments override originally tracked data and that these edit logs may be used for audit and dispute resolution purposes. Employers and employees should review edit histories when verifying timesheets.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>10. No Escrow / Payment Intermediary</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            JobRunner does not act as an escrow service, financial intermediary, or payment guarantor between you and your clients. All payment processing is handled by Stripe, a PCI-DSS compliant third-party payment processor. JobRunner does not store credit card information directly. You are responsible for following up on unpaid invoices and managing payment disputes directly with your clients. Stripe's terms of service apply to all payment transactions processed through the platform.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>11. Limitation of Liability</Text>
           
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>
@@ -331,7 +366,7 @@ export default function TermsOfServiceScreen() {
             To the maximum extent permitted by Australian law:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="TradieTrack is provided 'as is' and 'as available' without warranties of any kind, express or implied" colors={colors} styles={styles} />
+            <BulletItem text="JobRunner is provided 'as is' and 'as available' without warranties of any kind, express or implied" colors={colors} styles={styles} />
             <BulletItem text="We do not warrant that the service will be uninterrupted, error-free, or completely secure" colors={colors} styles={styles} />
             <BulletItem text="We are not liable for any indirect, incidental, special, consequential, or punitive damages" colors={colors} styles={styles} />
             <BulletItem text="We are not liable for lost profits, data loss, or business interruption" colors={colors} styles={styles} />
@@ -346,13 +381,16 @@ export default function TermsOfServiceScreen() {
             <BulletItem text="We are not liable for losses caused by your failure to secure your account" colors={colors} styles={styles} />
           </View>
 
-          <Text style={[styles.paragraph, styles.lastParagraph]}>
+          <Text style={styles.paragraph}>
             These limitations apply to the fullest extent permitted by law and survive any termination of these Terms.
+          </Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            JobRunner is not responsible for data loss resulting from user device failure, improper use, third-party service outages, or events beyond reasonable control. While we maintain regular backups and data redundancy measures, we recommend you export critical business data periodically.
           </Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>7. Australian Consumer Law</Text>
+          <Text style={styles.sectionTitle}>12. Australian Consumer Law</Text>
           <Text style={styles.paragraph}>
             Nothing in these Terms is intended to exclude, restrict, or modify rights you may have under the Australian Consumer Law (Schedule 2 of the Competition and Consumer Act 2010 (Cth)) ("ACL") that cannot be excluded, restricted, or modified by agreement.
           </Text>
@@ -371,19 +409,19 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>8. Dispute Resolution</Text>
+          <Text style={styles.sectionTitle}>13. Dispute Resolution</Text>
           <Text style={styles.paragraph}>
-            We are committed to resolving disputes fairly and efficiently. If you have a dispute with TradieTrack:
+            We are committed to resolving disputes fairly and efficiently. If you have a dispute with JobRunner:
           </Text>
           
           <Text style={styles.subSectionTitle}>Step 1: Direct Resolution</Text>
           <Text style={styles.paragraph}>
-            Contact our support team at admin@avwebinnovation.com. We aim to resolve most issues within 10 business days.
+            Contact our support team at support@jobrunner.com.au. We aim to resolve most issues within 10 business days.
           </Text>
 
           <Text style={styles.subSectionTitle}>Step 2: Formal Complaint</Text>
           <Text style={styles.paragraph}>
-            If not resolved, submit a formal written complaint to legal@tradietrack.com.au. We will acknowledge receipt within 5 business days and provide a substantive response within 21 business days.
+            If not resolved, submit a formal written complaint to support@jobrunner.com.au. We will acknowledge receipt within 5 business days and provide a substantive response within 21 business days.
           </Text>
 
           <Text style={styles.subSectionTitle}>Step 3: Mediation</Text>
@@ -398,11 +436,11 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>9. Termination</Text>
+          <Text style={styles.sectionTitle}>14. Termination</Text>
           
           <Text style={styles.subSectionTitle}>Termination by You</Text>
           <Text style={styles.paragraph}>
-            You may cancel your account at any time through the app settings or by contacting admin@avwebinnovation.com. Upon cancellation:
+            You may cancel your account at any time through the app settings or by contacting support@jobrunner.com.au. Upon cancellation:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Your subscription will remain active until the end of the current billing period" colors={colors} styles={styles} />
@@ -424,12 +462,12 @@ export default function TermsOfServiceScreen() {
 
           <Text style={styles.subSectionTitle}>Effect of Termination</Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
-            Upon termination, your right to use TradieTrack ceases immediately. Sections that by their nature should survive termination will survive, including intellectual property rights, limitation of liability, indemnification, and dispute resolution.
+            Upon termination, your right to use JobRunner ceases immediately. Sections that by their nature should survive termination will survive, including intellectual property rights, limitation of liability, indemnification, and dispute resolution.
           </Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>10. Changes to Terms</Text>
+          <Text style={styles.sectionTitle}>15. Changes to Terms</Text>
           <Text style={styles.paragraph}>
             We may update these Terms from time to time to reflect changes in our services, legal requirements, or business practices.
           </Text>
@@ -445,7 +483,7 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>11. General Provisions</Text>
+          <Text style={styles.sectionTitle}>16. General Provisions</Text>
           
           <Text style={styles.subSectionTitle}>Governing Law</Text>
           <Text style={styles.paragraph}>
@@ -454,7 +492,7 @@ export default function TermsOfServiceScreen() {
 
           <Text style={styles.subSectionTitle}>Entire Agreement</Text>
           <Text style={styles.paragraph}>
-            These Terms, together with our Privacy Policy, constitute the entire agreement between you and TradieTrack regarding the use of our services.
+            These Terms, together with our Privacy Policy, constitute the entire agreement between you and JobRunner regarding the use of our services.
           </Text>
 
           <Text style={styles.subSectionTitle}>Severability</Text>
@@ -474,16 +512,15 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>12. Contact Information</Text>
+          <Text style={styles.sectionTitle}>17. Contact Information</Text>
           <Text style={styles.paragraph}>
             If you have any questions about these Terms of Service, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="General enquiries: admin@avwebinnovation.com" colors={colors} styles={styles} />
-            <BulletItem text="Legal matters: legal@tradietrack.com.au" colors={colors} styles={styles} />
-            <BulletItem text="Billing enquiries: billing@tradietrack.com.au" colors={colors} styles={styles} />
-            <BulletItem text="Website: www.tradietrack.com.au" colors={colors} styles={styles} />
-            <BulletItem text="Mail: TradieTrack Pty Ltd, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
+            <BulletItem text="General enquiries: support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Phone: 1300 JOBRUN (1300 562 786)" colors={colors} styles={styles} />
+            <BulletItem text="Website: www.jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Mail: JobRunner Pty Ltd, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
           </View>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             We aim to respond to all enquiries within 5 business days.
@@ -491,8 +528,8 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Last Updated: 15 December 2025</Text>
-          <Text style={styles.footerText}>Version 1.0</Text>
+          <Text style={styles.footerText}>Last Updated: February 2026</Text>
+          <Text style={styles.footerText}>Version 2.0</Text>
         </View>
       </ScrollView>
     </>

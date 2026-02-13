@@ -19,13 +19,13 @@ export default function PrivacyPolicy() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-privacy-policy">Privacy Policy</h1>
-            <p className="text-muted-foreground mb-8">Last updated: December 2025</p>
+            <p className="text-muted-foreground mb-8">Last updated: February 2026</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               <section>
                 <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  TradieTrack ("we", "our", or "us") is committed to protecting the privacy of Australian 
+                  JobRunner ("we", "our", or "us") is committed to protecting the privacy of Australian 
                   tradespeople and their clients. This Privacy Policy explains how we collect, use, disclose, 
                   and safeguard your information when you use our platform. We comply with the Australian 
                   Privacy Principles (APPs) contained in the Privacy Act 1988 (Cth).
@@ -41,6 +41,9 @@ export default function PrivacyPolicy() {
                   <li><strong>Payment Information:</strong> Credit card details (processed securely by Stripe), bank account details for receiving payments</li>
                   <li><strong>Communications:</strong> Messages, emails, and SMS sent through our platform</li>
                   <li><strong>Usage Data:</strong> How you interact with our services, including log data and device information</li>
+                  <li><strong>GPS & Location Data:</strong> When enabled, we collect GPS coordinates, accuracy metrics, speed, heading, altitude, and reverse-geocoded addresses during work hours for time tracking, geofencing, and job site verification purposes</li>
+                  <li><strong>Time Tracking Data:</strong> Clock in/out times, break durations, pause events, hourly rates, and a full audit trail of any manual edits made to time entries including who made the change and when</li>
+                  <li><strong>Device Information:</strong> Battery level, charging status, device type, and operating system version to support offline sync and location tracking features</li>
                 </ul>
               </section>
 
@@ -54,6 +57,9 @@ export default function PrivacyPolicy() {
                   <li>Respond to your comments, questions, and customer service requests</li>
                   <li>Generate business insights and analytics for your dashboard</li>
                   <li>Comply with Australian tax and legal obligations</li>
+                  <li>Provide GPS-based geofencing for automatic job site check-in and check-out</li>
+                  <li>Maintain audit trails for time entry edits to support dispute resolution and fair work compliance</li>
+                  <li>Generate job profitability reports combining time tracking, material costs, and invoice data</li>
                 </ul>
               </section>
 
@@ -62,7 +68,7 @@ export default function PrivacyPolicy() {
                 <p className="text-muted-foreground leading-relaxed mb-3">We share your information only in the following circumstances:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                   <li><strong>With Your Clients:</strong> When you send quotes or invoices, your business details are shared with your clients</li>
-                  <li><strong>Service Providers:</strong> With trusted third parties who assist in operating our platform (Stripe for payments, SendGrid for emails, Twilio for SMS)</li>
+                  <li><strong>Service Providers:</strong> With trusted third parties who assist in operating our platform (Stripe for payments, SendGrid for emails, Twilio for SMS, Google Cloud for data storage)</li>
                   <li><strong>Legal Requirements:</strong> If required by law, regulation, or legal process</li>
                   <li><strong>Business Transfers:</strong> In connection with any merger, sale of company assets, or acquisition</li>
                 </ul>
@@ -83,6 +89,13 @@ export default function PrivacyPolicy() {
                   <li>Regular security assessments and updates</li>
                   <li>Restricted access to personal information on a need-to-know basis</li>
                 </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">5A. Location & Time Tracking Data</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  We collect location data only when time tracking or geofencing features are actively enabled by you or your employer. Location tracking can be disabled at any time through your device settings or within the app. Location data is stored securely and is only accessible to the business owner and authorised managers within your organisation. We retain location tracking data for 12 months, after which it is automatically archived. Time entry edit histories are retained for the duration of your account plus 7 years to comply with Australian record-keeping requirements under the Fair Work Act 2009.
+                </p>
               </section>
 
               <section>
@@ -108,7 +121,7 @@ export default function PrivacyPolicy() {
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   If you believe your data may have been compromised, please contact us immediately at 
-                  admin@avwebinnovation.com.
+                  support@jobrunner.com.au.
                 </p>
               </section>
 
@@ -171,9 +184,9 @@ export default function PrivacyPolicy() {
                 </p>
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    <strong>TradieTrack Support</strong><br />
-                    Email: admin@avwebinnovation.com<br />
-                    Website: tradietrack.com
+                    <strong>JobRunner Support</strong><br />
+                    Email: support@jobrunner.com.au<br />
+                    Website: jobrunner.com.au
                   </p>
                 </div>
               </section>
@@ -183,7 +196,7 @@ export default function PrivacyPolicy() {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            By using TradieTrack, you agree to this Privacy Policy and our{" "}
+            By using JobRunner, you agree to this Privacy Policy and our{" "}
             <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>.
           </p>
         </div>

@@ -22,6 +22,7 @@ import JobFlowWizard from "@/components/JobFlowWizard";
 import QuickCollectPayment from "./QuickCollectPayment";
 import { BeforePhotoPrompt } from "./BeforePhotoPrompt";
 import LinkedJobsCard from "./LinkedJobsCard";
+import JobProfitabilityCard from "./JobProfitabilityCard";
 import { UnifiedSendModal } from "./UnifiedSendModal";
 import { ManualSmsComposer } from "./ManualSmsComposer";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -1805,6 +1806,10 @@ export default function JobDetailView({
               )}
             </CardContent>
           </Card>
+
+          {!isTradie && (
+            <JobProfitabilityCard jobId={jobId} />
+          )}
 
           {job.status !== 'invoiced' && job.status !== 'pending' && (
             <Card data-testid="card-log-site-update">

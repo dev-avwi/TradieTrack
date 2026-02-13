@@ -271,6 +271,9 @@ import {
   jobMaterials,
   type JobMaterial,
   type InsertJobMaterial,
+  timeEntryEdits,
+  type InsertTimeEntryEdit,
+  type TimeEntryEdit,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -531,6 +534,11 @@ export interface IStorage {
   deleteTimeEntry(id: string, userId: string): Promise<boolean>;
   stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   getActiveTimeEntry(userId: string): Promise<TimeEntry | undefined>;
+  
+  // Time Entry Edit Audit Trail
+  createTimeEntryEdit(edit: InsertTimeEntryEdit): Promise<TimeEntryEdit>;
+  getTimeEntryEdits(timeEntryId: string): Promise<TimeEntryEdit[]>;
+  getTimeEntryEditLog(userId: string, limit?: number, offset?: number): Promise<TimeEntryEdit[]>;
   
   // Timesheets
   getTimesheets(userId: string): Promise<Timesheet[]>;
@@ -2950,6 +2958,31 @@ export class PostgresStorage implements IStorage {
       ))
       .limit(1);
     return result[0];
+  }
+
+  async createTimeEntryEdit(edit: InsertTimeEntryEdit): Promise<TimeEntryEdit> {
+    const [result] = await db.insert(timeEntryEdits).values(edit).returning();
+    return result;
+  }
+
+  async getTimeEntryEdits(timeEntryId: string): Promise<TimeEntryEdit[]> {
+    return await db.select().from(timeEntryEdits)
+      .where(eq(timeEntryEdits.timeEntryId, timeEntryId))
+      .orderBy(desc(timeEntryEdits.editedAt));
+  }
+
+  async getTimeEntryEditLog(userId: string, limit: number = 50, offset: number = 0): Promise<TimeEntryEdit[]> {
+    const userEntries = await db.select({ id: timeEntries.id }).from(timeEntries)
+      .where(eq(timeEntries.userId, userId));
+    const entryIds = userEntries.map(e => e.id);
+    
+    if (entryIds.length === 0) return [];
+    
+    return await db.select().from(timeEntryEdits)
+      .where(inArray(timeEntryEdits.timeEntryId, entryIds))
+      .orderBy(desc(timeEntryEdits.editedAt))
+      .limit(limit)
+      .offset(offset);
   }
 
   async getAllActiveTimeEntries(): Promise<TimeEntry[]> {

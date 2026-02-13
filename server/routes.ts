@@ -100,6 +100,11 @@ import {
   teamMemberMetrics,
   // Job assignment requests
   jobAssignmentRequests,
+  // Time entry edit audit trail
+  timeEntryEdits,
+  insertTimeEntryEditSchema,
+  type InsertTimeEntryEdit,
+  type TimeEntryEdit,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, and } from "drizzle-orm";
@@ -4792,22 +4797,42 @@ Be specific about materials, colors, and features that would be included.`
       const jobInvoices = invoices.filter(i => i.jobId === job.id && i.status === 'paid');
       const invoiceTotal = jobInvoices.reduce((sum, i) => sum + (parseFloat(i.total || '0')), 0);
       
+      // Get quoted amount
+      const quotes = await storage.getQuotes(userContext.effectiveUserId);
+      const jobQuote = quotes.find(q => q.jobId === job.id && (q.status === 'accepted' || q.status === 'sent'));
+      const quotedAmount = jobQuote ? parseFloat(jobQuote.total || '0') : null;
+      
       // Get expenses for this job
       const expenses = await storage.getExpenses(userContext.effectiveUserId);
       const jobExpenses = expenses.filter(e => e.jobId === job.id);
-      const materialsCost = jobExpenses.filter(e => e.category === 'materials').reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      const materialsCostFromExpenses = jobExpenses.filter(e => e.category === 'materials').reduce((sum, e) => sum + parseFloat(e.amount), 0);
       const otherExpenses = jobExpenses.filter(e => e.category !== 'materials').reduce((sum, e) => sum + parseFloat(e.amount), 0);
       
-      // Get time entries for labour cost
-      const timeEntries = await storage.getTimeEntriesByJob(job.id, userContext.effectiveUserId);
+      // Get materials from job_materials table
+      let materialsCostFromMaterials = 0;
+      try {
+        const jobMaterials = await storage.getJobMaterials(job.id, userContext.effectiveUserId);
+        materialsCostFromMaterials = jobMaterials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+      } catch (e) { /* no materials */ }
+      
+      const materialsCost = materialsCostFromExpenses + materialsCostFromMaterials;
+      
+      // Get time entries for labour cost using actual rates
+      const timeEntries = await storage.getTimeEntries(userContext.effectiveUserId, job.id);
       const totalMinutes = timeEntries.reduce((sum, t) => {
         if (t.startTime && t.endTime) {
           return sum + Math.floor((new Date(t.endTime).getTime() - new Date(t.startTime).getTime()) / 60000);
         }
         return sum;
       }, 0);
-      const hourlyRate = 80; // Default rate
-      const labourCost = (totalMinutes / 60) * hourlyRate;
+      const labourCost = timeEntries.reduce((sum, t) => {
+        if (t.startTime && t.endTime) {
+          const hours = (new Date(t.endTime).getTime() - new Date(t.startTime).getTime()) / (1000 * 60 * 60);
+          const rate = parseFloat(t.hourlyRate?.toString() || '0');
+          return sum + (hours * rate);
+        }
+        return sum;
+      }, 0);
       
       const { calculateJobProfit } = await import('./ai');
       
@@ -4821,6 +4846,8 @@ Be specific about materials, colors, and features that would be included.`
       res.json({
         ...profitData,
         revenue: invoiceTotal,
+        quoted: quotedAmount,
+        quotedVsActual: quotedAmount !== null ? quotedAmount - (invoiceTotal) : null,
         costs: {
           labour: labourCost,
           materials: materialsCost,
@@ -16401,6 +16428,52 @@ Respond with JSON in this format:
     }
   });
 
+  // Get audit log of all time entry edits for the business (owner/manager view)
+  app.get("/api/time-entries/edit-log", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      
+      if (!userContext.isOwner && !userContext.permissions.includes('manage_team')) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const edits = await storage.getTimeEntryEditLog(userContext.effectiveUserId, limit, offset);
+      
+      const enrichedEdits = await Promise.all(edits.map(async (edit) => {
+        const editor = await storage.getUser(edit.editedBy);
+        const timeEntry = await storage.getTimeEntry(edit.timeEntryId, userContext.effectiveUserId);
+        let jobTitle = null;
+        if (timeEntry && (timeEntry as any).jobId) {
+          const job = await storage.getJob((timeEntry as any).jobId, userContext.effectiveUserId);
+          jobTitle = job?.title || null;
+        }
+        
+        let entryOwnerName = null;
+        if (timeEntry && (timeEntry as any).userId) {
+          const entryOwner = await storage.getUser((timeEntry as any).userId);
+          entryOwnerName = entryOwner ? `${entryOwner.firstName || ''} ${entryOwner.lastName || ''}`.trim() || entryOwner.email : null;
+        }
+        
+        return {
+          ...edit,
+          editorName: editor ? `${editor.firstName || ''} ${editor.lastName || ''}`.trim() || editor.email : 'Unknown',
+          entryOwnerName,
+          jobTitle,
+          entryDate: timeEntry?.startTime || null,
+        };
+      }));
+      
+      res.json(enrichedEdits);
+    } catch (error) {
+      console.error('Error fetching time entry edit log:', error);
+      res.status(500).json({ error: 'Failed to fetch edit log' });
+    }
+  });
+
   app.get("/api/time-entries/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -16415,6 +16488,45 @@ Respond with JSON in this format:
     } catch (error) {
       console.error('Error fetching time entry:', error);
       res.status(500).json({ error: 'Failed to fetch time entry' });
+    }
+  });
+
+  // Get edit history for a specific time entry
+  app.get("/api/time-entries/:id/edit-history", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      
+      const entry = await storage.getTimeEntry(id, userId);
+      if (!entry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      
+      const edits = await storage.getTimeEntryEdits(id);
+      
+      const enrichedEdits = await Promise.all(edits.map(async (edit) => {
+        const editor = await storage.getUser(edit.editedBy);
+        return {
+          ...edit,
+          editorName: editor ? `${editor.firstName || ''} ${editor.lastName || ''}`.trim() || editor.email : 'Unknown',
+        };
+      }));
+      
+      res.json(enrichedEdits);
+    } catch (error) {
+      console.error('Error fetching time entry edit history:', error);
+      res.status(500).json({ error: 'Failed to fetch edit history' });
+    }
+  });
+
+  // Check if a time entry has been edited
+  app.get("/api/time-entries/:id/has-edits", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const edits = await storage.getTimeEntryEdits(id);
+      res.json({ hasEdits: edits.length > 0, editCount: edits.length });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to check edits' });
     }
   });
 
@@ -16510,19 +16622,17 @@ Respond with JSON in this format:
       const userId = req.userId!;
       const { id } = req.params;
       const data = insertTimeEntrySchema.partial().parse(req.body);
+      const editReason = req.body.editReason || null;
       
-      // Verify ownership before update (with team/supervisor context)
       const existingEntry = await storage.getTimeEntry(id, userId);
       if (!existingEntry) {
         return res.status(404).json({ error: 'Time entry not found' });
       }
       
-      // Allow supervisors to edit team member timers
-      let canManageEntry = (existingEntry as any).userId === userId; // Owner can always manage
+      let canManageEntry = (existingEntry as any).userId === userId;
+      const isEditingSelf = (existingEntry as any).userId === userId;
       
-      // Check if current user can manage this entry (supervisor access)
       if (!canManageEntry && (existingEntry as any).userId !== userId) {
-        // For now, implement basic supervisor logic - get all team members under this user
         const teamMembers = await storage.getTeamMembers(userId);
         const isTeamMember = teamMembers.some((member: any) => member.id === (existingEntry as any).userId);
         canManageEntry = isTeamMember;
@@ -16532,9 +16642,33 @@ Respond with JSON in this format:
         return res.status(403).json({ error: 'Access denied - not your time entry or team member' });
       }
       
-      // Prevent modification of startTime on active timer, but allow setting endTime to stop it
       if (!existingEntry.endTime && data.startTime) {
         return res.status(400).json({ error: 'Cannot modify start time of active timer' });
+      }
+      
+      const editSource = isEditingSelf ? 'manual' : 'supervisor';
+      const fieldsToTrack = ['startTime', 'endTime', 'duration', 'hourlyRate', 'description', 'isBillable', 'timeCategory', 'isBreak', 'isOvertime', 'jobId'];
+      
+      for (const field of fieldsToTrack) {
+        if ((data as any)[field] !== undefined) {
+          const oldVal = (existingEntry as any)[field];
+          const newVal = (data as any)[field];
+          
+          const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal instanceof Date ? oldVal.toISOString() : oldVal);
+          const newStr = newVal === null || newVal === undefined ? null : String(newVal instanceof Date ? new Date(newVal).toISOString() : newVal);
+          
+          if (oldStr !== newStr) {
+            await storage.createTimeEntryEdit({
+              timeEntryId: id,
+              editedBy: userId,
+              editReason,
+              fieldChanged: field,
+              oldValue: oldStr,
+              newValue: newStr,
+              editSource,
+            });
+          }
+        }
       }
       
       const timeEntry = await storage.updateTimeEntry(id, userId, data);
@@ -17086,51 +17220,100 @@ Respond with JSON in this format:
         return res.status(404).json({ error: "Job not found" });
       }
 
+      // Get client info
+      let client = null;
+      try {
+        if (job.clientId) {
+          client = await storage.getClientById(job.clientId);
+        }
+      } catch (e) {}
+
+      // Get quoted amount
+      const allQuotes = await storage.getQuotes(userId);
+      const jobQuote = allQuotes.find(q => q.jobId === jobId && (q.status === 'accepted' || q.status === 'sent'));
+      const quotedAmount = jobQuote ? parseFloat(jobQuote.total || '0') : null;
+
       // Get job revenue (from invoices)
       const invoices = await storage.getInvoices(userId);
       const jobInvoices = invoices.filter(invoice => invoice.jobId === jobId);
       const totalRevenue = jobInvoices.reduce((sum, invoice) => {
         return sum + (invoice.status === 'paid' ? parseFloat(invoice.total || '0') : 0);
       }, 0);
+      const pendingRevenue = jobInvoices.filter(inv => inv.status === 'sent').reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
 
       // Get job expenses
       const expenses = await storage.getExpenses(userId, { jobId });
-      const totalExpenses = expenses.reduce((sum, expense) => {
-        return sum + parseFloat(expense.amount || '0');
-      }, 0);
+      const materialExpenses = expenses.filter(e => e.category === 'materials');
+      const nonMaterialExpensesList = expenses.filter(e => e.category !== 'materials');
+      const materialExpenseCost = materialExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+      const nonMaterialExpenses = nonMaterialExpensesList.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
+      // Get materials from job_materials table
+      let jobMaterials: any[] = [];
+      let materialsCostFromTable = 0;
+      try {
+        jobMaterials = await storage.getJobMaterials(jobId, userId);
+        materialsCostFromTable = jobMaterials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+      } catch (e) { /* no materials */ }
+
+      const totalMaterialsCost = materialExpenseCost + materialsCostFromTable;
 
       // Get time tracking costs
       const timeEntries = await storage.getTimeEntries(userId, jobId);
-      const totalLaborCost = timeEntries
-        .filter(entry => entry.endTime)
-        .reduce((sum, entry) => {
-          const start = new Date(entry.startTime);
-          const end = new Date(entry.endTime!);
-          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-          const rate = parseFloat(entry.hourlyRate?.toString() || '0');
-          return sum + (hours * rate);
-        }, 0);
+      const completedEntries = timeEntries.filter(entry => entry.endTime);
+      const totalLaborCost = completedEntries.reduce((sum, entry) => {
+        const start = new Date(entry.startTime);
+        const end = new Date(entry.endTime!);
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        const rate = parseFloat(entry.hourlyRate?.toString() || '0');
+        return sum + (hours * rate);
+      }, 0);
 
-      const totalCosts = totalExpenses + totalLaborCost;
+      // Hours breakdown
+      const totalHours = completedEntries.reduce((sum, entry) => {
+        return sum + (new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60);
+      }, 0);
+      const billableHours = completedEntries.filter(e => e.isBillable !== false).reduce((sum, entry) => {
+        return sum + (new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60);
+      }, 0);
+      const nonBillableHours = totalHours - billableHours;
+
+      const totalCosts = nonMaterialExpenses + totalMaterialsCost + totalLaborCost;
       const profit = totalRevenue - totalCosts;
       const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
 
       res.json({
         jobId,
         jobTitle: job.title,
+        jobStatus: job.status,
+        clientName: client ? `${(client as any).firstName || ''} ${(client as any).lastName || ''}`.trim() : null,
+        quoted: {
+          amount: quotedAmount,
+          gst: jobQuote ? parseFloat((jobQuote as any).gstAmount || '0') : null,
+          quoteNumber: jobQuote?.number || null,
+        },
         revenue: {
           invoiced: totalRevenue,
-          pending: jobInvoices.filter(inv => inv.status === 'sent').reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0)
+          pending: pendingRevenue,
+          received: totalRevenue,
         },
         costs: {
-          materials: totalExpenses,
-          labor: totalLaborCost,
-          total: totalCosts
+          labour: totalLaborCost,
+          materials: totalMaterialsCost,
+          otherExpenses: nonMaterialExpenses,
+          total: totalCosts,
         },
         profit: {
           amount: profit,
-          margin: profitMargin
+          margin: profitMargin,
+          vsQuote: quotedAmount !== null ? (quotedAmount - totalCosts) - profit : null,
         },
+        hours: {
+          total: totalHours,
+          billable: billableHours,
+          nonBillable: nonBillableHours,
+        },
+        status: profitMargin > 15 ? 'profitable' : profitMargin > 5 ? 'tight' : 'loss',
         expenses: expenses.map(expense => ({
           id: expense.id,
           description: expense.description,
@@ -17139,14 +17322,23 @@ Respond with JSON in this format:
           date: expense.expenseDate,
           receiptUrl: expense.receiptUrl
         })),
-        timeEntries: timeEntries.filter(entry => entry.endTime).map(entry => ({
+        timeEntries: completedEntries.map(entry => ({
           id: entry.id,
           description: entry.description,
           hours: ((new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60)).toFixed(2),
           rate: entry.hourlyRate,
           cost: ((new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60)) * parseFloat(entry.hourlyRate?.toString() || '0'),
           date: entry.startTime
-        }))
+        })),
+        materials: jobMaterials.map(m => ({
+          id: m.id,
+          name: m.name,
+          quantity: m.quantity,
+          unitCost: m.unitCost,
+          totalCost: parseFloat(m.totalCost?.toString() || '0'),
+          supplier: m.supplier,
+          status: m.status,
+        })),
       });
     } catch (error) {
       console.error("Get job profitability error:", error);
@@ -18739,11 +18931,43 @@ Respond with JSON in this format:
     }
   });
   
-  // Update time entry (stop timer, edit)
+  // Update time entry (stop timer, edit) - with audit trail
   app.patch("/api/time-entries/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const entryId = req.params.id;
+      const editReason = req.body.editReason || null;
+      
+      const existingEntry = await storage.getTimeEntry(entryId, userId);
+      if (!existingEntry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      
+      const isEditingSelf = (existingEntry as any).userId === userId;
+      const editSource = isEditingSelf ? 'manual' : 'supervisor';
+      const fieldsToTrack = ['startTime', 'endTime', 'duration', 'hourlyRate', 'description', 'isBillable', 'timeCategory', 'isBreak', 'isOvertime', 'jobId'];
+      
+      for (const field of fieldsToTrack) {
+        if (req.body[field] !== undefined) {
+          const oldVal = (existingEntry as any)[field];
+          const newVal = req.body[field];
+          
+          const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal instanceof Date ? oldVal.toISOString() : oldVal);
+          const newStr = newVal === null || newVal === undefined ? null : String(newVal instanceof Date ? new Date(newVal).toISOString() : newVal);
+          
+          if (oldStr !== newStr) {
+            await storage.createTimeEntryEdit({
+              timeEntryId: entryId,
+              editedBy: userId,
+              editReason,
+              fieldChanged: field,
+              oldValue: oldStr,
+              newValue: newStr,
+              editSource,
+            });
+          }
+        }
+      }
       
       const updated = await storage.updateTimeEntry(entryId, userId, req.body);
       res.json(updated);
@@ -24979,7 +25203,122 @@ Respond with JSON in this format:
   });
 
   // ===== REPORTING ROUTES =====
-  
+
+  // Multi-job profitability overview report
+  app.get("/api/reports/profitability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+
+      if (!userContext.isOwner) {
+        return res.status(403).json({ error: 'Access denied - owners only' });
+      }
+
+      const effectiveUserId = userContext.effectiveUserId;
+      const { startDate, endDate, status } = req.query;
+
+      let jobs = await storage.getJobs(effectiveUserId);
+
+      if (status) {
+        jobs = jobs.filter(j => j.status === status);
+      }
+      if (startDate) {
+        jobs = jobs.filter(j => new Date(j.createdAt!) >= new Date(startDate as string));
+      }
+      if (endDate) {
+        jobs = jobs.filter(j => new Date(j.createdAt!) <= new Date(endDate as string));
+      }
+
+      const allInvoices = await storage.getInvoices(effectiveUserId);
+      const allExpenses = await storage.getExpenses(effectiveUserId);
+      const allQuotes = await storage.getQuotes(effectiveUserId);
+
+      let totalRevenue = 0;
+      let totalCosts = 0;
+      let jobsProfitable = 0;
+      let jobsAtLoss = 0;
+
+      const jobProfitability = await Promise.all(jobs.map(async (job) => {
+        const jobInvoices = allInvoices.filter(i => i.jobId === job.id && i.status === 'paid');
+        const revenue = jobInvoices.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+
+        const jobQuote = allQuotes.find(q => q.jobId === job.id && (q.status === 'accepted' || q.status === 'sent'));
+        const quotedAmount = jobQuote ? parseFloat(jobQuote.total || '0') : null;
+
+        const jobExpenses = allExpenses.filter(e => e.jobId === job.id);
+        const expenseCost = jobExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
+        const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
+        const labourCost = timeEntries
+          .filter(e => e.endTime)
+          .reduce((sum, e) => {
+            const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+            return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
+          }, 0);
+
+        let materialsCost = 0;
+        try {
+          const materials = await storage.getJobMaterials(job.id, effectiveUserId);
+          materialsCost = materials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+        } catch (e) { /* no materials */ }
+
+        const costs = expenseCost + labourCost + materialsCost;
+        const profit = revenue - costs;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+        totalRevenue += revenue;
+        totalCosts += costs;
+        if (margin > 5) jobsProfitable++;
+        else if (revenue > 0) jobsAtLoss++;
+
+        let clientName = null;
+        try {
+          if (job.clientId) {
+            const client = await storage.getClientById(job.clientId);
+            clientName = client ? `${(client as any).firstName || ''} ${(client as any).lastName || ''}`.trim() : null;
+          }
+        } catch (e) {}
+
+        return {
+          jobId: job.id,
+          title: job.title,
+          status: job.status,
+          clientName,
+          quoted: quotedAmount,
+          revenue,
+          costs,
+          profit,
+          margin: parseFloat(margin.toFixed(1)),
+          profitStatus: margin > 15 ? 'profitable' : margin > 5 ? 'tight' : 'loss',
+          completedAt: (job as any).completedAt || null,
+          createdAt: job.createdAt,
+        };
+      }));
+
+      jobProfitability.sort((a, b) => a.margin - b.margin);
+
+      const totalProfit = totalRevenue - totalCosts;
+      const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+      res.json({
+        summary: {
+          totalRevenue,
+          totalCosts,
+          totalProfit,
+          averageMargin: parseFloat(avgMargin.toFixed(1)),
+          jobsAnalyzed: jobs.length,
+          jobsProfitable,
+          jobsAtLoss,
+          jobsNoRevenue: jobs.length - jobsProfitable - jobsAtLoss,
+        },
+        jobs: jobProfitability,
+      });
+    } catch (error) {
+      console.error("Error generating profitability report:", error);
+      res.status(500).json({ error: "Failed to generate profitability report" });
+    }
+  });
+
   // Get business performance summary
   app.get("/api/reports/summary", requireAuth, async (req: any, res) => {
     try {

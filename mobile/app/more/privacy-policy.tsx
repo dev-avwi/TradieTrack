@@ -127,7 +127,7 @@ export default function PrivacyPolicyScreen() {
       >
         <View style={styles.card}>
           <Text style={styles.paragraph}>
-            TradieTrack Pty Ltd (ABN to be assigned) ("TradieTrack", "we", "us", or "our") is committed to protecting your privacy and handling your personal information in accordance with the Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs).
+            JobRunner Pty Ltd (ABN to be assigned) ("JobRunner", "we", "us", or "our") is committed to protecting your privacy and handling your personal information in accordance with the Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs).
           </Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             This Privacy Policy explains how we collect, use, store, disclose, and protect your personal information when you use our mobile application and related services designed for Australian tradespeople and service businesses.
@@ -136,7 +136,7 @@ export default function PrivacyPolicyScreen() {
 
         <View style={styles.highlightBox}>
           <Text style={styles.highlightText}>
-            By using TradieTrack, you consent to the collection and use of your information as described in this Privacy Policy in accordance with Australian law.
+            By using JobRunner, you consent to the collection and use of your information as described in this Privacy Policy in accordance with Australian law.
           </Text>
         </View>
 
@@ -190,6 +190,21 @@ export default function PrivacyPolicyScreen() {
             <BulletItem text="Expense records and financial reports" colors={colors} styles={styles} />
           </View>
 
+          <Text style={styles.subSectionTitle}>GPS & Location Data</Text>
+          <Text style={styles.paragraph}>
+            When enabled, we collect GPS coordinates, accuracy metrics, speed, heading, altitude, and reverse-geocoded addresses during work hours for time tracking, geofencing, and job site verification purposes.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>Time Tracking Data</Text>
+          <Text style={styles.paragraph}>
+            Clock in/out times, break durations, pause events, hourly rates, and a full audit trail of any manual edits made to time entries including who made the change and when.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>Device Information</Text>
+          <Text style={styles.paragraph}>
+            Battery level, charging status, device type, and operating system version to support offline sync and location tracking features.
+          </Text>
+
           <Text style={styles.subSectionTitle}>Technical Information</Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             We automatically collect device information, IP address, app version, operating system, crash reports, and usage analytics to improve our services.
@@ -206,6 +221,9 @@ export default function PrivacyPolicyScreen() {
             <BulletItem text="Enabling time tracking and job scheduling" colors={colors} styles={styles} />
             <BulletItem text="Managing client relationships and communications" colors={colors} styles={styles} />
             <BulletItem text="Generating business reports and analytics" colors={colors} styles={styles} />
+            <BulletItem text="Provide GPS-based geofencing for automatic job site check-in and check-out" colors={colors} styles={styles} />
+            <BulletItem text="Maintain audit trails for time entry edits to support dispute resolution and fair work compliance" colors={colors} styles={styles} />
+            <BulletItem text="Generate job profitability reports combining time tracking, material costs, and invoice data" colors={colors} styles={styles} />
           </View>
 
           <Text style={styles.subSectionTitle}>Service Improvement</Text>
@@ -253,9 +271,16 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>3A. Location & Time Tracking Data</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            We collect location data only when time tracking or geofencing features are actively enabled by you or your employer. Location tracking can be disabled at any time through your device settings or within the app. Location data is stored securely and is only accessible to the business owner and authorised managers within your organisation. We retain location tracking data for 12 months, after which it is automatically archived. Time entry edit histories are retained for the duration of your account plus 7 years to comply with Australian record-keeping requirements under the Fair Work Act 2009.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>4. Third-Party Services</Text>
           <Text style={styles.paragraph}>
-            We share your information with trusted third-party service providers who assist in operating our platform:
+            We share your information with trusted third-party service providers who assist in operating our platform (Stripe for payments, SendGrid for emails, Twilio for SMS, Google Cloud for data storage):
           </Text>
           
           <Text style={styles.subSectionTitle}>Stripe (Payment Processing)</Text>
@@ -266,6 +291,11 @@ export default function PrivacyPolicyScreen() {
           <Text style={styles.subSectionTitle}>SendGrid (Email Communications)</Text>
           <Text style={styles.paragraph}>
             SendGrid delivers transactional emails including invoices, quotes, and reminders on your behalf to your clients.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>Twilio (SMS Notifications)</Text>
+          <Text style={styles.paragraph}>
+            Twilio provides SMS notification services for job updates, appointment reminders, and client communications.
           </Text>
 
           <Text style={styles.subSectionTitle}>Google (Maps and Location Services)</Text>
@@ -360,14 +390,14 @@ export default function PrivacyPolicyScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>8. Children's Privacy</Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
-            TradieTrack is designed for business use by adults and is not intended for children under 18 years of age. We do not knowingly collect personal information from children.
+            JobRunner is designed for business use by adults and is not intended for children under 18 years of age. We do not knowingly collect personal information from children.
           </Text>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>9. Changes to This Policy</Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
-            We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify you of any material changes via email or in-app notification. Your continued use of TradieTrack after such changes constitutes acceptance of the updated policy.
+            We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify you of any material changes via email or in-app notification. Your continued use of JobRunner after such changes constitutes acceptance of the updated policy.
           </Text>
         </View>
 
@@ -377,9 +407,9 @@ export default function PrivacyPolicyScreen() {
             If you have any questions about this Privacy Policy, wish to exercise your privacy rights, or have a complaint, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="Email: privacy@tradietrack.com.au" colors={colors} styles={styles} />
-            <BulletItem text="Website: www.tradietrack.com.au/privacy" colors={colors} styles={styles} />
-            <BulletItem text="Mail: TradieTrack Privacy Officer, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
+            <BulletItem text="Email: support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Website: www.jobrunner.com.au/privacy" colors={colors} styles={styles} />
+            <BulletItem text="Mail: JobRunner Privacy Officer, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
           </View>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             We aim to respond to all privacy enquiries within 30 days. If you are not satisfied with our response, you may lodge a complaint with the Office of the Australian Information Commissioner (OAIC).
@@ -387,7 +417,7 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Last Updated: 15 December 2025</Text>
+          <Text style={styles.footerText}>Last Updated: February 2026</Text>
           <Text style={styles.footerText}>Version 1.0</Text>
         </View>
       </ScrollView>

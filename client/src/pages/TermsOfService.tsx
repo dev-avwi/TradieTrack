@@ -19,13 +19,13 @@ export default function TermsOfService() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-terms-of-service">Terms of Service</h1>
-            <p className="text-muted-foreground mb-8">Last updated: November 2025</p>
+            <p className="text-muted-foreground mb-8">Last updated: February 2026</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               <section>
                 <h2 className="text-xl font-semibold mb-3">1. Agreement to Terms</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  By accessing or using TradieTrack ("the Service"), you agree to be bound by these Terms of Service 
+                  By accessing or using JobRunner ("the Service"), you agree to be bound by these Terms of Service 
                   and all applicable laws and regulations. If you do not agree with any of these terms, you are 
                   prohibited from using or accessing this Service. These Terms of Service apply to all users of 
                   the Service, including tradespeople, their employees, and their clients.
@@ -35,7 +35,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  TradieTrack is a business management platform designed for Australian tradespeople. The Service 
+                  JobRunner is a business management platform designed for Australian tradespeople. The Service 
                   provides tools for managing jobs, quotes, invoices, clients, and payments. We offer both free 
                   and paid subscription plans with varying features.
                 </p>
@@ -93,7 +93,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-xl font-semibold mb-3">5. Payment Processing</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3">
-                  <strong>Invoice Payments:</strong> When your clients pay invoices through TradieTrack, payments 
+                  <strong>Invoice Payments:</strong> When your clients pay invoices through JobRunner, payments 
                   are processed by Stripe. A platform fee of 2.5% applies to all invoice payments, in addition to 
                   standard Stripe processing fees.
                 </p>
@@ -104,7 +104,42 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">6. User Responsibilities</h2>
+                <h2 className="text-xl font-semibold mb-3">6. Invoice & Document Accuracy</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  You are responsible for reviewing all quotes, invoices, and other documents generated through the platform before sending them to clients. JobRunner provides calculation tools as a convenience but does not guarantee the accuracy of rates, quantities, totals, or GST calculations. You acknowledge that all financial documents should be verified before distribution.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">7. Time Tracking Disclaimer</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Time tracking data may be affected by device performance, background app restrictions, GPS availability, battery life, and network connectivity. Recorded hours are provided as a guide and may not reflect exact working times. You are responsible for verifying all tracked time before submitting timesheets or generating invoices from time data.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">8. GPS & Location Data</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  GPS location data may be inaccurate or temporarily unavailable due to signal interference, indoor environments, weather conditions, or device limitations. The platform logs GPS accuracy metrics where available but does not guarantee location precision. JobRunner is not liable for disputes arising from GPS location discrepancies. Users should verify location records where accuracy is critical.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">9. Edited Records & Audit Trail</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  When time entries or other records are manually edited, the original values and the identity of the person who made the change are logged within the system. Users acknowledge that manual adjustments override originally tracked data and that these edit logs may be used for audit and dispute resolution purposes. Employers and employees should review edit histories when verifying timesheets.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">10. No Escrow / Payment Intermediary</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  JobRunner does not act as an escrow service, financial intermediary, or payment guarantor between you and your clients. All payment processing is handled by Stripe, a PCI-DSS compliant third-party payment processor. JobRunner does not store credit card information directly. You are responsible for following up on unpaid invoices and managing payment disputes directly with your clients. Stripe's terms of service apply to all payment transactions processed through the platform.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">11. User Responsibilities</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3">You agree to:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                   <li>Use the Service only for lawful purposes</li>
@@ -117,7 +152,7 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">7. Prohibited Uses</h2>
+                <h2 className="text-xl font-semibold mb-3">12. Prohibited Uses</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3">You may not:</p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                   <li>Use the Service for any illegal or unauthorized purpose</li>
@@ -132,9 +167,9 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">8. Intellectual Property</h2>
+                <h2 className="text-xl font-semibold mb-3">13. Intellectual Property</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  The Service and its original content, features, and functionality are owned by TradieTrack and 
+                  The Service and its original content, features, and functionality are owned by JobRunner and 
                   are protected by international copyright, trademark, and other intellectual property laws. You 
                   retain ownership of all content you upload to the Service, but grant us a license to use, 
                   store, and display that content for the purpose of providing the Service.
@@ -142,9 +177,9 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">9. Limitation of Liability</h2>
+                <h2 className="text-xl font-semibold mb-3">14. Limitation of Liability</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  To the maximum extent permitted by Australian Consumer Law, TradieTrack shall not be liable 
+                  To the maximum extent permitted by Australian Consumer Law, JobRunner shall not be liable 
                   for any indirect, incidental, special, consequential, or punitive damages, or any loss of 
                   profits or revenues, whether incurred directly or indirectly, or any loss of data, use, 
                   goodwill, or other intangible losses.
@@ -153,10 +188,13 @@ export default function TermsOfService() {
                   Our total liability for any claims arising out of or relating to these terms or the Service 
                   shall not exceed the amount you paid us in the 12 months preceding the claim.
                 </p>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  JobRunner is not responsible for data loss resulting from user device failure, improper use, third-party service outages, or events beyond reasonable control. While we maintain regular backups and data redundancy measures, we recommend you export critical business data periodically.
+                </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">10. Disclaimer of Warranties</h2>
+                <h2 className="text-xl font-semibold mb-3">15. Disclaimer of Warranties</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   The Service is provided "as is" and "as available" without any warranties of any kind, either 
                   express or implied. We do not warrant that the Service will be uninterrupted, timely, secure, 
@@ -166,9 +204,9 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">11. Indemnification</h2>
+                <h2 className="text-xl font-semibold mb-3">16. Indemnification</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  You agree to indemnify, defend, and hold harmless TradieTrack and its officers, directors, 
+                  You agree to indemnify, defend, and hold harmless JobRunner and its officers, directors, 
                   employees, and agents from any claims, damages, losses, liabilities, and expenses (including 
                   legal fees) arising from your use of the Service, your violation of these Terms, or your 
                   violation of any rights of another party.
@@ -176,7 +214,7 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">12. Termination</h2>
+                <h2 className="text-xl font-semibold mb-3">17. Termination</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   We may terminate or suspend your account and access to the Service immediately, without prior 
                   notice, for any reason, including breach of these Terms. Upon termination, your right to use 
@@ -186,7 +224,7 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">13. Changes to Terms</h2>
+                <h2 className="text-xl font-semibold mb-3">18. Changes to Terms</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   We reserve the right to modify these Terms at any time. We will notify you of material changes 
                   by posting the new Terms on this page and updating the "Last updated" date. Your continued use 
@@ -195,7 +233,7 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">14. Governing Law</h2>
+                <h2 className="text-xl font-semibold mb-3">19. Governing Law</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   These Terms shall be governed by and construed in accordance with the laws of Australia, 
                   specifically the State of New South Wales. Any disputes arising from these Terms or the 
@@ -204,7 +242,7 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">15. Australian Consumer Law</h2>
+                <h2 className="text-xl font-semibold mb-3">20. Australian Consumer Law</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3">
                   Nothing in these Terms excludes, restricts, or modifies any rights or remedies, or any 
                   guarantee, warranty, or other term or condition, implied or imposed by the Australian 
@@ -227,14 +265,14 @@ export default function TermsOfService() {
                 </p>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   <strong>Dispute Resolution:</strong> If you have a complaint about our services, please 
-                  contact us first at admin@avwebinnovation.com. We aim to resolve disputes within 14 days. 
+                  contact us first at support@jobrunner.com.au. We aim to resolve disputes within 14 days. 
                   If we cannot resolve the matter, you may lodge a complaint with the Australian Competition 
                   and Consumer Commission (ACCC) or your state/territory consumer protection agency.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">16. Service Availability & Disclaimers</h2>
+                <h2 className="text-xl font-semibold mb-3">21. Service Availability & Disclaimers</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3">
                   <strong>Uptime:</strong> We strive to maintain 99.9% service availability but do not 
                   guarantee uninterrupted access. Scheduled maintenance will be announced in advance where 
@@ -249,20 +287,20 @@ export default function TermsOfService() {
                 <p className="text-muted-foreground leading-relaxed">
                   <strong>Licensing & Insurance:</strong> You are responsible for maintaining appropriate 
                   trade licenses, certifications, and business insurance as required by Australian law. 
-                  TradieTrack does not verify your qualifications or provide insurance coverage.
+                  JobRunner does not verify your qualifications or provide insurance coverage.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">17. Contact Information</h2>
+                <h2 className="text-xl font-semibold mb-3">22. Contact Information</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   If you have any questions about these Terms of Service, please contact us at:
                 </p>
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    <strong>TradieTrack Support</strong><br />
-                    Email: admin@avwebinnovation.com<br />
-                    Phone: 1300 TRADIE (1300 872 343)
+                    <strong>JobRunner Support</strong><br />
+                    Email: support@jobrunner.com.au<br />
+                    Phone: 1300 JOBRUN (1300 562 786)
                   </p>
                 </div>
               </section>
@@ -272,7 +310,7 @@ export default function TermsOfService() {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            By using TradieTrack, you agree to these Terms of Service and our{" "}
+            By using JobRunner, you agree to these Terms of Service and our{" "}
             <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
           </p>
         </div>

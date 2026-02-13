@@ -93,6 +93,8 @@ import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/Keyb
 import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
 import ImmersiveOnboarding from "@/components/ImmersiveOnboarding";
 import WhatYouMissedModal from "@/components/WhatYouMissedModal";
+import TimeEditAuditLog from "@/pages/TimeEditAuditLog";
+import ProfitabilityReport from "@/pages/ProfitabilityReport";
 
 // Types for job completion
 interface JobPhoto {
@@ -523,6 +525,8 @@ function Router({
         <TimeTrackingPage />
       )} />
       
+      <Route path="/audit-log" component={TimeEditAuditLog} />
+      
       <Route path="/team">
         <Redirect to="/team-operations" />
       </Route>
@@ -554,6 +558,8 @@ function Router({
         }}
       </Route>
       
+      <Route path="/reports/profitability" component={ProfitabilityReport} />
+
       <Route path="/reports" component={() => (
         <Reports />
       )} />
