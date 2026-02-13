@@ -1,5 +1,5 @@
 /**
- * Centralized Trade Catalog for TradieTrack
+ * Centralized Trade Catalog for JobRunner
  * Each trade has comprehensive configuration for a tailored app experience
  */
 

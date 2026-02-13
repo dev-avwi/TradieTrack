@@ -105,7 +105,7 @@ export default function ResetPasswordScreen() {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.appName}>TradieTrack</Text>
+            <Text style={styles.appName}>JobRunner</Text>
             <Text style={styles.tagline}>
               {resetSuccess ? 'Password Reset!' : 'Create New Password'}
             </Text>

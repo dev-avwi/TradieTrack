@@ -923,8 +923,8 @@ export default function Integrations() {
                     variant="outline" 
                     size="sm"
                     onClick={() => {
-                      const subject = encodeURIComponent("Test Email from TradieTrack");
-                      const body = encodeURIComponent("G'day!\n\nThis is a test email from TradieTrack to confirm your email is working correctly.\n\nCheers!");
+                      const subject = encodeURIComponent("Test Email from JobRunner");
+                      const body = encodeURIComponent("G'day!\n\nThis is a test email from JobRunner to confirm your email is working correctly.\n\nCheers!");
                       window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
                     }}
                     data-testid="button-test-email"

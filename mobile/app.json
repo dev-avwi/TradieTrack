@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "TradieTrack",
-    "slug": "tradietrack",
+    "name": "JobRunner",
+    "slug": "jobrunner",
     "version": "1.1.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
-    "scheme": "tradietrack",
+    "scheme": "jobrunner",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/tradietrack-logo.png",
@@ -20,7 +20,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tradietrack.app",
+      "bundleIdentifier": "com.jobrunner.app",
       "buildNumber": "23",
       "usesAppleSignIn": true,
       "config": {
@@ -28,11 +28,11 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "TradieTrack needs camera access to take job photos",
-        "NSPhotoLibraryUsageDescription": "TradieTrack needs photo library access to upload job photos",
-        "NSLocationWhenInUseUsageDescription": "TradieTrack needs location access to track job sites",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TradieTrack needs location access for team tracking",
-        "NFCReaderUsageDescription": "TradieTrack uses NFC for Tap to Pay contactless payments",
+        "NSCameraUsageDescription": "JobRunner needs camera access to take job photos",
+        "NSPhotoLibraryUsageDescription": "JobRunner needs photo library access to upload job photos",
+        "NSLocationWhenInUseUsageDescription": "JobRunner needs location access to track job sites",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "JobRunner needs location access for team tracking",
+        "NFCReaderUsageDescription": "JobRunner uses NFC for Tap to Pay contactless payments",
         "UIBackgroundModes": [
           "fetch",
           "remote-notification"
@@ -48,7 +48,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.tradietrack.app",
+      "package": "com.jobrunner.app",
       "versionCode": 1,
       "permissions": [
         "CAMERA",
@@ -139,13 +139,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow TradieTrack to take job photos"
+          "cameraPermission": "Allow JobRunner to take job photos"
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow TradieTrack to track your location for team features"
+          "locationAlwaysAndWhenInUsePermission": "Allow JobRunner to track your location for team features"
         }
       ],
       [
@@ -166,7 +166,7 @@
       "eas": {
         "projectId": "78e88ca7-014e-438b-8170-1ccae4cd9386"
       },
-      "apiUrl": "https://tradietrack.com"
+      "apiUrl": "https://jobrunner.com"
     },
     "updates": {
       "url": "https://u.expo.dev/78e88ca7-014e-438b-8170-1ccae4cd9386"

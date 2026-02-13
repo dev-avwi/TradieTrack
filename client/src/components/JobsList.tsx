@@ -877,7 +877,7 @@ export default function JobsList({
             _createdAt: Date.now(),
             _expiresAt: Date.now() + 5 * 60 * 1000, // 5 minute expiry
           };
-          sessionStorage.setItem('tradietrack_draft_job', JSON.stringify(draftData));
+          sessionStorage.setItem('jobrunner_draft_job', JSON.stringify(draftData));
           toast({
             title: "Job details extracted",
             description: "Opening job form with extracted details...",

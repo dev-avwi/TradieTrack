@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const STORAGE_KEY = "tradietrack-banner-dismissed";
+const STORAGE_KEY = "jobrunner-banner-dismissed";
 
 interface TrustBannerProps {
   compact?: boolean;
@@ -97,7 +97,7 @@ export default function TrustBanner({ compact = false }: TrustBannerProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold">TradieTrack</p>
+            <p className="font-semibold">JobRunner</p>
             <Badge 
               className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 border-0"
             >

@@ -100,7 +100,7 @@ export function setupWebSocket(server: Server, store?: any) {
 async function authenticateConnection(req: IncomingMessage): Promise<{ userId: string } | null> {
   // Parse cookies from request
   const cookies = cookie.parse(req.headers.cookie || '');
-  const sessionId = cookies['tradietrack.sid'];
+  const sessionId = cookies['jobrunner.sid'];
 
   if (!sessionId) {
     console.log('[WebSocket] No session cookie found');

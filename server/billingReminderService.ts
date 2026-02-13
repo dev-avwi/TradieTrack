@@ -60,11 +60,11 @@ async function sendBillingReminderEmail(
   const brandColor = settings.brandColor || '#2563eb';
 
   const isTrialing = subscriptionStatus === 'trialing';
-  const planName = subscriptionTier === 'team' ? 'TradieTrack Team' : 'TradieTrack Pro';
+  const planName = subscriptionTier === 'team' ? 'JobRunner Team' : 'JobRunner Pro';
 
   const subject = isTrialing
-    ? `Your TradieTrack trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`
-    : `Your TradieTrack billing is coming up in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`;
+    ? `Your JobRunner trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`
+    : `Your JobRunner billing is coming up in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`;
 
   const headerMessage = isTrialing
     ? `Your free trial of ${planName} ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}.`
@@ -84,7 +84,7 @@ async function sendBillingReminderEmail(
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <h1 style="color: ${brandColor}; margin: 0;">TradieTrack</h1>
+        <h1 style="color: ${brandColor}; margin: 0;">JobRunner</h1>
         <p style="margin: 5px 0 0 0; color: #666;">Billing Reminder</p>
       </div>
 
@@ -126,7 +126,7 @@ async function sendBillingReminderEmail(
       </div>
 
       <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 12px;">
-        <p style="margin: 0;">Powered by <strong>TradieTrack</strong> | The business management platform for Australian tradies</p>
+        <p style="margin: 0;">Powered by <strong>JobRunner</strong> | The business management platform for Australian tradies</p>
         <p style="margin: 10px 0 0 0; font-size: 11px; color: #888;">
           This is a transactional email regarding your subscription billing.
         </p>
@@ -172,8 +172,8 @@ async function sendBillingReminderSms(
   const isTrialing = subscriptionStatus === 'trialing';
 
   const message = isTrialing
-    ? `TradieTrack: Your free trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}. You'll be charged $${amount.toFixed(2)} AUD. Manage at ${getBaseUrl()}/settings`
-    : `TradieTrack: Your subscription renews in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''} ($${amount.toFixed(2)} AUD). Manage at ${getBaseUrl()}/settings`;
+    ? `JobRunner: Your free trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}. You'll be charged $${amount.toFixed(2)} AUD. Manage at ${getBaseUrl()}/settings`
+    : `JobRunner: Your subscription renews in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''} ($${amount.toFixed(2)} AUD). Manage at ${getBaseUrl()}/settings`;
 
   try {
     const result = await sendSms({

@@ -1,5 +1,5 @@
 /**
- * Outlook/Microsoft 365 Email Client for TradieTrack
+ * Outlook/Microsoft 365 Email Client for JobRunner
  * Uses Microsoft Graph API for sending emails through user's Outlook account
  * 
  * Supports per-user OAuth tokens stored in businessSettings

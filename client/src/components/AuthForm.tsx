@@ -268,7 +268,7 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
           <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
             <User className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">TradieTrack</CardTitle>
+          <CardTitle className="text-2xl">JobRunner</CardTitle>
           <CardDescription>
             Manage your tradie business with ease
           </CardDescription>

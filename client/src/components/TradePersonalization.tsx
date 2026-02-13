@@ -34,7 +34,7 @@ export default function TradePersonalization({
   showSettings = true
 }: TradePersonalizationProps) {
   const [currentTrade, setCurrentTrade] = useState<string | null>(
-    () => selectedTrade || localStorage.getItem('tradietrack-trade-type') || null
+    () => selectedTrade || localStorage.getItem('jobrunner-trade-type') || null
   );
 
   const handleTradeSelect = (tradeType: string) => {

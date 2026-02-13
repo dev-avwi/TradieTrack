@@ -241,7 +241,7 @@ export default function MyobSetupGuide({
           <div className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
             <Shield className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Your data is secure. TradieTrack uses official MYOB OAuth2 integration. 
+              Your data is secure. JobRunner uses official MYOB OAuth2 integration. 
               We never see your MYOB password and you can disconnect anytime.
             </p>
           </div>
@@ -256,7 +256,7 @@ export default function MyobSetupGuide({
             <AccordionContent className="text-xs text-muted-foreground pb-3">
               MYOB (Mind Your Own Business) is one of Australia's most popular accounting software solutions, 
               used by hundreds of thousands of businesses. It helps you manage invoices, expenses, payroll, 
-              and tax compliance. Connecting TradieTrack to MYOB means your invoices and client details 
+              and tax compliance. Connecting JobRunner to MYOB means your invoices and client details 
               sync automatically, saving you hours of manual data entry.
             </AccordionContent>
           </AccordionItem>
@@ -273,7 +273,7 @@ export default function MyobSetupGuide({
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span><strong>Invoices → MYOB:</strong> Send invoices from TradieTrack, they appear in MYOB</span>
+                  <span><strong>Invoices → MYOB:</strong> Send invoices from JobRunner, they appear in MYOB</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
@@ -294,7 +294,7 @@ export default function MyobSetupGuide({
             <AccordionContent className="text-xs text-muted-foreground pb-3">
               MYOB company files can have their own username and password (separate from your my.MYOB account). 
               If your accountant or bookkeeper set up your MYOB file with a password, you'll need those credentials 
-              to allow TradieTrack to access your data. Common scenarios:
+              to allow JobRunner to access your data. Common scenarios:
               <ul className="space-y-1.5 mt-2">
                 <li className="flex items-start gap-2">
                   <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
@@ -340,7 +340,7 @@ export default function MyobSetupGuide({
             </AccordionTrigger>
             <AccordionContent className="text-xs text-muted-foreground pb-3">
               Yes, absolutely! You can disconnect MYOB at any time from this integrations page. 
-              Your existing data in both TradieTrack and MYOB will remain - 
+              Your existing data in both JobRunner and MYOB will remain - 
               only the automatic syncing will stop. You can reconnect whenever you like.
             </AccordionContent>
           </AccordionItem>

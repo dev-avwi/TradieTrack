@@ -137,7 +137,7 @@ function WebMockup({ isDark }: { isDark: boolean }) {
           <div className="w-4 h-4 rounded bg-green-500/20 flex items-center justify-center">
             <div className="w-2 h-2 rounded-full bg-green-500" />
           </div>
-          <span className={`text-xs ${textMuted}`}>app.tradietrack.com.au</span>
+          <span className={`text-xs ${textMuted}`}>app.jobrunner.com.au</span>
         </div>
       </div>
 

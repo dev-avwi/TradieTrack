@@ -1,5 +1,5 @@
 /**
- * Pre-built Automation Templates for TradieTrack
+ * Pre-built Automation Templates for JobRunner
  * 
  * These templates provide one-click automation setup for common trade workflows.
  * Users can enable these templates from the Automations page.

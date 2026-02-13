@@ -1,4 +1,4 @@
-export const OFFLINE_QUEUE_KEY = 'tradietrack_offline_queue';
+export const OFFLINE_QUEUE_KEY = 'jobrunner_offline_queue';
 
 export interface OfflineMutation {
   id: string;

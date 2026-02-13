@@ -51,9 +51,9 @@ const BRAND_COLORS = [
   '#475569', '#334155', '#1E293B', '#0F172A', '#000000',
 ];
 
-const GEOFENCE_STORAGE_KEY = '@tradietrack/global_geofence_settings';
-const NOTIFICATION_SETTINGS_KEY = '@tradietrack/notification_settings';
-const BRAND_SETTINGS_KEY = '@tradietrack/brand_settings';
+const GEOFENCE_STORAGE_KEY = '@jobrunner/global_geofence_settings';
+const NOTIFICATION_SETTINGS_KEY = '@jobrunner/notification_settings';
+const BRAND_SETTINGS_KEY = '@jobrunner/brand_settings';
 
 interface NotificationSettings {
   push: {

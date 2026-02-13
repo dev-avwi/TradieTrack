@@ -258,11 +258,11 @@ export default function QuoteDetailScreen() {
       `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'TradieTrack: Send Now',
+          text: 'JobRunner: Send Now',
           onPress: () => handleSendViaTradieTrack(),
         },
         {
-          text: 'TradieTrack: Edit Message',
+          text: 'JobRunner: Edit Message',
           onPress: () => setShowEmailCompose(true),
         },
         {
@@ -569,7 +569,7 @@ ${businessName}`;
           await Linking.openURL(mailtoUrl);
           Alert.alert(
             'Note',
-            'Your device doesn\'t support file sharing. Please use "Use TradieTrack" option to send with PDF attached.',
+            'Your device doesn\'t support file sharing. Please use "Use JobRunner" option to send with PDF attached.',
             [{ text: 'OK' }]
           );
         } else {
@@ -578,7 +578,7 @@ ${businessName}`;
       }
     } catch (error: any) {
       console.log('Error preparing email:', error);
-      Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use TradieTrack" option instead.');
+      Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use JobRunner" option instead.');
     } finally {
       setIsDownloadingPdf(false);
     }

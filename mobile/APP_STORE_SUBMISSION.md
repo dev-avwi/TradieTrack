@@ -1,10 +1,10 @@
-# TradieTrack - App Store Submission Guide
+# JobRunner - App Store Submission Guide
 
 ## App Information
 
-**App Name:** TradieTrack  
+**App Name:** JobRunner  
 **Subtitle:** Job Management for Tradies  
-**Bundle ID:** com.tradietrack.app  
+**Bundle ID:** com.jobrunner.app  
 **Version:** 1.0.0  
 **Category:** Business  
 **Secondary Category:** Productivity  
@@ -14,7 +14,7 @@
 
 ## App Description (4000 characters max)
 
-TradieTrack is the complete business management app designed specifically for Australian tradespeople. Whether you're a solo sparky, a plumber with a small team, or running a growing electrical business, TradieTrack helps you manage jobs, send quotes, create invoices, and get paid faster.
+JobRunner is the complete business management app designed specifically for Australian tradespeople. Whether you're a solo sparky, a plumber with a small team, or running a growing electrical business, JobRunner helps you manage jobs, send quotes, create invoices, and get paid faster.
 
 **JOB MANAGEMENT**
 Create and track jobs from first contact to completion. Add job photos, notes, and checklists. Track job status through a simple 5-stage workflow: Pending, Scheduled, In Progress, Done, and Invoiced. Access job details even when you're offline.
@@ -61,7 +61,7 @@ tradies,job management,invoicing,quotes,plumber,electrician,tradie,ABN,GST,payme
 
 ## What's New in This Version
 
-Welcome to TradieTrack 1.0! This is our first release, packed with everything you need to run your trade business:
+Welcome to JobRunner 1.0! This is our first release, packed with everything you need to run your trade business:
 
 - Create and manage jobs with photos and notes
 - Send professional quotes and invoices
@@ -76,22 +76,22 @@ Welcome to TradieTrack 1.0! This is our first release, packed with everything yo
 
 ## Support URL
 
-https://tradietrack.com/support
+https://jobrunner.com/support
 
 ## Marketing URL
 
-https://tradietrack.com
+https://jobrunner.com
 
 ## Privacy Policy URL
 
-https://tradietrack.com/privacy
+https://jobrunner.com/privacy
 
 ---
 
 ## App Review Notes
 
 **Demo Account:**
-- Email: demo@tradietrack.com.au
+- Email: demo@jobrunner.com.au
 - Password: demo123456
 
 This demo account has pre-populated data including sample jobs, clients, quotes, and invoices for testing all features.
@@ -116,29 +116,29 @@ Subscriptions are managed through Stripe (not Apple IAP) because all services re
 ## Required Permissions Explanation
 
 **Camera (NSCameraUsageDescription):**
-"TradieTrack needs camera access to take job photos"
+"JobRunner needs camera access to take job photos"
 - Used to capture before/after photos of job sites
 - Photos attached to job records for documentation
 
 **Photo Library (NSPhotoLibraryUsageDescription):**
-"TradieTrack needs photo library access to upload job photos"
+"JobRunner needs photo library access to upload job photos"
 - Allows selecting existing photos to attach to jobs
 - Export invoices/quotes as images
 
 **Location When In Use (NSLocationWhenInUseUsageDescription):**
-"TradieTrack needs location access to track job sites"
+"JobRunner needs location access to track job sites"
 - Show job locations on map
 - Calculate distance to jobs
 - Basic navigation features
 
 **Location Always (NSLocationAlwaysAndWhenInUseUsageDescription):**
-"TradieTrack needs location access for team tracking"
+"JobRunner needs location access for team tracking"
 - Real-time team member location for owners/managers
 - Automatic geofence clock-in/out at job sites
 - This is OPTIONAL and requires explicit user consent
 
 **NFC (NFCReaderUsageDescription):**
-"TradieTrack uses NFC for Tap to Pay contactless payments"
+"JobRunner uses NFC for Tap to Pay contactless payments"
 - Accept card payments using iPhone's NFC
 - Powered by Stripe Terminal
 
@@ -213,7 +213,7 @@ All services comply with Australian Privacy Principles and GDPR.
 
 ## Contact Information
 
-**Developer:** TradieTrack Pty Ltd  
+**Developer:** JobRunner Pty Ltd  
 **Email:** admin@avwebinnovation.com  
 **Phone:** +61 1800 XXX XXX  
 **Address:** Sydney, NSW, Australia  

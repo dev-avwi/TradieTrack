@@ -10,7 +10,7 @@ export function useBusinessSettings() {
         if (response.status === 404) {
           // Return default values if no business settings exist yet
           return {
-            businessName: 'TradieTrack Business',
+            businessName: 'JobRunner Business',
             email: null,
             phone: null,
             gstEnabled: false,

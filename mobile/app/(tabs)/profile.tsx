@@ -425,7 +425,7 @@ export default function MoreScreen() {
 
       {/* App Version */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>TradieTrack Mobile</Text>
+        <Text style={styles.footerText}>JobRunner Mobile</Text>
         <Text style={styles.versionText}>Version 1.1.0</Text>
       </View>
 

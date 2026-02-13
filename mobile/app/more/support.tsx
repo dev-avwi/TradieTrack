@@ -126,7 +126,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
       },
       {
         question: 'How do I handle overdue invoices?',
-        answer: 'TradieTrack can send automatic reminders. Go to Profile > Automations to set up overdue payment reminders. You can also manually send reminders from any invoice.',
+        answer: 'JobRunner can send automatic reminders. Go to Profile > Automations to set up overdue payment reminders. You can also manually send reminders from any invoice.',
       },
     ],
   },
@@ -534,7 +534,7 @@ export default function SupportScreen() {
   };
 
   const handleOpenDocs = () => {
-    Linking.openURL('https://tradietrack.com/docs');
+    Linking.openURL('https://jobrunner.com/docs');
   };
 
   return (
@@ -645,7 +645,7 @@ export default function SupportScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>TradieTrack Mobile</Text>
+            <Text style={styles.footerText}>JobRunner Mobile</Text>
             <Text style={styles.versionText}>Version 1.1.0</Text>
           </View>
         </View>

@@ -13,7 +13,7 @@ import { useTheme, ThemeColors } from '../../lib/theme';
 import { useAuthStore } from '../../lib/store';
 import { spacing } from '../../lib/design-tokens';
 
-const TRADIE_TRACK_LOGO = require('../../../assets/tradietrack-logo.png');
+const JOBRUNNER_LOGO = require('../../../assets/tradietrack-logo.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface LoadingScreenProps {
@@ -427,7 +427,7 @@ function PulsingLogo({
           />
         ) : (
           <Image 
-            source={TRADIE_TRACK_LOGO} 
+            source={JOBRUNNER_LOGO} 
             style={styles.tradieTrackLogo}
             resizeMode="contain"
           />
@@ -492,7 +492,7 @@ export function LoadingScreen({ message = 'Loading JobRunner...', showProgress =
             />
           ) : (
             <Image 
-              source={TRADIE_TRACK_LOGO} 
+              source={JOBRUNNER_LOGO} 
               style={styles.tradieTrackLogo}
               resizeMode="contain"
             />
@@ -575,7 +575,7 @@ export function LoadingOverlay({
           }}
         >
           <Image 
-            source={TRADIE_TRACK_LOGO} 
+            source={JOBRUNNER_LOGO} 
             style={{ width: 56, height: 56 }}
             resizeMode="contain"
           />

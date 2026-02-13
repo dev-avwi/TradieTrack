@@ -16,7 +16,7 @@ import { syncManager } from '@/lib/syncManager';
 import { apiRequest, safeInvalidateQueries } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
-const ACTIVE_TIMER_KEY = 'tradietrack_active_timer';
+const ACTIVE_TIMER_KEY = 'jobrunner_active_timer';
 const HEARTBEAT_INTERVAL_MS = 30000;
 
 export interface OfflineTimeEntry extends BaseTimeEntry {

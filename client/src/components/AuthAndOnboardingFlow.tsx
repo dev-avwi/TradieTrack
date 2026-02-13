@@ -229,7 +229,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
     switch (currentStep) {
       case 'auth':
         return authMode === 'login' 
-          ? 'Sign in to your TradieTrack account'
+          ? 'Sign in to your JobRunner account'
           : 'Create your professional trade business account';
       case 'business':
         return 'Tell us about your business';
@@ -238,7 +238,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       case 'team':
         return 'Add team members to get them set up (optional)';
       case 'complete':
-        return 'Your TradieTrack account is ready to use';
+        return 'Your JobRunner account is ready to use';
       default:
         return '';
     }
@@ -311,7 +311,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       if (result.success) {
         toast({
           title: "Login successful!",
-          description: "Welcome back to TradieTrack!"
+          description: "Welcome back to JobRunner!"
         });
         
         // Check if business settings exist
@@ -616,11 +616,11 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       {/* Logo Icon + Title - Updated Dec 1 2024 v2 */}
       <div className="flex flex-col items-center text-center space-y-4">
         <div className="w-28 h-28 flex items-center justify-center">
-          <img src={`${appIconUrl}?v=2`} alt="TradieTrack Logo" className="w-full h-full object-contain drop-shadow-xl" data-testid="img-login-logo" />
+          <img src={`${appIconUrl}?v=2`} alt="JobRunner Logo" className="w-full h-full object-contain drop-shadow-xl" data-testid="img-login-logo" />
         </div>
         <div className="space-y-1">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-blue-600 bg-clip-text text-transparent">
-            TradieTrack
+            JobRunner
           </h1>
           <p className="text-muted-foreground text-sm font-medium">
             Professional Business Management
@@ -1216,7 +1216,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           <Users className="w-7 h-7 text-white" />
         </div>
         <p className="text-sm text-muted-foreground">
-          Invite your team members so they can start using TradieTrack right away.
+          Invite your team members so they can start using JobRunner right away.
         </p>
       </div>
 
@@ -1316,7 +1316,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
       </div>
       
       <div>
-        <h2 className="text-2xl font-bold text-green-600 mb-2">Welcome to TradieTrack!</h2>
+        <h2 className="text-2xl font-bold text-green-600 mb-2">Welcome to JobRunner!</h2>
         <p className="text-muted-foreground">
           Your account is ready. Let's get you some jobs!
         </p>
@@ -1344,7 +1344,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
         data-testid="button-get-started"
       >
-        Start Using TradieTrack
+        Start Using JobRunner
         <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
     </div>
@@ -1401,12 +1401,12 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
               Choose an account
             </DialogTitle>
             <DialogDescription>
-              to continue to TradieTrack
+              to continue to JobRunner
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground text-center">
-              Select a Google account to sign in with TradieTrack
+              Select a Google account to sign in with JobRunner
             </p>
             
             <Button

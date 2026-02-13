@@ -1,13 +1,13 @@
 import * as SecureStore from 'expo-secure-store';
 
-export type EmailAppPreference = 'gmail' | 'outlook' | 'native_mail' | 'tradietrack' | 'ask';
+export type EmailAppPreference = 'gmail' | 'outlook' | 'native_mail' | 'jobrunner' | 'ask';
 
 const EMAIL_PREFERENCE_KEY = 'email_app_preference';
 
 export async function getEmailPreference(): Promise<EmailAppPreference> {
   try {
     const preference = await SecureStore.getItemAsync(EMAIL_PREFERENCE_KEY);
-    if (preference && ['gmail', 'outlook', 'native_mail', 'tradietrack', 'ask'].includes(preference)) {
+    if (preference && ['gmail', 'outlook', 'native_mail', 'jobrunner', 'ask'].includes(preference)) {
       return preference as EmailAppPreference;
     }
     return 'ask';
@@ -41,8 +41,8 @@ export function getEmailAppDisplayName(preference: EmailAppPreference): string {
       return 'Outlook';
     case 'native_mail':
       return 'Default Mail App';
-    case 'tradietrack':
-      return 'TradieTrack';
+    case 'jobrunner':
+      return 'JobRunner';
     case 'ask':
     default:
       return 'Ask each time';

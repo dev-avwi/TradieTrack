@@ -82,7 +82,7 @@ export function UnifiedSendModal({
   useEffect(() => {
     if (open) {
       const typeLabel = documentType.charAt(0).toUpperCase() + documentType.slice(1);
-      setEmailSubject(`Your ${typeLabel} from TradieTrack`);
+      setEmailSubject(`Your ${typeLabel} from JobRunner`);
       setEmailBody(`Hi ${recipientName},\n\nPlease find your ${documentType} attached.\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers!`);
       setSmsMessage(SMS_TEMPLATES[documentType]?.[0]?.message || '');
     }

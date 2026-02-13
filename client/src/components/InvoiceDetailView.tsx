@@ -70,7 +70,7 @@ export default function InvoiceDetailView({
   const { data: user } = useQuery({
     queryKey: ['/api/auth/me'],
   });
-  const isDemoUser = user?.email === 'demo@tradietrack.com.au';
+  const isDemoUser = user?.email === 'demo@jobrunner.com.au';
 
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;

@@ -63,7 +63,7 @@ interface SetupStep {
   priority: 'high' | 'medium' | 'low';
 }
 
-const DISMISS_KEY = 'tradietrack_setup_dismissed_permanently';
+const DISMISS_KEY = 'jobrunner_setup_dismissed_permanently';
 
 export default function GettingStartedChecklist({
   onNavigate,

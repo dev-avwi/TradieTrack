@@ -30,7 +30,7 @@ export class AuthService {
       const validatedData = insertUserSchema.parse(userData);
 
       // Prevent registering demo email in production
-      if (process.env.NODE_ENV === 'production' && validatedData.email === 'demo@tradietrack.com.au') {
+      if (process.env.NODE_ENV === 'production' && validatedData.email === 'demo@jobrunner.com.au') {
         return { success: false, error: 'This email address is reserved.' };
       }
 
@@ -93,7 +93,7 @@ export class AuthService {
       }
 
       // Check if email is verified (allow demo users to bypass)
-      const isDemoUser = user.email === 'demo@tradietrack.com.au';
+      const isDemoUser = user.email === 'demo@jobrunner.com.au';
       if (!user.emailVerified && !isDemoUser) {
         return { success: false, error: 'Please verify your email address before logging in. Check your email for verification instructions.' };
       }

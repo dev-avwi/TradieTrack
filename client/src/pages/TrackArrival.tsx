@@ -182,7 +182,7 @@ function ETATrackingView({ data }: { data: ETATrackingData }) {
         </Card>
 
         <div className="text-center text-xs text-muted-foreground pt-4">
-          <p>Powered by TradieTrack</p>
+          <p>Powered by JobRunner</p>
         </div>
       </div>
     </div>
@@ -446,7 +446,7 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
         )}
 
         <div className="text-center text-xs text-muted-foreground pt-4">
-          <p>Powered by TradieTrack</p>
+          <p>Powered by JobRunner</p>
         </div>
       </div>
     </div>

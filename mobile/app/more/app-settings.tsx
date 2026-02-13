@@ -869,7 +869,7 @@ export default function AppSettingsScreen() {
             <View style={styles.footerLogo}>
               <Feather name="tool" size={24} color="#fff" />
             </View>
-            <Text style={styles.footerTitle}>TradieTrack</Text>
+            <Text style={styles.footerTitle}>JobRunner</Text>
             <Text style={styles.footerSubtitle}>Made in Australia for Australian Tradies</Text>
             <Text style={styles.footerVersion}>Version 1.1.0</Text>
           </View>

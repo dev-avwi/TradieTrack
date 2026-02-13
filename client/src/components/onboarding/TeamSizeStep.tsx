@@ -47,7 +47,7 @@ export default function TeamSizeStep({ data, onComplete }: TeamSizeStepProps) {
       <CardHeader className="text-center pb-2">
         <CardTitle className="text-2xl" data-testid="text-team-size-title">How many people work in your business?</CardTitle>
         <CardDescription className="text-base" data-testid="text-team-size-description">
-          This helps us set up TradieTrack just right for you
+          This helps us set up JobRunner just right for you
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-4">

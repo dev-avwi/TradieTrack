@@ -1,4 +1,4 @@
-// Google Calendar Client for TradieTrack
+// Google Calendar Client for JobRunner
 // Supports per-user OAuth tokens stored in businessSettings
 // Each tradie connects their own Google Calendar account
 
@@ -14,7 +14,7 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CALENDAR_CLIENT_SECRET || proces
 function getRedirectUri(): string {
   let baseUrl: string;
   
-  // Check for production custom domain first (e.g., tradietrack.com)
+  // Check for production custom domain first (e.g., jobrunner.com)
   const appUrl = process.env.VITE_APP_URL || process.env.APP_URL;
   if (appUrl) {
     // Ensure it has https:// prefix
@@ -91,7 +91,7 @@ export async function handleOAuthCallback(code: string, userId: string): Promise
         console.warn(`[GoogleCalendar] No refresh token received and none stored - user may need to revoke and re-authorize`);
         return { 
           success: false, 
-          error: 'No refresh token received. Please revoke TradieTrack access in your Google Account settings and try again.' 
+          error: 'No refresh token received. Please revoke JobRunner access in your Google Account settings and try again.' 
         };
       }
     }
@@ -388,7 +388,7 @@ function buildEventDescription(job: {
   
   // Footer
   sections.push('─────────────────');
-  sections.push('Synced from TradieTrack');
+  sections.push('Synced from JobRunner');
   
   return sections.join('\n');
 }
@@ -438,8 +438,8 @@ export async function syncJobToCalendar(
     },
     extendedProperties: {
       private: {
-        tradietrackJobId: job.id,
-        source: 'tradietrack',
+        jobrunnerJobId: job.id,
+        source: 'jobrunner',
       }
     }
   };

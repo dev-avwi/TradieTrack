@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Smartphone, Globe, Apple, Download, Beaker } from "lucide-react";
 
-const APP_STORE_URL = "https://apps.apple.com/app/tradietrack/id6756844699";
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.tradietrack.app";
+const APP_STORE_URL = "https://apps.apple.com/app/jobrunner/id6756844699";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.jobrunner.app";
 
 // For Expo Go testing - uses exp:// scheme which works in development
-const EXPO_PROJECT_SLUG = "tradietrack";
+const EXPO_PROJECT_SLUG = "jobrunner";
 
 export default function OpenApp() {
   const [, params] = useRoute("/open-app/:action/:token");
@@ -34,7 +34,7 @@ export default function OpenApp() {
   useEffect(() => {
     if (!action || !token) return;
     
-    const deepLink = `tradietrack://${action}?token=${token}`;
+    const deepLink = `jobrunner://${action}?token=${token}`;
     const webFallback = `/${action}/${token}`;
     
     if (platform === 'desktop') {
@@ -91,7 +91,7 @@ export default function OpenApp() {
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Opening TradieTrack...</h2>
+            <h2 className="text-xl font-semibold mb-2">Opening JobRunner...</h2>
             <p className="text-muted-foreground">
               If the app doesn't open, please wait a moment.
             </p>
@@ -108,11 +108,11 @@ export default function OpenApp() {
           <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary flex items-center justify-center">
             <Smartphone className="w-10 h-10 text-white" />
           </div>
-          <CardTitle className="text-2xl">Get the TradieTrack App</CardTitle>
+          <CardTitle className="text-2xl">Get the JobRunner App</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-center text-muted-foreground">
-            For the best experience, download the TradieTrack app. It's free and works great on your phone.
+            For the best experience, download the JobRunner app. It's free and works great on your phone.
           </p>
           
           <div className="space-y-3">
@@ -157,7 +157,7 @@ export default function OpenApp() {
             <button 
               onClick={() => {
                 setStatus('trying');
-                window.location.href = `tradietrack://${action}?token=${token}`;
+                window.location.href = `jobrunner://${action}?token=${token}`;
               }}
               className="text-primary underline"
             >

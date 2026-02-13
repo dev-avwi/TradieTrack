@@ -426,7 +426,7 @@ export async function generateAISuggestions(context: BusinessContext): Promise<s
     let prompt: string;
     
     if (isWorker) {
-      prompt = `You are TradieTrack AI, a helpful field work assistant for ${context.tradieFirstName}, a team member at ${context.businessName}, a ${context.trade} business in Australia.
+      prompt = `You are JobRunner AI, a helpful field work assistant for ${context.tradieFirstName}, a team member at ${context.businessName}, a ${context.trade} business in Australia.
 
 Current Work State for ${context.tradieFirstName}:
 - Assigned Jobs Today: ${context.todaysJobs.length > 0 ? context.todaysJobs.map(j => `${j.title} for ${j.clientName}`).join(', ') : 'None scheduled'}
@@ -449,7 +449,7 @@ Each suggestion should:
 
 Return ONLY a JSON object like: {"suggestions": ["suggestion 1", "suggestion 2", "suggestion 3", "suggestion 4"]}`;
     } else if (isManager) {
-      prompt = `You are TradieTrack AI, a helpful team coordination assistant for ${context.tradieFirstName}, a manager at ${context.businessName}, a ${context.trade} business in Australia.
+      prompt = `You are JobRunner AI, a helpful team coordination assistant for ${context.tradieFirstName}, a manager at ${context.businessName}, a ${context.trade} business in Australia.
 
 Current Team State:
 - Open Jobs: ${context.openJobs}
@@ -473,7 +473,7 @@ Each suggestion should:
 Return ONLY a JSON object like: {"suggestions": ["suggestion 1", "suggestion 2", "suggestion 3", "suggestion 4"]}`;
     } else {
       // Owner prompt - full business context
-      prompt = `You are TradieTrack AI, a helpful business assistant for ${context.tradieFirstName}, who runs ${context.businessName}, a ${context.trade} business in Australia.
+      prompt = `You are JobRunner AI, a helpful business assistant for ${context.tradieFirstName}, who runs ${context.businessName}, a ${context.trade} business in Australia.
 
 Current Business State:
 - Open Jobs: ${context.openJobs}
@@ -562,7 +562,7 @@ export async function chatWithAI(message: string, context: BusinessContext): Pro
     
     if (isWorker) {
       // WORKER role: Focus on field work, no financial info
-      systemPrompt = `You are TradieTrack AI, a supportive field worker assistant for ${context.tradieFirstName}, a team member at ${context.businessName}, a ${context.trade} business in Australia.
+      systemPrompt = `You are JobRunner AI, a supportive field worker assistant for ${context.tradieFirstName}, a team member at ${context.businessName}, a ${context.trade} business in Australia.
 
 === YOUR ROLE ===
 You are ${context.tradieFirstName}'s work assistant, helping them with their assigned jobs, time tracking, and field work tasks.
@@ -621,7 +621,7 @@ You do NOT have access to:
 - For ${context.trade} work, show you understand the trade`;
     } else if (isManager) {
       // MANAGER role: Team coordination focus
-      systemPrompt = `You are TradieTrack AI, a team coordination assistant for ${context.tradieFirstName}, a manager at ${context.businessName}, a ${context.trade} business in Australia.
+      systemPrompt = `You are JobRunner AI, a team coordination assistant for ${context.tradieFirstName}, a manager at ${context.businessName}, a ${context.trade} business in Australia.
 
 === YOUR ROLE ===
 You are ${context.tradieFirstName}'s team management assistant, helping them coordinate the team, assign jobs, and keep things running smoothly.
@@ -681,7 +681,7 @@ You can help ${context.tradieFirstName} with:
 - For ${context.trade} businesses, show you understand the trade`;
     } else {
       // OWNER role: Full business context with growth focus
-      systemPrompt = `You are TradieTrack AI, the powerful business assistant for ${context.tradieFirstName} who runs ${context.businessName}, a ${context.trade} business in Australia.
+      systemPrompt = `You are JobRunner AI, the powerful business assistant for ${context.tradieFirstName} who runs ${context.businessName}, a ${context.trade} business in Australia.
 
 === BUSINESS CONTEXT ===
 Business: ${context.businessName} (${context.trade})

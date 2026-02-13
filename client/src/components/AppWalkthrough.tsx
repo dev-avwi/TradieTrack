@@ -46,7 +46,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     id: "clients",
     title: "Add Your First Client",
-    description: "Start by adding your customers to TradieTrack. You can quickly add clients with just a name and phone number, or add full details including email and address for invoicing.",
+    description: "Start by adding your customers to JobRunner. You can quickly add clients with just a name and phone number, or add full details including email and address for invoicing.",
     icon: Users,
     tips: [
       "Use Quick Add to create clients on the fly when creating jobs",
@@ -61,7 +61,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     id: "jobs",
     title: "Create a Job",
-    description: "Jobs are at the heart of TradieTrack. Create a job for each piece of work, schedule it, and track progress from start to finish.",
+    description: "Jobs are at the heart of JobRunner. Create a job for each piece of work, schedule it, and track progress from start to finish.",
     icon: Briefcase,
     tips: [
       "Jobs flow through 5 stages: Pending → Scheduled → In Progress → Done → Invoiced",
@@ -106,7 +106,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     id: "settings",
     title: "Customise Your Setup",
-    description: "Add your logo, set your rates, connect email and payment integrations. Make TradieTrack work the way you want.",
+    description: "Add your logo, set your rates, connect email and payment integrations. Make JobRunner work the way you want.",
     icon: Settings,
     tips: [
       "Add your logo to appear on quotes and invoices",
@@ -152,12 +152,12 @@ export default function AppWalkthrough({ isOpen, onClose, onComplete, onNavigate
   };
 
   const handleComplete = () => {
-    localStorage.setItem("tradietrack-walkthrough-completed", "true");
+    localStorage.setItem("jobrunner-walkthrough-completed", "true");
     onComplete();
   };
 
   const handleSkip = () => {
-    localStorage.setItem("tradietrack-walkthrough-skipped", "true");
+    localStorage.setItem("jobrunner-walkthrough-skipped", "true");
     onClose();
   };
 
@@ -290,8 +290,8 @@ export function useAppWalkthrough() {
 
   const hasCompleted = useCallback(() => {
     if (typeof window === 'undefined') return true;
-    return localStorage.getItem("tradietrack-walkthrough-completed") === "true" ||
-           localStorage.getItem("tradietrack-walkthrough-skipped") === "true";
+    return localStorage.getItem("jobrunner-walkthrough-completed") === "true" ||
+           localStorage.getItem("jobrunner-walkthrough-skipped") === "true";
   }, []);
 
   const startWalkthrough = useCallback(() => {
@@ -307,8 +307,8 @@ export function useAppWalkthrough() {
   }, []);
 
   const resetWalkthrough = useCallback(() => {
-    localStorage.removeItem("tradietrack-walkthrough-completed");
-    localStorage.removeItem("tradietrack-walkthrough-skipped");
+    localStorage.removeItem("jobrunner-walkthrough-completed");
+    localStorage.removeItem("jobrunner-walkthrough-skipped");
   }, []);
 
   return {

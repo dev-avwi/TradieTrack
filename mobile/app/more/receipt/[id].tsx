@@ -310,13 +310,13 @@ export default function ReceiptDetailScreen() {
       `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'TradieTrack: Send Now',
+          text: 'JobRunner: Send Now',
           onPress: async () => {
             await handleSendViaTradieTrack();
           },
         },
         {
-          text: 'TradieTrack: Edit Message',
+          text: 'JobRunner: Edit Message',
           onPress: () => setShowEmailCompose(true),
         },
         {
@@ -464,7 +464,7 @@ ${businessName}`;
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Please use "TradieTrack" to send with PDF attached.');
+        Alert.alert('Sharing Not Available', 'Please use "JobRunner" to send with PDF attached.');
       }
     } catch (error: any) {
       console.log('Share receipt PDF error:', error);

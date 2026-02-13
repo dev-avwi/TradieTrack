@@ -132,7 +132,7 @@ export const requestAndroidPermissions = async (): Promise<boolean> => {
       const result = await StripeTerminalSDK.requestNeededAndroidPermissions({
         accessFineLocation: {
           title: 'Location Permission',
-          message: 'TradieTrack needs location access to process Tap to Pay payments.',
+          message: 'JobRunner needs location access to process Tap to Pay payments.',
           buttonPositive: 'Allow',
           buttonNegative: 'Deny',
         },

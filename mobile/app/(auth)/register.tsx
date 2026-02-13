@@ -113,7 +113,7 @@ export default function RegisterScreen() {
       
       const result = await WebBrowser.openAuthSessionAsync(
         googleAuthUrl,
-        'tradietrack://',
+        'jobrunner://',
         { showInRecents: true }
       );
       

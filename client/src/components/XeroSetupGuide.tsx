@@ -63,7 +63,7 @@ export default function XeroSetupGuide({
     },
     {
       id: "grant",
-      title: "Grant TradieTrack Access",
+      title: "Grant JobRunner Access",
       description: "Authorize secure data sync",
       completed: isConnected,
       icon: <Shield className="w-4 h-4" />
@@ -212,7 +212,7 @@ export default function XeroSetupGuide({
         <div className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
           <Shield className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Your data is secure. TradieTrack uses official Xero OAuth2 integration. 
+            Your data is secure. JobRunner uses official Xero OAuth2 integration. 
             We never see your Xero password and you can disconnect anytime.
           </p>
         </div>
@@ -227,7 +227,7 @@ export default function XeroSetupGuide({
           <AccordionContent className="text-xs text-muted-foreground pb-3">
             Xero is a popular cloud accounting software used by over 3 million businesses worldwide. 
             It helps you manage invoices, expenses, payroll, and tax compliance. 
-            Connecting TradieTrack to Xero means your invoices and client details sync automatically, 
+            Connecting JobRunner to Xero means your invoices and client details sync automatically, 
             saving you hours of manual data entry.
           </AccordionContent>
         </AccordionItem>
@@ -244,7 +244,7 @@ export default function XeroSetupGuide({
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                <span><strong>Invoices → Xero:</strong> Send invoices from TradieTrack, they appear in Xero</span>
+                <span><strong>Invoices → Xero:</strong> Send invoices from JobRunner, they appear in Xero</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
@@ -286,7 +286,7 @@ export default function XeroSetupGuide({
           </AccordionTrigger>
           <AccordionContent className="text-xs text-muted-foreground pb-3">
             Yes, absolutely! You can disconnect Xero at any time from this integrations page. 
-            Your existing data in both TradieTrack and Xero will remain - 
+            Your existing data in both JobRunner and Xero will remain - 
             only the automatic syncing will stop. You can reconnect whenever you like.
           </AccordionContent>
         </AccordionItem>

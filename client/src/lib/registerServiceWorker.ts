@@ -45,7 +45,7 @@ export async function triggerSync(): Promise<boolean> {
 
   if ('sync' in swRegistration) {
     try {
-      await (swRegistration as any).sync.register('tradietrack-sync');
+      await (swRegistration as any).sync.register('jobrunner-sync');
       return true;
     } catch (error) {
       console.error('Background sync registration failed:', error);

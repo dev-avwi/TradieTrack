@@ -1,4 +1,4 @@
-// TradieTrack Mobile Design System
+// JobRunner Mobile Design System
 // Matches web app styling EXACTLY for 1:1 visual parity
 // Based on web's index.css and design_guidelines.md
 

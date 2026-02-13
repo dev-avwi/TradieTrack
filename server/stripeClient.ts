@@ -197,7 +197,7 @@ export async function initializeStripe(): Promise<{ stripe: Stripe | null; webho
           'payment_intent.payment_failed',
           'account.updated', // Stripe Connect account status changes
         ],
-        description: 'TradieTrack payment webhooks',
+        description: 'JobRunner payment webhooks',
       }
     );
     console.log(`✅ Webhook configured: ${webhook.url}`);

@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.appName}>TradieTrack</Text>
+            <Text style={styles.appName}>JobRunner</Text>
             <Text style={styles.tagline}>Reset your password</Text>
           </View>
 

@@ -283,7 +283,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             <a href="/" className="inline-flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity" data-testid="link-home">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-blue-600 p-0.5 shadow-lg">
                 <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-950 flex items-center justify-center">
-                  <img src={appIconUrl} alt="TradieTrack" className="w-10 h-10 object-contain" />
+                  <img src={appIconUrl} alt="JobRunner" className="w-10 h-10 object-contain" />
                 </div>
               </div>
               <span className="text-2xl font-bold">
@@ -710,7 +710,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             transition={{ delay: 0.4 }}
             className="text-white/80 text-center text-lg mb-8 max-w-md"
           >
-            Join Australian tradies who save hours every week with TradieTrack
+            Join Australian tradies who save hours every week with JobRunner
           </motion.p>
 
           {/* Phone Mockup with Screenshot Carousel */}

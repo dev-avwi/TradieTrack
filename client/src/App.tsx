@@ -819,7 +819,7 @@ function AppLayout() {
   useEffect(() => {
     const updateTradeColors = (userTradeType?: string) => {
       // Check if custom brand theme is enabled - if so, don't override ThemeProvider's colors
-      const brandThemeStr = localStorage.getItem('tradietrack-brand-theme');
+      const brandThemeStr = localStorage.getItem('jobrunner-brand-theme');
       if (brandThemeStr) {
         try {
           const brandTheme = JSON.parse(brandThemeStr);
@@ -833,7 +833,7 @@ function AppLayout() {
       }
       
       // Use user's trade type if available, otherwise use saved or default
-      const tradeType = userTradeType || localStorage.getItem('tradietrack-trade-type') || 'plumbing';
+      const tradeType = userTradeType || localStorage.getItem('jobrunner-trade-type') || 'plumbing';
       const tradeInfo = getTradeInfo(tradeType);
       const hexColor = tradeInfo.color;
       const hsl = hexToHsl(hexColor);
@@ -892,7 +892,7 @@ function AppLayout() {
   useEffect(() => {
     if (userCheck?.tradeType) {
       const tradeType = userCheck.tradeType;
-      localStorage.setItem('tradietrack-trade-type', tradeType);
+      localStorage.setItem('jobrunner-trade-type', tradeType);
       // Trigger a re-render of trade colors
       window.dispatchEvent(new Event('trade-change'));
     }
@@ -935,7 +935,7 @@ function AppLayout() {
           primaryColor: serverColor,
           customThemeEnabled: true
         });
-        localStorage.setItem('tradietrack-brand-theme', JSON.stringify({
+        localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
           primaryColor: serverColor,
           customThemeEnabled: true
         }));
@@ -1034,7 +1034,7 @@ function AppLayout() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading TradieTrack...</p>
+          <p className="text-muted-foreground">Loading JobRunner...</p>
         </div>
       </div>
     );
@@ -1129,7 +1129,7 @@ function AppLayout() {
     setLocation(path);
   };
 
-  // Custom sidebar width for TradieTrack
+  // Custom sidebar width for JobRunner
   const style = {
     "--sidebar-width": "20rem",       // 320px for better content
     "--sidebar-width-icon": "4rem",   // default icon width
@@ -1147,7 +1147,7 @@ function AppLayout() {
       '/integrations': 'Integrations',
       '/more': 'More'
     };
-    return routes[location] || 'TradieTrack';
+    return routes[location] || 'JobRunner';
   };
 
   const showAddButton = () => {
@@ -1281,7 +1281,7 @@ function AppLayout() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="tradietrack-ui-theme">
+      <ThemeProvider defaultTheme="light" storageKey="jobrunner-ui-theme">
         <NetworkProvider>
           <TooltipProvider>
             <Switch>

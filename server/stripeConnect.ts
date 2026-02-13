@@ -48,7 +48,7 @@ export async function createConnectAccount(
       },
       metadata: {
         userId,
-        platform: 'tradietrack',
+        platform: 'jobrunner',
       },
     });
 

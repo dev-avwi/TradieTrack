@@ -301,7 +301,7 @@ export function EmailIntegration() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-success">Emails are ready to send</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Quotes and invoices will be delivered via TradieTrack. Your clients will receive professional emails with your business name.
+                    Quotes and invoices will be delivered via JobRunner. Your clients will receive professional emails with your business name.
                   </p>
                 </div>
               </div>

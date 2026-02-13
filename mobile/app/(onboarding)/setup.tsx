@@ -574,7 +574,7 @@ export default function OnboardingSetupScreen() {
           <Ionicons name="people" size={32} color={colors.warning} />
         </View>
         <Text style={styles.stepTitle}>Invite Your Team</Text>
-        <Text style={styles.stepSubtitle}>Add team members so they can start using TradieTrack</Text>
+        <Text style={styles.stepSubtitle}>Add team members so they can start using JobRunner</Text>
       </View>
 
       <Card>
@@ -689,7 +689,7 @@ export default function OnboardingSetupScreen() {
           <Ionicons name="checkmark" size={48} color={colors.card} />
         </View>
         
-        <Text style={styles.completeTitle}>Welcome to TradieTrack!</Text>
+        <Text style={styles.completeTitle}>Welcome to JobRunner!</Text>
         <Text style={styles.completeSubtitle}>
           {demoDataSeeded 
             ? "We've set up sample data so you can explore the app right away."
@@ -761,7 +761,7 @@ export default function OnboardingSetupScreen() {
         onPress={handleComplete}
         activeOpacity={0.8}
       >
-        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Start Using TradieTrack</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Start Using JobRunner</Text>
       </TouchableOpacity>
     </View>
   );

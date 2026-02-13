@@ -166,7 +166,7 @@ export async function createTerminalPaymentIntent(
       metadata: {
         ...metadata,
         source: 'terminal',
-        platform: 'tradietrack',
+        platform: 'jobrunner',
       },
     }, requestOptions);
 
@@ -222,7 +222,7 @@ export async function createTerminalPaymentIntentWithConnect(
       metadata: {
         ...metadata,
         source: 'terminal',
-        platform: 'tradietrack',
+        platform: 'jobrunner',
         platformFee: platformFeeAmount.toString(),
       },
     }, requestOptions);

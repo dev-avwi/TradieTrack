@@ -1,4 +1,4 @@
-const DB_NAME = 'tradietrack-offline';
+const DB_NAME = 'jobrunner-offline';
 const DB_VERSION = 2;
 
 const STORE_NAMES = [

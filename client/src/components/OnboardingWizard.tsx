@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut, Sparkles, Wrench, Zap, Rocket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import tradietrackLogo from "/logo.png";
+import jobrunnerLogo from "/logo.png";
 
 // Import step components
 import TeamSizeStep from "./onboarding/TeamSizeStep";
@@ -444,7 +444,7 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
         {/* Top bar */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <img src={tradietrackLogo} alt="TradieTrack" className="h-10 w-auto" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="h-10 w-auto" />
             <span className="text-xl font-bold text-white hidden sm:inline">
               <span className="text-white">Tradie</span>
               <span className="text-orange-200">Track</span>
@@ -471,7 +471,7 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
             Getting you set up
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-            Welcome to TradieTrack!
+            Welcome to JobRunner!
           </h1>
           <p className="text-lg text-blue-100 max-w-md mx-auto">
             Let's get your business set up in just a few quick steps

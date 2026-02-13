@@ -40,7 +40,7 @@ export function setupGoogleAuth(app: Express) {
         const demoAccounts = [
           {
             googleId: 'demo-google-primary',
-            email: 'demo.google@tradietrack.com.au',
+            email: 'demo.google@jobrunner.com.au',
             firstName: 'Primary',
             lastName: 'Account',
             profileImageUrl: null,
@@ -48,7 +48,7 @@ export function setupGoogleAuth(app: Express) {
           },
           {
             googleId: 'demo-google-secondary',
-            email: 'test.google@tradietrack.com.au',
+            email: 'test.google@jobrunner.com.au',
             firstName: 'Test',
             lastName: 'Account',
             profileImageUrl: null,
@@ -91,14 +91,14 @@ export function setupGoogleAuth(app: Express) {
           if (err) {
             console.error('Session save error:', err);
             if (isMobile) {
-              return res.redirect('tradietrack://?error=session_failed');
+              return res.redirect('jobrunner://?error=session_failed');
             }
             return res.redirect('/?error=session_failed');
           }
           // Redirect based on platform with isNewUser flag
           if (isMobile) {
             console.log(`🔐 Mobile OAuth success (dev mode, isNewUser: ${isNewUser}), redirecting to app deep link`);
-            return res.redirect(`tradietrack://?auth=google_success&isNewUser=${isNewUser}`);
+            return res.redirect(`jobrunner://?auth=google_success&isNewUser=${isNewUser}`);
           }
           res.redirect(`/?auth=google_success&isNewUser=${isNewUser}`);
         });
@@ -106,7 +106,7 @@ export function setupGoogleAuth(app: Express) {
         console.error('Demo Google auth error:', error);
         const isMobile = req.query.mobile === 'true';
         if (isMobile) {
-          res.redirect('tradietrack://?error=auth_failed');
+          res.redirect('jobrunner://?error=auth_failed');
         } else {
           res.redirect('/?error=auth_failed');
         }
@@ -225,7 +225,7 @@ export function setupGoogleAuth(app: Express) {
         console.error('Google OAuth failed:', err || 'No user returned');
         if (isMobile) {
           console.log('🔐 Mobile OAuth failed, redirecting to app deep link');
-          return res.redirect('tradietrack://?error=auth_failed');
+          return res.redirect('jobrunner://?error=auth_failed');
         }
         return res.redirect('/?error=auth_failed');
       }
@@ -235,7 +235,7 @@ export function setupGoogleAuth(app: Express) {
         if (loginErr) {
           console.error('Login error:', loginErr);
           if (isMobile) {
-            return res.redirect('tradietrack://?error=login_failed');
+            return res.redirect('jobrunner://?error=login_failed');
           }
           return res.redirect('/?error=login_failed');
         }
@@ -248,7 +248,7 @@ export function setupGoogleAuth(app: Express) {
           if (saveErr) {
             console.error('Session save error:', saveErr);
             if (isMobile) {
-              return res.redirect('tradietrack://?error=session_failed');
+              return res.redirect('jobrunner://?error=session_failed');
             }
             return res.redirect('/?error=session_failed');
           }
@@ -261,7 +261,7 @@ export function setupGoogleAuth(app: Express) {
             // Pass session token and isNewUser flag in URL for mobile app
             const sessionToken = req.sessionID;
             console.log(`🔐 Mobile OAuth success (isNewUser: ${isNewUser}), redirecting to app deep link`);
-            return res.redirect(`tradietrack://?auth=google_success&token=${sessionToken}&isNewUser=${isNewUser}`);
+            return res.redirect(`jobrunner://?auth=google_success&token=${sessionToken}&isNewUser=${isNewUser}`);
           }
           
           // Redirect to web app with isNewUser flag so frontend knows to show onboarding

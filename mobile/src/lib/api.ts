@@ -22,7 +22,7 @@ const getApiBaseUrl = (): string => {
   }
   
   // Production builds use the production domain
-  return 'https://tradietrack.com';
+  return 'https://jobrunner.com';
 };
 
 const API_BASE_URL = getApiBaseUrl();

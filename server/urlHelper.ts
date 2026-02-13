@@ -1,19 +1,19 @@
 /**
  * Centralized URL helper for generating consistent URLs across the application.
- * Prioritizes the custom domain (tradietrack.com) for production trust and branding.
+ * Prioritizes the custom domain (jobrunner.com) for production trust and branding.
  */
 
 /**
  * Get the base URL for public links (quotes, invoices, receipts).
  * In development, uses the dev domain so links work with the dev database.
- * In production, uses the custom domain (tradietrack.com) for branding/trust.
+ * In production, uses the custom domain (jobrunner.com) for branding/trust.
  * 
  * Development priority:
  * 1. REPLIT_DEV_DOMAIN (development Replit URL)
  * 2. Request host (fallback)
  * 
  * Production priority:
- * 1. APP_DOMAIN environment variable (custom domain like tradietrack.com)
+ * 1. APP_DOMAIN environment variable (custom domain like jobrunner.com)
  * 2. VITE_APP_URL environment variable
  * 3. REPLIT_DOMAINS (production deployments)
  * 4. Request host (fallback)

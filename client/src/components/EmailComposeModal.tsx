@@ -548,7 +548,7 @@ export default function EmailComposeModal({
         <div className="space-y-3 pt-4 border-t flex-shrink-0">
           {/* Two Send Options */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Primary Action - Use TradieTrack (backend send) */}
+            {/* Primary Action - Use JobRunner (backend send) */}
             <Button 
               onClick={handleSendEmail}
               disabled={!subject.trim() || !message.trim() || isSending}
@@ -563,7 +563,7 @@ export default function EmailComposeModal({
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Use TradieTrack
+                  Use JobRunner
                 </>
               )}
             </Button>
@@ -582,7 +582,7 @@ export default function EmailComposeModal({
           </div>
           
           <p className="text-xs text-muted-foreground text-center">
-            TradieTrack sends automatically with PDF attached. Email App opens your mail with the message and online viewing link.
+            JobRunner sends automatically with PDF attached. Email App opens your mail with the message and online viewing link.
           </p>
 
           {/* Copy Link Option for sharing */}

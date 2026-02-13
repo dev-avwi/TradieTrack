@@ -148,7 +148,7 @@ export default function LoginScreen() {
       
       const result = await WebBrowser.openAuthSessionAsync(
         googleAuthUrl,
-        'tradietrack://',
+        'jobrunner://',
         { showInRecents: true }
       );
       

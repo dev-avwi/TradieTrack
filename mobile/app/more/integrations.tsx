@@ -463,7 +463,7 @@ export default function IntegrationsScreen() {
       // Open Xero OAuth in in-app browser
       const result = await WebBrowser.openAuthSessionAsync(
         response.data.authUrl,
-        'tradietrack://xero-callback'
+        'jobrunner://xero-callback'
       );
       
       if (result.type === 'success') {
@@ -599,7 +599,7 @@ export default function IntegrationsScreen() {
       if (response.data?.authUrl) {
         const result = await WebBrowser.openAuthSessionAsync(
           response.data.authUrl,
-          'tradietrack://google-calendar-callback'
+          'jobrunner://google-calendar-callback'
         );
         
         if (result.type === 'success') {

@@ -8,7 +8,7 @@ import { eq, and, sql } from 'drizzle-orm';
 // DEMO USER CREDENTIALS
 // ============================================
 export const DEMO_USER = {
-  email: 'demo@tradietrack.com.au',
+  email: 'demo@jobrunner.com.au',
   password: 'demo123',
   name: 'Mike Thompson',
   businessName: "Mike's Plumbing Services",
@@ -16,7 +16,7 @@ export const DEMO_USER = {
 };
 
 export const DEMO_WORKER = {
-  email: 'demo.worker@tradietrack.com.au',
+  email: 'demo.worker@jobrunner.com.au',
   password: 'worker123',
   name: 'Jake Morrison',
   phone: '+61412555888',
@@ -32,10 +32,10 @@ export const TEST_USERS = [
     phone: '+61407123456',
   },
   {
-    email: 'admin@tradietrack.app',
+    email: 'admin@jobrunner.app',
     password: 'admin123',
     name: 'Admin User',
-    businessName: 'TradieTrack Demo',
+    businessName: 'JobRunner Demo',
     phone: '+61400000001',
   },
 ];

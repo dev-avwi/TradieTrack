@@ -167,7 +167,7 @@ export default function DemoPaymentSimulator({
                   <span className="text-red-500">-${stripeFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>TradieTrack Fee (2.5%)</span>
+                  <span>JobRunner Fee (2.5%)</span>
                   <span className="text-red-500">-${platformFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-medium text-foreground pt-1 border-t">

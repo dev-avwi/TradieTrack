@@ -28,14 +28,14 @@ interface ImmersiveOnboardingProps {
 const JOB_WALKTHROUGH_STEPS = [
   {
     title: "A New Lead Calls",
-    description: "Sarah calls about a leaky tap. You're on another job, so you quickly add her details in TradieTrack.",
+    description: "Sarah calls about a leaky tap. You're on another job, so you quickly add her details in JobRunner.",
     action: "Create client & job",
     icon: Users,
     color: "#3b82f6"
   },
   {
     title: "Schedule the Visit",
-    description: "You drag the job to tomorrow at 10am. TradieTrack sends Sarah a confirmation SMS automatically.",
+    description: "You drag the job to tomorrow at 10am. JobRunner sends Sarah a confirmation SMS automatically.",
     action: "Set appointment time",
     icon: Clock,
     color: "#10b981"
@@ -63,7 +63,7 @@ const JOB_WALKTHROUGH_STEPS = [
   },
   {
     title: "Complete the Work",
-    description: "You fix the tap, take 'after' photos, and mark the job complete. TradieTrack generates an invoice.",
+    description: "You fix the tap, take 'after' photos, and mark the job complete. JobRunner generates an invoice.",
     action: "Finish & invoice",
     icon: DollarSign,
     color: "#3b82f6"
@@ -130,7 +130,7 @@ export default function ImmersiveOnboarding({ onComplete, businessSettings }: Im
               <Sparkles className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-4xl font-bold" data-testid="text-welcome-greeting">G'day, {businessSettings?.businessName?.split(' ')[0] || 'Mate'}!</h1>
-            <p className="text-xl text-white/80" data-testid="text-welcome-subtitle">Welcome to TradieTrack</p>
+            <p className="text-xl text-white/80" data-testid="text-welcome-subtitle">Welcome to JobRunner</p>
           </div>
 
           <Card className="bg-white/10 border-white/20 backdrop-blur">

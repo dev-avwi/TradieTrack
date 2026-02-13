@@ -76,7 +76,7 @@ function AdminSidebar({
           <div className="w-9 h-9 rounded-lg overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
             <img
               src={appIconUrl}
-              alt="TradieTrack Admin"
+              alt="JobRunner Admin"
               className="w-full h-full object-contain"
               data-testid="img-admin-logo"
             />
@@ -87,7 +87,7 @@ function AdminSidebar({
                 className="font-bold text-base leading-none"
                 data-testid="text-admin-title"
               >
-                TradieTrack
+                JobRunner
               </h1>
               <Badge
                 variant="secondary"

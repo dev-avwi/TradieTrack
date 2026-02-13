@@ -1,6 +1,6 @@
-const CACHE_NAME = 'tradietrack-v1';
-const STATIC_CACHE = 'tradietrack-static-v1';
-const API_CACHE = 'tradietrack-api-v1';
+const CACHE_NAME = 'jobrunner-v1';
+const STATIC_CACHE = 'jobrunner-static-v1';
+const API_CACHE = 'jobrunner-api-v1';
 
 const STATIC_ASSETS = [
   '/',
@@ -21,7 +21,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames
           .filter((name) => {
-            return name.startsWith('tradietrack-') && 
+            return name.startsWith('jobrunner-') && 
                    name !== STATIC_CACHE && 
                    name !== API_CACHE;
           })
@@ -125,7 +125,7 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'tradietrack-sync') {
+  if (event.tag === 'jobrunner-sync') {
     event.waitUntil(notifyClientsToSync());
   }
 });

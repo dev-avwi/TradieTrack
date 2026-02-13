@@ -2,12 +2,12 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'TradieTrack',
-  slug: 'tradietrack',
+  name: 'JobRunner',
+  slug: 'jobrunner',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
-  scheme: 'tradietrack',
+  scheme: 'jobrunner',
   userInterfaceStyle: 'automatic',
   splash: {
     image: './assets/splash.png',
@@ -17,15 +17,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.tradietrack.app',
+    bundleIdentifier: 'com.jobrunner.app',
     newArchEnabled: true,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      NSCameraUsageDescription: 'TradieTrack needs camera access to take job photos',
-      NSPhotoLibraryUsageDescription: 'TradieTrack needs photo library access to upload job photos',
-      NSLocationWhenInUseUsageDescription: 'TradieTrack needs location access to track job sites',
-      NSLocationAlwaysAndWhenInUseUsageDescription: 'TradieTrack needs location access for team tracking',
-      NFCReaderUsageDescription: 'TradieTrack uses NFC for Tap to Pay contactless payments',
+      NSCameraUsageDescription: 'JobRunner needs camera access to take job photos',
+      NSPhotoLibraryUsageDescription: 'JobRunner needs photo library access to upload job photos',
+      NSLocationWhenInUseUsageDescription: 'JobRunner needs location access to track job sites',
+      NSLocationAlwaysAndWhenInUseUsageDescription: 'JobRunner needs location access for team tracking',
+      NFCReaderUsageDescription: 'JobRunner uses NFC for Tap to Pay contactless payments',
     },
   },
   android: {
@@ -33,7 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#ffffff',
     },
-    package: 'com.tradietrack.app',
+    package: 'com.jobrunner.app',
     newArchEnabled: true,
     permissions: [
       'CAMERA',
@@ -59,13 +59,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-camera',
       {
-        cameraPermission: 'Allow TradieTrack to take job photos',
+        cameraPermission: 'Allow JobRunner to take job photos',
       },
     ],
     [
       'expo-location',
       {
-        locationAlwaysAndWhenInUsePermission: 'Allow TradieTrack to track your location for team features',
+        locationAlwaysAndWhenInUsePermission: 'Allow JobRunner to track your location for team features',
       },
     ],
     [

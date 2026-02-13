@@ -1,4 +1,4 @@
-// Replit Auth integration for TradieTrack
+// Replit Auth integration for JobRunner
 // Based on javascript_log_in_with_replit blueprint
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";

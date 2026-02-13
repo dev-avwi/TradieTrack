@@ -97,7 +97,7 @@ export default function Header({
           {/* SidebarTrigger - shown on both mobile and desktop */}
           <SidebarTrigger data-testid="button-sidebar-toggle" />
           
-          {/* TradieTrack branding - clickable to go to settings/My Account */}
+          {/* JobRunner branding - clickable to go to settings/My Account */}
           <button
             onClick={() => setLocation('/settings')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -105,7 +105,7 @@ export default function Header({
           >
             <img 
               src={appIconUrl} 
-              alt="TradieTrack" 
+              alt="JobRunner" 
               className="h-8 w-8 object-contain"
               data-testid="img-header-logo"
             />
@@ -114,7 +114,7 @@ export default function Header({
               style={{ color: 'hsl(var(--trade))' }}
               data-testid="header-brand"
             >
-              TradieTrack
+              JobRunner
             </span>
           </button>
           

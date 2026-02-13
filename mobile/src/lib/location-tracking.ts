@@ -16,8 +16,8 @@ import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 import api from './api';
 
-const LOCATION_TASK_NAME = 'tradietrack-location-tracking';
-const GEOFENCE_TASK_NAME = 'tradietrack-geofence-monitoring';
+const LOCATION_TASK_NAME = 'jobrunner-location-tracking';
+const GEOFENCE_TASK_NAME = 'jobrunner-geofence-monitoring';
 
 export interface LocationUpdate {
   latitude: number;
@@ -121,7 +121,7 @@ class LocationTrackingService {
           distanceInterval: 50, // Or when moved 50 meters
           showsBackgroundLocationIndicator: true,
           foregroundService: {
-            notificationTitle: 'TradieTrack',
+            notificationTitle: 'JobRunner',
             notificationBody: 'Location tracking active for team visibility',
             notificationColor: '#f97316',
           },

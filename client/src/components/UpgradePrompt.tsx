@@ -108,7 +108,7 @@ export default function UpgradePrompt({
 
       {!onClose && (
         <p className="text-center text-xs text-muted-foreground">
-          Thank you for trying TradieTrack during our beta period.
+          Thank you for trying JobRunner during our beta period.
         </p>
       )}
     </div>

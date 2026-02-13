@@ -95,7 +95,7 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
 export const PRESET_THEMES: ThemePreset[] = [
   {
     id: 'default',
-    name: 'TradieTrack Default',
+    name: 'JobRunner Default',
     description: 'Clean blue theme optimised for tradies',
     lightPalette: DEFAULT_LIGHT_PALETTE,
     darkPalette: DEFAULT_DARK_PALETTE,

@@ -276,7 +276,7 @@ export default function LocationPermissionScreen() {
           </View>
           <Text style={styles.heroTitle}>Enable Location Services</Text>
           <Text style={styles.heroSubtitle}>
-            Get the most out of TradieTrack with intelligent location features
+            Get the most out of JobRunner with intelligent location features
           </Text>
         </View>
         

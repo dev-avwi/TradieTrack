@@ -1,6 +1,6 @@
 {
-  "name": "TradieTrack",
-  "short_name": "TradieTrack",
+  "name": "JobRunner",
+  "short_name": "JobRunner",
   "description": "Job management for Australian tradies. Manage jobs, quotes, invoices, and get paid faster.",
   "start_url": "/",
   "display": "standalone",

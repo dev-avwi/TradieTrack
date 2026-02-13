@@ -164,7 +164,7 @@ export const useLocationStore = create<LocationStore>()(
       },
     }),
     {
-      name: 'tradietrack-location',
+      name: 'jobrunner-location',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         isEnabled: state.isEnabled,

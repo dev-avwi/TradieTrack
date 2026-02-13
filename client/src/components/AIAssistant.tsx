@@ -450,7 +450,7 @@ export default function AIAssistant({ onNavigate, embedded = false }: AIAssistan
                 } : {}}
               >
                 <p className="text-xs font-medium mb-1 text-muted-foreground">
-                  {msg.role === 'user' ? 'You' : 'TradieTrack AI'}
+                  {msg.role === 'user' ? 'You' : 'JobRunner AI'}
                 </p>
                 {msg.role === 'assistant' ? renderMessageContent(msg) : (
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>

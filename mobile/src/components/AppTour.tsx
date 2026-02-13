@@ -62,7 +62,7 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-const STORAGE_KEY = 'tradietrack-mobile-tour-completed';
+const STORAGE_KEY = 'jobrunner-mobile-tour-completed';
 
 interface AppTourProps {
   visible: boolean;

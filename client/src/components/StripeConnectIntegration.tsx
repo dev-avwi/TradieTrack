@@ -177,7 +177,7 @@ export function StripeConnectIntegration() {
               <div>
                 <p className="font-medium text-blue-800 dark:text-blue-100">Coming Soon!</p>
                 <p className="text-sm text-blue-700 dark:text-blue-200 mt-1">
-                  Online payments are being set up for the TradieTrack platform. 
+                  Online payments are being set up for the JobRunner platform. 
                   This feature will be available soon and will let your customers pay invoices with their credit card.
                 </p>
                 <p className="text-sm text-blue-600 dark:text-blue-300 mt-2">

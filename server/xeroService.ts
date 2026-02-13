@@ -11,7 +11,7 @@ function getRedirectUri(): string {
   let baseUrl: string;
   
   if (appUrl) {
-    // Use configured app URL (e.g., https://tradietrack.com)
+    // Use configured app URL (e.g., https://jobrunner.com)
     baseUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
   } else if (process.env.REPLIT_DEV_DOMAIN) {
     baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
@@ -925,7 +925,7 @@ export async function syncPaymentsFromXero(userId: string): Promise<{
   const details: Array<{ invoiceId: string; invoiceNumber: string; amountPaid: number }> = [];
 
   try {
-    // Get all TradieTrack invoices that have been synced to Xero but not marked as paid
+    // Get all JobRunner invoices that have been synced to Xero but not marked as paid
     const invoices = await storage.getInvoices(userId);
     const syncedInvoices = invoices.filter(inv => 
       inv.xeroInvoiceId && inv.status !== 'paid' && inv.status !== 'cancelled'
@@ -999,7 +999,7 @@ export async function syncPaymentsFromXero(userId: string): Promise<{
 
         // Check if Xero shows the invoice as paid (fully paid)
         if (xeroInvoice.status === 'PAID' && invoice.status !== 'paid') {
-          // Update TradieTrack invoice to paid
+          // Update JobRunner invoice to paid
           await storage.updateInvoice(invoice.id, userId, {
             status: 'paid',
             paidAt: xeroInvoice.fullyPaidOnDate ? new Date(xeroInvoice.fullyPaidOnDate) : new Date(),
@@ -1116,7 +1116,7 @@ export async function syncInvoiceStatusFromXero(userId: string): Promise<{
     const recentlyModifiedInvoices = xeroResponse.body.invoices || [];
     console.log(`[Xero] Found ${recentlyModifiedInvoices.length} recently modified invoices to check`);
 
-    // Status mapping from Xero to TradieTrack
+    // Status mapping from Xero to JobRunner
     const statusMap: Record<string, string> = {
       'DRAFT': 'draft',
       'SUBMITTED': 'sent',
@@ -1170,8 +1170,8 @@ export async function syncInvoiceStatusFromXero(userId: string): Promise<{
 }
 
 /**
- * Void an invoice in Xero when cancelled in TradieTrack
- * Tradify feature: Cancel invoice in TradieTrack → Voided in Xero
+ * Void an invoice in Xero when cancelled in JobRunner
+ * Tradify feature: Cancel invoice in JobRunner → Voided in Xero
  */
 export async function voidInvoiceInXero(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -1296,7 +1296,7 @@ export async function syncCreditNotesFromXero(userId: string): Promise<{
 }
 
 /**
- * Sync inventory items FROM Xero to TradieTrack catalog
+ * Sync inventory items FROM Xero to JobRunner catalog
  * ServiceM8 & Tradify feature: Inventory items sync from Xero
  */
 export async function syncInventoryFromXero(userId: string): Promise<{

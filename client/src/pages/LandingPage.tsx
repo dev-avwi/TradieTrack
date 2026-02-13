@@ -81,7 +81,7 @@ import {
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
-import tradietrackLogo from "/logo.png";
+import jobrunnerLogo from "/logo.png";
 
 // App screenshots for phone mockups
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
@@ -102,7 +102,7 @@ export default function LandingPage() {
 
   // Show mobile app popup after a short delay on first visit
   useEffect(() => {
-    const hasSeenPopup = localStorage.getItem('tradietrack_app_popup_dismissed');
+    const hasSeenPopup = localStorage.getItem('jobrunner_app_popup_dismissed');
     if (!hasSeenPopup) {
       const timer = setTimeout(() => {
         setShowAppPopup(true);
@@ -113,7 +113,7 @@ export default function LandingPage() {
 
   const dismissAppPopup = () => {
     setShowAppPopup(false);
-    localStorage.setItem('tradietrack_app_popup_dismissed', 'true');
+    localStorage.setItem('jobrunner_app_popup_dismissed', 'true');
   };
 
   useEffect(() => {
@@ -184,13 +184,13 @@ export default function LandingPage() {
               data-testid="nav-logo"
             >
               <img 
-                src={tradietrackLogo} 
-                alt="TradieTrack" 
+                src={jobrunnerLogo} 
+                alt="JobRunner" 
                 className="h-9 w-auto"
               />
               <span className="text-xl font-bold tracking-tight">
-                <span className="text-blue-600">Tradie</span>
-                <span className="text-orange-500">Track</span>
+                <span className="text-blue-600">Job</span>
+                <span className="text-orange-500">Runner</span>
               </span>
             </button>
 
@@ -443,7 +443,7 @@ export default function LandingPage() {
                   <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
                     <img 
                       src={dashboardScreenshot} 
-                      alt="TradieTrack Dashboard"
+                      alt="JobRunner Dashboard"
                       className="w-full h-auto"
                     />
                   </div>
@@ -486,7 +486,7 @@ export default function LandingPage() {
               Your business, in your pocket
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-              Whether you're on-site with your phone or at your desk with a browser – TradieTrack works wherever you do.
+              Whether you're on-site with your phone or at your desk with a browser – JobRunner works wherever you do.
             </p>
             
             {/* Toggle Buttons */}
@@ -531,7 +531,7 @@ export default function LandingPage() {
               <div className="relative max-w-2xl mx-auto">
                 <img 
                   src={iphoneMockup} 
-                  alt="TradieTrack mobile app on construction site" 
+                  alt="JobRunner mobile app on construction site" 
                   className="w-full h-auto rounded-2xl shadow-2xl"
                 />
               </div>
@@ -563,7 +563,7 @@ export default function LandingPage() {
               <div className="relative max-w-4xl mx-auto">
                 <img 
                   src={macbookMockup} 
-                  alt="TradieTrack web dashboard on MacBook at construction site" 
+                  alt="JobRunner web dashboard on MacBook at construction site" 
                   className="w-full h-auto rounded-2xl shadow-2xl"
                 />
               </div>
@@ -760,7 +760,7 @@ export default function LandingPage() {
                 name="Free"
                 price="$0"
                 period="forever"
-                description="Perfect for trying out TradieTrack"
+                description="Perfect for trying out JobRunner"
                 features={[
                   "Unlimited quotes",
                   "25 jobs per month",
@@ -841,12 +841,12 @@ export default function LandingPage() {
       <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
         <div className="max-w-5xl mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-14">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Get TradieTrack</span>
+            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Get JobRunner</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Use it anywhere — web or mobile
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              TradieTrack works on any device. Use the web app on your computer or download the mobile app to manage your business on the go.
+              JobRunner works on any device. Use the web app on your computer or download the mobile app to manage your business on the go.
             </p>
           </AnimatedSection>
           
@@ -864,7 +864,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-gray-600 mb-6">
-                  Access TradieTrack from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
+                  Access JobRunner from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
                 </p>
                 <Link href="/auth?mode=signup">
                   <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
@@ -894,7 +894,7 @@ export default function LandingPage() {
               {/* App Store Badges */}
               <div className="flex flex-col gap-3">
                 <a 
-                  href="https://apps.apple.com/app/tradietrack/id6756844699"
+                  href="https://apps.apple.com/app/jobrunner/id6756844699"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 hover:bg-gray-800 transition-colors"
@@ -965,13 +965,13 @@ export default function LandingPage() {
                 className="flex items-center gap-3 mb-5 hover:opacity-80 transition-opacity"
               >
                 <img 
-                  src={tradietrackLogo} 
-                  alt="TradieTrack" 
+                  src={jobrunnerLogo} 
+                  alt="JobRunner" 
                   className="h-8 w-auto brightness-0 invert"
                 />
                 <span className="text-lg font-bold">
-                  <span className="text-blue-400">Tradie</span>
-                  <span className="text-orange-400">Track</span>
+                  <span className="text-blue-400">Job</span>
+                  <span className="text-orange-400">Runner</span>
                 </span>
               </button>
               <p className="text-sm leading-relaxed">
@@ -1028,7 +1028,7 @@ export default function LandingPage() {
               <ul className="space-y-3 text-sm">
                 <li><a href="#how-it-works" onClick={(e) => scrollToSection(e, "how-it-works")} className="hover:text-white transition-colors" data-testid="link-about">About</a></li>
                 <li><a href="mailto:admin@avwebinnovation.com" className="hover:text-white transition-colors" data-testid="link-contact">Contact</a></li>
-                <li><a href="mailto:support@tradietrack.com.au" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
+                <li><a href="mailto:support@jobrunner.com.au" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
               </ul>
             </div>
             <div>
@@ -1040,7 +1040,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} TradieTrack. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} JobRunner. All rights reserved.</p>
             <p className="mt-2 text-gray-500">Made with love in Australia</p>
           </div>
         </div>
@@ -1159,7 +1159,7 @@ export default function LandingPage() {
                 <Smartphone className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-1">
-                Get the TradieTrack App
+                Get the JobRunner App
               </h3>
               <p className="text-white/90 text-sm">
                 Manage your business from anywhere
@@ -1192,7 +1192,7 @@ export default function LandingPage() {
               {/* App Store Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <a 
-                  href="https://apps.apple.com/app/tradietrack/id6756844699" 
+                  href="https://apps.apple.com/app/jobrunner/id6756844699" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
@@ -1254,7 +1254,7 @@ function PhoneMockup({ screenshot }: { screenshot: string }) {
           />
           <img 
             src={screenshot} 
-            alt="TradieTrack App"
+            alt="JobRunner App"
             className={`w-full h-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
             onLoad={() => setImageLoaded(true)}
             loading="eager"
@@ -1326,7 +1326,7 @@ function PricingCard({
   isContactSales?: boolean;
 }) {
   const handleContactSales = () => {
-    window.location.href = "mailto:admin@avwebinnovation.com?subject=TradieTrack%20Team%20Plan%20Enquiry&body=Hi%20TradieTrack%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20TradieTrack%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
+    window.location.href = "mailto:admin@avwebinnovation.com?subject=JobRunner%20Team%20Plan%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20JobRunner%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
   };
 
   return (

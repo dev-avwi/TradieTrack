@@ -1,6 +1,6 @@
-# TradieTrack Mobile App
+# JobRunner Mobile App
 
-React Native mobile app for TradieTrack - built with Expo SDK 52.
+React Native mobile app for JobRunner - built with Expo SDK 52.
 
 ## Features
 
@@ -23,7 +23,7 @@ React Native mobile app for TradieTrack - built with Expo SDK 52.
 - **Styling**: NativeWind (Tailwind CSS for React Native)
 - **State Management**: Zustand
 - **Data Fetching**: TanStack Query
-- **Backend**: Connects to existing TradieTrack Express API
+- **Backend**: Connects to existing JobRunner Express API
 
 ## Getting Started
 
@@ -106,7 +106,7 @@ mobile/
 Create a `.env` file in the mobile directory:
 
 ```
-EXPO_PUBLIC_API_URL=https://tradietrack.com
+EXPO_PUBLIC_API_URL=https://jobrunner.com
 ```
 
 ## Feature Details
@@ -184,4 +184,4 @@ Use these accounts to test:
 
 ## License
 
-Proprietary - TradieTrack
+Proprietary - JobRunner

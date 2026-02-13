@@ -170,7 +170,7 @@ export default function StripeSetupGuide({
           <AccordionContent className="text-xs text-muted-foreground pb-3">
             Stripe is a trusted payment processor used by millions of businesses worldwide. 
             It securely handles card payments and deposits money directly into your bank account. 
-            TradieTrack uses Stripe Express, which means you get a simple setup process and 
+            JobRunner uses Stripe Express, which means you get a simple setup process and 
             Stripe handles all the security and compliance.
           </AccordionContent>
         </AccordionItem>
@@ -191,7 +191,7 @@ export default function StripeSetupGuide({
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                <span><strong>TradieTrack fee:</strong> 2.5% platform fee on transactions</span>
+                <span><strong>JobRunner fee:</strong> 2.5% platform fee on transactions</span>
               </li>
               <li className="flex items-start gap-2">
                 <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />

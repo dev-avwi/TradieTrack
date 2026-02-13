@@ -580,7 +580,7 @@ export default function AcceptInvite() {
                   <h3 className="font-semibold">Create Account & Join</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Create your TradieTrack account to join the team
+                  Create your JobRunner account to join the team
                 </p>
               </div>
               
@@ -683,7 +683,7 @@ export default function AcceptInvite() {
                   <p className="text-sm font-medium">Already have an account?</p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Sign in with your existing TradieTrack account to accept this invitation
+                  Sign in with your existing JobRunner account to accept this invitation
                 </p>
                 <Button
                   variant="outline"

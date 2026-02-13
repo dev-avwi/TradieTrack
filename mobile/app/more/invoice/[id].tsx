@@ -285,11 +285,11 @@ export default function InvoiceDetailScreen() {
       `To: ${client?.email || 'client'}`,
       [
         {
-          text: 'TradieTrack: Send Now',
+          text: 'JobRunner: Send Now',
           onPress: () => handleSendViaTradieTrack(),
         },
         {
-          text: 'TradieTrack: Edit Message',
+          text: 'JobRunner: Edit Message',
           onPress: () => setShowEmailCompose(true),
         },
         {
@@ -541,11 +541,11 @@ ${businessName}`;
           ]
         );
       } else {
-        Alert.alert('Sharing Not Available', 'Please use "TradieTrack" option to send with PDF attached.');
+        Alert.alert('Sharing Not Available', 'Please use "JobRunner" option to send with PDF attached.');
       }
     } catch (error: any) {
       console.log('Error preparing PDF:', error);
-      Alert.alert('Error', error.message || 'Failed to prepare PDF. Please try "TradieTrack" option instead.');
+      Alert.alert('Error', error.message || 'Failed to prepare PDF. Please try "JobRunner" option instead.');
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -857,13 +857,13 @@ ${businessName}`;
       `To: ${client?.email || client?.phone || 'client'}`,
       [
         {
-          text: 'TradieTrack: Send Now',
+          text: 'JobRunner: Send Now',
           onPress: async () => {
             await handleSendReceiptViaTradieTrack();
           },
         },
         {
-          text: 'TradieTrack: Edit Message',
+          text: 'JobRunner: Edit Message',
           onPress: () => setShowReceiptEmailCompose(true),
         },
         {
@@ -1101,7 +1101,7 @@ ${businessName}`;
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Please use "TradieTrack" to send with PDF attached.');
+        Alert.alert('Sharing Not Available', 'Please use "JobRunner" to send with PDF attached.');
       }
     } catch (error: any) {
       console.log('Share receipt PDF error:', error);

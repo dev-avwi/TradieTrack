@@ -52,7 +52,7 @@ async function getItemFromEndpoint(endpoint: string, id: string): Promise<any> {
 }
 
 // Session token storage key for iOS/Safari fallback
-const SESSION_TOKEN_KEY = 'tradietrack_session_token';
+const SESSION_TOKEN_KEY = 'jobrunner_session_token';
 
 // Track local changes to prevent WebSocket invalidation flicker
 // Maps query key patterns to their last local change timestamp

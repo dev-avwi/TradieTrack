@@ -64,7 +64,7 @@ export default function GoogleCalendarSetupGuide({
     {
       id: "grant",
       title: "Grant Calendar Access",
-      description: "Authorize TradieTrack to add events",
+      description: "Authorize JobRunner to add events",
       completed: isConnected,
       icon: <Shield className="w-4 h-4" />
     },
@@ -256,7 +256,7 @@ export default function GoogleCalendarSetupGuide({
         <div className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
           <Shield className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Your data is secure. TradieTrack uses official Google OAuth2 integration. 
+            Your data is secure. JobRunner uses official Google OAuth2 integration. 
             We never see your Google password and you can disconnect anytime.
           </p>
         </div>
@@ -269,7 +269,7 @@ export default function GoogleCalendarSetupGuide({
             What is Google Calendar integration?
           </AccordionTrigger>
           <AccordionContent className="text-xs text-muted-foreground pb-3">
-            Google Calendar integration allows TradieTrack to automatically sync your scheduled jobs 
+            Google Calendar integration allows JobRunner to automatically sync your scheduled jobs 
             to your Google Calendar. This means all your job appointments appear alongside your personal 
             events, making it easy to see your complete schedule at a glance. You'll get reminders 
             before each job, helping you stay organized and never miss an appointment.

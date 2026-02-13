@@ -264,12 +264,12 @@ export default function Settings({
   // Sync with localStorage on client side only (respect role restrictions)
   useEffect(() => {
     const savedTab = typeof window !== 'undefined' 
-      ? localStorage.getItem('tradietrack-settings-tab') 
+      ? localStorage.getItem('jobrunner-settings-tab') 
       : null;
     if (savedTab) {
       // Templates tab was removed - clear invalid stored value
       if (savedTab === 'templates') {
-        localStorage.removeItem('tradietrack-settings-tab');
+        localStorage.removeItem('jobrunner-settings-tab');
         setActiveTab(defaultTab);
         return;
       }
@@ -725,7 +725,7 @@ export default function Settings({
       case 'payment_terms':
         return () => {
           setActiveTab('payment');
-          localStorage.setItem('tradietrack-settings-tab', 'payment');
+          localStorage.setItem('jobrunner-settings-tab', 'payment');
           setTimeout(() => scrollToElement('[data-testid="input-payment-terms-days"]'), 300);
         };
       default:
@@ -783,7 +783,7 @@ export default function Settings({
           className="hover-elevate cursor-pointer" 
           onClick={() => {
             setActiveTab('billing');
-            localStorage.setItem('tradietrack-settings-tab', 'billing');
+            localStorage.setItem('jobrunner-settings-tab', 'billing');
           }}
         >
           <CardContent className="p-4">
@@ -805,7 +805,7 @@ export default function Settings({
         value={activeTab} 
         onValueChange={(value) => {
           setActiveTab(value);
-          localStorage.setItem('tradietrack-settings-tab', value);
+          localStorage.setItem('jobrunner-settings-tab', value);
         }} 
         className="space-y-6"
       >
@@ -2868,9 +2868,9 @@ function SupportTab() {
                       variant="default"
                       size="sm"
                       onClick={() => {
-                        localStorage.removeItem("tradietrack-tour-completed");
-                        localStorage.removeItem("tradietrack-tour-completed-date");
-                        localStorage.removeItem("tradietrack-tour-skipped");
+                        localStorage.removeItem("jobrunner-tour-completed");
+                        localStorage.removeItem("jobrunner-tour-completed-date");
+                        localStorage.removeItem("jobrunner-tour-skipped");
                         window.dispatchEvent(new CustomEvent("start-guided-tour"));
                       }}
                       data-testid="button-start-tour"
@@ -2882,7 +2882,7 @@ function SupportTab() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        localStorage.removeItem("tradietrack_walkthrough_seen");
+                        localStorage.removeItem("jobrunner_walkthrough_seen");
                         window.location.reload();
                       }}
                       data-testid="button-replay-walkthrough"
@@ -2929,7 +2929,7 @@ function ResetDemoDataSection() {
   });
   
   // Only show for demo account
-  const isDemoUser = profile?.user?.email === 'demo@tradietrack.com.au';
+  const isDemoUser = profile?.user?.email === 'demo@jobrunner.com.au';
   if (!isDemoUser) {
     return null;
   }

@@ -67,14 +67,14 @@ export const TIER_LIMITS = {
 export const PRICING = {
   pro: {
     monthly: 3900, // $39/month
-    name: 'TradieTrack Pro',
+    name: 'JobRunner Pro',
     description: 'Unlimited jobs, quotes, and invoices for solo tradies',
   },
   team: {
     baseMonthly: 4900, // $49/month base
     seatMonthly: 2900, // $29/month per additional seat
-    name: 'TradieTrack Team',
-    baseName: 'TradieTrack Team (Base)',
+    name: 'JobRunner Team',
+    baseName: 'JobRunner Team (Base)',
     seatName: 'Additional Team Member',
     description: 'Full features plus team management and live tracking',
   },
@@ -370,7 +370,7 @@ export const businessSettings = pgTable("business_settings", {
   autoRemindersEnabled: boolean("auto_reminders_enabled").default(true),
   reminderDays: json("reminder_days").default([7, 14, 30]), // Days after due date to send reminders
   reminderTone: text("reminder_tone").default('friendly'), // friendly, professional, firm
-  // TradieTrack Subscription Billing (tradie paying us $39/month)
+  // JobRunner Subscription Billing (tradie paying us $39/month)
   stripeCustomerId: text("stripe_customer_id"), // Platform customer ID for subscription billing
   stripeSubscriptionId: text("stripe_subscription_id"), // Active subscription ID
   subscriptionStatus: text("subscription_status").default('none'), // none, active, trialing, past_due, canceled
@@ -401,7 +401,7 @@ export const businessSettings = pgTable("business_settings", {
   themeMode: text("theme_mode").default('system'), // 'light', 'dark', 'system' - synced across all devices
   // SMS Branding Settings
   twilioPhoneNumber: text("twilio_phone_number"), // User's own Twilio phone number (E.164 format)
-  twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "TradieTrack")
+  twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "JobRunner")
   twilioAccountSid: text("twilio_account_sid"), // User's own Twilio account SID
   twilioAuthToken: text("twilio_auth_token"), // User's own Twilio auth token (encrypted at rest)
   // Onboarding tracking

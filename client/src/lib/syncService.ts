@@ -11,7 +11,7 @@ import { getSessionToken } from './queryClient';
 import { queryClient } from './queryClient';
 
 const MAX_RETRIES = 3;
-const ID_MAPPING_KEY = 'tradietrack_id_mapping';
+const ID_MAPPING_KEY = 'jobrunner_id_mapping';
 
 export interface IdMapping {
   [offlineId: string]: number | string;

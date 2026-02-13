@@ -75,7 +75,7 @@ export default function QuickBooksIntegration({
     },
     {
       id: "grant",
-      title: "Grant TradieTrack Access",
+      title: "Grant JobRunner Access",
       description: "Authorize secure data sync",
       completed: isConnected,
       icon: <Shield className="w-4 h-4" />
@@ -304,7 +304,7 @@ export default function QuickBooksIntegration({
             <div className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
               <Shield className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-muted-foreground">
-                Your data is secure. TradieTrack uses official Intuit OAuth2 integration. 
+                Your data is secure. JobRunner uses official Intuit OAuth2 integration. 
                 We never see your QuickBooks password and you can disconnect anytime.
               </p>
             </div>
@@ -317,7 +317,7 @@ export default function QuickBooksIntegration({
                 <AccordionContent className="text-xs text-muted-foreground pb-3">
                   QuickBooks Online is one of the most popular cloud accounting software solutions, 
                   used by millions of businesses worldwide. It helps you manage invoices, expenses, 
-                  payroll, and tax compliance. Connecting TradieTrack to QuickBooks means your 
+                  payroll, and tax compliance. Connecting JobRunner to QuickBooks means your 
                   invoices and client details sync automatically, saving you hours of manual data entry.
                 </AccordionContent>
               </AccordionItem>
@@ -330,11 +330,11 @@ export default function QuickBooksIntegration({
                   <ul className="space-y-1.5">
                     <li className="flex items-start gap-2">
                       <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span><strong>Clients → Customers:</strong> Your TradieTrack clients become QuickBooks customers</span>
+                      <span><strong>Clients → Customers:</strong> Your JobRunner clients become QuickBooks customers</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span><strong>Invoices → QuickBooks:</strong> Send invoices from TradieTrack, they appear in QuickBooks</span>
+                      <span><strong>Invoices → QuickBooks:</strong> Send invoices from JobRunner, they appear in QuickBooks</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />

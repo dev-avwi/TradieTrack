@@ -6,7 +6,7 @@ export default function Index() {
   const { isAuthenticated, isLoading, isInitialized, user } = useAuthStore();
 
   if (!isInitialized || isLoading) {
-    return <LoadingScreen message="Loading TradieTrack..." />;
+    return <LoadingScreen message="Loading JobRunner..." />;
   }
 
   if (isAuthenticated) {

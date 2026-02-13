@@ -106,7 +106,7 @@ if (process.env.DATABASE_URL) {
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     },
-    name: 'tradietrack.sid',
+    name: 'jobrunner.sid',
     proxy: isReplit || isProduction
   }));
 
@@ -144,7 +144,7 @@ if (process.env.DATABASE_URL) {
   // Set ENABLE_DEMO_DATA=true in production only during App Store review periods
   const enableDemoData = process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_DATA === 'true';
   if (enableDemoData) {
-    // This creates/updates demo@tradietrack.com.au with password demo123456
+    // This creates/updates demo@jobrunner.com.au with password demo123456
     await createDemoUserAndData();
     
     // Create demo team members with realistic Australian data and live locations

@@ -1356,8 +1356,8 @@ export default function TeamManagementScreen() {
     try {
       const response = await api.post<{ success: boolean; sessionUrl?: string; error?: string }>('/api/billing/checkout/team', {
         seatCount: seatCount,
-        successUrl: 'tradietrack://team-management?success=true',
-        cancelUrl: 'tradietrack://team-management?canceled=true',
+        successUrl: 'jobrunner://team-management?success=true',
+        cancelUrl: 'jobrunner://team-management?canceled=true',
       });
 
       if (response.data?.success && response.data?.sessionUrl) {

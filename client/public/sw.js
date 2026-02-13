@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tradietrack-v8';
+const CACHE_NAME = 'jobrunner-v8';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -6,8 +6,8 @@ const STATIC_ASSETS = [
   '/icon-192.png'
 ];
 
-const API_CACHE_NAME = 'tradietrack-api-v3';
-const IMAGE_CACHE_NAME = 'tradietrack-images-v3';
+const API_CACHE_NAME = 'jobrunner-api-v3';
+const IMAGE_CACHE_NAME = 'jobrunner-images-v3';
 const MAX_IMAGE_CACHE_SIZE = 50;
 
 self.addEventListener('install', (event) => {
@@ -135,7 +135,7 @@ self.addEventListener('fetch', (event) => {
       fetch(request).catch(() => {
         return caches.match('/').then((response) => {
           return response || new Response(
-            '<!DOCTYPE html><html><body><h1>Offline</h1><p>TradieTrack requires an internet connection.</p></body></html>',
+            '<!DOCTYPE html><html><body><h1>Offline</h1><p>JobRunner requires an internet connection.</p></body></html>',
             { headers: { 'Content-Type': 'text/html' } }
           );
         });

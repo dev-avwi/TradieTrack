@@ -364,7 +364,7 @@ export default function FloatingAIChat({ onNavigate }: FloatingAIChatProps) {
                 <Sparkles className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm">TradieTrack AI</h3>
+                <h3 className="font-semibold text-sm">JobRunner AI</h3>
                 <p className="text-xs text-muted-foreground">Your smart business mate</p>
               </div>
               {chatHistory.length > 0 && (

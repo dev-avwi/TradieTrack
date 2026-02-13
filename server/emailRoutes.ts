@@ -35,9 +35,9 @@ function setSendCooldown(userId: string, entityType: string, entityId: string) {
 }
 
 // Helper function to wrap template content in professional HTML email layout
-// Uses absolute TradieTrack logo URL as fallback for email client compatibility
+// Uses absolute JobRunner logo URL as fallback for email client compatibility
 function wrapTemplateInHtml(content: string, subject: string, business: any, client: any, brandColor: string, actionUrl?: string | null, actionLabel?: string): string {
-  // Compute absolute fallback URL for TradieTrack logo (relative URLs don't work in email clients)
+  // Compute absolute fallback URL for JobRunner logo (relative URLs don't work in email clients)
   const baseUrl = getProductionBaseUrl();
   const defaultLogoUrl = `${baseUrl}/logo.png`;
   const resolvedLogoUrl = business.logoUrl || defaultLogoUrl;
@@ -48,7 +48,7 @@ function wrapTemplateInHtml(content: string, subject: string, business: any, cli
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
         <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-          <img src="${resolvedLogoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+          <img src="${resolvedLogoUrl}" alt="${business.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
         </div>
         <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName || 'Your Business'}</h1>
         ${business.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
@@ -210,7 +210,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
       // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
     }
-    // Apply TradieTrack logo fallback if no business logo
+    // Apply JobRunner logo fallback if no business logo
     if (!businessSettings.logoUrl) {
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
@@ -542,7 +542,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       // For emails, use the public endpoint that serves the object (route is /objects/... not /api/objects/...)
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
     }
-    // Apply TradieTrack logo fallback if no business logo
+    // Apply JobRunner logo fallback if no business logo
     if (!businessSettings.logoUrl) {
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
@@ -1047,7 +1047,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
       // Route is /objects/... not /api/objects/...
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
     }
-    // Apply TradieTrack logo fallback if no business logo
+    // Apply JobRunner logo fallback if no business logo
     if (!businessSettings.logoUrl) {
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
@@ -1191,7 +1191,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
             <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-              <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+              <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
             </div>
             <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
@@ -1252,7 +1252,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
         to: client.email,
         subject,
         html: emailHtml,
-        fromName: businessSettings.businessName || 'TradieTrack',
+        fromName: businessSettings.businessName || 'JobRunner',
         replyTo: businessSettings.email,
         attachments: [{
           filename: pdfFilename,
@@ -1380,7 +1380,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
       // Route is /objects/... not /api/objects/...
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}${businessSettings.logoUrl}` };
     }
-    // Apply TradieTrack logo fallback if no business logo
+    // Apply JobRunner logo fallback if no business logo
     if (!businessSettings.logoUrl) {
       businessSettings = { ...businessSettings, logoUrl: `${baseUrlForLogo}/logo.png` };
     }
@@ -1544,7 +1544,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
             <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-              <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+              <img src="${businessSettings.logoUrl}" alt="${businessSettings.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
             </div>
             <h1 style="color: white; margin: 0; font-size: 24px;">${businessSettings.businessName}</h1>
             ${businessSettings.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${businessSettings.abn}</p>` : ''}
@@ -1604,7 +1604,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
         to: client.email,
         subject,
         html: emailHtml,
-        fromName: businessSettings.businessName || 'TradieTrack',
+        fromName: businessSettings.businessName || 'JobRunner',
         replyTo: businessSettings.email,
         attachments: [{
           filename: pdfFilename,

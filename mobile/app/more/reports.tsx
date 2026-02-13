@@ -469,7 +469,7 @@ export default function ReportsScreen() {
       return;
     }
 
-    const reportText = `TradieTrack Report - ${PERIODS.find(p => p.key === period)?.label}
+    const reportText = `JobRunner Report - ${PERIODS.find(p => p.key === period)?.label}
 
 REVENUE
 Total Revenue: ${formatCurrency(summary.revenue.total)}
@@ -499,7 +499,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
     try {
       await Share.share({
         message: reportText,
-        title: 'TradieTrack Report'
+        title: 'JobRunner Report'
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to share report');
@@ -537,7 +537,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
     
     switch (reportType) {
       case 'income':
-        csvData = `TradieTrack Income Report - ${periodLabel}\n\n`;
+        csvData = `JobRunner Income Report - ${periodLabel}\n\n`;
         csvData += `Metric,Amount\n`;
         csvData += `Total Revenue,$${summary.revenue.total.toFixed(2)}\n`;
         csvData += `Pending Revenue,$${summary.revenue.pending.toFixed(2)}\n`;
@@ -548,7 +548,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
         csvData += `\nGenerated,${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'jobs':
-        csvData = `TradieTrack Jobs Report - ${periodLabel}\n\n`;
+        csvData = `JobRunner Jobs Report - ${periodLabel}\n\n`;
         csvData += `Metric,Value\n`;
         csvData += `Total Jobs,${summary.jobs.total}\n`;
         csvData += `Completed,${summary.jobs.completed}\n`;
@@ -557,7 +557,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
         csvData += `\nGenerated,${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'quotes':
-        csvData = `TradieTrack Quotes Report - ${periodLabel}\n\n`;
+        csvData = `JobRunner Quotes Report - ${periodLabel}\n\n`;
         csvData += `Metric,Value\n`;
         csvData += `Total Quotes,${summary.quotes.total}\n`;
         csvData += `Accepted,${summary.quotes.accepted}\n`;
@@ -566,7 +566,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
         csvData += `\nGenerated,${new Date().toLocaleDateString('en-AU')}`;
         break;
       case 'tax':
-        csvData = `TradieTrack Tax Summary - ${periodLabel}\n\n`;
+        csvData = `JobRunner Tax Summary - ${periodLabel}\n\n`;
         csvData += `Metric,Amount\n`;
         csvData += `GST Collected,$${summary.revenue.gstCollected.toFixed(2)}\n`;
         csvData += `Total Revenue (incl GST),$${summary.revenue.total.toFixed(2)}\n`;
@@ -604,7 +604,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
 
     Share.share({
       message: reportData,
-      title: `TradieTrack ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`
+      title: `JobRunner ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`
     }).catch(() => Alert.alert('Error', 'Failed to share report'));
   };
 

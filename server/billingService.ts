@@ -48,7 +48,7 @@ async function getOrCreateStripeCustomer(
     name: businessName || businessSettings?.businessName || email,
     metadata: {
       userId,
-      platform: 'tradietrack',
+      platform: 'jobrunner',
     },
   });
 
@@ -63,7 +63,7 @@ async function getOrCreateStripeCustomer(
 
 async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   const prices = await stripe.prices.list({
-    lookup_keys: ['tradietrack_pro_monthly'],
+    lookup_keys: ['jobrunner_pro_monthly'],
     active: true,
     limit: 1,
   });
@@ -86,7 +86,7 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
       name: PRICING.pro.name,
       description: PRICING.pro.description,
       metadata: {
-        platform: 'tradietrack',
+        platform: 'jobrunner',
         tier: 'pro',
       },
     });
@@ -99,7 +99,7 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
     recurring: {
       interval: 'month',
     },
-    lookup_key: 'tradietrack_pro_monthly',
+    lookup_key: 'jobrunner_pro_monthly',
     metadata: {
       tier: 'pro',
     },
@@ -112,13 +112,13 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
 async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: string; seatPriceId: string }> {
   // Try to find existing prices
   const prices = await stripe.prices.list({
-    lookup_keys: ['tradietrack_team_base_monthly', 'tradietrack_team_seat_monthly'],
+    lookup_keys: ['jobrunner_team_base_monthly', 'jobrunner_team_seat_monthly'],
     active: true,
     limit: 10,
   });
 
-  let basePriceId = prices.data.find(p => p.lookup_key === 'tradietrack_team_base_monthly')?.id;
-  let seatPriceId = prices.data.find(p => p.lookup_key === 'tradietrack_team_seat_monthly')?.id;
+  let basePriceId = prices.data.find(p => p.lookup_key === 'jobrunner_team_base_monthly')?.id;
+  let seatPriceId = prices.data.find(p => p.lookup_key === 'jobrunner_team_seat_monthly')?.id;
 
   // Get or create Team base product
   if (!basePriceId) {
@@ -130,7 +130,7 @@ async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: str
         name: PRICING.team.baseName,
         description: PRICING.team.description,
         metadata: {
-          platform: 'tradietrack',
+          platform: 'jobrunner',
           tier: 'team',
           type: 'base',
         },
@@ -142,7 +142,7 @@ async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: str
       unit_amount: PRICING.team.baseMonthly,
       currency: 'aud',
       recurring: { interval: 'month' },
-      lookup_key: 'tradietrack_team_base_monthly',
+      lookup_key: 'jobrunner_team_base_monthly',
       metadata: { tier: 'team', type: 'base' },
     });
     basePriceId = basePrice.id;
@@ -156,9 +156,9 @@ async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: str
     if (!seatProduct) {
       seatProduct = await stripe.products.create({
         name: PRICING.team.seatName,
-        description: 'Additional team member for TradieTrack Team plan',
+        description: 'Additional team member for JobRunner Team plan',
         metadata: {
-          platform: 'tradietrack',
+          platform: 'jobrunner',
           tier: 'team',
           type: 'seat',
         },
@@ -170,7 +170,7 @@ async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: str
       unit_amount: PRICING.team.seatMonthly,
       currency: 'aud',
       recurring: { interval: 'month' },
-      lookup_key: 'tradietrack_team_seat_monthly',
+      lookup_key: 'jobrunner_team_seat_monthly',
       metadata: { tier: 'team', type: 'seat' },
     });
     seatPriceId = seatPrice.id;
@@ -218,7 +218,7 @@ export async function createSubscriptionCheckout(
         metadata: {
           userId,
           tier: 'pro',
-          platform: 'tradietrack',
+          platform: 'jobrunner',
         },
         trial_period_days: trialDays,
         trial_settings: {
@@ -300,7 +300,7 @@ export async function createTeamSubscriptionCheckout(
           userId,
           tier: 'team',
           seatCount: String(additionalSeats),
-          platform: 'tradietrack',
+          platform: 'jobrunner',
         },
         trial_period_days: trialDays,
         trial_settings: {
@@ -386,7 +386,7 @@ export async function createTrialSubscription(
       metadata: {
         userId,
         tier,
-        platform: 'tradietrack',
+        platform: 'jobrunner',
       },
     });
 
@@ -820,7 +820,7 @@ export async function getPublishableKey(): Promise<string | null> {
   return await getStripePublishableKey();
 }
 
-// Initialize all Stripe products and prices for TradieTrack subscription tiers
+// Initialize all Stripe products and prices for JobRunner subscription tiers
 export async function initializeStripeProducts(): Promise<{
   success: boolean;
   products: {
@@ -923,7 +923,7 @@ export async function fixTeamBasePrice(): Promise<{
       unit_amount: PRICING.team.baseMonthly, // 4900 = $49
       currency: 'aud',
       recurring: { interval: 'month' },
-      lookup_key: 'tradietrack_team_base_monthly',
+      lookup_key: 'jobrunner_team_base_monthly',
       transfer_lookup_key: true, // Transfer lookup key from old price
       metadata: { tier: 'team', type: 'base' },
     });

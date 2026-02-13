@@ -44,7 +44,7 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to TradieTrack!",
+    title: "Welcome to JobRunner!",
     description: "This tour will guide you through the app step by step. We'll highlight each area and you'll click through to learn how it works. Ready?",
     route: "/",
     icon: Sparkles
@@ -583,13 +583,13 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   };
 
   const handleComplete = () => {
-    localStorage.setItem("tradietrack-tour-completed", "true");
-    localStorage.setItem("tradietrack-tour-completed-date", new Date().toISOString());
+    localStorage.setItem("jobrunner-tour-completed", "true");
+    localStorage.setItem("jobrunner-tour-completed-date", new Date().toISOString());
     onComplete();
   };
 
   const handleExit = () => {
-    localStorage.setItem("tradietrack-tour-skipped", "true");
+    localStorage.setItem("jobrunner-tour-skipped", "true");
     onClose();
   };
 
@@ -960,8 +960,8 @@ export function useGuidedTour() {
 
   const hasCompleted = useCallback(() => {
     if (typeof window === 'undefined') return true;
-    return localStorage.getItem("tradietrack-tour-completed") === "true" ||
-           localStorage.getItem("tradietrack-tour-skipped") === "true";
+    return localStorage.getItem("jobrunner-tour-completed") === "true" ||
+           localStorage.getItem("jobrunner-tour-skipped") === "true";
   }, []);
 
   const startTour = useCallback(() => {
@@ -977,9 +977,9 @@ export function useGuidedTour() {
   }, []);
 
   const resetTour = useCallback(() => {
-    localStorage.removeItem("tradietrack-tour-completed");
-    localStorage.removeItem("tradietrack-tour-completed-date");
-    localStorage.removeItem("tradietrack-tour-skipped");
+    localStorage.removeItem("jobrunner-tour-completed");
+    localStorage.removeItem("jobrunner-tour-completed-date");
+    localStorage.removeItem("jobrunner-tour-skipped");
   }, []);
 
   return {

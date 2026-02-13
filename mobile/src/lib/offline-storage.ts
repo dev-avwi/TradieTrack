@@ -244,7 +244,7 @@ class OfflineStorageService {
   async initialize(): Promise<void> {
     try {
       // Open database
-      this.db = await SQLite.openDatabaseAsync('tradietrack_offline.db');
+      this.db = await SQLite.openDatabaseAsync('jobrunner_offline.db');
       
       // Create all tables
       await this.db.execAsync(`

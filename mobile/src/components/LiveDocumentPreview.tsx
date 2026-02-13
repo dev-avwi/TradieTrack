@@ -10,7 +10,7 @@ import {
 } from '../lib/document-templates';
 import { useTheme } from '../lib/theme';
 
-const tradieTrackLogo = require('../../assets/tradietrack-logo.png');
+const jobRunnerLogo = require('../../assets/tradietrack-logo.png');
 
 interface LineItem {
   description: string;

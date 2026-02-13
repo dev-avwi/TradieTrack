@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import tradietrackLogo from "/logo.png";
+import jobrunnerLogo from "/logo.png";
 import { tradeCatalog } from "@shared/tradeCatalog";
 
 interface SimpleOnboardingProps {
@@ -304,7 +304,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             What's your trade?
           </h2>
           <p className="text-muted-foreground">
-            Select your trade category to customize TradieTrack for your business
+            Select your trade category to customize JobRunner for your business
           </p>
         </div>
         
@@ -730,7 +730,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         ) : (
           <>
             <Sparkles className="mr-2 h-4 w-4" />
-            {isTeamPlan ? 'Go to Dashboard' : 'Start Using TradieTrack'}
+            {isTeamPlan ? 'Go to Dashboard' : 'Start Using JobRunner'}
           </>
         )}
       </Button>
@@ -760,7 +760,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center gap-4">
-            <img src={tradietrackLogo} alt="TradieTrack" className="h-12 w-auto" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="h-12 w-auto" />
             <Loader2 className="h-8 w-8 text-white animate-spin" />
             <span className="text-white/80 text-sm">Loading your setup...</span>
           </div>
@@ -778,7 +778,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       
       <div className="relative z-10 max-w-2xl mx-auto p-4 md:p-6 min-h-screen flex flex-col">
         <div className="flex items-center justify-center gap-3 mb-6">
-          <img src={tradietrackLogo} alt="TradieTrack" className="h-10 w-auto" />
+          <img src={jobrunnerLogo} alt="JobRunner" className="h-10 w-auto" />
           <span className="text-xl font-bold text-white">
             <span className="text-white">Tradie</span>
             <span className="text-orange-200">Track</span>

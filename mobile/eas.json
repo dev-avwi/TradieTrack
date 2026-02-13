@@ -40,7 +40,7 @@
       "node": "20.19.4",
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_API_URL": "https://tradietrack.com"
+        "EXPO_PUBLIC_API_URL": "https://jobrunner.com"
       },
       "ios": {
         "resourceClass": "m-medium"

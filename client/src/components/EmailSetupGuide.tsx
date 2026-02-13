@@ -81,11 +81,11 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
       step: 3,
       title: "Create Your Business API Key", 
       time: "30 seconds",
-      description: "This connects TradieTrack to your SendGrid account securely",
+      description: "This connects JobRunner to your SendGrid account securely",
       actions: [
         "Go to Settings → API Keys",
         "Click 'Create API Key'",
-        "Name it 'TradieTrack Integration'",
+        "Name it 'JobRunner Integration'",
         "Choose 'Full Access' permissions",
         "Copy the key (you'll paste it below)"
       ]
@@ -337,7 +337,7 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
             <Shield className="h-4 w-4" />
             <span>
               <strong>Security Guarantee:</strong> Your API key is encrypted and stored securely. 
-              TradieTrack only uses it to send emails on your behalf. You can revoke access anytime from your SendGrid account.
+              JobRunner only uses it to send emails on your behalf. You can revoke access anytime from your SendGrid account.
             </span>
           </div>
         </CardContent>

@@ -5956,7 +5956,7 @@ Thank you for your prompt attention to this matter.`,
       const userResult = await db.update(users)
         .set({ 
           isActive: false, 
-          email: `deleted_${userId}@deleted.tradietrack.com.au`,
+          email: `deleted_${userId}@deleted.jobrunner.com.au`,
           password: null,
           updatedAt: new Date(),
         })

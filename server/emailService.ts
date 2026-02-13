@@ -33,13 +33,13 @@ const mockEmailService = {
 // Platform email settings
 const PLATFORM_FROM_EMAIL = 'mail@avwebinnovation.com';
 const PLATFORM_REPLY_TO_EMAIL = 'admin@avwebinnovation.com';
-const PLATFORM_FROM_NAME = 'TradieTrack';
+const PLATFORM_FROM_NAME = 'JobRunner';
 
 // Get the correct base URL for emails - prioritizes custom domain for trust
 const getBaseUrl = () => {
   const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
   
-  // Priority 1: Custom production domain (tradietrack.com)
+  // Priority 1: Custom production domain (jobrunner.com)
   if (process.env.APP_DOMAIN) {
     return `https://${process.env.APP_DOMAIN}`;
   }
@@ -71,7 +71,7 @@ const getBaseUrl = () => {
 // Simple footer for transactional emails (quote/invoice emails are transactional, not marketing)
 const UNSUBSCRIBE_FOOTER = `
   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 12px;">
-    <p style="margin: 0;">Powered by <strong>TradieTrack</strong> | The business management platform for Australian tradies</p>
+    <p style="margin: 0;">Powered by <strong>JobRunner</strong> | The business management platform for Australian tradies</p>
     <p style="margin: 10px 0 0 0; font-size: 11px; color: #888;">
       This is a transactional email regarding your quote or invoice request.
     </p>
@@ -95,7 +95,7 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
   const totalAmount = Number(quote.total);
   const brandColor = business.brandColor || '#2563eb';
   
-  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  // Get logo URL - use business logo if available, otherwise JobRunner logo
   const baseUrl = getBaseUrl();
   const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
@@ -120,7 +120,7 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
           <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+            <img src="${logoUrl}" alt="${business.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
           </div>
           <h1 style="color: white; margin: 0; font-size: 22px;">${business.businessName}</h1>
           ${business.abn ? `<p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
@@ -245,7 +245,7 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
   const brandColor = business.brandColor || '#16a34a';
   const dueDateStr = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU') : null;
   
-  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  // Get logo URL - use business logo if available, otherwise JobRunner logo
   const baseUrl = getBaseUrl();
   const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
@@ -270,7 +270,7 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}dd 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
           <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+            <img src="${logoUrl}" alt="${business.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
           </div>
           <p style="margin: 0 0 4px 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">TAX INVOICE</p>
           <h1 style="color: white; margin: 0; font-size: 22px;">${business.businessName}</h1>
@@ -405,7 +405,7 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
   const gstAmount = Number(invoice.gstAmount);
   const totalAmount = Number(invoice.total);
   
-  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  // Get logo URL - use business logo if available, otherwise JobRunner logo
   const baseUrl = getBaseUrl();
   const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
@@ -430,7 +430,7 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+            <img src="${logoUrl}" alt="${business.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
           </div>
           <h1 style="margin: 0;">Payment Received</h1>
           <h2 style="margin: 10px 0 0 0;">${business.businessName}</h2>
@@ -817,7 +817,7 @@ export async function sendReceiptEmailWithPdf(
     to: client.email,
     subject: emailContent.subject,
     html: emailContent.html,
-    fromName: business?.businessName || 'TradieTrack',
+    fromName: business?.businessName || 'JobRunner',
     replyTo: business?.email,
     attachments: [{
       filename: `Receipt-${receiptRecord.receiptNumber}.pdf`,
@@ -846,7 +846,7 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
     minute: '2-digit'
   }) : '';
 
-  // Get logo URL - use business logo if available, otherwise TradieTrack logo
+  // Get logo URL - use business logo if available, otherwise JobRunner logo
   const baseUrl = getBaseUrl();
   const defaultLogoUrl = `${baseUrl}/logo.png`;
   const logoUrl = business.logoUrl || defaultLogoUrl;
@@ -870,7 +870,7 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: ${brandColor}; padding: 25px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
-            <img src="${logoUrl}" alt="${business.businessName || 'TradieTrack'}" style="max-height: 48px; max-width: 160px; display: block;" />
+            <img src="${logoUrl}" alt="${business.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
           </div>
           <h1 style="color: white; margin: 0; font-size: 24px;">${business.businessName}</h1>
           ${business.abn ? `<p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
@@ -925,7 +925,7 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
           <p style="margin: 0; color: #999; font-size: 12px;">
             This confirmation was sent by ${business.businessName}${business.abn ? ` (ABN: ${business.abn})` : ''}
           </p>
-          <p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">Powered by TradieTrack</p>
+          <p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">Powered by JobRunner</p>
         </div>
         
         ${UNSUBSCRIBE_FOOTER}
@@ -983,28 +983,28 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
     to: user.email,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: 'TradieTrack'
+      name: 'JobRunner'
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
-    subject: 'Verify Your Email Address - TradieTrack',
+    subject: 'Verify Your Email Address - JobRunner',
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify Your Email - TradieTrack</title>
+        <title>Verify Your Email - JobRunner</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f9fafb;">
         <div style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); padding: 40px 32px; border-radius: 16px 16px 0 0; text-align: center;">
-          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
-          <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to TradieTrack!</h1>
+          <img src="${logoUrl}" alt="JobRunner" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
+          <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to JobRunner!</h1>
           <p style="color: rgba(255,255,255,0.85); margin: 12px 0 0 0; font-size: 15px; font-weight: 400;">Your business management platform</p>
         </div>
         
         <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
           <h2 style="color: #111827; margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Hi ${user.firstName || 'there'},</h2>
-          <p style="margin: 0 0 16px 0; color: #4b5563;">Thanks for signing up for TradieTrack! We're excited to help you streamline your trade business operations.</p>
+          <p style="margin: 0 0 16px 0; color: #4b5563;">Thanks for signing up for JobRunner! We're excited to help you streamline your trade business operations.</p>
           <p style="margin: 0 0 24px 0; color: #4b5563;">To get started, please verify your email address by clicking the button below:</p>
           
           <div style="text-align: center; margin: 32px 0;">
@@ -1026,7 +1026,7 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
           <p style="margin: 24px 0 8px 0; font-size: 12px; color: #9ca3af;">This verification link will expire in 24 hours. If you didn't create this account, you can safely ignore this email.</p>
           
           <p style="margin: 24px 0 0 0; text-align: center; color: #9ca3af; font-size: 12px;">
-            <strong style="color: #6b7280;">TradieTrack</strong> &bull; Built for Australian tradies
+            <strong style="color: #6b7280;">JobRunner</strong> &bull; Built for Australian tradies
           </p>
           ${UNSUBSCRIBE_FOOTER}
         </div>
@@ -1113,10 +1113,10 @@ export const sendLoginCodeEmail = async (email: string, code: string) => {
     to: email,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: 'TradieTrack'
+      name: 'JobRunner'
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
-    subject: 'Your TradieTrack Login Code',
+    subject: 'Your JobRunner Login Code',
     html: `
       <!DOCTYPE html>
       <html>
@@ -1127,12 +1127,12 @@ export const sendLoginCodeEmail = async (email: string, code: string) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h1 style="color: #2563eb; margin: 0;">TradieTrack</h1>
+          <h1 style="color: #2563eb; margin: 0;">JobRunner</h1>
         </div>
         
         <div style="margin-bottom: 20px;">
           <h2 style="color: #333;">Your Login Code</h2>
-          <p>Use this code to log in to your TradieTrack account:</p>
+          <p>Use this code to log in to your JobRunner account:</p>
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
             <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2563eb; margin: 0;">${code}</p>
           </div>
@@ -1141,13 +1141,13 @@ export const sendLoginCodeEmail = async (email: string, code: string) => {
         </div>
         
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
-          <p>This is an automated email from TradieTrack. Please do not reply to this message.</p>
+          <p>This is an automated email from JobRunner. Please do not reply to this message.</p>
           ${UNSUBSCRIBE_FOOTER}
         </div>
       </body>
       </html>
     `,
-    text: `Your TradieTrack Login Code: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`
+    text: `Your JobRunner Login Code: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.`
   };
   
   try {
@@ -1201,27 +1201,27 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
     to: user.email,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: 'TradieTrack'
+      name: 'JobRunner'
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
-    subject: 'Reset Your Password - TradieTrack',
+    subject: 'Reset Your Password - JobRunner',
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reset Your Password - TradieTrack</title>
+        <title>Reset Your Password - JobRunner</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
+          <img src="${logoUrl}" alt="JobRunner" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
         </div>
         
         <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
           <h2 style="color: #333; margin-top: 0;">Hi ${user.firstName || 'there'},</h2>
-          <p>We received a request to reset the password for your TradieTrack account.</p>
+          <p>We received a request to reset the password for your JobRunner account.</p>
           <p>Click the button below to create a new password:</p>
           
           <div style="text-align: center; margin: 30px 0;">
@@ -1241,14 +1241,14 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
           </ul>
           
           <p style="margin-top: 30px; text-align: center; color: #999;">
-            Powered by <strong>TradieTrack</strong> | The business management platform for Australian tradies
+            Powered by <strong>JobRunner</strong> | The business management platform for Australian tradies
           </p>
           ${UNSUBSCRIBE_FOOTER}
         </div>
       </body>
       </html>
     `,
-    text: `Password Reset Request\n\nHi ${user.firstName || 'there'},\n\nWe received a request to reset the password for your TradieTrack account.\n\nClick this link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this reset, you can safely ignore this email.\n\n- The TradieTrack Team`
+    text: `Password Reset Request\n\nHi ${user.firstName || 'there'},\n\nWe received a request to reset the password for your JobRunner account.\n\nClick this link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this reset, you can safely ignore this email.\n\n- The JobRunner Team`
   };
 
   try {
@@ -1277,7 +1277,7 @@ export async function sendPaymentSuccessEmail(user: any, businessSettings: any, 
     to: user.email || businessSettings.email,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: 'TradieTrack'
+      name: 'JobRunner'
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
     subject: `Payment Successful - ${plan} Plan Activated`,
@@ -1296,7 +1296,7 @@ export async function sendPaymentSuccessEmail(user: any, businessSettings: any, 
         
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
           <p>Hi ${user.firstName || user.username},</p>
-          <p>Thank you for subscribing to TradieTrack ${plan}! Your payment has been processed successfully.</p>
+          <p>Thank you for subscribing to JobRunner ${plan}! Your payment has been processed successfully.</p>
           
           <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0;">
             <h3 style="margin-top: 0; color: #2563eb;">Your ${plan} Plan is Active</h3>
@@ -1330,7 +1330,7 @@ export async function sendPaymentFailedEmail(user: any, businessSettings: any): 
     to: user.email || businessSettings.email,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: 'TradieTrack'
+      name: 'JobRunner'
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
     subject: 'Payment Failed - Action Required',
@@ -1351,7 +1351,7 @@ export async function sendPaymentFailedEmail(user: any, businessSettings: any): 
           <p>Hi ${user.firstName || user.username},</p>
           <p><strong>We were unable to process your subscription payment.</strong></p>
           
-          <p>Please update your payment method to continue using TradieTrack Pro features.</p>
+          <p>Please update your payment method to continue using JobRunner Pro features.</p>
         </div>
         
         ${UNSUBSCRIBE_FOOTER}
@@ -1434,7 +1434,7 @@ export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams)
         
         <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
           <p style="margin: 0;">This payment request was sent by ${businessName}</p>
-          <p style="margin: 5px 0 0 0;">Powered by TradieTrack</p>
+          <p style="margin: 5px 0 0 0;">Powered by JobRunner</p>
         </div>
       </body>
       </html>
@@ -1469,26 +1469,26 @@ export async function sendWelcomeEmail(
       name: PLATFORM_FROM_NAME
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
-    subject: 'Welcome to TradieTrack - Let\'s get your business sorted!',
+    subject: 'Welcome to JobRunner - Let\'s get your business sorted!',
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to TradieTrack</title>
+        <title>Welcome to JobRunner</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f9fafb;">
         <div style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); padding: 44px 32px; border-radius: 16px 16px 0 0; text-align: center;">
-          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
-          <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to TradieTrack!</h1>
+          <img src="${logoUrl}" alt="JobRunner" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
+          <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to JobRunner!</h1>
           <p style="color: rgba(255,255,255,0.85); margin: 12px 0 0 0; font-size: 15px; font-weight: 400;">The business management platform built for Australian tradies</p>
         </div>
         
         <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
           <p style="font-size: 18px; margin: 0 0 20px 0; font-weight: 500; color: #111827;">G'day ${userName}!</p>
           
-          <p style="margin: 0 0 20px 0; color: #4b5563;">Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
+          <p style="margin: 0 0 20px 0; color: #4b5563;">Thanks for signing up to JobRunner. You've just taken the first step towards running a more organised, professional trade business.</p>
           
           <div style="background: #eff6ff; padding: 28px; border-radius: 12px; margin: 28px 0;">
             <h3 style="margin: 0 0 24px 0; color: #1e40af; text-align: center; font-size: 17px; font-weight: 600; letter-spacing: -0.3px;">Quick Start Guide</h3>
@@ -1561,13 +1561,13 @@ export async function sendWelcomeEmail(
           <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; color: #374151; font-size: 14px;">
               Cheers,<br>
-              <strong>The TradieTrack Team</strong>
+              <strong>The JobRunner Team</strong>
             </p>
           </div>
         </div>
         
         <div style="text-align: center; padding: 24px; color: #9ca3af; font-size: 12px;">
-          <p style="margin: 0;"><strong style="color: #6b7280;">TradieTrack</strong> &bull; Built for Australian tradies</p>
+          <p style="margin: 0;"><strong style="color: #6b7280;">JobRunner</strong> &bull; Built for Australian tradies</p>
           <p style="margin: 8px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
         </div>
       </body>
@@ -1603,7 +1603,7 @@ export async function sendTestEmail(
       name: PLATFORM_FROM_NAME
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
-    subject: 'TradieTrack - Test Email',
+    subject: 'JobRunner - Test Email',
     html: `
       <!DOCTYPE html>
       <html>
@@ -1619,7 +1619,7 @@ export async function sendTestEmail(
         
         <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
           <p style="margin: 0;">Hi ${businessName},</p>
-          <p>Your TradieTrack email integration is working perfectly.</p>
+          <p>Your JobRunner email integration is working perfectly.</p>
           <p>Your clients will now receive professional emails for:</p>
           <ul>
             <li>Quotes and estimates</li>
@@ -1630,7 +1630,7 @@ export async function sendTestEmail(
         </div>
         
         <div style="text-align: center; padding: 20px; color: #666;">
-          <p style="margin: 0; font-size: 12px;">This is a test email from TradieTrack</p>
+          <p style="margin: 0; font-size: 12px;">This is a test email from JobRunner</p>
           <p style="margin: 5px 0 0 0; font-size: 12px;">Replies to your business emails will go to your registered email address</p>
         </div>
       </body>
@@ -1675,7 +1675,7 @@ export async function sendTeamInviteEmail(
       name: PLATFORM_FROM_NAME
     },
     replyTo: PLATFORM_REPLY_TO_EMAIL,
-    subject: `You've been invited to join ${businessName} on TradieTrack`,
+    subject: `You've been invited to join ${businessName} on JobRunner`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -1686,9 +1686,9 @@ export async function sendTeamInviteEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
         <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
-          <img src="${logoUrl}" alt="TradieTrack" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
+          <img src="${logoUrl}" alt="JobRunner" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 24px;">You're Invited to Join ${businessName}</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">on TradieTrack</p>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">on JobRunner</p>
         </div>
         
         <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -1711,7 +1711,7 @@ export async function sendTeamInviteEmail(
               Accept Invitation
             </a>
             <p style="color: #666; font-size: 13px; margin: 12px 0 8px 0;">
-              Opens in the TradieTrack app, or browser if app not installed
+              Opens in the JobRunner app, or browser if app not installed
             </p>
           </div>
           
@@ -1721,12 +1721,12 @@ export async function sendTeamInviteEmail(
           
           <p style="margin-top: 25px;">
             Cheers,<br>
-            <strong>The TradieTrack Team</strong>
+            <strong>The JobRunner Team</strong>
           </p>
         </div>
         
         <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-          <p style="margin: 0;">TradieTrack - The business management platform for Australian tradies</p>
+          <p style="margin: 0;">JobRunner - The business management platform for Australian tradies</p>
           <p style="margin: 5px 0 0 0;">If you didn't expect this invitation, you can ignore this email.</p>
         </div>
       </body>
@@ -1809,12 +1809,12 @@ export async function sendJobAssignmentEmail(
           </div>
           
           <p style="color: #666; font-size: 14px;">
-            Open TradieTrack to see the full job details and get started.
+            Open JobRunner to see the full job details and get started.
           </p>
         </div>
         
         <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-          <p style="margin: 0;">Powered by TradieTrack</p>
+          <p style="margin: 0;">Powered by JobRunner</p>
         </div>
       </body>
       </html>
@@ -1901,7 +1901,7 @@ export async function sendJobCompletionNotificationEmail(
         </div>
         
         <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-          <p style="margin: 0;">Powered by TradieTrack</p>
+          <p style="margin: 0;">Powered by JobRunner</p>
         </div>
       </body>
       </html>
@@ -1927,7 +1927,7 @@ interface EmailWithAttachmentParams {
   to: string;
   subject: string;
   html: string;
-  fromName?: string; // Business name to show as sender (defaults to TradieTrack)
+  fromName?: string; // Business name to show as sender (defaults to JobRunner)
   replyTo?: string; // Reply-to email address (business email)
   attachments?: Array<{
     filename: string;
@@ -2342,7 +2342,7 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
     to: data.business.email,
     from: {
       email: PLATFORM_FROM_EMAIL,
-      name: 'TradieTrack Daily Summary'
+      name: 'JobRunner Daily Summary'
     },
     subject: `📊 Daily Summary for ${data.dateFormatted} - ${data.business.name}`,
     html: `
@@ -2514,7 +2514,7 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
 
         <!-- Footer -->
         <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-          <p style="margin: 0;">This is your automated daily summary from TradieTrack</p>
+          <p style="margin: 0;">This is your automated daily summary from JobRunner</p>
           <p style="margin: 8px 0 0 0;">You can manage your summary preferences in Settings → Automations</p>
         </div>
       </body>

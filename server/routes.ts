@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "healthy",
       timestamp: new Date().toISOString(),
       version: "1.0.0",
-      service: "tradietrack-api"
+      service: "jobrunner-api"
     });
   });
 
@@ -586,11 +586,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <html>
         <head>
           <meta charset="utf-8">
-          <title>Bug Report - TradieTrack</title>
+          <title>Bug Report - JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px;">
           <div style="background: #dc2626; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">Bug Report - TradieTrack</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">Bug Report - JobRunner</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">
               Severity: <strong>${severity || 'Not specified'}</strong> | Category: <strong>${category || 'General'}</strong>
             </p>
@@ -644,7 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
             <p style="margin: 0;">Submitted: ${new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })} AEST</p>
-            <p style="margin: 4px 0 0 0;">TradieTrack Bug Reporting System</p>
+            <p style="margin: 4px 0 0 0;">JobRunner Bug Reporting System</p>
           </div>
         </body>
         </html>
@@ -658,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           to: 'admin@avwebinnovation.com',
           from: {
             email: 'mail@avwebinnovation.com',
-            name: 'TradieTrack Bug Reports'
+            name: 'JobRunner Bug Reports'
           },
           replyTo: userEmail || 'admin@avwebinnovation.com',
           subject: `[Bug Report] ${category || 'General'} - ${severity || 'Normal'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`,
@@ -672,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         success: true, 
-        message: 'Bug report submitted successfully. Thank you for helping us improve TradieTrack!' 
+        message: 'Bug report submitted successfully. Thank you for helping us improve JobRunner!' 
       });
     } catch (error: any) {
       console.error('Failed to submit bug report:', error);
@@ -1635,7 +1635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentType: 'quote_deposit',
           source: 'public_quote_page',
         },
-        description: `Quote ${quote.number} Deposit - ${settings.businessName || 'TradieTrack'}`,
+        description: `Quote ${quote.number} Deposit - ${settings.businessName || 'JobRunner'}`,
       });
       
       // Update quote with payment intent ID
@@ -2037,7 +2037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isMobile) {
         // Redirect to mobile app using deep link
         // The mobile app will handle the verification via the POST endpoint
-        const deepLink = `tradietrack://verify-email?token=${encodeURIComponent(token as string)}`;
+        const deepLink = `jobrunner://verify-email?token=${encodeURIComponent(token as string)}`;
         
         // For iOS, also provide universal link fallback
         const universalLink = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : ''}/mobile/verify-email?token=${encodeURIComponent(token as string)}`;
@@ -2049,7 +2049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Verify Email - TradieTrack</title>
+            <title>Verify Email - JobRunner</title>
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
                      display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -2065,7 +2065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           </head>
           <body>
             <div class="card">
-              <h1>Opening TradieTrack...</h1>
+              <h1>Opening JobRunner...</h1>
               <p>If the app doesn't open automatically, tap the button below.</p>
               <a href="${deepLink}" class="btn">Open in App</a>
               <div class="secondary">
@@ -2319,8 +2319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Basic validation: check audience matches our app's bundle ID or web service ID
-      const expectedBundleId = process.env.APPLE_BUNDLE_ID || 'com.tradietrack.app';
-      const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.tradietrack.web';
+      const expectedBundleId = process.env.APPLE_BUNDLE_ID || 'com.jobrunner.app';
+      const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.jobrunner.web';
       const validAudiences = [expectedBundleId, expectedWebServiceId];
       
       if (!validAudiences.includes(decoded.aud || '')) {
@@ -5388,7 +5388,7 @@ Be specific about materials, colors, and features that would be included.`
       
       const result = await sendTestEmail(
         user.email, 
-        businessSettings?.businessName || 'TradieTrack User'
+        businessSettings?.businessName || 'JobRunner User'
       );
       
       if (result.success) {
@@ -5435,15 +5435,15 @@ Be specific about materials, colors, and features that would be included.`
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, ${brandColor} 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
               <h1 style="color: white; margin: 0;">${businessName}</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">TradieTrack Demo</p>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">JobRunner Demo</p>
             </div>
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h2 style="color: ${brandColor}; margin-top: 0;">Demo Email</h2>
-              <p>${message || 'This is a demo email sent from the TradieTrack platform, showing how professional business emails look when sent to your clients.'}</p>
+              <p>${message || 'This is a demo email sent from the JobRunner platform, showing how professional business emails look when sent to your clients.'}</p>
               
               <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid ${brandColor};">
-                <h3 style="margin-top: 0;">What TradieTrack Can Do:</h3>
+                <h3 style="margin-top: 0;">What JobRunner Can Do:</h3>
                 <ul style="margin-bottom: 0;">
                   <li>Send professional quotes to clients</li>
                   <li>Issue tax-compliant invoices with GST</li>
@@ -5455,7 +5455,7 @@ Be specific about materials, colors, and features that would be included.`
             </div>
             
             <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-              <p>Sent from TradieTrack - The Super App for Australian Tradies</p>
+              <p>Sent from JobRunner - The Super App for Australian Tradies</p>
               <p>User: ${user?.email || 'Demo Account'}</p>
             </div>
           </body>
@@ -5494,18 +5494,18 @@ Be specific about materials, colors, and features that would be included.`
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Welcome to TradieTrack</title>
+          <title>Welcome to JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
           <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to JobRunner!</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">The business management platform built for Australian tradies</p>
           </div>
           
           <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <p style="font-size: 18px; margin-bottom: 20px;">G'day ${userName}!</p>
             
-            <p>Thanks for signing up to TradieTrack. You've just taken the first step towards running a more organised, professional trade business.</p>
+            <p>Thanks for signing up to JobRunner. You've just taken the first step towards running a more organised, professional trade business.</p>
             
             <div style="background: #f0f9ff; padding: 25px; border-radius: 8px; margin: 25px 0;">
               <h3 style="margin: 0 0 20px 0; color: #1d4ed8; text-align: center;">Quick Start Guide</h3>
@@ -5569,13 +5569,13 @@ Be specific about materials, colors, and features that would be included.`
             
             <p style="margin-top: 25px;">
               Cheers,<br>
-              <strong>The TradieTrack Team</strong><br>
+              <strong>The JobRunner Team</strong><br>
               <span style="color: #666; font-size: 14px;">AVWeb Innovation</span>
             </p>
           </div>
           
           <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
-            <p style="margin: 0;">TradieTrack - Making Australian tradies more professional</p>
+            <p style="margin: 0;">JobRunner - Making Australian tradies more professional</p>
             <p style="margin: 5px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
           </div>
         </body>
@@ -6398,7 +6398,7 @@ Be specific about materials, colors, and features that would be included.`
       if (!isValidState || !userId) {
         console.error("OAuth state mismatch - potential CSRF attack");
         if (isMobile) {
-          return res.redirect('tradietrack://xero-callback?success=false&error=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
+          return res.redirect('jobrunner://xero-callback?success=false&error=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
         }
         return res.redirect('/integrations?xero=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
       }
@@ -6411,14 +6411,14 @@ Be specific about materials, colors, and features that would be included.`
       
       // Redirect to mobile deep link if request originated from mobile
       if (isMobile) {
-        return res.redirect('tradietrack://xero-callback?success=true');
+        return res.redirect('jobrunner://xero-callback?success=true');
       }
       res.redirect('/integrations?xero=connected');
     } catch (error: any) {
       console.error("Error handling Xero callback:", error);
       const isMobile = (req.query.state as string)?.startsWith('mobile_');
       if (isMobile) {
-        return res.redirect('tradietrack://xero-callback?success=false&error=' + encodeURIComponent(error.message || 'Connection failed'));
+        return res.redirect('jobrunner://xero-callback?success=false&error=' + encodeURIComponent(error.message || 'Connection failed'));
       }
       res.redirect('/integrations?xero=error&message=' + encodeURIComponent(error.message || 'Connection failed'));
     }
@@ -6663,7 +6663,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Sync invoice status FROM Xero - Detect voided/cancelled invoices
-  // Matches Tradify: Void invoice in Xero → Cancelled in TradieTrack
+  // Matches Tradify: Void invoice in Xero → Cancelled in JobRunner
   app.post("/api/integrations/xero/sync-invoice-status", requireAuth, async (req: any, res) => {
     try {
       const result = await xeroService.syncInvoiceStatusFromXero(req.userId);
@@ -6680,7 +6680,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Void invoice in Xero when cancelled in TradieTrack
+  // Void invoice in Xero when cancelled in JobRunner
   // Tradify feature: Cancel invoice → Voided in Xero
   app.post("/api/integrations/xero/void-invoice/:invoiceId", requireAuth, async (req: any, res) => {
     try {
@@ -6716,7 +6716,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Sync inventory items FROM Xero to TradieTrack catalog
+  // Sync inventory items FROM Xero to JobRunner catalog
   // ServiceM8 & Tradify feature: Inventory items sync from Xero
   app.post("/api/integrations/xero/sync-inventory", requireAuth, async (req: any, res) => {
     try {
@@ -7297,7 +7297,7 @@ Be specific about materials, colors, and features that would be included.`
       if (!code || !state) {
         const isMobile = (state as string)?.startsWith('mobile_');
         if (isMobile) {
-          return res.redirect('tradietrack://google-calendar-callback?success=false&error=' + encodeURIComponent('Missing parameters'));
+          return res.redirect('jobrunner://google-calendar-callback?success=false&error=' + encodeURIComponent('Missing parameters'));
         }
         return res.redirect('/integrations?error=missing_params');
       }
@@ -7311,7 +7311,7 @@ Be specific about materials, colors, and features that would be included.`
         const mobileState = mobileOAuthStates.get(stateStr);
         if (!mobileState || mobileState.expiresAt < Date.now()) {
           mobileOAuthStates.delete(stateStr);
-          return res.redirect('tradietrack://google-calendar-callback?success=false&error=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
+          return res.redirect('jobrunner://google-calendar-callback?success=false&error=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
         }
         userId = mobileState.userId;
         mobileOAuthStates.delete(stateStr); // Clean up after use
@@ -7324,13 +7324,13 @@ Be specific about materials, colors, and features that would be included.`
       
       if (result.success) {
         if (isMobile) {
-          return res.redirect('tradietrack://google-calendar-callback?success=true');
+          return res.redirect('jobrunner://google-calendar-callback?success=true');
         }
         res.redirect('/integrations?success=google_calendar_connected');
       } else {
         const errorMsg = encodeURIComponent(result.error || 'connection_failed');
         if (isMobile) {
-          return res.redirect(`tradietrack://google-calendar-callback?success=false&error=${errorMsg}`);
+          return res.redirect(`jobrunner://google-calendar-callback?success=false&error=${errorMsg}`);
         }
         res.redirect(`/integrations?error=${errorMsg}`);
       }
@@ -7339,7 +7339,7 @@ Be specific about materials, colors, and features that would be included.`
       const isMobile = (req.query.state as string)?.startsWith('mobile_');
       const errorMsg = encodeURIComponent(error.message || 'callback_failed');
       if (isMobile) {
-        return res.redirect(`tradietrack://google-calendar-callback?success=false&error=${errorMsg}`);
+        return res.redirect(`jobrunner://google-calendar-callback?success=false&error=${errorMsg}`);
       }
       res.redirect(`/integrations?error=${errorMsg}`);
     }
@@ -10901,7 +10901,7 @@ Be specific about materials, colors, and features that would be included.`
             assigneeUser.email,
             assigneeUser.firstName || null,
             assigner?.firstName || 'Your manager',
-            businessSettings?.businessName || 'TradieTrack',
+            businessSettings?.businessName || 'JobRunner',
             job.title,
             (job as any).address || null,
             (job as any).scheduledDate || null,
@@ -10962,8 +10962,8 @@ Be specific about materials, colors, and features that would be included.`
         
         sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
         
-        const fromEmail = business.email || 'noreply@tradietrack.com.au';
-        const businessName = business.businessName || 'TradieTrack';
+        const fromEmail = business.email || 'noreply@jobrunner.com.au';
+        const businessName = business.businessName || 'JobRunner';
         
         await sgMail.default.send({
           to: client.email,
@@ -14994,7 +14994,7 @@ Be specific about materials, colors, and features that would be included.`
         to: email,
         subject: emailSubject,
         html: emailHtml,
-        fromName: businessName || 'TradieTrack',
+        fromName: businessName || 'JobRunner',
         replyTo: business?.email,
         attachments: [{
           filename: `${receipt.receiptNumber}.pdf`,
@@ -17911,7 +17911,7 @@ Respond with JSON in this format:
           inviteData.email,
           inviteeName,
           owner?.firstName || 'The business owner',
-          businessSettings?.businessName || 'A TradieTrack business',
+          businessSettings?.businessName || 'A JobRunner business',
           role?.name || 'Team Member',
           inviteToken,
           getProductionBaseUrl(req)
@@ -17958,7 +17958,7 @@ Respond with JSON in this format:
           member.email,
           member.name || null,
           owner?.firstName || 'The business owner',
-          businessSettings?.businessName || 'A TradieTrack business',
+          businessSettings?.businessName || 'A JobRunner business',
           role?.name || 'Team Member',
           member.inviteToken!,
           getProductionBaseUrl(req)
@@ -18079,7 +18079,7 @@ Respond with JSON in this format:
         valid: true,
         invite: {
           teamMemberId: teamMember.id,
-          businessName: businessSettings?.businessName || 'A TradieTrack business',
+          businessName: businessSettings?.businessName || 'A JobRunner business',
           roleName: role?.name || 'Team Member',
           roleDescription: role?.description || null,
           email: teamMember.email,
@@ -19175,7 +19175,7 @@ Respond with JSON in this format:
   
   // ===== STRIPE CONNECT ROUTES =====
   // Two-layer payment architecture:
-  // Layer 1: Platform subscriptions (TradieTrack charges tradies $39/month)
+  // Layer 1: Platform subscriptions (JobRunner charges tradies $39/month)
   // Layer 2: Customer payments (clients pay tradies, with platform application_fee)
   
   // Create or get Stripe Connect Express account for tradie (owner only)
@@ -19215,7 +19215,7 @@ Respond with JSON in this format:
           name: settings.businessName || undefined,
         },
         metadata: {
-          tradietrackUserId: userId,
+          jobrunnerUserId: userId,
         },
       });
       
@@ -19470,7 +19470,7 @@ Respond with JSON in this format:
           clientId: client?.id || '',
           clientName: client?.name || '',
         },
-        description: `Invoice ${invoice.number} - ${settings.businessName || 'TradieTrack'}`,
+        description: `Invoice ${invoice.number} - ${settings.businessName || 'JobRunner'}`,
       });
       
       // Update invoice with payment intent ID
@@ -19579,7 +19579,7 @@ Respond with JSON in this format:
       // Generate PDF
       const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
-      const businessForPdf = await resolveBusinessLogoForPdf(settings || { businessName: 'TradieTrack' });
+      const businessForPdf = await resolveBusinessLogoForPdf(settings || { businessName: 'JobRunner' });
       const pdfHtml = generateInvoicePDF({
         invoice: {
           id: invoice.id,
@@ -19641,7 +19641,7 @@ Respond with JSON in this format:
       // Generate PDF
       const { generatePaymentReceiptPDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
       
-      const businessForPdf = await resolveBusinessLogoForPdf(settings || { businessName: 'TradieTrack' });
+      const businessForPdf = await resolveBusinessLogoForPdf(settings || { businessName: 'JobRunner' });
       
       const pdfHtml = generatePaymentReceiptPDF({
         payment: {
@@ -19726,7 +19726,7 @@ Respond with JSON in this format:
           clientName: client?.name || '',
           source: 'public_payment_page',
         },
-        description: `Invoice ${invoice.number} - ${settings.businessName || 'TradieTrack'}`,
+        description: `Invoice ${invoice.number} - ${settings.businessName || 'JobRunner'}`,
       });
       
       // Update invoice with payment intent
@@ -20051,7 +20051,7 @@ Respond with JSON in this format:
       // Create a new location if none exists
       const location = await stripe.terminal.locations.create(
         {
-          display_name: settings.businessName || 'TradieTrack Business',
+          display_name: settings.businessName || 'JobRunner Business',
           address: {
             line1: settings.businessAddress || '123 Main Street',
             city: 'Sydney',
@@ -20228,7 +20228,7 @@ Respond with JSON in this format:
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency,
-        description: description || 'TradieTrack Tap to Pay',
+        description: description || 'JobRunner Tap to Pay',
         payment_method_types: ['card_present'],
         capture_method: 'automatic',
         metadata: {
@@ -20305,7 +20305,7 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'Business settings not found' });
       }
       
-      const businessName = settings.businessName || 'TradieTrack Business';
+      const businessName = settings.businessName || 'JobRunner Business';
       const businessEmail = settings.businessEmail || settings.email;
       const formattedAmount = `$${(amount / 100).toFixed(2)}`;
       const receiptDate = new Date().toLocaleDateString('en-AU', {
@@ -20434,7 +20434,7 @@ Respond with JSON in this format:
           
           const emailPayload: any = {
             to: email,
-            from: businessEmail || 'noreply@tradietrack.com.au',
+            from: businessEmail || 'noreply@jobrunner.com.au',
             subject: `Payment Receipt - ${formattedAmount} from ${businessName}`,
             html: emailHtml,
           };
@@ -22786,7 +22786,7 @@ Respond with JSON in this format:
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`,
         {
           headers: {
-            'User-Agent': 'TradieTrack/1.0'
+            'User-Agent': 'JobRunner/1.0'
           }
         }
       );
@@ -26477,7 +26477,7 @@ Respond with JSON in this format:
       }
       
       // Prevent deleting the demo user
-      if (userToDelete.email === 'demo@tradietrack.com.au') {
+      if (userToDelete.email === 'demo@jobrunner.com.au') {
         return res.status(403).json({ error: 'Cannot delete the demo account' });
       }
       
@@ -26512,7 +26512,7 @@ Respond with JSON in this format:
       }
       
       // Prevent demo account deletion
-      if (user.email === 'demo@tradietrack.com.au') {
+      if (user.email === 'demo@jobrunner.com.au') {
         return res.status(403).json({ 
           error: 'Demo account cannot be deleted. Create your own account to test this feature.' 
         });
@@ -27196,19 +27196,19 @@ Respond with JSON in this format:
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Welcome to TradieTrack</title>
+          <title>Welcome to JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-            <img src="${logoUrl}" alt="TradieTrack" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to TradieTrack!</h1>
+            <img src="${logoUrl}" alt="JobRunner" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
+            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to JobRunner!</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your business management platform</p>
           </div>
           
           <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #333; margin-top: 0;">G'day ${sampleUser.firstName}!</h2>
-            <p>Thanks for signing up for TradieTrack! We're stoked to have you on board.</p>
-            <p>TradieTrack helps you manage your trade business with ease - from quotes and invoices to scheduling and client management.</p>
+            <p>Thanks for signing up for JobRunner! We're stoked to have you on board.</p>
+            <p>JobRunner helps you manage your trade business with ease - from quotes and invoices to scheduling and client management.</p>
             
             <div style="text-align: center; margin: 30px 0;">
               <a href="#" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Get Started</a>
@@ -27216,7 +27216,7 @@ Respond with JSON in this format:
           </div>
           
           <div style="border-top: 2px solid #e5e7eb; padding-top: 20px; color: #666; font-size: 14px; text-align: center;">
-            <p><strong>TradieTrack</strong> | Streamline your trade business</p>
+            <p><strong>JobRunner</strong> | Streamline your trade business</p>
           </div>
         </body>
         </html>
@@ -27228,17 +27228,17 @@ Respond with JSON in this format:
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Reset Your Password - TradieTrack</title>
+          <title>Reset Your Password - JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-            <img src="${logoUrl}" alt="TradieTrack" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
+            <img src="${logoUrl}" alt="JobRunner" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
             <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
           </div>
           
           <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #333; margin-top: 0;">Hi ${sampleUser.firstName},</h2>
-            <p>We received a request to reset the password for your TradieTrack account.</p>
+            <p>We received a request to reset the password for your JobRunner account.</p>
             <p>Click the button below to create a new password:</p>
             
             <div style="text-align: center; margin: 30px 0;">

@@ -105,7 +105,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   }
 ];
 
-const STORAGE_KEY = "tradietrack_walkthrough_seen";
+const STORAGE_KEY = "jobrunner_walkthrough_seen";
 
 interface FirstTimeWalkthroughProps {
   onComplete?: () => void;
@@ -184,7 +184,7 @@ export default function FirstTimeWalkthrough({
                 <Play className="h-8 w-8" style={{ color: 'hsl(var(--trade))' }} />
               </div>
               <DialogTitle className="text-center text-2xl">
-                Welcome to TradieTrack!
+                Welcome to JobRunner!
               </DialogTitle>
               <DialogDescription className="text-center text-base">
                 Your all-in-one app for managing jobs, quotes, invoices, and getting paid faster.

@@ -1,4 +1,4 @@
-// PayPal Integration for TradieTrack
+// PayPal Integration for JobRunner
 // Using PayPal Web SDK v6 with Server SDK
 //
 // <BEGIN_EXACT_CODE>

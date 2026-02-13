@@ -23,8 +23,8 @@ import {
   getSidebarSettingsItems,
   type NavItem 
 } from "@/lib/navigation-config";
-// TradieTrack logo from public folder
-const tradietrackLogo = '/logo.png';
+// JobRunner logo from public folder
+const jobrunnerLogo = '/logo.png';
 
 interface UnreadCounts {
   teamChat: number;
@@ -61,7 +61,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
     return 0;
   };
 
-  const businessName = businessSettings?.businessName || 'TradieTrack';
+  const businessName = businessSettings?.businessName || 'JobRunner';
   const initials = businessName
     .split(' ')
     .map((word: string) => word[0])
@@ -89,10 +89,10 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
           ) : (
             <div className="w-10 h-10 rounded-lg overflow-hidden bg-transparent flex-shrink-0 flex items-center justify-center">
               <img 
-                src={tradietrackLogo} 
-                alt="TradieTrack" 
+                src={jobrunnerLogo} 
+                alt="JobRunner" 
                 className="w-full h-full object-contain"
-                data-testid="img-tradietrack-icon"
+                data-testid="img-jobrunner-icon"
               />
             </div>
           )}
