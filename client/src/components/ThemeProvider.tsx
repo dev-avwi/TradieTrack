@@ -17,18 +17,20 @@ function getGlobalBrandTheme(): BrandTheme {
     return globalBrandTheme;
   }
   
-  // Try to load from localStorage
-  const saved = localStorage.getItem('tradietrack-brand-theme');
+  // Try to load from localStorage (check new key first, then migrate old key)
+  let saved = localStorage.getItem('jobrunner-brand-theme');
+  if (!saved) {
+    const oldSaved = localStorage.getItem('tradietrack-brand-theme');
+    if (oldSaved) {
+      saved = oldSaved;
+      localStorage.setItem('jobrunner-brand-theme', oldSaved);
+      localStorage.removeItem('tradietrack-brand-theme');
+    }
+  }
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
       if (parsed.primaryColor && /^#[0-9A-Fa-f]{6}$/.test(parsed.primaryColor)) {
-        // IMPORTANT: Treat customThemeEnabled as true unless EXPLICITLY set to false
-        // This handles:
-        // - true → true (explicitly enabled)
-        // - false → false (user explicitly disabled via "Reset to Default")
-        // - undefined/null/missing → true (legacy data or stale entries with custom color)
-        // This prevents color reset when the flag is missing/stale but a custom color exists
         const isCustomColor = parsed.primaryColor.toUpperCase() !== '#3B5998';
         const explicitlyDisabled = parsed.customThemeEnabled === false;
         
@@ -38,12 +40,10 @@ function getGlobalBrandTheme(): BrandTheme {
         };
         return globalBrandTheme;
       } else {
-        // Invalid color format - remove corrupted data
-        localStorage.removeItem('tradietrack-brand-theme');
+        localStorage.removeItem('jobrunner-brand-theme');
       }
     } catch {
-      // Parse error - remove corrupted data
-      localStorage.removeItem('tradietrack-brand-theme');
+      localStorage.removeItem('jobrunner-brand-theme');
     }
   }
   
@@ -57,7 +57,7 @@ function getGlobalBrandTheme(): BrandTheme {
 
 function setGlobalBrandTheme(theme: BrandTheme) {
   globalBrandTheme = theme;
-  localStorage.setItem('tradietrack-brand-theme', JSON.stringify(theme));
+  localStorage.setItem('jobrunner-brand-theme', JSON.stringify(theme));
 }
 
 type ThemeProviderProps = {
@@ -243,7 +243,7 @@ function generateColorVariations(baseColor: string, isDarkMode: boolean) {
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
-  storageKey = 'tradietrack-ui-theme',
+  storageKey = 'jobrunner-ui-theme',
   initialBrandTheme,
   ...props
 }: ThemeProviderProps) {

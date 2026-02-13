@@ -1428,7 +1428,7 @@ export default function Settings({
                             customThemeEnabled: true
                           });
                           // Also update localStorage immediately for faster persistence
-                          localStorage.setItem('tradietrack-brand-theme', JSON.stringify({
+                          localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
                             primaryColor: preset.color,
                             customThemeEnabled: true
                           }));
@@ -1462,7 +1462,7 @@ export default function Settings({
                             primaryColor: e.target.value,
                             customThemeEnabled: true
                           });
-                          localStorage.setItem('tradietrack-brand-theme', JSON.stringify({
+                          localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
                             primaryColor: e.target.value,
                             customThemeEnabled: true
                           }));
@@ -1482,7 +1482,7 @@ export default function Settings({
                                 primaryColor: e.target.value,
                                 customThemeEnabled: true
                               });
-                              localStorage.setItem('tradietrack-brand-theme', JSON.stringify({
+                              localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
                                 primaryColor: e.target.value,
                                 customThemeEnabled: true
                               }));
@@ -1507,7 +1507,7 @@ export default function Settings({
                             customThemeEnabled: false
                           });
                           // Also update localStorage immediately for consistency
-                          localStorage.setItem('tradietrack-brand-theme', JSON.stringify({
+                          localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
                             primaryColor: '#3B5998',
                             customThemeEnabled: false
                           }));
