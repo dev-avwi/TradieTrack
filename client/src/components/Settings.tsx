@@ -301,8 +301,8 @@ export default function Settings({
     tradeType: "general"
   });
 
-  // Default color matches ThemeProvider's default (#3B5998 navy)
-  const DEFAULT_BRAND_COLOR = "#3B5998";
+  // Default color matches ThemeProvider's default (#0F766E teal)
+  const DEFAULT_BRAND_COLOR = "#0F766E";
   
   const [brandingData, setBrandingData] = useState({
     color: DEFAULT_BRAND_COLOR,
@@ -1407,7 +1407,7 @@ export default function Settings({
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-3">
                     {[
-                      { color: '#3B5998', name: 'Navy' },
+                      { color: '#0F766E', name: 'Teal' },
                       { color: '#3b82f6', name: 'Blue' },
                       { color: '#10b981', name: 'Green' },
                       { color: '#8b5cf6', name: 'Purple' },
@@ -1488,7 +1488,7 @@ export default function Settings({
                               }));
                             }
                           }}
-                          placeholder="#3B5998"
+                          placeholder="#0F766E"
                           className="h-8 text-sm font-mono"
                           data-testid="input-brand-color"
                         />
@@ -1501,14 +1501,14 @@ export default function Settings({
                         size="sm"
                         onClick={() => {
                           setBrandingDirty(true);
-                          setBrandingData(prev => ({ ...prev, color: '#3B5998', customThemeEnabled: false }));
+                          setBrandingData(prev => ({ ...prev, color: '#0F766E', customThemeEnabled: false }));
                           setBrandTheme({
-                            primaryColor: '#3B5998',
+                            primaryColor: '#0F766E',
                             customThemeEnabled: false
                           });
                           // Also update localStorage immediately for consistency
                           localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
-                            primaryColor: '#3B5998',
+                            primaryColor: '#0F766E',
                             customThemeEnabled: false
                           }));
                         }}

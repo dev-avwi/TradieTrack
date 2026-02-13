@@ -95,7 +95,7 @@ export interface ThemeShadows {
   };
 }
 
-const DEFAULT_BRAND_COLOR = '#3B5998';
+const DEFAULT_BRAND_COLOR = '#0F766E';
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const r = parseInt(hex.slice(1, 3), 16) / 255;

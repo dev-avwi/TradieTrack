@@ -31,7 +31,7 @@ function getGlobalBrandTheme(): BrandTheme {
     try {
       const parsed = JSON.parse(saved);
       if (parsed.primaryColor && /^#[0-9A-Fa-f]{6}$/.test(parsed.primaryColor)) {
-        const isCustomColor = parsed.primaryColor.toUpperCase() !== '#3B5998';
+        const isCustomColor = parsed.primaryColor.toUpperCase() !== '#0F766E';
         const explicitlyDisabled = parsed.customThemeEnabled === false;
         
         globalBrandTheme = {
@@ -49,7 +49,7 @@ function getGlobalBrandTheme(): BrandTheme {
   
   // Default brand theme
   globalBrandTheme = {
-    primaryColor: '#3B5998',
+    primaryColor: '#0F766E',
     customThemeEnabled: false
   };
   return globalBrandTheme;
@@ -81,7 +81,7 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
   setThemeWithSync: () => null,
   brandTheme: {
-    primaryColor: '#3B5998',
+    primaryColor: '#0F766E',
     customThemeEnabled: false
   },
   setBrandTheme: () => null,

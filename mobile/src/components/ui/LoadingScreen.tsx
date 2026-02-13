@@ -43,7 +43,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
-    shadowColor: isDark ? '#000' : '#3B5998',
+    shadowColor: isDark ? '#000' : '#0F766E',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: isDark ? 0.3 : 0.15,
     shadowRadius: 20,
