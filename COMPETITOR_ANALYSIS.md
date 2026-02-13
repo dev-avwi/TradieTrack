@@ -1,14 +1,14 @@
-# TradieTrack vs ServiceM8 vs Tradify: Comprehensive Comparison
+# JobRunner vs ServiceM8 vs Tradify: Comprehensive Comparison
 
 ## Executive Summary
 
-This document provides an honest, critical analysis of TradieTrack's competitive position against ServiceM8 and Tradify - the two leading job management platforms for Australian tradies. While TradieTrack has strong feature parity in many areas, there are key gaps and strengths that need to be acknowledged.
+This document provides an honest, critical analysis of JobRunner's competitive position against ServiceM8 and Tradify - the two leading job management platforms for Australian tradies. While JobRunner has strong feature parity in many areas, there are key gaps and strengths that need to be acknowledged.
 
 ---
 
 ## Feature Comparison Matrix
 
-| Feature Category | TradieTrack | ServiceM8 | Tradify |
+| Feature Category | JobRunner | ServiceM8 | Tradify |
 |------------------|-------------|-----------|---------|
 | **CORE JOB MANAGEMENT** |
 | Job creation & tracking | Yes | Yes | Yes |
@@ -101,7 +101,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 ---
 
-## Honest Criticisms of TradieTrack
+## Honest Criticisms of JobRunner
 
 ### Critical Gaps (Must Fix Before Competing)
 
@@ -138,7 +138,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 7. **Limited Drag-and-Drop Scheduling**
    - Competitors have polished calendar drag-and-drop
-   - TradieTrack's calendar is functional but less intuitive
+   - JobRunner's calendar is functional but less intuitive
    - **Priority: MEDIUM**
 
 8. **No Voice Assistant Integration**
@@ -148,7 +148,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 9. **Custom Forms Engine Incomplete**
    - ServiceM8 has 250+ pre-made form templates
-   - TradieTrack has SWMS but limited custom forms
+   - JobRunner has SWMS but limited custom forms
    - **Priority: MEDIUM**
 
 10. **No Optional Line Items on Quotes**
@@ -158,9 +158,9 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 ---
 
-## TradieTrack Strengths (Competitive Advantages)
+## JobRunner Strengths (Competitive Advantages)
 
-### Where TradieTrack Excels
+### Where JobRunner Excels
 
 1. **AI Photo Analysis** (Unique Feature)
    - GPT-4o vision for analyzing job site photos
@@ -192,7 +192,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 7. **Job Stage Timestamps & Rollback**
    - Automatic recording of started_at, completed_at, invoiced_at
    - Click to rollback stages with timestamp clearing
-   - Unique to TradieTrack
+   - Unique to JobRunner
 
 8. **SMS Hub with AI Analysis**
    - Two-way SMS with AI-powered message analysis
@@ -227,7 +227,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 **Model**: Per-user pricing - scales linearly with team size
 
-### TradieTrack Pricing
+### JobRunner Pricing
 - **Free**: Limited features
 - **Pro**: $39/month (single user)
 - **Team**: $59/month + $29/seat
@@ -235,7 +235,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 **Model**: Hybrid per-user pricing
 
 ### Pricing Verdict
-- **Solo operators**: TradieTrack competitive at $39/mo
+- **Solo operators**: JobRunner competitive at $39/mo
 - **Small teams (2-5)**: ServiceM8 wins on value with unlimited users
 - **Large teams (10+)**: ServiceM8 clearly wins with flat rate vs. per-seat
 
@@ -245,7 +245,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 ## Target Market Fit
 
-### Where TradieTrack Fits Best
+### Where JobRunner Fits Best
 1. **Solo tradies** wanting affordable, AI-powered tools
 2. **Tech-forward businesses** that value AI photo analysis
 3. **Compliance-focused trades** needing SWMS/WHS forms
@@ -287,7 +287,7 @@ This document provides an honest, critical analysis of TradieTrack's competitive
 
 ## Conclusion
 
-**Overall Assessment**: TradieTrack is 70-80% feature complete compared to ServiceM8 and Tradify. The platform has unique strengths in AI features, offline capability, and mobile UX, but lacks critical features like online booking, job checklists, and broader accounting integrations.
+**Overall Assessment**: JobRunner is 70-80% feature complete compared to ServiceM8 and Tradify. The platform has unique strengths in AI features, offline capability, and mobile UX, but lacks critical features like online booking, job checklists, and broader accounting integrations.
 
 **Immediate Priorities**:
 1. Job checklists - table stakes for compliance

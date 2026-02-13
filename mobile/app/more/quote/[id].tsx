@@ -259,7 +259,7 @@ export default function QuoteDetailScreen() {
       [
         {
           text: 'JobRunner: Send Now',
-          onPress: () => handleSendViaTradieTrack(),
+          onPress: () => handleSendViaJobRunner(),
         },
         {
           text: 'JobRunner: Edit Message',
@@ -291,7 +291,7 @@ export default function QuoteDetailScreen() {
     );
   };
   
-  const handleSendViaTradieTrack = async () => {
+  const handleSendViaJobRunner = async () => {
     if (!quote) return;
     
     const client = getClient(quote.clientId);

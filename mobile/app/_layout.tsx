@@ -450,7 +450,7 @@ function LoadingScreen({ colors }: { colors: any }) {
           }}
         >
           <Image 
-            source={require('../assets/tradietrack-logo.png')} 
+            source={require('../assets/jobrunner-logo.png')} 
             style={{ 
               width: 85, 
               height: 85, 

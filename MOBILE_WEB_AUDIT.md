@@ -1,4 +1,4 @@
-# TradieTrack Mobile vs Web Feature Parity Audit
+# JobRunner Mobile vs Web Feature Parity Audit
 
 ## Date: December 2025
 

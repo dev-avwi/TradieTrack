@@ -1,4 +1,4 @@
-# TradieTrack vs ServiceM8 Comprehensive Comparison Report
+# JobRunner vs ServiceM8 Comprehensive Comparison Report
 
 **Generated:** December 2024  
 **Purpose:** Feature parity assessment and publish-readiness evaluation
@@ -7,9 +7,9 @@
 
 ## Executive Summary
 
-### Overall Rating: TradieTrack 8.5/10 | ServiceM8 9.0/10
+### Overall Rating: JobRunner 8.5/10 | ServiceM8 9.0/10
 
-TradieTrack is **production-ready** with comprehensive feature coverage matching ServiceM8 in most core areas. The app demonstrates professional-grade engineering with robust offline support, cloud storage integration, and enterprise-ready architecture. Key gaps are primarily in advanced AI features and accounting integrations.
+JobRunner is **production-ready** with comprehensive feature coverage matching ServiceM8 in most core areas. The app demonstrates professional-grade engineering with robust offline support, cloud storage integration, and enterprise-ready architecture. Key gaps are primarily in advanced AI features and accounting integrations.
 
 ---
 
@@ -17,7 +17,7 @@ TradieTrack is **production-ready** with comprehensive feature coverage matching
 
 ### Feature Matrix
 
-| Feature | ServiceM8 | TradieTrack | Status |
+| Feature | ServiceM8 | JobRunner | Status |
 |---------|-----------|-------------|--------|
 | **Core Job Management** | | | |
 | Job cards with full details | ✅ | ✅ | PARITY |
@@ -103,7 +103,7 @@ TradieTrack is **production-ready** with comprehensive feature coverage matching
 
 ### Mobile App Ratings
 
-| Category | ServiceM8 | TradieTrack |
+| Category | ServiceM8 | JobRunner |
 |----------|-----------|-------------|
 | Job Management | 9/10 | 9/10 |
 | Quoting & Invoicing | 9/10 | 9/10 |
@@ -120,7 +120,7 @@ TradieTrack is **production-ready** with comprehensive feature coverage matching
 
 ### Feature Matrix
 
-| Feature | ServiceM8 | TradieTrack | Status |
+| Feature | ServiceM8 | JobRunner | Status |
 |---------|-----------|-------------|--------|
 | **Dashboard** | | | |
 | KPI overview | ✅ | ✅ | PARITY |
@@ -166,7 +166,7 @@ TradieTrack is **production-ready** with comprehensive feature coverage matching
 
 ### Web App Ratings
 
-| Category | ServiceM8 | TradieTrack |
+| Category | ServiceM8 | JobRunner |
 |----------|-----------|-------------|
 | Dashboard & UX | 8/10 | 9/10 |
 | Job Management | 9/10 | 9/10 |
@@ -442,7 +442,7 @@ WEB APP                    SERVER                    MOBILE APP
 
 ## Conclusion
 
-TradieTrack is **fundamentally ready for production** with:
+JobRunner is **fundamentally ready for production** with:
 
 - ✅ Complete job lifecycle management
 - ✅ Professional quoting & invoicing with GST

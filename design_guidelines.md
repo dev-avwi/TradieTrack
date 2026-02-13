@@ -1,4 +1,4 @@
-# TradieTrack Design Guidelines
+# JobRunner Design Guidelines
 
 ## Design Approach
 **Reference-Based Approach**: Drawing inspiration from productivity tools like Linear, Notion, and Asana, combined with professional service platforms. This utility-focused app prioritizes efficiency and learnability for busy tradespeople.
@@ -105,7 +105,7 @@ The design emphasizes functionality and efficiency over visual flair, ensuring t
 
 ---
 
-## TradieTrack UX Checklist (For Every Screen)
+## JobRunner UX Checklist (For Every Screen)
 
 **This is the design bible. If a screen breaks even one rule, fix it.**
 

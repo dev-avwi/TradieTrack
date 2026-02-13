@@ -1,7 +1,7 @@
-# TradieTrack Feature Implementation Plan
+# JobRunner Feature Implementation Plan
 ## Closing ALL Competitor Gaps
 
-This document outlines detailed implementation plans for every gap identified in the competitor analysis. The goal is to make TradieTrack "near damn perfect" for Australian tradespeople.
+This document outlines detailed implementation plans for every gap identified in the competitor analysis. The goal is to make JobRunner "near damn perfect" for Australian tradespeople.
 
 ---
 
@@ -588,7 +588,7 @@ DELETE /api/jobs/:jobId/invite-link/:id - Revoke link
 
 ## SUCCESS METRICS
 
-After implementation, TradieTrack will have:
+After implementation, JobRunner will have:
 - ✅ 100% feature parity with Tradify
 - ✅ 100% feature parity with GoTradie (team features)
 - ✅ Unique Trade Calculators module (competitive advantage)

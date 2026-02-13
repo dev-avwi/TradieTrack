@@ -312,7 +312,7 @@ export default function ReceiptDetailScreen() {
         {
           text: 'JobRunner: Send Now',
           onPress: async () => {
-            await handleSendViaTradieTrack();
+            await handleSendViaJobRunner();
           },
         },
         {
@@ -475,7 +475,7 @@ ${businessName}`;
     }
   };
   
-  const handleSendViaTradieTrack = async () => {
+  const handleSendViaJobRunner = async () => {
     if (!receipt || isSendingEmail) return;
     
     const recipientEmail = client?.email;

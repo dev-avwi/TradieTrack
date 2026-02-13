@@ -1,4 +1,4 @@
-# TradieTrack Beta Readiness Report
+# JobRunner Beta Readiness Report
 **Date:** January 1, 2026  
 **Version:** 1.0.0  
 **Status:** Ready for Beta Launch
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-TradieTrack is a comprehensive job management platform for Australian tradespeople, featuring complete Quote → Job → Invoice → Receipt workflows. After thorough audit, the platform is **beta-ready** with strong competitive positioning against ServiceM8 and other market players.
+JobRunner is a comprehensive job management platform for Australian tradespeople, featuring complete Quote → Job → Invoice → Receipt workflows. After thorough audit, the platform is **beta-ready** with strong competitive positioning against ServiceM8 and other market players.
 
 ### Key Findings
 - **Pricing Updated:** Mobile app now shows correct $49/mo Pro and $59+$29/worker Team pricing
@@ -125,7 +125,7 @@ TradieTrack is a comprehensive job management platform for Australian tradespeop
 | Location Permission Description | Present | `app.json` infoPlist |
 | Photo Library Permission | Present | `app.json` infoPlist |
 | Microphone Permission | Present | `app.json` infoPlist |
-| Bundle Identifier | Configured | `com.tradietrack.app` |
+| Bundle Identifier | Configured | `com.jobrunner.app` |
 | App Icon | Configured | `assets/icon.png` |
 | Splash Screen | Configured | `assets/splash.png` |
 
@@ -139,20 +139,20 @@ TradieTrack is a comprehensive job management platform for Australian tradespeop
 
 ### Market Positioning
 
-| Aspect | ServiceM8 | TradieTrack | Advantage |
+| Aspect | ServiceM8 | JobRunner | Advantage |
 |--------|-----------|-------------|-----------|
-| Platform | iOS-only (Android lite) | iOS + Android + Web | TradieTrack |
+| Platform | iOS-only (Android lite) | iOS + Android + Web | JobRunner |
 | Pricing Model | Job-based ($9-$349/mo) | Per-user ($49-$88/mo) | Varies by usage |
 | Mobile-First | Yes | Yes | Tie |
 | Offline Mode | Yes | Yes (SQLite) | Tie |
-| AI Features | No | Yes (GPT-4o) | TradieTrack |
+| AI Features | No | Yes (GPT-4o) | JobRunner |
 | Quote → Invoice | Yes | Yes | Tie |
 | Team GPS Tracking | Yes | Yes | Tie |
 | Accounting Integration | Xero, MYOB | Xero, MYOB | Tie |
-| Payment Collection | Yes (Stripe) | Yes (Stripe, Tap to Pay) | TradieTrack |
+| Payment Collection | Yes (Stripe) | Yes (Stripe, Tap to Pay) | JobRunner |
 
 ### ServiceM8 Features We Have
-| Feature | TradieTrack Implementation |
+| Feature | JobRunner Implementation |
 |---------|---------------------------|
 | Job scheduling & dispatch | DispatchBoard, Calendar, Schedule pages |
 | Quoting & Invoicing | Full editor with templates, PDF generation |
@@ -165,7 +165,7 @@ TradieTrack is a comprehensive job management platform for Australian tradespeop
 | Payment collection | Stripe, Tap to Pay simulation |
 
 ### ServiceM8 Features - Gap Analysis
-| ServiceM8 Feature | TradieTrack Status | Priority |
+| ServiceM8 Feature | JobRunner Status | Priority |
 |-------------------|-------------------|----------|
 | Voice-to-text notes | Not implemented | Medium |
 | ServiceM8 Phone (VoIP) | Not implemented | Low |
@@ -173,7 +173,7 @@ TradieTrack is a comprehensive job management platform for Australian tradespeop
 | Interactive quotes (multi-option) | Partial (standard quotes) | Medium |
 | Auto-scheduling optimization | Manual scheduling only | Medium |
 
-### TradieTrack Unique Advantages
+### JobRunner Unique Advantages
 | Feature | Description |
 |---------|-------------|
 | AI Business Assistant | GPT-4o-mini powered suggestions, quote generation |
@@ -227,7 +227,7 @@ None identified - platform is beta-ready.
 
 ## Conclusion
 
-TradieTrack is **ready for beta launch**. The platform offers comprehensive functionality competitive with ServiceM8 while providing unique advantages in AI integration, cross-platform support, and modern user experience. No blocking issues were identified during this audit.
+JobRunner is **ready for beta launch**. The platform offers comprehensive functionality competitive with ServiceM8 while providing unique advantages in AI integration, cross-platform support, and modern user experience. No blocking issues were identified during this audit.
 
 **Next Steps:**
 1. Verify Stripe pricing in dashboard matches $49 Pro, $59 Team, $29/worker

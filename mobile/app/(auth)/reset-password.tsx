@@ -100,7 +100,7 @@ export default function ResetPasswordScreen() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../../assets/tradietrack-logo.png')}
+                source={require('../../assets/jobrunner-logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />

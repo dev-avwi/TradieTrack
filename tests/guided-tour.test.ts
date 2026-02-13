@@ -48,7 +48,7 @@ async function runGuidedTourTest() {
         // Find email input
         const emailInput = await page.$('input[type="email"], input[name="email"], [data-testid="email-input"]');
         if (emailInput) {
-          await emailInput.type('demo@tradietrack.com.au');
+          await emailInput.type('demo@jobrunner.com.au');
         }
         
         // Find password input

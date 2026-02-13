@@ -1,8 +1,8 @@
-# TradieTrack Native App Requirements
+# JobRunner Native App Requirements
 
 ## Overview
 
-This document outlines the technical requirements and architecture for converting TradieTrack from a Progressive Web App (PWA) to a React Native mobile application. The primary driver for this conversion is enabling **phone-to-phone NFC Tap to Pay** using Stripe Terminal SDK, which requires native device access not available in web browsers.
+This document outlines the technical requirements and architecture for converting JobRunner from a Progressive Web App (PWA) to a React Native mobile application. The primary driver for this conversion is enabling **phone-to-phone NFC Tap to Pay** using Stripe Terminal SDK, which requires native device access not available in web browsers.
 
 ## Target Platforms
 
@@ -246,7 +246,7 @@ The Express.js backend remains unchanged:
 
 ## Conclusion
 
-Converting TradieTrack to React Native enables critical in-person payment capabilities while maintaining the existing backend infrastructure. The shared type system and API patterns ensure consistency between web and mobile experiences. The primary investment is in UI component conversion and native feature integration.
+Converting JobRunner to React Native enables critical in-person payment capabilities while maintaining the existing backend infrastructure. The shared type system and API patterns ensure consistency between web and mobile experiences. The primary investment is in UI component conversion and native feature integration.
 
 ### Key Benefits of Native App
 1. **Tap to Pay** - Accept card payments anywhere with just your phone

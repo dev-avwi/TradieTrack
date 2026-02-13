@@ -251,7 +251,7 @@ export function Header({
           ) : showMenuButton ? (
             <View style={styles.brandContainer}>
               <Image 
-                source={require('../../assets/tradietrack-logo.png')}
+                source={require('../../assets/jobrunner-logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />

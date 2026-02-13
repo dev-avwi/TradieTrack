@@ -252,15 +252,15 @@ export default function RegisterScreen() {
             <View style={styles.logoGradientContainer}>
               <View style={styles.logoInner}>
                 <Image 
-                  source={require('../../assets/tradietrack-logo.png')}
+                  source={require('../../assets/jobrunner-logo.png')}
                   style={styles.logo}
                   resizeMode="contain"
                 />
               </View>
             </View>
             <View style={styles.appNameContainer}>
-              <Text style={styles.appNameBlue}>Tradie</Text>
-              <Text style={styles.appNameOrange}>Track</Text>
+              <Text style={styles.appNameBlue}>Job</Text>
+              <Text style={styles.appNameOrange}>Runner</Text>
             </View>
             <Text style={styles.title}>Get Started Free</Text>
             <Text style={styles.subtitle}>Manage your trade business from your pocket</Text>

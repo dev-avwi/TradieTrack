@@ -1,4 +1,4 @@
-# TradieTrack App Store Launch Plan
+# JobRunner App Store Launch Plan
 
 ## Current Status: READY TO BUILD
 
@@ -29,8 +29,8 @@ Your mobile app is configured and ready for app store submission. Here's your co
 
 | Setting | iOS | Android |
 |---------|-----|---------|
-| App Name | TradieTrack | TradieTrack |
-| Bundle ID | com.tradietrack.app | com.tradietrack.app |
+| App Name | JobRunner | JobRunner |
+| Bundle ID | com.jobrunner.app | com.jobrunner.app |
 | Version | 1.0.0 | 1.0.0 |
 | Icon | Configured | Configured |
 | Splash Screen | Configured | Configured |
@@ -77,7 +77,7 @@ This creates an `.aab` file (Android App Bundle).
 | iPhone Screenshots (6.5") | 1284x2778px | NEEDED |
 | iPhone Screenshots (5.5") | 1242x2208px | NEEDED |
 | iPad Screenshots (12.9") | 2048x2732px | NEEDED |
-| Privacy Policy URL | Web page | HAVE (tradietrack.com.au/privacy) |
+| Privacy Policy URL | Web page | HAVE (jobrunner.com.au/privacy) |
 | Support URL | Web page | NEEDED |
 
 ### Google Play Store Requirements
@@ -168,7 +168,7 @@ Job management for Aussie tradies. Quotes, invoices, payments - all in one.
 
 ### Full Description
 ```
-TradieTrack is the complete job management app built for Australian tradespeople.
+JobRunner is the complete job management app built for Australian tradespeople.
 
 MANAGE JOBS
 • Create and track jobs from quote to completion

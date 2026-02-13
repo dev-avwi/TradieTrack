@@ -1,4 +1,4 @@
-# TradieTrack Comprehensive Application Rating & ServiceM8 Comparison
+# JobRunner Comprehensive Application Rating & ServiceM8 Comparison
 
 **Assessment Date:** December 2024 (Updated December 16, 2024)  
 **Evaluator:** AI Code Review System  
@@ -10,11 +10,11 @@
 
 ### Overall Application Rating: 9.0/10 (Updated from 8.7)
 
-TradieTrack is a **production-ready, professionally-engineered** field service management application specifically designed for Australian tradespeople. The application demonstrates strong technical foundations, comprehensive feature coverage, and excellent attention to the Australian market needs (GST, AUD, local terminology).
+JobRunner is a **production-ready, professionally-engineered** field service management application specifically designed for Australian tradespeople. The application demonstrates strong technical foundations, comprehensive feature coverage, and excellent attention to the Australian market needs (GST, AUD, local terminology).
 
 | Competitor | Overall Rating | Target Market |
 |------------|---------------|---------------|
-| **TradieTrack** | **9.0/10** | Australian tradies, solo-to-small teams |
+| **JobRunner** | **9.0/10** | Australian tradies, solo-to-small teams |
 | ServiceM8 | 9.0/10 | Australian field service professionals |
 | Fergus | 8.5/10 | NZ/AU trades businesses |
 | Jobber | 8.3/10 | North American home service |
@@ -44,7 +44,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 **Areas for Improvement:**
 - Bulk job operations limited
 
-**ServiceM8 Comparison:** Now exceeds ServiceM8 on core job management with video capture and photo markup. TradieTrack's job workflow is visually cleaner and more intuitive.
+**ServiceM8 Comparison:** Now exceeds ServiceM8 on core job management with video capture and photo markup. JobRunner's job workflow is visually cleaner and more intuitive.
 
 ---
 
@@ -71,7 +71,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 **Areas for Improvement:**
 - Limited custom field support
 
-**ServiceM8 Comparison:** TradieTrack's quote editor is more modern and user-friendly. The AI quote generation and recurring invoices are differentiators that ServiceM8 doesn't fully match.
+**ServiceM8 Comparison:** JobRunner's quote editor is more modern and user-friendly. The AI quote generation and recurring invoices are differentiators that ServiceM8 doesn't fully match.
 
 ---
 
@@ -96,7 +96,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - Fee breakdown visualization
 - Complete payment flow demonstration without real Stripe
 
-**ServiceM8 Comparison:** ServiceM8 has more mature payment integrations with additional payment methods. TradieTrack's Stripe implementation is solid but narrower in scope.
+**ServiceM8 Comparison:** ServiceM8 has more mature payment integrations with additional payment methods. JobRunner's Stripe implementation is solid but narrower in scope.
 
 ---
 
@@ -121,7 +121,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - Travel time estimation could be more accurate
 - Integration with real-time traffic data
 
-**ServiceM8 Comparison:** TradieTrack now matches ServiceM8 on scheduling and route optimization with GPS-based proximity sorting.
+**ServiceM8 Comparison:** JobRunner now matches ServiceM8 on scheduling and route optimization with GPS-based proximity sorting.
 
 ---
 
@@ -142,7 +142,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - Leave management basic
 - Payroll integration missing
 
-**ServiceM8 Comparison:** TradieTrack's team features are comprehensive and match ServiceM8 well. The Live360-style map is a premium feature.
+**ServiceM8 Comparison:** JobRunner's team features are comprehensive and match ServiceM8 well. The Live360-style map is a premium feature.
 
 ---
 
@@ -162,7 +162,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - Some features only on web
 - No Apple Watch app
 
-**ServiceM8 Comparison:** ServiceM8's iOS app is more mature with deeper iOS integration (Siri, Room Scan). TradieTrack's offline capabilities are actually superior with more robust sync.
+**ServiceM8 Comparison:** ServiceM8's iOS app is more mature with deeper iOS integration (Siri, Room Scan). JobRunner's offline capabilities are actually superior with more robust sync.
 
 ---
 
@@ -183,7 +183,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - AI suggestions could be more contextual
 - Automation rules UI could be simpler
 
-**ServiceM8 Comparison:** TradieTrack's AI features are innovative and ahead of ServiceM8 in some areas. ServiceM8 has Siri integration which TradieTrack lacks.
+**ServiceM8 Comparison:** JobRunner's AI features are innovative and ahead of ServiceM8 in some areas. ServiceM8 has Siri integration which JobRunner lacks.
 
 ---
 
@@ -209,7 +209,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - QuickBooks integration not yet implemented
 - Some advanced Xero/MYOB features still in development
 
-**ServiceM8 Comparison:** TradieTrack now matches ServiceM8 for Australian accounting integrations. The Xero and MYOB connections provide the same OAuth flow that tradies expect from ServiceM8.
+**ServiceM8 Comparison:** JobRunner now matches ServiceM8 for Australian accounting integrations. The Xero and MYOB connections provide the same OAuth flow that tradies expect from ServiceM8.
 
 ---
 
@@ -230,7 +230,7 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 - Could use more onboarding videos
 - Help documentation in-app limited
 
-**ServiceM8 Comparison:** TradieTrack's UI is actually more modern and visually appealing than ServiceM8. The design system is well-thought-out.
+**ServiceM8 Comparison:** JobRunner's UI is actually more modern and visually appealing than ServiceM8. The design system is well-thought-out.
 
 ---
 
@@ -257,29 +257,29 @@ TradieTrack is a **production-ready, professionally-engineered** field service m
 
 ## Feature Comparison Matrix (Updated December 2024)
 
-| Feature Category | TradieTrack | ServiceM8 | Winner | Notes |
+| Feature Category | JobRunner | ServiceM8 | Winner | Notes |
 |-----------------|-------------|-----------|--------|-------|
-| Job Management | **9.5/10** | 9.0/10 | **TradieTrack** | +Video, photo markup, recurring |
-| Quoting | **9.2/10** | 9.0/10 | **TradieTrack** | +AI generation, recurring |
-| Invoicing | **9.2/10** | 8.5/10 | **TradieTrack** | +Recurring invoices |
+| Job Management | **9.5/10** | 9.0/10 | **JobRunner** | +Video, photo markup, recurring |
+| Quoting | **9.2/10** | 9.0/10 | **JobRunner** | +AI generation, recurring |
+| Invoicing | **9.2/10** | 8.5/10 | **JobRunner** | +Recurring invoices |
 | Payments | 8.3/10 | 9.0/10 | ServiceM8 | Gap: Tap-to-Pay |
-| Scheduling | **9.2/10** | 9.0/10 | **TradieTrack** | +Route optimization |
-| Team Management | 8.9/10 | 8.5/10 | TradieTrack | Live tracking |
+| Scheduling | **9.2/10** | 9.0/10 | **JobRunner** | +Route optimization |
+| Team Management | 8.9/10 | 8.5/10 | JobRunner | Live tracking |
 | Mobile App | **8.8/10** | 9.0/10 | ServiceM8 | Gap: iOS native features |
-| AI Features | 8.6/10 | 7.5/10 | **TradieTrack** | Quote AI, scheduling AI |
+| AI Features | 8.6/10 | 7.5/10 | **JobRunner** | Quote AI, scheduling AI |
 | Integrations | **8.5/10** | 9.5/10 | ServiceM8 | Now includes Xero/MYOB |
-| UI/UX | 9.0/10 | 8.0/10 | **TradieTrack** | Modern design system |
-| Offline Support | 9.0/10 | 7.0/10 | **TradieTrack** | SQLite + conflict UI |
-| Pricing Value | 9.0/10 | 8.0/10 | **TradieTrack** | Transparent fees |
+| UI/UX | 9.0/10 | 8.0/10 | **JobRunner** | Modern design system |
+| Offline Support | 9.0/10 | 7.0/10 | **JobRunner** | SQLite + conflict UI |
+| Pricing Value | 9.0/10 | 8.0/10 | **JobRunner** | Transparent fees |
 
-**Wins:** TradieTrack 9, ServiceM8 2, Tie 0
+**Wins:** JobRunner 9, ServiceM8 2, Tie 0
 
 ---
 
-## Unique TradieTrack Advantages
+## Unique JobRunner Advantages
 
 ### 1. Superior AI Integration
-TradieTrack's GPT-4o-mini powered AI assistant can:
+JobRunner's GPT-4o-mini powered AI assistant can:
 - Generate complete quotes from job descriptions
 - Suggest scheduling based on job requirements
 - Draft professional emails
@@ -287,7 +287,7 @@ TradieTrack's GPT-4o-mini powered AI assistant can:
 - Answer questions in Australian English
 
 ### 2. Best-in-Class Offline Support
-TradieTrack's offline architecture is more robust than ServiceM8:
+JobRunner's offline architecture is more robust than ServiceM8:
 - SQLite-based local storage
 - Delta sync for efficiency
 - Advanced conflict resolution UI
@@ -295,7 +295,7 @@ TradieTrack's offline architecture is more robust than ServiceM8:
 - Exponential backoff retry logic
 
 ### 3. Modern, Clean UI
-TradieTrack's interface is more contemporary:
+JobRunner's interface is more contemporary:
 - Consistent design system
 - Better dark mode
 - More intuitive navigation
@@ -333,7 +333,7 @@ ServiceM8 has been in market longer with more case studies and testimonials.
 
 ---
 
-## Recommendations for TradieTrack
+## Recommendations for JobRunner
 
 ### ✅ COMPLETED (December 2024 Update)
 
@@ -366,7 +366,7 @@ The following previously-critical features have now been implemented:
 ## Competitive Positioning
 
 ### Target Market
-TradieTrack is ideally positioned for:
+JobRunner is ideally positioned for:
 - Solo tradies wanting simple, powerful tools
 - Small teams (2-10 people) needing coordination
 - Tradies who want AI-powered efficiency
@@ -382,9 +382,9 @@ TradieTrack is ideally positioned for:
 
 ## Final Verdict
 
-**TradieTrack Rating: 9.0/10** (Updated December 2024)
+**JobRunner Rating: 9.0/10** (Updated December 2024)
 
-TradieTrack is a **feature-complete, production-ready** field service management application that now **matches or exceeds ServiceM8** in most categories. 
+JobRunner is a **feature-complete, production-ready** field service management application that now **matches or exceeds ServiceM8** in most categories. 
 
 **Strongest Points:**
 - Modern, intuitive user interface
@@ -401,7 +401,7 @@ TradieTrack is a **feature-complete, production-ready** field service management
 - Tap-to-Pay native iOS support
 - Apple Watch app
 
-**Recommendation:** TradieTrack is ready for production use and can compete directly with ServiceM8. The application now offers accounting integrations (Xero/MYOB), advanced media features (photo markup, video), and scheduling intelligence (route optimization, recurring jobs) that match industry standards.
+**Recommendation:** JobRunner is ready for production use and can compete directly with ServiceM8. The application now offers accounting integrations (Xero/MYOB), advanced media features (photo markup, video), and scheduling intelligence (route optimization, recurring jobs) that match industry standards.
 
 ---
 

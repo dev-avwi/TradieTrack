@@ -1,6 +1,6 @@
-# TradieTrack Landing Page Mockups
+# JobRunner Landing Page Mockups
 
-This document contains self-contained HTML/JSX code for 6 key screens from TradieTrack that can be used as interactive mockups on your landing page.
+This document contains self-contained HTML/JSX code for 6 key screens from JobRunner that can be used as interactive mockups on your landing page.
 
 ## How to Use These Mockups
 
@@ -1443,4 +1443,4 @@ export default function MobileAppMockup() {
 
 ## License
 
-These mockups are extracted from TradieTrack and provided for demonstration/portfolio purposes.
+These mockups are extracted from JobRunner and provided for demonstration/portfolio purposes.

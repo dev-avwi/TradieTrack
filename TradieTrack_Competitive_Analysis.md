@@ -1,16 +1,16 @@
-# TradieTrack: Comprehensive Competitive Analysis vs Top Global Business Management Apps
+# JobRunner: Comprehensive Competitive Analysis vs Top Global Business Management Apps
 
 *Analysis Date: December 2024*
 
 ## Executive Summary
 
-TradieTrack is a mobile-first job management platform specifically designed for Australian tradespeople. This analysis compares TradieTrack against 15 top global business management applications to identify competitive advantages, feature gaps, and strategic opportunities.
+JobRunner is a mobile-first job management platform specifically designed for Australian tradespeople. This analysis compares JobRunner against 15 top global business management applications to identify competitive advantages, feature gaps, and strategic opportunities.
 
-**Key Finding**: TradieTrack has strong foundational features competitive with mid-tier solutions like Jobber and ServiceM8, but lacks several enterprise-grade capabilities found in market leaders like ServiceTitan and advanced automation features present in modern platforms like Monday.com.
+**Key Finding**: JobRunner has strong foundational features competitive with mid-tier solutions like Jobber and ServiceM8, but lacks several enterprise-grade capabilities found in market leaders like ServiceTitan and advanced automation features present in modern platforms like Monday.com.
 
 ---
 
-## 1. Current TradieTrack Feature Audit
+## 1. Current JobRunner Feature Audit
 
 ### Core Strengths
 - **✅ Complete Job Lifecycle Management**: Jobs → Quotes → Invoices flow
@@ -51,7 +51,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 - Sophisticated reporting and business intelligence
 - Equipment management and service agreements
 
-**TradieTrack Gap**: Lacks inventory management, IoT integration, advanced CRM features
+**JobRunner Gap**: Lacks inventory management, IoT integration, advanced CRM features
 
 #### Monday.com (Work Management - $12-19/user/month)
 **Competitive Advantages:**
@@ -61,7 +61,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 - Customizable dashboards and reporting
 - Mass communication tools
 
-**TradieTrack Gap**: No AI features, limited automation, basic collaboration
+**JobRunner Gap**: No AI features, limited automation, basic collaboration
 
 #### Asana (Project Management - $11-25/user/month)
 **Competitive Advantages:**
@@ -70,7 +70,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 - Goal tracking and portfolio management
 - Custom field types and advanced search
 
-**TradieTrack Gap**: No AI features, basic project management, limited reporting
+**JobRunner Gap**: No AI features, basic project management, limited reporting
 
 ### Direct Competitors (Field Service)
 
@@ -82,7 +82,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 - Online booking and customer portal
 - Route optimization
 
-**TradieTrack Advantages**: Trade-specific theming, Australian compliance, more affordable
+**JobRunner Advantages**: Trade-specific theming, Australian compliance, more affordable
 
 #### ServiceM8 (Free-$29/month)
 **Competitive Advantages:**
@@ -92,7 +92,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 - 250+ pre-made industry forms
 - iOS optimization
 
-**TradieTrack Advantages**: Better mobile UX, integrated payments, more comprehensive invoicing
+**JobRunner Advantages**: Better mobile UX, integrated payments, more comprehensive invoicing
 
 #### FieldPulse ($99/user/month)
 **Competitive Advantages:**
@@ -101,7 +101,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 - Automatic parts ordering
 - Equipment maintenance scheduling
 
-**TradieTrack Gap**: No GPS tracking, inventory management, or equipment features
+**JobRunner Gap**: No GPS tracking, inventory management, or equipment features
 
 ---
 
@@ -167,7 +167,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 
 ## 4. Competitive Positioning Analysis
 
-### TradieTrack's Market Position
+### JobRunner's Market Position
 
 #### **Sweet Spot**: Small-Medium Australian Trades ($29-69/month market segment)
 
@@ -194,7 +194,7 @@ TradieTrack is a mobile-first job management platform specifically designed for 
 #### **Secondary Target**: Growing Trades Businesses (5-15 employees)  
 - **Strengths**: Good foundational features, Australian focus
 - **Gaps**: Need team management, advanced analytics, equipment tracking
-- **Risk**: Will outgrow TradieTrack without enterprise features
+- **Risk**: Will outgrow JobRunner without enterprise features
 
 #### **Missed Opportunities**: Large Contractors (15+ employees)
 - **Reason**: Lacks inventory, equipment, team management, advanced CRM
@@ -323,7 +323,7 @@ Optimistic Scenario:
 
 ## 8. Conclusion
 
-TradieTrack has established a strong foundation in the Australian trades market with excellent mobile UX and trade-specific personalization. However, to compete effectively with global leaders and capture larger market share, critical gaps in GPS tracking, customer portals, analytics, and AI features must be addressed.
+JobRunner has established a strong foundation in the Australian trades market with excellent mobile UX and trade-specific personalization. However, to compete effectively with global leaders and capture larger market share, critical gaps in GPS tracking, customer portals, analytics, and AI features must be addressed.
 
 The platform's Australian-first approach and mobile-optimized design provide sustainable competitive advantages, but success depends on rapidly closing feature gaps while maintaining the simplicity and affordability that appeals to small trades businesses.
 

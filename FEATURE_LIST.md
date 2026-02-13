@@ -1,7 +1,7 @@
-# TradieTrack - Comprehensive Feature List
+# JobRunner - Comprehensive Feature List
 
 ## Overview
-TradieTrack is a mobile-first web application for Australian tradespeople, designed to streamline business operations from job creation and management to quoting, invoicing, and payment collection.
+JobRunner is a mobile-first web application for Australian tradespeople, designed to streamline business operations from job creation and management to quoting, invoicing, and payment collection.
 
 ---
 

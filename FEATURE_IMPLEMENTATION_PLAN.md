@@ -1,4 +1,4 @@
-# TradieTrack Feature Implementation Plan
+# JobRunner Feature Implementation Plan
 
 **Created:** December 2024  
 **Status:** Active Development
@@ -7,7 +7,7 @@
 
 ## Overview
 
-This document outlines the technical implementation plan for all priority features identified for TradieTrack. Each feature includes architecture, database schema, API endpoints, UI components, and implementation notes.
+This document outlines the technical implementation plan for all priority features identified for JobRunner. Each feature includes architecture, database schema, API endpoints, UI components, and implementation notes.
 
 ---
 
@@ -15,7 +15,7 @@ This document outlines the technical implementation plan for all priority featur
 
 ### 1A. Xero Integration
 
-**Goal:** Sync invoices, payments, and contacts between TradieTrack and Xero accounting software.
+**Goal:** Sync invoices, payments, and contacts between JobRunner and Xero accounting software.
 
 **Architecture:**
 - OAuth2 flow for Xero connection
@@ -434,21 +434,21 @@ POST /api/jobs/bulk-delete - Delete multiple jobs
 
 ## ServiceM8 Mobile Feature Comparison
 
-| Feature | ServiceM8 | TradieTrack | Gap Analysis |
+| Feature | ServiceM8 | JobRunner | Gap Analysis |
 |---------|-----------|-------------|--------------|
 | Job cards | Yes | Yes | Parity |
 | Photo capture | Yes | Yes | Parity |
 | Video capture | Yes | No | Need to implement |
 | Photo markup | Yes | No | Need to implement |
 | Voice notes | Yes | Partial | Need recording UI |
-| Offline mode | Yes | Yes | TradieTrack superior |
+| Offline mode | Yes | Yes | JobRunner superior |
 | Siri shortcuts | Yes | No | Need to implement |
 | LiDAR room scan | Yes | No | Not planned (hardware) |
 | Apple Watch | Yes | No | Not planned |
 | Push notifications | Yes | Yes | Parity |
 | GPS tracking | Yes | Yes | Parity |
 | Tap to Pay | Yes | Partial | Need Terminal integration |
-| QR code payments | No | Yes | TradieTrack advantage |
+| QR code payments | No | Yes | JobRunner advantage |
 
 ---
 

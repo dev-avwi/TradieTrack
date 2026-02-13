@@ -1,7 +1,7 @@
-# Competitor App Analysis for TradieTrack
+# Competitor App Analysis for JobRunner
 
 ## Overview
-Analysis of competitor apps from App Store screenshots to identify features, gaps, and integration opportunities for TradieTrack.
+Analysis of competitor apps from App Store screenshots to identify features, gaps, and integration opportunities for JobRunner.
 
 ---
 
@@ -10,7 +10,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 ### Screenshot Analysis
 
 #### IMG_5449 - "Purpose Built for the Trades" Feature List
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Invoices & Payments** | Create/send invoices, collect payments | **HAVE IT** - LiveInvoiceEditor, Stripe integration, payment collection | Already solid |
 | **Enquiries** | Capture and manage new job enquiries | **PARTIAL** - Have leads/CRM but could improve enquiry flow | Add dedicated Enquiry capture with quick-add |
@@ -23,21 +23,21 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Form & Certs** | Digital compliance certificates | **HAVE IT** - Safety forms, SWMS, digital signatures | Already solid |
 
 #### IMG_5450 - Onsite Payment + Accounting Sync
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Take Onsite Payment** | Card payment on-site | **HAVE IT** - QuickCollectPayment, Stripe Elements | Already solid |
 | **Send payment receipt** | Auto email receipt | **HAVE IT** - Receipt generation and sending | Already solid |
 | **Xero/MYOB/QuickBooks sync** | Multi-platform accounting | **PARTIAL** - Have Xero/MYOB, missing QuickBooks | Consider adding QuickBooks later |
 
 #### IMG_5451 - Create Quotes & Invoices Anywhere
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Mobile-first documents** | Create on phone | **HAVE IT** - Mobile-responsive editors | Already solid |
 | **Overdue status badge** | Visual overdue indicator | **HAVE IT** - Status badges on invoices | Already solid |
 | **Pay Invoice button** | Direct payment link in invoice | **HAVE IT** - Stripe payment links | Already solid |
 
 #### IMG_5452 - Schedule Work, Assign & Notify Staff
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Day/Week view calendar** | Visual schedule | **HAVE IT** - CalendarView with day/week views | Already solid |
 | **Staff assignment blocks** | Visual team assignments | **HAVE IT** - TeamScheduler, dispatch board | Already solid |
@@ -45,7 +45,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Floating + button** | Quick add job | **HAVE IT** - QuickCreateFAB | Already solid |
 
 #### IMG_5453 - Quickly Record Timesheets & Expenses
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Day Total display** | Summary of hours worked | **HAVE IT** - TimeTracking shows daily totals | Already solid |
 | **Start Timer button** | One-tap timer start | **HAVE IT** - Active timer with breaks | Already solid |
@@ -54,7 +54,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Expense tracking** | Track job expenses | **HAVE IT** - ExpenseTracking component | Already solid |
 
 #### IMG_5454 - Create, Sign & Send Digital Certificates
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **SWMS forms** | High Risk Construction Work forms | **HAVE IT** - SafetyFormsSection, SWMS templates | Already solid |
 | **Serial number generation** | Auto-generate form IDs | **HAVE IT** - System generates form IDs | Already solid |
@@ -63,7 +63,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **PPE Required section** | Safety equipment list | **HAVE IT** - PPE fields in safety forms | Already solid |
 
 #### IMG_5455 - Capture Job Photos & Customer Sign Offs
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Job Photos with count** | "Job Photos (14)" | **HAVE IT** - JobPhotoGallery with counts | Already solid |
 | **Compliance Certificates** | Digital cert records | **HAVE IT** - Safety forms with signatures | Already solid |
@@ -78,7 +78,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 ### Screenshot Analysis
 
 #### IMG_5456 - "Messages All In One Place"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Team/Worksites/Clients tabs** | Filtered conversation list | **HAVE IT** - Chat Hub with job/team filtering | Already solid |
 | **Group conversations** | "Dan, Peter, Sam, Gary" | **HAVE IT** - Team chat, group messages | Already solid |
@@ -86,7 +86,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Time stamps** | Message timing | **HAVE IT** - Timestamps on messages | Already solid |
 
 #### IMG_5457 - "Everyone Under The Same Roof"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Team invite notifications** | "Dave invited you to join" | **HAVE IT** - Team invitations system | Already solid |
 | **"Dave is now on the team"** | Team join announcements | **PARTIAL** - Have invites but no activity feed for joins | Add team activity feed |
@@ -94,7 +94,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Quick assignment reply** | "Go around to 32 Banksia @7:30" | **HAVE IT** - Chat with job linking | Already solid |
 
 #### IMG_5458 - "Organise With Worksites"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Worksite-based organization** | Chat per site location | **PARTIAL** - Have job chat but not site-based grouping | Consider site-based chat for multi-job sites |
 | **Site address as chat header** | "32 Banksia Street" | **HAVE IT** - Job addresses shown | Already solid |
@@ -102,13 +102,13 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Site photo background** | Visual site context | **MISSING** | Add site photos to chat headers |
 
 #### IMG_5459 - "Invite Your Network to Chat"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Magic invite link** | Share invite to subcontractors | **PARTIAL** - Have team invites but not external sharing | Add shareable job invite links |
 | **"Like magic" messaging** | Seamless onboarding | **PARTIAL** - Could simplify onboarding flow | Simplify external collaboration |
 
 #### IMG_5460 - "Tradie Sorted" Dashboard
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Morning greeting** | "Morning, Casey" | **HAVE IT** - Dashboard greetings | Already solid |
 | **Weather widget** | Location weather display | **MISSING** | Add weather widget for outdoor trades |
@@ -123,7 +123,7 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 ### Screenshot Analysis
 
 #### IMG_5445 - Calculator Grid
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Baluster Spacing Calculator** | Deck/stair rail spacing | **MISSING** | Add trade calculators module |
 | **Check Square** | Verify 90-degree corners | **MISSING** | Add trade calculators module |
@@ -132,21 +132,21 @@ Analysis of competitor apps from App Store screenshots to identify features, gap
 | **Search calculators** | Find specific calculator | N/A | Part of calculator module |
 
 #### IMG_5446 - Calculator Results
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Input fields** | Railing Length, Baluster Width, Spacing | N/A | Part of calculator module |
 | **Instant results** | "25 Balusters, Spacing: 10.42mm" | N/A | Part of calculator module |
 | **Visual layout preview** | Baluster Layout visualization | N/A | Part of calculator module |
 
 #### IMG_5447 - Calculation History & PDF Export
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Calculation history** | Save past calculations | N/A | Part of calculator module |
 | **PDF export** | Share calculations | N/A | Part of calculator module |
 | **Date/time stamps** | Track when calculated | N/A | Part of calculator module |
 
 ### Trade Calculator Feature Proposal
-**Priority: MEDIUM** - Would differentiate TradieTrack for specific trades
+**Priority: MEDIUM** - Would differentiate JobRunner for specific trades
 
 Suggested calculators by trade:
 - **Plumbing**: Pipe sizing, flow rates, water heater sizing
@@ -164,32 +164,32 @@ Suggested calculators by trade:
 ### Screenshot Analysis
 
 #### IMG_5440 - "Talk, Don't Type"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Voice input for AI** | Hands-free commands | **HAVE IT** - Voice notes with transcription | Already solid |
 | **Trade knowledge queries** | "How far apart for 20mm copper?" | **HAVE IT** - AI Assistant with trade knowledge | Already solid |
 | **24/7 AI availability** | Always-on assistant | **HAVE IT** - FloatingAIChat | Already solid |
 
 #### IMG_5441 - "Create & Edit Images"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **AI bathroom visualization** | "Modernise my bathroom" | **PARTIAL** - Have AI photo analysis but not generation | Consider AI visualization for upselling |
 | **Design suggestions** | Visual renovation ideas | **PARTIAL** | Could add for specific trades |
 
 #### IMG_5442 - "Create Documents via AI"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **AI invoice generation** | Chat to create invoice | **HAVE IT** - AI quote generation | Already solid |
 | **"Water Leak Invoice" from chat** | Natural language to document | **PARTIAL** - Could improve chat-to-action | Enhance AI to create documents from chat |
 
 #### IMG_5443 - "Hands-Free Conversations"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Voice-based AI chat** | Talk while working | **HAVE IT** - Voice recording capability | Already solid |
 | **Animated listening indicator** | Visual feedback | **PARTIAL** - Have recording indicator | Could enhance animation |
 
 #### IMG_5444 - "Smart Text Actions"
-| Feature | Description | TradieTrack Status | Integration Notes |
+| Feature | Description | JobRunner Status | Integration Notes |
 |---------|-------------|-------------------|-------------------|
 | **Quick quotation templates** | Pre-filled quote text | **HAVE IT** - Document templates, AI suggestions | Already solid |
 | **Select/Copy actions** | Quick text manipulation | **HAVE IT** - Standard text handling | Already solid |
@@ -229,7 +229,7 @@ Track changes as job progresses →
 Document discrepancies for variation claims
 ```
 
-**TradieTrack Support**: 
+**JobRunner Support**: 
 - Job Scope Checklist catches commonly missed items
 - Variation tracking on jobs
 - Photo documentation tied to timeline
@@ -244,7 +244,7 @@ Immediate work if small job →
 Invoice and payment collection
 ```
 
-**TradieTrack Support**:
+**JobRunner Support**:
 - Quick job creation from mobile
 - Voice notes for fast documentation
 - On-site quoting
@@ -259,7 +259,7 @@ Complete work →
 Callout rates and invoice
 ```
 
-**TradieTrack Support**:
+**JobRunner Support**:
 - GPS auto check-in
 - Time tracking with job association
 - Callout rate templates
@@ -269,7 +269,7 @@ Callout rates and invoice
 
 ## Positioning Recommendation
 
-Based on the competitor analysis and Peter's feedback, TradieTrack should position as:
+Based on the competitor analysis and Peter's feedback, JobRunner should position as:
 
 **"Built for how jobs actually run - not how paperwork pretends they do."**
 
@@ -298,7 +298,7 @@ Key differentiators to emphasize:
 
 ## Conclusion
 
-TradieTrack already has **80%+ feature parity** with Tradify. The main gaps are:
+JobRunner already has **80%+ feature parity** with Tradify. The main gaps are:
 - Weather integration (simple API integration)
 - Trade calculators (new module)
 - Some minor UX improvements

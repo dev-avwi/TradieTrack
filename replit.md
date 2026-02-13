@@ -1,9 +1,11 @@
 ### Overview
-TradieTrack is a mobile-first web application for Australian tradespeople. The core positioning is: **"Built for how jobs actually run — not how paperwork pretends they do."** 
+JobRunner is a mobile-first web application for Australian tradespeople. The core positioning is: **"Built for how jobs actually run — not how paperwork pretends they do."** 
 
-TradieTrack keeps a clear record of what was known, done, and agreed — so tradies don't wear someone else's mistake. It centralizes job management, quoting, invoicing, and payment collection with full Australian GST and AUD support. Key capabilities include Job Scope Checklists (to catch commonly missed quote items), comprehensive change tracking with photos and notes tied to timeline, and flexible workflows that support both architect/builder referrals AND direct customer calls.
+JobRunner keeps a clear record of what was known, done, and agreed — so tradies don't wear someone else's mistake. It centralizes job management, quoting, invoicing, and payment collection with full Australian GST and AUD support. Key capabilities include Job Scope Checklists (to catch commonly missed quote items), comprehensive change tracking with photos and notes tied to timeline, and flexible workflows that support both architect/builder referrals AND direct customer calls.
 
-**Product Truth**: TradieTrack doesn't try to control the job — it records it clearly as it changes.
+**Product Truth**: JobRunner doesn't try to control the job — it records it clearly as it changes.
+
+**Brand Identity**: JobRunner uses a professional teal-blue color palette (#0F766E primary) conveying trust, momentum, and action. Domain: jobrunner.com.au. Demo account: demo@jobrunner.com.au / demo123.
 
 **Positioning Strategy** (avoid "smart/AI-powered" marketing):
 - Focus on "documenting reality as jobs change" rather than "intelligent automation"
@@ -14,7 +16,7 @@ TradieTrack keeps a clear record of what was known, done, and agreed — so trad
 Preferred communication style: Simple, everyday language.
 
 ### System Architecture
-TradieTrack utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API, using Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A React Native/Expo mobile app integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
+JobRunner utilizes an event-driven architecture with TypeScript. The frontend is built with React 18, shadcn/ui, TailwindCSS, Wouter, and TanStack Query, optimized for mobile. The backend is an Express.js and TypeScript REST API, using Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A React Native/Expo mobile app integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
 
 Core architectural and design decisions include:
 *   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, and customizable theming, including a "Today's Schedule" dashboard, Quick Add Client, and Smart Address Auto-fill. iPad support includes orientation-aware navigation with dynamic layouts.
@@ -40,7 +42,7 @@ Core architectural and design decisions include:
 *   **Integrations**: Enhanced two-way Xero, MYOB AccountRight, and Google Calendar integrations.
 *   **Xero Integration (ServiceM8/Tradify Feature Parity)**: Comprehensive bidirectional Xero sync including:
     - OAuth 2.0 authentication with token refresh and multi-tenant support
-    - Two-way contact sync (TradieTrack ↔ Xero)
+    - Two-way contact sync (JobRunner ↔ Xero)
     - Invoice sync TO Xero (with duplicate prevention)
     - Payment sync TO Xero (when invoice marked paid)
     - **Payment sync FROM Xero** (mark invoices paid when Xero shows payment received) - uses batch retrieval (50 invoices/batch) with If-Modified-Since for efficient incremental polling
@@ -60,17 +62,17 @@ Core architectural and design decisions include:
 *   **Job Materials Tracking**: Per-job material lists with quantities, unit costs, suppliers, and shipping tracking (Australia Post, StarTrack, TNT, Toll). Materials have status workflow (needed → ordered → shipped → received → installed). Workers see materials but costs are hidden at API level. API routes: `/api/jobs/:jobId/materials`, `/api/materials/:id`.
 *   **Job Brief**: Quote line items automatically display in job detail view as a work scope checklist. Workers see descriptions/quantities only (pricing hidden at API level for security). Card shows when job has linked quote with line items.
 *   **Feature Implementation Roadmap**: 11-feature roadmap in `docs/FEATURE_IMPLEMENTATION_PLAN.md` - ALL 11 FEATURES NOW IMPLEMENTED:
-    - ✅ **Today Widget**: Weather forecast + today's jobs + quick stats on dashboard
-    - ✅ **Service Reminders**: Recurring maintenance tracking with auto-reminders (`/service-reminders`)
-    - ✅ **Billable Time Toggle**: Visual indicators (green $ billable, grey clock non-billable) with time categories
-    - ✅ **Trade Calculators Module**: 5+ calculators (Concrete Volume, Tile Quantity, Paint Coverage, Roof Pitch, Baluster Spacing) with "Add to Quote" (`/calculators`)
-    - ✅ **Custom Team Groups**: Named crew groups like "The Plumblords" with member management (`/team-groups`)
-    - ✅ **Rebate/Credit Tracking**: Track manufacturer rebates, government incentives (`/rebates`)
-    - ✅ **QuickBooks Integration**: OAuth 2.0 flow, contact/invoice sync alongside Xero (`/integrations`)
-    - ✅ **Site Photos in Chat**: Job photos as thumbnails in chat conversation list and headers
-    - ✅ **Team Activity Feed**: Job completions, team joins, milestones on dashboard
-    - ✅ **Shareable Job Invite Links**: Magic links to invite subcontractors to specific jobs
-    - ✅ **AI Visualization**: Before/after concept generation using DALL-E 3 (`/ai-visualization`)
+    - **Today Widget**: Weather forecast + today's jobs + quick stats on dashboard
+    - **Service Reminders**: Recurring maintenance tracking with auto-reminders (`/service-reminders`)
+    - **Billable Time Toggle**: Visual indicators (green $ billable, grey clock non-billable) with time categories
+    - **Trade Calculators Module**: 5+ calculators (Concrete Volume, Tile Quantity, Paint Coverage, Roof Pitch, Baluster Spacing) with "Add to Quote" (`/calculators`)
+    - **Custom Team Groups**: Named crew groups like "The Plumblords" with member management (`/team-groups`)
+    - **Rebate/Credit Tracking**: Track manufacturer rebates, government incentives (`/rebates`)
+    - **QuickBooks Integration**: OAuth 2.0 flow, contact/invoice sync alongside Xero (`/integrations`)
+    - **Site Photos in Chat**: Job photos as thumbnails in chat conversation list and headers
+    - **Team Activity Feed**: Job completions, team joins, milestones on dashboard
+    - **Shareable Job Invite Links**: Magic links to invite subcontractors to specific jobs
+    - **AI Visualization**: Before/after concept generation using DALL-E 3 (`/ai-visualization`)
 *   **Defect Tracking**: Management of warranty work and defects with severity levels and photo attachments.
 *   **Timesheet Approvals**: Workflow for crew timesheet approval.
 *   **Simple CRM / Lead Pipeline**: Kanban-style lead tracking with convert-to-client functionality.
@@ -79,14 +81,7 @@ Core architectural and design decisions include:
 *   **Unified Notifications**: Single endpoint for system, SMS, and chat notifications across web and mobile.
 *   **Document Template System**: 81 balanced templates (9 trades × 9 templates each) are seeded for new users, adhering to Australian standards, with trade filtering and general fallback templates.
 *   **Trade-Specific Customization System**: Supports 13 priority trades with trade-specific terminology, custom job stages, custom fields, material catalogs, rate cards, safety checklists, and quote categories.
-*   **Job Scope Checklist System**: Comprehensive job templates with detailed checklists to prevent missing items in quotes. Features:
-    - 15+ job scope templates covering plumbing (hot water, toilet, tap, blocked drain, gas appliance), electrical (powerpoint, downlights, switchboard, ceiling fan, smoke alarms), HVAC (split system, service), building (deck construction), roofing (gutter replacement), and tiling (bathroom floor)
-    - Each template includes categorized items: labour, materials, compliance, safety, and disposal
-    - "Commonly Missed" warnings highlight items tradies often forget (compliance certificates, disposal costs, safety isolation)
-    - Searchable checklist with category filtering
-    - AI-powered missing item detection analyzes current quote items and suggests forgotten items
-    - API routes: `/api/job-scope-templates`, `/api/job-scope-templates/:templateId`, `/api/catalog/search`, `/api/catalog/categories/:tradeId`, `/api/quotes/check-missing-items`
-    - Integrated into LiveQuoteEditor for seamless quote creation workflow
+*   **Job Scope Checklist System**: Comprehensive job templates with detailed checklists to prevent missing items in quotes.
 *   **QuickCreateFAB Component**: Replaces full-width bottom sheet with a centered floating widget popup for quick actions.
 *   **Mobile Collect Payment Redesign**: Overhauled mobile payment flow to include "Record Payment" and QR code generation, with receipt generation and optional linking.
 *   **Job Assignment Request System**: Team members can request assignment to available unassigned jobs, with owner approval/rejection.
@@ -96,6 +91,8 @@ Core architectural and design decisions include:
 *   **Unified Communication Components**: Features for graceful SMS fallback, unified send modals for documents, before-photo prompts, and client contact cards with automatic Twilio/manual fallback detection.
 *   **Unified Chat Hub with Job-Centric Design**: Jobs are primary navigation items in the conversation list, with filtering options for team, jobs, and unassigned enquiries. Site photos are displayed as thumbnails in job conversation list and chat headers via `/api/jobs/site-photos` endpoint.
 *   **Today Widget**: Dashboard combines weather forecast (via Open-Meteo API with 30-minute caching), today's job schedule, and quick stats including job counts by status, outstanding invoice total, and weekly revenue.
+*   **Job Profitability Reporting**: Per-job profitability cards showing quoted vs actual revenue, cost breakdown (labour with actual rates, materials, expenses), margin percentage with color-coded indicators. Multi-job overview report at `/reports/profitability` with KPI cards and filters. Owners only.
+*   **Time Edit Audit Trail**: Full edit history tracking for time entries with before/after values, edit source detection, and admin audit log at `/admin/time-audit-log`.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (via Neon serverless)

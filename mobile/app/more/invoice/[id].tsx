@@ -286,7 +286,7 @@ export default function InvoiceDetailScreen() {
       [
         {
           text: 'JobRunner: Send Now',
-          onPress: () => handleSendViaTradieTrack(),
+          onPress: () => handleSendViaJobRunner(),
         },
         {
           text: 'JobRunner: Edit Message',
@@ -551,7 +551,7 @@ ${businessName}`;
     }
   };
   
-  const handleSendViaTradieTrack = async () => {
+  const handleSendViaJobRunner = async () => {
     if (!invoice || isSendingInvoice) return;
     
     const client = getClient(invoice.clientId);
@@ -859,7 +859,7 @@ ${businessName}`;
         {
           text: 'JobRunner: Send Now',
           onPress: async () => {
-            await handleSendReceiptViaTradieTrack();
+            await handleSendReceiptViaJobRunner();
           },
         },
         {
@@ -1112,7 +1112,7 @@ ${businessName}`;
     }
   };
   
-  const handleSendReceiptViaTradieTrack = async () => {
+  const handleSendReceiptViaJobRunner = async () => {
     if (!invoice || isSendingReceipt) return;
     
     const client = getClient(invoice.clientId);

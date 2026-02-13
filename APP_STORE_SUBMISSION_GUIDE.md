@@ -1,14 +1,14 @@
-# TradieTrack App Store Submission Guide
+# JobRunner App Store Submission Guide
 
 ## Pre-Submission Checklist
 
 ### 1. Apple Developer Account Setup (DONE)
 - [x] Apple Developer Program enrolled ($99/year)
 - [x] App Store Connect app created (ID: 6756844699)
-- [x] Bundle ID registered: `com.tradietrack.app`
+- [x] Bundle ID registered: `com.jobrunner.app`
 
 ### 2. Production Environment
-- [ ] **CRITICAL**: Ensure `https://tradietrack.com` is pointing to your production server
+- [ ] **CRITICAL**: Ensure `https://jobrunner.com` is pointing to your production server
 - [ ] Verify the API is responding (no 503 errors)
 - [ ] Test login flow works end-to-end
 
@@ -16,7 +16,7 @@
 Create a demo account Apple's reviewers can use to test the app:
 
 **Demo Credentials (add these to App Store Connect):**
-- Email: `demo@tradietrack.com.au`
+- Email: `demo@jobrunner.com.au`
 - Password: `demo123`
 
 **Note**: This is the existing demo account with pre-populated sample data.
@@ -24,16 +24,16 @@ Create a demo account Apple's reviewers can use to test the app:
 ### 4. App Store Connect Metadata
 
 #### App Information
-- **App Name**: TradieTrack
+- **App Name**: JobRunner
 - **Subtitle**: Job Management for Tradies (30 chars max)
 - **Category**: Business
 - **Secondary Category**: Productivity
 
 #### Description (4000 chars max)
 ```
-TradieTrack is the all-in-one business management app built specifically for Australian tradespeople.
+JobRunner is the all-in-one business management app built specifically for Australian tradespeople.
 
-Whether you're a sparkie, plumber, chippy, or any other tradie, TradieTrack helps you run your business from your pocket.
+Whether you're a sparkie, plumber, chippy, or any other tradie, JobRunner helps you run your business from your pocket.
 
 KEY FEATURES:
 
@@ -79,7 +79,7 @@ PRICING:
 
 Built in Australia, for Australians. All prices in AUD with GST included.
 
-Download TradieTrack today and take control of your trades business!
+Download JobRunner today and take control of your trades business!
 ```
 
 #### Keywords (100 chars max, comma-separated)
@@ -89,11 +89,11 @@ tradie,tradesman,job management,invoice,quote,plumber,electrician,carpenter,cont
 
 #### Privacy Policy URL
 You need a hosted privacy policy. Options:
-1. Add to your website: `https://tradietrack.com/privacy`
+1. Add to your website: `https://jobrunner.com/privacy`
 2. Use a service like Termly or iubenda
 
 #### Support URL
-`https://tradietrack.com/support` or your email
+`https://jobrunner.com/support` or your email
 
 ### 5. Screenshots Required
 
@@ -125,12 +125,12 @@ Same screens (if supporting iPad)
 - Email: [Your email]
 
 **Demo Account:**
-- Username: `demo@tradietrack.com.au`
+- Username: `demo@jobrunner.com.au`
 - Password: `demo123`
 
 **Notes for Reviewer:**
 ```
-TradieTrack is a business management app for Australian tradespeople (electricians, plumbers, builders, etc.).
+JobRunner is a business management app for Australian tradespeople (electricians, plumbers, builders, etc.).
 
 To test the full functionality:
 1. Log in with the demo account provided

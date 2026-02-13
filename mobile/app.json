@@ -8,7 +8,7 @@
     "scheme": "jobrunner",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/tradietrack-logo.png",
+      "image": "./assets/jobrunner-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#fafafa",
       "dark": {

@@ -1,18 +1,18 @@
-# TradieTrack Mobile Testing Guide
+# JobRunner Mobile Testing Guide
 
-This guide provides step-by-step instructions for manually testing TradieTrack on your mobile phone.
+This guide provides step-by-step instructions for manually testing JobRunner on your mobile phone.
 
 ## Getting Started
 
 ### Access the App
 1. Open your mobile browser (Safari on iPhone, Chrome on Android)
-2. Navigate to your TradieTrack URL
+2. Navigate to your JobRunner URL
 3. For the best experience, add the app to your home screen:
    - **iPhone**: Tap Share > Add to Home Screen
    - **Android**: Tap the menu (3 dots) > Add to Home Screen
 
 ### Demo Account (Pre-configured)
-- **Email**: demo@tradietrack.com.au
+- **Email**: demo@jobrunner.com.au
 - **Password**: demo123456
 - **Plan**: Team (full access)
 
@@ -41,7 +41,7 @@ This guide provides step-by-step instructions for manually testing TradieTrack o
 ### Steps
 1. Navigate to login page
 2. Enter demo credentials:
-   - Email: demo@tradietrack.com.au
+   - Email: demo@jobrunner.com.au
    - Password: demo123456
 3. Tap Sign In
 4. Verify dashboard loads
