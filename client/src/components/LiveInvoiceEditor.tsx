@@ -455,7 +455,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       const items = template.defaultLineItems.map((item: any) => ({
         description: item.description,
         quantity: String(item.qty || 1),
-        unitPrice: String(item.unitPrice || 0),
+        unitPrice: item.unitPrice > 0 ? String(item.unitPrice) : "",
       }));
       form.setValue("lineItems", items);
     }
@@ -487,6 +487,15 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       toast({
         title: "Description required",
         description: "Please enter a description for this item",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!editForm.unitPrice || parseFloat(editForm.unitPrice) <= 0) {
+      toast({
+        title: "Unit price required",
+        description: "Please enter a unit price greater than $0",
         variant: "destructive"
       });
       return;

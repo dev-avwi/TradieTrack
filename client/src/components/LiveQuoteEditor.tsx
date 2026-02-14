@@ -331,12 +331,11 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       form.setValue("depositPercent", template.defaults.depositPct);
     }
     
-    // Build new line items from template and use useFieldArray's replace for reliable sync
     if (template.defaultLineItems && template.defaultLineItems.length > 0) {
       const newLineItems = template.defaultLineItems.map((item: any) => ({
         description: item.description || "",
         quantity: String(item.qty || 1),
-        unitPrice: String(item.unitPrice || 0),
+        unitPrice: item.unitPrice > 0 ? String(item.unitPrice) : "",
         cost: "",
       }));
       replaceLineItems(newLineItems);
@@ -375,11 +374,18 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
       return;
     }
 
+    if (!editForm.unitPrice || parseFloat(editForm.unitPrice) <= 0) {
+      toast({
+        title: "Unit price required",
+        description: "Please enter a unit price greater than $0",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (editingLineIndex === -1) {
-      // Adding new item - use useFieldArray append
       appendLineItem(editForm);
     } else if (editingLineIndex !== null) {
-      // Editing existing item - use useFieldArray update
       updateLineItem(editingLineIndex, editForm);
     }
     setEditingLineIndex(null);
