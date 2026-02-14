@@ -11481,6 +11481,11 @@ Be specific about materials, colors, and features that would be included.`
       
       const updatedJob = await storage.updateJob(req.params.id, effectiveUserId, updateData);
       
+      const { clearWorkerTravelLocation } = await import('./websocket');
+      if (workerStatus === 'arrived' || workerStatus === 'completed') {
+        clearWorkerTravelLocation(req.params.id);
+      }
+      
       if (workerStatus === 'on_my_way' || workerStatus === 'arrived' || workerStatus === 'completed') {
         try {
           const client = await storage.getClient(job.clientId, effectiveUserId);
@@ -11563,6 +11568,58 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error('Error updating worker status:', error);
       res.status(500).json({ error: error.message || 'Failed to update worker status' });
+    }
+  });
+
+  app.post("/api/jobs/:id/travel-location", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { latitude, longitude, speed, heading } = req.body;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ error: 'Missing latitude/longitude' });
+      }
+      
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      if (job.workerStatus !== 'on_my_way') {
+        return res.status(400).json({ error: 'Travel tracking only active during on_my_way status' });
+      }
+      
+      const { updateWorkerTravelLocation } = await import('./websocket');
+      updateWorkerTravelLocation(req.params.id, latitude, longitude, speed, heading);
+      
+      let etaMinutes: number | null = null;
+      if (job.latitude && job.longitude) {
+        const jobLat = parseFloat(String(job.latitude));
+        const jobLng = parseFloat(String(job.longitude));
+        const workerLat = parseFloat(String(latitude));
+        const workerLng = parseFloat(String(longitude));
+        
+        const R = 6371;
+        const dLat = (jobLat - workerLat) * Math.PI / 180;
+        const dLon = (jobLng - workerLng) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(workerLat * Math.PI / 180) * Math.cos(jobLat * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distanceKm = R * c;
+        
+        const avgSpeedKmh = (speed && speed > 5) ? speed : 40;
+        etaMinutes = Math.max(1, Math.round((distanceKm / avgSpeedKmh) * 60));
+        
+        await storage.updateJob(req.params.id, effectiveUserId, {
+          workerEtaMinutes: etaMinutes,
+        });
+      }
+      
+      res.json({ success: true, etaMinutes });
+    } catch (error: any) {
+      console.error('Error updating travel location:', error);
+      res.status(500).json({ error: error.message || 'Failed to update travel location' });
     }
   });
 
@@ -11735,6 +11792,72 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error('Error fetching job portal data:', error);
       res.status(500).json({ error: 'Failed to load portal data' });
+    }
+  });
+
+  app.get("/api/public/job-portal/:token/location", async (req: any, res) => {
+    try {
+      const portalToken = await storage.getJobPortalTokenByToken(req.params.token);
+      if (!portalToken) {
+        return res.status(404).json({ error: 'Invalid portal link' });
+      }
+      
+      const job = await storage.getJob(portalToken.jobId, portalToken.userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      if (job.workerStatus !== 'on_my_way') {
+        return res.json({ 
+          tracking: false,
+          status: job.workerStatus,
+          message: job.workerStatus === 'arrived' ? 'Worker has arrived' : 
+                   job.workerStatus === 'in_progress' ? 'Work in progress' :
+                   job.workerStatus === 'completed' ? 'Job completed' : 'Not yet dispatched',
+        });
+      }
+      
+      const { getWorkerTravelLocation } = await import('./websocket');
+      const location = getWorkerTravelLocation(portalToken.jobId);
+      
+      const jobLocation = (job.latitude && job.longitude) ? {
+        latitude: parseFloat(String(job.latitude)),
+        longitude: parseFloat(String(job.longitude)),
+      } : null;
+      
+      if (!location) {
+        return res.json({
+          tracking: true,
+          status: 'on_my_way',
+          workerLocation: null,
+          jobLocation,
+          etaMinutes: job.workerEtaMinutes,
+          lastUpdated: job.workerStatusUpdatedAt,
+          message: 'Worker is on the way - location update pending',
+        });
+      }
+      
+      const ageMs = Date.now() - location.updatedAt;
+      const stale = ageMs > 5 * 60 * 1000;
+      
+      return res.json({
+        tracking: true,
+        status: 'on_my_way',
+        workerLocation: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          heading: location.heading,
+          speed: location.speed,
+          updatedAt: location.updatedAt,
+          stale,
+        },
+        jobLocation,
+        etaMinutes: job.workerEtaMinutes,
+        lastUpdated: new Date(location.updatedAt),
+      });
+    } catch (error) {
+      console.error('Error fetching portal location:', error);
+      res.status(500).json({ error: 'Failed to fetch location' });
     }
   });
 

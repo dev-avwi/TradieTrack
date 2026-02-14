@@ -26,6 +26,34 @@ interface ClientConnection {
 
 const connections = new Map<string, ClientConnection>();
 
+interface PortalLocationData {
+  latitude: number;
+  longitude: number;
+  speed?: number;
+  heading?: number;
+  updatedAt: number;
+}
+
+const workerTravelLocations = new Map<string, PortalLocationData>();
+
+export function updateWorkerTravelLocation(jobId: string, lat: number, lng: number, speed?: number, heading?: number) {
+  workerTravelLocations.set(jobId, {
+    latitude: lat,
+    longitude: lng,
+    speed,
+    heading,
+    updatedAt: Date.now(),
+  });
+}
+
+export function clearWorkerTravelLocation(jobId: string) {
+  workerTravelLocations.delete(jobId);
+}
+
+export function getWorkerTravelLocation(jobId: string): PortalLocationData | undefined {
+  return workerTravelLocations.get(jobId);
+}
+
 let wss: WebSocketServer | null = null;
 let sessionStore: any = null;
 
