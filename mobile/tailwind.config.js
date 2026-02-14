@@ -18,7 +18,7 @@ module.exports = {
         },
         
         primary: {
-          DEFAULT: "#f97316", // Orange accent (trade color)
+          DEFAULT: "#E8862E", // Orange accent (trade color)
           foreground: "#ffffff",
         },
         
@@ -62,7 +62,7 @@ module.exports = {
         ring: "#f0f3f5",
         
         // Trade theme color (matches primary)
-        trade: "#f97316",
+        trade: "#E8862E",
         
         // Sidebar colors (for any side navigation)
         sidebar: {

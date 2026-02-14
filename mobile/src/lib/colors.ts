@@ -18,7 +18,7 @@ export const colors = {
   cardHover: '#fafafa',
   muted: '#f5f5f5',
   
-  primary: '#0F766E',
+  primary: '#0A6A73',
   primaryDark: '#0a5047',
   primaryLight: '#d1f0ed',
   primaryForeground: '#ffffff',
@@ -44,12 +44,12 @@ export const colors = {
   destructive: '#ef4444',
   destructiveLight: '#fee2e2',
   destructiveDark: '#dc2626',
-  info: '#0F766E',
+  info: '#0A6A73',
   infoLight: '#d1f0ed',
   
   pending: '#f59e0b',
   pendingBg: '#fef3c7',
-  scheduled: '#0F766E',
+  scheduled: '#0A6A73',
   scheduledBg: '#d1f0ed',
   inProgress: '#22c55e',
   inProgressBg: '#dcfce7',
@@ -63,7 +63,7 @@ export const colors = {
   white: '#ffffff',
   black: '#000000',
   shadow: 'rgba(0, 0, 0, 0.08)',
-  ring: '#0F766E',
+  ring: '#0A6A73',
 };
 
 export default colors;

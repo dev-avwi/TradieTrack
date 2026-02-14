@@ -29,11 +29,11 @@ import api from '../../src/lib/api';
 const PRESET_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
   { name: 'Green', hex: '#22c55e' },
-  { name: 'Orange', hex: '#f97316' },
+  { name: 'Orange', hex: '#E8862E' },
   { name: 'Red', hex: '#ef4444' },
   { name: 'Purple', hex: '#8b5cf6' },
   { name: 'Pink', hex: '#ec4899' },
-  { name: 'Teal', hex: '#14b8a6' },
+  { name: 'Teal', hex: '#0A6A73' },
   { name: 'Indigo', hex: '#6366f1' },
   { name: 'Yellow', hex: '#eab308' },
   { name: 'Cyan', hex: '#06b6d4' },

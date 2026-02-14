@@ -698,7 +698,7 @@ export default function TeamOperationsScreen() {
           </View>
           <View style={styles.kpiStatItem}>
             <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
-              <Feather name="briefcase" size={16} color="#f97316" />
+              <Feather name="briefcase" size={16} color="#E8862E" />
             </View>
             <Text style={styles.kpiStatValue}>{unassignedJobs.length}</Text>
             <Text style={styles.kpiStatLabel}>Unassigned</Text>

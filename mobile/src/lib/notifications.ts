@@ -152,7 +152,7 @@ class NotificationService {
       name: 'Job Updates',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#f97316',
+      lightColor: '#E8862E',
       sound: 'default',
     });
 

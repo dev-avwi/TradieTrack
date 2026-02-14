@@ -39,7 +39,7 @@ const STEP_CONFIG = {
   team: { 
     title: 'Team', 
     icon: 'people' as const,
-    color: '#f97316', // orange
+    color: '#E8862E', // orange
     lightColor: '#fed7aa',
   },
   complete: { 
@@ -775,7 +775,7 @@ export default function OnboardingSetupScreen() {
   if (isCheckingSettings) {
     return (
       <LinearGradient
-        colors={['#2563eb', '#3b82f6', '#f97316']}
+        colors={['#2563eb', '#3b82f6', '#E8862E']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientContainer}
@@ -794,7 +794,7 @@ export default function OnboardingSetupScreen() {
 
   return (
     <LinearGradient
-      colors={['#2563eb', '#3b82f6', '#f97316']}
+      colors={['#2563eb', '#3b82f6', '#E8862E']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradientContainer}
@@ -968,7 +968,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   progressFillOrange: {
     height: '100%',
-    backgroundColor: '#f97316',
+    backgroundColor: '#E8862E',
     borderRadius: 3,
   },
   progressTextWhite: {

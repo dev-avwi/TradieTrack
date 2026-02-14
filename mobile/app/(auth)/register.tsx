@@ -506,7 +506,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    backgroundColor: '#f97316',
+    backgroundColor: '#E8862E',
     borderWidth: 2,
     borderColor: '#2563eb',
   },
@@ -534,7 +534,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appNameOrange: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#f97316',
+    color: '#E8862E',
   },
   title: {
     fontSize: 22,

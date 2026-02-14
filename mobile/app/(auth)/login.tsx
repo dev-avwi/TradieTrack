@@ -511,7 +511,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     // Simulate gradient border with dual color border
-    backgroundColor: '#f97316', // orange base
+    backgroundColor: '#E8862E', // orange base
     borderWidth: 2,
     borderColor: '#2563eb', // blue accent
   },
@@ -539,7 +539,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appNameOrange: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#f97316',
+    color: '#E8862E',
   },
   tagline: {
     fontSize: 22,

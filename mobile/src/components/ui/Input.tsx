@@ -8,7 +8,7 @@ const colors = {
   input: '#3d4555',
   mutedForeground: '#9ca3af',
   destructive: '#ef4444',
-  ring: '#f97316',
+  ring: '#E8862E',
 };
 
 interface InputProps extends TextInputProps {

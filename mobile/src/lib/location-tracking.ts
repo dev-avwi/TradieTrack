@@ -123,7 +123,7 @@ class LocationTrackingService {
           foregroundService: {
             notificationTitle: 'JobRunner',
             notificationBody: 'Location tracking active for team visibility',
-            notificationColor: '#f97316',
+            notificationColor: '#E8862E',
           },
           pausesUpdatesAutomatically: true,
           activityType: Location.ActivityType.AutomotiveNavigation,
