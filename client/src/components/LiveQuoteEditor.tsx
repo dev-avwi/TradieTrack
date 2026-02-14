@@ -497,7 +497,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
     try {
       const quoteData = {
         clientId: data.clientId,
-        jobId: selectedJobId || null,
+        jobId: selectedJobId || urlJobId || null,
         title: data.title,
         description: data.description,
         validUntil: new Date(data.validUntil),
@@ -519,12 +519,12 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
 
       const result = await createQuoteMutation.mutateAsync(quoteData);
       
-      // Invalidate linked-documents cache so job detail view updates immediately
-      // Use selectedJobId or urlJobId as fallback for URL-based navigation
       const jobIdToInvalidate = selectedJobId || urlJobId;
       if (jobIdToInvalidate) {
         queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate, 'linked-documents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate] });
       }
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
       
       toast({
         title: "Quote created!",
