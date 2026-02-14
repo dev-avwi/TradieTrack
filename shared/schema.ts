@@ -1605,6 +1605,28 @@ export const geofenceAlerts = pgTable("geofence_alerts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// GPS Signal Loss Logging - tracks when team members lose/regain GPS signal
+export const gpsSignalLogs = pgTable("gps_signal_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  eventType: text("event_type").notNull(), // 'signal_lost', 'signal_regained'
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  accuracy: decimal("accuracy", { precision: 10, scale: 2 }),
+  address: text("address"),
+  batteryLevel: integer("battery_level"),
+  isCharging: boolean("is_charging").default(false),
+  durationSeconds: integer("duration_seconds"), // how long signal was lost (only on regained events)
+  metadata: json("metadata"), // extra device info
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type GpsSignalLog = typeof gpsSignalLogs.$inferSelect;
+export const insertGpsSignalLogSchema = createInsertSchema(gpsSignalLogs).omit({ id: true, createdAt: true });
+export type InsertGpsSignalLog = z.infer<typeof insertGpsSignalLogSchema>;
+
 // Tradie Status - current activity and presence
 export const tradieStatus = pgTable("tradie_status", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

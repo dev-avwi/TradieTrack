@@ -479,6 +479,178 @@ function TimeTrackingAnalytics() {
   );
 }
 
+function TimesheetExport() {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
+  const weekStart = startOfWeek(subWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+
+  const handleExport = async (fmt: 'pdf' | 'csv') => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams({
+        format: fmt,
+        weekStarting: weekStart.toISOString(),
+      });
+      const res = await fetch(`/api/timesheets/export?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Export failed');
+      
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = format(weekStart, 'yyyy-MM-dd');
+      a.download = `timesheet-${dateStr}.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({ title: "Export Downloaded", description: `Your ${fmt.toUpperCase()} timesheet has been downloaded.` });
+    } catch (error) {
+      toast({ title: "Export Failed", description: "Could not generate the timesheet export.", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <Card data-testid="card-timesheet-export">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Download className="h-5 w-5" />
+          Export Timesheet
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="outline" size="sm" onClick={() => setWeekOffset(w => w + 1)} data-testid="button-prev-week">
+            Previous Week
+          </Button>
+          <div className="text-center">
+            <p className="text-sm font-medium">
+              {format(weekStart, 'dd MMM')} - {format(weekEnd, 'dd MMM yyyy')}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {weekOffset === 0 ? 'This Week' : weekOffset === 1 ? 'Last Week' : `${weekOffset} weeks ago`}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} data-testid="button-next-week">
+            Next Week
+          </Button>
+        </div>
+        <Separator />
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => handleExport('pdf')} disabled={isExporting} data-testid="button-export-pdf">
+            <FileText className="h-4 w-4 mr-2" />
+            {isExporting ? 'Generating...' : 'Export PDF'}
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('csv')} disabled={isExporting} data-testid="button-export-csv">
+            <Download className="h-4 w-4 mr-2" />
+            {isExporting ? 'Generating...' : 'Export CSV'}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          PDF format is perfect for sending to your accountant. CSV works great for spreadsheets.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GeofenceGpsAlerts() {
+  const { data: geofenceAlerts = [], isLoading: geoLoading } = useQuery<any[]>({
+    queryKey: ['/api/geofence-alerts', { type: 'departure', limit: 10 }],
+    queryFn: async () => {
+      const res = await fetch('/api/geofence-alerts?type=departure&limit=10', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const { data: gpsLogs = [], isLoading: gpsLoading } = useQuery<any[]>({
+    queryKey: ['/api/gps-signal-logs'],
+    queryFn: async () => {
+      const res = await fetch('/api/gps-signal-logs?limit=10', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const isLoading = geoLoading || gpsLoading;
+
+  const allAlerts = [
+    ...geofenceAlerts.map((a: any) => ({
+      id: a.id,
+      type: 'geofence_exit' as const,
+      title: `${a.userName || 'Team member'} left job site`,
+      detail: a.jobTitle || a.jobAddress || '',
+      time: new Date(a.createdAt),
+      icon: 'map-pin',
+    })),
+    ...gpsLogs
+      .filter((l: any) => l.eventType === 'signal_lost')
+      .map((l: any) => ({
+        id: l.id,
+        type: 'gps_loss' as const,
+        title: 'GPS signal lost',
+        detail: l.address || 'Unknown location',
+        time: new Date(l.createdAt),
+        icon: 'signal',
+        duration: l.durationSeconds,
+      })),
+  ].sort((a, b) => b.time.getTime() - a.time.getTime()).slice(0, 10);
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-geo-alerts-loading">
+        <CardHeader><CardTitle className="flex items-center gap-2"><AlertCircle className="h-5 w-5" />Location Alerts</CardTitle></CardHeader>
+        <CardContent><div className="h-24 bg-muted rounded animate-pulse"></div></CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="card-geo-alerts">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          Location Alerts
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {allAlerts.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No location alerts</p>
+            <p className="text-xs mt-1">Geofence exits and GPS signal issues will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {allAlerts.map((alert) => (
+              <div key={alert.id} className="flex items-start gap-3 p-2 rounded-md hover-elevate">
+                <div className={`mt-0.5 p-1.5 rounded-full ${alert.type === 'geofence_exit' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'}`}>
+                  {alert.type === 'geofence_exit' ? <Briefcase className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{alert.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{alert.detail}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {format(alert.time, 'dd MMM h:mm a')}
+                    {alert.duration ? ` (${Math.round(alert.duration / 60)} min loss)` : ''}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // Main Time Tracking Page
 export default function TimeTrackingPage() {
   const [activeTab, setActiveTab] = useState('timer');
@@ -625,6 +797,10 @@ export default function TimeTrackingPage() {
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <TimesheetExport />
+            <GeofenceGpsAlerts />
+          </div>
           <PayrollReporting />
         </TabsContent>
 

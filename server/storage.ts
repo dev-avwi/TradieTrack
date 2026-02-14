@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { eq, desc, asc, sql, and, or, lt, gt, gte, lte, isNull, isNotNull, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import {
@@ -68,6 +68,8 @@ import {
   type InsertTradieStatus,
   type GeofenceAlert,
   type InsertGeofenceAlert,
+  type GpsSignalLog,
+  type InsertGpsSignalLog,
   type Route,
   type InsertRoute,
   type Notification,
@@ -120,6 +122,7 @@ import {
   locationTracking,
   tradieStatus,
   geofenceAlerts,
+  gpsSignalLogs,
   routes,
   jobPhotos,
   voiceNotes,
@@ -624,6 +627,10 @@ export interface IStorage {
   updateRoute(id: string, userId: string, route: Partial<InsertRoute>): Promise<Route | undefined>;
   deleteRoute(id: string, userId: string): Promise<boolean>;
 
+  // GPS Signal Loss Logging
+  createGpsSignalLog(log: InsertGpsSignalLog): Promise<GpsSignalLog>;
+  getGpsSignalLogs(businessOwnerId: string, options?: { userId?: string; limit?: number }): Promise<GpsSignalLog[]>;
+
   // Team-level time tracking methods
   getActiveTimeEntryForJob(jobId: string): Promise<TimeEntry | undefined>;
   getAllActiveTimeEntries(): Promise<TimeEntry[]>;
@@ -859,9 +866,11 @@ export interface IStorage {
   getJobsForClientIds(clientIds: string[]): Promise<Job[]>;
 }
 
-// Initialize database connection
-const client = neon(process.env.DATABASE_URL!);
-export const db = drizzle(client);
+// Initialize database connection using standard pg driver
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL!,
+});
+export const db = drizzle(pool);
 
 export class PostgresStorage implements IStorage {
   // Replit Auth required methods
@@ -4003,6 +4012,23 @@ export class PostgresStorage implements IStorage {
     await db.update(geofenceAlerts)
       .set({ isRead: true })
       .where(eq(geofenceAlerts.id, alertId));
+  }
+
+  // GPS Signal Loss Logging
+  async createGpsSignalLog(log: InsertGpsSignalLog): Promise<GpsSignalLog> {
+    const [result] = await db.insert(gpsSignalLogs).values(log).returning();
+    return result;
+  }
+
+  async getGpsSignalLogs(businessOwnerId: string, options?: { userId?: string; limit?: number }): Promise<GpsSignalLog[]> {
+    const conditions = [eq(gpsSignalLogs.businessOwnerId, businessOwnerId)];
+    if (options?.userId) {
+      conditions.push(eq(gpsSignalLogs.userId, options.userId));
+    }
+    return await db.select().from(gpsSignalLogs)
+      .where(and(...conditions))
+      .orderBy(desc(gpsSignalLogs.createdAt))
+      .limit(options?.limit || 100);
   }
 
   // Direct Messages

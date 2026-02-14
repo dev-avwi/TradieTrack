@@ -299,7 +299,8 @@ export async function createDemoUserAndData() {
         password: hashedPassword,
         firstName,
         lastName,
-        emailVerified: true 
+        emailVerified: true,
+        isActive: true
       } as any);
       console.log('ℹ️ Demo user already exists:', demoUser.email);
       console.log('✅ Demo user password reset to default');

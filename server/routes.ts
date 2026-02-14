@@ -82,6 +82,8 @@ import {
   // Location tracking tables
   locationTracking,
   tradieStatus,
+  // GPS Signal Loss Logging
+  insertGpsSignalLogSchema,
   // Digital signatures
   digitalSignatures,
   // Tables for admin dashboard
@@ -16979,6 +16981,320 @@ Respond with JSON in this format:
     }
   });
 
+  // Weekly Timesheet Export (PDF / CSV)
+  app.get("/api/timesheets/export", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const { format, weekStarting, userId: targetUserId } = req.query;
+
+      if (!format || !['pdf', 'csv'].includes(format as string)) {
+        return res.status(400).json({ error: 'format query parameter is required (pdf or csv)' });
+      }
+      if (!weekStarting) {
+        return res.status(400).json({ error: 'weekStarting query parameter is required (ISO date)' });
+      }
+
+      const weekStart = new Date(weekStarting as string);
+      if (isNaN(weekStart.getTime())) {
+        return res.status(400).json({ error: 'Invalid weekStarting date' });
+      }
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      // Validate that target user belongs to this business
+      if (targetUserId && targetUserId !== userContext.effectiveUserId) {
+        const targetUser = await storage.getUser(targetUserId as string);
+        if (!targetUser || (targetUser.businessOwnerId !== userContext.effectiveUserId && targetUserId !== userContext.effectiveUserId)) {
+          return res.status(403).json({ error: 'Cannot export timesheets for users outside your business' });
+        }
+      }
+
+      let exportUserId = userContext.effectiveUserId;
+      if (targetUserId && userContext.isOwner) {
+        exportUserId = targetUserId as string;
+      }
+
+      const entries = await storage.getTimeEntriesInRange(exportUserId, weekStart, weekEnd);
+
+      const jobIds = [...new Set(entries.filter(e => e.jobId).map(e => e.jobId!))];
+      const jobMap = new Map<string, any>();
+      await Promise.all(jobIds.map(async (jid) => {
+        try {
+          const job = await storage.getJob(jid, userContext.effectiveUserId);
+          if (job) jobMap.set(jid, job);
+        } catch {}
+      }));
+
+      const worker = await storage.getUser(exportUserId);
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const workerName = worker ? `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email || 'Worker' : 'Worker';
+      const businessName = business?.businessName || 'Business';
+
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const formatDateAU = (d: Date) => {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      };
+      const formatTimeAU = (d: Date) => {
+        return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
+      };
+      const formatCurrency = (n: number) => `$${n.toFixed(2)}`;
+
+      interface ProcessedEntry {
+        date: Date;
+        dateStr: string;
+        dayName: string;
+        jobTitle: string;
+        description: string;
+        category: string;
+        startTime: string;
+        endTime: string;
+        durationHrs: number;
+        hourlyRate: number;
+        isBillable: boolean;
+        isOvertime: boolean;
+        amount: number;
+      }
+
+      const processed: ProcessedEntry[] = entries
+        .filter(e => !e.isBreak)
+        .map(e => {
+          const start = new Date(e.startTime);
+          const end = e.endTime ? new Date(e.endTime) : new Date();
+          const durationMin = e.duration || Math.round((end.getTime() - start.getTime()) / 60000);
+          const durationHrs = parseFloat((durationMin / 60).toFixed(2));
+          const rate = e.hourlyRate ? parseFloat(e.hourlyRate) : 0;
+          const job = e.jobId ? jobMap.get(e.jobId) : null;
+          return {
+            date: start,
+            dateStr: formatDateAU(start),
+            dayName: dayNames[start.getDay()],
+            jobTitle: job?.title || 'No Job',
+            description: e.description || '',
+            category: e.timeCategory || 'work',
+            startTime: formatTimeAU(start),
+            endTime: formatTimeAU(end),
+            durationHrs,
+            hourlyRate: rate,
+            isBillable: e.isBillable !== false,
+            isOvertime: e.isOvertime === true,
+            amount: durationHrs * rate * (e.isOvertime ? 1.5 : 1),
+          };
+        })
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      const totalHours = processed.reduce((s, e) => s + e.durationHrs, 0);
+      const regularHours = processed.filter(e => !e.isOvertime).reduce((s, e) => s + e.durationHrs, 0);
+      const overtimeHours = processed.filter(e => e.isOvertime).reduce((s, e) => s + e.durationHrs, 0);
+      const billableHours = processed.filter(e => e.isBillable).reduce((s, e) => s + e.durationHrs, 0);
+      const nonBillableHours = processed.filter(e => !e.isBillable).reduce((s, e) => s + e.durationHrs, 0);
+      const totalEarnings = processed.reduce((s, e) => s + e.amount, 0);
+
+      const weekEndDisplay = new Date(weekEnd);
+      weekEndDisplay.setDate(weekEndDisplay.getDate() - 1);
+      const weekLabel = `${formatDateAU(weekStart)} - ${formatDateAU(weekEndDisplay)}`;
+
+      if (format === 'csv') {
+        const rows: string[] = [];
+        rows.push('Date,Day,Job,Description,Category,Start Time,End Time,Duration (hrs),Hourly Rate,Billable,Amount');
+
+        const escapeCsv = (v: string) => {
+          if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+            return `"${v.replace(/"/g, '""')}"`;
+          }
+          return v;
+        };
+
+        const grouped = new Map<string, ProcessedEntry[]>();
+        for (const e of processed) {
+          const key = e.dateStr;
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(e);
+        }
+
+        for (const [dateKey, dayEntries] of grouped) {
+          for (const e of dayEntries) {
+            rows.push([
+              e.dateStr,
+              e.dayName,
+              escapeCsv(e.jobTitle),
+              escapeCsv(e.description),
+              e.category,
+              e.startTime,
+              e.endTime,
+              e.durationHrs.toFixed(2),
+              formatCurrency(e.hourlyRate),
+              e.isBillable ? 'Yes' : 'No',
+              formatCurrency(e.amount),
+            ].join(','));
+          }
+          const dayTotal = dayEntries.reduce((s, e) => s + e.durationHrs, 0);
+          const dayAmount = dayEntries.reduce((s, e) => s + e.amount, 0);
+          rows.push(`,,,,,,,"${dayTotal.toFixed(2)}",,"Subtotal","${formatCurrency(dayAmount)}"`);
+        }
+
+        rows.push('');
+        rows.push(`Weekly Summary,,,,,,,,,,""`);
+        rows.push(`Total Hours,,,,,,,${totalHours.toFixed(2)},,,${formatCurrency(totalEarnings)}`);
+        rows.push(`Regular Hours,,,,,,,${regularHours.toFixed(2)},,,""`);
+        rows.push(`Overtime Hours,,,,,,,${overtimeHours.toFixed(2)},,,""`);
+        rows.push(`Billable Hours,,,,,,,${billableHours.toFixed(2)},,,""`);
+        rows.push(`Non-Billable Hours,,,,,,,${nonBillableHours.toFixed(2)},,,""`);
+
+        const csv = rows.join('\n');
+        const filename = `timesheet_${weekStarting}_${workerName.replace(/\s+/g, '_')}.csv`;
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send(csv);
+      }
+
+      // PDF format
+      const { generatePDFBuffer } = await import('./pdfService');
+
+      const dayGroups = new Map<string, ProcessedEntry[]>();
+      for (const e of processed) {
+        const key = e.dateStr;
+        if (!dayGroups.has(key)) dayGroups.set(key, []);
+        dayGroups.get(key)!.push(e);
+      }
+
+      let tableRowsHtml = '';
+      for (const [dateKey, dayEntries] of dayGroups) {
+        const dayName = dayEntries[0].dayName;
+        tableRowsHtml += `<tr class="day-header"><td colspan="9">${dayName}, ${dateKey}</td></tr>`;
+        for (const e of dayEntries) {
+          tableRowsHtml += `<tr>
+            <td>${e.dateStr}</td>
+            <td>${e.jobTitle}</td>
+            <td>${e.description}</td>
+            <td><span class="category-badge">${e.category}</span></td>
+            <td>${e.startTime}</td>
+            <td>${e.endTime}</td>
+            <td class="num">${e.durationHrs.toFixed(2)}</td>
+            <td class="num">${formatCurrency(e.hourlyRate)}</td>
+            <td class="num">${formatCurrency(e.amount)}</td>
+          </tr>`;
+        }
+        const dayTotal = dayEntries.reduce((s, e) => s + e.durationHrs, 0);
+        const dayAmount = dayEntries.reduce((s, e) => s + e.amount, 0);
+        tableRowsHtml += `<tr class="subtotal-row">
+          <td colspan="6" style="text-align:right;font-weight:600;">Daily Subtotal</td>
+          <td class="num" style="font-weight:600;">${dayTotal.toFixed(2)}</td>
+          <td></td>
+          <td class="num" style="font-weight:600;">${formatCurrency(dayAmount)}</td>
+        </tr>`;
+      }
+
+      if (processed.length === 0) {
+        tableRowsHtml = `<tr><td colspan="9" style="text-align:center;padding:24px;color:#6b7280;">No time entries recorded for this week</td></tr>`;
+      }
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size:11px; color:#1f2937; padding:32px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #0F766E; }
+  .header-left h1 { font-size:22px; color:#0F766E; margin-bottom:4px; }
+  .header-left p { font-size:12px; color:#4b5563; }
+  .header-right { text-align:right; }
+  .header-right .biz-name { font-size:14px; font-weight:700; color:#0F766E; }
+  .header-right p { font-size:11px; color:#6b7280; }
+  .meta-row { display:flex; gap:32px; margin-bottom:20px; padding:12px 16px; background:#f0fdfa; border-radius:6px; border:1px solid #ccfbf1; }
+  .meta-item label { font-size:10px; text-transform:uppercase; color:#6b7280; letter-spacing:0.5px; }
+  .meta-item span { display:block; font-size:12px; font-weight:600; color:#1f2937; }
+  table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+  thead th { background:#0F766E; color:white; padding:8px 6px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+  tbody td { padding:6px; border-bottom:1px solid #e5e7eb; font-size:10px; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .day-header td { background:#f9fafb; font-weight:700; font-size:11px; color:#0F766E; padding:8px 6px; border-bottom:2px solid #d1fae5; }
+  .subtotal-row td { background:#f0fdfa; border-bottom:2px solid #ccfbf1; }
+  .category-badge { display:inline-block; padding:2px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:9px; text-transform:capitalize; }
+  .totals { margin-top:16px; page-break-inside:avoid; }
+  .totals h3 { font-size:14px; color:#0F766E; margin-bottom:8px; border-bottom:2px solid #0F766E; padding-bottom:4px; }
+  .totals-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .total-item { display:flex; justify-content:space-between; padding:6px 10px; background:#f9fafb; border-radius:4px; border:1px solid #e5e7eb; }
+  .total-item label { font-size:11px; color:#4b5563; }
+  .total-item span { font-size:12px; font-weight:700; color:#1f2937; }
+  .total-item.highlight { background:#0F766E; border-color:#0F766E; }
+  .total-item.highlight label, .total-item.highlight span { color:white; }
+  .footer { margin-top:32px; padding-top:12px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; color:#9ca3af; font-size:9px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>Weekly Timesheet</h1>
+      <p>${weekLabel}</p>
+    </div>
+    <div class="header-right">
+      <div class="biz-name">${businessName}</div>
+      <p>${business?.abn ? 'ABN: ' + business.abn : ''}</p>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-item"><label>Worker</label><span>${workerName}</span></div>
+    <div class="meta-item"><label>Week Starting</label><span>${formatDateAU(weekStart)}</span></div>
+    <div class="meta-item"><label>Week Ending</label><span>${formatDateAU(weekEndDisplay)}</span></div>
+    <div class="meta-item"><label>Total Entries</label><span>${processed.length}</span></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Job</th>
+        <th>Description</th>
+        <th>Category</th>
+        <th>Start</th>
+        <th>End</th>
+        <th style="text-align:right;">Hours</th>
+        <th style="text-align:right;">Rate</th>
+        <th style="text-align:right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableRowsHtml}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <h3>Weekly Summary</h3>
+    <div class="totals-grid">
+      <div class="total-item highlight"><label>Total Hours</label><span>${totalHours.toFixed(2)}</span></div>
+      <div class="total-item highlight"><label>Total Earnings</label><span>${formatCurrency(totalEarnings)}</span></div>
+      <div class="total-item"><label>Regular Hours</label><span>${regularHours.toFixed(2)}</span></div>
+      <div class="total-item"><label>Overtime Hours</label><span>${overtimeHours.toFixed(2)}</span></div>
+      <div class="total-item"><label>Billable Hours</label><span>${billableHours.toFixed(2)}</span></div>
+      <div class="total-item"><label>Non-Billable Hours</label><span>${nonBillableHours.toFixed(2)}</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Generated by JobRunner</span>
+    <span>${formatDateAU(new Date())} ${new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+  </div>
+</body>
+</html>`;
+
+      const pdfBuffer = await generatePDFBuffer(html);
+      const filename = `timesheet_${weekStarting}_${workerName.replace(/\s+/g, '_')}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.send(pdfBuffer);
+
+    } catch (error) {
+      console.error('Error exporting timesheet:', error);
+      res.status(500).json({ error: 'Failed to export timesheet' });
+    }
+  });
+
   app.get("/api/timesheets/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -20613,6 +20929,35 @@ Respond with JSON in this format:
       const alert = await storage.createGeofenceAlert(alertData);
       console.log(`[Geofence] Created alert ${alert.id} for ${action}`);
       
+      if (action === 'exit') {
+        const user = await storage.getUser(userId);
+        const userName = user?.name || user?.firstName || 'Team member';
+        const jobTitle = job.title || 'Unknown job';
+        
+        const activeEntry = await storage.getActiveTimeEntry(userId);
+        const isStillOnClock = activeEntry && activeEntry.jobId === jobId;
+        
+        const message = isStillOnClock 
+          ? `${userName} left the job site for "${jobTitle}" while still on the clock`
+          : `${userName} left the job site for "${jobTitle}"`;
+        
+        const priority = isStillOnClock ? 'important' : 'info';
+        
+        if (userId !== userContext.effectiveUserId) {
+          await storage.createNotification({
+            userId: userContext.effectiveUserId,
+            type: 'geofence_departure',
+            title: isStillOnClock ? 'Team Member Left Site (Timer Running)' : 'Team Member Left Job Site',
+            message,
+            relatedId: jobId,
+            relatedType: 'job',
+            priority,
+            actionUrl: `/jobs/${jobId}`,
+            actionLabel: 'View Job',
+          });
+        }
+      }
+      
       let timeEntryAction = null;
       
       // Handle auto clock-in on arrival
@@ -20671,6 +21016,37 @@ Respond with JSON in this format:
     }
   });
   
+  app.get("/api/geofence-alerts", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      if (!userContext.isOwner && !(userContext.permissions && userContext.permissions.includes('manage_team'))) {
+        return res.status(403).json({ error: 'Only owners and managers can view geofence alerts' });
+      }
+      const limit = parseInt(req.query.limit as string) || 50;
+      const alertType = req.query.type as string;
+      
+      const alerts = await storage.getGeofenceAlertsForBusiness(userContext.effectiveUserId, limit);
+      
+      const filtered = alertType ? alerts.filter(a => a.alertType === alertType) : alerts;
+      
+      const enriched = await Promise.all(filtered.map(async (alert) => {
+        const user = await storage.getUser(alert.userId);
+        const job = await storage.getJob(alert.jobId, userContext.effectiveUserId);
+        return {
+          ...alert,
+          userName: user?.name || user?.firstName || 'Unknown',
+          jobTitle: job?.title || 'Unknown Job',
+          jobAddress: job?.address || alert.address,
+        };
+      }));
+      
+      res.json(enriched);
+    } catch (error: any) {
+      console.error('Error fetching geofence alerts:', error);
+      res.status(500).json({ error: 'Failed to fetch geofence alerts' });
+    }
+  });
+
   // Get jobs with geofence settings for registering geofences on mobile
   app.get("/api/jobs/geofence-enabled", requireAuth, async (req: any, res) => {
     try {
@@ -20732,6 +21108,65 @@ Respond with JSON in this format:
     } catch (error: any) {
       console.error('Error updating geofence settings:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GPS Signal Loss Logging
+  app.post("/api/gps-signal-logs", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const data = insertGpsSignalLogSchema.parse({
+        ...req.body,
+        userId,
+        businessOwnerId: userContext.effectiveUserId,
+      });
+      
+      const log = await storage.createGpsSignalLog(data);
+      
+      if (data.eventType === 'signal_regained' && data.durationSeconds && data.durationSeconds > 600) {
+        const user = await storage.getUser(userId);
+        const userName = user?.firstName || 'Team member';
+        const durationMin = Math.round(data.durationSeconds / 60);
+        
+        await storage.createNotification({
+          userId: userContext.effectiveUserId,
+          type: 'gps_signal_loss',
+          title: 'GPS Signal Loss Detected',
+          message: `${userName} lost GPS signal for ${durationMin} minutes${data.address ? ` near ${data.address}` : ''}`,
+          relatedId: data.jobId || undefined,
+          relatedType: data.jobId ? 'job' : undefined,
+          priority: durationMin > 30 ? 'important' : 'info',
+          actionUrl: '/team',
+          actionLabel: 'View Team',
+        });
+      }
+      
+      res.status(201).json(log);
+    } catch (error: any) {
+      console.error('Error creating GPS signal log:', error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to log GPS signal event' });
+    }
+  });
+
+  app.get("/api/gps-signal-logs", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      if (!userContext.isOwner && !userContext.permissions.includes('manage_team')) {
+        return res.status(403).json({ error: 'Only owners and managers can view GPS signal logs' });
+      }
+      
+      const userId = req.query.userId as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 100;
+      
+      const logs = await storage.getGpsSignalLogs(userContext.effectiveUserId, { userId, limit });
+      res.json(logs);
+    } catch (error: any) {
+      console.error('Error fetching GPS signal logs:', error);
+      res.status(500).json({ error: 'Failed to fetch GPS signal logs' });
     }
   });
 
