@@ -910,7 +910,7 @@ export default function Integrations() {
                       </div>
                       <div>
                         <p className="font-medium text-sm">Send instantly</p>
-                        <p className="text-xs text-muted-foreground">Emails go out immediately via our servers - faster for busy tradies</p>
+                        <p className="text-xs text-muted-foreground">Emails go out immediately via our servers - faster for busy professionals</p>
                       </div>
                     </div>
                   </div>

@@ -135,7 +135,7 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-900">
             <Star className="h-6 w-6" />
-            Why Successful Tradies Use Professional Email
+            Why Successful Businesses Use Professional Email
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -50,7 +50,7 @@ const tiers = [
     id: 'free',
     name: 'Free',
     price: 0,
-    description: 'For solo tradies just getting started',
+    description: 'For solo operators just getting started',
     features: [
       { text: 'Unlimited quotes', included: true },
       { text: '25 jobs per month', included: true },

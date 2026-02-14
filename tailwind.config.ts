@@ -87,6 +87,13 @@ export default {
           foreground: "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
           border: "var(--sidebar-accent-border)"
         },
+        brand: {
+          DEFAULT: "#0A6A73",
+          foreground: "#FFFFFF",
+          accent: "#E8862E",
+          dark: "#1E293B",
+          light: "#F8FAFC",
+        },
         status: {
           online: "rgb(34 197 94)",
           away: "rgb(245 158 11)",

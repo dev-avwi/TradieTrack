@@ -446,8 +446,8 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
           <div className="flex items-center gap-3">
             <img src={jobrunnerLogo} alt="JobRunner" className="h-10 w-auto" />
             <span className="text-xl font-bold text-white hidden sm:inline">
-              <span className="text-white">Tradie</span>
-              <span className="text-orange-200">Track</span>
+              <span className="text-white">Job</span>
+              <span className="text-orange-200">Runner</span>
             </span>
           </div>
           {onSignOut && (

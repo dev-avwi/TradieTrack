@@ -69,7 +69,7 @@ export default function DefaultRatesStep({
             <div>
               <h4 className="font-medium">Quick Start</h4>
               <p className="text-sm text-muted-foreground">
-                Use standard Australian tradie rates ($85/hr, $120 callout, 10% GST)
+                Use standard Australian trade rates ($85/hr, $120 callout, 10% GST)
               </p>
             </div>
             <Button 
@@ -115,7 +115,7 @@ export default function DefaultRatesStep({
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Your standard hourly rate for labor ($85 is typical for Australian tradies)
+                    Your standard hourly rate for labor ($85 is typical for Australian trade businesses)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

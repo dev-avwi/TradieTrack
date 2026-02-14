@@ -780,8 +780,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         <div className="flex items-center justify-center gap-3 mb-6">
           <img src={jobrunnerLogo} alt="JobRunner" className="h-10 w-auto" />
           <span className="text-xl font-bold text-white">
-            <span className="text-white">Tradie</span>
-            <span className="text-orange-200">Track</span>
+            <span className="text-white">Job</span>
+            <span className="text-orange-200">Runner</span>
           </span>
         </div>
         

@@ -619,7 +619,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           <img src={`${appIconUrl}?v=2`} alt="JobRunner Logo" className="w-full h-full object-contain drop-shadow-xl" data-testid="img-login-logo" />
         </div>
         <div className="space-y-1">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-brand-accent to-brand bg-clip-text text-transparent">
             JobRunner
           </h1>
           <p className="text-muted-foreground text-sm font-medium">
@@ -966,7 +966,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
             <SelectContent>
               <SelectItem value="solo">
                 <div className="flex flex-col items-start">
-                  <span className="font-medium">Just me (Solo Tradie)</span>
+                  <span className="font-medium">Just me (Solo Operator)</span>
                   <span className="text-xs text-muted-foreground">Simple setup for one person</span>
                 </div>
               </SelectItem>
@@ -1129,7 +1129,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   const renderIntegrationsStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-4">
-        <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="w-14 h-14 bg-gradient-to-r from-brand to-brand-accent rounded-full flex items-center justify-center mx-auto mb-4">
           <CreditCard className="w-7 h-7 text-white" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -1172,12 +1172,12 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
         </CardContent>
       </Card>
 
-      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+      <div className="bg-brand/5 dark:bg-brand-dark/20 border border-brand/20 dark:border-brand-dark rounded-lg p-4">
         <div className="flex items-start gap-2">
-          <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+          <Zap className="w-4 h-4 text-brand dark:text-brand/70 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">You can always do this later</p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            <p className="text-sm font-medium text-foreground dark:text-gray-100">You can always do this later</p>
+            <p className="text-xs text-brand dark:text-brand/70 mt-1">
               Go to the Integrations page anytime to connect payment services.
             </p>
           </div>
@@ -1212,7 +1212,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   const renderTeamStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-4">
-        <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="w-14 h-14 bg-gradient-to-r from-brand-accent to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <Users className="w-7 h-7 text-white" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -1351,7 +1351,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand/5 via-white to-brand-accent/5 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md mx-auto">
         {/* Progress bar - only show after auth */}
         {currentStep !== 'auth' && (
@@ -1364,7 +1364,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
           </div>
         )}
 
-        <Card className="border-2 border-orange-500/30 dark:border-orange-500/40 shadow-2xl">
+        <Card className="border-2 border-brand-accent/30 dark:border-brand-accent/40 shadow-2xl">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-xl font-bold">{getStepTitle()}</CardTitle>
             <CardDescription>{getStepDescription()}</CardDescription>
@@ -1416,7 +1416,7 @@ export default function AuthAndOnboardingFlow({ onComplete }: AuthAndOnboardingF
               data-testid="google-account-primary"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand/70 to-brand flex items-center justify-center text-white font-semibold">
                   <User className="w-5 h-5" />
                 </div>
                 <div className="text-left">

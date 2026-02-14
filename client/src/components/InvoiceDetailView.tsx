@@ -298,7 +298,7 @@ export default function InvoiceDetailView({
     if (!invoice || !client || !businessSettings) return;
     
     const paymentUrl = `${window.location.origin}/portal/invoice/${invoice.paymentToken}`;
-    const businessName = businessSettings.businessName || 'Your Tradie';
+    const businessName = businessSettings.businessName || 'Your Business';
     const invoiceNumber = invoice.number || invoice.id?.substring(0, 8).toUpperCase();
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
       style: 'currency', 

@@ -281,14 +281,14 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             className="mb-8"
           >
             <a href="/" className="inline-flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity" data-testid="link-home">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-blue-600 p-0.5 shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-accent to-brand p-0.5 shadow-lg">
                 <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-950 flex items-center justify-center">
                   <img src={appIconUrl} alt="JobRunner" className="w-10 h-10 object-contain" />
                 </div>
               </div>
               <span className="text-2xl font-bold">
-                <span className="text-blue-600">Tradie</span>
-                <span className="text-orange-500">Track</span>
+                <span className="text-brand">Job</span>
+                <span className="text-brand-accent">Runner</span>
               </span>
             </a>
 
@@ -429,7 +429,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                           <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">Password</Label>
                           <a 
                             href="/reset-password" 
-                            className="text-sm text-orange-500 hover:text-orange-600 font-medium"
+                            className="text-sm text-brand-accent hover:text-brand-accent/80 font-medium"
                             data-testid="link-forgot-password"
                           >
                             Forgot password?
@@ -466,7 +466,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                       <Button 
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-12 text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/25"
+                        className="w-full h-12 text-base font-semibold bg-brand-accent text-white shadow-lg shadow-brand-accent/25"
                         data-testid="button-login"
                       >
                         {isLoading ? (
@@ -628,7 +628,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                       <Button 
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-12 text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/25"
+                        className="w-full h-12 text-base font-semibold bg-brand-accent text-white shadow-lg shadow-brand-accent/25"
                         data-testid="button-register"
                       >
                         {isLoading ? (
@@ -661,13 +661,13 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             transition={{ delay: 0.3 }}
             className="text-center text-sm text-gray-500 mt-8"
           >
-            Professional business management for Australian tradies
+            Professional business management for Australian trade professionals
           </motion.p>
         </div>
       </div>
 
       {/* Right Panel - App Showcase (Hidden on mobile) */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-orange-500 relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-brand via-brand-dark to-brand-accent relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -710,7 +710,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             transition={{ delay: 0.4 }}
             className="text-white/80 text-center text-lg mb-8 max-w-md"
           >
-            Join Australian tradies who save hours every week with JobRunner
+            Join Australian trade professionals who save hours every week with JobRunner
           </motion.p>
 
           {/* Phone Mockup with Screenshot Carousel */}

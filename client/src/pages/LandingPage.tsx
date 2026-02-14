@@ -189,8 +189,8 @@ export default function LandingPage() {
                 className="h-9 w-auto"
               />
               <span className="text-xl font-bold tracking-tight">
-                <span className="text-blue-600">Job</span>
-                <span className="text-orange-500">Runner</span>
+                <span className="text-brand">Job</span>
+                <span className="text-brand-accent">Runner</span>
               </span>
             </button>
 
@@ -240,7 +240,7 @@ export default function LandingPage() {
                 </Link>
                 <Link href="/auth?mode=signup">
                   <Button 
-                    className="bg-orange-500 hover:bg-orange-600 text-white text-[15px] font-semibold h-9 px-5 rounded-md shadow-sm transition-all" 
+                    className="bg-brand-accent text-white text-[15px] font-semibold h-9 px-5 rounded-md shadow-sm transition-all" 
                     data-testid="nav-get-started"
                     onClick={() => trackEvent('cta_click', { location: 'nav', button: 'get_started_free' })}
                   >
@@ -287,8 +287,8 @@ export default function LandingPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <span className="text-lg font-bold">
-                <span className="text-blue-600">Tradie</span>
-                <span className="text-orange-500">Track</span>
+                <span className="text-brand">Job</span>
+                <span className="text-brand-accent">Runner</span>
               </span>
               <button
                 onClick={() => setMobileMenuOpen(false)}
@@ -346,7 +346,7 @@ export default function LandingPage() {
             <div className="p-5 border-t border-gray-100 space-y-3">
               <Link href="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
                 <Button 
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-[15px] font-semibold rounded-lg" 
+                  className="w-full bg-brand-accent text-white h-12 text-[15px] font-semibold rounded-lg" 
                   data-testid="mobile-get-started"
                   onClick={() => trackEvent('cta_click', { location: 'mobile_menu', button: 'get_started_free' })}
                 >
@@ -370,15 +370,15 @@ export default function LandingPage() {
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
               {/* Beta Badge */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-orange-50 border border-blue-100 rounded-full px-4 py-2 mb-8">
-                <Sparkles className="w-4 h-4 text-orange-500" />
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-4 py-2 mb-8">
+                <Sparkles className="w-4 h-4 text-brand-accent" />
                 <span className="text-sm font-semibold text-gray-700">Free for early users</span>
               </div>
 
               {/* Main Headline */}
               <h1 className="text-[2.5rem] sm:text-5xl lg:text-[3.25rem] font-extrabold leading-[1.1] tracking-tight mb-6">
                 Built for how jobs{" "}
-                <span className="text-blue-600">actually run.</span>
+                <span className="text-brand">actually run.</span>
               </h1>
 
               {/* Subheadline */}
@@ -391,7 +391,7 @@ export default function LandingPage() {
                 <Link href="/auth?mode=signup">
                   <Button 
                     size="lg" 
-                    className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
+                    className="w-full sm:w-auto bg-brand-accent text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
                     data-testid="hero-start-trial"
                     onClick={() => trackEvent('cta_click', { location: 'hero', button: 'start_using_free' })}
                   >
@@ -414,7 +414,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-accent"></span>
                 </span>
                 <span className="text-sm font-medium text-orange-700">
                   Beta: First 10 users get lifetime free access
@@ -427,7 +427,7 @@ export default function LandingPage() {
               <div className="relative w-[280px] sm:w-[300px] animate-float">
                 {/* Mobile App Label */}
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
-                  <Smartphone className="w-4 h-4 text-blue-600" />
+                  <Smartphone className="w-4 h-4 text-brand" />
                   <span className="text-xs font-semibold text-gray-700">Mobile App Preview</span>
                 </div>
                 
@@ -439,18 +439,69 @@ export default function LandingPage() {
                   {/* Dynamic Island */}
                   <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
                   
-                  {/* Screen */}
-                  <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
-                    <img 
-                      src={dashboardScreenshot} 
-                      alt="JobRunner Dashboard"
-                      className="w-full h-auto"
-                    />
+                  {/* Screen - HTML Mockup */}
+                  <div className="relative bg-white rounded-[2.25rem] overflow-hidden" style={{ fontSize: '10px' }}>
+                    <div className="pt-8 px-3 pb-3">
+                      {/* Status bar spacer */}
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 rounded-md bg-brand-accent flex items-center justify-center">
+                            <span className="text-white text-[6px] font-bold">J</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-brand">Job</span>
+                          <span className="text-[9px] font-bold text-brand-accent">Runner</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full bg-brand text-white text-[7px] font-semibold flex items-center justify-center">MT</div>
+                        </div>
+                      </div>
+                      {/* Greeting */}
+                      <div className="mb-3 px-1">
+                        <p className="text-[12px] font-bold text-brand-dark">Good evening, Mike</p>
+                        <p className="text-[8px] text-gray-500">You have 1 job scheduled today</p>
+                      </div>
+                      {/* Quick Stats */}
+                      <p className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 px-1">Quick Stats</p>
+                      <div className="grid grid-cols-2 gap-1.5 mb-3">
+                        {[{n:'1',l:'JOBS TODAY',c:'text-brand'},{n:'3',l:'OVERDUE',c:'text-red-500'},{n:'1',l:'QUOTES PENDING',c:'text-brand'},{n:'$0',l:'REVENUE',c:'text-brand-accent'}].map((s,i) => (
+                          <div key={i} className="bg-gray-50 rounded-lg p-2 text-center">
+                            <p className={`text-[14px] font-bold ${s.c}`}>{s.n}</p>
+                            <p className="text-[6px] text-gray-400 font-medium">{s.l}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Today section */}
+                      <div className="flex items-center justify-between mb-1.5 px-1">
+                        <p className="text-[9px] font-semibold text-brand-dark">Today</p>
+                        <p className="text-[7px] text-brand">View All</p>
+                      </div>
+                      <div className="bg-brand rounded-lg p-2 mb-1.5">
+                        <p className="text-white text-[8px] font-semibold">Start Route (1 stop)</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[7px] text-gray-400">11:30 pm · Scheduled</p>
+                            <p className="text-[9px] font-semibold text-brand-dark">Toilet Installation</p>
+                            <p className="text-[7px] text-gray-500">Mason Brown</p>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Bottom nav */}
+                      <div className="flex items-center justify-around mt-3 pt-2 border-t border-gray-100">
+                        {['Dashboard','Work','Chat','More'].map((t,i) => (
+                          <div key={i} className={`text-center ${i===0?'text-brand':'text-gray-400'}`}>
+                            <div className="w-4 h-4 mx-auto mb-0.5 rounded bg-current opacity-20"></div>
+                            <p className="text-[6px] font-medium">{t}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Decorative gradient blob */}
-                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-blue-100 via-orange-50 to-transparent rounded-full blur-3xl opacity-60"></div>
+                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-brand/10 via-brand-accent/5 to-transparent rounded-full blur-3xl opacity-60"></div>
               </div>
             </div>
           </div>
@@ -481,7 +532,7 @@ export default function LandingPage() {
       <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-gray-50/50">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-12 lg:mb-16">
-            <span className="inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider mb-4">Work From Anywhere</span>
+            <span className="inline-block text-sm font-semibold text-brand uppercase tracking-wider mb-4">Work From Anywhere</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Your business, in your pocket
             </h2>
@@ -592,7 +643,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           {/* Section Header */}
           <AnimatedSection className="text-center mb-16 lg:mb-20">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Features</span>
+            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Features</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Everything you need to run your business
             </h2>
@@ -605,7 +656,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
             <AnimatedSection animation="fade-right" className="order-2 lg:order-1">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-6">
-                <Calendar className="w-6 h-6 text-blue-600" />
+                <Calendar className="w-6 h-6 text-brand" />
               </div>
               <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
                 Your schedule. Your way.
@@ -631,7 +682,7 @@ export default function LandingPage() {
             </AnimatedSection>
             <AnimatedSection animation="fade-left" delay={100}>
               <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-6">
-                <MapPin className="w-6 h-6 text-orange-600" />
+                <MapPin className="w-6 h-6 text-brand-accent" />
               </div>
               <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
                 See all your jobs on a map
@@ -642,7 +693,7 @@ export default function LandingPage() {
               <a 
                 href="#how-it-works" 
                 onClick={(e) => scrollToSection(e, "how-it-works")}
-                className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors group" 
+                className="inline-flex items-center text-brand font-semibold hover:text-brand/80 transition-colors group" 
                 data-testid="link-explore-maps"
               >
                 Learn more <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -702,7 +753,7 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-20 lg:py-28 bg-gray-50 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">How It Works</span>
+            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">How It Works</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Get up and running in minutes
             </h2>
@@ -744,7 +795,7 @@ export default function LandingPage() {
       <section id="pricing" className="py-20 lg:py-28 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Pricing</span>
+            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Pricing</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Simple, transparent pricing
             </h2>
@@ -781,7 +832,7 @@ export default function LandingPage() {
                 name="Pro"
                 price="$39"
                 period="/month"
-                description="Unlimited everything for solo tradies"
+                description="Unlimited everything for solo operators"
                 features={[
                   "Unlimited jobs",
                   "Unlimited quotes & invoices",
@@ -841,7 +892,7 @@ export default function LandingPage() {
       <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
         <div className="max-w-5xl mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-14">
-            <span className="inline-block text-sm font-semibold text-orange-600 uppercase tracking-wider mb-4">Get JobRunner</span>
+            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Get JobRunner</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
               Use it anywhere — web or mobile
             </h2>
@@ -856,7 +907,7 @@ export default function LandingPage() {
               <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
                 <div className="flex items-center gap-4 mb-5">
                   <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Monitor className="w-7 h-7 text-blue-600" />
+                    <Monitor className="w-7 h-7 text-brand" />
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900">Web App</h3>
@@ -867,7 +918,7 @@ export default function LandingPage() {
                   Access JobRunner from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
                 </p>
                 <Link href="/auth?mode=signup">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
+                  <Button className="w-full bg-brand text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
                     <Globe className="w-5 h-5 mr-2" />
                     Open Web App
                   </Button>
@@ -880,7 +931,7 @@ export default function LandingPage() {
               <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Smartphone className="w-7 h-7 text-orange-600" />
+                  <Smartphone className="w-7 h-7 text-brand-accent" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900">Mobile App</h3>
@@ -930,18 +981,18 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 lg:py-28 bg-gradient-to-b from-blue-600 to-blue-700">
+      <section className="py-20 lg:py-28 bg-gradient-to-b from-brand to-brand-dark">
         <AnimatedSection className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight mb-6">
             Ready to simplify your business?
           </h2>
           <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
-            Join our growing community of Australian tradies. Free during beta - first 10 users get lifetime access!
+            Join our growing community of Australian trade professionals. Free during beta - first 10 users get lifetime access!
           </p>
           <Link href="/auth?mode=signup">
             <Button 
               size="lg" 
-              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" 
+              className="bg-brand-accent text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" 
               data-testid="cta-start-trial"
               onClick={() => trackEvent('cta_click', { location: 'footer_cta', button: 'join_the_beta' })}
             >
@@ -1154,7 +1205,7 @@ export default function LandingPage() {
             </button>
 
             {/* Gradient header */}
-            <div className="bg-gradient-to-r from-blue-600 to-orange-500 p-6 text-center">
+            <div className="bg-gradient-to-r from-brand to-brand-accent p-6 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur rounded-2xl mb-4">
                 <Smartphone className="w-8 h-8 text-white" />
               </div>
@@ -1291,7 +1342,7 @@ function StepCard({
   return (
     <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 hover:-translate-y-1">
       <div className="flex items-center gap-4 mb-5">
-        <div className="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-lg">
+        <div className="w-10 h-10 bg-brand text-white rounded-lg flex items-center justify-center font-bold text-lg">
           {number}
         </div>
         <Icon className="w-6 h-6 text-gray-400" />
@@ -1331,11 +1382,11 @@ function PricingCard({
 
   return (
     <div className={`relative bg-white rounded-2xl p-8 shadow-sm border transition-all duration-300 hover:shadow-md ${
-      popular ? "border-orange-500 ring-2 ring-orange-500/20" : "border-gray-100 hover:border-gray-200"
+      popular ? "border-brand-accent ring-2 ring-brand-accent/20" : "border-gray-100 hover:border-gray-200"
     }`}>
       {popular && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="bg-orange-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">
+          <span className="bg-brand-accent text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">
             Most Popular
           </span>
         </div>
@@ -1379,7 +1430,7 @@ function PricingCard({
             variant={buttonVariant as any}
             className={`w-full h-12 font-semibold rounded-lg ${
               buttonVariant === "default" 
-                ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                ? "bg-brand-accent text-white" 
                 : ""
             }`}
             data-testid={`pricing-${name.toLowerCase()}-cta`}

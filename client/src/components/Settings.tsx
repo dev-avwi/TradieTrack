@@ -2281,7 +2281,7 @@ function BillingTabContent() {
                         <Badge variant={selectedPlan === 'pro' ? 'default' : 'outline'}>Solo</Badge>
                       </div>
                       <p className="text-2xl font-bold mb-2">${proMonthly}<span className="text-sm font-normal text-muted-foreground">/month</span></p>
-                      <p className="text-sm text-muted-foreground mb-3">Perfect for solo tradies</p>
+                      <p className="text-sm text-muted-foreground mb-3">Perfect for solo operators</p>
                       <ul className="text-sm space-y-1">
                         <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Unlimited jobs, quotes, invoices</li>
                         <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> AI assistant & suggestions</li>
@@ -2836,7 +2836,7 @@ function SupportTab() {
                     <p className="font-medium text-sm">Feature request or bug report?</p>
                     <p className="text-sm text-muted-foreground mt-1">
                       We love feedback! Email us at admin@avwebinnovation.com with your ideas or any 
-                      bugs you find. We're always working to make JobRunner better for Aussie tradies.
+                      bugs you find. We're always working to make JobRunner better for Aussie trade professionals.
                     </p>
                   </div>
                 </AccordionContent>
@@ -2909,7 +2909,7 @@ function SupportTab() {
               JobRunner is built by AV Web Innovation
             </p>
             <p className="text-xs text-muted-foreground">
-              Made in Australia for Australian tradies
+              Made in Australia for Australian trade professionals
             </p>
           </div>
         </CardContent>

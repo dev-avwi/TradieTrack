@@ -490,7 +490,7 @@ export default function Automations() {
 
       <Card className="mb-6 bg-muted/30" data-testid="quick-setup-section">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg" data-testid="quick-setup-title">Recommended for Most Tradies</CardTitle>
+          <CardTitle className="text-lg" data-testid="quick-setup-title">Recommended for Most Businesses</CardTitle>
           <CardDescription data-testid="quick-setup-subtitle">
             Enable these automations to save hours every week
           </CardDescription>
