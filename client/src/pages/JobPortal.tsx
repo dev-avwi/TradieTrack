@@ -10,7 +10,20 @@ import {
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
   MessageCircle, Loader2, Signal
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 interface JobPortalData {
   job: {
@@ -122,6 +135,202 @@ function getDocStatusBadge(status: string) {
     default:
       return <Badge variant="secondary" className="bg-gray-100 text-gray-600 no-default-hover-elevate no-default-active-elevate">{status}</Badge>;
   }
+}
+
+interface LocationResponse {
+  tracking: boolean;
+  status: string;
+  message?: string;
+  workerLocation?: {
+    latitude: number;
+    longitude: number;
+    heading?: number;
+    speed?: number;
+    updatedAt: number;
+    stale: boolean;
+  } | null;
+  jobLocation?: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  etaMinutes?: number;
+  lastUpdated?: string;
+}
+
+function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+  const map = useMap();
+  useEffect(() => {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+  }, [map, bounds]);
+  return null;
+}
+
+const workerIcon = L.divIcon({
+  className: '',
+  html: `<div style="position:relative;width:20px;height:20px;">
+    <div style="width:20px;height:20px;border-radius:50%;background:#0A6A73;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
+    <div style="position:absolute;inset:0;width:20px;height:20px;border-radius:50%;background:#0A6A73;opacity:0.4;animation:pulse-ring 2s ease-out infinite;"></div>
+  </div>
+  <style>@keyframes pulse-ring{0%{transform:scale(1);opacity:0.4}100%{transform:scale(2.5);opacity:0}}</style>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
+const jobIcon = new L.Icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+function LiveTrackingMap({ token, workerName, jobAddress }: { token: string; workerName: string; jobAddress?: string }) {
+  const [locationData, setLocationData] = useState<LocationResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchLocation = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/public/job-portal/${token}/location`);
+      if (res.ok) {
+        const data: LocationResponse = await res.json();
+        setLocationData(data);
+      }
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchLocation();
+    intervalRef.current = setInterval(fetchLocation, 10000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchLocation]);
+
+  if (loading) {
+    return (
+      <Card className="border-gray-200 rounded-xl shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-[250px] w-full rounded-lg" />
+          <Skeleton className="h-4 w-48" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!locationData || !locationData.tracking) {
+    return null;
+  }
+
+  const { workerLocation, jobLocation, etaMinutes, lastUpdated } = locationData;
+
+  const now = Date.now();
+  const updatedAtMs = workerLocation?.updatedAt ? workerLocation.updatedAt : 0;
+  const staleThreshold = 5 * 60 * 1000;
+  const isStale = workerLocation ? (workerLocation.stale || (now - updatedAtMs > staleThreshold)) : false;
+
+  const timeAgoText = (() => {
+    if (!lastUpdated && !updatedAtMs) return '';
+    const ts = lastUpdated ? new Date(lastUpdated).getTime() : updatedAtMs;
+    const diffMs = now - ts;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    return `${diffHours} hr${diffHours !== 1 ? 's' : ''} ago`;
+  })();
+
+  const hasWorker = workerLocation && workerLocation.latitude && workerLocation.longitude;
+  const hasJob = jobLocation && jobLocation.latitude && jobLocation.longitude;
+
+  const center: [number, number] = hasWorker
+    ? [workerLocation.latitude, workerLocation.longitude]
+    : hasJob
+      ? [jobLocation.latitude, jobLocation.longitude]
+      : [-33.8688, 151.2093];
+
+  const bounds: L.LatLngBoundsExpression | null =
+    hasWorker && hasJob
+      ? [
+          [workerLocation.latitude, workerLocation.longitude],
+          [jobLocation.latitude, jobLocation.longitude],
+        ]
+      : null;
+
+  return (
+    <Card className="border-gray-200 rounded-xl shadow-sm">
+      <CardContent className="p-0">
+        {etaMinutes != null && etaMinutes > 0 && (
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+            <div>
+              <span className="text-2xl font-bold text-gray-900">{etaMinutes} min</span>
+              <span className="text-sm text-gray-500 ml-2">estimated arrival</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <Signal className="w-3 h-3" />
+              Updated {timeAgoText}
+            </div>
+          </div>
+        )}
+
+        {isStale && (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <span className="text-xs text-amber-700">Tracking paused - last update {timeAgoText}</span>
+          </div>
+        )}
+
+        <div className="overflow-hidden rounded-b-xl" style={{ height: '250px' }}>
+          <MapContainer
+            center={center}
+            zoom={13}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+            attributionControl={false}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+            {bounds && <FitBounds bounds={bounds} />}
+
+            {hasWorker && (
+              <Marker position={[workerLocation.latitude, workerLocation.longitude]} icon={workerIcon}>
+                <Popup>
+                  <span className="text-sm font-medium">{workerName}</span>
+                </Popup>
+              </Marker>
+            )}
+
+            {hasJob && (
+              <Marker position={[jobLocation.latitude, jobLocation.longitude]} icon={jobIcon}>
+                <Popup>
+                  <span className="text-sm">{jobAddress || 'Job location'}</span>
+                </Popup>
+              </Marker>
+            )}
+          </MapContainer>
+        </div>
+
+        {!hasWorker && (
+          <div className="px-4 py-3 text-center">
+            <p className="text-xs text-gray-500">Waiting for location update...</p>
+          </div>
+        )}
+
+        {hasWorker && timeAgoText && !(etaMinutes != null && etaMinutes > 0) && (
+          <div className="px-4 py-2 flex items-center justify-end gap-1 text-xs text-gray-400">
+            <Signal className="w-3 h-3" />
+            Updated {timeAgoText}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function JobPortal() {
@@ -332,6 +541,14 @@ export default function JobPortal() {
                 </div>
               </div>
             </div>
+          )}
+
+          {job.workerStatus === 'on_my_way' && token && (
+            <LiveTrackingMap
+              token={token}
+              workerName={worker ? `${worker.firstName} ${worker.lastName}` : 'Your technician'}
+              jobAddress={job.address}
+            />
           )}
 
           {worker && (

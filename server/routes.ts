@@ -11576,7 +11576,7 @@ Be specific about materials, colors, and features that would be included.`
       const effectiveUserId = req.effectiveUserId || req.userId;
       const { latitude, longitude, speed, heading } = req.body;
       
-      if (!latitude || !longitude) {
+      if (latitude == null || longitude == null) {
         return res.status(400).json({ error: 'Missing latitude/longitude' });
       }
       
