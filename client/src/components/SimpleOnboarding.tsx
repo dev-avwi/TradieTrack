@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import jobrunnerLogo from "@assets/18ED5819-0D90-46FA-83CF-E95DC00C34FA_1771064550817.png";
+import jobrunnerLogo from "@assets/DA2281EE-139F-4E55-8965-0F1F3A1F8D0D_1771066876018.png";
 import { tradeCatalog } from "@shared/tradeCatalog";
 
 interface SimpleOnboardingProps {

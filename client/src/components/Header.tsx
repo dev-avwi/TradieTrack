@@ -15,7 +15,7 @@ import {
 import { useLocation } from "wouter";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useQuery } from "@tanstack/react-query";
-import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
+import appIconUrl from '@assets/DA2281EE-139F-4E55-8965-0F1F3A1F8D0D_1771066876018.png';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,

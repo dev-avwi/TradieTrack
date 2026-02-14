@@ -81,7 +81,7 @@ import {
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
-import jobrunnerLogo from "@assets/18ED5819-0D90-46FA-83CF-E95DC00C34FA_1771064550817.png";
+import jobrunnerLogo from "@assets/DA2281EE-139F-4E55-8965-0F1F3A1F8D0D_1771066876018.png";
 
 // App screenshots for phone mockups
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
@@ -286,7 +286,8 @@ export default function LandingPage() {
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <span className="text-lg font-bold">
+              <span className="flex items-center gap-2 text-lg font-bold">
+                <img src={jobrunnerLogo} alt="JobRunner" className="h-8 w-auto" />
                 <span className="text-brand">Job</span>
                 <span className="text-brand-accent">Runner</span>
               </span>
@@ -445,9 +446,7 @@ export default function LandingPage() {
                       {/* Status bar spacer */}
                       <div className="flex items-center justify-between mb-2 px-1">
                         <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-md bg-brand-accent flex items-center justify-center">
-                            <span className="text-white text-[6px] font-bold">J</span>
-                          </div>
+                          <img src={jobrunnerLogo} alt="JobRunner" className="w-4 h-4 object-contain" />
                           <span className="text-[9px] font-bold text-brand">Job</span>
                           <span className="text-[9px] font-bold text-brand-accent">Runner</span>
                         </div>

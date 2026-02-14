@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle, Lock, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import appIconUrl from '@assets/Photo 1-12-2025, 6 03 07 pm (1)_1764576362665.png';
+import appIconUrl from '@assets/DA2281EE-139F-4E55-8965-0F1F3A1F8D0D_1771066876018.png';
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
