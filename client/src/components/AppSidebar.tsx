@@ -23,7 +23,7 @@ import {
   getSidebarSettingsItems,
   type NavItem 
 } from "@/lib/navigation-config";
-import jobrunnerLogo from "@assets/DA2281EE-139F-4E55-8965-0F1F3A1F8D0D_1771066876018.png";
+import jobrunnerLogo from "@assets/D3E57352-48E5-4224-88EC-9EFDFFD3442E_1771067699090.png";
 
 interface UnreadCounts {
   teamChat: number;

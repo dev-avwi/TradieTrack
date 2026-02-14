@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, ArrowLeft, ArrowRight, Building2, Palette, DollarSign, Users, LogOut, Sparkles, Wrench, Zap, Rocket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import jobrunnerLogo from "@assets/DA2281EE-139F-4E55-8965-0F1F3A1F8D0D_1771066876018.png";
+import jobrunnerLogo from "@assets/D3E57352-48E5-4224-88EC-9EFDFFD3442E_1771067699090.png";
 
 // Import step components
 import TeamSizeStep from "./onboarding/TeamSizeStep";
