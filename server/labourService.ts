@@ -1,0 +1,174 @@
+import { storage } from './storage';
+import type { TimeEntry, TeamMember, BusinessSettings, JobAssignment, InvoiceLineItem, InsertInvoiceLineItem } from '@shared/schema';
+
+interface LabourLine {
+  workerId: string;
+  workerName: string;
+  hourlyRate: number;
+  totalMinutes: number;
+  roundedHours: number;
+  total: number;
+  hideNameOnInvoice: boolean;
+  workPeriodStart: Date | null;
+  workPeriodEnd: Date | null;
+  sessionCount: number;
+}
+
+interface LabourSummary {
+  labourLines: LabourLine[];
+  workPeriodStart: Date | null;
+  workPeriodEnd: Date | null;
+  totalBillableHours: number;
+  totalLabourAmount: number;
+  gpsVerified: boolean;
+  trackingInterruptions: number;
+  manualEdits: number;
+}
+
+function roundMinutes(minutes: number, roundTo: number): number {
+  if (roundTo <= 1) return minutes;
+  return Math.ceil(minutes / roundTo) * roundTo;
+}
+
+function minutesToHours(minutes: number): number {
+  return Math.round((minutes / 60) * 100) / 100;
+}
+
+export async function generateLabourSummary(
+  jobId: string,
+  businessOwnerId: string
+): Promise<LabourSummary> {
+  const [timeEntriesAll, assignments, businessArr] = await Promise.all([
+    storage.getTimeEntriesForJob(jobId),
+    storage.getJobAssignments(jobId),
+    storage.getBusinessSettings(businessOwnerId),
+  ]);
+  
+  const business = businessArr;
+  const roundingMinutes = business?.timeRoundingMinutes ?? 5;
+  const companyDefaultRate = parseFloat(String(business?.defaultHourlyRate ?? '100'));
+  
+  const billableEntries = timeEntriesAll.filter(e => e.isBillable !== false && !e.isBreak);
+  
+  const byWorker = new Map<string, TimeEntry[]>();
+  for (const entry of billableEntries) {
+    const key = entry.userId;
+    if (!byWorker.has(key)) byWorker.set(key, []);
+    byWorker.get(key)!.push(entry);
+  }
+  
+  const labourLines: LabourLine[] = [];
+  let overallStart: Date | null = null;
+  let overallEnd: Date | null = null;
+  
+  for (const [workerId, entries] of byWorker) {
+    const assignment = assignments.find(a => a.userId === workerId);
+    const teamMember = await storage.getTeamMemberByUserId(businessOwnerId, workerId);
+    
+    let effectiveRate: number;
+    if (assignment?.hourlyRateOverride) {
+      effectiveRate = parseFloat(String(assignment.hourlyRateOverride));
+    } else if (teamMember?.hourlyRate) {
+      effectiveRate = parseFloat(String(teamMember.hourlyRate));
+    } else if (entries[0]?.hourlyRate) {
+      effectiveRate = parseFloat(String(entries[0].hourlyRate));
+    } else {
+      effectiveRate = companyDefaultRate;
+    }
+    
+    let totalRawMinutes = 0;
+    let periodStart: Date | null = null;
+    let periodEnd: Date | null = null;
+    
+    for (const entry of entries) {
+      const mins = entry.duration || 0;
+      totalRawMinutes += mins;
+      
+      const start = new Date(entry.startTime);
+      const end = entry.endTime ? new Date(entry.endTime) : start;
+      
+      if (!periodStart || start < periodStart) periodStart = start;
+      if (!periodEnd || end > periodEnd) periodEnd = end;
+      if (!overallStart || start < overallStart) overallStart = start;
+      if (!overallEnd || end > overallEnd) overallEnd = end;
+    }
+    
+    const roundedMinutes = roundMinutes(totalRawMinutes, roundingMinutes);
+    const roundedHours = minutesToHours(roundedMinutes);
+    
+    let workerName = 'Worker';
+    if (assignment?.displayName) {
+      workerName = assignment.displayName;
+    } else if (teamMember?.firstName) {
+      workerName = [teamMember.firstName, teamMember.lastName].filter(Boolean).join(' ');
+    }
+    
+    labourLines.push({
+      workerId,
+      workerName,
+      hourlyRate: effectiveRate,
+      totalMinutes: totalRawMinutes,
+      roundedHours,
+      total: Math.round(roundedHours * effectiveRate * 100) / 100,
+      hideNameOnInvoice: assignment?.hideNameOnInvoice ?? false,
+      workPeriodStart: periodStart,
+      workPeriodEnd: periodEnd,
+      sessionCount: entries.length,
+    });
+  }
+  
+  const totalBillableHours = labourLines.reduce((sum, l) => sum + l.roundedHours, 0);
+  const totalLabourAmount = labourLines.reduce((sum, l) => sum + l.total, 0);
+  
+  return {
+    labourLines,
+    workPeriodStart: overallStart,
+    workPeriodEnd: overallEnd,
+    totalBillableHours,
+    totalLabourAmount,
+    gpsVerified: timeEntriesAll.some(e => e.origin === 'geofence'),
+    trackingInterruptions: 0,
+    manualEdits: 0,
+  };
+}
+
+export async function generateLabourLineItems(
+  jobId: string,
+  invoiceId: string,
+  businessOwnerId: string
+): Promise<InvoiceLineItem[]> {
+  const summary = await generateLabourSummary(jobId, businessOwnerId);
+  
+  const existingItems = await storage.getInvoiceLineItems(invoiceId);
+  const existingLabourItems = existingItems.filter(item => 
+    item.description.startsWith('Labour —') || item.description.startsWith('Labour -')
+  );
+  for (const item of existingLabourItems) {
+    await storage.deleteInvoiceLineItem(item.id);
+  }
+  
+  const maxSortOrder = existingItems
+    .filter(item => !existingLabourItems.includes(item))
+    .reduce((max, item) => Math.max(max, item.sortOrder || 0), -1);
+  
+  const createdItems: InvoiceLineItem[] = [];
+  
+  for (let i = 0; i < summary.labourLines.length; i++) {
+    const line = summary.labourLines[i];
+    const nameDisplay = line.hideNameOnInvoice ? 'Labour' : `Labour — ${line.workerName}`;
+    const description = `${nameDisplay} — $${line.hourlyRate.toFixed(2)}/hr`;
+    
+    const item = await storage.createInvoiceLineItem({
+      invoiceId,
+      description,
+      quantity: String(line.roundedHours),
+      unitPrice: String(line.hourlyRate),
+      total: String(line.total),
+      sortOrder: maxSortOrder + 1 + i,
+    });
+    
+    createdItems.push(item);
+  }
+  
+  return createdItems;
+}

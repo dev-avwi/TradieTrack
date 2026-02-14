@@ -13267,6 +13267,45 @@ Be specific about materials, colors, and features that would be included.`
   // Record manual payment with details (legacy endpoint)
   app.post("/api/invoices/:id/record-payment", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), handleRecordPayment);
 
+  // Generate labour line items from time tracking data
+  app.post("/api/invoices/:id/generate-labour-lines", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const invoiceId = req.params.id;
+      const userContext = await getUserContext(req.userId);
+      
+      const invoice = await storage.getInvoice(invoiceId, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      if (!invoice.jobId) {
+        return res.status(400).json({ error: "Invoice must be linked to a job to generate labour lines" });
+      }
+      
+      const { generateLabourLineItems, generateLabourSummary } = await import('./labourService');
+      const labourItems = await generateLabourLineItems(invoice.jobId, invoiceId, userContext.effectiveUserId);
+      const summary = await generateLabourSummary(invoice.jobId, userContext.effectiveUserId);
+      
+      const updatedInvoice = await storage.getInvoiceWithLineItems(invoiceId, userContext.effectiveUserId);
+      
+      res.json({ 
+        labourItems,
+        summary: {
+          totalBillableHours: summary.totalBillableHours,
+          totalLabourAmount: summary.totalLabourAmount,
+          workPeriodStart: summary.workPeriodStart,
+          workPeriodEnd: summary.workPeriodEnd,
+          workerCount: summary.labourLines.length,
+          gpsVerified: summary.gpsVerified,
+        },
+        invoice: updatedInvoice
+      });
+    } catch (error: any) {
+      console.error("[Generate Labour Lines] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to generate labour lines" });
+    }
+  });
+
   // Toggle online payment for invoice
   app.patch("/api/invoices/:id/online-payment", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
@@ -13353,6 +13392,16 @@ Be specific about materials, colors, and features that would be included.`
         console.warn(`[Invoice PDF] Could not fetch job/time entries for invoice ${invoiceId}:`, jobError);
       }
       
+      let labourSummary: any = null;
+      if (invoiceWithItems.jobId) {
+        try {
+          const { generateLabourSummary } = await import('./labourService');
+          labourSummary = await generateLabourSummary(invoiceWithItems.jobId, userContext.effectiveUserId);
+        } catch (labourError) {
+          console.warn(`[Invoice PDF] Could not generate labour summary for invoice ${invoiceId}:`, labourError);
+        }
+      }
+      
       // Get job signatures if there's a linked job
       let jobSignatures: any[] = [];
       if (invoiceWithItems.jobId) {
@@ -13427,6 +13476,7 @@ Be specific about materials, colors, and features that would be included.`
           warrantyTemplate,
           beforePhotos,
           afterPhotos,
+          labourSummary,
         });
       } catch (htmlError: any) {
         console.error(`[Invoice PDF] HTML generation failed for invoice ${invoiceId}:`, htmlError);

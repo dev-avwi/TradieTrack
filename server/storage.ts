@@ -280,6 +280,9 @@ import {
   jobPortalTokens,
   type JobPortalToken,
   type InsertJobPortalToken,
+  jobAssignments,
+  type JobAssignment,
+  type InsertJobAssignment,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -533,6 +536,7 @@ export interface IStorage {
   
   // Time Tracking
   getTimeEntries(userId: string, jobId?: string): Promise<TimeEntry[]>;
+  getTimeEntriesForJob(jobId: string): Promise<TimeEntry[]>;
   getTimeEntriesInRange(userId: string, start: Date, end: Date): Promise<TimeEntry[]>;
   getTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   createTimeEntry(entry: InsertTimeEntry & { userId: string }): Promise<TimeEntry>;
@@ -545,6 +549,11 @@ export interface IStorage {
   createTimeEntryEdit(edit: InsertTimeEntryEdit): Promise<TimeEntryEdit>;
   getTimeEntryEdits(timeEntryId: string): Promise<TimeEntryEdit[]>;
   getTimeEntryEditLog(userId: string, limit?: number, offset?: number): Promise<TimeEntryEdit[]>;
+
+  // Job Assignments
+  getJobAssignments(jobId: string): Promise<JobAssignment[]>;
+  createJobAssignment(assignment: InsertJobAssignment): Promise<JobAssignment>;
+  getTeamMemberByUserId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined>;
   
   // Timesheets
   getTimesheets(userId: string): Promise<Timesheet[]>;
@@ -2908,6 +2917,12 @@ export class PostgresStorage implements IStorage {
     return await db.select().from(timeEntries)
       .where(eq(timeEntries.userId, userId))
       .orderBy(desc(timeEntries.startTime));
+  }
+
+  async getTimeEntriesForJob(jobId: string): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries)
+      .where(and(eq(timeEntries.jobId, jobId), isNotNull(timeEntries.endTime)))
+      .orderBy(timeEntries.startTime);
   }
 
   async getTimeEntriesInRange(userId: string, start: Date, end: Date): Promise<TimeEntry[]> {
@@ -6997,6 +7012,23 @@ Thank you for your prompt attention to this matter.`,
         accessCount: sql`${jobPortalTokens.accessCount} + 1`,
       })
       .where(eq(jobPortalTokens.id, tokenId));
+  }
+
+  async getJobAssignments(jobId: string): Promise<JobAssignment[]> {
+    return await db.select().from(jobAssignments)
+      .where(eq(jobAssignments.jobId, jobId));
+  }
+
+  async createJobAssignment(assignment: InsertJobAssignment): Promise<JobAssignment> {
+    const result = await db.insert(jobAssignments).values(assignment).returning();
+    return result[0];
+  }
+
+  async getTeamMemberByUserId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined> {
+    const result = await db.select().from(teamMembers)
+      .where(and(eq(teamMembers.businessOwnerId, businessOwnerId), eq(teamMembers.memberId, memberId)))
+      .limit(1);
+    return result[0];
   }
 
   async getActiveJobPortalToken(jobId: string): Promise<JobPortalToken | null> {

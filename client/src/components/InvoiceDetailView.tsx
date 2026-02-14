@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -259,6 +259,31 @@ export default function InvoiceDetailView({
       toast({
         title: "Push to Xero Failed",
         description: error.message || "Failed to push invoice to Xero",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const generateLabourLinesMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', `/api/invoices/${invoiceId}/generate-labour-lines`);
+    },
+    onSuccess: async (response: any) => {
+      const data = typeof response.json === 'function' ? await response.json() : response;
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+      const itemCount = data.labourItems?.length || 0;
+      const hours = data.summary?.totalBillableHours?.toFixed(1) || '0';
+      toast({
+        title: itemCount > 0 ? "Labour lines generated" : "No time entries found",
+        description: itemCount > 0
+          ? `${itemCount} labour line(s) added from time tracking (${hours} billable hours)`
+          : "No billable time entries found for this job",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error generating labour lines",
+        description: error.message || "Failed to generate labour lines from time tracking",
         variant: "destructive",
       });
     }
@@ -973,6 +998,22 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
               {copied ? 'Copied!' : 'Share'}
             </Button>
+            {invoice.jobId && invoice.status !== 'paid' && (
+              <Button 
+                variant="outline" 
+                onClick={() => generateLabourLinesMutation.mutate()}
+                disabled={generateLabourLinesMutation.isPending}
+                className="w-full sm:w-auto"
+                data-testid="button-generate-labour-lines"
+              >
+                {generateLabourLinesMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Clock className="h-4 w-4 mr-2" />
+                )}
+                Generate Labour Lines
+              </Button>
+            )}
             {invoice.jobId && (
               <>
                 <div className="flex items-center gap-2">

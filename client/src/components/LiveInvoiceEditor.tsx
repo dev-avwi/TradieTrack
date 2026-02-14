@@ -591,6 +591,27 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         description: "Your invoice has been saved successfully",
       });
 
+      if (result.id && (selectedJobId || urlJobId)) {
+        try {
+          const labourRes = await fetch(`/api/invoices/${result.id}/generate-labour-lines`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (labourRes.ok) {
+            const labourData = await labourRes.json();
+            if (labourData.labourItems && labourData.labourItems.length > 0) {
+              toast({
+                title: "Labour lines added",
+                description: `${labourData.labourItems.length} labour line(s) generated from time tracking (${labourData.summary?.totalBillableHours?.toFixed(1) || '0'} hours)`,
+              });
+            }
+          }
+        } catch (err) {
+          // Silently skip - labour lines are optional
+        }
+      }
+
       onSave?.(result.id);
     } catch (error) {
       console.error("Error creating invoice:", error);

@@ -297,6 +297,25 @@ interface InvoiceWithDetails {
   warrantyTemplate?: string; // Custom warranty text from business templates
   beforePhotos?: Array<{ url: string; caption?: string; category: string }>;
   afterPhotos?: Array<{ url: string; caption?: string; category: string }>;
+  labourSummary?: {
+    labourLines: Array<{
+      workerName: string;
+      hourlyRate: number;
+      roundedHours: number;
+      total: number;
+      hideNameOnInvoice: boolean;
+      workPeriodStart: Date | null;
+      workPeriodEnd: Date | null;
+      sessionCount: number;
+    }>;
+    workPeriodStart: Date | null;
+    workPeriodEnd: Date | null;
+    totalBillableHours: number;
+    totalLabourAmount: number;
+    gpsVerified: boolean;
+    trackingInterruptions: number;
+    manualEdits: number;
+  };
 }
 
 const formatCurrency = (amount: string | number): string => {
@@ -306,6 +325,14 @@ const formatCurrency = (amount: string | number): string => {
     currency: 'AUD',
     minimumFractionDigits: 2,
   }).format(num);
+};
+
+const formatTimePeriod = (start: Date | string | null, end: Date | string | null): string => {
+  if (!start || !end) return '';
+  const s = new Date(start);
+  const e = new Date(end);
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+  return `${s.toLocaleTimeString('en-AU', timeOpts)} – ${e.toLocaleTimeString('en-AU', timeOpts)}`;
 };
 
 const formatDate = (date: Date | string | null): string => {
@@ -1122,7 +1149,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 };
 
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
-  const { invoice, lineItems, client, business, job, timeEntries, paymentUrl, termsTemplate, warrantyTemplate } = data;
+  const { invoice, lineItems, client, business, job, timeEntries, paymentUrl, termsTemplate, warrantyTemplate, labourSummary } = data;
   
   // Validate required fields with helpful error messages
   if (!invoice) {
@@ -1221,7 +1248,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
       </div>
     </div>
     
-    ${job?.address || timeTrackingFormatted ? `
+    ${job?.address || timeTrackingFormatted || (labourSummary && labourSummary.totalBillableHours > 0) ? `
     <div class="info-section" style="margin-top: 16px;">
       ${job?.address ? `
       <div class="info-block">
@@ -1232,7 +1259,17 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         </div>
       </div>
       ` : ''}
-      ${timeTrackingFormatted ? `
+      ${labourSummary && labourSummary.totalBillableHours > 0 ? `
+      <div class="info-block">
+        <div class="info-label">Work Summary</div>
+        <div class="info-value">
+          <strong>${labourSummary.totalBillableHours}h total</strong>
+          <span style="color: #666;"> (${labourSummary.labourLines.reduce((s: number, l: any) => s + l.sessionCount, 0)} sessions)</span>
+          ${labourSummary.workPeriodStart && labourSummary.workPeriodEnd ? `<br/><span style="color: #666;">Period: ${formatDate(labourSummary.workPeriodStart)} – ${formatDate(labourSummary.workPeriodEnd)}</span>` : ''}
+          ${labourSummary.gpsVerified ? `<br/><span style="color: #16a34a; font-size: 9px;">✓ GPS Tracking Verified</span>` : ''}
+        </div>
+      </div>
+      ` : timeTrackingFormatted ? `
       <div class="info-block">
         <div class="info-label">Time Worked</div>
         <div class="info-value">
@@ -1249,6 +1286,34 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         <div class="description-title">${invoice.title}</div>
         <div>${invoice.description}</div>
       </div>
+    ` : ''}
+    
+    ${labourSummary && labourSummary.labourLines && labourSummary.labourLines.length > 0 ? `
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 10px; font-weight: 600; color: #374151; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Labour Summary</div>
+      <table class="line-items-table">
+        <thead>
+          <tr>
+            <th style="width: 40%;">Worker</th>
+            <th style="width: 15%;">Rate</th>
+            <th style="width: 15%;">Hours</th>
+            <th style="width: 15%;">Period</th>
+            <th style="width: 15%;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${labourSummary.labourLines.map((line: any) => `
+            <tr>
+              <td>${line.hideNameOnInvoice ? 'Labour' : line.workerName}</td>
+              <td>${formatCurrency(line.hourlyRate)}/hr</td>
+              <td>${line.roundedHours}h</td>
+              <td style="font-size: 8px; color: #666;">${formatTimePeriod(line.workPeriodStart, line.workPeriodEnd)}</td>
+              <td>${formatCurrency(line.total)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
     ` : ''}
     
     <table class="line-items-table">

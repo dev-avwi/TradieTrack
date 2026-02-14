@@ -336,6 +336,7 @@ export const businessSettings = pgTable("business_settings", {
   customThemeEnabled: boolean("custom_theme_enabled").default(false),
   gstEnabled: boolean("gst_enabled").default(false),
   defaultHourlyRate: decimal("default_hourly_rate", { precision: 10, scale: 2 }).default('100.00'),
+  timeRoundingMinutes: integer("time_rounding_minutes").default(5),
   calloutFee: decimal("callout_fee", { precision: 10, scale: 2 }).default('80.00'),
   quoteValidityDays: integer("quote_validity_days").default(30),
   invoicePrefix: text("invoice_prefix").default('TT-'),
@@ -1472,6 +1473,23 @@ export const teamMembers = pgTable("team_members", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const jobAssignments = pgTable("job_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  teamMemberId: varchar("team_member_id").references(() => teamMembers.id, { onDelete: 'set null' }),
+  hourlyRateOverride: decimal("hourly_rate_override", { precision: 10, scale: 2 }),
+  displayName: text("display_name"),
+  hideNameOnInvoice: boolean("hide_name_on_invoice").default(false),
+  isActive: boolean("is_active").default(true),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true });
+export type InsertJobAssignment = z.infer<typeof insertJobAssignmentSchema>;
+export type JobAssignment = typeof jobAssignments.$inferSelect;
 
 export const staffSchedules = pgTable("staff_schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
