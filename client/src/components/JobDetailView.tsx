@@ -93,6 +93,11 @@ interface Job {
   startedAt?: string;
   completedAt?: string;
   invoicedAt?: string;
+  workerStatus?: string;
+  workerStatusUpdatedAt?: string;
+  workerEta?: string;
+  workerEtaMinutes?: number;
+  portalEnabled?: boolean;
 }
 
 interface Client {
@@ -1029,17 +1034,61 @@ export default function JobDetailView({
     }
   };
 
-  // On My Way mutation - sends SMS to client
+  // On My Way mutation - updates worker status and sends SMS to client
   const onMyWayMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/jobs/${jobId}/on-my-way`);
+      return await apiRequest("PATCH", `/api/jobs/${jobId}/worker-status`, {
+        workerStatus: 'on_my_way',
+        workerEta: '30-60 mins',
+      });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       toast({
-        title: "On My Way notification sent to client",
+        title: "On My Way - client notified",
+        description: "SMS sent with tracking link",
       });
     },
     onError: handleSmsError,
+  });
+
+  // Arrived mutation - updates worker status to arrived
+  const arrivedMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("PATCH", `/api/jobs/${jobId}/worker-status`, {
+        workerStatus: 'arrived',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      toast({
+        title: "Arrived - client notified",
+      });
+    },
+    onError: handleSmsError,
+  });
+
+  // Portal link mutation - generates client tracking link
+  const portalLinkMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/jobs/${jobId}/portal-link`);
+      return res;
+    },
+    onSuccess: (data: any) => {
+      if (data.url) {
+        navigator.clipboard.writeText(data.url).then(() => {
+          toast({
+            title: "Portal link copied",
+            description: "Client tracking link copied to clipboard",
+          });
+        }).catch(() => {
+          toast({
+            title: "Portal link created",
+            description: data.url,
+          });
+        });
+      }
+    },
   });
 
   // Running Late mutation - sends SMS to client when past scheduled time
@@ -1400,75 +1449,98 @@ export default function JobDetailView({
           </div>
         )}
 
-        {/* On My Way / Running Late Quick Action - only for scheduled/in_progress jobs with a client */}
-        {(job.status === 'scheduled' || job.status === 'in_progress') && job.clientId && (() => {
-          const overdue = isJobOverdue();
-          const activeMutation = overdue ? runningLateMutation : onMyWayMutation;
-          
-          return (
-            <div 
-              className={`rounded-xl p-4 border ${
-                overdue
-                  ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
-                  : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30'
-              }`}
-              data-testid={overdue ? "banner-running-late" : "banner-on-my-way"}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    overdue
-                      ? 'bg-amber-200 dark:bg-amber-800'
-                      : 'bg-blue-200 dark:bg-blue-800'
-                  }`}>
-                    {overdue ? (
-                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    )}
-                  </div>
-                  <div>
-                    {overdue ? (
-                      <>
-                        <p className="font-semibold text-amber-700 dark:text-amber-300">Running behind schedule?</p>
-                        <p className="text-sm text-muted-foreground">Let the client know you're running late</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-semibold text-blue-700 dark:text-blue-300">Heading to the job?</p>
-                        <p className="text-sm text-muted-foreground">Let the client know you're on your way</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  onClick={() => activeMutation.mutate()}
-                  disabled={activeMutation.isPending}
-                  className={`shrink-0 ${overdue ? 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/50' : ''}`}
-                  variant="outline"
-                  data-testid={overdue ? "button-running-late" : "button-on-my-way"}
-                >
-                  {activeMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : overdue ? (
-                    <>
-                      <Clock className="h-4 w-4 mr-2 text-amber-600" />
-                      Running Late
-                    </>
-                  ) : (
-                    <>
-                      <Navigation className="h-4 w-4 mr-2" />
-                      On My Way
-                    </>
-                  )}
-                </Button>
+        {/* Worker Dispatch Status Controls */}
+        {(job.status === 'scheduled' || job.status === 'in_progress' || job.status === 'pending') && job.clientId && (
+          <div className="rounded-xl p-4 border border-border bg-card" data-testid="worker-status-controls">
+            {job.workerStatus && job.workerStatus !== 'assigned' && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`h-2.5 w-2.5 rounded-full ${
+                  job.workerStatus === 'on_my_way' ? 'bg-amber-500 animate-pulse' :
+                  job.workerStatus === 'arrived' ? 'bg-green-500' :
+                  job.workerStatus === 'in_progress' ? 'bg-blue-500 animate-pulse' :
+                  job.workerStatus === 'completed' ? 'bg-green-600' : 'bg-gray-400'
+                }`} />
+                <span className="text-sm font-medium">
+                  {job.workerStatus === 'on_my_way' ? 'On My Way' :
+                   job.workerStatus === 'arrived' ? 'Arrived on Site' :
+                   job.workerStatus === 'in_progress' ? 'Work in Progress' :
+                   job.workerStatus === 'completed' ? 'Completed' : ''}
+                </span>
+                {job.workerEta && job.workerStatus === 'on_my_way' && (
+                  <Badge variant="secondary" className="text-xs">ETA: {job.workerEta}</Badge>
+                )}
               </div>
+            )}
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              {(!job.workerStatus || job.workerStatus === 'assigned') && (
+                <Button
+                  onClick={() => onMyWayMutation.mutate()}
+                  disabled={onMyWayMutation.isPending}
+                  variant="default"
+                  className="gap-2"
+                  data-testid="button-on-my-way"
+                >
+                  {onMyWayMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Navigation className="h-4 w-4" />
+                  )}
+                  On My Way
+                </Button>
+              )}
+
+              {(!job.workerStatus || job.workerStatus === 'assigned') && isJobOverdue() && (
+                <Button
+                  onClick={() => runningLateMutation.mutate()}
+                  disabled={runningLateMutation.isPending}
+                  variant="default"
+                  className="gap-2"
+                  data-testid="button-running-late"
+                >
+                  {runningLateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4" />
+                  )}
+                  Running Late
+                </Button>
+              )}
+              
+              {job.workerStatus === 'on_my_way' && (
+                <Button
+                  onClick={() => arrivedMutation.mutate()}
+                  disabled={arrivedMutation.isPending}
+                  variant="default"
+                  className="gap-2"
+                  data-testid="button-arrived"
+                >
+                  {arrivedMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MapPin className="h-4 w-4" />
+                  )}
+                  Arrived
+                </Button>
+              )}
+              
+              <Button
+                onClick={() => portalLinkMutation.mutate()}
+                disabled={portalLinkMutation.isPending}
+                variant="outline"
+                className="gap-2"
+                data-testid="button-share-portal"
+              >
+                {portalLinkMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4" />
+                )}
+                Share Tracking Link
+              </Button>
             </div>
-          );
-        })()}
+          </div>
+        )}
       </div>
 
       {/* Two-column layout on desktop, single column on mobile */}

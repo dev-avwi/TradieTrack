@@ -650,6 +650,11 @@ export const jobs = pgTable("jobs", {
   xeroSyncedAt: timestamp("xero_synced_at"), // When job was last synced with Xero
   // Trade-specific custom fields (stored as JSON object keyed by field ID)
   customFields: jsonb("custom_fields").default({}),
+  workerStatus: text("worker_status"),
+  workerStatusUpdatedAt: timestamp("worker_status_updated_at"),
+  workerEta: text("worker_eta"),
+  workerEtaMinutes: integer("worker_eta_minutes"),
+  portalEnabled: boolean("portal_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3693,3 +3698,21 @@ export const portalSessions = pgTable("portal_sessions", {
 export const insertPortalSessionSchema = createInsertSchema(portalSessions).omit({ id: true, createdAt: true });
 export type InsertPortalSession = z.infer<typeof insertPortalSessionSchema>;
 export type PortalSession = typeof portalSessions.$inferSelect;
+
+// Job Portal Tokens - Per-job tracking links for clients (Uber-style portal)
+export const jobPortalTokens = pgTable("job_portal_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  accessCount: integer("access_count").default(0),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertJobPortalTokenSchema = createInsertSchema(jobPortalTokens).omit({ id: true, createdAt: true, accessCount: true, lastAccessedAt: true });
+export type InsertJobPortalToken = z.infer<typeof insertJobPortalTokenSchema>;
+export type JobPortalToken = typeof jobPortalTokens.$inferSelect;

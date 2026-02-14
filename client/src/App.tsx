@@ -78,6 +78,7 @@ import Leads from "@/pages/Leads";
 import AIVisualizationPage from "@/pages/AIVisualization";
 import ClientPortal from "@/pages/ClientPortal";
 import ClientPortalHub from "@/pages/ClientPortalHub";
+import JobPortal from "@/pages/JobPortal";
 import TeamGroups from "@/pages/TeamGroups";
 import PaymentHub from "@/pages/PaymentHub";
 import WorkPage from "@/pages/WorkPage";
@@ -1291,6 +1292,7 @@ function App() {
               <Route path="/pay/:token" component={PaymentPage} />
               <Route path="/portal" component={ClientPortalHub} />
               <Route path="/portal/:type/:token" component={ClientPortal} />
+              <Route path="/job-portal/:token" component={JobPortal} />
               <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
               <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
               <Route path="/privacy" component={PrivacyPolicy} />

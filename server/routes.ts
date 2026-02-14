@@ -11446,6 +11446,297 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // ============================================
+  // WORKER STATUS UPDATE (Uber-style dispatch flow)
+  // ============================================
+  app.patch("/api/jobs/:id/worker-status", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const { workerStatus, workerEta, workerEtaMinutes } = req.body;
+      
+      const validStatuses = ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'];
+      if (!workerStatus || !validStatuses.includes(workerStatus)) {
+        return res.status(400).json({ error: 'Invalid worker status' });
+      }
+      
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const updateData: any = { 
+        workerStatus,
+        workerStatusUpdatedAt: new Date(),
+      };
+      if (workerEta !== undefined) updateData.workerEta = workerEta;
+      if (workerEtaMinutes !== undefined) updateData.workerEtaMinutes = workerEtaMinutes;
+      
+      if (workerStatus === 'in_progress' && job.status !== 'in_progress') {
+        updateData.status = 'in_progress';
+        updateData.startedAt = new Date();
+      } else if (workerStatus === 'completed' && job.status !== 'done') {
+        updateData.status = 'done';
+        updateData.completedAt = new Date();
+      }
+      
+      const updatedJob = await storage.updateJob(req.params.id, effectiveUserId, updateData);
+      
+      if (workerStatus === 'on_my_way' || workerStatus === 'arrived' || workerStatus === 'completed') {
+        try {
+          const client = await storage.getClient(job.clientId, effectiveUserId);
+          const businessSettingsData = await storage.getBusinessSettingsByUserId(effectiveUserId);
+          
+          if (client?.phone) {
+            const { sendSmsToClient } = await import('./services/smsService');
+            const businessName = businessSettingsData?.businessName || 'Your tradesperson';
+            
+            let workerName = 'Your tradesperson';
+            if (job.assignedTo) {
+              const teamMembersList = await storage.getTeamMembers(effectiveUserId);
+              const assignedMember = teamMembersList.find((m: any) => m.id === job.assignedTo || m.memberId === job.assignedTo);
+              if (assignedMember) {
+                workerName = [assignedMember.firstName, assignedMember.lastName].filter(Boolean).join(' ') || workerName;
+              }
+            }
+            if (workerName === 'Your tradesperson') {
+              const user = await storage.getUser(effectiveUserId);
+              if (user) workerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || workerName;
+            }
+            
+            let portalUrl = '';
+            let activeToken = await storage.getActiveJobPortalToken(job.id);
+            if (!activeToken) {
+              const cryptoModule = await import('crypto');
+              const token = cryptoModule.randomBytes(32).toString('hex');
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + 30);
+              activeToken = await storage.createJobPortalToken({
+                jobId: job.id,
+                userId: effectiveUserId,
+                token,
+                expiresAt,
+                createdBy: req.userId,
+              });
+              await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
+            }
+            
+            const baseUrl = process.env.REPLIT_DOMAINS 
+              ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+              : 'http://localhost:5000';
+            portalUrl = `${baseUrl}/job-portal/${activeToken.token}`;
+            
+            let smsBody = '';
+            const ownerPhone = businessSettingsData?.phone || '';
+            
+            if (workerStatus === 'on_my_way') {
+              const etaText = workerEta || 'soon';
+              smsBody = `${businessName} update - ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress here: ${portalUrl}`;
+              if (ownerPhone) smsBody += ` Need help? Call ${ownerPhone}`;
+            } else if (workerStatus === 'arrived') {
+              smsBody = `${businessName} update - ${workerName} has arrived for "${job.title}". Track progress: ${portalUrl}`;
+            } else if (workerStatus === 'completed') {
+              smsBody = `${businessName} update - "${job.title}" has been completed. View details and documents: ${portalUrl}`;
+            }
+            
+            if (smsBody) {
+              await sendSmsToClient({
+                businessOwnerId: effectiveUserId,
+                clientId: job.clientId,
+                clientPhone: client.phone,
+                clientName: client.name,
+                jobId: job.id,
+                message: smsBody,
+                senderUserId: req.userId,
+                isQuickAction: true,
+                quickActionType: `worker_${workerStatus}`,
+              });
+              console.log(`[WorkerStatus] SMS sent to client for ${workerStatus}: ${client.phone}`);
+            }
+          }
+        } catch (smsError) {
+          console.error('[WorkerStatus] Error sending SMS:', smsError);
+        }
+      }
+      
+      res.json(updatedJob);
+    } catch (error: any) {
+      console.error('Error updating worker status:', error);
+      res.status(500).json({ error: error.message || 'Failed to update worker status' });
+    }
+  });
+
+  // ============================================
+  // PORTAL LINK MANAGEMENT
+  // ============================================
+  app.post("/api/jobs/:id/portal-link", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      let activeToken = await storage.getActiveJobPortalToken(job.id);
+      if (activeToken) {
+        const baseUrl = process.env.REPLIT_DOMAINS 
+          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+          : 'http://localhost:5000';
+        return res.json({ 
+          token: activeToken,
+          url: `${baseUrl}/job-portal/${activeToken.token}`,
+        });
+      }
+      
+      const cryptoModule = await import('crypto');
+      const token = cryptoModule.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      
+      const portalToken = await storage.createJobPortalToken({
+        jobId: job.id,
+        userId: effectiveUserId,
+        token,
+        expiresAt,
+        createdBy: req.userId,
+      });
+      
+      await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
+      
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+      
+      res.json({
+        token: portalToken,
+        url: `${baseUrl}/job-portal/${portalToken.token}`,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to create portal link' });
+    }
+  });
+
+  app.delete("/api/jobs/:id/portal-link/:tokenId", requireAuth, async (req: any, res) => {
+    try {
+      await storage.revokeJobPortalToken(req.params.tokenId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to revoke portal link' });
+    }
+  });
+
+  app.get("/api/jobs/:id/portal-links", requireAuth, async (req: any, res) => {
+    try {
+      const tokens = await storage.getJobPortalTokensByJobId(req.params.id);
+      res.json(tokens);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get portal links' });
+    }
+  });
+
+  // ============================================
+  // PUBLIC JOB PORTAL DATA (token-based, no auth)
+  // ============================================
+  app.get("/api/public/job-portal/:token", async (req: any, res) => {
+    try {
+      const portalToken = await storage.getJobPortalTokenByToken(req.params.token);
+      if (!portalToken) {
+        return res.status(404).json({ error: 'Portal link not found or expired' });
+      }
+      
+      await storage.updateJobPortalTokenAccess(portalToken.id);
+      
+      const job = await storage.getJob(portalToken.jobId, portalToken.userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const client = await storage.getClient(job.clientId, portalToken.userId);
+      
+      const businessSettingsData = await storage.getBusinessSettingsByUserId(portalToken.userId);
+      const businessOwner = await storage.getUser(portalToken.userId);
+      
+      let workerInfo = null;
+      if (job.assignedTo) {
+        const teamMembersList = await storage.getTeamMembers(portalToken.userId);
+        const assigned = teamMembersList.find((m: any) => m.id === job.assignedTo || m.memberId === job.assignedTo);
+        if (assigned) {
+          workerInfo = {
+            firstName: assigned.firstName,
+            lastName: assigned.lastName,
+            phone: assigned.phone,
+          };
+        }
+      }
+      if (!workerInfo && businessOwner) {
+        workerInfo = {
+          firstName: businessOwner.firstName,
+          lastName: businessOwner.lastName,
+          phone: businessSettingsData?.phone || null,
+        };
+      }
+      
+      const allQuotes = await storage.getQuotes(portalToken.userId);
+      const jobQuotes = allQuotes.filter((q: any) => q.jobId === job.id).map((q: any) => ({
+        id: q.id,
+        title: q.title,
+        status: q.status,
+        total: q.total,
+        token: q.token,
+        createdAt: q.createdAt,
+      }));
+      
+      const allInvoices = await storage.getInvoices(portalToken.userId);
+      const jobInvoices = allInvoices.filter((inv: any) => inv.jobId === job.id).map((inv: any) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        status: inv.status,
+        total: inv.total,
+        token: inv.token,
+        createdAt: inv.createdAt,
+      }));
+      
+      const portalData = {
+        job: {
+          id: job.id,
+          title: job.title,
+          description: job.description,
+          address: job.address,
+          status: job.status,
+          workerStatus: job.workerStatus,
+          workerStatusUpdatedAt: job.workerStatusUpdatedAt,
+          workerEta: job.workerEta,
+          workerEtaMinutes: job.workerEtaMinutes,
+          scheduledAt: job.scheduledAt,
+          scheduledTime: job.scheduledTime,
+          estimatedDuration: job.estimatedDuration,
+          photos: job.photos || [],
+          startedAt: job.startedAt,
+          completedAt: job.completedAt,
+        },
+        business: {
+          name: businessSettingsData?.businessName || '',
+          phone: businessSettingsData?.phone || '',
+          email: businessSettingsData?.email || '',
+          logo: businessSettingsData?.logoUrl || null,
+          abn: businessSettingsData?.abn || null,
+        },
+        worker: workerInfo,
+        client: client ? {
+          name: client.name,
+        } : null,
+        documents: {
+          quotes: jobQuotes,
+          invoices: jobInvoices,
+        },
+      };
+      
+      res.json(portalData);
+    } catch (error: any) {
+      console.error('Error fetching job portal data:', error);
+      res.status(500).json({ error: 'Failed to load portal data' });
+    }
+  });
+
   // Checklist Items (team-aware)
   app.get("/api/jobs/:jobId/checklist", requireAuth, async (req: any, res) => {
     try {

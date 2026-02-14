@@ -277,6 +277,9 @@ import {
   timeEntryEdits,
   type InsertTimeEntryEdit,
   type TimeEntryEdit,
+  jobPortalTokens,
+  type JobPortalToken,
+  type InsertJobPortalToken,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -864,6 +867,14 @@ export interface IStorage {
   getInvoicesForClientIds(clientIds: string[]): Promise<any[]>;
   getReceiptsForClientIds(clientIds: string[]): Promise<any[]>;
   getJobsForClientIds(clientIds: string[]): Promise<Job[]>;
+
+  // Job Portal Token methods
+  createJobPortalToken(data: InsertJobPortalToken): Promise<JobPortalToken>;
+  getJobPortalTokenByToken(token: string): Promise<JobPortalToken | null>;
+  getJobPortalTokensByJobId(jobId: string): Promise<JobPortalToken[]>;
+  revokeJobPortalToken(tokenId: string): Promise<void>;
+  updateJobPortalTokenAccess(tokenId: string): Promise<void>;
+  getActiveJobPortalToken(jobId: string): Promise<JobPortalToken | null>;
 }
 
 // Initialize database connection using standard pg driver
@@ -6943,6 +6954,65 @@ Thank you for your prompt attention to this matter.`,
       .where(inArray(jobs.clientId, clientIds))
       .orderBy(desc(jobs.scheduledAt));
     return results;
+  }
+  async createJobPortalToken(data: InsertJobPortalToken): Promise<JobPortalToken> {
+    const [result] = await db.insert(jobPortalTokens).values(data).returning();
+    return result;
+  }
+
+  async getJobPortalTokenByToken(token: string): Promise<JobPortalToken | null> {
+    const [result] = await db
+      .select()
+      .from(jobPortalTokens)
+      .where(
+        and(
+          eq(jobPortalTokens.token, token),
+          isNull(jobPortalTokens.revokedAt),
+          gt(jobPortalTokens.expiresAt, new Date())
+        )
+      );
+    return result || null;
+  }
+
+  async getJobPortalTokensByJobId(jobId: string): Promise<JobPortalToken[]> {
+    return await db
+      .select()
+      .from(jobPortalTokens)
+      .where(eq(jobPortalTokens.jobId, jobId))
+      .orderBy(desc(jobPortalTokens.createdAt));
+  }
+
+  async revokeJobPortalToken(tokenId: string): Promise<void> {
+    await db
+      .update(jobPortalTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(jobPortalTokens.id, tokenId));
+  }
+
+  async updateJobPortalTokenAccess(tokenId: string): Promise<void> {
+    await db
+      .update(jobPortalTokens)
+      .set({
+        lastAccessedAt: new Date(),
+        accessCount: sql`${jobPortalTokens.accessCount} + 1`,
+      })
+      .where(eq(jobPortalTokens.id, tokenId));
+  }
+
+  async getActiveJobPortalToken(jobId: string): Promise<JobPortalToken | null> {
+    const [result] = await db
+      .select()
+      .from(jobPortalTokens)
+      .where(
+        and(
+          eq(jobPortalTokens.jobId, jobId),
+          isNull(jobPortalTokens.revokedAt),
+          gt(jobPortalTokens.expiresAt, new Date())
+        )
+      )
+      .orderBy(desc(jobPortalTokens.createdAt))
+      .limit(1);
+    return result || null;
   }
 }
 
