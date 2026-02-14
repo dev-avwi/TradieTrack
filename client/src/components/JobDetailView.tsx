@@ -239,6 +239,7 @@ export default function JobDetailView({
   const [siteUpdateNote, setSiteUpdateNote] = useState('');
   const [siteUpdatePhoto, setSiteUpdatePhoto] = useState<File | null>(null);
   const [siteUpdatePhotoPreview, setSiteUpdatePhotoPreview] = useState<string | null>(null);
+  const [selectedDurationEstimate, setSelectedDurationEstimate] = useState<string>('');
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -1034,16 +1035,36 @@ export default function JobDetailView({
     }
   };
 
+  const DURATION_OPTIONS = [
+    { value: '45', label: '30-60 mins', minutes: 45 },
+    { value: '90', label: '1-2 hours', minutes: 90 },
+    { value: '240', label: 'Half day', minutes: 240 },
+    { value: '480', label: 'Full day', minutes: 480 },
+    { value: '960', label: 'Multi-day', minutes: 960 },
+  ];
+
+  const getDurationLabel = (minutes: number): string => {
+    const option = DURATION_OPTIONS.find(o => o.minutes === minutes);
+    if (option) return option.label;
+    if (minutes < 60) return `${minutes} mins`;
+    if (minutes < 480) return `${Math.round(minutes / 60)} hours`;
+    return `${Math.round(minutes / 480)} day(s)`;
+  };
+
   // On My Way mutation - updates worker status and sends SMS to client
   const onMyWayMutation = useMutation({
     mutationFn: async () => {
+      const etaMinutes = selectedDurationEstimate ? parseInt(selectedDurationEstimate) : undefined;
+      const etaLabel = etaMinutes ? getDurationLabel(etaMinutes) : '30-60 mins';
       return await apiRequest("PATCH", `/api/jobs/${jobId}/worker-status`, {
         workerStatus: 'on_my_way',
-        workerEta: '30-60 mins',
+        workerEta: etaLabel,
+        workerEtaMinutes: etaMinutes,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      setSelectedDurationEstimate('');
       toast({
         title: "On My Way - client notified",
         description: "SMS sent with tracking link",
@@ -1055,12 +1076,17 @@ export default function JobDetailView({
   // Arrived mutation - updates worker status to arrived
   const arrivedMutation = useMutation({
     mutationFn: async () => {
+      const etaMinutes = selectedDurationEstimate ? parseInt(selectedDurationEstimate) : undefined;
+      const etaLabel = etaMinutes ? getDurationLabel(etaMinutes) : undefined;
       return await apiRequest("PATCH", `/api/jobs/${jobId}/worker-status`, {
         workerStatus: 'arrived',
+        workerEtaMinutes: etaMinutes,
+        workerEta: etaLabel,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      setSelectedDurationEstimate('');
       toast({
         title: "Arrived - client notified",
       });
@@ -1472,6 +1498,22 @@ export default function JobDetailView({
               </div>
             )}
             
+            {(!job.workerStatus || job.workerStatus === 'assigned' || job.workerStatus === 'on_my_way') && (
+              <div className="mb-3">
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estimated Duration</label>
+                <Select value={selectedDurationEstimate} onValueChange={setSelectedDurationEstimate}>
+                  <SelectTrigger data-testid="select-duration-estimate">
+                    <SelectValue placeholder="Select estimated duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 flex-wrap">
               {(!job.workerStatus || job.workerStatus === 'assigned') && (
                 <Button

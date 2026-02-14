@@ -11527,15 +11527,16 @@ Be specific about materials, colors, and features that would be included.`
             
             let smsBody = '';
             const ownerPhone = businessSettingsData?.phone || '';
+            const ownerName = businessSettingsData?.contactName || businessName;
             
             if (workerStatus === 'on_my_way') {
               const etaText = workerEta || 'soon';
-              smsBody = `${businessName} update - ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress here: ${portalUrl}`;
-              if (ownerPhone) smsBody += ` Need help? Call ${ownerPhone}`;
+              const contactInfo = ownerPhone ? `${ownerName} on ${ownerPhone}` : ownerName;
+              smsBody = `JobRunner: ${businessName} update — ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress + photos here: ${portalUrl}. Need help? Call ${contactInfo}.`;
             } else if (workerStatus === 'arrived') {
-              smsBody = `${businessName} update - ${workerName} has arrived for "${job.title}". Track progress: ${portalUrl}`;
+              smsBody = `JobRunner: ${businessName} update — ${workerName} has arrived at your job "${job.title}". Track progress: ${portalUrl}`;
             } else if (workerStatus === 'completed') {
-              smsBody = `${businessName} update - "${job.title}" has been completed. View details and documents: ${portalUrl}`;
+              smsBody = `JobRunner: ${businessName} update — "${job.title}" has been completed by ${workerName}. View details + documents: ${portalUrl}`;
             }
             
             if (smsBody) {
@@ -11734,6 +11735,81 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error('Error fetching job portal data:', error);
       res.status(500).json({ error: 'Failed to load portal data' });
+    }
+  });
+
+  // In-memory rate limiter for portal messages (max 5 per token per hour)
+  const portalMessageRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+  app.post("/api/public/job-portal/:token/messages", async (req: any, res) => {
+    try {
+      const tokenStr = req.params.token;
+
+      // Rate limit check
+      const now = Date.now();
+      const rateEntry = portalMessageRateLimit.get(tokenStr);
+      if (rateEntry) {
+        if (now < rateEntry.resetAt) {
+          if (rateEntry.count >= 5) {
+            return res.status(429).json({ error: 'Too many messages. Please try again later.' });
+          }
+          rateEntry.count++;
+        } else {
+          portalMessageRateLimit.set(tokenStr, { count: 1, resetAt: now + 3600000 });
+        }
+      } else {
+        portalMessageRateLimit.set(tokenStr, { count: 1, resetAt: now + 3600000 });
+      }
+
+      const portalToken = await storage.getJobPortalTokenByToken(tokenStr);
+      if (!portalToken) {
+        return res.status(404).json({ error: 'Portal link not found or expired' });
+      }
+
+      if (portalToken.expiresAt && new Date(portalToken.expiresAt) < new Date()) {
+        return res.status(410).json({ error: 'This portal link has expired' });
+      }
+      if (portalToken.revokedAt) {
+        return res.status(410).json({ error: 'This portal link is no longer active' });
+      }
+
+      const messageSchema = z.object({
+        message: z.string().min(1, 'Message is required').max(1000, 'Message must be under 1000 characters'),
+      });
+
+      const parsed = messageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+
+      const sanitizedMessage = parsed.data.message.replace(/<[^>]*>/g, '').trim();
+
+      const job = await storage.getJob(portalToken.jobId, portalToken.userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const client = await storage.getClient(job.clientId, portalToken.userId);
+      const clientName = client?.name || 'Portal Client';
+
+      await storage.createNotification({
+        userId: portalToken.userId,
+        type: 'client_portal_message',
+        title: `Message from ${clientName}`,
+        message: sanitizedMessage,
+        relatedId: job.id,
+        relatedType: 'job',
+        read: false,
+        dismissed: false,
+        priority: 'important',
+        actionUrl: `/jobs/${job.id}`,
+        actionLabel: 'View Job',
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error handling portal message:', error);
+      res.status(500).json({ error: 'Failed to send message' });
     }
   });
 

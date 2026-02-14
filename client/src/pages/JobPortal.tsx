@@ -1,14 +1,16 @@
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
-  User, Navigation, FileText, Camera, ChevronRight, Timer, Building2
+  User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
+  MessageCircle, Loader2
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface JobPortalData {
   job: {
@@ -156,6 +158,29 @@ export default function JobPortal() {
     },
   });
 
+  const [portalMessage, setPortalMessage] = useState('');
+  const [messageSent, setMessageSent] = useState(false);
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await fetch(`/api/public/job-portal/${token}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to send message');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setPortalMessage('');
+      setMessageSent(true);
+      setTimeout(() => setMessageSent(false), 3000);
+    },
+  });
+
   useEffect(() => {
     if (data?.business?.name) {
       document.title = `Job Tracking - ${data.business.name} | JobRunner`;
@@ -283,6 +308,11 @@ export default function JobPortal() {
                     {job.workerStatus === 'on_my_way' && job.workerEta && (
                       <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                         ETA: {job.workerEta}
+                      </span>
+                    )}
+                    {job.workerEtaMinutes && job.workerEtaMinutes > 0 && (
+                      <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                        Est. duration: {job.workerEtaMinutes <= 60 ? '30-60 mins' : job.workerEtaMinutes <= 120 ? '1-2 hours' : job.workerEtaMinutes <= 240 ? 'Half day' : job.workerEtaMinutes <= 480 ? 'Full day' : 'Multi-day'}
                       </span>
                     )}
                   </div>
@@ -495,6 +525,60 @@ export default function JobPortal() {
               </CardContent>
             </Card>
           )}
+
+          <Card className="border-gray-200">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-gray-400" /> Send a Message
+              </h3>
+              {messageSent ? (
+                <div className="flex flex-col items-center py-4 gap-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  <p className="text-sm font-medium text-emerald-700">Message sent! The team will get back to you.</p>
+                </div>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (portalMessage.trim()) {
+                      sendMessageMutation.mutate(portalMessage.trim());
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <Textarea
+                    value={portalMessage}
+                    onChange={(e) => setPortalMessage(e.target.value)}
+                    placeholder="Have a question or update? Send a message to the team..."
+                    maxLength={1000}
+                    className="resize-none min-h-[100px] border-gray-200 text-sm"
+                  />
+                  {sendMessageMutation.isError && (
+                    <p className="text-xs text-red-600">
+                      {sendMessageMutation.error?.message || 'Failed to send message. Please try again.'}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs text-gray-400">{portalMessage.length}/1000</span>
+                    <Button
+                      type="submit"
+                      disabled={!portalMessage.trim() || sendMessageMutation.isPending}
+                      className="bg-[#0A6A73] hover:bg-[#085a62] text-white"
+                    >
+                      {sendMessageMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                          Sending...
+                        </>
+                      ) : (
+                        'Send Message'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
 
