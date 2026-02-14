@@ -1361,6 +1361,11 @@ export const timeEntries = pgTable("time_entries", {
   geofenceEventId: varchar("geofence_event_id"), // Link to triggering geofence event
   // Auto-save heartbeat tracking - last time the timer was confirmed active
   lastHeartbeat: timestamp("last_heartbeat"),
+  // Device clock offset tracking - for legal defensibility of time tracking
+  // Stores the offset in seconds between device clock and server time
+  // Positive means device is ahead, negative means behind
+  // Allows reconstruction of actual time even if device clock was wrong
+  deviceTimeOffset: integer("device_time_offset"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3418,6 +3423,8 @@ export const jobMaterials = pgTable("job_materials", {
   trackingUrl: text("tracking_url"),
   status: text("status").default('needed'),
   notes: text("notes"),
+  markupPercent: decimal("markup_percent", { precision: 5, scale: 2 }),
+  receiptPhotoUrl: text("receipt_photo_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

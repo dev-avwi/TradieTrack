@@ -153,6 +153,8 @@ interface JobMaterial {
   trackingUrl?: string;
   status: string;
   notes?: string;
+  markupPercent?: string;
+  receiptPhotoUrl?: string;
   createdAt: string;
 }
 
@@ -235,6 +237,8 @@ export default function JobDetailView({
   const [materialTrackingCarrier, setMaterialTrackingCarrier] = useState('');
   const [materialTrackingUrl, setMaterialTrackingUrl] = useState('');
   const [materialNotes, setMaterialNotes] = useState('');
+  const [materialMarkupPercent, setMaterialMarkupPercent] = useState('');
+  const [materialReceiptPhotoUrl, setMaterialReceiptPhotoUrl] = useState('');
   const [showSiteUpdateDialog, setShowSiteUpdateDialog] = useState(false);
   const [siteUpdateNote, setSiteUpdateNote] = useState('');
   const [siteUpdatePhoto, setSiteUpdatePhoto] = useState<File | null>(null);
@@ -840,6 +844,8 @@ export default function JobDetailView({
       setMaterialTrackingCarrier('');
       setMaterialTrackingUrl('');
       setMaterialNotes('');
+      setMaterialMarkupPercent('');
+      setMaterialReceiptPhotoUrl('');
       toast({ title: 'Material added' });
     },
     onError: () => {
@@ -2437,6 +2443,26 @@ export default function JobDetailView({
                     value={materialNotes}
                     onChange={(e) => setMaterialNotes(e.target.value)}
                   />
+                  {!isTradie && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative">
+                        <Input
+                          placeholder="Markup %"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={materialMarkupPercent}
+                          onChange={(e) => setMaterialMarkupPercent(e.target.value)}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                      </div>
+                      <Input
+                        placeholder="Receipt photo URL (optional)"
+                        value={materialReceiptPhotoUrl}
+                        onChange={(e) => setMaterialReceiptPhotoUrl(e.target.value)}
+                      />
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -2452,6 +2478,8 @@ export default function JobDetailView({
                           trackingCarrier: materialTrackingCarrier || undefined,
                           trackingUrl: materialTrackingUrl || undefined,
                           notes: materialNotes || undefined,
+                          markupPercent: materialMarkupPercent || undefined,
+                          receiptPhotoUrl: materialReceiptPhotoUrl || undefined,
                         });
                       }}
                       style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
@@ -2493,6 +2521,9 @@ export default function JobDetailView({
                             {mat.supplier && <span>from {mat.supplier}</span>}
                             {!isTradie && mat.totalCost && parseFloat(mat.totalCost) > 0 && (
                               <span className="font-medium">${parseFloat(mat.totalCost).toFixed(2)}</span>
+                            )}
+                            {!isTradie && mat.markupPercent && parseFloat(mat.markupPercent) > 0 && (
+                              <span className="text-muted-foreground">+{parseFloat(mat.markupPercent).toFixed(0)}% markup</span>
                             )}
                           </div>
                           {mat.trackingNumber && (() => {
@@ -2537,6 +2568,21 @@ export default function JobDetailView({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 Tracking Link
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            </div>
+                          )}
+                          {!isTradie && mat.receiptPhotoUrl && /^https?:\/\//i.test(mat.receiptPhotoUrl) && (
+                            <div className="flex items-center gap-1 mt-1 text-xs">
+                              <Receipt className="h-3 w-3 text-muted-foreground" />
+                              <a
+                                href={mat.receiptPhotoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                View Receipt
                                 <ExternalLink className="h-2.5 w-2.5" />
                               </a>
                             </div>

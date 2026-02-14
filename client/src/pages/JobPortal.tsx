@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
-  MessageCircle, Loader2
+  MessageCircle, Loader2, Signal
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -299,22 +299,35 @@ export default function JobPortal() {
                       <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <div className="flex flex-col gap-2 mt-2">
+                    {/* Last Updated indicator */}
                     {job.workerStatusUpdatedAt && (
-                      <span className="text-xs text-gray-500">
-                        Updated {formatTimeAgo(job.workerStatusUpdatedAt)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          Location last updated {formatTimeAgo(job.workerStatusUpdatedAt)}
+                        </span>
+                        {/* GPS tracking indicator when on the way */}
+                        {job.workerStatus === 'on_my_way' && (
+                          <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <Signal className="w-3 h-3" />
+                            Live tracking
+                          </span>
+                        )}
+                      </div>
                     )}
-                    {job.workerStatus === 'on_my_way' && job.workerEta && (
-                      <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                        ETA: {job.workerEta}
-                      </span>
-                    )}
-                    {job.workerEtaMinutes && job.workerEtaMinutes > 0 && (
-                      <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                        Est. duration: {job.workerEtaMinutes <= 60 ? '30-60 mins' : job.workerEtaMinutes <= 120 ? '1-2 hours' : job.workerEtaMinutes <= 240 ? 'Half day' : job.workerEtaMinutes <= 480 ? 'Full day' : 'Multi-day'}
-                      </span>
-                    )}
+                    {/* ETA and Duration badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {job.workerStatus === 'on_my_way' && job.workerEta && (
+                        <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                          ETA: {job.workerEta}
+                        </span>
+                      )}
+                      {job.workerEtaMinutes && job.workerEtaMinutes > 0 && (
+                        <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                          Est. duration: {job.workerEtaMinutes <= 60 ? '30-60 mins' : job.workerEtaMinutes <= 120 ? '1-2 hours' : job.workerEtaMinutes <= 240 ? 'Half day' : job.workerEtaMinutes <= 480 ? 'Full day' : 'Multi-day'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
