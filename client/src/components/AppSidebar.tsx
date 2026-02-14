@@ -86,7 +86,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-transparent flex-shrink-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-transparent flex-shrink-0 flex items-center justify-center">
               <img 
                 src={jobrunnerLogo} 
                 alt="JobRunner" 

@@ -281,9 +281,9 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             className="mb-8"
           >
             <a href="/" className="inline-flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity" data-testid="link-home">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-accent to-brand p-0.5 shadow-lg">
-                <div className="w-full h-full rounded-[10px] bg-white dark:bg-gray-950 flex items-center justify-center">
-                  <img src={appIconUrl} alt="JobRunner" className="w-10 h-10 object-contain" />
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center">
+                  <img src={appIconUrl} alt="JobRunner" className="w-14 h-14 object-contain" />
                 </div>
               </div>
               <span className="text-2xl font-bold">

@@ -444,7 +444,7 @@ export default function OnboardingWizard({ onComplete, onSkip, onSignOut }: Onbo
         {/* Top bar */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <img src={jobrunnerLogo} alt="JobRunner" className="h-10 w-auto" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="h-14 w-auto" />
             <span className="text-xl font-bold text-white hidden sm:inline">
               <span className="text-white">Job</span>
               <span className="text-orange-200">Runner</span>
