@@ -23,8 +23,7 @@ import {
   getSidebarSettingsItems,
   type NavItem 
 } from "@/lib/navigation-config";
-// JobRunner logo from public folder
-const jobrunnerLogo = '/logo.png';
+import jobrunnerLogo from "@assets/18ED5819-0D90-46FA-83CF-E95DC00C34FA_1771064550817.png";
 
 interface UnreadCounts {
   teamChat: number;

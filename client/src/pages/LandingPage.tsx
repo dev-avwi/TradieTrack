@@ -81,7 +81,7 @@ import {
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
-import jobrunnerLogo from "/logo.png";
+import jobrunnerLogo from "@assets/18ED5819-0D90-46FA-83CF-E95DC00C34FA_1771064550817.png";
 
 // App screenshots for phone mockups
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
