@@ -233,20 +233,20 @@ export default function JobPortal() {
                 className="w-10 h-10 object-contain rounded-md border border-gray-200"
               />
             ) : (
-              <div className="w-10 h-10 rounded-md bg-[#0F766E]/10 flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-[#0F766E]" />
+              <div className="w-10 h-10 rounded-md bg-[#0A6A73]/10 flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5 text-[#0A6A73]" />
               </div>
             )}
             <div className="min-w-0 flex-1">
               <h1 className="font-bold text-gray-900 text-base truncate">{business.name}</h1>
               <div className="flex items-center gap-3 flex-wrap">
                 {business.phone && (
-                  <a href={`tel:${business.phone}`} className="text-xs text-gray-500 hover:text-[#0F766E] flex items-center gap-1">
+                  <a href={`tel:${business.phone}`} className="text-xs text-gray-500 hover:text-[#0A6A73] flex items-center gap-1">
                     <Phone className="w-3 h-3" /> {business.phone}
                   </a>
                 )}
                 {business.email && (
-                  <a href={`mailto:${business.email}`} className="text-xs text-gray-500 hover:text-[#0F766E] items-center gap-1 hidden sm:flex">
+                  <a href={`mailto:${business.email}`} className="text-xs text-gray-500 hover:text-[#0A6A73] items-center gap-1 hidden sm:flex">
                     <Mail className="w-3 h-3" /> {business.email}
                   </a>
                 )}
@@ -295,7 +295,7 @@ export default function JobPortal() {
             <Card className="border-gray-200">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-[#0F766E] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-[#0A6A73] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                     {worker.firstName?.[0]}{worker.lastName?.[0]}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -304,7 +304,7 @@ export default function JobPortal() {
                   </div>
                   {worker.phone && (
                     <a href={`tel:${worker.phone}`}>
-                      <Button variant="outline" size="icon" className="rounded-full border-[#0F766E]/30 text-[#0F766E]">
+                      <Button variant="outline" size="icon" className="rounded-full border-[#0A6A73]/30 text-[#0A6A73]">
                         <Phone className="w-4 h-4" />
                       </Button>
                     </a>
@@ -330,7 +330,7 @@ export default function JobPortal() {
                         href={mapsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-[#0F766E] font-medium hover:underline inline-flex items-center gap-1 mt-0.5"
+                        className="text-xs text-[#0A6A73] font-medium hover:underline inline-flex items-center gap-1 mt-0.5"
                       >
                         Open in Maps <ChevronRight className="w-3 h-3" />
                       </a>
@@ -377,7 +377,7 @@ export default function JobPortal() {
                         {!isLast && (
                           <div
                             className={`absolute left-[-18px] top-6 w-0.5 h-full ${
-                              isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-[#0F766E]/30' : 'bg-gray-200'
+                              isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-[#0A6A73]/30' : 'bg-gray-200'
                             }`}
                           />
                         )}
@@ -389,8 +389,8 @@ export default function JobPortal() {
                               </div>
                             ) : isCurrent ? (
                               <div className="relative mt-1">
-                                <div className="w-3 h-3 rounded-full bg-[#0F766E]" />
-                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-[#0F766E] animate-ping opacity-50" />
+                                <div className="w-3 h-3 rounded-full bg-[#0A6A73]" />
+                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-[#0A6A73] animate-ping opacity-50" />
                               </div>
                             ) : (
                               <div className="w-3 h-3 rounded-full bg-gray-300 mt-1" />
@@ -407,7 +407,7 @@ export default function JobPortal() {
                             )}
                           </div>
                           <StepIcon className={`w-4 h-4 mt-0.5 ${
-                            isCompleted ? 'text-emerald-500' : isCurrent ? 'text-[#0F766E]' : 'text-gray-300'
+                            isCompleted ? 'text-emerald-500' : isCurrent ? 'text-[#0A6A73]' : 'text-gray-300'
                           }`} />
                         </div>
                       </div>

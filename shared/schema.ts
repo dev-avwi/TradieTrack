@@ -341,7 +341,7 @@ export const businessSettings = pgTable("business_settings", {
   invoicePrefix: text("invoice_prefix").default('TT-'),
   quotePrefix: text("quote_prefix").default('QT-'),
   paymentInstructions: text("payment_instructions"),
-  brandColor: text("brand_color").default('#0F766E'),
+  brandColor: text("brand_color").default('#0A6A73'),
   // Team/Business Size Settings
   teamSize: text("team_size").default('solo'), // 'solo', 'small' (2-5), 'medium' (6-20), 'large' (20+)
   numberOfEmployees: integer("number_of_employees").default(1),

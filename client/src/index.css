@@ -14,24 +14,24 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 0 0% 98%;
-  --foreground: 195 20% 14%;
+  --background: 210 40% 98%;
+  --foreground: 217 33% 17%;
   --border: 195 12% 91%;
   --card: 0 0% 96%;
-  --card-foreground: 195 20% 14%;
+  --card-foreground: 217 33% 17%;
   --card-border: 195 12% 88%;
   --sidebar: 192 15% 94%;
   --sidebar-foreground: 195 20% 14%;
   --sidebar-border: 195 12% 86%;
-  --sidebar-primary: 190 65% 22%;
+  --sidebar-primary: 185 84% 25%;
   --sidebar-primary-foreground: 0 0% 98%;
   --sidebar-accent: 192 12% 90%;
   --sidebar-accent-foreground: 195 20% 14%;
-  --sidebar-ring: 190 65% 22%;
+  --sidebar-ring: 185 84% 25%;
   --popover: 0 0% 92%;
   --popover-foreground: 195 20% 14%;
   --popover-border: 195 12% 84%;
-  --primary: 190 65% 22%;
+  --primary: 185 84% 25%;
   --primary-foreground: 0 0% 98%;
   --secondary: 192 8% 89%;
   --secondary-foreground: 195 20% 14%;
@@ -42,9 +42,9 @@
   --destructive: 5 85% 55%;
   --destructive-foreground: 0 0% 98%;
   --input: 195 12% 75%;
-  --ring: 190 65% 22%;
-  --chart-1: 190 65% 35%;
-  --chart-2: 35 90% 55%;
+  --ring: 185 84% 25%;
+  --chart-1: 185 84% 35%;
+  --chart-2: 28 80% 55%;
   --chart-3: 145 60% 42%;
   --chart-4: 280 55% 58%;
   --chart-5: 10 80% 58%;
@@ -58,10 +58,10 @@
   --info-foreground: 0 0% 98%;
 
   /* Trade-specific colors - dynamically set by JavaScript */
-  --trade: 190 65% 22%; /* Default teal, overridden by trade selection */
+  --trade: 185 84% 25%; /* Default teal, overridden by trade selection */
   --trade-bg: 192 20% 96%; /* Light tint for backgrounds */
-  --trade-border: 190 50% 28%; /* Darker for borders */
-  --trade-accent: 190 55% 35%; /* Enhanced accent color */
+  --trade-border: 185 70% 30%; /* Darker for borders */
+  --trade-accent: 185 70% 35%; /* Enhanced accent color */
   --trade-glow: 190 35% 85%; /* Subtle glow effect color */
 
   --font-sans: Inter, sans-serif;
@@ -120,37 +120,37 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 195 18% 8%;
-  --foreground: 190 15% 95%;
-  --border: 195 12% 15%;
-  --card: 195 16% 11%;
-  --card-foreground: 190 15% 95%;
-  --card-border: 195 12% 18%;
-  --sidebar: 195 18% 9%;
-  --sidebar-foreground: 190 15% 95%;
-  --sidebar-border: 195 12% 16%;
+  --background: 217 33% 8%;
+  --foreground: 210 25% 95%;
+  --border: 217 20% 15%;
+  --card: 217 30% 11%;
+  --card-foreground: 210 25% 95%;
+  --card-border: 217 20% 18%;
+  --sidebar: 217 33% 9%;
+  --sidebar-foreground: 210 25% 95%;
+  --sidebar-border: 217 20% 16%;
   --sidebar-primary: 190 15% 95%;
   --sidebar-primary-foreground: 195 18% 8%;
-  --sidebar-accent: 195 15% 14%;
-  --sidebar-accent-foreground: 190 15% 95%;
+  --sidebar-accent: 217 22% 14%;
+  --sidebar-accent-foreground: 210 25% 95%;
   --sidebar-ring: 190 15% 95%;
-  --popover: 195 16% 12%;
-  --popover-foreground: 190 15% 95%;
-  --popover-border: 195 12% 19%;
+  --popover: 217 28% 12%;
+  --popover-foreground: 210 25% 95%;
+  --popover-border: 217 20% 19%;
   --primary: 190 15% 95%;
   --primary-foreground: 195 18% 8%;
-  --secondary: 195 14% 16%;
-  --secondary-foreground: 190 15% 95%;
-  --muted: 195 14% 13%;
-  --muted-foreground: 195 10% 65%;
-  --accent: 195 12% 18%;
-  --accent-foreground: 190 15% 95%;
+  --secondary: 217 22% 16%;
+  --secondary-foreground: 210 25% 95%;
+  --muted: 217 20% 13%;
+  --muted-foreground: 217 15% 65%;
+  --accent: 217 18% 18%;
+  --accent-foreground: 210 25% 95%;
   --destructive: 5 85% 55%;
   --destructive-foreground: 0 0% 98%;
-  --input: 195 12% 35%;
+  --input: 217 18% 35%;
   --ring: 190 15% 95%;
-  --chart-1: 190 60% 55%;
-  --chart-2: 35 90% 70%;
+  --chart-1: 185 70% 55%;
+  --chart-2: 28 80% 65%;
   --chart-3: 145 55% 60%;
   --chart-4: 280 55% 72%;
   --chart-5: 10 80% 68%;
@@ -164,11 +164,11 @@
   --info-foreground: 0 0% 10%;
 
   /* Trade-specific colors - dynamically set by JavaScript */
-  --trade: 190 15% 95%; /* Default teal for dark mode */
-  --trade-bg: 192 18% 16%; /* Dark tint for backgrounds */
-  --trade-border: 190 20% 80%; /* Lighter for borders */
-  --trade-accent: 190 40% 65%; /* Enhanced accent color for dark mode */
-  --trade-glow: 190 35% 25%; /* Subtle glow effect color for dark mode */
+  --trade: 210 25% 95%; /* Default teal for dark mode */
+  --trade-bg: 217 25% 16%; /* Dark tint for backgrounds */
+  --trade-border: 185 25% 80%; /* Lighter for borders */
+  --trade-accent: 185 50% 65%; /* Enhanced accent color for dark mode */
+  --trade-glow: 185 30% 25%; /* Subtle glow effect color for dark mode */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.4);
   --shadow-xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.5);
