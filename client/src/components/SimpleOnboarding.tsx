@@ -760,7 +760,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center gap-4">
-            <img src={jobrunnerLogo} alt="JobRunner" className="h-[7.5rem] w-auto" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="h-16 w-auto" />
             <Loader2 className="h-8 w-8 text-white animate-spin" />
             <span className="text-white/80 text-sm">Loading your setup...</span>
           </div>
@@ -778,7 +778,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       
       <div className="relative z-10 max-w-2xl mx-auto p-4 md:p-6 min-h-screen flex flex-col">
         <div className="flex items-center justify-center gap-3 mb-6">
-          <img src={jobrunnerLogo} alt="JobRunner" className="h-[7rem] w-auto" />
+          <img src={jobrunnerLogo} alt="JobRunner" className="h-14 w-auto" />
           <span className="text-xl font-bold text-white">
             <span className="text-white">Job</span>
             <span className="text-orange-200">Runner</span>

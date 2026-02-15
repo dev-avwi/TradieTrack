@@ -387,7 +387,7 @@ export default function ClientPortalHub() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
         <div className="py-10 px-4">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-20 h-20 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
             <p className="text-sm text-slate-500 mt-1">Access your quotes, invoices, and job history</p>
           </div>
@@ -443,7 +443,7 @@ export default function ClientPortalHub() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
         <div className="py-10 px-4">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-20 h-20 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
             <p className="text-sm text-slate-500 mt-1">Secure verification</p>
           </div>
@@ -526,7 +526,7 @@ export default function ClientPortalHub() {
                     className="w-10 h-10 object-contain rounded-md bg-white/10 p-1"
                   />
                 ) : (
-                  <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 object-contain" />
+                  <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 object-contain" />
                 )}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base text-white truncate">

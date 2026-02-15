@@ -742,7 +742,7 @@ export default function JobPortal() {
               <img src={business.logo} alt={business.name}
                 className="w-10 h-10 object-contain rounded-md bg-white/90 p-0.5" />
             ) : (
-              <div className="w-14 h-14 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
+              <div className="w-10 h-10 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
                 <img src={jobrunnerLogo} alt="JobRunner" className="w-full h-full object-contain" />
               </div>
             )}

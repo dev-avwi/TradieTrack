@@ -186,7 +186,7 @@ export default function LandingPage() {
               <img 
                 src={jobrunnerLogo} 
                 alt="JobRunner" 
-                className="h-20 w-auto"
+                className="h-10 w-auto"
               />
               <span className="text-xl font-bold tracking-tight">
                 <span className="text-brand">Job</span>
@@ -287,7 +287,7 @@ export default function LandingPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <span className="flex items-center gap-2 text-lg font-bold">
-                <img src={jobrunnerLogo} alt="JobRunner" className="h-[4.5rem] w-auto" />
+                <img src={jobrunnerLogo} alt="JobRunner" className="h-10 w-auto" />
                 <span className="text-brand">Job</span>
                 <span className="text-brand-accent">Runner</span>
               </span>
@@ -1017,7 +1017,7 @@ export default function LandingPage() {
                 <img 
                   src={jobrunnerLogo} 
                   alt="JobRunner" 
-                  className="h-[4.5rem] w-auto brightness-0 invert"
+                  className="h-10 w-auto brightness-0 invert"
                 />
                 <span className="text-lg font-bold">
                   <span className="text-blue-400">Job</span>
