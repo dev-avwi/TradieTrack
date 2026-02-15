@@ -88,9 +88,9 @@ export default {
           border: "var(--sidebar-accent-border)"
         },
         brand: {
-          DEFAULT: "#0A6A73",
+          DEFAULT: "#2563EB",
           foreground: "#FFFFFF",
-          accent: "#E8862E",
+          accent: "#F59E0B",
           dark: "#1E293B",
           light: "#F8FAFC",
         },

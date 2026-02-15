@@ -19,7 +19,7 @@ const MAP_COLORS = [
   { name: 'Orange', hex: '#E8862E' },
   { name: 'Pink', hex: '#ec4899' },
   { name: 'Yellow', hex: '#eab308' },
-  { name: 'Teal', hex: '#0A6A73' },
+  { name: 'Blue', hex: '#2563EB' },
   { name: 'Indigo', hex: '#6366f1' },
   { name: 'Lime', hex: '#84cc16' },
   { name: 'Cyan', hex: '#06b6d4' },

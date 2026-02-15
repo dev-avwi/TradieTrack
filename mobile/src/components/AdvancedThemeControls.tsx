@@ -31,7 +31,7 @@ const PRESET_COLORS = [
   { name: 'Red', hex: '#ef4444' },
   { name: 'Purple', hex: '#8b5cf6' },
   { name: 'Pink', hex: '#ec4899' },
-  { name: 'Teal', hex: '#0A6A73' },
+  { name: 'Blue', hex: '#2563EB' },
   { name: 'Indigo', hex: '#6366f1' },
   { name: 'Yellow', hex: '#eab308' },
   { name: 'Cyan', hex: '#06b6d4' },

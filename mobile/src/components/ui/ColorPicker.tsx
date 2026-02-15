@@ -24,7 +24,7 @@ const PRESET_COLORS = [
   { name: 'Lime', hex: '#84cc16' },
   { name: 'Green', hex: '#22c55e' },
   { name: 'Emerald', hex: '#10b981' },
-  { name: 'Teal', hex: '#0A6A73' },
+  { name: 'Blue', hex: '#2563EB' },
   { name: 'Cyan', hex: '#06b6d4' },
   { name: 'Sky', hex: '#0ea5e9' },
   { name: 'Slate', hex: '#64748b' },
