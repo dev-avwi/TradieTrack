@@ -622,181 +622,302 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="quotes" className="space-y-4">
                   {portalData?.quotes.length === 0 ? (
-                    <Card className="border-slate-200/60">
-                      <CardContent className="pt-8 pb-8 text-center">
-                        <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                        <p className="text-slate-500 text-sm">No quotes yet</p>
-                      </CardContent>
-                    </Card>
+                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <FileText className="w-8 h-8 text-slate-300" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-700 mb-1">No Quotes Yet</h3>
+                      <p className="text-sm text-slate-400">Your quotes will appear here once they're sent</p>
+                    </div>
                   ) : (
                     portalData?.quotes.map((quote) => (
-                      <Card key={quote.id} className="hover-elevate cursor-pointer" onClick={() => handleViewQuote(quote)}>
-                        <CardContent className="pt-6">
-                          <div className="flex items-start justify-between gap-4">
+                      <div
+                        key={quote.id}
+                        className={`bg-white rounded-2xl shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
+                          quote.status === 'sent'
+                            ? 'border-[#2563EB]/20 ring-1 ring-[#2563EB]/10'
+                            : 'border-slate-200'
+                        }`}
+                        onClick={() => handleViewQuote(quote)}
+                      >
+                        <div className="p-5">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-5 h-5 text-[#2563EB]" />
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="font-medium truncate">Quote #{quote.number}</h3>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-semibold text-slate-900 truncate">Quote #{quote.number}</h3>
                                 <Badge className={getQuoteStatusColor(quote.status)}>
                                   {quote.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-slate-500 truncate">{quote.title}</p>
-                              {quote.business?.businessName && (
-                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                                  <Building2 className="w-3 h-3" />
-                                  {quote.business.businessName}
-                                </p>
-                              )}
-                              <p className="text-xs text-slate-400 mt-1">
-                                {formatDate(quote.createdAt)}
-                                {quote.validUntil && ` • Valid until ${formatDate(quote.validUntil)}`}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-lg">{formatCurrency(quote.total)}</p>
-                              {quote.status === 'sent' && (
-                                <Button size="sm" className="mt-2">
-                                  <Check className="w-3 h-3 mr-1" />
-                                  View & Accept
-                                </Button>
-                              )}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                          <div className="ml-13 space-y-1">
+                            <p className="text-sm text-slate-600 truncate">{quote.title}</p>
+                            {quote.business?.businessName && (
+                              <p className="text-xs text-slate-400 flex items-center gap-1">
+                                <Building2 className="w-3 h-3" />
+                                {quote.business.businessName}
+                              </p>
+                            )}
+                            <p className="text-xs text-slate-400">
+                              {formatDate(quote.createdAt)}
+                              {quote.validUntil && ` · Valid until ${formatDate(quote.validUntil)}`}
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount</p>
+                                <p className="text-xl font-bold text-slate-900">{formatCurrency(quote.total)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {quote.status === 'sent' && (
+                          <div className="px-5 pb-5">
+                            <Button className="w-full" size="lg">
+                              <Check className="w-4 h-4 mr-2" />
+                              View & Accept Quote
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     ))
                   )}
                 </TabsContent>
 
                 <TabsContent value="invoices" className="space-y-4">
                   {portalData?.invoices.length === 0 ? (
-                    <Card className="border-slate-200/60">
-                      <CardContent className="pt-8 pb-8 text-center">
-                        <CreditCard className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                        <p className="text-slate-500 text-sm">No invoices yet</p>
-                      </CardContent>
-                    </Card>
+                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <CreditCard className="w-8 h-8 text-slate-300" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-700 mb-1">No Invoices Yet</h3>
+                      <p className="text-sm text-slate-400">Your invoices will appear here once they're created</p>
+                    </div>
                   ) : (
-                    portalData?.invoices.map((invoice) => (
-                      <Card key={invoice.id} className="hover-elevate">
-                        <CardContent className="pt-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="font-medium truncate">Invoice #{invoice.number}</h3>
-                                <Badge className={getInvoiceStatusColor(invoice.status)}>
-                                  {invoice.status}
-                                </Badge>
+                    portalData?.invoices.map((invoice) => {
+                      const isPayable = invoice.status !== 'paid' && invoice.allowOnlinePayment;
+                      const isPaid = invoice.status === 'paid';
+                      const isOverdue = invoice.status === 'overdue';
+
+                      return (
+                        <div
+                          key={invoice.id}
+                          className={`rounded-2xl overflow-hidden hover-elevate ${
+                            isPayable
+                              ? 'bg-[#2563EB]/5 shadow-xl border-2 border-[#2563EB]/20 ring-1 ring-[#2563EB]/10'
+                              : isPaid
+                              ? 'bg-white shadow-lg border border-green-200 ring-1 ring-green-100'
+                              : isOverdue
+                              ? 'bg-white shadow-lg border border-red-200 ring-1 ring-red-100'
+                              : 'bg-white shadow-lg border border-slate-200'
+                          }`}
+                        >
+                          <div className="p-5">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                isPaid
+                                  ? 'bg-green-100'
+                                  : isOverdue
+                                  ? 'bg-red-100'
+                                  : 'bg-[#2563EB]/10'
+                              }`}>
+                                {isPaid ? (
+                                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                ) : isOverdue ? (
+                                  <AlertCircle className="w-5 h-5 text-red-500" />
+                                ) : (
+                                  <CreditCard className="w-5 h-5 text-[#2563EB]" />
+                                )}
                               </div>
-                              <p className="text-sm text-slate-500 truncate">{invoice.title}</p>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="font-semibold text-slate-900 truncate">Invoice #{invoice.number}</h3>
+                                  <Badge className={getInvoiceStatusColor(invoice.status)}>
+                                    {invoice.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="ml-13 space-y-1">
+                              <p className="text-sm text-slate-600 truncate">{invoice.title}</p>
                               {invoice.business?.businessName && (
-                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                <p className="text-xs text-slate-400 flex items-center gap-1">
                                   <Building2 className="w-3 h-3" />
                                   {invoice.business.businessName}
                                 </p>
                               )}
-                              <p className="text-xs text-slate-400 mt-1">
+                              <p className="text-xs text-slate-400">
                                 {formatDate(invoice.createdAt)}
-                                {invoice.dueDate && invoice.status !== 'paid' && ` • Due ${formatDate(invoice.dueDate)}`}
-                                {invoice.paidAt && ` • Paid ${formatDate(invoice.paidAt)}`}
+                                {invoice.dueDate && invoice.status !== 'paid' && ` · Due ${formatDate(invoice.dueDate)}`}
+                                {invoice.paidAt && ` · Paid ${formatDate(invoice.paidAt)}`}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="font-bold text-lg">{formatCurrency(invoice.total)}</p>
-                              {invoice.status !== 'paid' && invoice.allowOnlinePayment && (
-                                <Button size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); handlePayInvoice(invoice); }}>
-                                  <CreditCard className="w-3 h-3 mr-1" />
-                                  Pay Now
-                                </Button>
-                              )}
-                              {invoice.status === 'paid' && (
-                                <div className="flex items-center gap-1 text-green-600 text-sm mt-2">
-                                  <CheckCircle2 className="w-4 h-4" />
-                                  Paid
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between gap-4">
+                                <div>
+                                  <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                                    {isPaid ? 'Amount Paid' : isOverdue ? 'Amount Overdue' : 'Amount Due'}
+                                  </p>
+                                  <p className={`text-xl font-bold ${
+                                    isPaid ? 'text-green-700' : isOverdue ? 'text-red-600' : 'text-slate-900'
+                                  }`}>{formatCurrency(invoice.total)}</p>
                                 </div>
-                              )}
+                                {isPaid && (
+                                  <div className="flex items-center gap-1.5 text-green-600 text-sm font-medium">
+                                    <CheckCircle2 className="w-5 h-5" />
+                                    Paid
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                          {isPayable && (
+                            <div className="px-5 pb-5">
+                              <Button className="w-full" size="lg" onClick={(e) => { e.stopPropagation(); handlePayInvoice(invoice); }}>
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Pay Now
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </TabsContent>
 
                 <TabsContent value="receipts" className="space-y-4">
                   {portalData?.receipts.length === 0 ? (
-                    <Card className="border-slate-200/60">
-                      <CardContent className="pt-8 pb-8 text-center">
-                        <Receipt className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                        <p className="text-slate-500 text-sm">No receipts yet</p>
-                      </CardContent>
-                    </Card>
+                    <div className="bg-gradient-to-br from-green-50/50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+                        <Receipt className="w-8 h-8 text-green-300" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-700 mb-1">No Receipts Yet</h3>
+                      <p className="text-sm text-slate-400">Payment receipts will appear here after completed payments</p>
+                    </div>
                   ) : (
                     portalData?.receipts.map((receipt) => (
-                      <Card key={receipt.id} className="hover-elevate cursor-pointer" onClick={() => handleViewReceipt(receipt)}>
-                        <CardContent className="pt-6">
-                          <div className="flex items-start justify-between gap-4">
+                      <div
+                        key={receipt.id}
+                        className="bg-white rounded-2xl shadow-lg border border-green-200 ring-1 ring-green-100 overflow-hidden hover-elevate cursor-pointer"
+                        onClick={() => handleViewReceipt(receipt)}
+                      >
+                        <div className="p-5">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-medium">Receipt #{receipt.number}</h3>
-                              <p className="text-xs text-slate-400 mt-1">
+                              <h3 className="font-semibold text-slate-900 truncate">Receipt #{receipt.number}</h3>
+                              <p className="text-xs text-slate-400">
                                 Paid {formatDate(receipt.paymentDate)}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="font-bold text-lg">{formatCurrency(receipt.total)}</p>
-                              <Button size="sm" variant="outline" className="mt-2">
-                                <Download className="w-3 h-3 mr-1" />
-                                View
-                              </Button>
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-green-100">
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount Paid</p>
+                                <p className="text-xl font-bold text-green-700">{formatCurrency(receipt.total)}</p>
+                              </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                        <div className="px-5 pb-5">
+                          <Button variant="outline" className="w-full">
+                            <Download className="w-4 h-4 mr-2" />
+                            View Receipt
+                          </Button>
+                        </div>
+                      </div>
                     ))
                   )}
                 </TabsContent>
 
                 <TabsContent value="jobs" className="space-y-4">
                   {portalData?.jobs.length === 0 ? (
-                    <Card className="border-slate-200/60">
-                      <CardContent className="pt-8 pb-8 text-center">
-                        <Briefcase className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                        <p className="text-slate-500 text-sm">No jobs yet</p>
-                      </CardContent>
-                    </Card>
+                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <Briefcase className="w-8 h-8 text-slate-300" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-700 mb-1">No Jobs Yet</h3>
+                      <p className="text-sm text-slate-400">Your job history will appear here</p>
+                    </div>
                   ) : (
-                    portalData?.jobs.map((job) => (
-                      <Card key={job.id}>
-                        <CardContent className="pt-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="font-medium truncate">{job.title}</h3>
-                                <Badge className={getJobStatusColor(job.status)}>
-                                  {job.status.replace('_', ' ')}
-                                </Badge>
+                    portalData?.jobs.map((job) => {
+                      const isDone = job.status === 'done' || job.status === 'completed';
+                      const isInProgress = job.status === 'in_progress';
+                      const isScheduled = job.status === 'scheduled';
+
+                      return (
+                        <div
+                          key={job.id}
+                          className={`bg-white rounded-2xl shadow-lg border overflow-hidden hover-elevate ${
+                            isDone
+                              ? 'border-green-200 ring-1 ring-green-100'
+                              : isInProgress
+                              ? 'border-blue-200 ring-1 ring-blue-100'
+                              : isScheduled
+                              ? 'border-purple-200 ring-1 ring-purple-100'
+                              : 'border-slate-200'
+                          }`}
+                        >
+                          <div className="p-5">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                isDone
+                                  ? 'bg-green-100'
+                                  : isInProgress
+                                  ? 'bg-blue-100'
+                                  : isScheduled
+                                  ? 'bg-purple-100'
+                                  : 'bg-slate-100'
+                              }`}>
+                                <Briefcase className={`w-5 h-5 ${
+                                  isDone
+                                    ? 'text-green-600'
+                                    : isInProgress
+                                    ? 'text-blue-600'
+                                    : isScheduled
+                                    ? 'text-purple-600'
+                                    : 'text-slate-500'
+                                }`} />
                               </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="font-semibold text-slate-900 truncate">{job.title}</h3>
+                                  <Badge className={getJobStatusColor(job.status)}>
+                                    {job.status.replace('_', ' ')}
+                                  </Badge>
+                                </div>
+                              </div>
+                              {job.photos && job.photos.length > 0 && (
+                                <Badge variant="secondary">
+                                  {job.photos.length} photo{job.photos.length !== 1 ? 's' : ''}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="ml-13 space-y-1">
                               {job.address && (
-                                <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                <p className="text-sm text-slate-500 flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
                                   {job.address}
                                 </p>
                               )}
-                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                              <p className="text-xs text-slate-400 flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 {job.scheduledAt ? `Scheduled: ${formatDate(job.scheduledAt)}` : 'Not scheduled'}
-                                {job.completedAt && ` • Completed: ${formatDate(job.completedAt)}`}
+                                {job.completedAt && ` · Completed: ${formatDate(job.completedAt)}`}
                               </p>
                             </div>
-                            {job.photos && job.photos.length > 0 && (
-                              <Badge variant="secondary">
-                                {job.photos.length} photo{job.photos.length !== 1 ? 's' : ''}
-                              </Badge>
-                            )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                        </div>
+                      );
+                    })
                   )}
                 </TabsContent>
               </Tabs>
