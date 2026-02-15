@@ -1501,6 +1501,7 @@ export const jobAssignments = pgTable("job_assignments", {
   confidentialityAgreed: boolean("confidentiality_agreed").default(false),
   acceptanceIpAddress: text("acceptance_ip_address"),
   acceptanceUserAgent: text("acceptance_user_agent"),
+  isPrimary: boolean("is_primary").default(false),
 });
 
 export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true, lastSmsSentAt: true, travelStartedAt: true, arrivedAt: true, etaUpdatedAt: true, acceptedAt: true, acceptanceSignatureData: true, acceptanceIpAddress: true, acceptanceUserAgent: true });
