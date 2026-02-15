@@ -248,69 +248,76 @@ function KanbanBoard({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
 
   return (
     <div className="overflow-x-auto pb-4">
-      <div className="flex gap-4 min-w-[900px]">
-        {KANBAN_COLUMNS.map(column => (
-          <div key={column.key} className="flex-1 min-w-[220px]">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-2.5 h-2.5 rounded-full ${column.color}`} />
-              <h3 className="text-sm font-semibold">{column.label}</h3>
-              <Badge variant="secondary" className="ml-auto">
-                {columnJobs[column.key]?.length || 0}
-              </Badge>
+      <div className="flex gap-3 min-w-[900px]">
+        {KANBAN_COLUMNS.map(column => {
+          const count = columnJobs[column.key]?.length || 0;
+          return (
+            <div key={column.key} className="flex-1 min-w-[220px]">
+              <div className={`h-[3px] rounded-full mb-2 ${column.color}`} />
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <h3 className="text-sm font-semibold">{column.label}</h3>
+                <Badge variant="secondary" className="ml-auto tabular-nums">
+                  {count}
+                </Badge>
+              </div>
+              <div className={`rounded-md p-1.5 space-y-1.5 min-h-[200px] ${column.bgLight}`}>
+                {(columnJobs[column.key] || []).map(job => {
+                  const firstAssignment = job.assignments?.find(a => a.isActive);
+                  const colDef = KANBAN_COLUMNS.find(c => c.key === getKanbanColumn(job));
+                  return (
+                    <Card key={job.id} className="hover-elevate overflow-visible">
+                      <CardContent className="p-2.5 flex gap-2">
+                        <div className={`w-1 rounded-full flex-shrink-0 self-stretch ${colDef?.color || 'bg-muted'}`} />
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-sm font-medium leading-tight truncate">{job.title}</h4>
+                          </div>
+                          {job.client && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {job.client.name}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {firstAssignment && (
+                              <div className="flex items-center gap-1">
+                                <Avatar className="h-4 w-4">
+                                  <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                    {(firstAssignment.memberFirstName?.[0] || '') + (firstAssignment.memberLastName?.[0] || '')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">
+                                  {firstAssignment.memberFirstName}
+                                </span>
+                              </div>
+                            )}
+                            {job.scheduledTime && (
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="h-2.5 w-2.5" />
+                                {job.scheduledTime}
+                              </span>
+                            )}
+                          </div>
+                          {job.address && (
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                              <span className="truncate">{job.address}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+                {count === 0 && (
+                  <div className="text-center py-8 text-xs text-muted-foreground">
+                    <div className={`w-6 h-6 rounded-full mx-auto mb-2 opacity-30 ${column.color}`} />
+                    No {column.label.toLowerCase()} jobs
+                  </div>
+                )}
+              </div>
             </div>
-            <div className={`rounded-lg p-2 space-y-2 min-h-[200px] ${column.bgLight}`}>
-              {(columnJobs[column.key] || []).map(job => {
-                const firstAssignment = job.assignments?.find(a => a.isActive);
-                return (
-                  <Card key={job.id} className="hover-elevate">
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-sm font-medium leading-tight">{job.title}</h4>
-                        <Badge variant="outline" className="text-[10px] flex-shrink-0">
-                          {job.status}
-                        </Badge>
-                      </div>
-                      {job.client && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {job.client.name}
-                        </p>
-                      )}
-                      {firstAssignment && (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <Avatar className="h-5 w-5">
-                            <AvatarFallback className="text-[9px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                              {(firstAssignment.memberFirstName?.[0] || '') + (firstAssignment.memberLastName?.[0] || '')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground truncate">
-                            {firstAssignment.memberFirstName} {firstAssignment.memberLastName}
-                          </span>
-                        </div>
-                      )}
-                      {job.address && (
-                        <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{job.address}</span>
-                        </div>
-                      )}
-                      {job.scheduledTime && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3 flex-shrink-0" />
-                          <span>{job.scheduledTime}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-              {(columnJobs[column.key] || []).length === 0 && (
-                <div className="text-center py-6 text-xs text-muted-foreground">
-                  No jobs
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -732,36 +739,74 @@ export default function DispatchBoard() {
 
   return (
     <PageShell data-testid="dispatch-board">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="mb-6 space-y-3">
         <PageHeader
           title="Dispatch Board"
-          subtitle="Drag and drop jobs to schedule your team"
+          subtitle="Live operations center"
+          leading={<Navigation className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
         />
-        <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
-          <Button
-            variant={topView === 'schedule' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setTopView('schedule')}
-          >
-            <CalendarIcon className="h-4 w-4 mr-1.5" />
-            Schedule
-          </Button>
-          <Button
-            variant={topView === 'board' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setTopView('board')}
-          >
-            <LayoutGrid className="h-4 w-4 mr-1.5" />
-            Board
-          </Button>
-          <Button
-            variant={topView === 'map' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setTopView('map')}
-          >
-            <MapIcon className="h-4 w-4 mr-1.5" />
-            Map
-          </Button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-md bg-muted/40 border px-3 py-2">
+          <div className="flex items-center gap-1 bg-background rounded-md p-0.5">
+            <Button
+              variant={topView === 'schedule' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTopView('schedule')}
+            >
+              <CalendarIcon className="h-4 w-4 mr-1.5" />
+              Schedule
+            </Button>
+            <Button
+              variant={topView === 'board' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTopView('board')}
+            >
+              <LayoutGrid className="h-4 w-4 mr-1.5" />
+              Board
+            </Button>
+            <Button
+              variant={topView === 'map' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTopView('map')}
+            >
+              <MapIcon className="h-4 w-4 mr-1.5" />
+              Map
+            </Button>
+          </div>
+
+          {topView === 'schedule' && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={() => navigateDate('prev')} data-testid="button-prev-day-bar">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant={isToday ? "default" : "outline"} size="sm" onClick={goToToday} data-testid="button-today-bar">
+                Today
+              </Button>
+              <span className="text-sm font-semibold hidden md:inline-flex items-center gap-1.5">
+                {isToday && <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} /><span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'hsl(var(--trade))' }} /></span>}
+                {format(currentDate, 'EEE, MMM d')}
+              </span>
+              <Button variant="outline" size="icon" onClick={() => navigateDate('next')} data-testid="button-next-day-bar">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+              <span style={{ color: 'hsl(var(--trade))' }}>{scheduledJobsForDate.length}</span> Scheduled
+            </span>
+            <span className="text-muted-foreground/40">|</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-orange-500">{scheduledJobsForDate.filter(j => j.status === 'in_progress').length}</span> Active
+            </span>
+            <span className="text-muted-foreground/40">|</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-amber-500">{unscheduledJobs.length}</span> Unscheduled
+            </span>
+          </div>
         </div>
       </div>
 
@@ -834,7 +879,7 @@ export default function DispatchBoard() {
         <div className="flex-1">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -846,8 +891,8 @@ export default function DispatchBoard() {
                   </Button>
                   <Button
                     variant={isToday ? "default" : "outline"}
+                    size="sm"
                     onClick={goToToday}
-                    className="min-w-[80px]"
                     data-testid="button-today"
                   >
                     Today
@@ -860,22 +905,30 @@ export default function DispatchBoard() {
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
-                  <div className="ml-2">
-                    <h2 className="text-lg font-semibold">
+                </div>
+
+                <div className="flex items-center gap-2 text-center">
+                  {isToday && (
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                    </span>
+                  )}
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight">
                       {format(currentDate, 'EEEE, MMMM d, yyyy')}
                     </h2>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {scheduledJobsForDate.length} job{scheduledJobsForDate.length !== 1 ? 's' : ''} scheduled
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
                   <Button
                     variant={viewMode === 'day' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('day')}
-                    className="h-8"
                     data-testid="button-view-day"
                   >
                     Day
@@ -884,7 +937,6 @@ export default function DispatchBoard() {
                     variant={viewMode === '3day' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('3day')}
-                    className="h-8"
                     data-testid="button-view-3day"
                   >
                     3 Day
@@ -893,7 +945,6 @@ export default function DispatchBoard() {
                     variant={viewMode === 'week' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('week')}
-                    className="h-8"
                     data-testid="button-view-week"
                   >
                     Week
@@ -1128,14 +1179,17 @@ export default function DispatchBoard() {
             <CardContent className="p-3">
               <div className="space-y-3">
                 {teamMembersWithJobs.map(member => (
-                  <div key={member.id} className="space-y-1">
+                  <div key={member.id} className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-[10px]">
-                            {(member.firstName?.[0] || '') + (member.lastName?.[0] || '')}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}>
+                              {(member.firstName?.[0] || '') + (member.lastName?.[0] || '')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background ${member.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+                        </div>
                         <span className="text-sm font-medium">
                           {member.firstName} {member.lastName}
                         </span>
@@ -1150,9 +1204,9 @@ export default function DispatchBoard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
                         <div 
-                          className="h-full rounded-full transition-all"
+                          className="h-full rounded-full transition-all duration-500"
                           style={{ 
                             width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
                             backgroundColor: member.totalHours > member.capacity 
@@ -1161,7 +1215,7 @@ export default function DispatchBoard() {
                           }}
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground w-16 text-right">
+                      <span className="text-xs text-muted-foreground w-16 text-right tabular-nums">
                         {member.totalHours}h / {member.capacity}h
                       </span>
                     </div>
@@ -1336,35 +1390,50 @@ export default function DispatchBoard() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                Quick Links
+                <div className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </div>
+                Live Operations
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-center p-3 rounded-lg bg-muted/30">
-                  <p className="text-2xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                    <span className="text-sm text-muted-foreground">Scheduled</span>
+                  </div>
+                  <span className="text-lg font-bold tabular-nums" style={{ color: 'hsl(var(--trade))' }}>
                     {scheduledJobsForDate.length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Today's Jobs</p>
+                  </span>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/30">
-                  <p className="text-2xl font-bold text-orange-500">
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500" />
+                    <span className="text-sm text-muted-foreground">In Progress</span>
+                  </div>
+                  <span className="text-lg font-bold tabular-nums text-orange-500">
                     {scheduledJobsForDate.filter(j => j.status === 'in_progress').length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">In Progress</p>
+                  </span>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/30">
-                  <p className="text-2xl font-bold text-green-500">
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-sm text-muted-foreground">Completed</span>
+                  </div>
+                  <span className="text-lg font-bold tabular-nums text-green-500">
                     {scheduledJobsForDate.filter(j => j.status === 'done').length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Completed</p>
+                  </span>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-muted/30">
-                  <p className="text-2xl font-bold text-amber-500">
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-sm text-muted-foreground">Unscheduled</span>
+                  </div>
+                  <span className="text-lg font-bold tabular-nums text-amber-500">
                     {unscheduledJobs.length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Unscheduled</p>
+                  </span>
                 </div>
               </div>
             </CardContent>

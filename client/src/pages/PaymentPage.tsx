@@ -191,7 +191,7 @@ function InvoicePaymentView({
   if (invoiceData.paid || invoiceData.status === 'paid' || paymentSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-green-100 overflow-hidden">
+        <div className="max-w-md w-full bg-white rounded-md shadow-xl border border-green-100 overflow-hidden">
           {/* Success header with gradient */}
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-6 px-6 text-center">
             {invoiceData.business.logo && (
@@ -201,8 +201,8 @@ function InvoicePaymentView({
                 className="h-10 max-w-[120px] object-contain mx-auto mb-3 brightness-0 invert"
               />
             )}
-            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-3">
-              <CheckCircle className="h-10 w-10 text-white" />
+            <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="h-7 w-7 text-white" />
             </div>
             <h2 className="text-2xl font-bold">Payment Successful!</h2>
           </div>
@@ -219,7 +219,7 @@ function InvoicePaymentView({
             </div>
             
             <Button 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full bg-green-600 text-white"
               onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
               data-testid="button-download-receipt"
             >
@@ -243,7 +243,7 @@ function InvoicePaymentView({
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden">
           {/* Header */}
           <div className="p-6 text-center border-b border-slate-100">
             {invoiceData.business.logo ? (
@@ -389,7 +389,7 @@ function InvoicePaymentView({
         <div className="grid gap-6">
           {/* Payment Card - MOVED TO TOP */}
           {clientSecret && stripePromise && (
-            <div className="bg-[#2563EB]/5 rounded-2xl shadow-xl border-2 border-[#2563EB]/20 overflow-hidden ring-4 ring-[#2563EB]/10">
+            <div className="bg-[#2563EB]/5 rounded-md shadow-xl border-2 border-[#2563EB]/20 overflow-hidden ring-2 ring-[#2563EB]/10">
               <div className="px-6 py-5 border-b border-[#2563EB]/15 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -435,14 +435,14 @@ function InvoicePaymentView({
           )}
 
           {createPaymentIntentMutation.isPending && (
-            <div className="bg-white rounded-2xl shadow-lg border-2 border-dashed border-slate-200 p-8 text-center">
+            <div className="bg-white rounded-md shadow-lg border-2 border-dashed border-slate-200 p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
               <p className="text-slate-600 font-medium">Setting up your secure payment session...</p>
             </div>
           )}
 
           {/* Invoice Card - MOVED BELOW */}
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden">
             {/* Invoice Header with Accent */}
             <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-6 py-4">
               <div className="flex items-center justify-between">
@@ -568,7 +568,7 @@ function InvoicePaymentView({
               <Button 
                 variant="outline"
                 size="sm"
-                className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold"
+                className="w-full border-slate-300 text-slate-700 font-semibold"
                 onClick={() => window.open(`/api/public/invoice/${token}/pdf`, '_blank')}
                 data-testid="button-download-invoice"
               >
@@ -579,7 +579,7 @@ function InvoicePaymentView({
           </div>
 
           {createPaymentIntentMutation.isPending && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+            <div className="bg-white rounded-md shadow-lg border border-slate-200 p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
               <p className="text-slate-600">Setting up secure payment...</p>
             </div>
@@ -702,7 +702,7 @@ function PaymentRequestView({
   if (requestData.status === 'paid' || paymentSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-green-100 overflow-hidden">
+        <div className="max-w-md w-full bg-white rounded-md shadow-xl border border-green-100 overflow-hidden">
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-6 px-6 text-center">
             {requestData.businessLogo && (
               <img 
@@ -711,8 +711,8 @@ function PaymentRequestView({
                 className="h-10 max-w-[120px] object-contain mx-auto mb-3 brightness-0 invert"
               />
             )}
-            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-3">
-              <CheckCircle className="h-10 w-10 text-white" />
+            <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="h-7 w-7 text-white" />
             </div>
             <h2 className="text-2xl font-bold">Payment Successful!</h2>
           </div>
@@ -742,7 +742,7 @@ function PaymentRequestView({
   if (requestData.status === 'cancelled') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-red-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+        <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-red-100 p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-red-600" />
           </div>
@@ -758,7 +758,7 @@ function PaymentRequestView({
   if (requestData.status === 'expired') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-amber-100 p-8 text-center">
+        <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-amber-100 p-8 text-center">
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Clock className="h-8 w-8 text-amber-600" />
           </div>
@@ -796,7 +796,7 @@ function PaymentRequestView({
 
         <div className="grid gap-6">
           {/* Amount Card */}
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden">
             <div className="bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white py-6 px-6 text-center">
               <p className="text-white/70 text-sm mb-2">Amount Due</p>
               <p className="text-4xl font-bold">${amount.toFixed(2)}</p>
@@ -835,7 +835,7 @@ function PaymentRequestView({
 
           {/* Demo Payment Card */}
           {requestData.isDemoMode && (
-            <div className="bg-white rounded-2xl shadow-lg border border-orange-200 overflow-hidden">
+            <div className="bg-white rounded-md shadow-lg border border-orange-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-orange-100 bg-orange-50">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-orange-600" />
@@ -891,7 +891,7 @@ function PaymentRequestView({
 
           {/* Real Payment Card */}
           {!requestData.isDemoMode && clientSecret && stripePromise && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-[#2563EB]" />
@@ -916,15 +916,15 @@ function PaymentRequestView({
               </div>
               
               {/* Trust badges */}
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
-                <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
-                  <div className="flex items-center gap-1">
+              <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 backdrop-blur-sm">
+                <div className="flex items-center justify-center gap-8 text-xs font-medium text-slate-500">
+                  <div className="flex items-center gap-1.5">
                     <ShieldCheck className="h-4 w-4 text-green-600" />
-                    <span>256-bit SSL</span>
+                    <span>Bank-level Security</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Lock className="h-4 w-4 text-[#2563EB]" />
-                    <span>Secure Checkout</span>
+                    <span>PCI Compliant</span>
                   </div>
                 </div>
               </div>
@@ -932,14 +932,14 @@ function PaymentRequestView({
           )}
 
           {!requestData.isDemoMode && createPaymentIntentMutation.isPending && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+            <div className="bg-white rounded-md shadow-lg border border-slate-200 p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
               <p className="text-slate-600">Setting up secure payment...</p>
             </div>
           )}
 
           {!requestData.isDemoMode && createPaymentIntentMutation.isError && (
-            <div className="bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+            <div className="bg-white rounded-md shadow-lg border border-red-100 p-8 text-center">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="h-6 w-6 text-red-600" />
               </div>
@@ -996,7 +996,7 @@ export default function PaymentPage() {
   if (!token) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-red-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+        <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-red-100 p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-red-600" />
           </div>
@@ -1055,7 +1055,7 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-amber-100 p-8 text-center">
+      <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-amber-100 p-8 text-center">
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="h-8 w-8 text-amber-600" />
         </div>

@@ -384,8 +384,9 @@ export default function ClientPortalHub() {
 
   if (viewState === 'phone') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
-        <div className="py-10 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
@@ -393,10 +394,10 @@ export default function ClientPortalHub() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-start justify-center px-4">
-          <Card className="w-full max-w-md rounded-2xl shadow-lg border-slate-200/60">
+        <div className="flex-1 flex items-start justify-center px-4 relative">
+          <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-[#2563EB]/10 flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto mb-3">
                 <Phone className="w-6 h-6 text-[#2563EB]" />
               </div>
               <CardTitle className="text-lg">Verify Your Identity</CardTitle>
@@ -417,7 +418,7 @@ export default function ClientPortalHub() {
               <Button 
                 onClick={handleRequestCode}
                 disabled={isLoading || !phone.trim()}
-                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]"
+                className="w-full bg-[#2563EB]"
                 size="lg"
               >
                 {isLoading ? 'Sending...' : 'Send Verification Code'}
@@ -430,9 +431,9 @@ export default function ClientPortalHub() {
           </Card>
         </div>
 
-        <div className="text-center py-6 flex items-center justify-center gap-2">
+        <div className="text-center py-8 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-xs text-slate-400">Powered by <span className="font-medium text-slate-500">JobRunner</span></span>
+          <span className="text-sm text-slate-400">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -440,8 +441,9 @@ export default function ClientPortalHub() {
 
   if (viewState === 'code') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
-        <div className="py-10 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
@@ -449,10 +451,10 @@ export default function ClientPortalHub() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-start justify-center px-4">
-          <Card className="w-full max-w-md rounded-2xl shadow-lg border-slate-200/60">
+        <div className="flex-1 flex items-start justify-center px-4 relative">
+          <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-[#2563EB]/10 flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="w-6 h-6 text-[#2563EB]" />
               </div>
               <CardTitle className="text-lg">Enter Verification Code</CardTitle>
@@ -474,7 +476,7 @@ export default function ClientPortalHub() {
               <Button 
                 onClick={handleVerifyCode}
                 disabled={isLoading || code.length !== 6}
-                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]"
+                className="w-full bg-[#2563EB]"
                 size="lg"
               >
                 {isLoading ? 'Verifying...' : 'Verify & Continue'}
@@ -501,9 +503,9 @@ export default function ClientPortalHub() {
           </Card>
         </div>
 
-        <div className="text-center py-6 flex items-center justify-center gap-2">
+        <div className="text-center py-8 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-xs text-slate-400">Powered by <span className="font-medium text-slate-500">JobRunner</span></span>
+          <span className="text-sm text-slate-400">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -546,7 +548,7 @@ export default function ClientPortalHub() {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleLogout} className="text-white border-white/30 hover:bg-white/10">
+              <Button variant="outline" size="sm" onClick={handleLogout} className="text-white border-white/30">
                 <LogOut className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Logout</span>
               </Button>
@@ -554,7 +556,7 @@ export default function ClientPortalHub() {
           </div>
         </header>
 
-        <div className="bg-gradient-to-r from-[#2563EB]/5 to-transparent border-b border-[#2563EB]/10 px-4 py-4">
+        <div className="bg-gradient-to-r from-[#2563EB]/[0.04] via-[#2563EB]/[0.02] to-transparent border-b border-slate-200 px-4 py-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -622,7 +624,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="quotes" className="space-y-4">
                   {portalData?.quotes.length === 0 ? (
-                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <FileText className="w-8 h-8 text-slate-300" />
                       </div>
@@ -633,9 +635,9 @@ export default function ClientPortalHub() {
                     portalData?.quotes.map((quote) => (
                       <div
                         key={quote.id}
-                        className={`bg-white rounded-2xl shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
+                        className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
                           quote.status === 'sent'
-                            ? 'border-[#2563EB]/20 ring-1 ring-[#2563EB]/10'
+                            ? 'border-[#2563EB]/20'
                             : 'border-slate-200'
                         }`}
                         onClick={() => handleViewQuote(quote)}
@@ -691,7 +693,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="invoices" className="space-y-4">
                   {portalData?.invoices.length === 0 ? (
-                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <CreditCard className="w-8 h-8 text-slate-300" />
                       </div>
@@ -707,13 +709,13 @@ export default function ClientPortalHub() {
                       return (
                         <div
                           key={invoice.id}
-                          className={`rounded-2xl overflow-hidden hover-elevate ${
+                          className={`rounded-md overflow-hidden hover-elevate ${
                             isPayable
-                              ? 'bg-[#2563EB]/5 shadow-xl border-2 border-[#2563EB]/20 ring-1 ring-[#2563EB]/10'
+                              ? 'bg-[#2563EB]/5 shadow-xl border-2 border-[#2563EB]/20'
                               : isPaid
-                              ? 'bg-white shadow-lg border border-green-200 ring-1 ring-green-100'
+                              ? 'bg-white shadow-lg border border-green-200'
                               : isOverdue
-                              ? 'bg-white shadow-lg border border-red-200 ring-1 ring-red-100'
+                              ? 'bg-white shadow-lg border border-red-200'
                               : 'bg-white shadow-lg border border-slate-200'
                           }`}
                         >
@@ -792,7 +794,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="receipts" className="space-y-4">
                   {portalData?.receipts.length === 0 ? (
-                    <div className="bg-gradient-to-br from-green-50/50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                    <div className="bg-gradient-to-br from-green-50/50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                         <Receipt className="w-8 h-8 text-green-300" />
                       </div>
@@ -803,7 +805,7 @@ export default function ClientPortalHub() {
                     portalData?.receipts.map((receipt) => (
                       <div
                         key={receipt.id}
-                        className="bg-white rounded-2xl shadow-lg border border-green-200 ring-1 ring-green-100 overflow-hidden hover-elevate cursor-pointer"
+                        className="bg-white rounded-md shadow-lg border border-green-200 overflow-hidden hover-elevate cursor-pointer"
                         onClick={() => handleViewReceipt(receipt)}
                       >
                         <div className="p-5">
@@ -840,7 +842,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="jobs" className="space-y-4">
                   {portalData?.jobs.length === 0 ? (
-                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl shadow-lg border border-slate-200 p-10 text-center">
+                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <Briefcase className="w-8 h-8 text-slate-300" />
                       </div>
@@ -856,13 +858,13 @@ export default function ClientPortalHub() {
                       return (
                         <div
                           key={job.id}
-                          className={`bg-white rounded-2xl shadow-lg border overflow-hidden hover-elevate ${
+                          className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate ${
                             isDone
-                              ? 'border-green-200 ring-1 ring-green-100'
+                              ? 'border-green-200'
                               : isInProgress
-                              ? 'border-blue-200 ring-1 ring-blue-100'
+                              ? 'border-blue-200'
                               : isScheduled
-                              ? 'border-purple-200 ring-1 ring-purple-100'
+                              ? 'border-purple-200'
                               : 'border-slate-200'
                           }`}
                         >
@@ -925,10 +927,10 @@ export default function ClientPortalHub() {
           </div>
         </main>
 
-        <div className="text-center py-6 border-t border-slate-200 bg-white/80 backdrop-blur-sm flex flex-col items-center gap-2">
+        <div className="text-center py-8 border-t border-slate-200 bg-white/80 backdrop-blur-sm flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-            <span className="text-xs text-slate-500">Powered by <span className="font-medium text-slate-700">JobRunner</span></span>
+            <span className="text-sm text-slate-500">Powered by <span className="font-semibold text-slate-700">JobRunner</span></span>
           </div>
           <div className="flex items-center gap-1 text-xs text-slate-400">
             <Shield className="w-3 h-3" />
