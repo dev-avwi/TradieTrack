@@ -216,7 +216,7 @@ export default function ClientPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 p-4 md:p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 p-4 md:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
           <Skeleton className="h-32 w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
@@ -228,7 +228,7 @@ export default function ClientPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center p-4">
         <Card className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200/60">
           <CardHeader className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -253,10 +253,10 @@ export default function ClientPortal() {
   const isPaid = data.status === 'paid';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5">
       <div className="min-h-screen flex flex-col">
         {/* Teal Branded Header */}
-        <header className="bg-gradient-to-r from-[#0A6A73] to-[#0A6A73]/90 text-white sticky top-0 z-20">
+        <header className="bg-gradient-to-r from-[#2563EB] to-[#2563EB]/90 text-white sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -302,8 +302,8 @@ export default function ClientPortal() {
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#0A6A73]/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-[#0A6A73]" />
+                <div className="w-10 h-10 rounded-lg bg-[#2563EB]/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-[#2563EB]" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">{docTypeLabel} #{data.number}</h2>
@@ -379,7 +379,7 @@ export default function ClientPortal() {
               <Card className="bg-white rounded-xl shadow-sm border border-slate-200/60">
                 <CardContent className="py-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <Building2 className="w-4 h-4 text-[#0A6A73]" />
+                    <Building2 className="w-4 h-4 text-[#2563EB]" />
                     <span className="text-slate-500">Job Site:</span>
                     <span className="font-medium text-slate-900">{data.job.address}</span>
                   </div>
@@ -435,10 +435,10 @@ export default function ClientPortal() {
                   </div>
                   <div className="flex justify-between font-bold text-xl pt-3 border-t border-slate-200">
                     <span className="text-slate-900">Total (AUD)</span>
-                    <span className="text-[#0A6A73]">{formatCurrency(data.total)}</span>
+                    <span className="text-[#2563EB]">{formatCurrency(data.total)}</span>
                   </div>
                   {data.depositRequired && data.depositAmount && (
-                    <div className="flex justify-between text-[#0A6A73] text-sm pt-1">
+                    <div className="flex justify-between text-[#2563EB] text-sm pt-1">
                       <span>Deposit Required</span>
                       <span className="flex items-center gap-1">
                         {formatCurrency(data.depositAmount)}
@@ -490,12 +490,12 @@ export default function ClientPortal() {
 
             {/* Quote Accept/Decline Card */}
             {showAcceptButtons && (
-              <Card className="bg-white rounded-xl shadow-sm border border-[#0A6A73]/20">
+              <Card className="bg-white rounded-xl shadow-sm border border-[#2563EB]/20">
                 <CardContent className="pt-5 pb-5">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 bg-[#0A6A73]/10 rounded-full flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-[#0A6A73]" />
+                      <div className="w-8 h-8 bg-[#2563EB]/10 rounded-full flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-[#2563EB]" />
                       </div>
                       <h3 className="font-semibold text-slate-900">Ready to accept this quote?</h3>
                     </div>
@@ -520,7 +520,7 @@ export default function ClientPortal() {
                       <Button 
                         onClick={handleAcceptQuote}
                         disabled={isAccepting || !acceptedName.trim() || !signature}
-                        className="flex-1 bg-[#0A6A73] hover:bg-[#085a62] text-white"
+                        className="flex-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
                         size="lg"
                       >
                         <Check className="w-5 h-5 mr-2" />
@@ -544,18 +544,18 @@ export default function ClientPortal() {
             
             {/* Invoice Pay Card */}
             {showPayButton && (
-              <Card className="bg-white rounded-xl shadow-sm border border-[#0A6A73]/20">
+              <Card className="bg-white rounded-xl shadow-sm border border-[#2563EB]/20">
                 <CardContent className="pt-5 pb-5">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 bg-[#0A6A73]/10 rounded-full flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-[#0A6A73]" />
+                      <div className="w-8 h-8 bg-[#2563EB]/10 rounded-full flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-[#2563EB]" />
                       </div>
                       <h3 className="font-semibold text-slate-900">Pay securely online</h3>
                     </div>
                     <Button 
                       onClick={handlePayNow}
-                      className="w-full bg-[#0A6A73] hover:bg-[#085a62] text-white"
+                      className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
                       size="lg"
                     >
                       <CreditCard className="w-5 h-5 mr-2" />
@@ -586,7 +586,7 @@ export default function ClientPortal() {
             <Button 
               variant="outline" 
               onClick={handleDownloadPdf}
-              className="w-full border-[#0A6A73]/30 text-[#0A6A73]"
+              className="w-full border-[#2563EB]/30 text-[#2563EB]"
             >
               <Download className="w-4 h-4 mr-2" />
               Download PDF
@@ -598,11 +598,11 @@ export default function ClientPortal() {
         <footer className="bg-white border-t border-slate-200/60 py-5 px-4 mt-auto">
           <div className="max-w-4xl mx-auto text-center space-y-2">
             <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-              <ShieldCheck className="w-4 h-4 text-[#0A6A73]" />
+              <ShieldCheck className="w-4 h-4 text-[#2563EB]" />
               <span>Secure & encrypted</span>
             </div>
             <p className="text-xs text-slate-400">
-              Powered by <span className="text-[#0A6A73] font-medium">JobRunner</span> · Questions? Contact{' '}
+              Powered by <span className="text-[#2563EB] font-medium">JobRunner</span> · Questions? Contact{' '}
               <a href={`tel:${data.business.phone}`} className="hover:underline text-slate-600">{data.business.name}</a>
             </p>
           </div>

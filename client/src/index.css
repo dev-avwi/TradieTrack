@@ -16,34 +16,34 @@
 
   --background: 210 40% 98%;
   --foreground: 217 33% 17%;
-  --border: 195 12% 91%;
+  --border: 217 12% 91%;
   --card: 0 0% 96%;
   --card-foreground: 217 33% 17%;
-  --card-border: 195 12% 88%;
-  --sidebar: 192 15% 94%;
-  --sidebar-foreground: 195 20% 14%;
-  --sidebar-border: 195 12% 86%;
-  --sidebar-primary: 185 84% 25%;
+  --card-border: 217 12% 88%;
+  --sidebar: 217 15% 94%;
+  --sidebar-foreground: 217 20% 14%;
+  --sidebar-border: 217 12% 86%;
+  --sidebar-primary: 217 91% 53%;
   --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 192 12% 90%;
-  --sidebar-accent-foreground: 195 20% 14%;
-  --sidebar-ring: 185 84% 25%;
+  --sidebar-accent: 217 12% 90%;
+  --sidebar-accent-foreground: 217 20% 14%;
+  --sidebar-ring: 217 91% 53%;
   --popover: 0 0% 92%;
-  --popover-foreground: 195 20% 14%;
-  --popover-border: 195 12% 84%;
-  --primary: 185 84% 25%;
+  --popover-foreground: 217 20% 14%;
+  --popover-border: 217 12% 84%;
+  --primary: 217 91% 53%;
   --primary-foreground: 0 0% 98%;
-  --secondary: 192 8% 89%;
-  --secondary-foreground: 195 20% 14%;
-  --muted: 192 6% 93%;
-  --muted-foreground: 195 10% 46%;
-  --accent: 192 12% 89%;
-  --accent-foreground: 195 20% 14%;
+  --secondary: 217 8% 89%;
+  --secondary-foreground: 217 20% 14%;
+  --muted: 217 6% 93%;
+  --muted-foreground: 217 10% 46%;
+  --accent: 217 12% 89%;
+  --accent-foreground: 217 20% 14%;
   --destructive: 5 85% 55%;
   --destructive-foreground: 0 0% 98%;
-  --input: 195 12% 75%;
-  --ring: 185 84% 25%;
-  --chart-1: 185 84% 35%;
+  --input: 217 12% 75%;
+  --ring: 217 91% 53%;
+  --chart-1: 217 91% 60%;
   --chart-2: 28 80% 55%;
   --chart-3: 145 60% 42%;
   --chart-4: 280 55% 58%;
@@ -58,11 +58,11 @@
   --info-foreground: 0 0% 98%;
 
   /* Trade-specific colors - dynamically set by JavaScript */
-  --trade: 185 84% 25%; /* Default teal, overridden by trade selection */
-  --trade-bg: 192 20% 96%; /* Light tint for backgrounds */
-  --trade-border: 185 70% 30%; /* Darker for borders */
-  --trade-accent: 185 70% 35%; /* Enhanced accent color */
-  --trade-glow: 190 35% 85%; /* Subtle glow effect color */
+  --trade: 217 91% 53%; /* Default blue, overridden by trade selection */
+  --trade-bg: 217 20% 96%; /* Light tint for backgrounds */
+  --trade-border: 217 70% 40%; /* Darker for borders */
+  --trade-accent: 217 70% 45%; /* Enhanced accent color */
+  --trade-glow: 217 35% 85%; /* Subtle glow effect color */
 
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
@@ -129,15 +129,15 @@
   --sidebar: 217 33% 9%;
   --sidebar-foreground: 210 25% 95%;
   --sidebar-border: 217 20% 16%;
-  --sidebar-primary: 190 15% 95%;
+  --sidebar-primary: 217 15% 95%;
   --sidebar-primary-foreground: 195 18% 8%;
   --sidebar-accent: 217 22% 14%;
   --sidebar-accent-foreground: 210 25% 95%;
-  --sidebar-ring: 190 15% 95%;
+  --sidebar-ring: 217 15% 95%;
   --popover: 217 28% 12%;
   --popover-foreground: 210 25% 95%;
   --popover-border: 217 20% 19%;
-  --primary: 190 15% 95%;
+  --primary: 217 15% 95%;
   --primary-foreground: 195 18% 8%;
   --secondary: 217 22% 16%;
   --secondary-foreground: 210 25% 95%;
@@ -148,8 +148,8 @@
   --destructive: 5 85% 55%;
   --destructive-foreground: 0 0% 98%;
   --input: 217 18% 35%;
-  --ring: 190 15% 95%;
-  --chart-1: 185 70% 55%;
+  --ring: 217 15% 95%;
+  --chart-1: 217 70% 55%;
   --chart-2: 28 80% 65%;
   --chart-3: 145 55% 60%;
   --chart-4: 280 55% 72%;
@@ -164,11 +164,11 @@
   --info-foreground: 0 0% 10%;
 
   /* Trade-specific colors - dynamically set by JavaScript */
-  --trade: 210 25% 95%; /* Default teal for dark mode */
+  --trade: 217 25% 95%; /* Default blue for dark mode */
   --trade-bg: 217 25% 16%; /* Dark tint for backgrounds */
-  --trade-border: 185 25% 80%; /* Lighter for borders */
-  --trade-accent: 185 50% 65%; /* Enhanced accent color for dark mode */
-  --trade-glow: 185 30% 25%; /* Subtle glow effect color for dark mode */
+  --trade-border: 217 25% 80%; /* Lighter for borders */
+  --trade-accent: 217 50% 65%; /* Enhanced accent color for dark mode */
+  --trade-glow: 217 30% 25%; /* Subtle glow effect color for dark mode */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.4);
   --shadow-xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.5);

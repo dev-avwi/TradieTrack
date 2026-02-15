@@ -6,8 +6,8 @@
 import { getProductionBaseUrl } from './urlHelper';
 
 // Brand colors
-const BRAND_BLUE = '#0A6A73';
-const SUCCESS_GREEN = '#0A6A73';
+const BRAND_BLUE = '#2563EB';
+const SUCCESS_GREEN = '#2563EB';
 const WARNING_ORANGE = '#E8862E';
 const ERROR_RED = '#dc2626';
 const NEUTRAL_GRAY = '#64748b';
@@ -235,8 +235,8 @@ const businessFooter = (
         <td style="text-align: center;">
           <p style="margin: 0; color: #64748b; font-size: 13px;">If you have any questions, please contact us:</p>
           <p style="margin: 12px 0 0 0; color: #1e293b; font-size: 15px; font-weight: 600;">${businessName}</p>
-          ${email ? `<p style="margin: 4px 0 0 0;"><a href="mailto:${email}" style="color: #0A6A73; text-decoration: none; font-size: 14px;">${email}</a></p>` : ''}
-          ${phone ? `<p style="margin: 4px 0 0 0;"><a href="tel:${phone}" style="color: #0A6A73; text-decoration: none; font-size: 14px;">${phone}</a></p>` : ''}
+          ${email ? `<p style="margin: 4px 0 0 0;"><a href="mailto:${email}" style="color: #2563EB; text-decoration: none; font-size: 14px;">${email}</a></p>` : ''}
+          ${phone ? `<p style="margin: 4px 0 0 0;"><a href="tel:${phone}" style="color: #2563EB; text-decoration: none; font-size: 14px;">${phone}</a></p>` : ''}
           ${address ? `<p style="margin: 4px 0 0 0; color: #64748b; font-size: 14px;">${address}</p>` : ''}
           ${abn ? `<p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 12px;">ABN: ${abn}</p>` : ''}
         </td>

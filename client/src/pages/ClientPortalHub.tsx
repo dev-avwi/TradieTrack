@@ -27,7 +27,7 @@ import {
   Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import jobrunnerLogo from "@assets/D3E57352-48E5-4224-88EC-9EFDFFD3442E_1771067699090.png";
+import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
 
 interface PortalClient {
   id: string;
@@ -384,7 +384,7 @@ export default function ClientPortalHub() {
 
   if (viewState === 'phone') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
         <div className="py-10 px-4">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 mx-auto mb-3 object-contain" />
@@ -396,8 +396,8 @@ export default function ClientPortalHub() {
         <div className="flex-1 flex items-start justify-center px-4">
           <Card className="w-full max-w-md rounded-2xl shadow-lg border-slate-200/60">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-[#0A6A73]/10 flex items-center justify-center mx-auto mb-3">
-                <Phone className="w-6 h-6 text-[#0A6A73]" />
+              <div className="w-12 h-12 rounded-full bg-[#2563EB]/10 flex items-center justify-center mx-auto mb-3">
+                <Phone className="w-6 h-6 text-[#2563EB]" />
               </div>
               <CardTitle className="text-lg">Verify Your Identity</CardTitle>
               <CardDescription>
@@ -417,7 +417,7 @@ export default function ClientPortalHub() {
               <Button 
                 onClick={handleRequestCode}
                 disabled={isLoading || !phone.trim()}
-                className="w-full bg-[#0A6A73] hover:bg-[#085a62]"
+                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]"
                 size="lg"
               >
                 {isLoading ? 'Sending...' : 'Send Verification Code'}
@@ -440,7 +440,7 @@ export default function ClientPortalHub() {
 
   if (viewState === 'code') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
         <div className="py-10 px-4">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 mx-auto mb-3 object-contain" />
@@ -452,8 +452,8 @@ export default function ClientPortalHub() {
         <div className="flex-1 flex items-start justify-center px-4">
           <Card className="w-full max-w-md rounded-2xl shadow-lg border-slate-200/60">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-[#0A6A73]/10 flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-6 h-6 text-[#0A6A73]" />
+              <div className="w-12 h-12 rounded-full bg-[#2563EB]/10 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6 text-[#2563EB]" />
               </div>
               <CardTitle className="text-lg">Enter Verification Code</CardTitle>
               <CardDescription>
@@ -474,7 +474,7 @@ export default function ClientPortalHub() {
               <Button 
                 onClick={handleVerifyCode}
                 disabled={isLoading || code.length !== 6}
-                className="w-full bg-[#0A6A73] hover:bg-[#085a62]"
+                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]"
                 size="lg"
               >
                 {isLoading ? 'Verifying...' : 'Verify & Continue'}
@@ -514,8 +514,8 @@ export default function ClientPortalHub() {
     const clientName = portalData?.clients[0]?.name;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
-        <header className="bg-[#0A6A73] sticky top-0 z-20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
+        <header className="bg-[#2563EB] sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -554,7 +554,7 @@ export default function ClientPortalHub() {
           </div>
         </header>
 
-        <div className="bg-gradient-to-r from-[#0A6A73]/5 to-transparent border-b border-[#0A6A73]/10 px-4 py-4">
+        <div className="bg-gradient-to-r from-[#2563EB]/5 to-transparent border-b border-[#2563EB]/10 px-4 py-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4">
               <div>

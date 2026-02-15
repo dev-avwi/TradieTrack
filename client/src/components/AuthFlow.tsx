@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
-import appIconUrl from '@assets/D3E57352-48E5-4224-88EC-9EFDFFD3442E_1771067699090.png';
+import appIconUrl from '@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png';
 
 // App screenshots for carousel
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";

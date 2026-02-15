@@ -12347,7 +12347,7 @@ Be specific about materials, colors, and features that would be included.`
             <h2 style="color: #333;">Hi ${client.name},</h2>
             <p style="color: #555; font-size: 16px;">You can track the progress of your job "<strong>${job.title}</strong>" using the link below:</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${portalUrl}" style="background-color: #0A6A73; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Track Your Job</a>
+              <a href="${portalUrl}" style="background-color: #2563EB; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Track Your Job</a>
             </div>
             <p style="color: #888; font-size: 14px;">This link gives you live updates on your job status, photos, and documents.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
@@ -18587,29 +18587,29 @@ Respond with JSON in this format:
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size:11px; color:#1f2937; padding:32px; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #0A6A73; }
-  .header-left h1 { font-size:22px; color:#0A6A73; margin-bottom:4px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #2563EB; }
+  .header-left h1 { font-size:22px; color:#2563EB; margin-bottom:4px; }
   .header-left p { font-size:12px; color:#4b5563; }
   .header-right { text-align:right; }
-  .header-right .biz-name { font-size:14px; font-weight:700; color:#0A6A73; }
+  .header-right .biz-name { font-size:14px; font-weight:700; color:#2563EB; }
   .header-right p { font-size:11px; color:#6b7280; }
   .meta-row { display:flex; gap:32px; margin-bottom:20px; padding:12px 16px; background:#f0fdfa; border-radius:6px; border:1px solid #ccfbf1; }
   .meta-item label { font-size:10px; text-transform:uppercase; color:#6b7280; letter-spacing:0.5px; }
   .meta-item span { display:block; font-size:12px; font-weight:600; color:#1f2937; }
   table { width:100%; border-collapse:collapse; margin-bottom:20px; }
-  thead th { background:#0A6A73; color:white; padding:8px 6px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+  thead th { background:#2563EB; color:white; padding:8px 6px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
   tbody td { padding:6px; border-bottom:1px solid #e5e7eb; font-size:10px; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  .day-header td { background:#f9fafb; font-weight:700; font-size:11px; color:#0A6A73; padding:8px 6px; border-bottom:2px solid #d1fae5; }
+  .day-header td { background:#f9fafb; font-weight:700; font-size:11px; color:#2563EB; padding:8px 6px; border-bottom:2px solid #d1fae5; }
   .subtotal-row td { background:#f0fdfa; border-bottom:2px solid #ccfbf1; }
   .category-badge { display:inline-block; padding:2px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:9px; text-transform:capitalize; }
   .totals { margin-top:16px; page-break-inside:avoid; }
-  .totals h3 { font-size:14px; color:#0A6A73; margin-bottom:8px; border-bottom:2px solid #0A6A73; padding-bottom:4px; }
+  .totals h3 { font-size:14px; color:#2563EB; margin-bottom:8px; border-bottom:2px solid #2563EB; padding-bottom:4px; }
   .totals-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .total-item { display:flex; justify-content:space-between; padding:6px 10px; background:#f9fafb; border-radius:4px; border:1px solid #e5e7eb; }
   .total-item label { font-size:11px; color:#4b5563; }
   .total-item span { font-size:12px; font-weight:700; color:#1f2937; }
-  .total-item.highlight { background:#0A6A73; border-color:#0A6A73; }
+  .total-item.highlight { background:#2563EB; border-color:#2563EB; }
   .total-item.highlight label, .total-item.highlight span { color:white; }
   .footer { margin-top:32px; padding-top:12px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; color:#9ca3af; font-size:9px; }
 </style>
