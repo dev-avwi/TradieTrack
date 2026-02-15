@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -212,13 +212,15 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
 
 const workerIcon = L.divIcon({
   className: '',
-  html: `<div style="position:relative;width:20px;height:20px;">
-    <div style="width:20px;height:20px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-    <div style="position:absolute;inset:0;width:20px;height:20px;border-radius:50%;background:#2563EB;opacity:0.4;animation:pulse-ring 2s ease-out infinite;"></div>
+  html: `<div style="position:relative;width:36px;height:36px;">
+    <div style="width:36px;height:36px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+    </div>
+    <div style="position:absolute;inset:0;width:36px;height:36px;border-radius:50%;background:#2563EB;opacity:0.3;animation:pulse-ring 2s ease-out infinite;"></div>
   </div>
-  <style>@keyframes pulse-ring{0%{transform:scale(1);opacity:0.4}100%{transform:scale(2.5);opacity:0}}</style>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
+  <style>@keyframes pulse-ring{0%{transform:scale(1);opacity:0.3}100%{transform:scale(2.2);opacity:0}}</style>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
 });
 
 const jobIcon = new L.Icon({
@@ -231,19 +233,81 @@ const jobIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+const jobPinIcon = L.divIcon({
+  className: '',
+  html: `<div style="position:relative;">
+    <div style="width:32px;height:32px;border-radius:50%;background:#DC2626;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <div style="position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #DC2626;"></div>
+  </div>`,
+  iconSize: [32, 40],
+  iconAnchor: [16, 40],
+  popupAnchor: [0, -40],
+});
+
 const WORKER_COLORS = ['#2563EB', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
 
 function createWorkerIcon(color: string, isPrimary: boolean) {
-  const size = isPrimary ? 24 : 18;
+  const size = isPrimary ? 36 : 28;
+  const iconSize = isPrimary ? 18 : 14;
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;width:${size}px;height:${size}px;">
-      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-      <div style="position:absolute;inset:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.4;animation:pulse-ring 2s ease-out infinite;"></div>
+      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+        <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+      </div>
+      <div style="position:absolute;inset:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.3;animation:pulse-ring 2s ease-out infinite;"></div>
     </div>`,
     iconSize: [size, size],
     iconAnchor: [size/2, size/2],
   });
+}
+
+function RouteLine({ from, to }: { from: [number, number]; to: [number, number] }) {
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
+  const map = useMap();
+
+  useEffect(() => {
+    const fetchRoute = async () => {
+      try {
+        const res = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.routes && data.routes[0]) {
+          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]]
+          );
+          setRouteCoords(coords);
+          if (coords.length > 0) {
+            const bounds = L.latLngBounds(coords);
+            bounds.extend(from);
+            bounds.extend(to);
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          }
+        }
+      } catch {}
+    };
+    fetchRoute();
+  }, [from[0], from[1], to[0], to[1]]);
+
+  if (routeCoords.length < 2) return null;
+
+  return (
+    <Polyline
+      positions={routeCoords}
+      pathOptions={{
+        color: '#2563EB',
+        weight: 5,
+        opacity: 0.8,
+        dashArray: undefined,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }}
+    />
+  );
 }
 
 function HeroMap({ 
@@ -299,6 +363,15 @@ function HeroMap({
   const singleWorkerLoc = locationData?.workerLocation;
   const hasSingleWorker = singleWorkerLoc && singleWorkerLoc.latitude && singleWorkerLoc.longitude;
 
+  const workerPosition: [number, number] | null = (() => {
+    if (crewWorkers.length > 0) {
+      const primary = crewWorkers.find(w => w.isPrimary) || crewWorkers[0];
+      if (primary.location) return [primary.location.latitude, primary.location.longitude];
+    }
+    if (hasSingleWorker) return [singleWorkerLoc.latitude, singleWorkerLoc.longitude];
+    return null;
+  })();
+
   const allPoints: [number, number][] = [];
   if (hasJobCoords) allPoints.push([jobLatNum, jobLngNum]);
   crewWorkers.forEach(w => {
@@ -335,7 +408,7 @@ function HeroMap({
           zoomControl={false}
           attributionControl={false}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         </MapContainer>
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
@@ -357,11 +430,11 @@ function HeroMap({
         zoomControl={false}
         attributionControl={false}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         {bounds && <FitBounds bounds={bounds} />}
 
         {hasJobPin && (
-          <Marker position={[jobPinLat!, jobPinLng!]} icon={jobIcon}>
+          <Marker position={[jobPinLat!, jobPinLng!]} icon={jobPinIcon}>
             <Popup>
               <span className="text-sm font-medium">{jobAddress || 'Your job location'}</span>
             </Popup>
@@ -393,6 +466,10 @@ function HeroMap({
             </Popup>
           </Marker>
         )}
+
+        {hasJobPin && workerPosition && (
+          <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
+        )}
       </MapContainer>
 
       {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
@@ -407,7 +484,7 @@ function HeroMap({
                 <p className="text-xs text-slate-500">estimated arrival</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-full">
               <Signal className="w-3 h-3" />
               <span>Live</span>
             </div>
@@ -592,6 +669,13 @@ export default function JobPortal() {
                       </Button>
                     </a>
                   )}
+                  {business.phone && (
+                    <a href={`sms:${business.phone}`}>
+                      <Button variant="ghost" size="icon" className="text-white bg-white/15 backdrop-blur-sm rounded-full">
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  )}
                   {business.email && (
                     <a href={`mailto:${business.email}`}>
                       <Button variant="ghost" size="icon" className="text-white bg-white/15 backdrop-blur-sm rounded-full">
@@ -711,13 +795,23 @@ export default function JobPortal() {
                           )}
                         </div>
                         <p className={`text-xs ${isActive ? 'text-emerald-600' : 'text-slate-500'}`}>{statusLabel}</p>
+                        {a.worker.phone && (
+                          <p className="text-xs text-slate-400">{a.worker.phone}</p>
+                        )}
                       </div>
                       {a.worker.phone && (
-                        <a href={`tel:${a.worker.phone}`}>
-                          <Button variant="default" size="icon" className="rounded-full bg-[#2563EB]">
-                            <Phone className="w-4 h-4" />
-                          </Button>
-                        </a>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <a href={`sms:${a.worker.phone}`}>
+                            <Button variant="outline" size="icon" className="rounded-full border-slate-200">
+                              <MessageCircle className="w-4 h-4 text-[#2563EB]" />
+                            </Button>
+                          </a>
+                          <a href={`tel:${a.worker.phone}`}>
+                            <Button variant="default" size="icon" className="rounded-full bg-[#2563EB]">
+                              <Phone className="w-4 h-4" />
+                            </Button>
+                          </a>
+                        </div>
                       )}
                     </div>
                   );
@@ -745,13 +839,23 @@ export default function JobPortal() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 text-sm">{worker.firstName} {worker.lastName}</p>
                     <p className="text-xs text-slate-500">Your assigned technician</p>
+                    {worker.phone && (
+                      <p className="text-xs text-slate-500 mt-0.5">{worker.phone}</p>
+                    )}
                   </div>
                   {worker.phone && (
-                    <a href={`tel:${worker.phone}`}>
-                      <Button variant="default" size="icon" className="rounded-full bg-[#2563EB]">
-                        <Phone className="w-4 h-4" />
-                      </Button>
-                    </a>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <a href={`sms:${worker.phone}`}>
+                        <Button variant="outline" size="icon" className="rounded-full border-slate-200">
+                          <MessageCircle className="w-4 h-4 text-[#2563EB]" />
+                        </Button>
+                      </a>
+                      <a href={`tel:${worker.phone}`}>
+                        <Button variant="default" size="icon" className="rounded-full bg-[#2563EB]">
+                          <Phone className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>
