@@ -12220,6 +12220,29 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
 
+      // Get ALL active assignments for multi-worker display
+      const allAssignments = await storage.getJobAssignments(portalToken.jobId);
+      const activeAssignments = allAssignments.filter((a: any) => a.isActive);
+
+      const assignmentsArray = await Promise.all(activeAssignments.map(async (a: any) => {
+        const worker = await storage.getUser(a.userId);
+        const showName = a.showWorkerNameToClient !== false;
+        const showPhone = a.showWorkerPhoneToClient === true;
+        return {
+          id: a.id,
+          status: a.assignmentStatus,
+          isPrimary: a.isPrimary || false,
+          etaMinutes: a.etaMinutes,
+          etaUpdatedAt: a.etaUpdatedAt,
+          travelStartedAt: a.travelStartedAt,
+          arrivedAt: a.arrivedAt,
+          worker: {
+            name: showName ? (a.workerDisplayNameSnapshot || (worker ? `${worker.firstName || ''} ${worker.lastName || ''}`.trim() : 'Worker')) : 'Support Crew',
+            phone: showPhone ? (a.workerPhoneSnapshot || worker?.phone || null) : null,
+          },
+        };
+      }));
+
       // Fallback: use legacy assignedTo field
       if (!workerInfo && job.assignedTo) {
         const teamMembersList = await storage.getTeamMembers(portalToken.userId);
@@ -12313,12 +12336,94 @@ Be specific about materials, colors, and features that would be included.`
           unit: m.unit,
           status: m.status,
         })),
+        assignments: assignmentsArray,
       };
       
       res.json(portalData);
     } catch (error: any) {
       console.error('Error fetching job portal data:', error);
       res.status(500).json({ error: 'Failed to load portal data' });
+    }
+  });
+
+  // Multi-worker crew locations endpoint
+  app.get("/api/public/job-portal/:token/crew-locations", async (req: any, res) => {
+    try {
+      const portalToken = await storage.getJobPortalTokenByToken(req.params.token);
+      if (!portalToken) {
+        return res.status(404).json({ error: 'Portal link not found or expired' });
+      }
+
+      if (portalToken.revokedAt) {
+        return res.status(410).json({ error: 'This tracking link has been revoked' });
+      }
+      if (portalToken.expiresAt && new Date(portalToken.expiresAt) < new Date()) {
+        return res.status(410).json({ error: 'This tracking link has expired' });
+      }
+
+      const job = await storage.getJob(portalToken.jobId, portalToken.userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const businessSettingsData = await storage.getBusinessSettingsByUserId(portalToken.userId);
+
+      const allAssignments = await storage.getJobAssignments(portalToken.jobId);
+      const activeAssignments = allAssignments.filter((a: any) => a.isActive);
+
+      let anyEnRoute = false;
+
+      const workers = await Promise.all(activeAssignments.map(async (a: any) => {
+        const worker = await storage.getUser(a.userId);
+        const showName = a.showWorkerNameToClient !== false;
+        const showPhone = a.showWorkerPhoneToClient === true;
+
+        let location = null;
+        let stale = false;
+        const isEnRoute = a.assignmentStatus === 'en_route';
+
+        if (isEnRoute) {
+          anyEnRoute = true;
+          const ping = await storage.getLatestLocationPing(a.id);
+          if (ping) {
+            const ageMs = Date.now() - new Date(ping.recordedAt).getTime();
+            stale = ageMs > 5 * 60 * 1000;
+            location = {
+              latitude: ping.latitude,
+              longitude: ping.longitude,
+              accuracyMeters: ping.accuracyMeters,
+              recordedAt: ping.recordedAt,
+            };
+          }
+        }
+
+        return {
+          assignmentId: a.id,
+          name: showName ? (a.workerDisplayNameSnapshot || (worker ? `${worker.firstName || ''} ${worker.lastName || ''}`.trim() : 'Worker')) : 'Support Crew',
+          status: a.assignmentStatus,
+          isPrimary: a.isPrimary || false,
+          etaMinutes: a.etaMinutes || null,
+          etaUpdatedAt: a.etaUpdatedAt || null,
+          travelStartedAt: a.travelStartedAt || null,
+          arrivedAt: a.arrivedAt || null,
+          location,
+          stale,
+        };
+      }));
+
+      const jobLocation = (job.latitude && job.longitude) ? {
+        latitude: parseFloat(String(job.latitude)),
+        longitude: parseFloat(String(job.longitude)),
+      } : null;
+
+      return res.json({
+        tracking: anyEnRoute,
+        jobLocation,
+        workers,
+      });
+    } catch (error: any) {
+      console.error('Error fetching crew locations:', error);
+      res.status(500).json({ error: 'Failed to fetch crew locations' });
     }
   });
 

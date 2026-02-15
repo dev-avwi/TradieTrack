@@ -61,6 +61,45 @@ interface JobPortalData {
   };
   checklist: Array<{ text: string; isCompleted: boolean; sortOrder: number }>;
   materials: Array<{ name: string; quantity: number; unit?: string; status?: string }>;
+  assignments?: PortalAssignment[];
+}
+
+interface PortalAssignment {
+  id: string;
+  status: string;
+  isPrimary: boolean;
+  etaMinutes: number | null;
+  etaUpdatedAt: string | null;
+  travelStartedAt: string | null;
+  arrivedAt: string | null;
+  worker: {
+    name: string;
+    phone: string | null;
+  };
+}
+
+interface CrewLocationWorker {
+  assignmentId: string;
+  name: string;
+  status: string;
+  isPrimary: boolean;
+  etaMinutes: number | null;
+  etaUpdatedAt: string | null;
+  travelStartedAt: string | null;
+  arrivedAt: string | null;
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters: number | null;
+    recordedAt: string;
+  } | null;
+  stale: boolean;
+}
+
+interface CrewLocationResponse {
+  tracking: boolean;
+  jobLocation: { latitude: number; longitude: number } | null;
+  workers: CrewLocationWorker[];
 }
 
 const STATUS_ORDER = ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'] as const;
@@ -190,6 +229,21 @@ const jobIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+const WORKER_COLORS = ['#0A6A73', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
+
+function createWorkerIcon(color: string, isPrimary: boolean) {
+  const size = isPrimary ? 24 : 18;
+  return L.divIcon({
+    className: '',
+    html: `<div style="position:relative;width:${size}px;height:${size}px;">
+      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
+      <div style="position:absolute;inset:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.4;animation:pulse-ring 2s ease-out infinite;"></div>
+    </div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2],
+  });
+}
 
 function LiveTrackingMap({ token, workerName, jobAddress }: { token: string; workerName: string; jobAddress?: string }) {
   const [locationData, setLocationData] = useState<LocationResponse | null>(null);
@@ -362,6 +416,178 @@ function LiveTrackingMap({ token, workerName, jobAddress }: { token: string; wor
             Updated {timeAgoText}
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CrewTrackingMap({ token, assignments, jobAddress }: { 
+  token: string; 
+  assignments: PortalAssignment[];
+  jobAddress?: string;
+}) {
+  const [crewData, setCrewData] = useState<CrewLocationResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchCrewLocations = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/public/job-portal/${token}/crew-locations`);
+      if (res.ok) {
+        const data: CrewLocationResponse = await res.json();
+        setCrewData(data);
+      }
+    } catch {} finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchCrewLocations();
+    intervalRef.current = setInterval(fetchCrewLocations, 15000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [fetchCrewLocations]);
+
+  if (loading) {
+    return (
+      <Card className="border-gray-200 rounded-xl shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-[250px] w-full rounded-lg" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!crewData || !crewData.tracking) return null;
+
+  const { jobLocation, workers } = crewData;
+  const colorMap = new Map(workers.map((w, i) => [w.assignmentId, WORKER_COLORS[i % WORKER_COLORS.length]]));
+  const enRouteWorkers = workers.filter(w => w.status === 'en_route' && w.location);
+  const hasJob = jobLocation && jobLocation.latitude && jobLocation.longitude;
+  
+  const allPoints: [number, number][] = [];
+  enRouteWorkers.forEach(w => {
+    if (w.location) allPoints.push([w.location.latitude, w.location.longitude]);
+  });
+  if (hasJob) allPoints.push([jobLocation.latitude, jobLocation.longitude]);
+  
+  const center: [number, number] = allPoints.length > 0 ? allPoints[0] : [-16.9186, 145.7781];
+  const bounds: L.LatLngBoundsExpression | null = allPoints.length >= 2 ? allPoints as L.LatLngBoundsExpression : null;
+
+  const primaryWorker = workers.find(w => w.isPrimary) || workers[0];
+  const primaryEta = primaryWorker?.etaMinutes;
+  
+  const anyStale = enRouteWorkers.some(w => w.stale);
+
+  return (
+    <Card className="border-gray-200 rounded-xl shadow-sm">
+      <CardContent className="p-0">
+        {primaryEta != null && primaryEta > 0 && (
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
+            <div>
+              <span className="text-2xl font-bold text-gray-900">{primaryEta} min</span>
+              <span className="text-sm text-gray-500 ml-2">estimated arrival</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <Signal className="w-3 h-3" />
+              Live
+            </div>
+          </div>
+        )}
+
+        {anyStale && (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <span className="text-xs text-amber-700">Some tracking data may be delayed</span>
+          </div>
+        )}
+
+        {workers.length > 0 && (
+          <div className="border-b border-gray-100">
+            {workers.filter(w => ['en_route', 'arrived', 'in_progress', 'assigned'].includes(w.status)).map((w) => {
+              const color = colorMap.get(w.assignmentId) || WORKER_COLORS[0];
+              const isSelected = selectedWorker === w.assignmentId;
+              const statusLabel = w.status === 'en_route' ? 'On the Way' : 
+                                  w.status === 'arrived' ? 'Arrived' :
+                                  w.status === 'in_progress' ? 'Working' :
+                                  w.status === 'assigned' ? 'Scheduled' : w.status;
+              const updatedText = w.location?.recordedAt ? formatTimeAgo(w.location.recordedAt) : '';
+              
+              return (
+                <div 
+                  key={w.assignmentId}
+                  className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${isSelected ? 'bg-gray-50' : 'hover:bg-gray-50/50'}`}
+                  onClick={() => setSelectedWorker(isSelected ? null : w.assignmentId)}
+                >
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 truncate">{w.name}</span>
+                      {w.isPrimary && (
+                        <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-xs ${w.status === 'en_route' ? 'text-amber-600' : w.status === 'arrived' || w.status === 'in_progress' ? 'text-emerald-600' : 'text-gray-500'}`}>
+                        {statusLabel}
+                      </span>
+                      {w.status === 'en_route' && w.etaMinutes != null && w.etaMinutes > 0 && (
+                        <span className="text-xs text-gray-500">ETA {w.etaMinutes} min</span>
+                      )}
+                      {updatedText && w.status === 'en_route' && (
+                        <span className="text-xs text-gray-400">{updatedText}</span>
+                      )}
+                      {w.stale && w.status === 'en_route' && (
+                        <span className="text-xs text-amber-500">Paused</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="overflow-hidden rounded-b-xl" style={{ height: '250px' }}>
+          <MapContainer
+            center={center}
+            zoom={13}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+            attributionControl={false}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {bounds && <FitBounds bounds={bounds} />}
+
+            {enRouteWorkers.map((w, idx) => {
+              if (!w.location) return null;
+              const color = colorMap.get(w.assignmentId) || WORKER_COLORS[0];
+              const icon = createWorkerIcon(color, w.isPrimary);
+              return (
+                <Marker 
+                  key={w.assignmentId}
+                  position={[w.location.latitude, w.location.longitude]} 
+                  icon={icon}
+                >
+                  <Popup>
+                    <span className="text-sm font-medium">{w.name}</span>
+                    {w.etaMinutes && <span className="text-xs block">ETA: {w.etaMinutes} min</span>}
+                  </Popup>
+                </Marker>
+              );
+            })}
+
+            {hasJob && (
+              <Marker position={[jobLocation.latitude, jobLocation.longitude]} icon={jobIcon}>
+                <Popup>
+                  <span className="text-sm">{jobAddress || 'Job location'}</span>
+                </Popup>
+              </Marker>
+            )}
+          </MapContainer>
+        </div>
       </CardContent>
     </Card>
   );
@@ -585,15 +811,59 @@ export default function JobPortal() {
             </div>
           )}
 
-          {job.workerStatus === 'on_my_way' && token && (
-            <LiveTrackingMap
+          {token && (data.assignments?.some(a => a.status === 'en_route') || job.workerStatus === 'on_my_way') && (
+            <CrewTrackingMap
               token={token}
-              workerName={worker ? `${worker.firstName} ${worker.lastName}` : 'Your technician'}
+              assignments={data.assignments || []}
               jobAddress={job.address}
             />
           )}
 
-          {worker && (
+          {(data.assignments && data.assignments.length > 0) ? (
+            <Card className="border-gray-200">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-400" /> Your Team
+                </h3>
+                <div className="space-y-3">
+                  {data.assignments.map((a, idx) => {
+                    const color = WORKER_COLORS[idx % WORKER_COLORS.length];
+                    const statusLabel = a.status === 'en_route' ? 'On the Way' : 
+                                        a.status === 'arrived' ? 'Arrived' :
+                                        a.status === 'in_progress' ? 'Working' :
+                                        a.status === 'completed' ? 'Done' :
+                                        a.status === 'assigned' ? 'Scheduled' : a.status;
+                    const initials = a.worker.name === 'Support Crew' ? 'SC' : 
+                      a.worker.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                    return (
+                      <div key={a.id} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0"
+                          style={{ backgroundColor: color }}>
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900 text-sm truncate">{a.worker.name}</p>
+                            {a.isPrimary && (
+                              <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500">{statusLabel}</p>
+                        </div>
+                        {a.worker.phone && (
+                          <a href={`tel:${a.worker.phone}`}>
+                            <Button variant="outline" size="icon" className="rounded-full border-[#0A6A73]/30 text-[#0A6A73]">
+                              <Phone className="w-4 h-4" />
+                            </Button>
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ) : worker && (
             <Card className="border-gray-200">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">

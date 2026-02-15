@@ -125,17 +125,14 @@ export async function handleOnMyWay(params: OnMyWayParams): Promise<OnMyWayResul
     },
   });
 
-  let portalToken = await storage.getActivePortalTokenForAssignment(assignmentId);
-  if (!portalToken) {
-    portalToken = await storage.getActiveJobPortalToken(jobId);
-  }
+  let portalToken = await storage.getActiveJobPortalToken(jobId);
   if (!portalToken) {
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
     portalToken = await storage.createJobPortalToken({
       jobId,
-      assignmentId,
+      assignmentId: null,
       userId: effectiveUserId,
       token,
       expiresAt,
@@ -149,7 +146,12 @@ export async function handleOnMyWay(params: OnMyWayParams): Promise<OnMyWayResul
   let smsSent = false;
   let antiSpamBlocked = false;
 
-  if (client.phone) {
+  // Determine if this assignment is primary or if it's the only active assignment on the job
+  const allAssignments = await storage.getJobAssignments(jobId);
+  const activeAssignments = allAssignments.filter((a: any) => a.isActive);
+  const shouldSendSms = assignment.isPrimary || activeAssignments.length <= 1;
+
+  if (shouldSendSms && client.phone) {
     const lastSms = await storage.getLastSmsNotification(assignmentId, 'on_my_way');
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
     
