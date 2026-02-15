@@ -11919,6 +11919,26 @@ Be specific about materials, colors, and features that would be included.`
             return res.status(400).json({ error: result.error });
           }
           const updatedJob = await storage.getJob(req.params.id, effectiveUserId);
+
+          try {
+            const { broadcastJobStatusChange } = await import('./websocket');
+            broadcastJobStatusChange(effectiveUserId, {
+              jobId: updatedJob!.id,
+              status: updatedJob!.status,
+              title: updatedJob!.title,
+              updatedBy: req.userId,
+            });
+          } catch (e) {}
+
+          try {
+            const statusDescription = 'is on the way';
+            if (req.userId !== effectiveUserId) {
+              await notifyJobUpdate(effectiveUserId, updatedJob!.title, updatedJob!.id, statusDescription);
+            }
+          } catch (pushError) {
+            console.error('[WorkerStatus] Push notification error:', pushError);
+          }
+
           return res.json(updatedJob);
         } else if (['arrived', 'in_progress', 'completed'].includes(workerStatus)) {
           const { handleWorkerStatusChange } = await import('./services/assignmentWorkflowService');
@@ -11933,6 +11953,75 @@ Be specific about materials, colors, and features that would be included.`
             return res.status(400).json({ error: result.error });
           }
           const updatedJob = await storage.getJob(req.params.id, effectiveUserId);
+
+          try {
+            const { broadcastJobStatusChange } = await import('./websocket');
+            broadcastJobStatusChange(effectiveUserId, {
+              jobId: updatedJob!.id,
+              status: updatedJob!.status,
+              title: updatedJob!.title,
+              updatedBy: req.userId,
+            });
+          } catch (e) {}
+
+          if (workerStatus === 'in_progress' || workerStatus === 'completed' || workerStatus === 'arrived') {
+            try {
+              const client = updatedJob!.clientId ? await storage.getClient(updatedJob!.clientId, effectiveUserId) : null;
+              const clientName = client?.name || 'Unknown client';
+              const actor = await storage.getUser(req.userId);
+              const actorName = actor ? [actor.firstName, actor.lastName].filter(Boolean).join(' ') || 'Team member' : 'Team member';
+
+              if (workerStatus === 'arrived') {
+                await storage.createNotification({
+                  userId: effectiveUserId,
+                  type: 'job_update',
+                  title: 'Worker Arrived',
+                  message: `${actorName} has arrived at "${updatedJob!.title}"`,
+                  jobId: updatedJob!.id,
+                  isRead: false,
+                });
+              } else if (workerStatus === 'in_progress') {
+                await notifyJobStarted(storage, effectiveUserId, updatedJob, clientName);
+              } else if (workerStatus === 'completed') {
+                await notifyJobCompleted(storage, effectiveUserId, updatedJob, { firstName: actorName, username: actorName });
+
+                if (req.userId !== effectiveUserId) {
+                  try {
+                    const owner = await storage.getUser(effectiveUserId);
+                    if (owner?.email) {
+                      await sendJobCompletionNotificationEmail(
+                        owner.email,
+                        owner.firstName || null,
+                        actorName,
+                        updatedJob!.title,
+                        clientName,
+                        new Date(),
+                        getProductionBaseUrl(req),
+                        updatedJob!.id
+                      );
+                    }
+                  } catch (emailError) {
+                    console.error('Failed to send job completion email:', emailError);
+                  }
+                }
+              }
+            } catch (notifError) {
+              console.error('[WorkerStatus] Error creating notifications:', notifError);
+            }
+          }
+
+          try {
+            const statusDescription = workerStatus === 'arrived' ? 'has arrived' :
+                                     workerStatus === 'in_progress' ? 'started work' :
+                                     workerStatus === 'completed' ? 'completed the job' : `status: ${workerStatus}`;
+
+            if (req.userId !== effectiveUserId) {
+              await notifyJobUpdate(effectiveUserId, updatedJob!.title, updatedJob!.id, statusDescription);
+            }
+          } catch (pushError) {
+            console.error('[WorkerStatus] Push notification error:', pushError);
+          }
+
           return res.json(updatedJob);
         }
       }

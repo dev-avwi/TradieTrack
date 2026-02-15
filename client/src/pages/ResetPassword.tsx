@@ -116,7 +116,7 @@ export default function ResetPassword() {
           <img 
             src={appIconUrl} 
             alt="JobRunner" 
-            className="h-20 w-20 mb-4"
+            className="h-24 w-24 mb-4"
           />
           <h1 className="text-2xl font-bold text-center">JobRunner</h1>
         </div>
