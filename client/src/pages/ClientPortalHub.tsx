@@ -514,39 +514,39 @@ export default function ClientPortalHub() {
     const clientName = portalData?.clients[0]?.name;
 
     return (
-      <div className="min-h-screen bg-white dark:bg-background flex flex-col">
-        <header className="bg-card border-b sticky top-0 z-20 shadow-sm">
-          <div className="px-4 py-3">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <header className="bg-white border-b sticky top-0 z-20">
+          <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 {business?.logoUrl ? (
-                  <img 
-                    src={business.logoUrl} 
+                  <img
+                    src={business.logoUrl}
                     alt={business.businessName || 'Business'}
-                    className="w-10 h-10 object-contain rounded border"
+                    className="w-10 h-10 object-contain rounded-md"
                   />
                 ) : (
                   <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 object-contain" />
                 )}
                 <div className="min-w-0">
-                  <h1 className="font-bold text-base truncate">
+                  <h1 className="font-bold text-base text-gray-900 truncate">
                     {business?.businessName || 'Client Portal'}
                   </h1>
-                  <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                  <div className="flex gap-3 text-xs text-gray-500 flex-wrap">
                     {business?.businessPhone && (
-                      <a href={`tel:${business.businessPhone}`} className="hover:text-primary flex items-center gap-1">
+                      <a href={`tel:${business.businessPhone}`} className="hover:text-gray-700 flex items-center gap-1">
                         <Phone className="w-3 h-3" /> {business.businessPhone}
                       </a>
                     )}
                     {business?.businessEmail && (
-                      <a href={`mailto:${business.businessEmail}`} className="hover:text-primary flex items-center gap-1 hidden sm:flex">
+                      <a href={`mailto:${business.businessEmail}`} className="hover:text-gray-700 flex items-center gap-1 hidden sm:flex">
                         <Mail className="w-3 h-3" /> {business.businessEmail}
                       </a>
                     )}
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="border-gray-300">
                 <LogOut className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Logout</span>
               </Button>
@@ -554,27 +554,20 @@ export default function ClientPortalHub() {
           </div>
         </header>
 
-        <div className="bg-primary text-primary-foreground py-4 px-4">
+        <div className="bg-white border-b px-4 py-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <FileText className="w-6 h-6" />
-                <div>
-                  <h2 className="text-xl font-bold">
-                    {clientName ? `Welcome back, ${clientName}` : 'Your Documents'}
-                  </h2>
-                  <p className="text-sm opacity-90">
-                    {portalData?.phone ? `Logged in as ${portalData.phone}` : 'Client Portal'}
-                  </p>
-                </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {clientName ? `Welcome back, ${clientName}` : 'Your Documents'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {portalData?.phone ? `Logged in as ${portalData.phone}` : 'View your quotes, invoices, and jobs'}
+                </p>
               </div>
               {sourceDocument && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="border-primary-foreground/30 text-primary-foreground"
-                  onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}
-                >
+                <Button variant="outline" size="sm" className="border-gray-300"
+                  onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}>
                   <ArrowLeft className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">
                     Back to {sourceDocument.type === 'quote' ? 'Quote' : sourceDocument.type === 'invoice' ? 'Invoice' : 'Receipt'}
@@ -586,7 +579,7 @@ export default function ClientPortalHub() {
           </div>
         </div>
 
-        <main className="flex-1 px-4 py-6">
+        <main className="flex-1 px-4 py-6 bg-gray-50">
           <div className="max-w-4xl mx-auto">
             {isLoadingData ? (
               <div className="space-y-4">
@@ -629,10 +622,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="quotes" className="space-y-4">
                   {portalData?.quotes.length === 0 ? (
-                    <Card>
-                      <CardContent className="pt-6 text-center text-muted-foreground">
-                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No quotes yet</p>
+                    <Card className="border-gray-200">
+                      <CardContent className="pt-8 pb-8 text-center">
+                        <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 text-sm">No quotes yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -647,14 +640,14 @@ export default function ClientPortalHub() {
                                   {quote.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground truncate">{quote.title}</p>
+                              <p className="text-sm text-gray-500 truncate">{quote.title}</p>
                               {quote.business?.businessName && (
-                                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                                   <Building2 className="w-3 h-3" />
                                   {quote.business.businessName}
                                 </p>
                               )}
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-gray-400 mt-1">
                                 {formatDate(quote.createdAt)}
                                 {quote.validUntil && ` • Valid until ${formatDate(quote.validUntil)}`}
                               </p>
@@ -677,10 +670,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="invoices" className="space-y-4">
                   {portalData?.invoices.length === 0 ? (
-                    <Card>
-                      <CardContent className="pt-6 text-center text-muted-foreground">
-                        <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No invoices yet</p>
+                    <Card className="border-gray-200">
+                      <CardContent className="pt-8 pb-8 text-center">
+                        <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 text-sm">No invoices yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -695,14 +688,14 @@ export default function ClientPortalHub() {
                                   {invoice.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground truncate">{invoice.title}</p>
+                              <p className="text-sm text-gray-500 truncate">{invoice.title}</p>
                               {invoice.business?.businessName && (
-                                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                                   <Building2 className="w-3 h-3" />
                                   {invoice.business.businessName}
                                 </p>
                               )}
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-gray-400 mt-1">
                                 {formatDate(invoice.createdAt)}
                                 {invoice.dueDate && invoice.status !== 'paid' && ` • Due ${formatDate(invoice.dueDate)}`}
                                 {invoice.paidAt && ` • Paid ${formatDate(invoice.paidAt)}`}
@@ -732,10 +725,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="receipts" className="space-y-4">
                   {portalData?.receipts.length === 0 ? (
-                    <Card>
-                      <CardContent className="pt-6 text-center text-muted-foreground">
-                        <Receipt className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No receipts yet</p>
+                    <Card className="border-gray-200">
+                      <CardContent className="pt-8 pb-8 text-center">
+                        <Receipt className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 text-sm">No receipts yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -745,7 +738,7 @@ export default function ClientPortalHub() {
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-medium">Receipt #{receipt.number}</h3>
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-gray-400 mt-1">
                                 Paid {formatDate(receipt.paymentDate)}
                               </p>
                             </div>
@@ -765,10 +758,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="jobs" className="space-y-4">
                   {portalData?.jobs.length === 0 ? (
-                    <Card>
-                      <CardContent className="pt-6 text-center text-muted-foreground">
-                        <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No jobs yet</p>
+                    <Card className="border-gray-200">
+                      <CardContent className="pt-8 pb-8 text-center">
+                        <Briefcase className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 text-sm">No jobs yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -784,12 +777,12 @@ export default function ClientPortalHub() {
                                 </Badge>
                               </div>
                               {job.address && (
-                                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                                   <MapPin className="w-3 h-3" />
                                   {job.address}
                                 </p>
                               )}
-                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 {job.scheduledAt ? `Scheduled: ${formatDate(job.scheduledAt)}` : 'Not scheduled'}
                                 {job.completedAt && ` • Completed: ${formatDate(job.completedAt)}`}
@@ -811,7 +804,7 @@ export default function ClientPortalHub() {
           </div>
         </main>
 
-        <div className="text-center py-4 border-t flex items-center justify-center gap-2">
+        <div className="text-center py-6 border-t border-gray-200 bg-white flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
           <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
         </div>
