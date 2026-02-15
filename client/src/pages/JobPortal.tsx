@@ -103,6 +103,26 @@ interface CrewLocationResponse {
   workers: CrewLocationWorker[];
 }
 
+interface LocationResponse {
+  tracking: boolean;
+  status: string;
+  message?: string;
+  workerLocation?: {
+    latitude: number;
+    longitude: number;
+    heading?: number;
+    speed?: number;
+    updatedAt: number;
+    stale: boolean;
+  } | null;
+  jobLocation?: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  etaMinutes?: number;
+  lastUpdated?: string;
+}
+
 const STATUS_ORDER = ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'] as const;
 
 function getStatusIndex(status: string | null): number {
@@ -182,26 +202,6 @@ function getDocStatusBadge(status: string) {
   }
 }
 
-interface LocationResponse {
-  tracking: boolean;
-  status: string;
-  message?: string;
-  workerLocation?: {
-    latitude: number;
-    longitude: number;
-    heading?: number;
-    speed?: number;
-    updatedAt: number;
-    stale: boolean;
-  } | null;
-  jobLocation?: {
-    latitude: number;
-    longitude: number;
-  } | null;
-  etaMinutes?: number;
-  lastUpdated?: string;
-}
-
 function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
   const map = useMap();
   useEffect(() => {
@@ -246,356 +246,183 @@ function createWorkerIcon(color: string, isPrimary: boolean) {
   });
 }
 
-function LiveTrackingMap({ token, workerName, jobAddress }: { token: string; workerName: string; jobAddress?: string }) {
+function HeroMap({ 
+  token, 
+  jobLat, 
+  jobLng, 
+  jobAddress,
+  workerStatus,
+  assignments 
+}: { 
+  token: string; 
+  jobLat?: string; 
+  jobLng?: string; 
+  jobAddress?: string;
+  workerStatus: string | null;
+  assignments?: PortalAssignment[];
+}) {
+  const [crewData, setCrewData] = useState<CrewLocationResponse | null>(null);
   const [locationData, setLocationData] = useState<LocationResponse | null>(null);
-  const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchLocation = useCallback(async () => {
+  const isEnRoute = workerStatus === 'on_my_way' || assignments?.some(a => a.status === 'en_route');
+
+  const fetchLocations = useCallback(async () => {
     try {
-      const res = await fetch(`/api/public/job-portal/${token}/location`);
-      if (res.ok) {
-        const data: LocationResponse = await res.json();
-        
-        // Also try new assignment-scoped location endpoint
-        try {
-          const res2 = await fetch(`/api/portal/${token}/live-location`);
-          if (res2.ok) {
-            const data2 = await res2.json();
-            if (data2.tracking && data2.location) {
-              // Use newer location data from pings if available
-              const pingTime = new Date(data2.location.recordedAt).getTime();
-              const existingTime = data.workerLocation?.updatedAt || 0;
-              if (pingTime > existingTime || !data.workerLocation) {
-                data.workerLocation = {
-                  latitude: data2.location.latitude,
-                  longitude: data2.location.longitude,
-                  heading: undefined,
-                  speed: undefined,
-                  updatedAt: pingTime,
-                  stale: false,
-                };
-                data.tracking = true;
-                if (data2.etaMinutes != null) {
-                  data.etaMinutes = data2.etaMinutes;
-                }
-                data.lastUpdated = data2.location.recordedAt;
-              }
-            }
-          }
-        } catch {}
-        
+      const [crewRes, locRes] = await Promise.allSettled([
+        fetch(`/api/public/job-portal/${token}/crew-locations`),
+        fetch(`/api/public/job-portal/${token}/location`),
+      ]);
+      if (crewRes.status === 'fulfilled' && crewRes.value.ok) {
+        const data: CrewLocationResponse = await crewRes.value.json();
+        setCrewData(data);
+      }
+      if (locRes.status === 'fulfilled' && locRes.value.ok) {
+        const data: LocationResponse = await locRes.value.json();
         setLocationData(data);
       }
-    } catch {
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
   }, [token]);
 
   useEffect(() => {
-    fetchLocation();
-    intervalRef.current = setInterval(fetchLocation, 10000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [fetchLocation]);
+    fetchLocations();
+    const pollInterval = isEnRoute ? 10000 : 60000;
+    intervalRef.current = setInterval(fetchLocations, pollInterval);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [fetchLocations, isEnRoute]);
 
-  if (loading) {
+  const jobLatNum = jobLat ? parseFloat(jobLat) : null;
+  const jobLngNum = jobLng ? parseFloat(jobLng) : null;
+  const hasJobCoords = jobLatNum != null && jobLngNum != null && !isNaN(jobLatNum) && !isNaN(jobLngNum);
+
+  const crewWorkers = crewData?.workers?.filter(w => w.location && ['en_route', 'arrived', 'in_progress'].includes(w.status)) || [];
+  const singleWorkerLoc = locationData?.workerLocation;
+  const hasSingleWorker = singleWorkerLoc && singleWorkerLoc.latitude && singleWorkerLoc.longitude;
+
+  const allPoints: [number, number][] = [];
+  if (hasJobCoords) allPoints.push([jobLatNum, jobLngNum]);
+  crewWorkers.forEach(w => {
+    if (w.location) allPoints.push([w.location.latitude, w.location.longitude]);
+  });
+  if (hasSingleWorker && crewWorkers.length === 0) {
+    allPoints.push([singleWorkerLoc.latitude, singleWorkerLoc.longitude]);
+  }
+
+  const jobLocFromApi = crewData?.jobLocation || locationData?.jobLocation;
+  if (!hasJobCoords && jobLocFromApi) {
+    allPoints.push([jobLocFromApi.latitude, jobLocFromApi.longitude]);
+  }
+
+  const center: [number, number] = allPoints.length > 0 ? allPoints[0] : [-33.8688, 151.2093];
+  const bounds: L.LatLngBoundsExpression | null = allPoints.length >= 2 ? allPoints as L.LatLngBoundsExpression : null;
+
+  const etaMinutes = crewData?.workers?.find(w => w.isPrimary)?.etaMinutes 
+    || crewData?.workers?.[0]?.etaMinutes 
+    || locationData?.etaMinutes 
+    || null;
+
+  const jobPinLat = hasJobCoords ? jobLatNum : jobLocFromApi?.latitude;
+  const jobPinLng = hasJobCoords ? jobLngNum : jobLocFromApi?.longitude;
+  const hasJobPin = jobPinLat != null && jobPinLng != null;
+
+  if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 space-y-3">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-[300px] w-full rounded-lg" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!locationData || !locationData.tracking) {
-    return null;
-  }
-
-  const { workerLocation, jobLocation, etaMinutes, lastUpdated } = locationData;
-
-  const now = Date.now();
-  const updatedAtMs = workerLocation?.updatedAt ? workerLocation.updatedAt : 0;
-  const staleThreshold = 5 * 60 * 1000;
-  const isStale = workerLocation ? (workerLocation.stale || (now - updatedAtMs > staleThreshold)) : false;
-
-  const timeAgoText = (() => {
-    if (!lastUpdated && !updatedAtMs) return '';
-    const ts = lastUpdated ? new Date(lastUpdated).getTime() : updatedAtMs;
-    const diffMs = now - ts;
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    return `${diffHours} hr${diffHours !== 1 ? 's' : ''} ago`;
-  })();
-
-  const hasWorker = workerLocation && workerLocation.latitude && workerLocation.longitude;
-  const hasJob = jobLocation && jobLocation.latitude && jobLocation.longitude;
-
-  const center: [number, number] = hasWorker
-    ? [workerLocation.latitude, workerLocation.longitude]
-    : hasJob
-      ? [jobLocation.latitude, jobLocation.longitude]
-      : [-33.8688, 151.2093];
-
-  const bounds: L.LatLngBoundsExpression | null =
-    hasWorker && hasJob
-      ? [
-          [workerLocation.latitude, workerLocation.longitude],
-          [jobLocation.latitude, jobLocation.longitude],
-        ]
-      : null;
-
-  return (
-    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-      {etaMinutes != null && etaMinutes > 0 && (
-        <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center">
-              <Navigation className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-2xl font-bold">{etaMinutes} min</span>
-              <span className="text-sm text-white/70 ml-2">estimated arrival</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-white/50">
-            <Signal className="w-3 h-3" />
-            Updated {timeAgoText}
-          </div>
-        </div>
-      )}
-
-      {isStale && (
-        <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-          <span className="text-xs text-amber-700">Tracking paused - last update {timeAgoText}</span>
-        </div>
-      )}
-
-      <div className="overflow-hidden" style={{ height: '300px' }}>
+      <div className="relative w-full" style={{ height: '300px' }}>
         <MapContainer
-          center={center}
-          zoom={13}
+          center={[-33.8688, 151.2093]}
+          zoom={12}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
           attributionControl={false}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-          {bounds && <FitBounds bounds={bounds} />}
-
-          {hasWorker && (
-            <Marker position={[workerLocation.latitude, workerLocation.longitude]} icon={workerIcon}>
-              <Popup>
-                <span className="text-sm font-medium">{workerName}</span>
-              </Popup>
-            </Marker>
-          )}
-
-          {hasJob && (
-            <Marker position={[jobLocation.latitude, jobLocation.longitude]} icon={jobIcon}>
-              <Popup>
-                <span className="text-sm">{jobAddress || 'Job location'}</span>
-              </Popup>
-            </Marker>
-          )}
         </MapContainer>
-      </div>
-
-      {!hasWorker && (
-        <div className="px-4 py-3 text-center">
-          <p className="text-xs text-gray-500">Waiting for location update...</p>
-        </div>
-      )}
-
-      {hasWorker && timeAgoText && !(etaMinutes != null && etaMinutes > 0) && (
-        <div className="px-4 py-2 flex items-center justify-end gap-1 text-xs text-gray-400">
-          <Signal className="w-3 h-3" />
-          Updated {timeAgoText}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CrewTrackingMap({ token, assignments, jobAddress }: { 
-  token: string; 
-  assignments: PortalAssignment[];
-  jobAddress?: string;
-}) {
-  const [crewData, setCrewData] = useState<CrewLocationResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const fetchCrewLocations = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/public/job-portal/${token}/crew-locations`);
-      if (res.ok) {
-        const data: CrewLocationResponse = await res.json();
-        setCrewData(data);
-      }
-    } catch {} finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchCrewLocations();
-    intervalRef.current = setInterval(fetchCrewLocations, 15000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [fetchCrewLocations]);
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 space-y-3">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-[300px] w-full rounded-lg" />
+        <div className="absolute bottom-3 left-3 right-3 z-[1000]">
+          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
+            <span className="text-xs font-medium text-slate-700">{jobAddress || 'Job location'}</span>
+            <span className="text-xs text-slate-400 ml-auto">Location will update soon</span>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!crewData || !crewData.tracking) return null;
-
-  const { jobLocation, workers } = crewData;
-  const colorMap = new Map(workers.map((w, i) => [w.assignmentId, WORKER_COLORS[i % WORKER_COLORS.length]]));
-  const enRouteWorkers = workers.filter(w => w.status === 'en_route' && w.location);
-  const hasJob = jobLocation && jobLocation.latitude && jobLocation.longitude;
-  
-  const allPoints: [number, number][] = [];
-  enRouteWorkers.forEach(w => {
-    if (w.location) allPoints.push([w.location.latitude, w.location.longitude]);
-  });
-  if (hasJob) allPoints.push([jobLocation.latitude, jobLocation.longitude]);
-  
-  const center: [number, number] = allPoints.length > 0 ? allPoints[0] : [-16.9186, 145.7781];
-  const bounds: L.LatLngBoundsExpression | null = allPoints.length >= 2 ? allPoints as L.LatLngBoundsExpression : null;
-
-  const primaryWorker = workers.find(w => w.isPrimary) || workers[0];
-  const primaryEta = primaryWorker?.etaMinutes;
-  
-  const anyStale = enRouteWorkers.some(w => w.stale);
-
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-      {primaryEta != null && primaryEta > 0 && (
-        <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center">
-              <Navigation className="w-4 h-4" />
+    <div className="relative w-full" style={{ height: '300px' }}>
+      <MapContainer
+        center={center}
+        zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+        attributionControl={false}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        {bounds && <FitBounds bounds={bounds} />}
+
+        {hasJobPin && (
+          <Marker position={[jobPinLat!, jobPinLng!]} icon={jobIcon}>
+            <Popup>
+              <span className="text-sm font-medium">{jobAddress || 'Your job location'}</span>
+            </Popup>
+          </Marker>
+        )}
+
+        {crewWorkers.map((w, idx) => {
+          if (!w.location) return null;
+          const color = WORKER_COLORS[idx % WORKER_COLORS.length];
+          const icon = createWorkerIcon(color, w.isPrimary);
+          return (
+            <Marker 
+              key={w.assignmentId}
+              position={[w.location.latitude, w.location.longitude]} 
+              icon={icon}
+            >
+              <Popup>
+                <span className="text-sm font-medium">{w.name}</span>
+                {w.etaMinutes && <span className="text-xs block">ETA: {w.etaMinutes} min</span>}
+              </Popup>
+            </Marker>
+          );
+        })}
+
+        {hasSingleWorker && crewWorkers.length === 0 && (
+          <Marker position={[singleWorkerLoc.latitude, singleWorkerLoc.longitude]} icon={workerIcon}>
+            <Popup>
+              <span className="text-sm font-medium">Technician</span>
+            </Popup>
+          </Marker>
+        )}
+      </MapContainer>
+
+      {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
+        <div className="absolute bottom-3 left-3 right-3 z-[1000]">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#2563EB] flex items-center justify-center flex-shrink-0">
+                <Navigation className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-900">{etaMinutes} min</p>
+                <p className="text-xs text-slate-500">estimated arrival</p>
+              </div>
             </div>
-            <div>
-              <span className="text-2xl font-bold">{primaryEta} min</span>
-              <span className="text-sm text-white/70 ml-2">estimated arrival</span>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Signal className="w-3 h-3" />
+              <span>Live</span>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-white/50">
-            <Signal className="w-3 h-3" />
-            Live
           </div>
         </div>
       )}
 
-        {anyStale && (
-          <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-            <span className="text-xs text-amber-700">Some tracking data may be delayed</span>
+      {!isEnRoute && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
+        <div className="absolute bottom-3 left-3 z-[1000]">
+          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
+            <span className="text-xs font-medium text-slate-700">Your job location</span>
           </div>
-        )}
-
-        {workers.length > 0 && (
-          <div className="border-b border-gray-100">
-            {workers.filter(w => ['en_route', 'arrived', 'in_progress', 'assigned'].includes(w.status)).map((w) => {
-              const color = colorMap.get(w.assignmentId) || WORKER_COLORS[0];
-              const isSelected = selectedWorker === w.assignmentId;
-              const statusLabel = w.status === 'en_route' ? 'On the Way' : 
-                                  w.status === 'arrived' ? 'Arrived' :
-                                  w.status === 'in_progress' ? 'Working' :
-                                  w.status === 'assigned' ? 'Scheduled' : w.status;
-              const updatedText = w.location?.recordedAt ? formatTimeAgo(w.location.recordedAt) : '';
-              
-              return (
-                <div 
-                  key={w.assignmentId}
-                  className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${isSelected ? 'bg-gray-50' : 'hover:bg-gray-50/50'}`}
-                  onClick={() => setSelectedWorker(isSelected ? null : w.assignmentId)}
-                >
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 truncate">{w.name}</span>
-                      {w.isPrimary && (
-                        <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-xs ${w.status === 'en_route' ? 'text-amber-600' : w.status === 'arrived' || w.status === 'in_progress' ? 'text-emerald-600' : 'text-gray-500'}`}>
-                        {statusLabel}
-                      </span>
-                      {w.status === 'en_route' && w.etaMinutes != null && w.etaMinutes > 0 && (
-                        <span className="text-xs text-gray-500">ETA {w.etaMinutes} min</span>
-                      )}
-                      {updatedText && w.status === 'en_route' && (
-                        <span className="text-xs text-gray-400">{updatedText}</span>
-                      )}
-                      {w.stale && w.status === 'en_route' && (
-                        <span className="text-xs text-amber-500">Paused</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="overflow-hidden" style={{ height: '300px' }}>
-          <MapContainer
-            center={center}
-            zoom={13}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-            attributionControl={false}
-          >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {bounds && <FitBounds bounds={bounds} />}
-
-            {enRouteWorkers.map((w, idx) => {
-              if (!w.location) return null;
-              const color = colorMap.get(w.assignmentId) || WORKER_COLORS[0];
-              const icon = createWorkerIcon(color, w.isPrimary);
-              return (
-                <Marker 
-                  key={w.assignmentId}
-                  position={[w.location.latitude, w.location.longitude]} 
-                  icon={icon}
-                >
-                  <Popup>
-                    <span className="text-sm font-medium">{w.name}</span>
-                    {w.etaMinutes && <span className="text-xs block">ETA: {w.etaMinutes} min</span>}
-                  </Popup>
-                </Marker>
-              );
-            })}
-
-            {hasJob && (
-              <Marker position={[jobLocation.latitude, jobLocation.longitude]} icon={jobIcon}>
-                <Popup>
-                  <span className="text-sm">{jobAddress || 'Job location'}</span>
-                </Popup>
-              </Marker>
-            )}
-          </MapContainer>
         </div>
+      )}
     </div>
   );
 }
@@ -677,12 +504,14 @@ export default function JobPortal() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5">
-        <div className="max-w-lg mx-auto p-4 space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
+        <div className="max-w-lg mx-auto">
+          <Skeleton className="h-[300px] w-full" />
+          <div className="p-4 space-y-4">
+            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-48 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
+          </div>
         </div>
       </div>
     );
@@ -707,129 +536,142 @@ export default function JobPortal() {
   const { job, business, worker, client, documents } = data;
   const statusConfig = getStatusConfig(job.workerStatus);
   const statusIdx = getStatusIndex(job.workerStatus);
-  const isActive = job.workerStatus && ['on_my_way', 'arrived', 'in_progress'].includes(job.workerStatus);
   const hasPhotos = job.photos && job.photos.length > 0;
   const hasDocuments = (documents.quotes.length + documents.invoices.length) > 0;
-
-  const timelineSteps = [
-    { key: 'assigned', label: 'Scheduled', icon: Calendar, timestamp: job.scheduledAt },
-    { key: 'on_my_way', label: 'On the Way', icon: Navigation, timestamp: null },
-    { key: 'arrived', label: 'Arrived', icon: MapPin, timestamp: null },
-    { key: 'in_progress', label: 'Work Started', icon: Timer, timestamp: job.startedAt },
-    { key: 'completed', label: 'Completed', icon: CheckCircle2, timestamp: job.completedAt },
-  ];
 
   const mapsUrl = job.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`
     : null;
 
-  const getStatusGradient = (status: string | null) => {
-    switch (status) {
-      case 'on_my_way': return 'from-amber-500 to-orange-500';
-      case 'arrived': return 'from-emerald-500 to-green-600';
-      case 'in_progress': return 'from-blue-500 to-indigo-600';
-      case 'completed': return 'from-emerald-500 to-teal-600';
-      default: return 'from-slate-500 to-slate-600';
-    }
-  };
+  const progressSteps = [
+    { key: 'assigned', label: 'Scheduled' },
+    { key: 'on_my_way', label: 'On the Way' },
+    { key: 'arrived', label: 'Arrived' },
+    { key: 'in_progress', label: 'Working' },
+    { key: 'completed', label: 'Complete' },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col">
-      <header className="bg-[#2563EB] sticky top-0 z-30">
-        <div className="max-w-lg mx-auto px-4 py-3">
-          <div className="flex items-center gap-3">
-            {business.logo ? (
-              <img src={business.logo} alt={business.name}
-                className="w-10 h-10 object-contain rounded-md bg-white/90 p-0.5" />
-            ) : (
-              <div className="w-10 h-10 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
-                <img src={jobrunnerLogo} alt="JobRunner" className="w-full h-full object-contain" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h1 className="font-bold text-white text-base truncate">{business.name}</h1>
-              <div className="flex items-center gap-3 flex-wrap">
-                {business.phone && (
-                  <a href={`tel:${business.phone}`} className="text-xs text-white/70 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> {business.phone}
-                  </a>
-                )}
-                {business.email && (
-                  <a href={`mailto:${business.email}`} className="text-xs text-white/70 items-center gap-1 hidden sm:flex">
-                    <Mail className="w-3 h-3" /> {business.email}
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <div className="max-w-lg mx-auto w-full flex flex-col flex-1">
 
-      {client && (
-        <div className="bg-gradient-to-r from-[#2563EB]/5 to-transparent border-b border-[#2563EB]/10 px-4 py-3">
-          <div className="max-w-lg mx-auto">
-            <p className="text-sm text-slate-700">
-              Hi <span className="font-semibold">{client.name}</span>, here's your job update
-            </p>
-          </div>
-        </div>
-      )}
-
-      <main className="flex-1">
-        <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
-
-          {token && (data.assignments?.some(a => a.status === 'en_route') || job.workerStatus === 'on_my_way') && (
-            <CrewTrackingMap
+        <div className="relative">
+          {token && (
+            <HeroMap
               token={token}
-              assignments={data.assignments || []}
+              jobLat={job.latitude}
+              jobLng={job.longitude}
               jobAddress={job.address}
+              workerStatus={job.workerStatus}
+              assignments={data.assignments}
             />
           )}
 
-          {job.workerStatus && (
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-              <div className={`bg-gradient-to-r ${getStatusGradient(job.workerStatus)} text-white px-5 py-4`}>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-4 h-4 rounded-full bg-white/30" />
-                    {statusConfig.pulse && (
-                      <div className="absolute inset-0 w-4 h-4 rounded-full bg-white/30 animate-ping opacity-75" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-xl">{statusConfig.label}</span>
-                      {job.workerStatus === 'completed' && (
-                        <CheckCircle2 className="w-6 h-6 text-white/90" />
-                      )}
-                    </div>
-                    {job.workerStatus === 'on_my_way' && job.workerEta && (
-                      <div className="mt-1.5">
-                        <span className="text-sm font-medium bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                          ETA: {job.workerEta}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="px-5 py-3 space-y-2">
-                {job.workerStatusUpdatedAt && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-slate-500">
-                      Updated {formatTimeAgo(job.workerStatusUpdatedAt)}
-                    </span>
-                    {job.workerStatus === 'on_my_way' && (
-                      <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                        <Signal className="w-3 h-3" />
-                        Live tracking
-                      </span>
-                    )}
+          <div className="absolute top-0 left-0 right-0 z-[1000]">
+            <div className="bg-black/30 backdrop-blur-md px-4 py-3">
+              <div className="flex items-center gap-3">
+                {business.logo ? (
+                  <img src={business.logo} alt={business.name}
+                    className="w-9 h-9 object-contain rounded-md bg-white/90 p-0.5 flex-shrink-0" />
+                ) : (
+                  <div className="w-9 h-9 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
+                    <img src={jobrunnerLogo} alt="JobRunner" className="w-full h-full object-contain" />
                   </div>
                 )}
+                <div className="min-w-0 flex-1">
+                  <h1 className="font-bold text-white text-sm truncate drop-shadow-sm">{business.name}</h1>
+                  {client && (
+                    <p className="text-xs text-white/70 truncate">Hi {client.name}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {business.phone && (
+                    <a href={`tel:${business.phone}`}>
+                      <Button variant="ghost" size="icon" className="text-white bg-white/15 backdrop-blur-sm rounded-full">
+                        <Phone className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  )}
+                  {business.email && (
+                    <a href={`mailto:${business.email}`}>
+                      <Button variant="ghost" size="icon" className="text-white bg-white/15 backdrop-blur-sm rounded-full">
+                        <Mail className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+
+        {job.workerStatus && (
+          <div className="-mt-5 relative z-10 px-4">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-visible p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="relative flex-shrink-0">
+                  <div className={`w-3 h-3 rounded-full ${statusConfig.dot}`} />
+                  {statusConfig.pulse && (
+                    <div className={`absolute inset-0 w-3 h-3 rounded-full ${statusConfig.dot} animate-ping opacity-50`} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-lg text-slate-900">{statusConfig.label}</span>
+                </div>
+                {job.workerStatus === 'completed' && (
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0" />
+                )}
+                {job.workerStatus === 'on_my_way' && job.workerEta && (
+                  <span className="text-sm font-semibold text-[#2563EB] bg-[#2563EB]/10 px-3 py-1 rounded-full flex-shrink-0">
+                    ETA: {job.workerEta}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-1">
+                {progressSteps.map((step, idx) => {
+                  const stepIdx = getStatusIndex(step.key);
+                  const isCompleted = statusIdx > stepIdx;
+                  const isCurrent = statusIdx === stepIdx;
+                  return (
+                    <div key={step.key} className="flex flex-col items-center flex-1 min-w-0">
+                      <div className="flex items-center w-full">
+                        {idx > 0 && (
+                          <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-[#2563EB]/30' : 'bg-gray-200'}`} />
+                        )}
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                          isCompleted ? 'bg-emerald-500' : isCurrent ? 'bg-[#2563EB]' : 'bg-gray-200'
+                        }`} />
+                        {idx < progressSteps.length - 1 && (
+                          <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-emerald-400' : 'bg-gray-200'}`} />
+                        )}
+                      </div>
+                      <span className={`text-[9px] mt-1.5 text-center leading-tight ${
+                        isCompleted ? 'text-emerald-600 font-medium' : isCurrent ? 'text-[#2563EB] font-semibold' : 'text-slate-400'
+                      }`}>{step.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {job.workerStatusUpdatedAt && (
+                <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
+                  {job.workerStatus === 'on_my_way' && (
+                    <span className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      <Signal className="w-2.5 h-2.5" />
+                      Live tracking
+                    </span>
+                  )}
+                  <p className="text-[10px] text-slate-400 ml-auto">
+                    Updated {formatTimeAgo(job.workerStatusUpdatedAt)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="px-4 py-4 space-y-4 flex-1">
 
           {(data.assignments && data.assignments.length > 0) ? (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
@@ -849,11 +691,17 @@ export default function JobPortal() {
                                       a.status === 'assigned' ? 'Scheduled' : a.status;
                   const initials = a.worker.name === 'Support Crew' ? 'SC' : 
                     a.worker.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                  const isActive = ['en_route', 'arrived', 'in_progress'].includes(a.status);
                   return (
                     <div key={a.id} className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-md"
-                        style={{ backgroundColor: color }}>
-                        {initials}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md"
+                          style={{ backgroundColor: color }}>
+                          {initials}
+                        </div>
+                        {isActive && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -862,7 +710,7 @@ export default function JobPortal() {
                             <span className="text-[10px] font-medium text-slate-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500">{statusLabel}</p>
+                        <p className={`text-xs ${isActive ? 'text-emerald-600' : 'text-slate-500'}`}>{statusLabel}</p>
                       </div>
                       {a.worker.phone && (
                         <a href={`tel:${a.worker.phone}`}>
@@ -886,11 +734,16 @@ export default function JobPortal() {
               </div>
               <div className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-full bg-[#2563EB] flex items-center justify-center text-white font-semibold text-base flex-shrink-0 shadow-md">
-                    {worker.firstName?.[0]}{worker.lastName?.[0]}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-[#2563EB] flex items-center justify-center text-white font-semibold text-base shadow-md">
+                      {worker.firstName?.[0]}{worker.lastName?.[0]}
+                    </div>
+                    {job.workerStatus && ['on_my_way', 'arrived', 'in_progress'].includes(job.workerStatus) && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900">{worker.firstName} {worker.lastName}</p>
+                    <p className="font-semibold text-slate-900 text-sm">{worker.firstName} {worker.lastName}</p>
                     <p className="text-xs text-slate-500">Your assigned technician</p>
                   </div>
                   {worker.phone && (
@@ -914,18 +767,16 @@ export default function JobPortal() {
                 <p className="text-sm text-slate-600">{job.description}</p>
               )}
               {job.address && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700">{job.address}</p>
                     {mapsUrl && (
-                      <a
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-[#2563EB] font-medium hover:underline inline-flex items-center gap-1 mt-0.5"
-                      >
-                        Open in Maps <ChevronRight className="w-3 h-3" />
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="mt-2 text-[#2563EB] border-[#2563EB]/30">
+                          <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                          Navigate
+                        </Button>
                       </a>
                     )}
                   </div>
@@ -972,12 +823,18 @@ export default function JobPortal() {
               </div>
               <div className="p-5">
                 <div className="relative pl-8">
-                  {timelineSteps.map((step, idx) => {
+                  {[
+                    { key: 'assigned', label: 'Scheduled', icon: Calendar, timestamp: job.scheduledAt },
+                    { key: 'on_my_way', label: 'On the Way', icon: Navigation, timestamp: null },
+                    { key: 'arrived', label: 'Arrived', icon: MapPin, timestamp: null },
+                    { key: 'in_progress', label: 'Work Started', icon: Timer, timestamp: job.startedAt },
+                    { key: 'completed', label: 'Completed', icon: CheckCircle2, timestamp: job.completedAt },
+                  ].map((step, idx, arr) => {
                     const stepIdx = getStatusIndex(step.key);
                     const isCompleted = statusIdx > stepIdx;
                     const isCurrent = statusIdx === stepIdx;
                     const isFuture = statusIdx < stepIdx;
-                    const isLast = idx === timelineSteps.length - 1;
+                    const isLast = idx === arr.length - 1;
                     const StepIcon = step.icon;
 
                     if (isFuture && step.key !== 'completed') {
@@ -1089,9 +946,9 @@ export default function JobPortal() {
               <div className="p-5">
                 <div className="space-y-2">
                   {data.materials.map((material, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-1.5">
+                    <div key={idx} className="flex items-center justify-between gap-2 py-1.5">
                       <span className="text-sm text-slate-800">{material.name}</span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {material.quantity && (
                           <span className="text-xs text-slate-500">
                             {material.quantity}{material.unit ? ` ${material.unit}` : ''}
@@ -1152,7 +1009,7 @@ export default function JobPortal() {
               <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-300" />
-                  <span className="font-semibold text-sm">Documents</span>
+                  <span className="font-semibold text-sm">Documents & Payments</span>
                 </div>
               </div>
               <div className="p-4 space-y-3">
@@ -1301,54 +1158,53 @@ export default function JobPortal() {
               )}
             </div>
           </div>
-        </div>
-      </main>
 
-      <div className="max-w-lg mx-auto px-4 pb-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-          <div className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-[#2563EB]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-slate-900 text-sm">Your Documents</h3>
-                <p className="text-xs text-slate-600 mt-0.5">View invoices, quotes, and make secure payments</p>
-                <div className="flex items-center gap-3 mt-2 flex-wrap">
-                  <Button 
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (client?.phone) params.set('phone', client.phone);
-                      window.location.href = `/portal${params.toString() ? '?' + params.toString() : ''}`;
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="text-sm text-[#2563EB] border-[#2563EB]/30"
-                  >
-                    View Documents
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> Secure
-                  </span>
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 text-[#2563EB]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-slate-900 text-sm">Your Documents</h3>
+                  <p className="text-xs text-slate-600 mt-0.5">View invoices, quotes, and make secure payments</p>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <Button 
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (client?.phone) params.set('phone', client.phone);
+                        window.location.href = `/portal${params.toString() ? '?' + params.toString() : ''}`;
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="text-sm text-[#2563EB] border-[#2563EB]/30"
+                    >
+                      View Documents
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Shield className="w-3 h-3" /> Secure
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="text-center py-6 space-y-2">
-        <div className="flex items-center justify-center gap-2">
-          <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-sm font-medium text-slate-500">Powered by <strong className="text-slate-700">JobRunner</strong></span>
         </div>
-        {business.abn && (
-          <p className="text-xs text-slate-400">ABN: {business.abn}</p>
-        )}
-        <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-          <Shield className="w-3.5 h-3.5" />
-          <span>Secure & encrypted</span>
+
+        <div className="text-center py-6 space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
+            <span className="text-sm font-medium text-slate-500">Powered by <strong className="text-slate-700">JobRunner</strong></span>
+          </div>
+          {business.abn && (
+            <p className="text-xs text-slate-400">ABN: {business.abn}</p>
+          )}
+          <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Secure & encrypted</span>
+          </div>
         </div>
       </div>
 
