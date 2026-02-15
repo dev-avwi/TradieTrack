@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
-  MessageCircle, Loader2, Signal, ClipboardCheck, Package
+  MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard
 } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -54,7 +54,7 @@ interface JobPortalData {
     abn?: string;
   };
   worker: { firstName: string; lastName: string; phone?: string } | null;
-  client: { name: string } | null;
+  client: { name: string; phone?: string; phoneLast4?: string } | null;
   documents: {
     quotes: Array<{ id: number; title: string; status: string; total: string; token: string; createdAt: string }>;
     invoices: Array<{ id: number; invoiceNumber: string; status: string; total: string; token: string; createdAt: string }>;
@@ -940,6 +940,34 @@ export default function JobPortal() {
           </Card>
         </div>
       </main>
+
+      <div className="max-w-lg mx-auto px-4 pb-4">
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900 text-sm">Client Portal</h3>
+                <p className="text-xs text-gray-600 mt-0.5">View all your invoices, quotes, and make payments securely</p>
+                <Button 
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (client?.phone) params.set('phone', client.phone);
+                    window.location.href = `/portal${params.toString() ? '?' + params.toString() : ''}`;
+                  }}
+                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  size="sm"
+                >
+                  Open Client Portal
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <footer className="border-t border-gray-200 py-6 px-4 mt-auto bg-white">
         <div className="max-w-lg mx-auto text-center space-y-2">

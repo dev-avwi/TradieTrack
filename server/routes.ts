@@ -1022,6 +1022,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { formatPhoneNumber } = await import('./services/smsService');
       const normalizedPhone = formatPhoneNumber(phone);
       
+      // Rate limit: max 3 OTP sends per hour per phone
+      const recentCount = await storage.countRecentVerificationCodes(normalizedPhone, 60 * 60 * 1000);
+      if (recentCount >= 3) {
+        return res.status(429).json({ error: 'Too many verification requests. Please try again later.' });
+      }
+      
       // Generate 6-digit code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       
@@ -11996,7 +12002,7 @@ Be specific about materials, colors, and features that would be included.`
             const baseUrl = process.env.REPLIT_DOMAINS 
               ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
               : 'http://localhost:5000';
-            portalUrl = `${baseUrl}/job-portal/${activeToken.token}`;
+            portalUrl = `${baseUrl}/p/${activeToken.token}`;
             
             let smsBody = '';
             const ownerPhone = businessSettingsData?.phone || '';
@@ -12109,7 +12115,7 @@ Be specific about materials, colors, and features that would be included.`
           : 'http://localhost:5000';
         return res.json({ 
           token: activeToken,
-          url: `${baseUrl}/job-portal/${activeToken.token}`,
+          url: `${baseUrl}/p/${activeToken.token}`,
         });
       }
       
@@ -12134,7 +12140,7 @@ Be specific about materials, colors, and features that would be included.`
       
       res.json({
         token: portalToken,
-        url: `${baseUrl}/job-portal/${portalToken.token}`,
+        url: `${baseUrl}/p/${portalToken.token}`,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to create portal link' });
@@ -12167,6 +12173,13 @@ Be specific about materials, colors, and features that would be included.`
       const portalToken = await storage.getJobPortalTokenByToken(req.params.token);
       if (!portalToken) {
         return res.status(404).json({ error: 'Portal link not found or expired' });
+      }
+      
+      if (portalToken.revokedAt) {
+        return res.status(410).json({ error: 'This tracking link has been revoked' });
+      }
+      if (portalToken.expiresAt && new Date(portalToken.expiresAt) < new Date()) {
+        return res.status(410).json({ error: 'This tracking link has expired' });
       }
       
       await storage.updateJobPortalTokenAccess(portalToken.id);
@@ -12282,6 +12295,8 @@ Be specific about materials, colors, and features that would be included.`
         assignment: assignmentData,
         client: client ? {
           name: client.name,
+          phoneLast4: client.phone ? client.phone.slice(-4) : null,
+          phone: client.phone || null,
         } : null,
         documents: {
           quotes: jobQuotes,

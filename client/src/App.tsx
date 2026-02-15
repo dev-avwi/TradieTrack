@@ -1295,6 +1295,7 @@ function App() {
               <Route path="/portal" component={ClientPortalHub} />
               <Route path="/portal/:type/:token" component={ClientPortal} />
               <Route path="/job-portal/:token" component={JobPortal} />
+              <Route path="/p/:token" component={JobPortal} />
               <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
               <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
               <Route path="/privacy" component={PrivacyPolicy} />

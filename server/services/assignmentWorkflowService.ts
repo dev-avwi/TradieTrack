@@ -144,7 +144,7 @@ export async function handleOnMyWay(params: OnMyWayParams): Promise<OnMyWayResul
     await storage.updateJob(jobId, effectiveUserId, { portalEnabled: true });
   }
 
-  const portalUrl = `${baseUrl}/job-portal/${portalToken.token}`;
+  const portalUrl = `${baseUrl}/p/${portalToken.token}`;
 
   let smsSent = false;
   let antiSpamBlocked = false;
@@ -285,6 +285,21 @@ export async function handleWorkerStatusChange(params: WorkerStatusParams): Prom
     } catch (e) {}
   }
 
+  if (status === 'completed') {
+    try {
+      const portalToken = await storage.getActivePortalTokenForAssignment(assignmentId) 
+        || await storage.getActiveJobPortalToken(jobId);
+      if (portalToken) {
+        const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        if (!portalToken.expiresAt || new Date(portalToken.expiresAt) > sevenDaysFromNow) {
+          await storage.updateJobPortalTokenExpiry(portalToken.id, sevenDaysFromNow);
+        }
+      }
+    } catch (e) {
+      console.log('[Portal] Failed to update token expiry on job completion:', e);
+    }
+  }
+
   if (job && job.clientId) {
     const client = await storage.getClient(job.clientId, effectiveUserId);
     if (client?.phone) {
@@ -296,7 +311,7 @@ export async function handleWorkerStatusChange(params: WorkerStatusParams): Prom
 
       let portalToken = await storage.getActivePortalTokenForAssignment(assignmentId);
       if (!portalToken) portalToken = await storage.getActiveJobPortalToken(jobId);
-      const portalUrl = portalToken ? `${baseUrl}/job-portal/${portalToken.token}` : '';
+      const portalUrl = portalToken ? `${baseUrl}/p/${portalToken.token}` : '';
 
       const ownerPhone = business?.phone || 'the office';
       let smsBody = '';
@@ -393,7 +408,7 @@ export async function handleDelayedNotification(params: {
 
   let portalToken = await storage.getActivePortalTokenForAssignment(assignmentId);
   if (!portalToken) portalToken = await storage.getActiveJobPortalToken(jobId);
-  const portalUrl = portalToken ? `${baseUrl}/job-portal/${portalToken.token}` : '';
+  const portalUrl = portalToken ? `${baseUrl}/p/${portalToken.token}` : '';
 
   const smsBody = `JobRunner — ${businessName}: ${workerName} is delayed ~${newEtaMinutes} mins. Track here: ${portalUrl}`;
 

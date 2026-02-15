@@ -171,6 +171,11 @@ export default function ClientPortalHub() {
   useEffect(() => {
     const initializePortal = async () => {
       const params = new URLSearchParams(window.location.search);
+      const phoneParam = params.get('phone');
+      if (phoneParam) {
+        setPhone(phoneParam);
+      }
+
       const docType = params.get('doc');
       const docToken = params.get('token');
       

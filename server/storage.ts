@@ -887,6 +887,7 @@ export interface IStorage {
   incrementVerificationAttempts(id: string): Promise<void>;
   markVerificationCodeUsed(id: string): Promise<void>;
   cleanupExpiredVerificationCodes(): Promise<void>;
+  countRecentVerificationCodes(phone: string, windowMs: number): Promise<number>;
   
   // Client Portal Sessions
   createPortalSession(phone: string, sessionToken: string, expiresAt: Date): Promise<PortalSession>;
@@ -908,6 +909,7 @@ export interface IStorage {
   getJobPortalTokensByJobId(jobId: string): Promise<JobPortalToken[]>;
   revokeJobPortalToken(tokenId: string): Promise<void>;
   updateJobPortalTokenAccess(tokenId: string): Promise<void>;
+  updateJobPortalTokenExpiry(tokenId: string, expiresAt: Date): Promise<void>;
   getActiveJobPortalToken(jobId: string): Promise<JobPortalToken | null>;
 }
 
@@ -6889,6 +6891,18 @@ Thank you for your prompt attention to this matter.`,
       .where(eq(portalVerificationCodes.id, id));
   }
 
+  async countRecentVerificationCodes(phone: string, windowMs: number): Promise<number> {
+    const since = new Date(Date.now() - windowMs);
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(portalVerificationCodes)
+      .where(and(
+        eq(portalVerificationCodes.phone, phone),
+        gt(portalVerificationCodes.createdAt, since)
+      ));
+    return Number(result[0]?.count || 0);
+  }
+
   async markVerificationCodeUsed(id: string): Promise<void> {
     await db
       .update(portalVerificationCodes)
@@ -7040,6 +7054,13 @@ Thank you for your prompt attention to this matter.`,
         lastAccessedAt: new Date(),
         accessCount: sql`${jobPortalTokens.accessCount} + 1`,
       })
+      .where(eq(jobPortalTokens.id, tokenId));
+  }
+
+  async updateJobPortalTokenExpiry(tokenId: string, expiresAt: Date): Promise<void> {
+    await db
+      .update(jobPortalTokens)
+      .set({ expiresAt })
       .where(eq(jobPortalTokens.id, tokenId));
   }
 
