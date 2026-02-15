@@ -11246,6 +11246,72 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Subcontractor accepts assignment
+  app.post("/api/jobs/:jobId/assignments/:assignmentId/accept", requireAuth, async (req: any, res) => {
+    try {
+      const assignment = await storage.getJobAssignment(req.params.assignmentId);
+      if (!assignment || assignment.jobId !== req.params.jobId) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      if (assignment.userId !== req.user.id) {
+        return res.status(403).json({ error: 'Only the assigned worker can accept' });
+      }
+      if (!['assigned', 'invited'].includes(assignment.assignmentStatus || '')) {
+        return res.status(400).json({ error: 'Assignment cannot be accepted in current status' });
+      }
+      
+      await storage.updateJobAssignment(assignment.id, { assignmentStatus: 'accepted' });
+      
+      await storage.createAssignmentEvent({
+        assignmentId: assignment.id,
+        jobId: req.params.jobId,
+        actorUserId: req.user.id,
+        eventType: 'assignment_accepted',
+        eventData: { timestamp: new Date().toISOString() },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to accept assignment' });
+    }
+  });
+
+  // Subcontractor declines assignment
+  app.post("/api/jobs/:jobId/assignments/:assignmentId/decline", requireAuth, async (req: any, res) => {
+    try {
+      const assignment = await storage.getJobAssignment(req.params.assignmentId);
+      if (!assignment || assignment.jobId !== req.params.jobId) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      if (assignment.userId !== req.user.id) {
+        return res.status(403).json({ error: 'Only the assigned worker can decline' });
+      }
+      if (!['assigned', 'invited'].includes(assignment.assignmentStatus || '')) {
+        return res.status(400).json({ error: 'Assignment cannot be declined in current status' });
+      }
+      
+      await storage.updateJobAssignment(assignment.id, { 
+        assignmentStatus: 'declined',
+        isActive: false,
+      });
+      
+      await storage.createAssignmentEvent({
+        assignmentId: assignment.id,
+        jobId: req.params.jobId,
+        actorUserId: req.user.id,
+        eventType: 'assignment_declined',
+        eventData: { 
+          timestamp: new Date().toISOString(),
+          reason: req.body.reason || null,
+        },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to decline assignment' });
+    }
+  });
+
   // Get assignment events (audit log) for a specific assignment
   app.get("/api/jobs/:jobId/assignments/:assignmentId/events", requireAuth, async (req: any, res) => {
     try {
@@ -11258,6 +11324,143 @@ Be specific about materials, colors, and features that would be included.`
       res.json(events);
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get events' });
+    }
+  });
+
+  // ===== LOCATION PING ENDPOINTS =====
+  
+  app.post("/api/assignments/:assignmentId/location-ping", requireAuth, async (req: any, res) => {
+    try {
+      const { assignmentId } = req.params;
+      const { latitude, longitude, accuracyMeters } = req.body;
+      
+      if (latitude == null || longitude == null) {
+        return res.status(400).json({ error: 'latitude and longitude are required' });
+      }
+      
+      const assignment = await storage.getJobAssignment(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      
+      if (assignment.userId !== req.userId) {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
+      
+      if (assignment.assignmentStatus !== 'en_route') {
+        return res.status(400).json({ error: 'Location pings only allowed during en_route status' });
+      }
+      
+      const ping = await storage.createLocationPing({
+        assignmentId,
+        userId: req.userId,
+        latitude,
+        longitude,
+        accuracyMeters: accuracyMeters || null,
+      });
+      
+      res.json({ success: true, ping });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to record location ping' });
+    }
+  });
+  
+  app.get("/api/assignments/:assignmentId/location", requireAuth, async (req: any, res) => {
+    try {
+      const ping = await storage.getLatestLocationPing(req.params.assignmentId);
+      res.json(ping || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get location' });
+    }
+  });
+  
+  app.get("/api/assignments/:assignmentId/location-history", requireAuth, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const pings = await storage.getLocationPings(req.params.assignmentId, limit);
+      res.json(pings);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get location history' });
+    }
+  });
+  
+  app.get("/api/portal/:token/live-location", async (req: any, res) => {
+    try {
+      const portalToken = await storage.getJobPortalTokenByToken(req.params.token);
+      if (!portalToken || portalToken.revokedAt || (portalToken.expiresAt && new Date(portalToken.expiresAt) < new Date())) {
+        return res.status(404).json({ error: 'Invalid or expired token' });
+      }
+      
+      if (!portalToken.assignmentId) {
+        return res.json({ tracking: false, message: 'No assignment linked to this portal token' });
+      }
+      
+      const assignment = await storage.getJobAssignment(portalToken.assignmentId);
+      if (!assignment || assignment.assignmentStatus !== 'en_route') {
+        return res.json({ tracking: false, message: 'Worker is not currently traveling' });
+      }
+      
+      const ping = await storage.getLatestLocationPing(portalToken.assignmentId);
+      if (!ping) {
+        return res.json({ tracking: true, location: null, etaMinutes: assignment.etaMinutes });
+      }
+      
+      res.json({
+        tracking: true,
+        location: {
+          latitude: ping.latitude,
+          longitude: ping.longitude,
+          accuracyMeters: ping.accuracyMeters,
+          recordedAt: ping.recordedAt,
+        },
+        etaMinutes: assignment.etaMinutes,
+        etaUpdatedAt: assignment.etaUpdatedAt,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get live location' });
+    }
+  });
+
+  // ===== DISPATCH BOARD ENDPOINT =====
+  
+  app.get("/api/dispatch/board", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const allJobs = await storage.getJobs(userId);
+      const activeJobs = allJobs.filter((j: any) => 
+        !['completed', 'cancelled', 'archived', 'done'].includes(j.status?.toLowerCase() || '')
+      );
+      
+      const dispatchData = await Promise.all(activeJobs.map(async (job: any) => {
+        const assignments = await storage.getJobAssignments(job.id);
+        const activeAssignments = assignments.filter((a: any) => a.isActive);
+        
+        const assignmentsWithLocation = await Promise.all(activeAssignments.map(async (assignment: any) => {
+          let latestPing = null;
+          if (assignment.assignmentStatus === 'en_route') {
+            latestPing = await storage.getLatestLocationPing(assignment.id);
+          }
+          return {
+            ...assignment,
+            latestPing,
+          };
+        }));
+        
+        let client = null;
+        if (job.clientId) {
+          client = await storage.getClientById(job.clientId);
+        }
+        
+        return {
+          ...job,
+          client: client ? { id: client.id, name: client.name, phone: client.phone } : null,
+          assignments: assignmentsWithLocation,
+        };
+      }));
+      
+      res.json(dispatchData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get dispatch board data' });
     }
   });
 

@@ -289,6 +289,9 @@ import {
   type InsertSmsNotificationLog,
   type AssignmentEvent,
   type InsertAssignmentEvent,
+  locationPings,
+  type LocationPing,
+  type InsertLocationPing,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -570,6 +573,11 @@ export interface IStorage {
   createSmsNotificationLog(log: { jobId: string; assignmentId?: string; userId: string; clientPhone: string; notificationType: string; smsMessageId?: string; portalTokenId?: string; etaMinutes?: number }): Promise<any>;
   getLastSmsNotification(assignmentId: string, notificationType: string): Promise<any>;
   getActivePortalTokenForAssignment(assignmentId: string): Promise<JobPortalToken | null>;
+
+  // Location pings
+  createLocationPing(ping: InsertLocationPing): Promise<LocationPing>;
+  getLatestLocationPing(assignmentId: string): Promise<LocationPing | null>;
+  getLocationPings(assignmentId: string, limit?: number): Promise<LocationPing[]>;
   
   // Timesheets
   getTimesheets(userId: string): Promise<Timesheet[]>;
@@ -7137,6 +7145,26 @@ Thank you for your prompt attention to this matter.`,
       .orderBy(desc(jobPortalTokens.createdAt))
       .limit(1);
     return result || null;
+  }
+
+  async createLocationPing(ping: InsertLocationPing): Promise<LocationPing> {
+    const [result] = await db.insert(locationPings).values(ping).returning();
+    return result;
+  }
+
+  async getLatestLocationPing(assignmentId: string): Promise<LocationPing | null> {
+    const [result] = await db.select().from(locationPings)
+      .where(eq(locationPings.assignmentId, assignmentId))
+      .orderBy(desc(locationPings.recordedAt))
+      .limit(1);
+    return result || null;
+  }
+
+  async getLocationPings(assignmentId: string, limit: number = 50): Promise<LocationPing[]> {
+    return await db.select().from(locationPings)
+      .where(eq(locationPings.assignmentId, assignmentId))
+      .orderBy(desc(locationPings.recordedAt))
+      .limit(limit);
   }
 }
 

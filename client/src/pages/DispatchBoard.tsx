@@ -30,6 +30,7 @@ import {
   Calendar as CalendarIcon,
   Clock,
   MapPin,
+  Map as MapIcon,
   User,
   Users,
   GripVertical,
@@ -61,6 +62,9 @@ import {
   differenceInMinutes,
   addMinutes
 } from "date-fns";
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface Job {
   id: string;
@@ -150,7 +154,258 @@ interface ScheduleSuggestionsResponse {
   optimizationNotes?: string[];
 }
 
+interface DispatchJob {
+  id: string;
+  title: string;
+  status: string;
+  workerStatus?: string;
+  scheduledAt?: string;
+  scheduledTime?: string;
+  estimatedDuration?: number;
+  address?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  clientId: string;
+  client?: { id: string; name: string; phone?: string } | null;
+  assignments?: DispatchAssignment[];
+}
+
+interface DispatchAssignment {
+  id: string;
+  assignmentStatus: string;
+  memberId?: string;
+  memberFirstName?: string;
+  memberLastName?: string;
+  memberEmail?: string;
+  isActive: boolean;
+  latestPing?: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+    timestamp?: string;
+  } | null;
+}
+
+const jobIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const workerIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const KANBAN_COLUMNS = [
+  { key: 'assigned', label: 'Assigned', color: 'bg-blue-500', bgLight: 'bg-blue-50 dark:bg-blue-900/20' },
+  { key: 'en_route', label: 'En Route', color: 'bg-amber-500', bgLight: 'bg-amber-50 dark:bg-amber-900/20' },
+  { key: 'arrived', label: 'Arrived', color: 'bg-purple-500', bgLight: 'bg-purple-50 dark:bg-purple-900/20' },
+  { key: 'in_progress', label: 'In Progress', color: 'bg-orange-500', bgLight: 'bg-orange-50 dark:bg-orange-900/20' },
+  { key: 'completed', label: 'Completed', color: 'bg-green-500', bgLight: 'bg-green-50 dark:bg-green-900/20' },
+] as const;
+
+function getKanbanColumn(job: DispatchJob): string {
+  const status = job.status?.toLowerCase() || '';
+  const workerStatus = job.workerStatus?.toLowerCase() || '';
+  const assignments = job.assignments || [];
+
+  if (assignments.some(a => a.assignmentStatus === 'done')) return 'completed';
+  if (assignments.some(a => a.assignmentStatus === 'working')) return 'in_progress';
+  if (assignments.some(a => a.assignmentStatus === 'arrived')) return 'arrived';
+  if (assignments.some(a => a.assignmentStatus === 'en_route')) return 'en_route';
+  if (assignments.some(a => ['assigned', 'accepted', 'invited'].includes(a.assignmentStatus))) return 'assigned';
+
+  if (workerStatus === 'completed') return 'completed';
+  if (workerStatus === 'in_progress') return 'in_progress';
+  if (workerStatus === 'arrived') return 'arrived';
+  if (workerStatus === 'on_my_way') return 'en_route';
+
+  if (['done', 'completed', 'invoiced'].includes(status)) return 'completed';
+  if (status === 'in_progress') return 'in_progress';
+  if (['pending', 'scheduled'].includes(status)) return 'assigned';
+
+  return 'assigned';
+}
+
+function KanbanBoard({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
+  const columnJobs = useMemo(() => {
+    const map: Record<string, DispatchJob[]> = {};
+    KANBAN_COLUMNS.forEach(col => { map[col.key] = []; });
+    dispatchJobs.forEach(job => {
+      const col = getKanbanColumn(job);
+      if (map[col]) map[col].push(job);
+    });
+    return map;
+  }, [dispatchJobs]);
+
+  return (
+    <div className="overflow-x-auto pb-4">
+      <div className="flex gap-4 min-w-[900px]">
+        {KANBAN_COLUMNS.map(column => (
+          <div key={column.key} className="flex-1 min-w-[220px]">
+            <div className="flex items-center gap-2 mb-3">
+              <div className={`w-2.5 h-2.5 rounded-full ${column.color}`} />
+              <h3 className="text-sm font-semibold">{column.label}</h3>
+              <Badge variant="secondary" className="ml-auto">
+                {columnJobs[column.key]?.length || 0}
+              </Badge>
+            </div>
+            <div className={`rounded-lg p-2 space-y-2 min-h-[200px] ${column.bgLight}`}>
+              {(columnJobs[column.key] || []).map(job => {
+                const firstAssignment = job.assignments?.find(a => a.isActive);
+                return (
+                  <Card key={job.id} className="hover-elevate">
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-medium leading-tight">{job.title}</h4>
+                        <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                          {job.status}
+                        </Badge>
+                      </div>
+                      {job.client && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {job.client.name}
+                        </p>
+                      )}
+                      {firstAssignment && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarFallback className="text-[9px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                              {(firstAssignment.memberFirstName?.[0] || '') + (firstAssignment.memberLastName?.[0] || '')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {firstAssignment.memberFirstName} {firstAssignment.memberLastName}
+                          </span>
+                        </div>
+                      )}
+                      {job.address && (
+                        <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{job.address}</span>
+                        </div>
+                      )}
+                      {job.scheduledTime && (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 flex-shrink-0" />
+                          <span>{job.scheduledTime}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {(columnJobs[column.key] || []).length === 0 && (
+                <div className="text-center py-6 text-xs text-muted-foreground">
+                  No jobs
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
+  const jobMarkers = useMemo(() => {
+    return dispatchJobs.filter(job => {
+      const lat = Number(job.latitude);
+      const lng = Number(job.longitude);
+      return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+    }).map(job => ({
+      position: [Number(job.latitude), Number(job.longitude)] as [number, number],
+      job,
+    }));
+  }, [dispatchJobs]);
+
+  const workerMarkers = useMemo(() => {
+    const markers: { position: [number, number]; assignment: DispatchAssignment; jobTitle: string }[] = [];
+    dispatchJobs.forEach(job => {
+      (job.assignments || []).forEach(assignment => {
+        if (assignment.assignmentStatus === 'en_route' && assignment.latestPing) {
+          const lat = Number(assignment.latestPing.latitude);
+          const lng = Number(assignment.latestPing.longitude);
+          if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+            markers.push({
+              position: [lat, lng],
+              assignment,
+              jobTitle: job.title,
+            });
+          }
+        }
+      });
+    });
+    return markers;
+  }, [dispatchJobs]);
+
+  const center = useMemo<[number, number]>(() => {
+    const allPoints = [
+      ...jobMarkers.map(m => m.position),
+      ...workerMarkers.map(m => m.position),
+    ];
+    if (allPoints.length === 0) return [39.8283, -98.5795];
+    const avgLat = allPoints.reduce((s, p) => s + p[0], 0) / allPoints.length;
+    const avgLng = allPoints.reduce((s, p) => s + p[1], 0) / allPoints.length;
+    return [avgLat, avgLng];
+  }, [jobMarkers, workerMarkers]);
+
+  return (
+    <div className="rounded-lg overflow-hidden border">
+      <MapContainer
+        center={center}
+        zoom={jobMarkers.length + workerMarkers.length > 0 ? 10 : 4}
+        className="h-[calc(100vh-200px)] w-full"
+        style={{ minHeight: '400px' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {jobMarkers.map(({ position, job }) => (
+          <Marker key={`job-${job.id}`} position={position} icon={jobIcon}>
+            <Popup>
+              <div className="min-w-[180px]">
+                <p className="font-semibold text-sm">{job.title}</p>
+                {job.client && <p className="text-xs text-gray-600">{job.client.name}</p>}
+                {job.address && <p className="text-xs text-gray-500 mt-1">{job.address}</p>}
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">{job.status}</span>
+                  {job.scheduledTime && <span className="text-xs text-gray-500">{job.scheduledTime}</span>}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        {workerMarkers.map(({ position, assignment, jobTitle }, index) => (
+          <Marker key={`worker-${assignment.id}-${index}`} position={position} icon={workerIcon}>
+            <Popup>
+              <div className="min-w-[160px]">
+                <p className="font-semibold text-sm">
+                  {assignment.memberFirstName} {assignment.memberLastName}
+                </p>
+                <p className="text-xs text-gray-500">En route to: {jobTitle}</p>
+                <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">En Route</span>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
+}
+
 export default function DispatchBoard() {
+  const [topView, setTopView] = useState<'schedule' | 'board' | 'map'>('schedule');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | '3day' | 'week'>('day');
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
@@ -173,6 +428,11 @@ export default function DispatchBoard() {
 
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ['/api/team/members'],
+  });
+
+  const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery<DispatchJob[]>({
+    queryKey: ['/api/dispatch/board'],
+    enabled: topView === 'board' || topView === 'map',
   });
 
   // AI Scheduling Suggestions
@@ -472,12 +732,60 @@ export default function DispatchBoard() {
 
   return (
     <PageShell data-testid="dispatch-board">
-      <PageHeader
-        title="Dispatch Board"
-        subtitle="Drag and drop jobs to schedule your team"
-      />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+        <PageHeader
+          title="Dispatch Board"
+          subtitle="Drag and drop jobs to schedule your team"
+        />
+        <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+          <Button
+            variant={topView === 'schedule' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setTopView('schedule')}
+          >
+            <CalendarIcon className="h-4 w-4 mr-1.5" />
+            Schedule
+          </Button>
+          <Button
+            variant={topView === 'board' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setTopView('board')}
+          >
+            <LayoutGrid className="h-4 w-4 mr-1.5" />
+            Board
+          </Button>
+          <Button
+            variant={topView === 'map' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setTopView('map')}
+          >
+            <MapIcon className="h-4 w-4 mr-1.5" />
+            Map
+          </Button>
+        </div>
+      </div>
 
-      {selectedJob && !assignDialogOpen && (
+      {topView === 'board' && (
+        dispatchLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <KanbanBoard dispatchJobs={dispatchJobs} />
+        )
+      )}
+
+      {topView === 'map' && (
+        dispatchLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <DispatchMapView dispatchJobs={dispatchJobs} />
+        )
+      )}
+
+      {topView === 'schedule' && selectedJob && !assignDialogOpen && (
         <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {rescheduleJobMutation.isPending ? (
@@ -521,6 +829,7 @@ export default function DispatchBoard() {
         </div>
       )}
 
+      {topView === 'schedule' && (
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-1">
           <Card>
@@ -1062,6 +1371,7 @@ export default function DispatchBoard() {
           </Card>
         </div>
       </div>
+      )}
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent className="sm:max-w-md">

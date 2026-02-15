@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, json, jsonb, index, unique, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, json, jsonb, index, unique, real, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -3786,3 +3786,17 @@ export const assignmentEvents = pgTable("assignment_events", {
 export const insertAssignmentEventSchema = createInsertSchema(assignmentEvents).omit({ id: true, createdAt: true });
 export type InsertAssignmentEvent = z.infer<typeof insertAssignmentEventSchema>;
 export type AssignmentEvent = typeof assignmentEvents.$inferSelect;
+
+export const locationPings = pgTable("location_pings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").notNull().references(() => jobAssignments.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  accuracyMeters: doublePrecision("accuracy_meters"),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+});
+
+export const insertLocationPingSchema = createInsertSchema(locationPings).omit({ id: true, recordedAt: true });
+export type InsertLocationPing = z.infer<typeof insertLocationPingSchema>;
+export type LocationPing = typeof locationPings.$inferSelect;

@@ -20,6 +20,10 @@ Core architectural and design decisions include:
 *   **PWA Support**: Offline capabilities via web manifest and service worker.
 *   **Real-time Communication**: Job Chat, Team Chat, and Direct Messages with file attachments, two-way Twilio SMS integration, and a unified Chat Hub. WebSocket updates provide real-time synchronization for job status, timers, documents, payments, and notifications.
 *   **Team Operations Center**: Centralized hub for live operations, administration, scheduling, and performance monitoring.
+*   **Visual Dispatch Board**: Three views — Schedule (timeline/calendar), Kanban Board (5-column status board), and Map View (Leaflet with job/worker pins). Uses `/api/dispatch/board` for unified data.
+*   **Assignment-Based Dispatch**: All worker actions use assignment_id. Supports subcontractor accept/decline flow, "On My Way" with ETA calculation, status progression (assigned → en_route → arrived → working → done), and anti-spam SMS controls.
+*   **Live Location Tracking**: LocationPing table stores GPS pings during travel. Portal and dispatch board show real-time worker location on map during EN_ROUTE status.
+*   **Job Materials Tracking**: Per-job material lists with quantities, costs, suppliers, markup, receipts, and status workflow.
 *   **Live360-Style Interactive Map**: Displays job pins and real-time team location tracking with route optimization.
 *   **Role-Based Access Control (RBAC)**: Granular permissions enforced through middleware and a dual-permission system with offline caching.
 *   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization (IndexedDB and SQLite), including time tracking and payment drafts.

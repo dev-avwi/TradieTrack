@@ -53,6 +53,11 @@ export async function handleOnMyWay(params: OnMyWayParams): Promise<OnMyWayResul
     return { success: false, error: 'Assignment is not active' };
   }
 
+  // Subcontractors must accept assignment before going on the way
+  if (assignment.assignmentStatus === 'invited' || assignment.assignmentStatus === 'declined') {
+    return { success: false, error: 'Assignment must be accepted before starting travel' };
+  }
+
   const job = await storage.getJob(jobId, assignment.userId);
   if (!job) {
     return { success: false, error: 'Job not found' };
@@ -293,18 +298,22 @@ export async function handleWorkerStatusChange(params: WorkerStatusParams): Prom
       if (!portalToken) portalToken = await storage.getActiveJobPortalToken(jobId);
       const portalUrl = portalToken ? `${baseUrl}/job-portal/${portalToken.token}` : '';
 
+      const ownerPhone = business?.phone || 'the office';
       let smsBody = '';
       if (status === 'arrived') {
-        smsBody = `JobRunner — ${businessName}: ${workerName} has arrived. Updates/photos: ${portalUrl}`;
+        smsBody = `JobRunner — ${businessName}: ${workerName} has arrived at the job site. Call ${ownerPhone} if needed.`;
       } else if (status === 'completed') {
-        smsBody = `JobRunner — ${businessName}: "${job.title}" has been completed by ${workerName}. View details + documents: ${portalUrl}`;
+        const portalSuffix = portalUrl ? ` View details: ${portalUrl}` : '';
+        smsBody = `JobRunner — ${businessName}: Your job "${job.title}" is now complete!${portalSuffix} Call ${ownerPhone} if you have any questions.`;
       }
 
       if (smsBody) {
         const lastSms = await storage.getLastSmsNotification(assignmentId, status);
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-        
-        if (!lastSms || new Date(lastSms.sentAt) <= tenMinutesAgo) {
+
+        if (lastSms && new Date(lastSms.sentAt) > tenMinutesAgo) {
+          console.log(`[WorkerStatus] Anti-spam: ${status} SMS blocked for assignment ${assignmentId}, last sent ${lastSms.sentAt}`);
+        } else if (!lastSms || new Date(lastSms.sentAt) <= tenMinutesAgo) {
           try {
             await sendSmsToClient({
               businessOwnerId: effectiveUserId,

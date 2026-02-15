@@ -201,6 +201,35 @@ function LiveTrackingMap({ token, workerName, jobAddress }: { token: string; wor
       const res = await fetch(`/api/public/job-portal/${token}/location`);
       if (res.ok) {
         const data: LocationResponse = await res.json();
+        
+        // Also try new assignment-scoped location endpoint
+        try {
+          const res2 = await fetch(`/api/portal/${token}/live-location`);
+          if (res2.ok) {
+            const data2 = await res2.json();
+            if (data2.tracking && data2.location) {
+              // Use newer location data from pings if available
+              const pingTime = new Date(data2.location.recordedAt).getTime();
+              const existingTime = data.workerLocation?.updatedAt || 0;
+              if (pingTime > existingTime || !data.workerLocation) {
+                data.workerLocation = {
+                  latitude: data2.location.latitude,
+                  longitude: data2.location.longitude,
+                  heading: undefined,
+                  speed: undefined,
+                  updatedAt: pingTime,
+                  stale: false,
+                };
+                data.tracking = true;
+                if (data2.etaMinutes != null) {
+                  data.etaMinutes = data2.etaMinutes;
+                }
+                data.lastUpdated = data2.location.recordedAt;
+              }
+            }
+          }
+        } catch {}
+        
         setLocationData(data);
       }
     } catch {
