@@ -77,7 +77,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
           onClick={() => onNavigate?.('/settings')}
         >
           {businessSettings?.logoUrl ? (
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 shadow-sm">
+            <div className="w-[4.5rem] h-[4.5rem] rounded-lg overflow-hidden bg-white border border-sidebar-border flex-shrink-0 shadow-sm">
               <img 
                 src={businessSettings.logoUrl} 
                 alt="Business logo" 
@@ -86,7 +86,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
               />
             </div>
           ) : (
-            <div className="w-14 h-14 rounded-lg overflow-hidden bg-transparent flex-shrink-0 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-lg overflow-hidden bg-transparent flex-shrink-0 flex items-center justify-center">
               <img 
                 src={jobrunnerLogo} 
                 alt="JobRunner" 

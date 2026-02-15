@@ -186,7 +186,7 @@ export default function LandingPage() {
               <img 
                 src={jobrunnerLogo} 
                 alt="JobRunner" 
-                className="h-14 w-auto"
+                className="h-20 w-auto"
               />
               <span className="text-xl font-bold tracking-tight">
                 <span className="text-brand">Job</span>
@@ -287,7 +287,7 @@ export default function LandingPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <span className="flex items-center gap-2 text-lg font-bold">
-                <img src={jobrunnerLogo} alt="JobRunner" className="h-12 w-auto" />
+                <img src={jobrunnerLogo} alt="JobRunner" className="h-[4.5rem] w-auto" />
                 <span className="text-brand">Job</span>
                 <span className="text-brand-accent">Runner</span>
               </span>
@@ -446,7 +446,7 @@ export default function LandingPage() {
                       {/* Status bar spacer */}
                       <div className="flex items-center justify-between mb-2 px-1">
                         <div className="flex items-center gap-1">
-                          <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
+                          <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 object-contain" />
                           <span className="text-[9px] font-bold text-brand">Job</span>
                           <span className="text-[9px] font-bold text-brand-accent">Runner</span>
                         </div>
@@ -1017,7 +1017,7 @@ export default function LandingPage() {
                 <img 
                   src={jobrunnerLogo} 
                   alt="JobRunner" 
-                  className="h-12 w-auto brightness-0 invert"
+                  className="h-[4.5rem] w-auto brightness-0 invert"
                 />
                 <span className="text-lg font-bold">
                   <span className="text-blue-400">Job</span>

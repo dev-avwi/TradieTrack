@@ -726,7 +726,7 @@ export default function JobPortal() {
               <img src={business.logo} alt={business.name}
                 className="w-10 h-10 object-contain rounded-md bg-white/90 p-0.5" />
             ) : (
-              <div className="w-10 h-10 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
+              <div className="w-14 h-14 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
                 <img src={jobrunnerLogo} alt="JobRunner" className="w-full h-full object-contain" />
               </div>
             )}
@@ -1250,7 +1250,7 @@ export default function JobPortal() {
       <footer className="border-t border-slate-200 py-6 px-4 mt-auto bg-white/80 backdrop-blur-sm">
         <div className="max-w-lg mx-auto text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-6 h-6 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-9 h-9 object-contain" />
             <span className="text-xs text-slate-500">Powered by <span className="font-semibold text-slate-700">JobRunner</span></span>
           </div>
           {business.abn && (
