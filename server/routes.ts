@@ -11150,6 +11150,117 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // ============================================
+  // ASSIGNMENT-SCOPED WORKFLOW ENDPOINTS
+  // ============================================
+
+  // Assignment-scoped "On My Way" - validates assignment, calculates ETA, sends SMS with anti-spam
+  app.post("/api/jobs/:jobId/assignments/:assignmentId/on-my-way", requireAuth, async (req: any, res) => {
+    try {
+      const { handleOnMyWay } = await import('./services/assignmentWorkflowService');
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : `https://${req.headers.host}`;
+      
+      const result = await handleOnMyWay({
+        jobId: req.params.jobId,
+        assignmentId: req.params.assignmentId,
+        actorUserId: req.userId,
+        workerLatitude: req.body.latitude,
+        workerLongitude: req.body.longitude,
+        customMessage: req.body.customMessage,
+        baseUrl,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in assignment on-my-way:", error);
+      res.status(500).json({ error: error.message || "Failed to process on-my-way" });
+    }
+  });
+
+  // Assignment-scoped worker status change (arrived, in_progress, completed)
+  app.patch("/api/jobs/:jobId/assignments/:assignmentId/status", requireAuth, async (req: any, res) => {
+    try {
+      const { handleWorkerStatusChange } = await import('./services/assignmentWorkflowService');
+      const { status } = req.body;
+      
+      if (!['arrived', 'in_progress', 'completed'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Must be: arrived, in_progress, or completed' });
+      }
+
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : `https://${req.headers.host}`;
+
+      const result = await handleWorkerStatusChange({
+        jobId: req.params.jobId,
+        assignmentId: req.params.assignmentId,
+        actorUserId: req.userId,
+        status,
+        baseUrl,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in assignment status change:", error);
+      res.status(500).json({ error: error.message || "Failed to update status" });
+    }
+  });
+
+  // Assignment-scoped delayed notification
+  app.post("/api/jobs/:jobId/assignments/:assignmentId/delayed", requireAuth, async (req: any, res) => {
+    try {
+      const { handleDelayedNotification } = await import('./services/assignmentWorkflowService');
+      const { newEtaMinutes } = req.body;
+      
+      if (!newEtaMinutes || typeof newEtaMinutes !== 'number' || newEtaMinutes < 1) {
+        return res.status(400).json({ error: 'newEtaMinutes is required and must be a positive number' });
+      }
+
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : `https://${req.headers.host}`;
+
+      const result = await handleDelayedNotification({
+        jobId: req.params.jobId,
+        assignmentId: req.params.assignmentId,
+        actorUserId: req.userId,
+        newEtaMinutes,
+        baseUrl,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in delayed notification:", error);
+      res.status(500).json({ error: error.message || "Failed to send delayed notification" });
+    }
+  });
+
+  // Get assignment events (audit log) for a specific assignment
+  app.get("/api/jobs/:jobId/assignments/:assignmentId/events", requireAuth, async (req: any, res) => {
+    try {
+      const assignment = await storage.getJobAssignment(req.params.assignmentId);
+      if (!assignment || assignment.jobId !== req.params.jobId) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      
+      const events = await storage.getAssignmentEvents(req.params.assignmentId);
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get events' });
+    }
+  });
+
   // Send "Running Late" notification to client
   app.post("/api/jobs/:id/running-late", requireAuth, async (req: any, res) => {
     try {
@@ -11448,11 +11559,12 @@ Be specific about materials, colors, and features that would be included.`
 
   // ============================================
   // WORKER STATUS UPDATE (Uber-style dispatch flow)
+  // Now assignment-aware: tries to find assignment for actor and uses assignment workflow
   // ============================================
   app.patch("/api/jobs/:id/worker-status", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
-      const { workerStatus, workerEta, workerEtaMinutes } = req.body;
+      const { workerStatus, workerEta, workerEtaMinutes, latitude, longitude } = req.body;
       
       const validStatuses = ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'];
       if (!workerStatus || !validStatuses.includes(workerStatus)) {
@@ -11463,7 +11575,47 @@ Be specific about materials, colors, and features that would be included.`
       if (!job) {
         return res.status(404).json({ error: 'Job not found' });
       }
-      
+
+      // Try assignment-based workflow first
+      const assignment = await storage.getJobAssignmentForUser(req.params.id, req.userId);
+      if (assignment) {
+        const baseUrl = process.env.REPLIT_DOMAINS 
+          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+          : `https://${req.headers.host}`;
+
+        if (workerStatus === 'on_my_way') {
+          const { handleOnMyWay } = await import('./services/assignmentWorkflowService');
+          const result = await handleOnMyWay({
+            jobId: req.params.id,
+            assignmentId: assignment.id,
+            actorUserId: req.userId,
+            workerLatitude: latitude,
+            workerLongitude: longitude,
+            baseUrl,
+          });
+          if (!result.success) {
+            return res.status(400).json({ error: result.error });
+          }
+          const updatedJob = await storage.getJob(req.params.id, effectiveUserId);
+          return res.json(updatedJob);
+        } else if (['arrived', 'in_progress', 'completed'].includes(workerStatus)) {
+          const { handleWorkerStatusChange } = await import('./services/assignmentWorkflowService');
+          const result = await handleWorkerStatusChange({
+            jobId: req.params.id,
+            assignmentId: assignment.id,
+            actorUserId: req.userId,
+            status: workerStatus as 'arrived' | 'in_progress' | 'completed',
+            baseUrl,
+          });
+          if (!result.success) {
+            return res.status(400).json({ error: result.error });
+          }
+          const updatedJob = await storage.getJob(req.params.id, effectiveUserId);
+          return res.json(updatedJob);
+        }
+      }
+
+      // Fallback: legacy flow for jobs without assignments
       const updateData: any = { 
         workerStatus,
         workerStatusUpdatedAt: new Date(),
@@ -11714,14 +11866,40 @@ Be specific about materials, colors, and features that would be included.`
       const businessOwner = await storage.getUser(portalToken.userId);
       
       let workerInfo = null;
-      if (job.assignedTo) {
+      let assignmentData = null;
+
+      // Check if portal token is assignment-scoped
+      if (portalToken.assignmentId) {
+        const assignment = await storage.getJobAssignment(portalToken.assignmentId);
+        if (assignment) {
+          assignmentData = {
+            id: assignment.id,
+            status: assignment.assignmentStatus,
+            etaMinutes: assignment.etaMinutes,
+            etaUpdatedAt: assignment.etaUpdatedAt,
+            travelStartedAt: assignment.travelStartedAt,
+            arrivedAt: assignment.arrivedAt,
+          };
+          const worker = await storage.getUser(assignment.userId);
+          const showName = assignment.showWorkerNameToClient !== false;
+          const showPhone = assignment.showWorkerPhoneToClient === true;
+          workerInfo = {
+            firstName: showName ? (assignment.workerDisplayNameSnapshot?.split(' ')[0] || worker?.firstName || null) : null,
+            lastName: showName ? (assignment.workerDisplayNameSnapshot?.split(' ').slice(1).join(' ') || worker?.lastName || null) : null,
+            phone: showPhone ? (assignment.workerPhoneSnapshot || worker?.phone || null) : (businessSettingsData?.phone || null),
+          };
+        }
+      }
+
+      // Fallback: use legacy assignedTo field
+      if (!workerInfo && job.assignedTo) {
         const teamMembersList = await storage.getTeamMembers(portalToken.userId);
         const assigned = teamMembersList.find((m: any) => m.id === job.assignedTo || m.memberId === job.assignedTo);
         if (assigned) {
           workerInfo = {
             firstName: assigned.firstName,
             lastName: assigned.lastName,
-            phone: assigned.phone,
+            phone: businessSettingsData?.phone || null,
           };
         }
       }
@@ -11785,6 +11963,7 @@ Be specific about materials, colors, and features that would be included.`
           abn: businessSettingsData?.abn || null,
         },
         worker: workerInfo,
+        assignment: assignmentData,
         client: client ? {
           name: client.name,
         } : null,
@@ -11824,6 +12003,17 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(404).json({ error: 'Job not found' });
       }
       
+      // Get assignment-specific ETA if available
+      let etaMinutes = job.workerEtaMinutes;
+      let etaUpdatedAt = null;
+      if (portalToken.assignmentId) {
+        const assignment = await storage.getJobAssignment(portalToken.assignmentId);
+        if (assignment) {
+          etaMinutes = assignment.etaMinutes || etaMinutes;
+          etaUpdatedAt = assignment.etaUpdatedAt;
+        }
+      }
+
       if (job.workerStatus !== 'on_my_way') {
         return res.json({ 
           tracking: false,
@@ -11848,7 +12038,8 @@ Be specific about materials, colors, and features that would be included.`
           status: 'on_my_way',
           workerLocation: null,
           jobLocation,
-          etaMinutes: job.workerEtaMinutes,
+          etaMinutes,
+          etaUpdatedAt,
           lastUpdated: job.workerStatusUpdatedAt,
           message: 'Worker is on the way - location update pending',
         });
@@ -11869,7 +12060,8 @@ Be specific about materials, colors, and features that would be included.`
           stale,
         },
         jobLocation,
-        etaMinutes: job.workerEtaMinutes,
+        etaMinutes,
+        etaUpdatedAt,
         lastUpdated: new Date(location.updatedAt),
       });
     } catch (error) {

@@ -1485,9 +1485,19 @@ export const jobAssignments = pgTable("job_assignments", {
   isActive: boolean("is_active").default(true),
   assignedAt: timestamp("assigned_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
+  assignmentStatus: text("assignment_status").default('assigned'),
+  workerDisplayNameSnapshot: text("worker_display_name_snapshot"),
+  workerPhoneSnapshot: text("worker_phone_snapshot"),
+  showWorkerPhoneToClient: boolean("show_worker_phone_to_client").default(false),
+  showWorkerNameToClient: boolean("show_worker_name_to_client").default(true),
+  lastSmsSentAt: timestamp("last_sms_sent_at"),
+  travelStartedAt: timestamp("travel_started_at"),
+  arrivedAt: timestamp("arrived_at"),
+  etaMinutes: integer("eta_minutes"),
+  etaUpdatedAt: timestamp("eta_updated_at"),
 });
 
-export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true });
+export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true, lastSmsSentAt: true, travelStartedAt: true, arrivedAt: true, etaUpdatedAt: true });
 export type InsertJobAssignment = z.infer<typeof insertJobAssignmentSchema>;
 export type JobAssignment = typeof jobAssignments.$inferSelect;
 
@@ -3728,6 +3738,7 @@ export type PortalSession = typeof portalSessions.$inferSelect;
 export const jobPortalTokens = pgTable("job_portal_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  assignmentId: varchar("assignment_id").references(() => jobAssignments.id, { onDelete: 'set null' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   token: varchar("token", { length: 64 }).notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -3741,3 +3752,37 @@ export const jobPortalTokens = pgTable("job_portal_tokens", {
 export const insertJobPortalTokenSchema = createInsertSchema(jobPortalTokens).omit({ id: true, createdAt: true, accessCount: true, lastAccessedAt: true });
 export type InsertJobPortalToken = z.infer<typeof insertJobPortalTokenSchema>;
 export type JobPortalToken = typeof jobPortalTokens.$inferSelect;
+
+// SMS Notification Log - Anti-spam tracking
+export const smsNotificationLog = pgTable("sms_notification_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  assignmentId: varchar("assignment_id").references(() => jobAssignments.id, { onDelete: 'set null' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientPhone: varchar("client_phone").notNull(),
+  notificationType: text("notification_type").notNull(),
+  smsMessageId: varchar("sms_message_id").references(() => smsMessages.id, { onDelete: 'set null' }),
+  portalTokenId: varchar("portal_token_id").references(() => jobPortalTokens.id, { onDelete: 'set null' }),
+  etaMinutes: integer("eta_minutes"),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSmsNotificationLogSchema = createInsertSchema(smsNotificationLog).omit({ id: true, createdAt: true, sentAt: true });
+export type InsertSmsNotificationLog = z.infer<typeof insertSmsNotificationLogSchema>;
+export type SmsNotificationLog = typeof smsNotificationLog.$inferSelect;
+
+// Assignment Events - Audit logging
+export const assignmentEvents = pgTable("assignment_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assignmentId: varchar("assignment_id").notNull().references(() => jobAssignments.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  actorUserId: varchar("actor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  eventType: text("event_type").notNull(),
+  eventData: jsonb("event_data").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAssignmentEventSchema = createInsertSchema(assignmentEvents).omit({ id: true, createdAt: true });
+export type InsertAssignmentEvent = z.infer<typeof insertAssignmentEventSchema>;
+export type AssignmentEvent = typeof assignmentEvents.$inferSelect;

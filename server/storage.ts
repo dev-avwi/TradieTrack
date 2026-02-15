@@ -283,6 +283,12 @@ import {
   jobAssignments,
   type JobAssignment,
   type InsertJobAssignment,
+  smsNotificationLog,
+  assignmentEvents,
+  type SmsNotificationLog,
+  type InsertSmsNotificationLog,
+  type AssignmentEvent,
+  type InsertAssignmentEvent,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -552,8 +558,18 @@ export interface IStorage {
 
   // Job Assignments
   getJobAssignments(jobId: string): Promise<JobAssignment[]>;
+  getJobAssignment(assignmentId: string): Promise<JobAssignment | undefined>;
+  getJobAssignmentForUser(jobId: string, userId: string): Promise<JobAssignment | undefined>;
   createJobAssignment(assignment: InsertJobAssignment): Promise<JobAssignment>;
+  updateJobAssignment(assignmentId: string, data: Partial<InsertJobAssignment & { lastSmsSentAt: Date; travelStartedAt: Date; arrivedAt: Date; etaMinutes: number; etaUpdatedAt: Date; assignmentStatus: string }>): Promise<JobAssignment | undefined>;
   getTeamMemberByUserId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined>;
+
+  // Assignment Events & SMS Log
+  getAssignmentEvents(assignmentId: string): Promise<any[]>;
+  createAssignmentEvent(event: { assignmentId: string; jobId: string; actorUserId: string; eventType: string; eventData?: any }): Promise<any>;
+  createSmsNotificationLog(log: { jobId: string; assignmentId?: string; userId: string; clientPhone: string; notificationType: string; smsMessageId?: string; portalTokenId?: string; etaMinutes?: number }): Promise<any>;
+  getLastSmsNotification(assignmentId: string, notificationType: string): Promise<any>;
+  getActivePortalTokenForAssignment(assignmentId: string): Promise<JobPortalToken | null>;
   
   // Timesheets
   getTimesheets(userId: string): Promise<Timesheet[]>;
@@ -7042,6 +7058,82 @@ Thank you for your prompt attention to this matter.`,
           gt(jobPortalTokens.expiresAt, new Date())
         )
       )
+      .orderBy(desc(jobPortalTokens.createdAt))
+      .limit(1);
+    return result || null;
+  }
+
+  async getJobAssignment(assignmentId: string): Promise<JobAssignment | undefined> {
+    const [result] = await db.select().from(jobAssignments)
+      .where(eq(jobAssignments.id, assignmentId))
+      .limit(1);
+    return result;
+  }
+
+  async getJobAssignmentForUser(jobId: string, userId: string): Promise<JobAssignment | undefined> {
+    const [result] = await db.select().from(jobAssignments)
+      .where(and(eq(jobAssignments.jobId, jobId), eq(jobAssignments.userId, userId), eq(jobAssignments.isActive, true)))
+      .limit(1);
+    return result;
+  }
+
+  async updateJobAssignment(assignmentId: string, data: any): Promise<JobAssignment | undefined> {
+    const [result] = await db.update(jobAssignments)
+      .set(data)
+      .where(eq(jobAssignments.id, assignmentId))
+      .returning();
+    return result;
+  }
+
+  async createAssignmentEvent(event: { assignmentId: string; jobId: string; actorUserId: string; eventType: string; eventData?: any }): Promise<any> {
+    const [result] = await db.insert(assignmentEvents).values({
+      assignmentId: event.assignmentId,
+      jobId: event.jobId,
+      actorUserId: event.actorUserId,
+      eventType: event.eventType,
+      eventData: event.eventData || {},
+    }).returning();
+    return result;
+  }
+
+  async createSmsNotificationLog(log: { jobId: string; assignmentId?: string; userId: string; clientPhone: string; notificationType: string; smsMessageId?: string; portalTokenId?: string; etaMinutes?: number }): Promise<any> {
+    const [result] = await db.insert(smsNotificationLog).values({
+      jobId: log.jobId,
+      assignmentId: log.assignmentId || null,
+      userId: log.userId,
+      clientPhone: log.clientPhone,
+      notificationType: log.notificationType,
+      smsMessageId: log.smsMessageId || null,
+      portalTokenId: log.portalTokenId || null,
+      etaMinutes: log.etaMinutes || null,
+    }).returning();
+    return result;
+  }
+
+  async getLastSmsNotification(assignmentId: string, notificationType: string): Promise<any> {
+    const [result] = await db.select().from(smsNotificationLog)
+      .where(and(
+        eq(smsNotificationLog.assignmentId, assignmentId),
+        eq(smsNotificationLog.notificationType, notificationType)
+      ))
+      .orderBy(desc(smsNotificationLog.sentAt))
+      .limit(1);
+    return result || null;
+  }
+
+  async getAssignmentEvents(assignmentId: string): Promise<any[]> {
+    return await db.select().from(assignmentEvents)
+      .where(eq(assignmentEvents.assignmentId, assignmentId))
+      .orderBy(desc(assignmentEvents.createdAt));
+  }
+
+  async getActivePortalTokenForAssignment(assignmentId: string): Promise<JobPortalToken | null> {
+    const [result] = await db.select().from(jobPortalTokens)
+      .where(and(
+        eq(jobPortalTokens.assignmentId, assignmentId),
+        isNull(jobPortalTokens.revokedAt),
+        gt(jobPortalTokens.expiresAt, new Date())
+      ))
       .orderBy(desc(jobPortalTokens.createdAt))
       .limit(1);
     return result || null;
