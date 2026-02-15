@@ -1495,9 +1495,15 @@ export const jobAssignments = pgTable("job_assignments", {
   arrivedAt: timestamp("arrived_at"),
   etaMinutes: integer("eta_minutes"),
   etaUpdatedAt: timestamp("eta_updated_at"),
+  acceptedAt: timestamp("accepted_at"),
+  acceptedByName: text("accepted_by_name"),
+  acceptanceSignatureData: text("acceptance_signature_data"),
+  confidentialityAgreed: boolean("confidentiality_agreed").default(false),
+  acceptanceIpAddress: text("acceptance_ip_address"),
+  acceptanceUserAgent: text("acceptance_user_agent"),
 });
 
-export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true, lastSmsSentAt: true, travelStartedAt: true, arrivedAt: true, etaUpdatedAt: true });
+export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, createdAt: true, lastSmsSentAt: true, travelStartedAt: true, arrivedAt: true, etaUpdatedAt: true, acceptedAt: true, acceptanceSignatureData: true, acceptanceIpAddress: true, acceptanceUserAgent: true });
 export type InsertJobAssignment = z.infer<typeof insertJobAssignmentSchema>;
 export type JobAssignment = typeof jobAssignments.$inferSelect;
 
@@ -1922,6 +1928,7 @@ export const formSubmissions = pgTable("form_submissions", {
 export const digitalSignatures = pgTable("digital_signatures", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   formSubmissionId: varchar("form_submission_id").references(() => formSubmissions.id, { onDelete: 'cascade' }),
+  assignmentId: varchar("assignment_id").references(() => jobAssignments.id, { onDelete: 'cascade' }),
   jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
   quoteId: varchar("quote_id").references(() => quotes.id, { onDelete: 'cascade' }),
   invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'cascade' }),

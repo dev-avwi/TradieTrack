@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -25,6 +25,7 @@ import LinkedJobsCard from "./LinkedJobsCard";
 import JobProfitabilityCard from "./JobProfitabilityCard";
 import { UnifiedSendModal } from "./UnifiedSendModal";
 import { ManualSmsComposer } from "./ManualSmsComposer";
+import { SignatureDisplay } from '@/components/ui/signature-pad';
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -343,6 +344,29 @@ export default function JobDetailView({
   const { data: allJobs = [] } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
     enabled: !isTradie && !isSolo && teamMembers.length > 0,
+  });
+
+  // Fetch job assignments with acceptance signatures
+  interface JobAssignmentData {
+    id: string;
+    jobId: string;
+    userId: string;
+    displayName?: string;
+    assignmentStatus?: string;
+    acceptedAt?: string;
+    acceptedByName?: string;
+    acceptanceSignatureData?: string;
+    confidentialityAgreed?: boolean;
+    isActive?: boolean;
+  }
+  const { data: jobAssignments = [] } = useQuery<JobAssignmentData[]>({
+    queryKey: ['/api/jobs', jobId, 'assignments'],
+    queryFn: async () => {
+      const res = await fetch(`/api/jobs/${jobId}/assignments`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!jobId && !isTradie && !isSolo,
   });
 
   // Helper function to check if a worker is on another active job
@@ -1900,6 +1924,33 @@ export default function JobDetailView({
                       })}
                     </SelectContent>
                   </Select>
+                  {jobAssignments.filter(a => a.isActive && a.acceptanceSignatureData).length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {jobAssignments.filter(a => a.isActive && a.acceptanceSignatureData).map((assignment) => (
+                        <div key={assignment.id} className="mt-2 pt-2 border-t">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Shield className="w-3 h-3 text-green-600" />
+                            <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50 dark:bg-green-950 dark:text-green-400 dark:border-green-800 no-default-hover-elevate no-default-active-elevate">Signed</Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Accepted by {assignment.acceptedByName || assignment.displayName || 'Worker'}
+                              {assignment.acceptedAt && ` on ${new Date(assignment.acceptedAt).toLocaleDateString('en-AU')}`}
+                            </span>
+                          </div>
+                          <SignatureDisplay
+                            signatureDataUrl={assignment.acceptanceSignatureData!}
+                            label="Acceptance Signature"
+                            className="max-w-[200px]"
+                          />
+                          {assignment.confidentialityAgreed && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Lock className="w-3 h-3 text-blue-600" />
+                              <span className="text-xs text-blue-600">Confidentiality agreed</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

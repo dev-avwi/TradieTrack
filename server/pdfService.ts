@@ -1099,13 +1099,18 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
       </div>
     ` : ''}
     
-    ${data.jobSignatures && data.jobSignatures.filter(s => s.signatureData).length > 0 ? `
+    ${(() => {
+      const clientSigs = (data.jobSignatures || []).filter(s => s.signatureData && s.documentType !== 'assignment_acceptance');
+      const assignmentSigs = (data.jobSignatures || []).filter(s => s.signatureData && s.documentType === 'assignment_acceptance');
+      let html = '';
+      if (clientSigs.length > 0) {
+        html += `
       <div style="margin-top: 24px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; page-break-inside: avoid;">
         <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
           Job Completion Signatures
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
-          ${data.jobSignatures.filter(s => s.signatureData).map(sig => {
+          ${clientSigs.map(sig => {
             const sigDataUrl = sig.signatureData.startsWith('data:') 
               ? sig.signatureData 
               : 'data:image/png;base64,' + sig.signatureData;
@@ -1121,8 +1126,36 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
             </div>
           `}).join('')}
         </div>
-      </div>
-    ` : ''}
+      </div>`;
+      }
+      if (assignmentSigs.length > 0) {
+        html += `
+      <div style="margin-top: 24px; padding: 20px; border: 1px solid #93c5fd; border-radius: 8px; background: #eff6ff; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+          Subcontractor Acceptance Signatures
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
+          ${assignmentSigs.map(sig => {
+            const sigDataUrl = sig.signatureData.startsWith('data:') 
+              ? sig.signatureData 
+              : 'data:image/png;base64,' + sig.signatureData;
+            const signerName = sig.signerName || 'Worker';
+            return `
+            <div style="text-align: center; min-width: 150px;">
+              <div style="background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+                <img src="${sigDataUrl}" alt="${signerName} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
+              </div>
+              <div style="font-size: 11px; font-weight: 500; color: #1e40af;">${signerName}</div>
+              <div style="font-size: 10px; color: #3b82f6;">Assignment Accepted</div>
+              <div style="font-size: 9px; color: #6b7280;">${formatDate(sig.signedAt)}</div>
+              <div style="font-size: 8px; color: #6b7280; margin-top: 2px;">Confidentiality agreement signed</div>
+            </div>
+          `}).join('')}
+        </div>
+      </div>`;
+      }
+      return html;
+    })()}
     
     ${(business as any).includeSignatureOnQuotes && (business as any).defaultSignature ? `
       <div style="margin-top: 24px; padding: 20px; border-top: 1px solid #e5e7eb;">
@@ -1459,13 +1492,18 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
       </div>
     ` : ''}
     
-    ${data.jobSignatures && data.jobSignatures.filter(s => s.signatureData).length > 0 ? `
+    ${(() => {
+      const clientSigs = (data.jobSignatures || []).filter(s => s.signatureData && s.documentType !== 'assignment_acceptance');
+      const assignmentSigs = (data.jobSignatures || []).filter(s => s.signatureData && s.documentType === 'assignment_acceptance');
+      let html = '';
+      if (clientSigs.length > 0) {
+        html += `
       <div style="margin-top: 24px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; page-break-inside: avoid;">
         <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
           Job Completion Signatures
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
-          ${data.jobSignatures.filter(s => s.signatureData).map(sig => {
+          ${clientSigs.map(sig => {
             const sigDataUrl = sig.signatureData.startsWith('data:') 
               ? sig.signatureData 
               : 'data:image/png;base64,' + sig.signatureData;
@@ -1481,8 +1519,36 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
             </div>
           `}).join('')}
         </div>
-      </div>
-    ` : ''}
+      </div>`;
+      }
+      if (assignmentSigs.length > 0) {
+        html += `
+      <div style="margin-top: 24px; padding: 20px; border: 1px solid #93c5fd; border-radius: 8px; background: #eff6ff; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+          Subcontractor Acceptance Signatures
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
+          ${assignmentSigs.map(sig => {
+            const sigDataUrl = sig.signatureData.startsWith('data:') 
+              ? sig.signatureData 
+              : 'data:image/png;base64,' + sig.signatureData;
+            const signerName = sig.signerName || 'Worker';
+            return `
+            <div style="text-align: center; min-width: 150px;">
+              <div style="background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+                <img src="${sigDataUrl}" alt="${signerName} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
+              </div>
+              <div style="font-size: 11px; font-weight: 500; color: #1e40af;">${signerName}</div>
+              <div style="font-size: 10px; color: #3b82f6;">Assignment Accepted</div>
+              <div style="font-size: 9px; color: #6b7280;">${formatDate(sig.signedAt)}</div>
+              <div style="font-size: 8px; color: #6b7280; margin-top: 2px;">Confidentiality agreement signed</div>
+            </div>
+          `}).join('')}
+        </div>
+      </div>`;
+      }
+      return html;
+    })()}
     
     ${(business as any).includeSignatureOnInvoices && (business as any).defaultSignature ? `
       <div style="margin-top: 24px; padding: 20px; border-top: 1px solid #e5e7eb;">

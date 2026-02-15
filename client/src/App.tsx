@@ -51,6 +51,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import VerifyEmailPending from "@/pages/VerifyEmailPending";
 import ResetPassword from "@/pages/ResetPassword";
 import AcceptInvite from "@/pages/AcceptInvite";
+import AcceptAssignment from "@/pages/AcceptAssignment";
 import JobInvite from "@/pages/JobInvite";
 import OpenApp from "@/pages/OpenApp";
 import QuoteModal from "@/components/QuoteModal";
@@ -625,6 +626,7 @@ function Router({
       <Route path="/verify-email-pending" component={VerifyEmailPending} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/accept-invite/:token" component={AcceptInvite} />
+      <Route path="/accept-assignment/:jobId/:assignmentId" component={AcceptAssignment} />
       <Route path="/invite/:code">
         {(params: { code: string }) => <JobInvite code={params.code} />}
       </Route>

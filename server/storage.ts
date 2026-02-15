@@ -674,6 +674,7 @@ export interface IStorage {
   // Digital Signatures
   createDigitalSignature(signature: Omit<InsertDigitalSignature, 'id' | 'createdAt'>): Promise<DigitalSignature>;
   getDigitalSignatureByQuoteId(quoteId: string): Promise<DigitalSignature | undefined>;
+  getDigitalSignaturesByJobId(jobId: string): Promise<any[]>;
   getClientMostRecentSignature(clientId: string): Promise<DigitalSignature | undefined>;
 
   // Job Chat
@@ -3847,6 +3848,10 @@ export class PostgresStorage implements IStorage {
       .orderBy(desc(digitalSignatures.signedAt))
       .limit(1);
     return result[0];
+  }
+
+  async getDigitalSignaturesByJobId(jobId: string): Promise<any[]> {
+    return await db.select().from(digitalSignatures).where(eq(digitalSignatures.jobId, jobId));
   }
 
   async getClientMostRecentSignature(clientId: string): Promise<DigitalSignature | undefined> {

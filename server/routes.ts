@@ -11246,9 +11246,66 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Get all assignments for a job
+  app.get("/api/jobs/:jobId/assignments", requireAuth, async (req: any, res) => {
+    try {
+      const job = await storage.getJobPublic(req.params.jobId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+      const assignments = await storage.getJobAssignments(req.params.jobId);
+      const isOwner = job.userId === req.user.id;
+      const isAssignedWorker = assignments.some((a: any) => a.userId === req.user.id);
+      if (!isOwner && !isAssignedWorker) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      if (!isOwner) {
+        const ownAssignments = assignments.filter((a: any) => a.userId === req.user.id);
+        return res.json(ownAssignments);
+      }
+      res.json(assignments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to get job assignments" });
+    }
+  });
+
+  // Get assignment details for accept-assignment page
+  app.get("/api/jobs/:jobId/assignments/:assignmentId/details", requireAuth, async (req: any, res) => {
+    try {
+      const assignment = await storage.getJobAssignment(req.params.assignmentId);
+      if (!assignment || assignment.jobId !== req.params.jobId) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      if (assignment.userId !== req.user.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const job = await storage.getJobPublic(req.params.jobId);
+      const owner = await storage.getUser(job?.userId || '');
+      const businessSettingsData = owner ? await storage.getBusinessSettings(owner.id) : null;
+
+      res.json({
+        assignmentId: assignment.id,
+        jobId: assignment.jobId,
+        assignmentStatus: assignment.assignmentStatus,
+        displayName: assignment.displayName,
+        workerName: (assignment as any).workerDisplayNameSnapshot || assignment.displayName || req.user.fullName || req.user.email,
+        jobTitle: job?.title || 'Untitled Job',
+        jobAddress: job?.address || '',
+        scheduledDate: (job as any)?.scheduledDate || (job as any)?.scheduledAt,
+        businessName: (businessSettingsData as any)?.businessName || owner?.fullName || 'Business',
+        businessLogo: (businessSettingsData as any)?.logoUrl || null,
+        acceptedAt: assignment.acceptedAt,
+        hasSignature: !!(assignment as any).acceptanceSignatureData,
+        confidentialityAgreed: (assignment as any).confidentialityAgreed,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to fetch assignment details' });
+    }
+  });
+
   // Subcontractor accepts assignment
   app.post("/api/jobs/:jobId/assignments/:assignmentId/accept", requireAuth, async (req: any, res) => {
     try {
+      const { signature_data, signer_name, confidentiality_agreed } = req.body;
       const assignment = await storage.getJobAssignment(req.params.assignmentId);
       if (!assignment || assignment.jobId !== req.params.jobId) {
         return res.status(404).json({ error: 'Assignment not found' });
@@ -11259,15 +11316,56 @@ Be specific about materials, colors, and features that would be included.`
       if (!['assigned', 'invited'].includes(assignment.assignmentStatus || '')) {
         return res.status(400).json({ error: 'Assignment cannot be accepted in current status' });
       }
-      
-      await storage.updateJobAssignment(assignment.id, { assignmentStatus: 'accepted' });
-      
+
+      if (!signature_data || !signature_data.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'A valid signature is required to accept this assignment' });
+      }
+      if (!confidentiality_agreed) {
+        return res.status(400).json({ error: 'You must agree to the confidentiality terms to accept' });
+      }
+
+      const clientIp = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      const signerNameFinal = (signer_name || req.user.fullName || req.user.email || 'Worker').trim();
+
+      await storage.updateJobAssignment(assignment.id, { 
+        assignmentStatus: 'accepted',
+        acceptedAt: new Date(),
+        acceptedByName: signerNameFinal,
+        acceptanceSignatureData: signature_data,
+        confidentialityAgreed: true,
+        acceptanceIpAddress: clientIp,
+        acceptanceUserAgent: userAgent,
+      });
+
+      try {
+        await storage.createDigitalSignature({
+          assignmentId: assignment.id,
+          jobId: req.params.jobId,
+          signerName: signerNameFinal,
+          signerRole: 'worker',
+          signatureData: signature_data,
+          signedAt: new Date(),
+          ipAddress: clientIp,
+          userAgent: userAgent,
+          documentType: 'assignment_acceptance',
+          isValid: true,
+        });
+      } catch (sigError) {
+        console.error('[Assignment Accept] Error saving digital signature:', sigError);
+      }
+
       await storage.createAssignmentEvent({
         assignmentId: assignment.id,
         jobId: req.params.jobId,
         actorUserId: req.user.id,
         eventType: 'assignment_accepted',
-        eventData: { timestamp: new Date().toISOString() },
+        eventData: { 
+          timestamp: new Date().toISOString(),
+          signerName: signerNameFinal,
+          confidentialityAgreed: true,
+          hasSignature: true,
+        },
       });
       
       res.json({ success: true });
@@ -11309,6 +11407,21 @@ Be specific about materials, colors, and features that would be included.`
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to decline assignment' });
+    }
+  });
+
+  // Get assignment acceptance signatures for a job
+  app.get("/api/jobs/:jobId/assignment-signatures", requireAuth, async (req: any, res) => {
+    try {
+      const job = await storage.getJobPublic(req.params.jobId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+      if (job.userId !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+
+      const signatures = await storage.getDigitalSignaturesByJobId(req.params.jobId);
+      const assignmentSignatures = signatures.filter((s: any) => s.documentType === 'assignment_acceptance');
+      res.json(assignmentSignatures);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to fetch signatures' });
     }
   });
 
