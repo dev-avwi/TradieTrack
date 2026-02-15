@@ -1037,12 +1037,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create verification code record
       await storage.createPortalVerificationCode(normalizedPhone, code, expiresAt);
       
-      // Try to send SMS with code
+      // Try to send SMS with code using alphanumeric sender ID
       try {
-        const { sendSMS } = await import('./services/smsService');
-        await sendSMS({
+        const { sendSMS: sendTwilioSMS } = await import('./twilioClient');
+        await sendTwilioSMS({
           to: normalizedPhone,
           message: `Your JobRunner verification code is: ${code}. This code will expire in 10 minutes.`,
+          alphanumericSenderId: 'JobRunner',
         });
         console.log(`✅ Portal verification code SMS sent to ${normalizedPhone}`);
       } catch (smsError: any) {
@@ -12251,6 +12252,118 @@ Be specific about materials, colors, and features that would be included.`
       res.json(tokens);
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get portal links' });
+    }
+  });
+
+  app.post("/api/jobs/:id/share-portal-sms", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+
+      let activeToken = await storage.getActiveJobPortalToken(job.id);
+      if (!activeToken) {
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        activeToken = await storage.createJobPortalToken({
+          jobId: job.id,
+          userId: effectiveUserId,
+          token,
+          expiresAt,
+          createdBy: req.userId,
+        });
+        await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
+      }
+
+      if (!job.clientId) return res.status(400).json({ error: 'No client assigned to this job' });
+      const client = await storage.getClient(job.clientId, effectiveUserId);
+      if (!client?.phone) return res.status(400).json({ error: 'Client has no phone number' });
+
+      const settings = await storage.getBusinessSettings(effectiveUserId);
+      const businessName = settings?.businessName || 'Your tradesperson';
+
+      const baseUrl = process.env.REPLIT_DOMAINS
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+      const portalUrl = `${baseUrl}/p/${activeToken.token}`;
+
+      const { sendSMS } = await import('./twilioClient');
+      const smsResult = await sendSMS({
+        to: client.phone,
+        message: `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${businessName}`,
+        alphanumericSenderId: (businessName && businessName.length <= 11) ? businessName : 'JobRunner',
+      });
+
+      if (!smsResult.success) {
+        return res.status(500).json({ error: smsResult.error || 'Failed to send SMS' });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to send tracking link' });
+    }
+  });
+
+  app.post("/api/jobs/:id/share-portal-email", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+
+      let activeToken = await storage.getActiveJobPortalToken(job.id);
+      if (!activeToken) {
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        activeToken = await storage.createJobPortalToken({
+          jobId: job.id,
+          userId: effectiveUserId,
+          token,
+          expiresAt,
+          createdBy: req.userId,
+        });
+        await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
+      }
+
+      if (!job.clientId) return res.status(400).json({ error: 'No client assigned to this job' });
+      const client = await storage.getClient(job.clientId, effectiveUserId);
+      if (!client?.email) return res.status(400).json({ error: 'Client has no email address' });
+
+      const settings = await storage.getBusinessSettings(effectiveUserId);
+      const businessName = settings?.businessName || 'Your tradesperson';
+
+      const baseUrl = process.env.REPLIT_DOMAINS
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+      const portalUrl = `${baseUrl}/p/${activeToken.token}`;
+
+      const { sendEmail } = await import('./emailService');
+      const emailResult = await sendEmail({
+        to: client.email,
+        subject: `Track your job: ${job.title} - ${businessName}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Hi ${client.name},</h2>
+            <p style="color: #555; font-size: 16px;">You can track the progress of your job "<strong>${job.title}</strong>" using the link below:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${portalUrl}" style="background-color: #0A6A73; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Track Your Job</a>
+            </div>
+            <p style="color: #888; font-size: 14px;">This link gives you live updates on your job status, photos, and documents.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+            <p style="color: #999; font-size: 12px;">Sent by ${businessName} via JobRunner</p>
+          </div>
+        `,
+        fromName: businessName,
+      });
+
+      if (!emailResult.success) {
+        return res.status(500).json({ error: emailResult.error || 'Failed to send tracking email' });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to send tracking email' });
     }
   });
 

@@ -6956,12 +6956,24 @@ Thank you for your prompt attention to this matter.`,
 
   // Client Portal Data Access
   async getClientsByPhone(phone: string): Promise<Client[]> {
-    // Normalize phone number for comparison (remove spaces, dashes, etc.)
-    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    // Normalize phone number: strip formatting, convert to +61 format
+    let normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '+61' + normalizedPhone.slice(1);
+    } else if (!normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+61' + normalizedPhone.replace(/^61/, '');
+    }
+    // Also create the local format (0xxx) for matching
+    const localFormat = '0' + normalizedPhone.replace(/^\+61/, '');
+    
+    // Match against both +61 and 0-prefixed formats after stripping formatting
     const results = await db
       .select()
       .from(clients)
-      .where(sql`REPLACE(REPLACE(REPLACE(REPLACE(${clients.phone}, ' ', ''), '-', ''), '(', ''), ')', '') = ${normalizedPhone}`);
+      .where(sql`
+        REPLACE(REPLACE(REPLACE(REPLACE(${clients.phone}, ' ', ''), '-', ''), '(', ''), ')', '') 
+        IN (${normalizedPhone}, ${localFormat})
+      `);
     return results;
   }
 

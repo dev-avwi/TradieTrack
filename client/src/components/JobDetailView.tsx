@@ -1125,6 +1125,7 @@ export default function JobDetailView({
   });
 
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   useEffect(() => {
     if (job?.portalEnabled && jobId) {
@@ -1151,17 +1152,7 @@ export default function JobDetailView({
     onSuccess: (data: any) => {
       if (data.url) {
         setPortalUrl(data.url);
-        navigator.clipboard.writeText(data.url).then(() => {
-          toast({
-            title: "Portal link copied",
-            description: "Client tracking link copied to clipboard",
-          });
-        }).catch(() => {
-          toast({
-            title: "Portal link created",
-            description: data.url,
-          });
-        });
+        setShowShareDialog(true);
       }
     },
   });
@@ -1615,31 +1606,88 @@ export default function JobDetailView({
                 </Button>
               )}
               
-              <Button
-                onClick={() => portalLinkMutation.mutate()}
-                disabled={portalLinkMutation.isPending}
-                variant="outline"
-                className="gap-2"
-                data-testid="button-share-portal"
-              >
-                {portalLinkMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Link2 className="h-4 w-4" />
-                )}
-                Share Tracking Link
-              </Button>
-              {portalUrl && (
+              {showShareDialog && <div className="fixed inset-0 z-40" onClick={() => setShowShareDialog(false)} />}
+              <div className="relative">
                 <Button
-                  onClick={() => window.open(portalUrl, '_blank')}
+                  onClick={() => {
+                    if (portalUrl) {
+                      setShowShareDialog(!showShareDialog);
+                    } else {
+                      portalLinkMutation.mutate();
+                    }
+                  }}
+                  disabled={portalLinkMutation.isPending}
                   variant="outline"
                   className="gap-2"
-                  data-testid="button-view-portal"
+                  data-testid="button-share-portal"
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  View Client Portal
+                  {portalLinkMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                  Share Tracking Link
                 </Button>
-              )}
+                {showShareDialog && portalUrl && (
+                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-md shadow-lg z-50 min-w-[200px]">
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                      onClick={() => {
+                        navigator.clipboard.writeText(portalUrl);
+                        toast({ title: "Link copied to clipboard" });
+                        setShowShareDialog(false);
+                      }}
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Copy Link
+                    </button>
+                    {client?.phone && (
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                        onClick={async () => {
+                          try {
+                            await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
+                            toast({ title: "Tracking link sent via SMS" });
+                          } catch (e) {
+                            toast({ title: "Failed to send SMS", variant: "destructive" });
+                          }
+                          setShowShareDialog(false);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Send via SMS
+                      </button>
+                    )}
+                    {client?.email && (
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                        onClick={async () => {
+                          try {
+                            await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
+                            toast({ title: "Tracking link sent via email" });
+                          } catch (e) {
+                            toast({ title: "Failed to send email", variant: "destructive" });
+                          }
+                          setShowShareDialog(false);
+                        }}
+                      >
+                        <Mail className="h-4 w-4" />
+                        Send via Email
+                      </button>
+                    )}
+                    <button
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                      onClick={() => {
+                        window.open(portalUrl, '_blank');
+                        setShowShareDialog(false);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Preview Job Portal
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

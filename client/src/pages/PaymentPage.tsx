@@ -174,9 +174,9 @@ function InvoicePaymentView({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
           <p className="text-slate-600">Loading invoice...</p>
         </div>
       </div>
@@ -241,7 +241,7 @@ function InvoicePaymentView({
     const hasBankDetails = invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
           {/* Header */}
           <div className="p-6 text-center border-b border-slate-100">
@@ -254,7 +254,7 @@ function InvoicePaymentView({
             ) : null}
             <h1 className="text-xl font-bold text-slate-900">{invoiceData.business.name}</h1>
             <p className="text-sm text-slate-500 mt-1">Invoice #{invoiceData.number}</p>
-            <p className="text-2xl font-bold text-blue-600 mt-2">${parseFloat(invoiceData.total).toFixed(2)} AUD</p>
+            <p className="text-2xl font-bold text-[#0A6A73] mt-2">${parseFloat(invoiceData.total).toFixed(2)} AUD</p>
           </div>
           
           {/* Bank details if available */}
@@ -314,12 +314,12 @@ function InvoicePaymentView({
             </div>
           ) : invoiceData.business.paymentInstructions ? (
             <div className="p-6">
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200" data-testid="payment-instructions">
+              <div className="bg-[#0A6A73]/5 rounded-xl p-4 border border-[#0A6A73]/20" data-testid="payment-instructions">
                 <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                  <h3 className="font-semibold text-blue-900 text-sm">Payment Instructions</h3>
+                  <FileText className="h-4 w-4 text-[#0A6A73]" />
+                  <h3 className="font-semibold text-[#064d54] text-sm">Payment Instructions</h3>
                 </div>
-                <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                <p className="text-sm text-[#085a62] whitespace-pre-wrap">
                   {invoiceData.business.paymentInstructions}
                 </p>
               </div>
@@ -362,7 +362,7 @@ function InvoicePaymentView({
   const total = parseFloat(invoiceData.total);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#0A6A73]/5 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Branded header with gradient accent */}
         <div className="text-center mb-8">
@@ -374,8 +374,8 @@ function InvoicePaymentView({
                 className="h-16 max-w-[180px] object-contain mx-auto"
               />
             ) : (
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <FileText className="h-8 w-8 text-blue-600" />
+              <div className="w-16 h-16 bg-[#0A6A73]/10 rounded-full flex items-center justify-center mx-auto">
+                <FileText className="h-8 w-8 text-[#0A6A73]" />
               </div>
             )}
           </div>
@@ -388,12 +388,12 @@ function InvoicePaymentView({
         <div className="grid gap-6">
           {/* Payment Card - MOVED TO TOP */}
           {clientSecret && stripePromise && (
-            <div className="bg-blue-50/30 rounded-2xl shadow-xl border-2 border-blue-200 overflow-hidden ring-4 ring-blue-50/50">
-              <div className="px-6 py-5 border-b border-blue-100 bg-white/50 backdrop-blur-sm">
+            <div className="bg-[#0A6A73]/5 rounded-2xl shadow-xl border-2 border-[#0A6A73]/20 overflow-hidden ring-4 ring-[#0A6A73]/10">
+              <div className="px-6 py-5 border-b border-[#0A6A73]/15 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      <CreditCard className="h-5 w-5 text-[#0A6A73]" />
                       <span className="font-bold text-xl text-slate-900">Secure Online Payment</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -403,7 +403,7 @@ function InvoicePaymentView({
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount Due</p>
-                    <p className="text-2xl font-black text-blue-600">${total.toFixed(2)}</p>
+                    <p className="text-2xl font-black text-[#0A6A73]">${total.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -425,7 +425,7 @@ function InvoicePaymentView({
                     <span>Bank-level Security</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Lock className="h-4 w-4 text-blue-600" />
+                    <Lock className="h-4 w-4 text-[#0A6A73]" />
                     <span>PCI Compliant</span>
                   </div>
                 </div>
@@ -435,7 +435,7 @@ function InvoicePaymentView({
 
           {createPaymentIntentMutation.isPending && (
             <div className="bg-white rounded-2xl shadow-lg border-2 border-dashed border-slate-200 p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
               <p className="text-slate-600 font-medium">Setting up your secure payment session...</p>
             </div>
           )}
@@ -553,12 +553,12 @@ function InvoicePaymentView({
               
               {/* Payment Instructions only - when no bank details but has instructions */}
               {!(invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName) && invoiceData.business.paymentInstructions && (
-                <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100" data-testid="payment-instructions">
+                <div className="bg-[#0A6A73]/5 rounded-xl p-4 border border-[#0A6A73]/15" data-testid="payment-instructions">
                   <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <h3 className="font-semibold text-blue-900 text-sm">Payment Instructions</h3>
+                    <FileText className="h-4 w-4 text-[#0A6A73]" />
+                    <h3 className="font-semibold text-[#064d54] text-sm">Payment Instructions</h3>
                   </div>
-                  <p className="text-sm text-blue-800 whitespace-pre-wrap italic">
+                  <p className="text-sm text-[#085a62] whitespace-pre-wrap italic">
                     {invoiceData.business.paymentInstructions}
                   </p>
                 </div>
@@ -579,7 +579,7 @@ function InvoicePaymentView({
 
           {createPaymentIntentMutation.isPending && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
               <p className="text-slate-600">Setting up secure payment...</p>
             </div>
           )}
@@ -659,9 +659,9 @@ function PaymentRequestView({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
           <p className="text-slate-600">Loading payment details...</p>
         </div>
       </div>
@@ -748,7 +748,7 @@ function PaymentRequestView({
   const gstAmount = parseFloat(requestData.gstAmount);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#0A6A73]/5 py-8 px-4">
       <div className="max-w-lg mx-auto">
         {/* Branded header with logo */}
         <div className="text-center mb-8">
@@ -759,8 +759,8 @@ function PaymentRequestView({
               className="h-16 max-w-[180px] object-contain mx-auto mb-4"
             />
           ) : (
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="h-8 w-8 text-blue-600" />
+            <div className="w-16 h-16 bg-[#0A6A73]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="h-8 w-8 text-[#0A6A73]" />
             </div>
           )}
           <h1 className="text-2xl font-bold text-slate-900 mb-1">{requestData.businessName}</h1>
@@ -770,10 +770,10 @@ function PaymentRequestView({
         <div className="grid gap-6">
           {/* Amount Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-6 px-6 text-center">
-              <p className="text-blue-100 text-sm mb-2">Amount Due</p>
+            <div className="bg-gradient-to-r from-[#0A6A73] to-[#085a62] text-white py-6 px-6 text-center">
+              <p className="text-white/70 text-sm mb-2">Amount Due</p>
               <p className="text-4xl font-bold">${amount.toFixed(2)}</p>
-              <p className="text-blue-100 text-sm mt-1">AUD (includes ${gstAmount.toFixed(2)} GST)</p>
+              <p className="text-white/70 text-sm mt-1">AUD (includes ${gstAmount.toFixed(2)} GST)</p>
             </div>
             
             <div className="p-6 space-y-4">
@@ -811,7 +811,7 @@ function PaymentRequestView({
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <CreditCard className="h-5 w-5 text-[#0A6A73]" />
                   <span className="font-semibold text-lg text-slate-900">Pay Now</span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
@@ -840,7 +840,7 @@ function PaymentRequestView({
                     <span>256-bit SSL</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Lock className="h-4 w-4 text-blue-600" />
+                    <Lock className="h-4 w-4 text-[#0A6A73]" />
                     <span>Secure Checkout</span>
                   </div>
                 </div>
@@ -850,7 +850,7 @@ function PaymentRequestView({
 
           {createPaymentIntentMutation.isPending && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
               <p className="text-slate-600">Setting up secure payment...</p>
             </div>
           )}
@@ -928,9 +928,9 @@ export default function PaymentPage() {
 
   if (invoiceLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
           <p className="text-slate-600">Loading payment details...</p>
         </div>
       </div>
@@ -950,9 +950,9 @@ export default function PaymentPage() {
 
   if (requestLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#0A6A73]" />
           <p className="text-slate-600">Loading payment details...</p>
         </div>
       </div>
