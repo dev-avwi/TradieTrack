@@ -670,7 +670,7 @@ export default function JobPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5">
         <div className="max-w-lg mx-auto p-4 space-y-4">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-24 w-full rounded-xl" />
@@ -684,12 +684,12 @@ export default function JobPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <Card className="max-w-md w-full border-gray-200">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-slate-200/60 rounded-2xl shadow-lg">
           <CardContent className="pt-8 pb-8 text-center">
-            <AlertCircle className="w-14 h-14 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Job Not Found</h2>
-            <p className="text-gray-500 text-sm">
+            <AlertCircle className="w-14 h-14 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Job Not Found</h2>
+            <p className="text-slate-500 text-sm">
               This link may have expired or the job doesn't exist. Please contact the business directly if you need assistance.
             </p>
           </CardContent>
@@ -718,7 +718,7 @@ export default function JobPortal() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
       <header className="bg-[#0A6A73] sticky top-0 z-30">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
@@ -750,9 +750,9 @@ export default function JobPortal() {
       </header>
 
       {client && (
-        <div className="bg-[#0A6A73]/5 border-b border-[#0A6A73]/10 px-4 py-3">
+        <div className="bg-gradient-to-r from-[#0A6A73]/5 to-transparent border-b border-[#0A6A73]/10 px-4 py-3">
           <div className="max-w-lg mx-auto">
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-slate-700">
               Hi <span className="font-semibold">{client.name}</span>, here's your job update
             </p>
           </div>
@@ -781,12 +781,12 @@ export default function JobPortal() {
                     {/* Last Updated indicator */}
                     {job.workerStatusUpdatedAt && (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500">
                           Location last updated {formatTimeAgo(job.workerStatusUpdatedAt)}
                         </span>
                         {/* GPS tracking indicator when on the way */}
                         {job.workerStatus === 'on_my_way' && (
-                          <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          <span className="flex items-center gap-1 text-xs text-slate-500 bg-gray-100 px-2 py-1 rounded-full">
                             <Signal className="w-3 h-3" />
                             Live tracking
                           </span>
@@ -821,10 +821,10 @@ export default function JobPortal() {
           )}
 
           {(data.assignments && data.assignments.length > 0) ? (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                  <User className="w-4 h-4 text-gray-400" /> Your Team
+                <h3 className="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <User className="w-4 h-4 text-[#0A6A73]/60" /> Your Team
                 </h3>
                 <div className="space-y-3">
                   {data.assignments.map((a, idx) => {
@@ -844,12 +844,12 @@ export default function JobPortal() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900 text-sm truncate">{a.worker.name}</p>
+                            <p className="font-medium text-slate-900 text-sm truncate">{a.worker.name}</p>
                             {a.isPrimary && (
-                              <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
+                              <span className="text-[10px] font-medium text-slate-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500">{statusLabel}</p>
+                          <p className="text-xs text-slate-500">{statusLabel}</p>
                         </div>
                         {a.worker.phone && (
                           <a href={`tel:${a.worker.phone}`}>
@@ -865,15 +865,15 @@ export default function JobPortal() {
               </CardContent>
             </Card>
           ) : worker && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-[#0A6A73] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                     {worker.firstName?.[0]}{worker.lastName?.[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900">{worker.firstName} {worker.lastName}</p>
-                    <p className="text-xs text-gray-500">Your assigned technician</p>
+                    <p className="font-semibold text-slate-900">{worker.firstName} {worker.lastName}</p>
+                    <p className="text-xs text-slate-500">Your assigned technician</p>
                   </div>
                   {worker.phone && (
                     <a href={`tel:${worker.phone}`}>
@@ -887,17 +887,17 @@ export default function JobPortal() {
             </Card>
           )}
 
-          <Card className="border-gray-200">
+          <Card className="border-slate-200/60 shadow-sm rounded-xl">
             <CardContent className="p-4 space-y-3">
-              <h2 className="font-semibold text-gray-900 text-lg">{job.title}</h2>
+              <h2 className="font-semibold text-slate-900 text-lg">{job.title}</h2>
               {job.description && (
-                <p className="text-sm text-gray-600">{job.description}</p>
+                <p className="text-sm text-slate-600">{job.description}</p>
               )}
               {job.address && (
                 <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-700">{job.address}</p>
+                    <p className="text-sm text-slate-700">{job.address}</p>
                     {mapsUrl && (
                       <a
                         href={mapsUrl}
@@ -913,14 +913,14 @@ export default function JobPortal() {
               )}
               <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
                 {(job.scheduledAt || job.scheduledTime) && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                    <Calendar className="w-4 h-4 text-slate-400" />
                     <span>{job.scheduledAt ? formatDate(job.scheduledAt) : ''}{job.scheduledTime ? ` at ${job.scheduledTime}` : ''}</span>
                   </div>
                 )}
                 {job.estimatedDuration && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                    <Clock className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                    <Clock className="w-4 h-4 text-slate-400" />
                     <span>{job.estimatedDuration} {job.estimatedDuration === 1 ? 'hour' : 'hours'}</span>
                   </div>
                 )}
@@ -929,20 +929,20 @@ export default function JobPortal() {
           </Card>
 
           {job.notes && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-gray-400" /> Notes
+                <h3 className="font-semibold text-slate-900 mb-2 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#0A6A73]/60" /> Notes
                 </h3>
-                <p className="text-sm text-gray-600 whitespace-pre-line">{job.notes}</p>
+                <p className="text-sm text-slate-600 whitespace-pre-line">{job.notes}</p>
               </CardContent>
             </Card>
           )}
 
           {job.workerStatus && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 text-sm uppercase tracking-wide">Progress</h3>
+                <h3 className="font-semibold text-slate-900 mb-4 text-sm uppercase tracking-wide flex items-center gap-2"><Clock className="w-4 h-4 text-[#0A6A73]/60" /> Progress</h3>
                 <div className="relative pl-6">
                   {timelineSteps.map((step, idx) => {
                     const stepIdx = getStatusIndex(step.key);
@@ -982,12 +982,12 @@ export default function JobPortal() {
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm font-medium ${
-                              isCompleted ? 'text-emerald-700' : isCurrent ? 'text-gray-900' : 'text-gray-400'
+                              isCompleted ? 'text-emerald-700' : isCurrent ? 'text-slate-900' : 'text-slate-400'
                             }`}>
                               {step.label}
                             </p>
                             {step.timestamp && (isCompleted || isCurrent) && (
-                              <p className="text-xs text-gray-500 mt-0.5">{formatDateTime(step.timestamp)}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{formatDateTime(step.timestamp)}</p>
                             )}
                           </div>
                           <StepIcon className={`w-4 h-4 mt-0.5 ${
@@ -1003,10 +1003,10 @@ export default function JobPortal() {
           )}
 
           {data.checklist && data.checklist.length > 0 && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                  <ClipboardCheck className="w-4 h-4 text-gray-400" /> Work Scope
+                <h3 className="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-[#0A6A73]/60" /> Work Scope
                 </h3>
                 <div className="space-y-2">
                   {data.checklist
@@ -1020,7 +1020,7 @@ export default function JobPortal() {
                       }`}>
                         {item.isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
                       </div>
-                      <span className={`text-sm ${item.isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
+                      <span className={`text-sm ${item.isCompleted ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
                         {item.text}
                       </span>
                     </div>
@@ -1028,12 +1028,12 @@ export default function JobPortal() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-slate-500">
                       {data.checklist.filter(c => c.isCompleted).length} of {data.checklist.length} completed
                     </span>
                     <div className="flex-1 max-w-[120px] h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-emerald-500 rounded-full transition-all"
+                        className="h-full bg-[#0A6A73] rounded-full transition-all"
                         style={{ width: `${(data.checklist.filter(c => c.isCompleted).length / data.checklist.length) * 100}%` }}
                       />
                     </div>
@@ -1044,18 +1044,18 @@ export default function JobPortal() {
           )}
 
           {data.materials && data.materials.length > 0 && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                  <Package className="w-4 h-4 text-gray-400" /> Materials
+                <h3 className="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <Package className="w-4 h-4 text-[#0A6A73]/60" /> Materials
                 </h3>
                 <div className="space-y-2">
                   {data.materials.map((material, idx) => (
                     <div key={idx} className="flex items-center justify-between py-1.5">
-                      <span className="text-sm text-gray-800">{material.name}</span>
+                      <span className="text-sm text-slate-800">{material.name}</span>
                       <div className="flex items-center gap-2">
                         {material.quantity && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-slate-500">
                             {material.quantity}{material.unit ? ` ${material.unit}` : ''}
                           </span>
                         )}
@@ -1064,7 +1064,7 @@ export default function JobPortal() {
                             material.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
                             material.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
                             material.status === 'on_order' ? 'bg-amber-100 text-amber-700' :
-                            'bg-gray-100 text-gray-600'
+                            'bg-gray-100 text-slate-600'
                           }`}>
                             {material.status}
                           </Badge>
@@ -1078,10 +1078,10 @@ export default function JobPortal() {
           )}
 
           {hasPhotos && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-gray-400" /> Photos
+                <h3 className="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-[#0A6A73]/60" /> Photos
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
                   {job.photos.map((photo, idx) => (
@@ -1107,10 +1107,10 @@ export default function JobPortal() {
           )}
 
           {hasDocuments && (
-            <Card className="border-gray-200">
+            <Card className="border-slate-200/60 shadow-sm rounded-xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-gray-400" /> Documents
+                <h3 className="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#0A6A73]/60" /> Documents
                 </h3>
                 <div className="space-y-2">
                   {documents.quotes.map((quote) => (
@@ -1120,14 +1120,14 @@ export default function JobPortal() {
                       className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-gray-100/80 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{quote.title || 'Quote'}</p>
-                          <p className="text-xs text-gray-500">{formatDate(quote.createdAt)}</p>
+                          <p className="text-sm font-medium text-slate-900 truncate">{quote.title || 'Quote'}</p>
+                          <p className="text-xs text-slate-500">{formatDate(quote.createdAt)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-medium text-gray-700">{formatCurrency(quote.total)}</span>
+                        <span className="text-sm font-medium text-slate-700">{formatCurrency(quote.total)}</span>
                         {getDocStatusBadge(quote.status)}
                       </div>
                     </a>
@@ -1139,14 +1139,14 @@ export default function JobPortal() {
                       className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-gray-100/80 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">Invoice #{invoice.invoiceNumber}</p>
-                          <p className="text-xs text-gray-500">{formatDate(invoice.createdAt)}</p>
+                          <p className="text-sm font-medium text-slate-900 truncate">Invoice #{invoice.invoiceNumber}</p>
+                          <p className="text-xs text-slate-500">{formatDate(invoice.createdAt)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-medium text-gray-700">{formatCurrency(invoice.total)}</span>
+                        <span className="text-sm font-medium text-slate-700">{formatCurrency(invoice.total)}</span>
                         {getDocStatusBadge(invoice.status)}
                       </div>
                     </a>
@@ -1156,10 +1156,10 @@ export default function JobPortal() {
             </Card>
           )}
 
-          <Card className="border-gray-200">
+          <Card className="border-slate-200/60 shadow-sm rounded-xl">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-gray-400" /> Send a Message
+              <h3 className="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-[#0A6A73]/60" /> Send a Message
               </h3>
               {messageSent ? (
                 <div className="flex flex-col items-center py-4 gap-2">
@@ -1189,11 +1189,12 @@ export default function JobPortal() {
                     </p>
                   )}
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs text-gray-400">{portalMessage.length}/1000</span>
+                    <span className="text-xs text-slate-400">{portalMessage.length}/1000</span>
                     <Button
                       type="submit"
                       disabled={!portalMessage.trim() || sendMessageMutation.isPending}
                       variant="default"
+                      className="bg-[#0A6A73] hover:bg-[#085a62]"
                     >
                       {sendMessageMutation.isPending ? (
                         <>
@@ -1213,15 +1214,15 @@ export default function JobPortal() {
       </main>
 
       <div className="max-w-lg mx-auto px-4 pb-4">
-        <Card className="border-gray-200">
+        <Card className="border-slate-200/60 shadow-sm rounded-xl">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-gray-600" />
+              <div className="w-10 h-10 rounded-lg bg-[#0A6A73]/10 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-5 h-5 text-[#0A6A73]" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 text-sm">Your Documents</h3>
-                <p className="text-xs text-gray-600 mt-0.5">View invoices, quotes, and make secure payments</p>
+                <h3 className="font-semibold text-slate-900 text-sm">Your Documents</h3>
+                <p className="text-xs text-slate-600 mt-0.5">View invoices, quotes, and make secure payments</p>
                 <div className="flex items-center gap-3 mt-2 flex-wrap">
                   <Button 
                     onClick={() => {
@@ -1231,12 +1232,12 @@ export default function JobPortal() {
                     }}
                     variant="outline"
                     size="sm"
-                    className="text-sm border-gray-300"
+                    className="text-sm text-[#0A6A73] border-[#0A6A73]/30"
                   >
                     View Documents
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
-                  <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
                     <Shield className="w-3 h-3" /> Secure
                   </span>
                 </div>
@@ -1246,15 +1247,19 @@ export default function JobPortal() {
         </Card>
       </div>
 
-      <footer className="border-t border-gray-200 py-6 px-4 mt-auto bg-white">
+      <footer className="border-t border-slate-200 py-6 px-4 mt-auto bg-white/80 backdrop-blur-sm">
         <div className="max-w-lg mx-auto text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-6 h-6 object-contain" />
-            <span className="text-xs text-gray-500">Powered by <span className="font-semibold text-gray-700">JobRunner</span></span>
+            <span className="text-xs text-slate-500">Powered by <span className="font-semibold text-slate-700">JobRunner</span></span>
           </div>
           {business.abn && (
-            <p className="text-xs text-gray-400">ABN: {business.abn}</p>
+            <p className="text-xs text-slate-400">ABN: {business.abn}</p>
           )}
+          <div className="flex items-center justify-center gap-1 text-xs text-slate-400">
+            <Shield className="w-3 h-3" />
+            <span>Secure & encrypted</span>
+          </div>
         </div>
       </footer>
 

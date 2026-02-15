@@ -120,7 +120,7 @@ function getQuoteStatusColor(status: string): string {
     case 'accepted': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case 'declined': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     case 'sent': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
   }
 }
 
@@ -129,7 +129,7 @@ function getInvoiceStatusColor(status: string): string {
     case 'paid': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case 'overdue': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
     case 'sent': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
   }
 }
 
@@ -139,7 +139,7 @@ function getJobStatusColor(status: string): string {
     case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
     case 'scheduled': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
     case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
   }
 }
 
@@ -384,20 +384,20 @@ export default function ClientPortalHub() {
 
   if (viewState === 'phone') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
         <div className="py-10 px-4">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 mx-auto mb-3 object-contain" />
-            <h1 className="text-2xl font-bold text-gray-900">Client Portal</h1>
-            <p className="text-sm text-gray-500 mt-1">Access your quotes, invoices, and job history</p>
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Access your quotes, invoices, and job history</p>
           </div>
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4">
-          <Card className="w-full max-w-md shadow-sm border-gray-200">
+          <Card className="w-full max-w-md rounded-2xl shadow-lg border-slate-200/60">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
-                <Phone className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 rounded-full bg-[#0A6A73]/10 flex items-center justify-center mx-auto mb-3">
+                <Phone className="w-6 h-6 text-[#0A6A73]" />
               </div>
               <CardTitle className="text-lg">Verify Your Identity</CardTitle>
               <CardDescription>
@@ -417,12 +417,12 @@ export default function ClientPortalHub() {
               <Button 
                 onClick={handleRequestCode}
                 disabled={isLoading || !phone.trim()}
-                className="w-full"
+                className="w-full bg-[#0A6A73] hover:bg-[#085a62]"
                 size="lg"
               >
                 {isLoading ? 'Sending...' : 'Send Verification Code'}
               </Button>
-              <p className="text-xs text-center text-gray-400 flex items-center justify-center gap-1.5">
+              <p className="text-xs text-center text-slate-400 flex items-center justify-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" />
                 We'll send a 6-digit code to verify your identity
               </p>
@@ -432,7 +432,7 @@ export default function ClientPortalHub() {
 
         <div className="text-center py-6 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
-          <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
+          <span className="text-xs text-slate-400">Powered by <span className="font-medium text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -440,20 +440,20 @@ export default function ClientPortalHub() {
 
   if (viewState === 'code') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
         <div className="py-10 px-4">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 mx-auto mb-3 object-contain" />
-            <h1 className="text-2xl font-bold text-gray-900">Client Portal</h1>
-            <p className="text-sm text-gray-500 mt-1">Secure verification</p>
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Secure verification</p>
           </div>
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4">
-          <Card className="w-full max-w-md shadow-sm border-gray-200">
+          <Card className="w-full max-w-md rounded-2xl shadow-lg border-slate-200/60">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 rounded-full bg-[#0A6A73]/10 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6 text-[#0A6A73]" />
               </div>
               <CardTitle className="text-lg">Enter Verification Code</CardTitle>
               <CardDescription>
@@ -474,7 +474,7 @@ export default function ClientPortalHub() {
               <Button 
                 onClick={handleVerifyCode}
                 disabled={isLoading || code.length !== 6}
-                className="w-full"
+                className="w-full bg-[#0A6A73] hover:bg-[#085a62]"
                 size="lg"
               >
                 {isLoading ? 'Verifying...' : 'Verify & Continue'}
@@ -503,7 +503,7 @@ export default function ClientPortalHub() {
 
         <div className="text-center py-6 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
-          <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
+          <span className="text-xs text-slate-400">Powered by <span className="font-medium text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -514,8 +514,8 @@ export default function ClientPortalHub() {
     const clientName = portalData?.clients[0]?.name;
 
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="bg-white border-b sticky top-0 z-20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#0A6A73]/5 flex flex-col">
+        <header className="bg-[#0A6A73] sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -523,30 +523,30 @@ export default function ClientPortalHub() {
                   <img
                     src={business.logoUrl}
                     alt={business.businessName || 'Business'}
-                    className="w-10 h-10 object-contain rounded-md"
+                    className="w-10 h-10 object-contain rounded-md bg-white/10 p-1"
                   />
                 ) : (
                   <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 object-contain" />
                 )}
                 <div className="min-w-0">
-                  <h1 className="font-bold text-base text-gray-900 truncate">
+                  <h1 className="font-bold text-base text-white truncate">
                     {business?.businessName || 'Client Portal'}
                   </h1>
-                  <div className="flex gap-3 text-xs text-gray-500 flex-wrap">
+                  <div className="flex gap-3 text-xs text-white/70 flex-wrap">
                     {business?.businessPhone && (
-                      <a href={`tel:${business.businessPhone}`} className="hover:text-gray-700 flex items-center gap-1">
+                      <a href={`tel:${business.businessPhone}`} className="hover:text-white flex items-center gap-1">
                         <Phone className="w-3 h-3" /> {business.businessPhone}
                       </a>
                     )}
                     {business?.businessEmail && (
-                      <a href={`mailto:${business.businessEmail}`} className="hover:text-gray-700 flex items-center gap-1 hidden sm:flex">
+                      <a href={`mailto:${business.businessEmail}`} className="hover:text-white flex items-center gap-1 hidden sm:flex">
                         <Mail className="w-3 h-3" /> {business.businessEmail}
                       </a>
                     )}
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleLogout} className="border-gray-300">
+              <Button variant="outline" size="sm" onClick={handleLogout} className="text-white border-white/30 hover:bg-white/10">
                 <LogOut className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Logout</span>
               </Button>
@@ -554,19 +554,19 @@ export default function ClientPortalHub() {
           </div>
         </header>
 
-        <div className="bg-white border-b px-4 py-4">
+        <div className="bg-gradient-to-r from-[#0A6A73]/5 to-transparent border-b border-[#0A6A73]/10 px-4 py-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-slate-900">
                   {clientName ? `Welcome back, ${clientName}` : 'Your Documents'}
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm text-slate-500 mt-0.5">
                   {portalData?.phone ? `Logged in as ${portalData.phone}` : 'View your quotes, invoices, and jobs'}
                 </p>
               </div>
               {sourceDocument && (
-                <Button variant="outline" size="sm" className="border-gray-300"
+                <Button variant="outline" size="sm" className="border-slate-300"
                   onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}>
                   <ArrowLeft className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">
@@ -579,7 +579,7 @@ export default function ClientPortalHub() {
           </div>
         </div>
 
-        <main className="flex-1 px-4 py-6 bg-gray-50">
+        <main className="flex-1 px-4 py-6">
           <div className="max-w-4xl mx-auto">
             {isLoadingData ? (
               <div className="space-y-4">
@@ -622,10 +622,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="quotes" className="space-y-4">
                   {portalData?.quotes.length === 0 ? (
-                    <Card className="border-gray-200">
+                    <Card className="border-slate-200/60">
                       <CardContent className="pt-8 pb-8 text-center">
-                        <FileText className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500 text-sm">No quotes yet</p>
+                        <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                        <p className="text-slate-500 text-sm">No quotes yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -640,14 +640,14 @@ export default function ClientPortalHub() {
                                   {quote.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-500 truncate">{quote.title}</p>
+                              <p className="text-sm text-slate-500 truncate">{quote.title}</p>
                               {quote.business?.businessName && (
-                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                                   <Building2 className="w-3 h-3" />
                                   {quote.business.businessName}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-400 mt-1">
+                              <p className="text-xs text-slate-400 mt-1">
                                 {formatDate(quote.createdAt)}
                                 {quote.validUntil && ` • Valid until ${formatDate(quote.validUntil)}`}
                               </p>
@@ -670,10 +670,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="invoices" className="space-y-4">
                   {portalData?.invoices.length === 0 ? (
-                    <Card className="border-gray-200">
+                    <Card className="border-slate-200/60">
                       <CardContent className="pt-8 pb-8 text-center">
-                        <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500 text-sm">No invoices yet</p>
+                        <CreditCard className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                        <p className="text-slate-500 text-sm">No invoices yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -688,14 +688,14 @@ export default function ClientPortalHub() {
                                   {invoice.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-500 truncate">{invoice.title}</p>
+                              <p className="text-sm text-slate-500 truncate">{invoice.title}</p>
                               {invoice.business?.businessName && (
-                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                                   <Building2 className="w-3 h-3" />
                                   {invoice.business.businessName}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-400 mt-1">
+                              <p className="text-xs text-slate-400 mt-1">
                                 {formatDate(invoice.createdAt)}
                                 {invoice.dueDate && invoice.status !== 'paid' && ` • Due ${formatDate(invoice.dueDate)}`}
                                 {invoice.paidAt && ` • Paid ${formatDate(invoice.paidAt)}`}
@@ -725,10 +725,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="receipts" className="space-y-4">
                   {portalData?.receipts.length === 0 ? (
-                    <Card className="border-gray-200">
+                    <Card className="border-slate-200/60">
                       <CardContent className="pt-8 pb-8 text-center">
-                        <Receipt className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500 text-sm">No receipts yet</p>
+                        <Receipt className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                        <p className="text-slate-500 text-sm">No receipts yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -738,7 +738,7 @@ export default function ClientPortalHub() {
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-medium">Receipt #{receipt.number}</h3>
-                              <p className="text-xs text-gray-400 mt-1">
+                              <p className="text-xs text-slate-400 mt-1">
                                 Paid {formatDate(receipt.paymentDate)}
                               </p>
                             </div>
@@ -758,10 +758,10 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="jobs" className="space-y-4">
                   {portalData?.jobs.length === 0 ? (
-                    <Card className="border-gray-200">
+                    <Card className="border-slate-200/60">
                       <CardContent className="pt-8 pb-8 text-center">
-                        <Briefcase className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500 text-sm">No jobs yet</p>
+                        <Briefcase className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                        <p className="text-slate-500 text-sm">No jobs yet</p>
                       </CardContent>
                     </Card>
                   ) : (
@@ -777,12 +777,12 @@ export default function ClientPortalHub() {
                                 </Badge>
                               </div>
                               {job.address && (
-                                <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                                <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
                                   <MapPin className="w-3 h-3" />
                                   {job.address}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 {job.scheduledAt ? `Scheduled: ${formatDate(job.scheduledAt)}` : 'Not scheduled'}
                                 {job.completedAt && ` • Completed: ${formatDate(job.completedAt)}`}
@@ -804,9 +804,15 @@ export default function ClientPortalHub() {
           </div>
         </main>
 
-        <div className="text-center py-6 border-t border-gray-200 bg-white flex items-center justify-center gap-2">
-          <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
-          <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
+        <div className="text-center py-6 border-t border-slate-200 bg-white/80 backdrop-blur-sm flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
+            <span className="text-xs text-slate-500">Powered by <span className="font-medium text-slate-700">JobRunner</span></span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-slate-400">
+            <Shield className="w-3 h-3" />
+            <span>Secure & encrypted</span>
+          </div>
         </div>
       </div>
     );
