@@ -1100,6 +1100,24 @@ export default function JobDetailView({
     onError: handleSmsError,
   });
 
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (job?.portalEnabled && jobId) {
+      fetch(`/api/jobs/${jobId}/portal-links`, {
+        credentials: 'include',
+      }).then(res => res.ok ? res.json() : []).then((tokens: any[]) => {
+        if (tokens && tokens.length > 0) {
+          const activeToken = tokens.find((t: any) => !t.revokedAt);
+          if (activeToken) {
+            const baseUrl = window.location.origin;
+            setPortalUrl(`${baseUrl}/job-portal/${activeToken.token}`);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [job?.portalEnabled, jobId]);
+
   // Portal link mutation - generates client tracking link
   const portalLinkMutation = useMutation({
     mutationFn: async () => {
@@ -1108,6 +1126,7 @@ export default function JobDetailView({
     },
     onSuccess: (data: any) => {
       if (data.url) {
+        setPortalUrl(data.url);
         navigator.clipboard.writeText(data.url).then(() => {
           toast({
             title: "Portal link copied",
@@ -1586,6 +1605,17 @@ export default function JobDetailView({
                 )}
                 Share Tracking Link
               </Button>
+              {portalUrl && (
+                <Button
+                  onClick={() => window.open(portalUrl, '_blank')}
+                  variant="outline"
+                  className="gap-2"
+                  data-testid="button-view-portal"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Client Portal
+                </Button>
+              )}
             </div>
           </div>
         )}

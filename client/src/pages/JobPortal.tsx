@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
-  MessageCircle, Loader2, Signal
+  MessageCircle, Loader2, Signal, ClipboardCheck, Package
 } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -31,7 +31,10 @@ interface JobPortalData {
     title: string;
     description?: string;
     address?: string;
+    latitude?: string;
+    longitude?: string;
     status: string;
+    notes?: string;
     workerStatus: null | 'assigned' | 'on_my_way' | 'arrived' | 'in_progress' | 'completed';
     workerStatusUpdatedAt?: string;
     workerEta?: string;
@@ -56,6 +59,8 @@ interface JobPortalData {
     quotes: Array<{ id: number; title: string; status: string; total: string; token: string; createdAt: string }>;
     invoices: Array<{ id: number; invoiceNumber: string; status: string; total: string; token: string; createdAt: string }>;
   };
+  checklist: Array<{ text: string; isCompleted: boolean; sortOrder: number }>;
+  materials: Array<{ name: string; quantity: number; unit?: string; status?: string }>;
 }
 
 const STATUS_ORDER = ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'] as const;
@@ -369,6 +374,7 @@ export default function JobPortal() {
 
   const [portalMessage, setPortalMessage] = useState('');
   const [messageSent, setMessageSent] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<number | null>(null);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -457,30 +463,27 @@ export default function JobPortal() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+      <header className="bg-[#0A6A73] sticky top-0 z-30">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
             {business.logo ? (
-              <img
-                src={business.logo}
-                alt={business.name}
-                className="w-10 h-10 object-contain rounded-md border border-gray-200"
-              />
+              <img src={business.logo} alt={business.name}
+                className="w-10 h-10 object-contain rounded-md bg-white/90 p-0.5" />
             ) : (
-              <div className="w-10 h-10 rounded-md bg-[#0A6A73]/10 flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-[#0A6A73]" />
+              <div className="w-10 h-10 rounded-md bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5 text-white" />
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <h1 className="font-bold text-gray-900 text-base truncate">{business.name}</h1>
+              <h1 className="font-bold text-white text-base truncate">{business.name}</h1>
               <div className="flex items-center gap-3 flex-wrap">
                 {business.phone && (
-                  <a href={`tel:${business.phone}`} className="text-xs text-gray-500 hover:text-[#0A6A73] flex items-center gap-1">
+                  <a href={`tel:${business.phone}`} className="text-xs text-white/70 hover:text-white flex items-center gap-1">
                     <Phone className="w-3 h-3" /> {business.phone}
                   </a>
                 )}
                 {business.email && (
-                  <a href={`mailto:${business.email}`} className="text-xs text-gray-500 hover:text-[#0A6A73] items-center gap-1 hidden sm:flex">
+                  <a href={`mailto:${business.email}`} className="text-xs text-white/70 hover:text-white items-center gap-1 hidden sm:flex">
                     <Mail className="w-3 h-3" /> {business.email}
                   </a>
                 )}
@@ -489,6 +492,16 @@ export default function JobPortal() {
           </div>
         </div>
       </header>
+
+      {client && (
+        <div className="bg-[#0A6A73]/5 border-b border-[#0A6A73]/10 px-4 py-3">
+          <div className="max-w-lg mx-auto">
+            <p className="text-sm text-gray-700">
+              Hi <span className="font-semibold">{client.name}</span>, here's your job update
+            </p>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1">
         <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
@@ -615,6 +628,17 @@ export default function JobPortal() {
             </CardContent>
           </Card>
 
+          {job.notes && (
+            <Card className="border-gray-200">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-gray-400" /> Notes
+                </h3>
+                <p className="text-sm text-gray-600 whitespace-pre-line">{job.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {job.workerStatus && (
             <Card className="border-gray-200">
               <CardContent className="p-4">
@@ -678,6 +702,81 @@ export default function JobPortal() {
             </Card>
           )}
 
+          {data.checklist && data.checklist.length > 0 && (
+            <Card className="border-gray-200">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-gray-400" /> Work Scope
+                </h3>
+                <div className="space-y-2">
+                  {data.checklist
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3 py-1.5">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        item.isCompleted 
+                          ? 'bg-emerald-500 border-emerald-500' 
+                          : 'border-gray-300'
+                      }`}>
+                        {item.isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className={`text-sm ${item.isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-gray-500">
+                      {data.checklist.filter(c => c.isCompleted).length} of {data.checklist.length} completed
+                    </span>
+                    <div className="flex-1 max-w-[120px] h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-emerald-500 rounded-full transition-all"
+                        style={{ width: `${(data.checklist.filter(c => c.isCompleted).length / data.checklist.length) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {data.materials && data.materials.length > 0 && (
+            <Card className="border-gray-200">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <Package className="w-4 h-4 text-gray-400" /> Materials
+                </h3>
+                <div className="space-y-2">
+                  {data.materials.map((material, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-1.5">
+                      <span className="text-sm text-gray-800">{material.name}</span>
+                      <div className="flex items-center gap-2">
+                        {material.quantity && (
+                          <span className="text-xs text-gray-500">
+                            {material.quantity}{material.unit ? ` ${material.unit}` : ''}
+                          </span>
+                        )}
+                        {material.status && (
+                          <Badge variant="secondary" className={`text-xs no-default-hover-elevate no-default-active-elevate ${
+                            material.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
+                            material.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
+                            material.status === 'on_order' ? 'bg-amber-100 text-amber-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {material.status}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {hasPhotos && (
             <Card className="border-gray-200">
               <CardContent className="p-4">
@@ -686,7 +785,8 @@ export default function JobPortal() {
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
                   {job.photos.map((photo, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
+                      onClick={() => setSelectedPhoto(idx)}>
                       <img
                         src={photo.url}
                         alt={photo.description || `Job photo ${idx + 1}`}
@@ -812,16 +912,37 @@ export default function JobPortal() {
         </div>
       </main>
 
-      <footer className="bg-white border-t border-gray-200 py-4 px-4 mt-auto">
-        <div className="max-w-lg mx-auto text-center">
-          <p className="text-xs text-gray-400">
-            Powered by <span className="font-medium text-gray-500">JobRunner</span>
-          </p>
+      <footer className="border-t border-gray-200 py-6 px-4 mt-auto bg-white">
+        <div className="max-w-lg mx-auto text-center space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-5 h-5 rounded bg-[#0A6A73] flex items-center justify-center">
+              <span className="text-white text-[10px] font-bold">J</span>
+            </div>
+            <span className="text-xs text-gray-500">Powered by <span className="font-semibold text-gray-700">JobRunner</span></span>
+          </div>
           {business.abn && (
-            <p className="text-xs text-gray-400 mt-1">ABN: {business.abn}</p>
+            <p className="text-xs text-gray-400">ABN: {business.abn}</p>
           )}
         </div>
       </footer>
+
+      {selectedPhoto !== null && hasPhotos && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <div className="max-w-lg max-h-[80vh] w-full">
+            <img
+              src={job.photos[selectedPhoto].url}
+              alt={job.photos[selectedPhoto].description || 'Job photo'}
+              className="w-full h-full object-contain rounded-lg"
+            />
+            {job.photos[selectedPhoto].description && (
+              <p className="text-white/80 text-sm text-center mt-3">{job.photos[selectedPhoto].description}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

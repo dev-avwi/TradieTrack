@@ -11753,12 +11753,17 @@ Be specific about materials, colors, and features that would be included.`
         createdAt: inv.createdAt,
       }));
       
+      const checklistItemsList = await storage.getChecklistItems(job.id, portalToken.userId);
+      const materialsList = await storage.getJobMaterials(job.id, portalToken.userId);
+      
       const portalData = {
         job: {
           id: job.id,
           title: job.title,
           description: job.description,
           address: job.address,
+          latitude: job.latitude,
+          longitude: job.longitude,
           status: job.status,
           workerStatus: job.workerStatus,
           workerStatusUpdatedAt: job.workerStatusUpdatedAt,
@@ -11770,6 +11775,7 @@ Be specific about materials, colors, and features that would be included.`
           photos: job.photos || [],
           startedAt: job.startedAt,
           completedAt: job.completedAt,
+          notes: job.notes,
         },
         business: {
           name: businessSettingsData?.businessName || '',
@@ -11786,6 +11792,17 @@ Be specific about materials, colors, and features that would be included.`
           quotes: jobQuotes,
           invoices: jobInvoices,
         },
+        checklist: checklistItemsList.map((item: any) => ({
+          text: item.text,
+          isCompleted: item.isCompleted,
+          sortOrder: item.sortOrder,
+        })),
+        materials: materialsList.map((m: any) => ({
+          name: m.name,
+          quantity: m.quantity,
+          unit: m.unit,
+          status: m.status,
+        })),
       };
       
       res.json(portalData);
