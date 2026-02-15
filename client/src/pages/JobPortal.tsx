@@ -400,7 +400,7 @@ function HeroMap({
 
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="relative w-full" style={{ height: '300px' }}>
+      <div className="relative w-full" style={{ height: '45vh', minHeight: '280px', maxHeight: '500px' }}>
         <MapContainer
           center={[-33.8688, 151.2093]}
           zoom={12}
@@ -422,7 +422,7 @@ function HeroMap({
   }
 
   return (
-    <div className="relative w-full" style={{ height: '300px' }}>
+    <div className="relative w-full" style={{ height: '45vh', minHeight: '280px', maxHeight: '500px' }}>
       <MapContainer
         center={center}
         zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
@@ -581,7 +581,7 @@ export default function JobPortal() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-2xl mx-auto">
           <Skeleton className="h-[300px] w-full" />
           <div className="p-4 space-y-4">
             <Skeleton className="h-24 w-full rounded-2xl" />
@@ -630,7 +630,7 @@ export default function JobPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col">
-      <div className="max-w-lg mx-auto w-full flex flex-col flex-1">
+      <div className="max-w-2xl mx-auto w-full flex flex-col flex-1">
 
         <div className="relative">
           {token && (
@@ -1317,7 +1317,7 @@ export default function JobPortal() {
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setSelectedPhoto(null)}
         >
-          <div className="max-w-lg max-h-[80vh] w-full">
+          <div className="max-w-2xl max-h-[80vh] w-full">
             <img
               src={job.photos[selectedPhoto].url}
               alt={job.photos[selectedPhoto].description || 'Job photo'}
