@@ -372,13 +372,13 @@ export default function ClientPortalHub() {
 
   const handleViewQuote = (quote: PortalQuote) => {
     if (quote.acceptanceToken) {
-      window.open(`/portal/quote/${quote.acceptanceToken}`, '_blank');
+      window.location.href = `/portal/quote/${quote.acceptanceToken}`;
     }
   };
 
   const handleViewReceipt = (receipt: PortalReceipt) => {
     if (receipt.viewToken) {
-      window.open(`/portal/receipt/${receipt.viewToken}`, '_blank');
+      window.location.href = `/portal/receipt/${receipt.viewToken}`;
     }
   };
 
