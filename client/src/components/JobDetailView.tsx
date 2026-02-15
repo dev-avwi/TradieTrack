@@ -1126,6 +1126,28 @@ export default function JobDetailView({
 
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState('');
+
+  useEffect(() => {
+    if (!job?.workerStatusUpdatedAt || !['on_my_way', 'arrived'].includes(job?.workerStatus || '')) {
+      setElapsedTime('');
+      return;
+    }
+    const updateTimer = () => {
+      const diff = Date.now() - new Date(job.workerStatusUpdatedAt!).getTime();
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      if (mins > 60) {
+        const hrs = Math.floor(mins / 60);
+        setElapsedTime(`${hrs}h ${mins % 60}m`);
+      } else {
+        setElapsedTime(`${mins}m ${secs}s`);
+      }
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [job?.workerStatusUpdatedAt, job?.workerStatus]);
 
   useEffect(() => {
     if (job?.portalEnabled && jobId) {
@@ -1517,177 +1539,563 @@ export default function JobDetailView({
 
         {/* Worker Dispatch Status Controls */}
         {(job.status === 'scheduled' || job.status === 'in_progress' || job.status === 'pending') && job.clientId && (
-          <div className="rounded-xl p-4 border border-border bg-card" data-testid="worker-status-controls">
-            {job.workerStatus && job.workerStatus !== 'assigned' && (
-              <div className="flex items-center gap-2 mb-3">
-                <div className={`h-2.5 w-2.5 rounded-full ${
-                  job.workerStatus === 'on_my_way' ? 'bg-amber-500 animate-pulse' :
-                  job.workerStatus === 'arrived' ? 'bg-green-500' :
-                  job.workerStatus === 'in_progress' ? 'bg-blue-500 animate-pulse' :
-                  job.workerStatus === 'completed' ? 'bg-green-600' : 'bg-gray-400'
-                }`} />
-                <span className="text-sm font-medium">
-                  {job.workerStatus === 'on_my_way' ? 'On My Way' :
-                   job.workerStatus === 'arrived' ? 'Arrived on Site' :
-                   job.workerStatus === 'in_progress' ? 'Work in Progress' :
-                   job.workerStatus === 'completed' ? 'Completed' : ''}
-                </span>
-                {job.workerEta && job.workerStatus === 'on_my_way' && (
-                  <Badge variant="secondary" className="text-xs">ETA: {job.workerEta}</Badge>
-                )}
-              </div>
-            )}
-            
-            {(!job.workerStatus || job.workerStatus === 'assigned' || job.workerStatus === 'on_my_way') && (
-              <div className="mb-3">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estimated Duration</label>
-                <Select value={selectedDurationEstimate} onValueChange={setSelectedDurationEstimate}>
-                  <SelectTrigger data-testid="select-duration-estimate">
-                    <SelectValue placeholder="Select estimated duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DURATION_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {(!job.workerStatus || job.workerStatus === 'assigned') && (
-                <Button
-                  onClick={() => onMyWayMutation.mutate()}
-                  disabled={onMyWayMutation.isPending}
-                  variant="default"
-                  className="gap-2"
-                  data-testid="button-on-my-way"
-                >
-                  {onMyWayMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Navigation className="h-4 w-4" />
-                  )}
-                  On My Way
-                </Button>
-              )}
-
-              {(!job.workerStatus || job.workerStatus === 'assigned') && isJobOverdue() && (
-                <Button
-                  onClick={() => runningLateMutation.mutate()}
-                  disabled={runningLateMutation.isPending}
-                  variant="default"
-                  className="gap-2"
-                  data-testid="button-running-late"
-                >
-                  {runningLateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4" />
-                  )}
-                  Running Late
-                </Button>
-              )}
-              
-              {job.workerStatus === 'on_my_way' && (
-                <Button
-                  onClick={() => arrivedMutation.mutate()}
-                  disabled={arrivedMutation.isPending}
-                  variant="default"
-                  className="gap-2"
-                  data-testid="button-arrived"
-                >
-                  {arrivedMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <MapPin className="h-4 w-4" />
-                  )}
-                  Arrived
-                </Button>
-              )}
-              
-              {showShareDialog && <div className="fixed inset-0 z-40" onClick={() => setShowShareDialog(false)} />}
-              <div className="relative">
-                <Button
-                  onClick={() => {
-                    if (portalUrl) {
-                      setShowShareDialog(!showShareDialog);
-                    } else {
-                      portalLinkMutation.mutate();
-                    }
-                  }}
-                  disabled={portalLinkMutation.isPending}
-                  variant="outline"
-                  className="gap-2"
-                  data-testid="button-share-portal"
-                >
-                  {portalLinkMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Link2 className="h-4 w-4" />
-                  )}
-                  Share Tracking Link
-                </Button>
-                {showShareDialog && portalUrl && (
-                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-md shadow-lg z-50 min-w-[200px]">
-                    <button
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
-                      onClick={() => {
-                        navigator.clipboard.writeText(portalUrl);
-                        toast({ title: "Link copied to clipboard" });
-                        setShowShareDialog(false);
-                      }}
-                    >
-                      <Link2 className="h-4 w-4" />
-                      Copy Link
-                    </button>
-                    {client?.phone && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
-                        onClick={async () => {
-                          try {
-                            await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
-                            toast({ title: "Tracking link sent via SMS" });
-                          } catch (e) {
-                            toast({ title: "Failed to send SMS", variant: "destructive" });
-                          }
-                          setShowShareDialog(false);
-                        }}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        Send via SMS
-                      </button>
-                    )}
-                    {client?.email && (
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
-                        onClick={async () => {
-                          try {
-                            await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
-                            toast({ title: "Tracking link sent via email" });
-                          } catch (e) {
-                            toast({ title: "Failed to send email", variant: "destructive" });
-                          }
-                          setShowShareDialog(false);
-                        }}
-                      >
-                        <Mail className="h-4 w-4" />
-                        Send via Email
-                      </button>
-                    )}
-                    <button
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
-                      onClick={() => {
-                        window.open(portalUrl, '_blank');
-                        setShowShareDialog(false);
-                      }}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Preview Job Portal
-                    </button>
+          <div className="rounded-xl border border-border bg-card overflow-visible" data-testid="worker-status-controls">
+            {/* Progress Timeline */}
+            <div className="px-4 pt-4 pb-3">
+              {(() => {
+                const steps = [
+                  { key: 'assigned', label: 'Assigned' },
+                  { key: 'on_my_way', label: 'On My Way' },
+                  { key: 'arrived', label: 'Arrived' },
+                  { key: 'in_progress', label: 'Working' },
+                  { key: 'completed', label: 'Done' },
+                ];
+                const statusOrder = ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'];
+                const currentIdx = statusOrder.indexOf(job.workerStatus || 'assigned');
+                return (
+                  <div className="flex items-center w-full">
+                    {steps.map((step, idx) => {
+                      const isCompleted = idx < currentIdx;
+                      const isActive = idx === currentIdx;
+                      return (
+                        <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`h-3 w-3 rounded-full border-2 shrink-0 ${
+                              isCompleted ? 'bg-green-500 border-green-500' :
+                              isActive ? 'border-[hsl(var(--trade))] bg-[hsl(var(--trade))] animate-pulse' :
+                              'border-muted-foreground/30 bg-transparent'
+                            }`}>
+                              {isCompleted && (
+                                <Check className="h-2 w-2 text-white m-auto" style={{ display: 'block', marginTop: '1px' }} />
+                              )}
+                            </div>
+                            <span className={`text-[10px] leading-tight text-center whitespace-nowrap ${
+                              isCompleted ? 'text-green-600 dark:text-green-400 font-medium' :
+                              isActive ? 'font-semibold' :
+                              'text-muted-foreground/50'
+                            }`}>{step.label}</span>
+                          </div>
+                          {idx < steps.length - 1 && (
+                            <div className={`h-0.5 flex-1 mx-1 mt-[-14px] ${
+                              idx < currentIdx ? 'bg-green-500' : 'bg-muted-foreground/15'
+                            }`} />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                );
+              })()}
+            </div>
+
+            {/* Client & Address Info */}
+            {(client || job.address) && (
+              <div className="px-4 pb-3 flex items-center gap-2 flex-wrap text-sm">
+                {client && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <User className="h-3.5 w-3.5" />
+                    <span className="font-medium text-foreground">{client.name}</span>
+                  </span>
+                )}
+                {client && job.address && <span className="text-muted-foreground/40">|</span>}
+                {job.address && (
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-muted-foreground hover-elevate active-elevate-2 rounded px-1 -mx-1"
+                  >
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate max-w-[200px]">{job.address}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+                  </a>
                 )}
               </div>
+            )}
+
+            {/* Scheduled Time Context */}
+            {job.scheduledAt && (
+              <div className="px-4 pb-3">
+                <div className="flex items-center gap-2 text-xs">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Scheduled: {format(new Date(job.scheduledAt), 'MMM d, h:mm a')}
+                  </span>
+                  {(() => {
+                    const scheduled = new Date(job.scheduledAt);
+                    const now = new Date();
+                    const diffMins = Math.round((now.getTime() - scheduled.getTime()) / 60000);
+                    if (diffMins > 15) {
+                      return <Badge variant="destructive" className="text-[10px]">{diffMins > 60 ? `${Math.floor(diffMins / 60)}h ${diffMins % 60}m late` : `${diffMins}m late`}</Badge>;
+                    } else if (diffMins > -5) {
+                      return <Badge variant="secondary" className="text-[10px]">On time</Badge>;
+                    } else {
+                      return <Badge variant="secondary" className="text-[10px]">{Math.abs(diffMins)}m early</Badge>;
+                    }
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Status-Specific Content */}
+            <div className="px-4 pb-4">
+              {/* ASSIGNED / NULL - Ready to dispatch */}
+              {(!job.workerStatus || job.workerStatus === 'assigned') && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                    <span className="text-sm font-medium">Ready to dispatch</span>
+                    {isJobOverdue() && (
+                      <Badge variant="destructive" className="text-[10px]">Overdue</Badge>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estimated Duration</label>
+                    <Select value={selectedDurationEstimate} onValueChange={setSelectedDurationEstimate}>
+                      <SelectTrigger data-testid="select-duration-estimate">
+                        <SelectValue placeholder="Select estimated duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={() => onMyWayMutation.mutate()}
+                      disabled={onMyWayMutation.isPending}
+                      className="flex-1 gap-2 text-white"
+                      style={{ backgroundColor: 'hsl(var(--trade))' }}
+                      data-testid="button-on-my-way"
+                    >
+                      {onMyWayMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Navigation className="h-4 w-4" />
+                      )}
+                      <div className="flex flex-col items-start">
+                        <span>On My Way</span>
+                        <span className="text-[10px] opacity-80 font-normal">Notify client you're heading out</span>
+                      </div>
+                    </Button>
+
+                    {isJobOverdue() && (
+                      <Button
+                        onClick={() => runningLateMutation.mutate()}
+                        disabled={runningLateMutation.isPending}
+                        variant="outline"
+                        className="flex-1 gap-2"
+                        data-testid="button-running-late"
+                      >
+                        {runningLateMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4" />
+                        )}
+                        Running Late
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ON MY WAY */}
+              {job.workerStatus === 'on_my_way' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-sm font-medium">En route</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {elapsedTime && (
+                        <Badge variant="secondary" className="text-xs gap-1 font-mono">
+                          <Clock className="h-3 w-3" />
+                          {elapsedTime} ago
+                        </Badge>
+                      )}
+                      {job.workerEta && (
+                        <Badge variant="secondary" className="text-xs">ETA: {job.workerEta}</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estimated Duration</label>
+                    <Select value={selectedDurationEstimate} onValueChange={setSelectedDurationEstimate}>
+                      <SelectTrigger data-testid="select-duration-estimate">
+                        <SelectValue placeholder="Select estimated duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={() => arrivedMutation.mutate()}
+                      disabled={arrivedMutation.isPending}
+                      className="flex-1 gap-2 text-white"
+                      style={{ backgroundColor: 'hsl(var(--trade))' }}
+                      data-testid="button-arrived"
+                    >
+                      {arrivedMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MapPin className="h-4 w-4" />
+                      )}
+                      <div className="flex flex-col items-start">
+                        <span>Arrived</span>
+                        <span className="text-[10px] opacity-80 font-normal">Mark arrival on site</span>
+                      </div>
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {isJobOverdue() && (
+                      <Button
+                        onClick={() => runningLateMutation.mutate()}
+                        disabled={runningLateMutation.isPending}
+                        variant="outline"
+                        className="flex-1 gap-2"
+                        data-testid="button-running-late"
+                      >
+                        {runningLateMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4" />
+                        )}
+                        Running Late
+                      </Button>
+                    )}
+
+                    {showShareDialog && <div className="fixed inset-0 z-40" onClick={() => setShowShareDialog(false)} />}
+                    <div className="relative flex-1">
+                      <Button
+                        onClick={() => {
+                          if (portalUrl) {
+                            setShowShareDialog(!showShareDialog);
+                          } else {
+                            portalLinkMutation.mutate();
+                          }
+                        }}
+                        disabled={portalLinkMutation.isPending}
+                        variant="outline"
+                        className="gap-2 w-full"
+                        data-testid="button-share-portal"
+                      >
+                        {portalLinkMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Link2 className="h-4 w-4" />
+                        )}
+                        Share Tracking Link
+                      </Button>
+                      {showShareDialog && portalUrl && (
+                        <div className="absolute top-full left-0 mt-1 bg-card border rounded-md shadow-lg z-50 min-w-[200px]">
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                            onClick={() => {
+                              navigator.clipboard.writeText(portalUrl);
+                              toast({ title: "Link copied to clipboard" });
+                              setShowShareDialog(false);
+                            }}
+                          >
+                            <Link2 className="h-4 w-4" />
+                            Copy Link
+                          </button>
+                          {client?.phone && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
+                                  toast({ title: "Tracking link sent via SMS" });
+                                } catch (e) {
+                                  toast({ title: "Failed to send SMS", variant: "destructive" });
+                                }
+                                setShowShareDialog(false);
+                              }}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Send via SMS
+                            </button>
+                          )}
+                          {client?.email && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
+                                  toast({ title: "Tracking link sent via email" });
+                                } catch (e) {
+                                  toast({ title: "Failed to send email", variant: "destructive" });
+                                }
+                                setShowShareDialog(false);
+                              }}
+                            >
+                              <Mail className="h-4 w-4" />
+                              Send via Email
+                            </button>
+                          )}
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                            onClick={() => {
+                              window.open(portalUrl, '_blank');
+                              setShowShareDialog(false);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Preview Job Portal
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ARRIVED */}
+              {job.workerStatus === 'arrived' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-green-500" />
+                      <span className="text-sm font-medium">On site</span>
+                    </div>
+                    {elapsedTime && (
+                      <Badge variant="secondary" className="text-xs gap-1 font-mono">
+                        <Clock className="h-3 w-3" />
+                        {elapsedTime} on site
+                      </Badge>
+                    )}
+                  </div>
+
+                  {!activeTimerForThisJob && (
+                    <div className="flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+                      <Timer className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-xs text-amber-700 dark:text-amber-300">Timer not running. Start tracking time for this job.</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Estimated Duration</label>
+                    <Select value={selectedDurationEstimate} onValueChange={setSelectedDurationEstimate}>
+                      <SelectTrigger data-testid="select-duration-estimate">
+                        <SelectValue placeholder="Select estimated duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {showShareDialog && <div className="fixed inset-0 z-40" onClick={() => setShowShareDialog(false)} />}
+                    <div className="relative flex-1">
+                      <Button
+                        onClick={() => {
+                          if (portalUrl) {
+                            setShowShareDialog(!showShareDialog);
+                          } else {
+                            portalLinkMutation.mutate();
+                          }
+                        }}
+                        disabled={portalLinkMutation.isPending}
+                        variant="outline"
+                        className="gap-2 w-full"
+                        data-testid="button-share-portal"
+                      >
+                        {portalLinkMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Link2 className="h-4 w-4" />
+                        )}
+                        Share Tracking Link
+                      </Button>
+                      {showShareDialog && portalUrl && (
+                        <div className="absolute top-full left-0 mt-1 bg-card border rounded-md shadow-lg z-50 min-w-[200px]">
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                            onClick={() => {
+                              navigator.clipboard.writeText(portalUrl);
+                              toast({ title: "Link copied to clipboard" });
+                              setShowShareDialog(false);
+                            }}
+                          >
+                            <Link2 className="h-4 w-4" />
+                            Copy Link
+                          </button>
+                          {client?.phone && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
+                                  toast({ title: "Tracking link sent via SMS" });
+                                } catch (e) {
+                                  toast({ title: "Failed to send SMS", variant: "destructive" });
+                                }
+                                setShowShareDialog(false);
+                              }}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Send via SMS
+                            </button>
+                          )}
+                          {client?.email && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
+                                  toast({ title: "Tracking link sent via email" });
+                                } catch (e) {
+                                  toast({ title: "Failed to send email", variant: "destructive" });
+                                }
+                                setShowShareDialog(false);
+                              }}
+                            >
+                              <Mail className="h-4 w-4" />
+                              Send via Email
+                            </button>
+                          )}
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                            onClick={() => {
+                              window.open(portalUrl, '_blank');
+                              setShowShareDialog(false);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Preview Job Portal
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* WORKING (in_progress) */}
+              {job.workerStatus === 'in_progress' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                      <span className="text-sm font-medium">Work in Progress</span>
+                    </div>
+                    {activeTimerForThisJob && (
+                      <Badge variant="secondary" className="text-xs gap-1 font-mono">
+                        <Timer className="h-3 w-3" />
+                        {getElapsedTime(activeTimerForThisJob.startTime)}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {showShareDialog && <div className="fixed inset-0 z-40" onClick={() => setShowShareDialog(false)} />}
+                    <div className="relative flex-1">
+                      <Button
+                        onClick={() => {
+                          if (portalUrl) {
+                            setShowShareDialog(!showShareDialog);
+                          } else {
+                            portalLinkMutation.mutate();
+                          }
+                        }}
+                        disabled={portalLinkMutation.isPending}
+                        variant="outline"
+                        className="gap-2 w-full"
+                        data-testid="button-share-portal"
+                      >
+                        {portalLinkMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Link2 className="h-4 w-4" />
+                        )}
+                        Share Tracking Link
+                      </Button>
+                      {showShareDialog && portalUrl && (
+                        <div className="absolute top-full left-0 mt-1 bg-card border rounded-md shadow-lg z-50 min-w-[200px]">
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                            onClick={() => {
+                              navigator.clipboard.writeText(portalUrl);
+                              toast({ title: "Link copied to clipboard" });
+                              setShowShareDialog(false);
+                            }}
+                          >
+                            <Link2 className="h-4 w-4" />
+                            Copy Link
+                          </button>
+                          {client?.phone && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
+                                  toast({ title: "Tracking link sent via SMS" });
+                                } catch (e) {
+                                  toast({ title: "Failed to send SMS", variant: "destructive" });
+                                }
+                                setShowShareDialog(false);
+                              }}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Send via SMS
+                            </button>
+                          )}
+                          {client?.email && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                              onClick={async () => {
+                                try {
+                                  await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
+                                  toast({ title: "Tracking link sent via email" });
+                                } catch (e) {
+                                  toast({ title: "Failed to send email", variant: "destructive" });
+                                }
+                                setShowShareDialog(false);
+                              }}
+                            >
+                              <Mail className="h-4 w-4" />
+                              Send via Email
+                            </button>
+                          )}
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover-elevate text-left"
+                            onClick={() => {
+                              window.open(portalUrl, '_blank');
+                              setShowShareDialog(false);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Preview Job Portal
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* COMPLETED */}
+              {job.workerStatus === 'completed' && (
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-600" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-400">Job completed</span>
+                </div>
+              )}
             </div>
           </div>
         )}
