@@ -464,8 +464,10 @@ export default function CollectPayment() {
       setSelectedRequest(data);
       setShowShareDialog(true);
       toast({
-        title: "Payment request created",
-        description: "Share the QR code or link with your customer",
+        title: data.isDemoMode ? "Demo payment link created" : "Payment request created",
+        description: data.isDemoMode 
+          ? "This is a demo link for testing. Connect Stripe for real payments." 
+          : "Share the QR code or link with your customer",
       });
     },
     onError: (error: any) => {
@@ -509,8 +511,10 @@ export default function CollectPayment() {
       queryClient.invalidateQueries({ queryKey: ['/api/payment-requests'] });
       setTapToPayRequest(data);
       toast({
-        title: "Ready for payment",
-        description: "Show the QR code to your customer",
+        title: data.isDemoMode ? "Demo QR code ready" : "Ready for payment",
+        description: data.isDemoMode 
+          ? "This is a demo QR code for testing. Connect Stripe for real payments."
+          : "Show the QR code to your customer",
       });
     },
     onError: (error: any) => {
@@ -804,16 +808,19 @@ export default function CollectPayment() {
         leading={<DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
       />
 
-      {/* Stripe Warning - Compact */}
+      {/* Demo Mode Banner */}
       {!stripeConnected && (
-        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 mb-6" data-testid="banner-stripe-warning">
+        <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 mb-6" data-testid="banner-demo-mode">
           <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Connect Stripe to accept card payments</span>
+              <Zap className="h-5 w-5 text-orange-600 shrink-0" />
+              <div>
+                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">Demo Mode</span>
+                <p className="text-xs text-orange-600 dark:text-orange-400">Payment links work for testing. Connect Stripe for real payments.</p>
+              </div>
             </div>
             <Button size="sm" variant="outline" onClick={() => navigate('/integrations')} data-testid="button-setup-stripe">
-              Connect
+              Connect Stripe
             </Button>
           </CardContent>
         </Card>
@@ -895,15 +902,11 @@ export default function CollectPayment() {
                 className="w-full h-12 text-base" 
                 style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
                 onClick={() => setShowTapToPayDialog(true)}
-                disabled={!stripeConnected}
                 data-testid="button-start-tap-to-pay"
               >
                 <Smartphone className="h-5 w-5 mr-2" />
                 Start Tap to Pay
               </Button>
-              {!stripeConnected && (
-                <p className="text-xs text-center text-amber-600">Connect Stripe to enable Tap to Pay</p>
-              )}
             </TabsContent>
 
             {/* QR Code Content */}
@@ -921,7 +924,6 @@ export default function CollectPayment() {
                 className="w-full h-12 text-base" 
                 style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
                 onClick={() => setShowTapToPayDialog(true)}
-                disabled={!stripeConnected}
                 data-testid="button-show-qr"
               >
                 <QrCode className="h-5 w-5 mr-2" />
@@ -944,7 +946,6 @@ export default function CollectPayment() {
                 className="w-full h-12 text-base" 
                 style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
                 onClick={() => setShowCreateDialog(true)}
-                disabled={!stripeConnected}
                 data-testid="button-create-link"
               >
                 <Plus className="h-5 w-5 mr-2" />

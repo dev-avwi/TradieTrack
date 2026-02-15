@@ -15443,12 +15443,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       const businessForStripeCheck = await storage.getBusinessSettings(req.userId);
       const canAcceptPayments = !!(businessForStripeCheck?.stripeConnectAccountId && businessForStripeCheck?.connectChargesEnabled);
-      if (!canAcceptPayments) {
-        return res.status(400).json({
-          error: "Stripe account not connected. Go to Settings > Payments to connect your Stripe account before sending payment links.",
-          stripeNotConnected: true
-        });
-      }
+      const isDemoMode = !canAcceptPayments;
 
       const { amount, description, reference, invoiceId, jobId, clientId, expiresInHours = 24 } = req.body;
       
@@ -15492,6 +15487,7 @@ Be specific about materials, colors, and features that would be included.`
       res.status(201).json({
         ...paymentRequest,
         paymentUrl,
+        isDemoMode,
       });
     } catch (error) {
       console.error("Error creating payment request:", error);
@@ -16540,6 +16536,7 @@ Be specific about materials, colors, and features that would be included.`
       
       // Get business settings for branding
       const settings = await storage.getBusinessSettings(request.userId);
+      const canAcceptPayments = !!(settings?.stripeConnectAccountId && settings?.connectChargesEnabled);
       
       // Return payment details (exclude sensitive data)
       res.json({
@@ -16553,6 +16550,7 @@ Be specific about materials, colors, and features that would be included.`
         businessName: settings?.businessName || 'Business',
         businessLogo: settings?.logoUrl,
         brandColor: settings?.brandColor || '#dc2626',
+        isDemoMode: !canAcceptPayments,
       });
     } catch (error) {
       console.error("Error fetching public payment request:", error);
@@ -16648,8 +16646,11 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(404).json({ error: "Payment request not found" });
       }
       
-      // Verify payment intent matches
-      if (request.stripePaymentIntentId !== paymentIntentId) {
+      // For demo mode payments (no real Stripe), allow demo payment intent IDs
+      const isDemoPayment = paymentMethod === 'demo' || (paymentIntentId && paymentIntentId.startsWith('demo_pi_'));
+      
+      // Verify payment intent matches (skip for demo payments)
+      if (!isDemoPayment && request.stripePaymentIntentId !== paymentIntentId) {
         return res.status(400).json({ error: "Payment intent mismatch" });
       }
       
