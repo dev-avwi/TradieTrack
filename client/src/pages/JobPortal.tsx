@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
-  MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard
+  MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard, Shield
 } from "lucide-react";
+import jobrunnerLogo from "@assets/D3E57352-48E5-4224-88EC-9EFDFFD3442E_1771067699090.png";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -725,8 +726,8 @@ export default function JobPortal() {
               <img src={business.logo} alt={business.name}
                 className="w-10 h-10 object-contain rounded-md bg-white/90 p-0.5" />
             ) : (
-              <div className="w-10 h-10 rounded-md bg-white/20 flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
+                <img src={jobrunnerLogo} alt="JobRunner" className="w-full h-full object-contain" />
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -1192,7 +1193,7 @@ export default function JobPortal() {
                     <Button
                       type="submit"
                       disabled={!portalMessage.trim() || sendMessageMutation.isPending}
-                      className="bg-[#0A6A73] hover:bg-[#085a62] text-white"
+                      variant="default"
                     >
                       {sendMessageMutation.isPending ? (
                         <>
@@ -1212,27 +1213,33 @@ export default function JobPortal() {
       </main>
 
       <div className="max-w-lg mx-auto px-4 pb-4">
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-gray-200">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <CreditCard className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-5 h-5 text-gray-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 text-sm">Client Portal</h3>
-                <p className="text-xs text-gray-600 mt-0.5">View all your invoices, quotes, and make payments securely</p>
-                <Button 
-                  onClick={() => {
-                    const params = new URLSearchParams();
-                    if (client?.phone) params.set('phone', client.phone);
-                    window.location.href = `/portal${params.toString() ? '?' + params.toString() : ''}`;
-                  }}
-                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                  size="sm"
-                >
-                  Open Client Portal
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
+                <h3 className="font-semibold text-gray-900 text-sm">Your Documents</h3>
+                <p className="text-xs text-gray-600 mt-0.5">View invoices, quotes, and make secure payments</p>
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                  <Button 
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (client?.phone) params.set('phone', client.phone);
+                      window.location.href = `/portal${params.toString() ? '?' + params.toString() : ''}`;
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="text-sm border-gray-300"
+                  >
+                    View Documents
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                  <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                    <Shield className="w-3 h-3" /> Secure
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -1242,9 +1249,7 @@ export default function JobPortal() {
       <footer className="border-t border-gray-200 py-6 px-4 mt-auto bg-white">
         <div className="max-w-lg mx-auto text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <div className="w-5 h-5 rounded bg-[#0A6A73] flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold">J</span>
-            </div>
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-6 h-6 object-contain" />
             <span className="text-xs text-gray-500">Powered by <span className="font-semibold text-gray-700">JobRunner</span></span>
           </div>
           {business.abn && (

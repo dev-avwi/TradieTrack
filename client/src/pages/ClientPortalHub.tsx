@@ -27,6 +27,7 @@ import {
   Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import jobrunnerLogo from "@assets/D3E57352-48E5-4224-88EC-9EFDFFD3442E_1771067699090.png";
 
 interface PortalClient {
   id: string;
@@ -383,22 +384,20 @@ export default function ClientPortalHub() {
 
   if (viewState === 'phone') {
     return (
-      <div className="min-h-screen bg-white dark:bg-background flex flex-col">
-        <div className="bg-primary text-primary-foreground py-12 px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold">Client Portal</h1>
-            <p className="text-sm opacity-90 mt-1">Access your quotes, invoices, and job history</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="py-10 px-4">
+          <div className="max-w-md mx-auto text-center">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-bold text-gray-900">Client Portal</h1>
+            <p className="text-sm text-gray-500 mt-1">Access your quotes, invoices, and job history</p>
           </div>
         </div>
 
-        <div className="flex-1 flex items-start justify-center px-4 -mt-6">
-          <Card className="w-full max-w-md shadow-lg">
+        <div className="flex-1 flex items-start justify-center px-4">
+          <Card className="w-full max-w-md shadow-sm border-gray-200">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Phone className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+                <Phone className="w-6 h-6 text-emerald-600" />
               </div>
               <CardTitle className="text-lg">Verify Your Identity</CardTitle>
               <CardDescription>
@@ -423,16 +422,17 @@ export default function ClientPortalHub() {
               >
                 {isLoading ? 'Sending...' : 'Send Verification Code'}
               </Button>
-              <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
-                <Shield className="w-3 h-3" />
+              <p className="text-xs text-center text-gray-400 flex items-center justify-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" />
                 We'll send a 6-digit code to verify your identity
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="text-center text-xs text-muted-foreground py-4">
-          <p>Powered by JobRunner</p>
+        <div className="text-center py-6 flex items-center justify-center gap-2">
+          <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
+          <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -440,22 +440,20 @@ export default function ClientPortalHub() {
 
   if (viewState === 'code') {
     return (
-      <div className="min-h-screen bg-white dark:bg-background flex flex-col">
-        <div className="bg-primary text-primary-foreground py-12 px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold">Client Portal</h1>
-            <p className="text-sm opacity-90 mt-1">Secure verification</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="py-10 px-4">
+          <div className="max-w-md mx-auto text-center">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-14 h-14 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-bold text-gray-900">Client Portal</h1>
+            <p className="text-sm text-gray-500 mt-1">Secure verification</p>
           </div>
         </div>
 
-        <div className="flex-1 flex items-start justify-center px-4 -mt-6">
-          <Card className="w-full max-w-md shadow-lg">
+        <div className="flex-1 flex items-start justify-center px-4">
+          <Card className="w-full max-w-md shadow-sm border-gray-200">
             <CardHeader className="text-center pb-2">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               </div>
               <CardTitle className="text-lg">Enter Verification Code</CardTitle>
               <CardDescription>
@@ -503,8 +501,9 @@ export default function ClientPortalHub() {
           </Card>
         </div>
 
-        <div className="text-center text-xs text-muted-foreground py-4">
-          <p>Powered by JobRunner</p>
+        <div className="text-center py-6 flex items-center justify-center gap-2">
+          <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
+          <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -527,9 +526,7 @@ export default function ClientPortalHub() {
                     className="w-10 h-10 object-contain rounded border"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded border bg-primary/10 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-primary" />
-                  </div>
+                  <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 object-contain" />
                 )}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base truncate">
@@ -814,8 +811,9 @@ export default function ClientPortalHub() {
           </div>
         </main>
 
-        <div className="text-center text-xs text-muted-foreground py-4 border-t">
-          <p>Powered by JobRunner</p>
+        <div className="text-center py-4 border-t flex items-center justify-center gap-2">
+          <img src={jobrunnerLogo} alt="JobRunner" className="w-5 h-5 object-contain" />
+          <span className="text-xs text-gray-400">Powered by <span className="font-medium text-gray-500">JobRunner</span></span>
         </div>
       </div>
     );
