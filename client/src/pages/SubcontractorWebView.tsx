@@ -95,6 +95,8 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
   const [noteText, setNoteText] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>('pending');
+  const [showEtaPicker, setShowEtaPicker] = useState(false);
+  const [etaMinutes, setEtaMinutes] = useState<number>(15);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -368,6 +370,36 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
         }),
       });
       if (res.ok) {
+        await fetchDashboardData(sessionToken!);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update status');
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOnMyWay = async () => {
+    setIsSubmitting(true);
+    try {
+      const loc = await getLocation();
+      const res = await fetch(`/api/subcontractor/${token}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          status: 'en_route',
+          etaMinutes,
+          ...(loc || {}),
+        }),
+      });
+      if (res.ok) {
+        setShowEtaPicker(false);
         await fetchDashboardData(sessionToken!);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -659,15 +691,51 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                     })}
                   </div>
 
-                  {currentStatus === 'accepted' && (
-                    <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('en_route')} disabled={isSubmitting}>
+                  {currentStatus === 'accepted' && !showEtaPicker && (
+                    <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => setShowEtaPicker(true)} disabled={isSubmitting}>
                       <Car className="w-4 h-4 mr-2" /> I'm On My Way
                     </Button>
                   )}
+                  {currentStatus === 'accepted' && showEtaPicker && (
+                    <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-md p-4">
+                      <h4 className="text-sm font-semibold text-slate-800">What's your estimated arrival time?</h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {[10, 15, 20, 30, 45, 60, 90].map((mins) => (
+                          <Button
+                            key={mins}
+                            variant={etaMinutes === mins ? "default" : "outline"}
+                            size="sm"
+                            className={etaMinutes === mins ? "bg-[#2563EB]" : ""}
+                            onClick={() => setEtaMinutes(mins)}
+                          >
+                            {mins < 60 ? `${mins} min` : mins === 60 ? '1 hr' : '1.5 hr'}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowEtaPicker(false)}>
+                          Cancel
+                        </Button>
+                        <Button className="flex-1 bg-[#2563EB]" size="sm" onClick={() => handleOnMyWay()} disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Car className="w-4 h-4 mr-2" />}
+                          Confirm - {etaMinutes < 60 ? `${etaMinutes} min` : etaMinutes === 60 ? '1 hr' : '1.5 hr'} away
+                        </Button>
+                      </div>
+                      <p className="text-xs text-slate-500 text-center">Location sharing is optional</p>
+                    </div>
+                  )}
                   {currentStatus === 'en_route' && (
-                    <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('arrived')} disabled={isSubmitting}>
-                      <MapPin className="w-4 h-4 mr-2" /> I've Arrived
-                    </Button>
+                    <div className="space-y-3">
+                      {jobData?.token?.etaMinutes && (
+                        <div className="flex items-center justify-center gap-2 bg-amber-50 border border-amber-200 rounded-md p-3">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          <span className="text-sm font-medium text-amber-800">ETA: ~{jobData.token.etaMinutes} min</span>
+                        </div>
+                      )}
+                      <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('arrived')} disabled={isSubmitting}>
+                        <MapPin className="w-4 h-4 mr-2" /> I've Arrived
+                      </Button>
+                    </div>
                   )}
                   {currentStatus === 'arrived' && (
                     <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('working')} disabled={isSubmitting}>

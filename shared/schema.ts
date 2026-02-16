@@ -3825,6 +3825,7 @@ export const subcontractorTokens = pgTable("subcontractor_tokens", {
   expiresAt: timestamp("expires_at"),
   revokedAt: timestamp("revoked_at"),
   lastAccessedAt: timestamp("last_accessed_at"),
+  etaMinutes: integer("eta_minutes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

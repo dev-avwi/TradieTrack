@@ -110,6 +110,7 @@ interface SubcontractorLocation {
   } | null;
   stale: boolean;
   lastUpdated: string | null;
+  etaMinutes: number | null;
 }
 
 interface CrewLocationResponse {
@@ -874,24 +875,29 @@ export default function JobPortal() {
                     </div>
                   );
                 })}
-                {crewLocationData?.subcontractors?.map((s) => (
-                  <div key={`sub-list-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                        <User className="w-4 h-4 text-slate-500" />
+                {crewLocationData?.subcontractors?.map((s) => {
+                  const sConf = getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status);
+                  return (
+                    <div key={`sub-list-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+                          <User className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{s.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {s.status === 'en_route' && s.etaMinutes
+                              ? `ETA: ~${s.etaMinutes} min`
+                              : s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{s.name}</p>
-                        <p className="text-xs text-slate-400">
-                          {s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
-                        </p>
-                      </div>
+                      <Badge variant="secondary" className={sConf.bg + ' ' + sConf.text + ' no-default-hover-elevate no-default-active-elevate'}>
+                        {sConf.label}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className={getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).bg + ' ' + getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).text + ' no-default-hover-elevate no-default-active-elevate'}>
-                      {getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).label}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : worker && (
@@ -934,24 +940,29 @@ export default function JobPortal() {
                     </div>
                   )}
                 </div>
-                {crewLocationData?.subcontractors?.map((s) => (
-                  <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border-slate-100">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                        <User className="w-4 h-4 text-slate-500" />
+                {crewLocationData?.subcontractors?.map((s) => {
+                  const sConf2 = getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status);
+                  return (
+                    <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+                          <User className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{s.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {s.status === 'en_route' && s.etaMinutes
+                              ? `ETA: ~${s.etaMinutes} min`
+                              : s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{s.name}</p>
-                        <p className="text-xs text-slate-400">
-                          {s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
-                        </p>
-                      </div>
+                      <Badge variant="secondary" className={sConf2.bg + ' ' + sConf2.text + ' no-default-hover-elevate no-default-active-elevate'}>
+                        {sConf2.label}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className={getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).bg + ' ' + getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).text + ' no-default-hover-elevate no-default-active-elevate'}>
-                      {getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).label}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

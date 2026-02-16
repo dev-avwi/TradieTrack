@@ -932,6 +932,7 @@ export interface IStorage {
   revokeSubcontractorToken(id: string): Promise<void>;
   updateSubcontractorTokenAccess(id: string): Promise<void>;
   updateSubcontractorTokenContact(id: string, phone: string): Promise<void>;
+  updateSubcontractorToken(id: string, updates: Partial<{ etaMinutes: number | null }>): Promise<void>;
 
   createSubcontractorSession(tokenId: string, sessionToken: string, phone: string, expiresAt: Date): Promise<SubcontractorSession>;
   getSubcontractorSessionByToken(sessionToken: string): Promise<SubcontractorSession | null>;
@@ -7268,6 +7269,10 @@ Thank you for your prompt attention to this matter.`,
 
   async updateSubcontractorTokenContact(id: string, phone: string): Promise<void> {
     await db.update(subcontractorTokens).set({ contactPhone: phone }).where(eq(subcontractorTokens.id, id));
+  }
+
+  async updateSubcontractorToken(id: string, updates: Partial<{ etaMinutes: number | null }>): Promise<void> {
+    await db.update(subcontractorTokens).set(updates).where(eq(subcontractorTokens.id, id));
   }
 
   async createSubcontractorSession(tokenId: string, sessionToken: string, phone: string, expiresAt: Date): Promise<SubcontractorSession> {

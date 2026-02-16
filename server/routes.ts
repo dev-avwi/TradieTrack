@@ -1489,6 +1489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: tokenRecord.status,
           permissions: tokenRecord.permissions,
           contactName: tokenRecord.contactName,
+          etaMinutes: tokenRecord.etaMinutes,
         },
         job: {
           id: job.id,
@@ -1576,7 +1577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
       if (tokenRecord.status !== 'accepted') return res.status(400).json({ error: 'Must accept job first' });
 
-      const { status, latitude, longitude } = req.body;
+      const { status, latitude, longitude, etaMinutes } = req.body;
       const validStatuses = ['en_route', 'arrived', 'working', 'done'];
       if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
@@ -1591,10 +1592,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tokenId: tokenRecord.id,
         jobId: tokenRecord.jobId,
         eventType: eventTypeMap[status],
-        eventData: { status },
+        eventData: { status, ...(etaMinutes ? { etaMinutes: parseInt(etaMinutes) } : {}) },
         latitude: latitude || null,
         longitude: longitude || null,
       });
+
+      if (status === 'en_route' && etaMinutes) {
+        await storage.updateSubcontractorToken(tokenRecord.id, { etaMinutes: parseInt(etaMinutes) });
+      }
+      if (status === 'arrived' || status === 'working' || status === 'done') {
+        await storage.updateSubcontractorToken(tokenRecord.id, { etaMinutes: null });
+      }
 
       if (latitude && longitude) {
         await storage.createSubcontractorLocationPing({
@@ -13052,6 +13060,7 @@ Be specific about materials, colors, and features that would be included.`
           name: st.contactName || 'Support Crew',
           status: currentStatus,
           isSubcontractor: true,
+          etaMinutes: st.etaMinutes || null,
           location,
           stale,
           lastUpdated: ping?.recordedAt || null,
