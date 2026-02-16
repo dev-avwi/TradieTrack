@@ -94,6 +94,7 @@ interface PortalJob {
   scheduledAt?: string;
   completedAt?: string;
   photos?: any[];
+  portalToken?: string;
 }
 
 interface PortalData {
@@ -123,29 +124,29 @@ function formatDate(dateStr: string | null | undefined): string {
 
 function getQuoteStatusColor(status: string): string {
   switch (status) {
-    case 'accepted': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'declined': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    case 'sent': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+    case 'accepted': return 'bg-green-100 text-green-800';
+    case 'declined': return 'bg-red-100 text-red-800';
+    case 'sent': return 'bg-blue-100 text-blue-800';
+    default: return 'bg-slate-100 text-slate-800';
   }
 }
 
 function getInvoiceStatusColor(status: string): string {
   switch (status) {
-    case 'paid': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'overdue': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    case 'sent': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+    case 'paid': return 'bg-green-100 text-green-800';
+    case 'overdue': return 'bg-red-100 text-red-800';
+    case 'sent': return 'bg-blue-100 text-blue-800';
+    default: return 'bg-slate-100 text-slate-800';
   }
 }
 
 function getJobStatusColor(status: string): string {
   switch (status) {
-    case 'done': case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    case 'scheduled': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
-    case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+    case 'done': case 'completed': return 'bg-green-100 text-green-800';
+    case 'in_progress': return 'bg-blue-100 text-blue-800';
+    case 'scheduled': return 'bg-purple-100 text-purple-800';
+    case 'cancelled': return 'bg-red-100 text-red-800';
+    default: return 'bg-slate-100 text-slate-800';
   }
 }
 
@@ -765,7 +766,7 @@ export default function ClientPortalHub() {
               </div>
             ) : (
               <Tabs defaultValue="quotes" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-6">
+                <TabsList className="grid w-full grid-cols-4 mb-6 bg-slate-100">
                   <TabsTrigger value="quotes" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Quotes</span>
@@ -1032,7 +1033,12 @@ export default function ClientPortalHub() {
                       return (
                         <div
                           key={job.id}
-                          className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate ${
+                          onClick={() => {
+                            if (job.portalToken) {
+                              window.location.href = `/p/${job.portalToken}`;
+                            }
+                          }}
+                          className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
                             isDone
                               ? 'border-green-200'
                               : isInProgress

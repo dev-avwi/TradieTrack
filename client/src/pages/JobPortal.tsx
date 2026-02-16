@@ -288,6 +288,28 @@ function createWorkerIcon(color: string, isPrimary: boolean) {
   });
 }
 
+function RecenterControl({ center, bounds }: { center: [number, number]; bounds: L.LatLngBoundsExpression | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const btn = document.createElement('button');
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`;
+    btn.style.cssText = 'position:absolute;top:60px;right:12px;z-index:1000;width:40px;height:40px;border-radius:12px;background:white;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#2563EB;';
+    btn.addEventListener('click', () => {
+      if (bounds) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      } else {
+        map.setView(center, 15);
+      }
+    });
+    container.appendChild(btn);
+    return () => { container.removeChild(btn); };
+  }, [map, center, bounds]);
+
+  return null;
+}
+
 function RouteLine({ from, to }: { from: [number, number]; to: [number, number] }) {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const map = useMap();
@@ -428,7 +450,7 @@ function HeroMap({
 
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="relative w-full" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
+      <div className="relative w-full overflow-hidden" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
         <MapContainer
           center={[-33.8688, 151.2093]}
           zoom={12}
@@ -436,9 +458,10 @@ function HeroMap({
           zoomControl={false}
           attributionControl={false}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+          <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none z-[999]" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 30%, rgba(255,255,255,0) 100%)' }} />
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
@@ -451,7 +474,7 @@ function HeroMap({
   }
 
   return (
-    <div className="relative w-full" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
+    <div className="relative w-full overflow-hidden" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
       <MapContainer
         center={center}
         zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
@@ -459,7 +482,8 @@ function HeroMap({
         zoomControl={false}
         attributionControl={false}
       >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        <RecenterControl center={center} bounds={bounds} />
         {bounds && <FitBounds bounds={bounds} />}
         {hasJobPin && (
           <Marker position={[jobPinLat!, jobPinLng!]} icon={jobPinIcon}>
@@ -519,7 +543,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none z-[999]" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 30%, rgba(255,255,255,0) 100%)' }} />
 
       {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">

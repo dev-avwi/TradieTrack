@@ -1216,9 +1216,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessInfo: businessInfoMap.get(r.userId),
       }));
       
-      const jobsWithBusiness = jobs.map(j => ({
-        ...j,
-        businessInfo: businessInfoMap.get(j.userId),
+      const jobsWithPortalTokens = await Promise.all(jobs.map(async (j) => {
+        let portalToken = null;
+        try {
+          const tokens = await storage.getJobPortalTokensByJobId(j.id);
+          const activeToken = tokens?.find((t: any) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()));
+          if (activeToken) {
+            portalToken = activeToken.token;
+          }
+        } catch (e) {}
+        return {
+          ...j,
+          portalToken,
+          businessInfo: businessInfoMap.get(j.userId),
+        };
       }));
       
       return res.json({
@@ -1227,7 +1238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quotes: quotesWithBusiness,
         invoices: invoicesWithBusiness,
         receipts: receiptsWithBusiness,
-        jobs: jobsWithBusiness,
+        jobs: jobsWithPortalTokens,
       });
     } catch (error: any) {
       console.error('Error fetching portal data:', error);

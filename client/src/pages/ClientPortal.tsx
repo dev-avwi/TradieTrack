@@ -108,10 +108,35 @@ export default function ClientPortal() {
     const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
     root.classList.remove('dark');
     
+    root.style.setProperty('--background', '210 40% 98%');
+    root.style.setProperty('--foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--card', '0 0% 100%');
+    root.style.setProperty('--card-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--popover', '0 0% 100%');
+    root.style.setProperty('--popover-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--muted', '210 40% 96.1%');
+    root.style.setProperty('--muted-foreground', '215.4 16.3% 46.9%');
+    root.style.setProperty('--border', '214.3 31.8% 91.4%');
+    root.style.setProperty('--input', '214.3 31.8% 91.4%');
+    root.style.setProperty('--ring', '221.2 83.2% 53.3%');
+    root.style.setProperty('color-scheme', 'light');
+    
     return () => {
       if (previousTheme === 'dark') {
         root.classList.add('dark');
       }
+      root.style.removeProperty('--background');
+      root.style.removeProperty('--foreground');
+      root.style.removeProperty('--card');
+      root.style.removeProperty('--card-foreground');
+      root.style.removeProperty('--popover');
+      root.style.removeProperty('--popover-foreground');
+      root.style.removeProperty('--muted');
+      root.style.removeProperty('--muted-foreground');
+      root.style.removeProperty('--border');
+      root.style.removeProperty('--input');
+      root.style.removeProperty('--ring');
+      root.style.removeProperty('color-scheme');
     };
   }, []);
 
@@ -216,7 +241,7 @@ export default function ClientPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 p-4 md:p-8">
+      <div className="min-h-screen p-4 md:p-8" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
         <div className="max-w-3xl mx-auto space-y-6">
           <Skeleton className="h-32 w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
@@ -228,7 +253,7 @@ export default function ClientPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
         <Card className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200/60">
           <CardHeader className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -253,7 +278,7 @@ export default function ClientPortal() {
   const isPaid = data.status === 'paid';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
       <div className="min-h-screen flex flex-col">
         {/* Teal Branded Header */}
         <header className="bg-gradient-to-r from-[#2563EB] to-[#2563EB]/90 text-white sticky top-0 z-20">
