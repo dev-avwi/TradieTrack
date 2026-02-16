@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2 } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -1149,8 +1149,10 @@ export default function JobDetailView({
     return () => clearInterval(interval);
   }, [job?.workerStatusUpdatedAt, job?.workerStatus]);
 
+  const portalFetchedRef = useRef(false);
   useEffect(() => {
-    if (job?.portalEnabled && jobId) {
+    if (job?.portalEnabled && jobId && !portalUrl && !portalFetchedRef.current) {
+      portalFetchedRef.current = true;
       fetch(`/api/jobs/${jobId}/portal-links`, {
         credentials: 'include',
       }).then(res => res.ok ? res.json() : []).then((tokens: any[]) => {
@@ -1158,12 +1160,12 @@ export default function JobDetailView({
           const activeToken = tokens.find((t: any) => !t.revokedAt);
           if (activeToken) {
             const baseUrl = window.location.origin;
-            setPortalUrl(`${baseUrl}/job-portal/${activeToken.token}`);
+            setPortalUrl(`${baseUrl}/p/${activeToken.token}`);
           }
         }
-      }).catch(() => {});
+      }).catch(() => { portalFetchedRef.current = false; });
     }
-  }, [job?.portalEnabled, jobId]);
+  }, [job?.portalEnabled, jobId, portalUrl]);
 
   // Portal link mutation - generates client tracking link
   const portalLinkMutation = useMutation({
@@ -2244,11 +2246,45 @@ export default function JobDetailView({
                         onClick={(e) => (e.target as HTMLInputElement).select()}
                       />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 gap-1"
+                        className="gap-1"
+                        onClick={async () => {
+                          try {
+                            const res = await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
+                            toast({ title: "SMS Sent", description: "Tracking link sent to client via SMS" });
+                          } catch (err: any) {
+                            toast({ title: "SMS Failed", description: err.message || "Could not send SMS", variant: "destructive" });
+                          }
+                        }}
+                        disabled={!client?.phone}
+                      >
+                        <Phone className="h-3 w-3" />
+                        Send SMS
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={async () => {
+                          try {
+                            const res = await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
+                            toast({ title: "Email Sent", description: "Tracking link sent to client via email" });
+                          } catch (err: any) {
+                            toast({ title: "Email Failed", description: err.message || "Could not send email", variant: "destructive" });
+                          }
+                        }}
+                        disabled={!client?.email}
+                      >
+                        <Mail className="h-3 w-3" />
+                        Send Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
                         onClick={async () => {
                           await navigator.clipboard.writeText(portalUrl);
                           toast({ title: "Copied", description: "Portal link copied to clipboard" });
@@ -2260,7 +2296,7 @@ export default function JobDetailView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 gap-1"
+                        className="gap-1"
                         onClick={() => window.open(portalUrl, '_blank')}
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -3370,7 +3406,7 @@ export default function JobDetailView({
           
           {generatedInviteLink ? (
             <div className="space-y-4 py-4">
-              <div className="p-4 bg-muted rounded-lg">
+              <div className="p-4 bg-muted rounded-md">
                 <p className="text-sm text-muted-foreground mb-2">Share this link:</p>
                 <div className="flex gap-2">
                   <input
@@ -3384,7 +3420,44 @@ export default function JobDetailView({
                   </Button>
                 </div>
               </div>
-              
+
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={async () => {
+                    const smsBody = encodeURIComponent(`You've been invited to a job. View details here: ${generatedInviteLink}`);
+                    window.open(`sms:?body=${smsBody}`, '_self');
+                  }}
+                >
+                  <Phone className="h-3 w-3" />
+                  SMS
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={async () => {
+                    const subject = encodeURIComponent('Job Invitation');
+                    const body = encodeURIComponent(`You've been invited to a job. View details and respond here:\n\n${generatedInviteLink}`);
+                    window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
+                  }}
+                >
+                  <Mail className="h-3 w-3" />
+                  Email
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={handleCopyInviteLink}
+                >
+                  {copiedInvite ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                  Copy
+                </Button>
+              </div>
+
               <div className="text-sm text-muted-foreground space-y-1">
                 <p><strong>Role:</strong> {inviteRole === 'subcontractor' ? 'Subcontractor' : 'Viewer'}</p>
                 <p><strong>Expires:</strong> {inviteExpiry === 'never' ? 'Never' : inviteExpiry === '7days' ? 'In 7 days' : 'In 30 days'}</p>
