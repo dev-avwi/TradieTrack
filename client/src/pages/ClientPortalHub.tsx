@@ -168,11 +168,36 @@ export default function ClientPortalHub() {
     const root = document.documentElement;
     const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
     root.classList.remove('dark');
-    
+
+    root.style.setProperty('--background', '210 40% 98%');
+    root.style.setProperty('--foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--card', '0 0% 100%');
+    root.style.setProperty('--card-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--popover', '0 0% 100%');
+    root.style.setProperty('--popover-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--muted', '210 40% 96.1%');
+    root.style.setProperty('--muted-foreground', '215.4 16.3% 46.9%');
+    root.style.setProperty('--border', '214.3 31.8% 91.4%');
+    root.style.setProperty('--input', '214.3 31.8% 91.4%');
+    root.style.setProperty('--ring', '221.2 83.2% 53.3%');
+    root.style.setProperty('color-scheme', 'light');
+
     return () => {
       if (previousTheme === 'dark') {
         root.classList.add('dark');
       }
+      root.style.removeProperty('--background');
+      root.style.removeProperty('--foreground');
+      root.style.removeProperty('--card');
+      root.style.removeProperty('--card-foreground');
+      root.style.removeProperty('--popover');
+      root.style.removeProperty('--popover-foreground');
+      root.style.removeProperty('--muted');
+      root.style.removeProperty('--muted-foreground');
+      root.style.removeProperty('--border');
+      root.style.removeProperty('--input');
+      root.style.removeProperty('--ring');
+      root.style.removeProperty('color-scheme');
     };
   }, []);
 
@@ -399,8 +424,8 @@ export default function ClientPortalHub() {
 
   if (viewState === 'phone') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen flex flex-col relative" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
@@ -410,13 +435,13 @@ export default function ClientPortalHub() {
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4 relative">
-          <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60">
+          <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60 bg-white">
             <CardHeader className="text-center pb-2">
               <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto mb-3">
                 <Phone className="w-6 h-6 text-[#2563EB]" />
               </div>
-              <CardTitle className="text-lg">Verify Your Identity</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg text-slate-900">Verify Your Identity</CardTitle>
+              <CardDescription className="text-slate-500">
                 Enter the mobile number associated with your account
               </CardDescription>
             </CardHeader>
@@ -427,7 +452,7 @@ export default function ClientPortalHub() {
                   placeholder="0400 000 000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="text-center text-lg"
+                  className="text-center text-lg bg-white text-slate-900"
                 />
               </div>
               <Button 
@@ -456,8 +481,8 @@ export default function ClientPortalHub() {
 
   if (viewState === 'code') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen flex flex-col relative" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
@@ -467,13 +492,13 @@ export default function ClientPortalHub() {
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4 relative">
-          <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60">
+          <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60 bg-white">
             <CardHeader className="text-center pb-2">
               <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="w-6 h-6 text-[#2563EB]" />
               </div>
-              <CardTitle className="text-lg">Enter Verification Code</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg text-slate-900">Enter Verification Code</CardTitle>
+              <CardDescription className="text-slate-500">
                 We sent a 6-digit code to {phone}
               </CardDescription>
             </CardHeader>
@@ -484,7 +509,7 @@ export default function ClientPortalHub() {
                   placeholder="000000"
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="text-center text-2xl tracking-widest font-mono"
+                  className="text-center text-2xl tracking-widest font-mono bg-white text-slate-900"
                   maxLength={6}
                 />
               </div>
@@ -528,8 +553,8 @@ export default function ClientPortalHub() {
 
   if (viewState === 'not-found') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen flex flex-col relative" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
@@ -590,8 +615,8 @@ export default function ClientPortalHub() {
 
   if (viewState === 'select-client') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen flex flex-col relative" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
@@ -657,7 +682,7 @@ export default function ClientPortalHub() {
     const clientName = selectedClient?.name || portalData?.clients[0]?.name;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
         <header className="bg-[#2563EB] sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
@@ -705,7 +730,7 @@ export default function ClientPortalHub() {
           </div>
         </header>
 
-        <div className="bg-gradient-to-r from-[#2563EB]/[0.04] via-[#2563EB]/[0.02] to-transparent border-b border-slate-200 px-4 py-4">
+        <div className="border-b border-slate-200 px-4 py-4" style={{ background: 'linear-gradient(to right, rgba(37,99,235,0.04), rgba(37,99,235,0.02), #ffffff)' }}>
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4">
               <div>

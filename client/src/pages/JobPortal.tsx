@@ -438,7 +438,7 @@ function HeroMap({
         >
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#2563EB]/5 to-transparent pointer-events-none z-[999]" />
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none z-[999]" />
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
@@ -519,7 +519,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#2563EB]/5 to-transparent pointer-events-none z-[999]" />
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none z-[999]" />
 
       {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
@@ -560,10 +560,36 @@ export default function JobPortal() {
     const root = document.documentElement;
     const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
     root.classList.remove('dark');
+
+    root.style.setProperty('--background', '210 40% 98%');
+    root.style.setProperty('--foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--card', '0 0% 100%');
+    root.style.setProperty('--card-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--popover', '0 0% 100%');
+    root.style.setProperty('--popover-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--muted', '210 40% 96.1%');
+    root.style.setProperty('--muted-foreground', '215.4 16.3% 46.9%');
+    root.style.setProperty('--border', '214.3 31.8% 91.4%');
+    root.style.setProperty('--input', '214.3 31.8% 91.4%');
+    root.style.setProperty('--ring', '221.2 83.2% 53.3%');
+    root.style.setProperty('color-scheme', 'light');
+
     return () => {
       if (previousTheme === 'dark') {
         root.classList.add('dark');
       }
+      root.style.removeProperty('--background');
+      root.style.removeProperty('--foreground');
+      root.style.removeProperty('--card');
+      root.style.removeProperty('--card-foreground');
+      root.style.removeProperty('--popover');
+      root.style.removeProperty('--popover-foreground');
+      root.style.removeProperty('--muted');
+      root.style.removeProperty('--muted-foreground');
+      root.style.removeProperty('--border');
+      root.style.removeProperty('--input');
+      root.style.removeProperty('--ring');
+      root.style.removeProperty('color-scheme');
     };
   }, []);
 
@@ -640,7 +666,7 @@ export default function JobPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#2563EB]/5 via-white to-blue-50">
+      <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, rgba(37,99,235,0.05), #ffffff, #eff6ff)' }}>
         <div className="max-w-2xl mx-auto">
           <Skeleton className="h-[300px] w-full" />
           <div className="p-4 space-y-4">
@@ -656,7 +682,7 @@ export default function JobPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#2563EB]/5 via-white to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, rgba(37,99,235,0.05), #ffffff, #eff6ff)' }}>
         <Card className="max-w-md w-full border-slate-200/60 rounded-2xl shadow-lg">
           <CardContent className="pt-8 pb-8 text-center">
             <AlertCircle className="w-14 h-14 text-slate-400 mx-auto mb-4" />
@@ -689,7 +715,7 @@ export default function JobPortal() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#2563EB]/5 via-white to-blue-50 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom, rgba(37,99,235,0.05), #ffffff, #eff6ff)' }}>
       <div className="max-w-2xl mx-auto w-full flex flex-col flex-1">
 
         <div className="relative">
@@ -1335,7 +1361,7 @@ export default function JobPortal() {
                     onChange={(e) => setPortalMessage(e.target.value)}
                     placeholder="Have a question or update? Send a message to the team..."
                     maxLength={1000}
-                    className="resize-none min-h-[100px] border-gray-200 text-sm"
+                    className="resize-none min-h-[100px] border-gray-200 text-sm bg-white text-slate-900 placeholder:text-slate-400"
                   />
                   {sendMessageMutation.isError && (
                     <p className="text-xs text-red-600">
