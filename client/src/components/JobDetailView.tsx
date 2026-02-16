@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -1613,6 +1613,25 @@ export default function JobDetailView({
               </div>
             )}
 
+            {/* Assigned Worker Display */}
+            {job.assignedTo && (() => {
+              const assignedMember = teamMembers.find(m => m.memberId === job.assignedTo);
+              if (!assignedMember) return null;
+              return (
+                <div className="px-4 pb-3 flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-semibold text-primary">
+                      {(assignedMember.firstName?.[0] || '').toUpperCase()}{(assignedMember.lastName?.[0] || '').toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">{assignedMember.firstName} {assignedMember.lastName}</span>
+                    <span className="text-xs text-muted-foreground ml-1.5">({assignedMember.roleName})</span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Scheduled Time Context */}
             {job.scheduledAt && (
               <div className="px-4 pb-3">
@@ -1691,6 +1710,17 @@ export default function JobDetailView({
                       <span>Arrived</span>
                       <span className="text-[10px] opacity-80 font-normal">Mark arrival on site</span>
                     </div>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground gap-1"
+                    onClick={() => runningLateMutation.mutate()}
+                    disabled={runningLateMutation.isPending}
+                    data-testid="button-running-late"
+                  >
+                    {runningLateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertTriangle className="h-3 w-3" />}
+                    Notify client I'm running late
                   </Button>
                 </div>
               )}
@@ -1982,9 +2012,9 @@ export default function JobDetailView({
               {/* Assign Worker - Only for team owners/managers */}
               {!isTradie && !isSolo && teamMembers.length > 0 && (
                 <div className="pt-2 border-t">
-                  <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
-                    <Users className="h-3 w-3" />
-                    Assign Worker
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Assign Worker</span>
                   </div>
                   <Select
                     value={job.assignedTo || "unassigned"}
@@ -2056,14 +2086,12 @@ export default function JobDetailView({
 
               {/* Subcontractors & Invites - Only for owners/managers */}
               {!isTradie && (
-                <Card className="mt-3">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <UserPlus className="h-4 w-4" />
-                      Subcontractors
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+                <div className="pt-3 border-t">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Subcontractors</span>
+                  </div>
+                  <div className="space-y-3">
                     <p className="text-xs text-muted-foreground">
                       Share a link to give subcontractors access to this job
                     </p>
@@ -2131,8 +2159,8 @@ export default function JobDetailView({
                       <UserPlus className="h-4 w-4 mr-2" />
                       Invite Subcontractor
                     </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {/* Job Costing Section - Shows estimated vs actual hours */}
@@ -2191,6 +2219,73 @@ export default function JobDetailView({
 
           {!isTradie && (
             <JobProfitabilityCard jobId={jobId} />
+          )}
+
+          {/* Client Portal - Share tracking link with client */}
+          {job.clientId && (
+            <Card data-testid="card-client-portal">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Client Portal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Share a live tracking link so your client can follow job progress
+                </p>
+                {portalUrl ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={portalUrl}
+                        className="text-xs flex-1"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(portalUrl);
+                          toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copy Link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1"
+                        onClick={() => window.open(portalUrl, '_blank')}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open Portal
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => portalLinkMutation.mutate()}
+                    disabled={portalLinkMutation.isPending}
+                  >
+                    {portalLinkMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Share2 className="h-4 w-4" />
+                    )}
+                    Generate Client Portal Link
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {job.status !== 'invoiced' && job.status !== 'pending' && (
