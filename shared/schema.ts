@@ -3808,3 +3808,71 @@ export const locationPings = pgTable("location_pings", {
 export const insertLocationPingSchema = createInsertSchema(locationPings).omit({ id: true, recordedAt: true });
 export type InsertLocationPing = z.infer<typeof insertLocationPingSchema>;
 export type LocationPing = typeof locationPings.$inferSelect;
+
+// Subcontractor Secure Tokens - Web-only access for subcontractors
+export const subcontractorTokens = pgTable("subcontractor_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  inviteId: varchar("invite_id").references(() => jobInvites.id, { onDelete: 'set null' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  contactPhone: varchar("contact_phone", { length: 20 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactName: varchar("contact_name", { length: 255 }),
+  permissions: jsonb("permissions").default(['view_job', 'add_notes', 'add_photos', 'update_status']),
+  status: varchar("status", { length: 20 }).default("pending"),
+  acceptedAt: timestamp("accepted_at"),
+  expiresAt: timestamp("expires_at"),
+  revokedAt: timestamp("revoked_at"),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSubcontractorTokenSchema = createInsertSchema(subcontractorTokens).omit({ id: true, createdAt: true, lastAccessedAt: true, acceptedAt: true, revokedAt: true });
+export type InsertSubcontractorToken = z.infer<typeof insertSubcontractorTokenSchema>;
+export type SubcontractorToken = typeof subcontractorTokens.$inferSelect;
+
+// Subcontractor Sessions - OTP-verified sessions for web subbies
+export const subcontractorSessions = pgTable("subcontractor_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tokenId: varchar("token_id").notNull().references(() => subcontractorTokens.id, { onDelete: 'cascade' }),
+  sessionToken: varchar("session_token", { length: 64 }).notNull().unique(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSubcontractorSessionSchema = createInsertSchema(subcontractorSessions).omit({ id: true, createdAt: true });
+export type InsertSubcontractorSession = z.infer<typeof insertSubcontractorSessionSchema>;
+export type SubcontractorSession = typeof subcontractorSessions.$inferSelect;
+
+// Subcontractor Events - Audit logging for subcontractor web actions
+export const subcontractorEvents = pgTable("subcontractor_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tokenId: varchar("token_id").notNull().references(() => subcontractorTokens.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  eventType: text("event_type").notNull(),
+  eventData: jsonb("event_data").default({}),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSubcontractorEventSchema = createInsertSchema(subcontractorEvents).omit({ id: true, createdAt: true });
+export type InsertSubcontractorEvent = z.infer<typeof insertSubcontractorEventSchema>;
+export type SubcontractorEvent = typeof subcontractorEvents.$inferSelect;
+
+// Subcontractor Location Pings - Periodic location updates from web view
+export const subcontractorLocationPings = pgTable("subcontractor_location_pings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tokenId: varchar("token_id").notNull().references(() => subcontractorTokens.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  accuracyMeters: doublePrecision("accuracy_meters"),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+});
+
+export const insertSubcontractorLocationPingSchema = createInsertSchema(subcontractorLocationPings).omit({ id: true, recordedAt: true });
+export type InsertSubcontractorLocationPing = z.infer<typeof insertSubcontractorLocationPingSchema>;
+export type SubcontractorLocationPing = typeof subcontractorLocationPings.$inferSelect;

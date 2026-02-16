@@ -97,6 +97,7 @@ import ImmersiveOnboarding from "@/components/ImmersiveOnboarding";
 import WhatYouMissedModal from "@/components/WhatYouMissedModal";
 import TimeEditAuditLog from "@/pages/TimeEditAuditLog";
 import ProfitabilityReport from "@/pages/ProfitabilityReport";
+import SubcontractorWebView from "@/pages/SubcontractorWebView";
 
 // Types for job completion
 interface JobPhoto {
@@ -1296,6 +1297,7 @@ function App() {
               <Route path="/portal/:type/:token" component={ClientPortal} />
               <Route path="/job-portal/:token" component={JobPortal} />
               <Route path="/p/:token" component={JobPortal} />
+              <Route path="/s/:token">{(params) => <SubcontractorWebView token={params.token} />}</Route>
               <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
               <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
               <Route path="/privacy" component={PrivacyPolicy} />

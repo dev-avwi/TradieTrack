@@ -97,10 +97,26 @@ interface CrewLocationWorker {
   stale: boolean;
 }
 
+interface SubcontractorLocation {
+  tokenId: string;
+  name: string;
+  status: string;
+  isSubcontractor: boolean;
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters: number | null;
+    recordedAt: string;
+  } | null;
+  stale: boolean;
+  lastUpdated: string | null;
+}
+
 interface CrewLocationResponse {
   tracking: boolean;
   jobLocation: { latitude: number; longitude: number } | null;
   workers: CrewLocationWorker[];
+  subcontractors?: SubcontractorLocation[];
 }
 
 interface LocationResponse {
@@ -246,6 +262,13 @@ const jobPinIcon = L.divIcon({
   popupAnchor: [0, -40],
 });
 
+const subbieIcon = new L.DivIcon({
+  className: 'custom-subbie-marker',
+  html: `<div style="width:32px;height:32px;background:#64748b;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="width:8px;height:8px;background:white;border-radius:50%"></div></div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
 const WORKER_COLORS = ['#2563EB', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
 
 function createWorkerIcon(color: string, isPrimary: boolean) {
@@ -377,6 +400,10 @@ function HeroMap({
   crewWorkers.forEach(w => {
     if (w.location) allPoints.push([w.location.latitude, w.location.longitude]);
   });
+  const subcontractorWorkers = crewData?.subcontractors?.filter(s => s.location) || [];
+  subcontractorWorkers.forEach(s => {
+    if (s.location) allPoints.push([s.location.latitude, s.location.longitude]);
+  });
   if (hasSingleWorker && crewWorkers.length === 0) {
     allPoints.push([singleWorkerLoc.latitude, singleWorkerLoc.longitude]);
   }
@@ -459,6 +486,26 @@ function HeroMap({
           );
         })}
 
+        {subcontractorWorkers.map((s) => {
+          if (!s.location) return null;
+          return (
+            <Marker 
+              key={`sub-${s.tokenId}`}
+              position={[s.location.latitude, s.location.longitude]} 
+              icon={subbieIcon}
+            >
+              <Popup>
+                <span className="text-sm font-medium">{s.name}</span>
+                {s.lastUpdated && (
+                  <span className="text-xs block text-slate-500">
+                    Last updated {formatTimeAgo(s.lastUpdated)}
+                  </span>
+                )}
+              </Popup>
+            </Marker>
+          );
+        })}
+
         {hasSingleWorker && crewWorkers.length === 0 && (
           <Marker position={[singleWorkerLoc.latitude, singleWorkerLoc.longitude]} icon={workerIcon}>
             <Popup>
@@ -536,6 +583,17 @@ export default function JobPortal() {
       }
       return false;
     },
+  });
+
+  const { data: crewLocationData } = useQuery<CrewLocationResponse>({
+    queryKey: ['/api/public/job-portal', token, 'crew-locations'],
+    queryFn: async () => {
+      const res = await fetch(`/api/public/job-portal/${token}/crew-locations`);
+      if (!res.ok) return { tracking: false, jobLocation: null, workers: [], subcontractors: [] };
+      return res.json();
+    },
+    enabled: !!token,
+    refetchInterval: 60000,
   });
 
   const [portalMessage, setPortalMessage] = useState('');
@@ -816,6 +874,24 @@ export default function JobPortal() {
                     </div>
                   );
                 })}
+                {crewLocationData?.subcontractors?.map((s) => (
+                  <div key={`sub-list-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+                        <User className="w-4 h-4 text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{s.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className={getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).bg + ' ' + getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).text + ' no-default-hover-elevate no-default-active-elevate'}>
+                      {getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).label}
+                    </Badge>
+                  </div>
+                ))}
               </div>
             </div>
           ) : worker && (
@@ -858,6 +934,24 @@ export default function JobPortal() {
                     </div>
                   )}
                 </div>
+                {crewLocationData?.subcontractors?.map((s) => (
+                  <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+                        <User className="w-4 h-4 text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{s.name}</p>
+                        <p className="text-xs text-slate-400">
+                          {s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className={getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).bg + ' ' + getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).text + ' no-default-hover-elevate no-default-active-elevate'}>
+                      {getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status).label}
+                    </Badge>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1297,7 +1391,16 @@ export default function JobPortal() {
 
         </div>
 
-        <div className="text-center py-6 space-y-2">
+        <div className="text-center py-6 space-y-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = '/portal'}
+            className="text-[#2563EB] border-[#2563EB]/30"
+          >
+            <FileText className="w-4 h-4 mr-1.5" />
+            Open Client Portal
+          </Button>
           <div className="flex items-center justify-center gap-2">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
             <span className="text-sm font-medium text-slate-500">Powered by <strong className="text-slate-700">JobRunner</strong></span>

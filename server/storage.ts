@@ -292,6 +292,18 @@ import {
   locationPings,
   type LocationPing,
   type InsertLocationPing,
+  subcontractorTokens,
+  type SubcontractorToken,
+  type InsertSubcontractorToken,
+  subcontractorSessions,
+  type SubcontractorSession,
+  type InsertSubcontractorSession,
+  subcontractorEvents,
+  type SubcontractorEvent,
+  type InsertSubcontractorEvent,
+  subcontractorLocationPings,
+  type SubcontractorLocationPing,
+  type InsertSubcontractorLocationPing,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -911,6 +923,26 @@ export interface IStorage {
   updateJobPortalTokenAccess(tokenId: string): Promise<void>;
   updateJobPortalTokenExpiry(tokenId: string, expiresAt: Date): Promise<void>;
   getActiveJobPortalToken(jobId: string): Promise<JobPortalToken | null>;
+
+  // Subcontractor Web View
+  createSubcontractorToken(data: InsertSubcontractorToken): Promise<SubcontractorToken>;
+  getSubcontractorTokenByToken(token: string): Promise<SubcontractorToken | null>;
+  getSubcontractorTokensByJobId(jobId: string): Promise<SubcontractorToken[]>;
+  updateSubcontractorTokenStatus(id: string, status: string, acceptedAt?: Date): Promise<SubcontractorToken | null>;
+  revokeSubcontractorToken(id: string): Promise<void>;
+  updateSubcontractorTokenAccess(id: string): Promise<void>;
+  updateSubcontractorTokenContact(id: string, phone: string): Promise<void>;
+
+  createSubcontractorSession(tokenId: string, sessionToken: string, phone: string, expiresAt: Date): Promise<SubcontractorSession>;
+  getSubcontractorSessionByToken(sessionToken: string): Promise<SubcontractorSession | null>;
+  deleteSubcontractorSession(sessionToken: string): Promise<void>;
+
+  createSubcontractorEvent(data: InsertSubcontractorEvent): Promise<SubcontractorEvent>;
+  getSubcontractorEventsByJob(jobId: string): Promise<SubcontractorEvent[]>;
+
+  createSubcontractorLocationPing(data: InsertSubcontractorLocationPing): Promise<SubcontractorLocationPing>;
+  getLatestSubcontractorLocationPing(tokenId: string): Promise<SubcontractorLocationPing | null>;
+  getSubcontractorLocationPingsByJob(jobId: string): Promise<SubcontractorLocationPing[]>;
 }
 
 // Initialize database connection using standard pg driver
@@ -7203,6 +7235,81 @@ Thank you for your prompt attention to this matter.`,
       .where(eq(locationPings.assignmentId, assignmentId))
       .orderBy(desc(locationPings.recordedAt))
       .limit(limit);
+  }
+
+  async createSubcontractorToken(data: InsertSubcontractorToken): Promise<SubcontractorToken> {
+    const [token] = await db.insert(subcontractorTokens).values(data).returning();
+    return token;
+  }
+
+  async getSubcontractorTokenByToken(token: string): Promise<SubcontractorToken | null> {
+    const [result] = await db.select().from(subcontractorTokens).where(eq(subcontractorTokens.token, token)).limit(1);
+    return result || null;
+  }
+
+  async getSubcontractorTokensByJobId(jobId: string): Promise<SubcontractorToken[]> {
+    return await db.select().from(subcontractorTokens).where(eq(subcontractorTokens.jobId, jobId));
+  }
+
+  async updateSubcontractorTokenStatus(id: string, status: string, acceptedAt?: Date): Promise<SubcontractorToken | null> {
+    const updateData: any = { status };
+    if (acceptedAt) updateData.acceptedAt = acceptedAt;
+    const [result] = await db.update(subcontractorTokens).set(updateData).where(eq(subcontractorTokens.id, id)).returning();
+    return result || null;
+  }
+
+  async revokeSubcontractorToken(id: string): Promise<void> {
+    await db.update(subcontractorTokens).set({ revokedAt: new Date(), status: 'revoked' }).where(eq(subcontractorTokens.id, id));
+  }
+
+  async updateSubcontractorTokenAccess(id: string): Promise<void> {
+    await db.update(subcontractorTokens).set({ lastAccessedAt: new Date() }).where(eq(subcontractorTokens.id, id));
+  }
+
+  async updateSubcontractorTokenContact(id: string, phone: string): Promise<void> {
+    await db.update(subcontractorTokens).set({ contactPhone: phone }).where(eq(subcontractorTokens.id, id));
+  }
+
+  async createSubcontractorSession(tokenId: string, sessionToken: string, phone: string, expiresAt: Date): Promise<SubcontractorSession> {
+    const [session] = await db.insert(subcontractorSessions).values({ tokenId, sessionToken, phone, expiresAt }).returning();
+    return session;
+  }
+
+  async getSubcontractorSessionByToken(sessionToken: string): Promise<SubcontractorSession | null> {
+    const [result] = await db.select().from(subcontractorSessions).where(eq(subcontractorSessions.sessionToken, sessionToken)).limit(1);
+    return result || null;
+  }
+
+  async deleteSubcontractorSession(sessionToken: string): Promise<void> {
+    await db.delete(subcontractorSessions).where(eq(subcontractorSessions.sessionToken, sessionToken));
+  }
+
+  async createSubcontractorEvent(data: InsertSubcontractorEvent): Promise<SubcontractorEvent> {
+    const [event] = await db.insert(subcontractorEvents).values(data).returning();
+    return event;
+  }
+
+  async getSubcontractorEventsByJob(jobId: string): Promise<SubcontractorEvent[]> {
+    return await db.select().from(subcontractorEvents).where(eq(subcontractorEvents.jobId, jobId)).orderBy(subcontractorEvents.createdAt);
+  }
+
+  async createSubcontractorLocationPing(data: InsertSubcontractorLocationPing): Promise<SubcontractorLocationPing> {
+    const [ping] = await db.insert(subcontractorLocationPings).values(data).returning();
+    return ping;
+  }
+
+  async getLatestSubcontractorLocationPing(tokenId: string): Promise<SubcontractorLocationPing | null> {
+    const [result] = await db.select().from(subcontractorLocationPings)
+      .where(eq(subcontractorLocationPings.tokenId, tokenId))
+      .orderBy(desc(subcontractorLocationPings.recordedAt))
+      .limit(1);
+    return result || null;
+  }
+
+  async getSubcontractorLocationPingsByJob(jobId: string): Promise<SubcontractorLocationPing[]> {
+    return await db.select().from(subcontractorLocationPings)
+      .where(eq(subcontractorLocationPings.jobId, jobId))
+      .orderBy(desc(subcontractorLocationPings.recordedAt));
   }
 }
 

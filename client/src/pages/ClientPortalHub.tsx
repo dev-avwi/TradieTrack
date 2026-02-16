@@ -24,7 +24,8 @@ import {
   Calendar,
   MapPin,
   Mail,
-  Shield
+  Shield,
+  Users
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
@@ -38,6 +39,7 @@ interface PortalClient {
 
 interface PortalQuote {
   id: string;
+  clientId?: string;
   number: string;
   title: string;
   status: string;
@@ -55,6 +57,7 @@ interface PortalQuote {
 
 interface PortalInvoice {
   id: string;
+  clientId?: string;
   number: string;
   title: string;
   status: string;
@@ -75,6 +78,7 @@ interface PortalInvoice {
 
 interface PortalReceipt {
   id: string;
+  clientId?: string;
   number: string;
   total: string;
   paymentDate: string;
@@ -83,6 +87,7 @@ interface PortalReceipt {
 
 interface PortalJob {
   id: string;
+  clientId?: string;
   title: string;
   address?: string;
   status: string;
@@ -100,7 +105,7 @@ interface PortalData {
   jobs: PortalJob[];
 }
 
-type ViewState = 'phone' | 'code' | 'dashboard' | 'quote-detail' | 'invoice-detail';
+type ViewState = 'phone' | 'code' | 'dashboard' | 'quote-detail' | 'invoice-detail' | 'not-found' | 'select-client';
 
 function formatCurrency(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -157,6 +162,7 @@ export default function ClientPortalHub() {
   const [selectedQuote, setSelectedQuote] = useState<PortalQuote | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<PortalInvoice | null>(null);
   const [sourceDocument, setSourceDocument] = useState<{ type: string; token: string } | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -246,6 +252,14 @@ export default function ClientPortalHub() {
       
       const data = await res.json();
       setPortalData(data);
+      if (data.clients.length === 0) {
+        setViewState('not-found');
+      } else if (data.clients.length === 1) {
+        setSelectedClientId(data.clients[0].id);
+        setViewState('dashboard');
+      } else {
+        setViewState('select-client');
+      }
     } catch (error) {
       console.error('Error fetching portal data:', error);
       toast({
@@ -512,9 +526,135 @@ export default function ClientPortalHub() {
     );
   }
 
+  if (viewState === 'not-found') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="py-10 px-4 relative">
+          <div className="max-w-md mx-auto text-center">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Account lookup</p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-start justify-center px-4 relative">
+          <div className="w-full max-w-md text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8 text-slate-400" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-bold text-slate-900">
+                We couldn't find an active client profile for that contact.
+              </h2>
+              <p className="text-sm text-slate-500">
+                If you think this is a mistake, contact your service provider.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button
+                className="w-full bg-[#2563EB]"
+                size="lg"
+                onClick={() => window.location.href = 'mailto:support@jobrunner.com.au?subject=Quote%20Request'}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Request a Quote
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                size="lg"
+                onClick={() => window.location.href = 'tel:1300000000'}
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Call Dispatch
+              </Button>
+            </div>
+            <Button
+              variant="ghost"
+              className="text-slate-500"
+              onClick={handleLogout}
+            >
+              Try a different number
+            </Button>
+          </div>
+        </div>
+
+        <div className="text-center py-8 flex items-center justify-center gap-2">
+          <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
+          <span className="text-sm text-slate-400">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
+        </div>
+      </div>
+    );
+  }
+
+  if (viewState === 'select-client') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="py-10 px-4 relative">
+          <div className="max-w-md mx-auto text-center">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Select your account</p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-start justify-center px-4 relative">
+          <div className="w-full max-w-md space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto">
+                <Users className="w-6 h-6 text-[#2563EB]" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Which account are you checking?</h2>
+              <p className="text-sm text-slate-500">Multiple profiles are linked to this number</p>
+            </div>
+            <div className="space-y-3">
+              {portalData?.clients.map((client) => (
+                <div
+                  key={client.id}
+                  className="bg-white rounded-md shadow-lg border border-slate-200 p-4 cursor-pointer hover-elevate"
+                  onClick={() => {
+                    setSelectedClientId(client.id);
+                    setViewState('dashboard');
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-5 h-5 text-[#2563EB]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-slate-900 truncate">{client.name}</h3>
+                      {client.email && (
+                        <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {client.email}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center py-8 flex items-center justify-center gap-2">
+          <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
+          <span className="text-sm text-slate-400">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
+        </div>
+      </div>
+    );
+  }
+
   if (viewState === 'dashboard') {
-    const business = portalData?.quotes[0]?.business || portalData?.invoices[0]?.business || null;
-    const clientName = portalData?.clients[0]?.name;
+    const filteredQuotes = selectedClientId ? portalData?.quotes.filter(q => q.clientId === selectedClientId) : portalData?.quotes;
+    const filteredInvoices = selectedClientId ? portalData?.invoices.filter(i => i.clientId === selectedClientId) : portalData?.invoices;
+    const filteredReceipts = selectedClientId ? portalData?.receipts.filter(r => r.clientId === selectedClientId) : portalData?.receipts;
+    const filteredJobs = selectedClientId ? portalData?.jobs.filter(j => j.clientId === selectedClientId) : portalData?.jobs;
+    const business = filteredQuotes?.[0]?.business || filteredInvoices?.[0]?.business || null;
+    const selectedClient = portalData?.clients.find(c => c.id === selectedClientId);
+    const clientName = selectedClient?.name || portalData?.clients[0]?.name;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex flex-col">
@@ -549,10 +689,18 @@ export default function ClientPortalHub() {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleLogout} className="text-white border-white/30">
-                <LogOut className="w-4 h-4 mr-1" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                {portalData && portalData.clients.length > 1 && (
+                  <Button variant="outline" size="sm" onClick={() => setViewState('select-client')} className="text-white border-white/30">
+                    <Users className="w-4 h-4 mr-1" />
+                    <span className="hidden sm:inline">Switch</span>
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={handleLogout} className="text-white border-white/30">
+                  <LogOut className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              </div>
             </div>
           </div>
         </header>
@@ -596,35 +744,35 @@ export default function ClientPortalHub() {
                   <TabsTrigger value="quotes" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Quotes</span>
-                    {portalData?.quotes.length ? (
-                      <Badge variant="secondary" className="ml-1">{portalData.quotes.length}</Badge>
+                    {filteredQuotes?.length ? (
+                      <Badge variant="secondary" className="ml-1">{filteredQuotes.length}</Badge>
                     ) : null}
                   </TabsTrigger>
                   <TabsTrigger value="invoices" className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4" />
                     <span className="hidden sm:inline">Invoices</span>
-                    {portalData?.invoices.length ? (
-                      <Badge variant="secondary" className="ml-1">{portalData.invoices.length}</Badge>
+                    {filteredInvoices?.length ? (
+                      <Badge variant="secondary" className="ml-1">{filteredInvoices.length}</Badge>
                     ) : null}
                   </TabsTrigger>
                   <TabsTrigger value="receipts" className="flex items-center gap-2">
                     <Receipt className="w-4 h-4" />
                     <span className="hidden sm:inline">Receipts</span>
-                    {portalData?.receipts.length ? (
-                      <Badge variant="secondary" className="ml-1">{portalData.receipts.length}</Badge>
+                    {filteredReceipts?.length ? (
+                      <Badge variant="secondary" className="ml-1">{filteredReceipts.length}</Badge>
                     ) : null}
                   </TabsTrigger>
                   <TabsTrigger value="jobs" className="flex items-center gap-2">
                     <Briefcase className="w-4 h-4" />
                     <span className="hidden sm:inline">Jobs</span>
-                    {portalData?.jobs.length ? (
-                      <Badge variant="secondary" className="ml-1">{portalData.jobs.length}</Badge>
+                    {filteredJobs?.length ? (
+                      <Badge variant="secondary" className="ml-1">{filteredJobs.length}</Badge>
                     ) : null}
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="quotes" className="space-y-4">
-                  {portalData?.quotes.length === 0 ? (
+                  {filteredQuotes?.length === 0 ? (
                     <div className="bg-gradient-to-br from-slate-50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <FileText className="w-8 h-8 text-slate-300" />
@@ -633,7 +781,7 @@ export default function ClientPortalHub() {
                       <p className="text-sm text-slate-400">Your quotes will appear here once they're sent</p>
                     </div>
                   ) : (
-                    portalData?.quotes.map((quote) => (
+                    filteredQuotes?.map((quote) => (
                       <div
                         key={quote.id}
                         className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
@@ -693,7 +841,7 @@ export default function ClientPortalHub() {
                 </TabsContent>
 
                 <TabsContent value="invoices" className="space-y-4">
-                  {portalData?.invoices.length === 0 ? (
+                  {filteredInvoices?.length === 0 ? (
                     <div className="bg-gradient-to-br from-slate-50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <CreditCard className="w-8 h-8 text-slate-300" />
@@ -702,7 +850,7 @@ export default function ClientPortalHub() {
                       <p className="text-sm text-slate-400">Your invoices will appear here once they're created</p>
                     </div>
                   ) : (
-                    portalData?.invoices.map((invoice) => {
+                    filteredInvoices?.map((invoice) => {
                       const isPayable = invoice.status !== 'paid' && invoice.allowOnlinePayment;
                       const isPaid = invoice.status === 'paid';
                       const isOverdue = invoice.status === 'overdue';
@@ -794,7 +942,7 @@ export default function ClientPortalHub() {
                 </TabsContent>
 
                 <TabsContent value="receipts" className="space-y-4">
-                  {portalData?.receipts.length === 0 ? (
+                  {filteredReceipts?.length === 0 ? (
                     <div className="bg-gradient-to-br from-green-50/50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                         <Receipt className="w-8 h-8 text-green-300" />
@@ -803,7 +951,7 @@ export default function ClientPortalHub() {
                       <p className="text-sm text-slate-400">Payment receipts will appear here after completed payments</p>
                     </div>
                   ) : (
-                    portalData?.receipts.map((receipt) => (
+                    filteredReceipts?.map((receipt) => (
                       <div
                         key={receipt.id}
                         className="bg-white rounded-md shadow-lg border border-green-200 overflow-hidden hover-elevate cursor-pointer"
@@ -842,7 +990,7 @@ export default function ClientPortalHub() {
                 </TabsContent>
 
                 <TabsContent value="jobs" className="space-y-4">
-                  {portalData?.jobs.length === 0 ? (
+                  {filteredJobs?.length === 0 ? (
                     <div className="bg-gradient-to-br from-slate-50 to-white rounded-md shadow-lg border border-slate-200 p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
                         <Briefcase className="w-8 h-8 text-slate-300" />
@@ -851,7 +999,7 @@ export default function ClientPortalHub() {
                       <p className="text-sm text-slate-400">Your job history will appear here</p>
                     </div>
                   ) : (
-                    portalData?.jobs.map((job) => {
+                    filteredJobs?.map((job) => {
                       const isDone = job.status === 'done' || job.status === 'completed';
                       const isInProgress = job.status === 'in_progress';
                       const isScheduled = job.status === 'scheduled';

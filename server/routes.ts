@@ -1322,6 +1322,365 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // SUBCONTRACTOR WEB VIEW ROUTES (Public)
+  // ============================================
+
+  app.get("/api/subcontractor/:token/info", async (req, res) => {
+    try {
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Token not found' });
+      if (tokenRecord.revokedAt) return res.status(410).json({ error: 'This link has been revoked' });
+      if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) return res.status(410).json({ error: 'This link has expired' });
+
+      const job = await storage.getJob(tokenRecord.jobId, tokenRecord.userId);
+      const businessSettings = await storage.getBusinessSettings(tokenRecord.userId);
+
+      res.json({
+        status: tokenRecord.status,
+        contactName: tokenRecord.contactName,
+        job: {
+          title: job?.title || 'Job',
+          address: job?.address,
+          scheduledAt: job?.scheduledAt,
+        },
+        business: {
+          companyName: businessSettings?.companyName || businessSettings?.businessName || 'Business',
+          businessPhone: businessSettings?.businessPhone,
+        },
+        requiresOtp: true,
+      });
+    } catch (error: any) {
+      console.error('Error fetching subcontractor info:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/request-code", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      if (!phone) return res.status(400).json({ error: 'Phone number required' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Token not found' });
+      if (tokenRecord.revokedAt) return res.status(410).json({ error: 'Link revoked' });
+      if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) return res.status(410).json({ error: 'Link expired' });
+
+      const { formatPhoneNumber } = await import('./services/smsService');
+      const normalizedPhone = formatPhoneNumber(phone);
+
+      const recentCount = await storage.countRecentVerificationCodes(normalizedPhone, 60 * 60 * 1000);
+      if (recentCount >= 3) return res.status(429).json({ error: 'Too many requests. Try again later.' });
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      await storage.createPortalVerificationCode(normalizedPhone, code, expiresAt);
+
+      try {
+        const { sendSMS: sendTwilioSMS } = await import('./twilioClient');
+        await sendTwilioSMS({
+          to: normalizedPhone,
+          message: `Your JobRunner verification code is: ${code}. This code will expire in 10 minutes.`,
+          alphanumericSenderId: 'JobRunner',
+        });
+      } catch (smsError) {
+        console.error('Failed to send subcontractor verification SMS:', smsError);
+      }
+
+      res.json({ message: 'If this number is valid, you will receive a verification code.' });
+    } catch (error: any) {
+      console.error('Error requesting subcontractor code:', error);
+      res.status(500).json({ error: 'Failed to send code' });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/verify-code", async (req, res) => {
+    try {
+      const { phone, code } = req.body;
+      if (!phone || !code) return res.status(400).json({ error: 'Phone and code required' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Token not found' });
+
+      const { formatPhoneNumber } = await import('./services/smsService');
+      const normalizedPhone = formatPhoneNumber(phone);
+
+      const verificationRecord = await storage.getPortalVerificationCode(normalizedPhone, code);
+      if (!verificationRecord) return res.status(400).json({ error: 'Invalid code' });
+      if (verificationRecord.verified) return res.status(400).json({ error: 'Code already used' });
+      if (new Date() > verificationRecord.expiresAt) return res.status(400).json({ error: 'Code expired' });
+      if (verificationRecord.attempts >= 5) return res.status(429).json({ error: 'Too many attempts' });
+
+      await storage.incrementVerificationAttempts(verificationRecord.id);
+      await storage.markVerificationCodeUsed(verificationRecord.id);
+
+      if (!tokenRecord.contactPhone) {
+        await storage.updateSubcontractorTokenContact(tokenRecord.id, normalizedPhone);
+      }
+
+      const sessionToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await storage.createSubcontractorSession(tokenRecord.id, sessionToken, normalizedPhone, expiresAt);
+      await storage.updateSubcontractorTokenAccess(tokenRecord.id);
+
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_VERIFIED',
+        eventData: { phone: normalizedPhone },
+      });
+
+      res.json({ sessionToken, expiresAt: expiresAt.toISOString() });
+    } catch (error: any) {
+      console.error('Error verifying subcontractor code:', error);
+      res.status(500).json({ error: 'Verification failed' });
+    }
+  });
+
+  app.get("/api/subcontractor/:token/data", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authorization required' });
+      }
+      const sessionToken = authHeader.substring(7);
+
+      const session = await storage.getSubcontractorSessionByToken(sessionToken);
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+      if (new Date() > session.expiresAt) {
+        await storage.deleteSubcontractorSession(sessionToken);
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      await storage.updateSubcontractorTokenAccess(tokenRecord.id);
+
+      const job = await storage.getJob(tokenRecord.jobId, tokenRecord.userId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+
+      const businessSettings = await storage.getBusinessSettings(tokenRecord.userId);
+      const events = await storage.getSubcontractorEventsByJob(tokenRecord.jobId);
+
+      let photos: any[] = [];
+      if ((tokenRecord.permissions as string[])?.includes('add_photos') || (tokenRecord.permissions as string[])?.includes('view_job')) {
+        try {
+          const allPhotos = await storage.getJobPhotos(tokenRecord.jobId, tokenRecord.userId);
+          photos = allPhotos || [];
+        } catch { photos = []; }
+      }
+
+      let notes: any[] = [];
+      if ((tokenRecord.permissions as string[])?.includes('add_notes') || (tokenRecord.permissions as string[])?.includes('view_job')) {
+        try {
+          const allNotes = await storage.getJobNotes(tokenRecord.jobId, tokenRecord.userId);
+          notes = allNotes || [];
+        } catch { notes = []; }
+      }
+
+      res.json({
+        token: {
+          id: tokenRecord.id,
+          status: tokenRecord.status,
+          permissions: tokenRecord.permissions,
+          contactName: tokenRecord.contactName,
+        },
+        job: {
+          id: job.id,
+          title: job.title,
+          description: job.description,
+          address: job.address,
+          status: job.status,
+          scheduledAt: job.scheduledAt,
+          completedAt: job.completedAt,
+        },
+        business: {
+          companyName: businessSettings?.companyName || businessSettings?.businessName || 'Business',
+          businessPhone: businessSettings?.businessPhone,
+          businessEmail: businessSettings?.businessEmail,
+          businessLogo: businessSettings?.businessLogo,
+        },
+        photos,
+        notes,
+        events,
+      });
+    } catch (error: any) {
+      console.error('Error fetching subcontractor data:', error);
+      res.status(500).json({ error: 'Failed to load data' });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/accept", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
+      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+
+      await storage.updateSubcontractorTokenStatus(tokenRecord.id, 'accepted', new Date());
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_ACCEPTED',
+        eventData: {},
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error accepting subcontractor job:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/decline", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
+      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+
+      await storage.updateSubcontractorTokenStatus(tokenRecord.id, 'declined');
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_DECLINED',
+        eventData: {},
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error declining subcontractor job:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/status", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
+      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      if (tokenRecord.status !== 'accepted') return res.status(400).json({ error: 'Must accept job first' });
+
+      const { status, latitude, longitude } = req.body;
+      const validStatuses = ['en_route', 'arrived', 'working', 'done'];
+      if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+      const eventTypeMap: Record<string, string> = {
+        'en_route': 'SUBBIE_EN_ROUTE',
+        'arrived': 'SUBBIE_ARRIVED',
+        'working': 'SUBBIE_STARTED',
+        'done': 'SUBBIE_FINISHED',
+      };
+
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: eventTypeMap[status],
+        eventData: { status },
+        latitude: latitude || null,
+        longitude: longitude || null,
+      });
+
+      if (latitude && longitude) {
+        await storage.createSubcontractorLocationPing({
+          tokenId: tokenRecord.id,
+          jobId: tokenRecord.jobId,
+          latitude,
+          longitude,
+        });
+      }
+
+      res.json({ success: true, status });
+    } catch (error: any) {
+      console.error('Error updating subcontractor status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/notes", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
+      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      if (!(tokenRecord.permissions as string[])?.includes('add_notes')) return res.status(403).json({ error: 'No permission' });
+
+      const { content } = req.body;
+      if (!content?.trim()) return res.status(400).json({ error: 'Note content required' });
+
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_NOTE_ADDED',
+        eventData: { content: content.trim(), author: tokenRecord.contactName || 'Subcontractor' },
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error adding subcontractor note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/location", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
+      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+
+      const { latitude, longitude, accuracyMeters } = req.body;
+      if (!latitude || !longitude) return res.status(400).json({ error: 'Location required' });
+
+      await storage.createSubcontractorLocationPing({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        latitude,
+        longitude,
+        accuracyMeters: accuracyMeters || null,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error storing subcontractor location:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/subcontractor/:token/logout", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        await storage.deleteSubcontractorSession(authHeader.substring(7));
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error logging out subcontractor:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // PUBLIC: Unified document view endpoint for client portal
   app.get("/api/public/document/:type/:token", async (req, res) => {
     try {
@@ -2510,6 +2869,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  // SUBCONTRACTOR WEB VIEW: Generate token (requires auth)
+  app.post("/api/jobs/:jobId/subcontractor-token", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const { contactPhone, contactName, contactEmail, permissions, expiresAt } = req.body;
+
+      const job = await storage.getJob(jobId, userId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+
+      const token = randomBytes(32).toString('hex');
+      const tokenData = {
+        jobId,
+        userId,
+        token,
+        contactPhone: contactPhone || null,
+        contactName: contactName || null,
+        contactEmail: contactEmail || null,
+        permissions: permissions || ['view_job', 'add_notes', 'add_photos', 'update_status'],
+        status: 'pending',
+        expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      };
+
+      const created = await storage.createSubcontractorToken(tokenData);
+      const baseUrl = getProductionBaseUrl(req);
+
+      res.json({ ...created, webLink: `${baseUrl}/s/${created.token}` });
+    } catch (error: any) {
+      console.error('Error creating subcontractor token:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // Freemium usage tracking endpoint
   app.get("/api/subscription/usage", requireAuth, async (req: any, res) => {
@@ -12613,6 +13005,59 @@ Be specific about materials, colors, and features that would be included.`
         };
       }));
 
+      // Also include subcontractor web-only crew locations
+      const subTokens = await storage.getSubcontractorTokensByJobId(portalToken.jobId);
+      const activeSubTokens = subTokens.filter(st => st.status === 'accepted' && !st.revokedAt);
+      
+      // Fetch events ONCE for the whole job (not per-token)
+      const allSubEvents = activeSubTokens.length > 0 ? await storage.getSubcontractorEventsByJob(portalToken.jobId) : [];
+      
+      const subcontractors = await Promise.all(activeSubTokens.map(async (st) => {
+        const ping = await storage.getLatestSubcontractorLocationPing(st.id);
+        let location = null;
+        let stale = true;
+        
+        if (ping) {
+          const ageMs = Date.now() - new Date(ping.recordedAt).getTime();
+          stale = ageMs > 5 * 60 * 1000;
+          location = {
+            latitude: ping.latitude,
+            longitude: ping.longitude,
+            accuracyMeters: ping.accuracyMeters,
+            recordedAt: ping.recordedAt,
+          };
+        }
+        
+        // Use the pre-fetched events, filtered for this token
+        const tokenEvents = allSubEvents.filter(e => e.tokenId === st.id);
+        let currentStatus = 'accepted';
+        const statusMap: Record<string, string> = {
+          'SUBBIE_FINISHED': 'done',
+          'SUBBIE_STARTED': 'working',
+          'SUBBIE_ARRIVED': 'arrived',
+          'SUBBIE_EN_ROUTE': 'en_route',
+          'SUBBIE_ACCEPTED': 'accepted',
+        };
+        for (const eventType of ['SUBBIE_FINISHED', 'SUBBIE_STARTED', 'SUBBIE_ARRIVED', 'SUBBIE_EN_ROUTE', 'SUBBIE_ACCEPTED']) {
+          if (tokenEvents.some(e => e.eventType === eventType)) {
+            currentStatus = statusMap[eventType];
+            break;
+          }
+        }
+        
+        if (currentStatus === 'en_route') anyEnRoute = true;
+        
+        return {
+          tokenId: st.id,
+          name: st.contactName || 'Support Crew',
+          status: currentStatus,
+          isSubcontractor: true,
+          location,
+          stale,
+          lastUpdated: ping?.recordedAt || null,
+        };
+      }));
+
       const jobLocation = (job.latitude && job.longitude) ? {
         latitude: parseFloat(String(job.latitude)),
         longitude: parseFloat(String(job.longitude)),
@@ -12622,6 +13067,7 @@ Be specific about materials, colors, and features that would be included.`
         tracking: anyEnRoute,
         jobLocation,
         workers,
+        subcontractors,
       });
     } catch (error: any) {
       console.error('Error fetching crew locations:', error);
