@@ -468,7 +468,7 @@ function HeroMap({
 
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="relative w-full overflow-hidden" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
+      <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
         <MapContainer
           center={[-33.8688, 151.2093]}
           zoom={12}
@@ -485,7 +485,7 @@ function HeroMap({
   }
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
       <MapContainer
         center={center}
         zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}

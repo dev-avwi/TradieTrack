@@ -1923,6 +1923,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e) {
         console.error('Failed to create accept notification:', e);
       }
+
+      try {
+        const wss = (global as any).__wss;
+        if (wss) {
+          const message = JSON.stringify({
+            type: 'quote_update',
+            data: { quoteId: quote.id, status: 'accepted', jobId: quote.jobId }
+          });
+          wss.clients?.forEach((client: any) => {
+            if (client.userId === quote.userId && client.readyState === 1) {
+              client.send(message);
+            }
+          });
+        }
+      } catch (e) {
+      }
       
       res.json({ success: true, message: 'Quote accepted successfully' });
     } catch (error: any) {

@@ -531,7 +531,7 @@ export default function ClientPortal() {
                         placeholder="Enter your full name"
                         value={acceptedName}
                         onChange={(e) => setAcceptedName(e.target.value)}
-                        className="w-full"
+                        className="w-full text-slate-900 bg-white border-slate-300"
                       />
                     </div>
                     <div>
