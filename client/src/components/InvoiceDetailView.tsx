@@ -641,63 +641,35 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           <span className="text-foreground font-medium">{invoice.number || `INV-${invoice.id?.substring(0,8).toUpperCase()}`}</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 no-print">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={onBack || (() => navigate('/documents?tab=invoices'))} data-testid="button-back">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+        <div className="space-y-3 mb-6 no-print">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={onBack || (() => navigate('/documents?tab=invoices'))} data-testid="button-back">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-              <h1 className="text-xl sm:text-2xl font-bold">Invoice Details</h1>
-            </div>
+            <h1 className="text-xl font-bold">Invoice Details</h1>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            {/* Navigation buttons for linked documents */}
-            {invoice.jobId && job && (
-              <Button 
-                variant="outline"
-                onClick={() => navigate(`/jobs/${invoice.jobId}`)}
-                className="w-full sm:w-auto"
-                data-testid="button-view-linked-job"
-              >
-                <Briefcase className="h-4 w-4 mr-2" />
-                View Job
-              </Button>
-            )}
-            {invoice.quoteId && linkedQuote && (
-              <Button 
-                variant="outline"
-                onClick={() => navigate(`/quotes/${invoice.quoteId}`)}
-                className="w-full sm:w-auto"
-                data-testid="button-view-linked-quote"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                View Quote
-              </Button>
-            )}
-            {/* Primary action - Send Invoice via Email with PDF */}
+
+          <div className="flex flex-wrap items-center gap-2">
             {(invoice.status === 'draft' || invoice.status === 'sent') && client?.email && (
-              <Button onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send-email">
+              <Button onClick={() => setShowEmailCompose(true)} data-testid="button-send-email">
                 <Mail className="h-4 w-4 mr-2" />
                 {invoice.status === 'draft' ? 'Send Invoice' : 'Resend'}
               </Button>
             )}
-            {/* Legacy onSend prop support */}
             {invoice.status === 'draft' && onSend && !client?.email && (
-              <Button onClick={() => onSend(invoice.id)} className="w-full sm:w-auto" data-testid={`button-send-${invoice.id}`}>
+              <Button onClick={() => onSend(invoice.id)} data-testid={`button-send-${invoice.id}`}>
                 <Send className="h-4 w-4 mr-2" />
                 Send Invoice
               </Button>
             )}
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-              <Button onClick={() => setShowRecordPaymentDialog(true)} className="w-full sm:w-auto" data-testid="button-record-payment">
+              <Button onClick={() => setShowRecordPaymentDialog(true)} data-testid="button-record-payment">
                 <DollarSign className="h-4 w-4 mr-2" />
                 Record Payment
               </Button>
             )}
             {invoice.status === 'paid' && client?.email && (
-              <Button onClick={handleSendReceipt} disabled={sendingReceipt} className="w-full sm:w-auto" data-testid="button-send-receipt">
+              <Button onClick={handleSendReceipt} disabled={sendingReceipt} data-testid="button-send-receipt">
                 {sendingReceipt ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
                 Send Receipt
               </Button>
@@ -707,7 +679,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 variant="outline" 
                 onClick={() => pushToXeroMutation.mutate()}
                 disabled={pushToXeroMutation.isPending}
-                className="w-full sm:w-auto"
                 data-testid="button-push-to-xero"
               >
                 {pushToXeroMutation.isPending ? (
@@ -718,69 +689,101 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 Push to Xero
               </Button>
             )}
-            <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto" data-testid="button-print">
-              <Printer className="h-4 w-4 mr-2" />
+
+            <div className="hidden sm:block w-px h-6 bg-border" />
+
+            {invoice.jobId && job && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/jobs/${invoice.jobId}`)}
+                data-testid="button-view-linked-job"
+              >
+                <Briefcase className="h-4 w-4 mr-2" />
+                View Job
+              </Button>
+            )}
+            {invoice.quoteId && linkedQuote && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/quotes/${invoice.quoteId}`)}
+                data-testid="button-view-linked-quote"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Quote
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
+              <Printer className="h-4 w-4 mr-1.5" />
               Print
             </Button>
-            <Button variant="outline" onClick={handleSaveAsPDF} className="w-full sm:w-auto" data-testid="button-save-pdf">
-              <Download className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={handleSaveAsPDF} data-testid="button-save-pdf">
+              <Download className="h-4 w-4 mr-1.5" />
               Save as PDF
             </Button>
-            <Button variant="outline" onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send">
-              <Send className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={() => setShowEmailCompose(true)} data-testid="button-send">
+              <Send className="h-4 w-4 mr-1.5" />
               Send
             </Button>
             {invoice.jobId && invoice.status !== 'paid' && (
               <Button 
                 variant="outline" 
+                size="sm"
                 onClick={() => generateLabourLinesMutation.mutate()}
                 disabled={generateLabourLinesMutation.isPending}
-                className="w-full sm:w-auto"
                 data-testid="button-generate-labour-lines"
               >
                 {generateLabourLinesMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                 ) : (
-                  <Clock className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-1.5" />
                 )}
                 Generate Labour Lines
               </Button>
             )}
-            {invoice.jobId && (
+
+            {(invoice.jobId || invoice.notes) && (
               <>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={includeBeforePhotos}
-                    onCheckedChange={setIncludeBeforePhotos}
-                    id="include-before-photos"
-                  />
-                  <Label htmlFor="include-before-photos" className="text-sm text-muted-foreground">
-                    Include before photos
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={includeAfterPhotos}
-                    onCheckedChange={setIncludeAfterPhotos}
-                    id="include-after-photos"
-                  />
-                  <Label htmlFor="include-after-photos" className="text-sm text-muted-foreground">
-                    Include after photos
-                  </Label>
-                </div>
+                <div className="hidden sm:block w-px h-6 bg-border" />
+                {invoice.jobId && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={includeBeforePhotos}
+                        onCheckedChange={setIncludeBeforePhotos}
+                        id="include-before-photos"
+                      />
+                      <Label htmlFor="include-before-photos" className="text-xs text-muted-foreground whitespace-nowrap">
+                        Before photos
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={includeAfterPhotos}
+                        onCheckedChange={setIncludeAfterPhotos}
+                        id="include-after-photos"
+                      />
+                      <Label htmlFor="include-after-photos" className="text-xs text-muted-foreground whitespace-nowrap">
+                        After photos
+                      </Label>
+                    </div>
+                  </>
+                )}
+                {invoice.notes && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={includeNotes}
+                      onCheckedChange={setIncludeNotes}
+                      id="include-notes"
+                    />
+                    <Label htmlFor="include-notes" className="text-xs text-muted-foreground whitespace-nowrap">
+                      Notes
+                    </Label>
+                  </div>
+                )}
               </>
-            )}
-            {invoice.notes && (
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={includeNotes}
-                  onCheckedChange={setIncludeNotes}
-                  id="include-notes"
-                />
-                <Label htmlFor="include-notes" className="text-xs text-muted-foreground whitespace-nowrap">
-                  Notes
-                </Label>
-              </div>
             )}
           </div>
         </div>
