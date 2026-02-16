@@ -229,15 +229,15 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
 
 const workerIcon = L.divIcon({
   className: '',
-  html: `<div style="position:relative;width:36px;height:36px;">
-    <div style="width:36px;height:36px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+  html: `<div style="position:relative;width:40px;height:40px;">
+    <div style="position:absolute;inset:0;width:40px;height:40px;border-radius:50%;background:#2563EB;opacity:0.15;animation:worker-pulse 2.5s ease-out infinite;"></div>
+    <div style="width:40px;height:40px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 10px rgba(37,99,235,0.4);display:flex;align-items:center;justify-content:center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
     </div>
-    <div style="position:absolute;inset:0;width:36px;height:36px;border-radius:50%;background:#2563EB;opacity:0.3;animation:pulse-ring 2s ease-out infinite;"></div>
   </div>
-  <style>@keyframes pulse-ring{0%{transform:scale(1);opacity:0.3}100%{transform:scale(2.2);opacity:0}}</style>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
+  <style>@keyframes worker-pulse{0%{transform:scale(1);opacity:0.25}100%{transform:scale(2.5);opacity:0}}</style>`,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
 });
 
 const jobIcon = new L.Icon({
@@ -252,42 +252,42 @@ const jobIcon = new L.Icon({
 
 const jobPinIcon = L.divIcon({
   className: '',
-  html: `<div style="position:relative;">
-    <div style="width:40px;height:40px;border-radius:50%;background:#10B981;border:4px solid white;box-shadow:0 3px 12px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  html: `<div style="position:relative;width:44px;height:54px;">
+    <div style="position:absolute;top:0;left:0;width:44px;height:44px;border-radius:50%;background:white;box-shadow:0 2px 12px rgba(16,185,129,0.35);display:flex;align-items:center;justify-content:center;">
+      <div style="width:36px;height:36px;border-radius:50%;background:#10B981;display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><rect x="9" y="13" width="6" height="9" fill="rgba(255,255,255,0.5)"/></svg>
+      </div>
     </div>
-    <div style="position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid #10B981;"></div>
-    <div style="position:absolute;inset:0;width:40px;height:40px;border-radius:50%;border:2px solid rgba(16,185,129,0.3);animation:dest-pulse 3s ease-out infinite;"></div>
-  </div>
-  <style>@keyframes dest-pulse{0%{transform:scale(1);opacity:0.6}100%{transform:scale(2);opacity:0}}</style>`,
-  iconSize: [40, 50],
-  iconAnchor: [20, 50],
-  popupAnchor: [0, -50],
+    <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid white;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1));"></div>
+  </div>`,
+  iconSize: [44, 54],
+  iconAnchor: [22, 54],
+  popupAnchor: [0, -54],
 });
 
 const subbieIcon = new L.DivIcon({
   className: '',
-  html: `<div style="position:relative;width:32px;height:32px;">
-    <div style="width:32px;height:32px;background:#F59E0B;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+  html: `<div style="position:relative;width:34px;height:34px;">
+    <div style="width:34px;height:34px;background:#F59E0B;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(245,158,11,0.35);display:flex;align-items:center;justify-content:center">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
     </div>
   </div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
 });
 
 const WORKER_COLORS = ['#2563EB', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
 
 function createWorkerIcon(color: string, isPrimary: boolean) {
-  const size = isPrimary ? 36 : 28;
-  const iconSize = isPrimary ? 18 : 14;
+  const size = isPrimary ? 40 : 32;
+  const svgSize = isPrimary ? 18 : 14;
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;width:${size}px;height:${size}px;">
-      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-        <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+      ${isPrimary ? `<div style="position:absolute;inset:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.15;animation:worker-pulse 2.5s ease-out infinite;"></div><style>@keyframes worker-pulse{0%{transform:scale(1);opacity:0.25}100%{transform:scale(2.5);opacity:0}}</style>` : ''}
+      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 10px ${color}66;display:flex;align-items:center;justify-content:center;">
+        <svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
       </div>
-      <div style="position:absolute;inset:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.3;animation:pulse-ring 2s ease-out infinite;"></div>
     </div>`,
     iconSize: [size, size],
     iconAnchor: [size/2, size/2],
@@ -301,7 +301,7 @@ function RecenterControl({ center, bounds }: { center: [number, number]; bounds:
     const container = map.getContainer();
     const btn = document.createElement('button');
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`;
-    btn.style.cssText = 'position:absolute;top:60px;right:12px;z-index:1000;width:40px;height:40px;border-radius:12px;background:white;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#2563EB;';
+    btn.style.cssText = 'position:absolute;top:60px;right:12px;z-index:1000;width:38px;height:38px;border-radius:50%;background:white;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;';
     btn.addEventListener('click', () => {
       if (bounds) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
@@ -352,9 +352,9 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
       <Polyline
         positions={routeCoords}
         pathOptions={{
-          color: '#2563EB',
-          weight: 8,
-          opacity: 0.2,
+          color: '#1e40af',
+          weight: 10,
+          opacity: 0.12,
           lineCap: 'round',
           lineJoin: 'round',
         }}
@@ -363,10 +363,11 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
         positions={routeCoords}
         pathOptions={{
           color: '#2563EB',
-          weight: 4,
-          opacity: 0.9,
+          weight: 5,
+          opacity: 0.85,
           lineCap: 'round',
           lineJoin: 'round',
+          dashArray: '12 6',
         }}
       />
     </>
@@ -475,17 +476,10 @@ function HeroMap({
           zoomControl={false}
           attributionControl={false}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '45%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 5%, rgba(248,250,252,0.98) 15%, rgba(248,250,252,0.9) 30%, rgba(248,250,252,0.6) 55%, rgba(248,250,252,0) 100%)' }} />
-        <div className="absolute bottom-3 left-3 right-3 z-[1000]">
-          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
-            <span className="text-xs font-medium text-slate-700">{jobAddress || 'Job location'}</span>
-            <span className="text-xs text-slate-400 ml-auto">Location will update soon</span>
-          </div>
-        </div>
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '50%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 8%, rgba(248,250,252,0.97) 20%, rgba(248,250,252,0.85) 35%, rgba(248,250,252,0.5) 55%, rgba(248,250,252,0) 100%)' }} />
       </div>
     );
   }
@@ -499,7 +493,7 @@ function HeroMap({
         zoomControl={false}
         attributionControl={false}
       >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         <RecenterControl center={center} bounds={bounds} />
         {bounds && <FitBounds bounds={bounds} />}
         {hasJobPin && (
@@ -560,48 +554,18 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '45%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 5%, rgba(248,250,252,0.98) 15%, rgba(248,250,252,0.9) 30%, rgba(248,250,252,0.6) 55%, rgba(248,250,252,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '50%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 8%, rgba(248,250,252,0.97) 20%, rgba(248,250,252,0.85) 35%, rgba(248,250,252,0.5) 55%, rgba(248,250,252,0) 100%)' }} />
 
-      {(crewWorkers.length > 0 || subcontractorWorkers.length > 0) && (
+      {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
         <div className="absolute top-16 left-3 z-[1000]">
-          <div className="bg-white/95 backdrop-blur-md rounded-lg shadow-lg px-3 py-2 space-y-1.5">
-            {crewWorkers.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#2563EB] border border-white shadow-sm" />
-                <span className="text-[10px] font-medium text-slate-700">Team Member</span>
-              </div>
-            )}
-            {subcontractorWorkers.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#F59E0B] border border-white shadow-sm" />
-                <span className="text-[10px] font-medium text-slate-700">Subcontractor</span>
-              </div>
-            )}
-            {hasJobPin && (
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#10B981] border border-white shadow-sm" />
-                <span className="text-[10px] font-medium text-slate-700">Your Location</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {isEnRoute && (
-        <div className="absolute bottom-3 left-3 right-3 z-[1000]">
-          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#2563EB] flex items-center justify-center flex-shrink-0">
-                <Navigation className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-slate-900">{etaMinutes ? `${etaMinutes} min` : 'Arriving'}</p>
-                <p className="text-xs text-slate-500">{etaMinutes ? 'estimated arrival' : 'on the way'}</p>
-              </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-3 py-1.5 flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#2563EB]" />
+              <span className="text-[10px] text-slate-500">Team</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-full">
-              <Signal className="w-3 h-3" />
-              <span>Live</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+              <span className="text-[10px] text-slate-500">Subbie</span>
             </div>
           </div>
         </div>
