@@ -2054,6 +2054,87 @@ export default function JobDetailView({
                 </div>
               )}
 
+              {/* Subcontractors & Invites - Only for owners/managers */}
+              {!isTradie && (
+                <Card className="mt-3">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      Subcontractors
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Share a link to give subcontractors access to this job
+                    </p>
+
+                    {jobInvites && jobInvites.length > 0 && (
+                      <div className="space-y-2">
+                        {jobInvites.filter(inv => inv.status === 'pending' || inv.status === 'accepted').map((invite) => (
+                          <div key={invite.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {invite.status === 'accepted' ? (
+                                <Check className="h-4 w-4 text-green-600 shrink-0" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <Badge variant={invite.status === 'accepted' ? 'default' : 'secondary'} className="text-xs">
+                                    {invite.status === 'accepted' ? 'Accepted' : 'Pending'}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground capitalize">{invite.role}</span>
+                                </div>
+                                {invite.status === 'pending' && invite.inviteCode && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                                    <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                      {`${window.location.origin}/invite/${invite.inviteCode}`}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="shrink-0"
+                                      onClick={async () => {
+                                        const link = `${window.location.origin}/invite/${invite.inviteCode}`;
+                                        await navigator.clipboard.writeText(link);
+                                        toast({ title: "Copied", description: "Invite link copied to clipboard" });
+                                      }}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {invite.status === 'pending' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => revokeInviteMutation.mutate(invite.id)}
+                                disabled={revokeInviteMutation.isPending}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleOpenInviteModal}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Invite Subcontractor
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Job Costing Section - Shows estimated vs actual hours */}
               {(job.estimatedHours || actualHoursData.hasData) && (
                 <div className="pt-2 border-t">

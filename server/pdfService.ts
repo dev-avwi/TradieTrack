@@ -316,7 +316,24 @@ interface InvoiceWithDetails {
     trackingInterruptions: number;
     manualEdits: number;
   };
+  assignments?: Array<{
+    workerName: string;
+    assignmentStatus: string;
+    travelStartedAt?: Date | string | null;
+    arrivedAt?: Date | string | null;
+    completedAt?: Date | string | null;
+  }>;
 }
+
+const formatAUDateTime = (date: Date | string | null | undefined): string => {
+  if (!date) return '-';
+  const d = new Date(date);
+  return d.toLocaleString('en-AU', {
+    timeZone: 'Australia/Sydney',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+};
 
 const formatCurrency = (amount: string | number): string => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -1490,6 +1507,32 @@ ${(business as any).insuranceProvider ? `Insurer: ${(business as any).insuranceP
 ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAmount}` : ''}
         </div>
       </div>
+    ` : ''}
+    
+    ${data.assignments && data.assignments.length > 0 ? `
+    <div style="margin-top: 16px; margin-bottom: 16px;">
+      <div style="font-size: 10px; font-weight: 600; color: #374151; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Worker Timeline</div>
+      <table class="line-items-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Worker</th>
+            <th style="width: 25%;">Travel Started</th>
+            <th style="width: 25%;">Arrived On Site</th>
+            <th style="width: 20%;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.assignments.map(a => `
+            <tr>
+              <td>${a.workerName}</td>
+              <td>${formatAUDateTime(a.travelStartedAt)}</td>
+              <td>${formatAUDateTime(a.arrivedAt)}</td>
+              <td><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 500; background: ${a.assignmentStatus === 'completed' || a.assignmentStatus === 'done' ? '#dcfce7; color: #166534' : a.assignmentStatus === 'arrived' || a.assignmentStatus === 'working' ? '#dbeafe; color: #1e40af' : a.assignmentStatus === 'en_route' || a.assignmentStatus === 'travelling' ? '#fef3c7; color: #92400e' : '#f3f4f6; color: #374151'};">${a.assignmentStatus}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
     ` : ''}
     
     ${(() => {

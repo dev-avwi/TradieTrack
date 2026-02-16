@@ -14383,6 +14383,23 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      // Fetch assignments for worker timeline
+      let assignments: any[] = [];
+      if (invoiceWithItems.jobId) {
+        try {
+          const jobAssignmentsData = await storage.getJobAssignments(invoiceWithItems.jobId);
+          assignments = jobAssignmentsData.map(a => ({
+            workerName: a.workerName || 'Worker',
+            assignmentStatus: a.assignmentStatus || 'assigned',
+            travelStartedAt: a.travelStartedAt,
+            arrivedAt: a.arrivedAt,
+            completedAt: (a as any).completedAt,
+          }));
+        } catch (assignError) {
+          console.warn(`[Invoice PDF] Could not fetch assignments for job ${invoiceWithItems.jobId}:`, assignError);
+        }
+      }
+      
       // Fetch business templates for terms and warranty
       let termsTemplate = undefined;
       let warrantyTemplate = undefined;
@@ -14447,6 +14464,7 @@ Be specific about materials, colors, and features that would be included.`
           beforePhotos,
           afterPhotos,
           labourSummary,
+          assignments,
         });
       } catch (htmlError: any) {
         console.error(`[Invoice PDF] HTML generation failed for invoice ${invoiceId}:`, htmlError);

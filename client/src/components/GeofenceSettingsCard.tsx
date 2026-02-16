@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { MapPin, Radio, Clock, LogIn, LogOut, Settings, AlertTriangle } from "lucide-react";
+import { MapPin, Radio, Clock, LogIn, LogOut, Settings, AlertTriangle, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -137,6 +137,13 @@ export default function GeofenceSettingsCard({
             data-testid="switch-geofence-enabled"
           />
         </div>
+
+        {!enabled && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-300">
+            <Info className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>This job has GPS coordinates. Enable geofencing for automatic time tracking when workers arrive.</span>
+          </div>
+        )}
 
         {enabled && !assignedTo && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300">
