@@ -289,11 +289,11 @@ export default function ClientPortal() {
                   <img 
                     src={data.business.logoUrl} 
                     alt={data.business.name}
-                    className="w-10 h-10 object-contain rounded-md brightness-0 invert"
+                    className="w-12 h-12 object-contain rounded-md brightness-0 invert"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-md bg-white/20 backdrop-blur flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-white" />
+                  <div className="w-12 h-12 rounded-md bg-white/20 backdrop-blur flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-white" />
                   </div>
                 )}
                 <div className="min-w-0">

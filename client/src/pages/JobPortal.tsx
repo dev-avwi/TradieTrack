@@ -461,7 +461,7 @@ function HeroMap({
           <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 30%, rgba(255,255,255,0) 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, #f8fafc 0%, rgba(248,250,252,0.95) 25%, rgba(248,250,252,0.7) 50%, rgba(248,250,252,0) 100%)' }} />
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
@@ -543,7 +543,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 30%, rgba(255,255,255,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, #f8fafc 0%, rgba(248,250,252,0.95) 25%, rgba(248,250,252,0.7) 50%, rgba(248,250,252,0) 100%)' }} />
 
       {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
@@ -759,9 +759,9 @@ export default function JobPortal() {
               <div className="flex items-center gap-3">
                 {business.logo ? (
                   <img src={business.logo} alt={business.name}
-                    className="w-9 h-9 object-contain rounded-md bg-white/90 p-0.5 flex-shrink-0" />
+                    className="w-11 h-11 object-contain rounded-md bg-white/90 p-0.5 flex-shrink-0" />
                 ) : (
-                  <div className="w-9 h-9 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
+                  <div className="w-11 h-11 rounded-md bg-white/90 flex items-center justify-center flex-shrink-0 p-0.5">
                     <img src={jobrunnerLogo} alt="JobRunner" className="w-full h-full object-contain" />
                   </div>
                 )}
@@ -1361,7 +1361,7 @@ export default function JobPortal() {
             <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-slate-300" />
-                <span className="font-semibold text-sm">Send a Message</span>
+                <span className="font-semibold text-sm">Message {business.name}</span>
               </div>
             </div>
             <div className="p-5">
@@ -1383,7 +1383,7 @@ export default function JobPortal() {
                   <Textarea
                     value={portalMessage}
                     onChange={(e) => setPortalMessage(e.target.value)}
-                    placeholder="Have a question or update? Send a message to the team..."
+                    placeholder={`Send a message to ${business.name}...`}
                     maxLength={1000}
                     className="resize-none min-h-[100px] border-gray-200 text-sm bg-white text-slate-900 placeholder:text-slate-400"
                   />

@@ -1191,10 +1191,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (settings) {
           businessInfoMap.set(ownerId, {
             businessName: settings.businessName,
-            businessPhone: settings.businessPhone,
-            businessEmail: settings.businessEmail,
-            businessAddress: settings.businessAddress,
-            businessLogo: settings.businessLogo,
+            phone: settings.phone,
+            email: settings.email,
+            address: settings.address,
+            logoUrl: settings.logoUrl,
             abn: settings.abn,
           });
         }
@@ -1357,7 +1357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         business: {
           companyName: businessSettings?.companyName || businessSettings?.businessName || 'Business',
-          businessPhone: businessSettings?.businessPhone,
+          phone: businessSettings?.phone,
         },
         requiresOtp: true,
       });
@@ -1513,9 +1513,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         business: {
           companyName: businessSettings?.companyName || businessSettings?.businessName || 'Business',
-          businessPhone: businessSettings?.businessPhone,
-          businessEmail: businessSettings?.businessEmail,
-          businessLogo: businessSettings?.businessLogo,
+          phone: businessSettings?.phone,
+          email: businessSettings?.email,
+          logoUrl: businessSettings?.logoUrl,
         },
         photos,
         notes,
@@ -1761,9 +1761,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           business: {
             name: settings?.businessName,
-            email: settings?.businessEmail,
-            phone: settings?.businessPhone,
-            address: settings?.businessAddress,
+            email: settings?.email,
+            phone: settings?.phone,
+            address: settings?.address,
             abn: settings?.abn,
             logoUrl: settings?.logoUrl
           },
@@ -1825,9 +1825,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           business: {
             name: settings?.businessName,
-            email: settings?.businessEmail,
-            phone: settings?.businessPhone,
-            address: settings?.businessAddress,
+            email: settings?.email,
+            phone: settings?.phone,
+            address: settings?.address,
             abn: settings?.abn,
             logoUrl: settings?.logoUrl
           },
@@ -1865,9 +1865,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           business: {
             name: settings?.businessName,
-            email: settings?.businessEmail,
-            phone: settings?.businessPhone,
-            address: settings?.businessAddress,
+            email: settings?.email,
+            phone: settings?.phone,
+            address: settings?.address,
             abn: settings?.abn,
             logoUrl: settings?.logoUrl
           },
@@ -4049,7 +4049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: action.data.emailType === 'invoice' ? 'invoice' : 
                 action.data.emailType === 'quote' ? 'quote' : 'reminder',
           fromName: businessSettings?.businessName,
-          replyTo: businessSettings?.businessEmail || undefined,
+          replyTo: businessSettings?.email || undefined,
         });
 
         return res.json({ 
@@ -4141,11 +4141,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const invoiceEmailData = generateInvoiceEmailTemplate({
           businessName: business?.businessName || 'Your Tradie',
-          businessEmail: business?.businessEmail || undefined,
+          businessEmail: business?.email || undefined,
           businessPhone: business?.phone || undefined,
           businessAddress: business?.address || undefined,
           businessAbn: business?.abn || undefined,
-          businessLogo: business?.logo || undefined,
+          businessLogo: business?.logoUrl || undefined,
           clientName: client.name || 'Customer',
           clientEmail: client.email || undefined,
           clientAddress: client.address || undefined,
@@ -4189,7 +4189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relatedId: invoice.id.toString(),
           attachments: [{ filename: `Invoice-${invoice.number || invoice.id}.pdf`, content: pdfBuffer }],
           fromName: business?.businessName,
-          replyTo: business?.businessEmail || undefined,
+          replyTo: business?.email || undefined,
         });
 
         if (result.success) {
@@ -4231,11 +4231,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const quoteEmailData = generateQuoteEmailTemplate({
           businessName: business?.businessName || 'Your Tradie',
-          businessEmail: business?.businessEmail || undefined,
+          businessEmail: business?.email || undefined,
           businessPhone: business?.phone || undefined,
           businessAddress: business?.address || undefined,
           businessAbn: business?.abn || undefined,
-          businessLogo: business?.logo || undefined,
+          businessLogo: business?.logoUrl || undefined,
           clientName: client.name || 'Customer',
           clientEmail: client.email || undefined,
           clientAddress: client.address || undefined,
@@ -4270,7 +4270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relatedId: quote.id.toString(),
           attachments: [{ filename: `Quote-${quote.number || quote.id}.pdf`, content: pdfBuffer }],
           fromName: business?.businessName,
-          replyTo: business?.businessEmail || undefined,
+          replyTo: business?.email || undefined,
         });
 
         if (result.success) {
@@ -4485,7 +4485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'reminder',
             relatedId: invoice.id.toString(),
             fromName: business?.businessName,
-            replyTo: business?.businessEmail || undefined,
+            replyTo: business?.email || undefined,
           });
           results.push(emailResult.success ? 'Email sent' : 'Email failed');
         }
@@ -8103,6 +8103,28 @@ Be specific about materials, colors, and features that would be included.`
       if (!result.success) {
         return res.status(500).json({ error: result.message });
       }
+
+      try {
+        const demoJobs = await storage.getJobs(req.userId!);
+        for (const job of demoJobs) {
+          const existingTokens = await storage.getJobPortalTokensByJobId(job.id);
+          const hasActive = existingTokens?.some((t: any) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()));
+          if (!hasActive) {
+            const cryptoMod = await import('crypto');
+            const token = cryptoMod.randomBytes(32).toString('hex');
+            await storage.createJobPortalToken({
+              jobId: job.id,
+              userId: req.userId!,
+              token,
+              expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+              createdBy: req.userId!,
+            });
+          }
+        }
+        console.log('Portal tokens created for demo jobs');
+      } catch (e) {
+        console.error('Failed to create portal tokens for demo jobs:', e);
+      }
       
       res.json({
         success: true,
@@ -8132,6 +8154,28 @@ Be specific about materials, colors, and features that would be included.`
       if (!result.success) {
         return res.status(500).json({ error: result.message });
       }
+
+      try {
+        const demoJobs = await storage.getJobs(req.userId!);
+        for (const job of demoJobs) {
+          const existingTokens = await storage.getJobPortalTokensByJobId(job.id);
+          const hasActive = existingTokens?.some((t: any) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()));
+          if (!hasActive) {
+            const cryptoMod = await import('crypto');
+            const token = cryptoMod.randomBytes(32).toString('hex');
+            await storage.createJobPortalToken({
+              jobId: job.id,
+              userId: req.userId!,
+              token,
+              expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+              createdBy: req.userId!,
+            });
+          }
+        }
+        console.log('Portal tokens created for demo jobs');
+      } catch (e) {
+        console.error('Failed to create portal tokens for demo jobs:', e);
+      }
       
       res.json({
         success: true,
@@ -8156,6 +8200,28 @@ Be specific about materials, colors, and features that would be included.`
       
       if (!result.success) {
         return res.status(400).json({ error: result.message });
+      }
+
+      try {
+        const demoJobs = await storage.getJobs(userId);
+        for (const job of demoJobs) {
+          const existingTokens = await storage.getJobPortalTokensByJobId(job.id);
+          const hasActive = existingTokens?.some((t: any) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()));
+          if (!hasActive) {
+            const cryptoMod = await import('crypto');
+            const token = cryptoMod.randomBytes(32).toString('hex');
+            await storage.createJobPortalToken({
+              jobId: job.id,
+              userId,
+              token,
+              expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+              createdBy: userId,
+            });
+          }
+        }
+        console.log('Portal tokens created for demo jobs');
+      } catch (e) {
+        console.error('Failed to create portal tokens for demo jobs:', e);
       }
       
       res.json({
@@ -16226,7 +16292,7 @@ Be specific about materials, colors, and features that would be included.`
         const location = await stripe.terminal.locations.create({
           display_name: settings?.businessName || 'Business Location',
           address: {
-            line1: settings?.businessAddress || '1 Main St',
+            line1: settings?.address || '1 Main St',
             city: settings?.businessCity || 'Sydney',
             state: settings?.businessState || 'NSW',
             postal_code: settings?.businessPostcode || '2000',
@@ -22241,7 +22307,7 @@ Respond with JSON in this format:
         {
           display_name: settings.businessName || 'JobRunner Business',
           address: {
-            line1: settings.businessAddress || '123 Main Street',
+            line1: settings.address || '123 Main Street',
             city: 'Sydney',
             state: 'NSW',
             postal_code: '2000',
@@ -22494,7 +22560,7 @@ Respond with JSON in this format:
       }
       
       const businessName = settings.businessName || 'JobRunner Business';
-      const businessEmail = settings.businessEmail || settings.email;
+      const businessEmail = settings.email;
       const formattedAmount = `$${(amount / 100).toFixed(2)}`;
       const receiptDate = new Date().toLocaleDateString('en-AU', {
         day: 'numeric',
