@@ -1,14 +1,21 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, safeInvalidateQueries, recordLocalChange } from "@/lib/queryClient";
+import { apiRequest, safeInvalidateQueries, recordLocalChange, getSessionToken } from "@/lib/queryClient";
 
 export function useBusinessSettings() {
   return useQuery({
     queryKey: ['/api/business-settings'],
     queryFn: async () => {
-      const response = await fetch('/api/business-settings');
+      const headers: HeadersInit = {};
+      const token = getSessionToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch('/api/business-settings', {
+        credentials: 'include',
+        headers,
+      });
       if (!response.ok) {
         if (response.status === 404) {
-          // Return default values if no business settings exist yet
           return {
             businessName: 'JobRunner Business',
             email: null,
@@ -21,10 +28,7 @@ export function useBusinessSettings() {
       }
       return response.json();
     },
-    // Use a reasonable stale time to prevent constant refetching while still enabling sync
-    staleTime: 30000, // 30 seconds - balances freshness with stability
-    refetchOnMount: true,
-    refetchOnWindowFocus: true, // Enables cross-platform sync when switching tabs/apps
+    staleTime: 60000,
   });
 }
 
