@@ -50,6 +50,7 @@ export default function InvoiceDetailView({
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(true);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
@@ -606,7 +607,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
             </div>
           ` : ''}
 
-          ${invoice.notes ? `
+          ${invoice.notes && includeNotes ? `
             <div class="notes">
               <div class="notes-title">Additional Notes</div>
               <div style="color: #666;">${escapeHtml(invoice.notes)}</div>
@@ -671,6 +672,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
     const photoParams = new URLSearchParams();
     if (includeBeforePhotos) photoParams.set('includeBeforePhotos', 'true');
     if (includeAfterPhotos) photoParams.set('includeAfterPhotos', 'true');
+    if (!includeNotes) photoParams.set('excludeNotes', 'true');
     const photoQuery = photoParams.toString();
     const pdfUrl = `/api/invoices/${invoiceId}/pdf${photoQuery ? '?' + photoQuery : ''}`;
     const filename = `Invoice-${invoice?.number || invoice?.id || invoiceId}.pdf`;
@@ -1037,6 +1039,18 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                   </Label>
                 </div>
               </>
+            )}
+            {invoice.notes && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={includeNotes}
+                  onCheckedChange={setIncludeNotes}
+                  id="include-notes"
+                />
+                <Label htmlFor="include-notes" className="text-xs text-muted-foreground whitespace-nowrap">
+                  Notes
+                </Label>
+              </div>
             )}
           </div>
         </div>
@@ -1644,7 +1658,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 </div>
               )}
 
-              {invoice.notes && (
+              {invoice.notes && includeNotes && (
                 <div 
                   className="mb-8 p-4"
                   style={getNoteStyle()}

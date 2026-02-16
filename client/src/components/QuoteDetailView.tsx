@@ -320,7 +320,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             </div>
           </div>
 
-          ${quote.notes ? `
+          ${quote.notes && includeNotes ? `
             <div class="notes">
               <div class="notes-title">Additional Notes</div>
               <div style="color: #666;">${quote.notes}</div>
@@ -618,6 +618,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             overflow: visible !important;
           }
           .no-print { display: none !important; }
+          .print-job-context [data-state] { display: block !important; }
+          .print-job-context .no-print { display: none !important; }
           body {
             print-color-adjust: exact !important;
             -webkit-print-color-adjust: exact !important;
@@ -961,9 +963,9 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 <Collapsible
                   open={jobContextOpen}
                   onOpenChange={setJobContextOpen}
-                  className="mb-8 no-print"
+                  className="mb-8 print-job-context"
                 >
-                  <CollapsibleTrigger asChild>
+                  <CollapsibleTrigger asChild className="no-print">
                     <button
                       className="flex items-center justify-between w-full p-4 rounded-lg transition-colors hover-elevate"
                       style={{ 
