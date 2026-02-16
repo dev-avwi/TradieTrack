@@ -128,7 +128,7 @@ import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteA
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { checkTwilioAvailability, sendSMS } from "./twilioClient";
-import { geocodeAddress, haversineDistance } from "./geocoding";
+import { geocodeAddress, haversineDistance, calculateRouteETA } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
 import * as myobService from "./myobService";
@@ -13011,6 +13011,25 @@ Be specific about materials, colors, and features that would be included.`
       const checklistItemsList = await storage.getChecklistItems(job.id, portalToken.userId);
       const materialsList = await storage.getJobMaterials(job.id, portalToken.userId);
       
+      let dynamicEtaText = job.workerEta;
+      let dynamicEtaMinutes = job.workerEtaMinutes;
+      if (job.workerStatus === 'on_my_way' && job.latitude && job.longitude) {
+        try {
+          const { getWorkerTravelLocation } = await import('./websocket');
+          const travelLoc = getWorkerTravelLocation(job.id);
+          if (travelLoc) {
+            const routeEta = await calculateRouteETA(
+              travelLoc.latitude, travelLoc.longitude,
+              parseFloat(String(job.latitude)), parseFloat(String(job.longitude))
+            );
+            if (routeEta) {
+              dynamicEtaMinutes = routeEta.durationMinutes;
+              dynamicEtaText = `${routeEta.durationMinutes} min`;
+            }
+          }
+        } catch {}
+      }
+
       const portalData = {
         job: {
           id: job.id,
@@ -13022,8 +13041,8 @@ Be specific about materials, colors, and features that would be included.`
           status: job.status,
           workerStatus: job.workerStatus,
           workerStatusUpdatedAt: job.workerStatusUpdatedAt,
-          workerEta: job.workerEta,
-          workerEtaMinutes: job.workerEtaMinutes,
+          workerEta: dynamicEtaText,
+          workerEtaMinutes: dynamicEtaMinutes,
           scheduledAt: job.scheduledAt,
           scheduledTime: job.scheduledTime,
           estimatedDuration: job.estimatedDuration,
@@ -13264,6 +13283,17 @@ Be specific about materials, colors, and features that would be included.`
       const ageMs = Date.now() - location.updatedAt;
       const stale = ageMs > 5 * 60 * 1000;
       
+      let computedEta = etaMinutes;
+      if (!computedEta && location && jobLocation) {
+        const routeEta = await calculateRouteETA(
+          location.latitude, location.longitude,
+          jobLocation.latitude, jobLocation.longitude
+        );
+        if (routeEta) {
+          computedEta = routeEta.durationMinutes;
+        }
+      }
+
       return res.json({
         tracking: true,
         status: 'on_my_way',
@@ -13276,7 +13306,7 @@ Be specific about materials, colors, and features that would be included.`
           stale,
         },
         jobLocation,
-        etaMinutes,
+        etaMinutes: computedEta,
         etaUpdatedAt,
         lastUpdated: new Date(location.updatedAt),
       });

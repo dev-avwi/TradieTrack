@@ -18,11 +18,43 @@ interface GoogleGeocodingResponse {
   error_message?: string;
 }
 
+interface NominatimResult {
+  lat: string;
+  lon: string;
+  display_name: string;
+}
+
+async function geocodeWithNominatim(address: string): Promise<GeocodingResult | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=au`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'JobRunner/1.0',
+      },
+    });
+    if (!response.ok) return null;
+    const data: NominatimResult[] = await response.json();
+    if (data.length > 0) {
+      return {
+        latitude: parseFloat(data[0].lat),
+        longitude: parseFloat(data[0].lon),
+        formattedAddress: data[0].display_name,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function geocodeAddress(address: string): Promise<GeocodingResult | null> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
   
   if (!apiKey) {
-    console.warn('[Geocoding] No Google Maps API key found - using Australian suburb fallback');
+    console.warn('[Geocoding] No Google Maps API key found - trying Nominatim');
+    const nominatimResult = await geocodeWithNominatim(address);
+    if (nominatimResult) return nominatimResult;
+    console.warn('[Geocoding] Nominatim failed - using suburb fallback');
     return geocodeAustralianSuburb(address);
   }
 
@@ -42,13 +74,19 @@ export async function geocodeAddress(address: string): Promise<GeocodingResult |
       };
     } else if (data.status === 'REQUEST_DENIED') {
       console.warn('[Geocoding] API request denied:', data.error_message);
+      const nominatimResult = await geocodeWithNominatim(address);
+      if (nominatimResult) return nominatimResult;
       return geocodeAustralianSuburb(address);
     } else {
       console.warn('[Geocoding] No results for address:', address, 'Status:', data.status);
+      const nominatimResult = await geocodeWithNominatim(address);
+      if (nominatimResult) return nominatimResult;
       return geocodeAustralianSuburb(address);
     }
   } catch (error) {
     console.error('[Geocoding] Error geocoding address:', error);
+    const nominatimResult = await geocodeWithNominatim(address);
+    if (nominatimResult) return nominatimResult;
     return geocodeAustralianSuburb(address);
   }
 }
@@ -91,47 +129,31 @@ const AUSTRALIAN_SUBURBS: Record<string, { lat: number; lng: number }> = {
 function geocodeAustralianSuburb(address: string): GeocodingResult | null {
   const lowerAddress = address.toLowerCase();
   
-  // Round to 7 decimal places to match schema precision
-  const roundCoord = (val: number) => Math.round(val * 10000000) / 10000000;
-  
   for (const [suburb, coords] of Object.entries(AUSTRALIAN_SUBURBS)) {
     if (lowerAddress.includes(suburb)) {
-      const jitter = {
-        lat: (Math.random() - 0.5) * 0.01,
-        lng: (Math.random() - 0.5) * 0.01,
-      };
-      
       return {
-        latitude: roundCoord(coords.lat + jitter.lat),
-        longitude: roundCoord(coords.lng + jitter.lng),
+        latitude: coords.lat,
+        longitude: coords.lng,
         formattedAddress: address,
       };
     }
   }
   
   const defaultCoords = AUSTRALIAN_SUBURBS['cairns'];
-  const jitter = {
-    lat: (Math.random() - 0.5) * 0.05,
-    lng: (Math.random() - 0.5) * 0.05,
-  };
-  
   return {
-    latitude: roundCoord(defaultCoords.lat + jitter.lat),
-    longitude: roundCoord(defaultCoords.lng + jitter.lng),
+    latitude: defaultCoords.lat,
+    longitude: defaultCoords.lng,
     formattedAddress: address,
   };
 }
 
-/**
- * Calculate the Haversine distance between two points in kilometers
- */
 export function haversineDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -142,4 +164,26 @@ export function haversineDistance(
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+export async function calculateRouteETA(
+  fromLat: number, fromLng: number,
+  toLat: number, toLng: number
+): Promise<{ durationMinutes: number; distanceKm: number } | null> {
+  try {
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      return {
+        durationMinutes: Math.ceil(data.routes[0].duration / 60),
+        distanceKm: Math.round(data.routes[0].distance / 100) / 10,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
