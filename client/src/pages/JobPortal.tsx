@@ -428,7 +428,7 @@ function HeroMap({
 
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="relative w-full" style={{ height: '45vh', minHeight: '280px', maxHeight: '500px' }}>
+      <div className="relative w-full" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
         <MapContainer
           center={[-33.8688, 151.2093]}
           zoom={12}
@@ -436,8 +436,9 @@ function HeroMap({
           zoomControl={false}
           attributionControl={false}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         </MapContainer>
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#2563EB]/5 to-transparent pointer-events-none z-[999]" />
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
@@ -450,7 +451,7 @@ function HeroMap({
   }
 
   return (
-    <div className="relative w-full" style={{ height: '45vh', minHeight: '280px', maxHeight: '500px' }}>
+    <div className="relative w-full" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
       <MapContainer
         center={center}
         zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
@@ -458,9 +459,8 @@ function HeroMap({
         zoomControl={false}
         attributionControl={false}
       >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
         {bounds && <FitBounds bounds={bounds} />}
-
         {hasJobPin && (
           <Marker position={[jobPinLat!, jobPinLng!]} icon={jobPinIcon}>
             <Popup>
@@ -519,6 +519,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#2563EB]/5 to-transparent pointer-events-none z-[999]" />
 
       {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
@@ -639,7 +640,7 @@ export default function JobPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5">
+      <div className="min-h-screen bg-gradient-to-b from-[#2563EB]/5 via-white to-blue-50">
         <div className="max-w-2xl mx-auto">
           <Skeleton className="h-[300px] w-full" />
           <div className="p-4 space-y-4">
@@ -655,7 +656,7 @@ export default function JobPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-[#2563EB]/5 via-white to-blue-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full border-slate-200/60 rounded-2xl shadow-lg">
           <CardContent className="pt-8 pb-8 text-center">
             <AlertCircle className="w-14 h-14 text-slate-400 mx-auto mb-4" />
@@ -688,7 +689,7 @@ export default function JobPortal() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-[#2563EB]/5 via-white to-blue-50 flex flex-col">
       <div className="max-w-2xl mx-auto w-full flex flex-col flex-1">
 
         <div className="relative">
@@ -704,7 +705,7 @@ export default function JobPortal() {
           )}
 
           <div className="absolute top-0 left-0 right-0 z-[1000]">
-            <div className="bg-black/30 backdrop-blur-md px-4 py-3">
+            <div className="bg-[#2563EB]/90 backdrop-blur-md px-4 py-3">
               <div className="flex items-center gap-3">
                 {business.logo ? (
                   <img src={business.logo} alt={business.name}
@@ -749,7 +750,7 @@ export default function JobPortal() {
         </div>
 
         {job.workerStatus && (
-          <div className="-mt-5 relative z-10 px-4">
+          <div className="-mt-6 relative z-10 px-4">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-visible p-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
@@ -818,7 +819,7 @@ export default function JobPortal() {
 
           {(data.assignments && data.assignments.length > 0) ? (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Your Team</span>
@@ -902,7 +903,7 @@ export default function JobPortal() {
             </div>
           ) : worker && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Your Technician</span>
@@ -968,7 +969,7 @@ export default function JobPortal() {
           )}
 
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+            <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
               <span className="font-semibold text-sm">{job.title}</span>
             </div>
             <div className="p-5 space-y-3">
@@ -1010,7 +1011,7 @@ export default function JobPortal() {
 
           {job.notes && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Notes</span>
@@ -1024,7 +1025,7 @@ export default function JobPortal() {
 
           {job.workerStatus && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Progress</span>
@@ -1102,7 +1103,7 @@ export default function JobPortal() {
 
           {data.checklist && data.checklist.length > 0 && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Work Scope</span>
@@ -1146,7 +1147,7 @@ export default function JobPortal() {
 
           {data.materials && data.materials.length > 0 && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Materials</span>
@@ -1183,7 +1184,7 @@ export default function JobPortal() {
 
           {hasPhotos && (
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Camera className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Photos</span>
@@ -1215,7 +1216,7 @@ export default function JobPortal() {
 
           {hasDocuments && (
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Documents & Payments</span>
@@ -1307,7 +1308,7 @@ export default function JobPortal() {
           )}
 
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-5 py-3">
+            <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-slate-300" />
                 <span className="font-semibold text-sm">Send a Message</span>
@@ -1402,7 +1403,7 @@ export default function JobPortal() {
 
         </div>
 
-        <div className="text-center py-6 space-y-3">
+        <div className="text-center py-8 space-y-4">
           <Button
             variant="outline"
             size="sm"
@@ -1412,14 +1413,14 @@ export default function JobPortal() {
             <FileText className="w-4 h-4 mr-1.5" />
             Open Client Portal
           </Button>
-          <div className="flex items-center justify-center gap-2">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-            <span className="text-sm font-medium text-slate-500">Powered by <strong className="text-slate-700">JobRunner</strong></span>
+          <div className="flex items-center justify-center gap-2.5">
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-9 h-9 object-contain" />
+            <span className="text-sm font-medium text-[#2563EB]/70">Powered by <strong className="text-[#2563EB]">JobRunner</strong></span>
           </div>
           {business.abn && (
             <p className="text-xs text-slate-400">ABN: {business.abn}</p>
           )}
-          <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-[#2563EB]/50">
             <Shield className="w-3.5 h-3.5" />
             <span>Secure & encrypted</span>
           </div>
