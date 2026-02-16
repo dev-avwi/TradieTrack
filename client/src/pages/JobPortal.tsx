@@ -1463,7 +1463,7 @@ export default function JobPortal() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.location.href = '/portal'}
+            onClick={() => window.open('/portal', '_blank')}
             className="text-[#2563EB] border-[#2563EB]/30"
           >
             <FileText className="w-4 h-4 mr-1.5" />
