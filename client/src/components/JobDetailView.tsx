@@ -2223,106 +2223,6 @@ export default function JobDetailView({
             <JobProfitabilityCard jobId={jobId} />
           )}
 
-          {/* Client Portal - Share tracking link with client */}
-          {job.clientId && (
-            <Card data-testid="card-client-portal">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Globe className="h-4 w-4" />
-                  Client Portal
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Share a live tracking link so your client can follow job progress
-                </p>
-                {portalUrl ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        readOnly
-                        value={portalUrl}
-                        className="text-xs flex-1"
-                        onClick={(e) => (e.target as HTMLInputElement).select()}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        onClick={async () => {
-                          try {
-                            const res = await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
-                            toast({ title: "SMS Sent", description: "Tracking link sent to client via SMS" });
-                          } catch (err: any) {
-                            toast({ title: "SMS Failed", description: err.message || "Could not send SMS", variant: "destructive" });
-                          }
-                        }}
-                        disabled={!client?.phone}
-                      >
-                        <Phone className="h-3 w-3" />
-                        Send SMS
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        onClick={async () => {
-                          try {
-                            const res = await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
-                            toast({ title: "Email Sent", description: "Tracking link sent to client via email" });
-                          } catch (err: any) {
-                            toast({ title: "Email Failed", description: err.message || "Could not send email", variant: "destructive" });
-                          }
-                        }}
-                        disabled={!client?.email}
-                      >
-                        <Mail className="h-3 w-3" />
-                        Send Email
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(portalUrl);
-                          toast({ title: "Copied", description: "Portal link copied to clipboard" });
-                        }}
-                      >
-                        <Copy className="h-3 w-3" />
-                        Copy Link
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        onClick={() => window.open(portalUrl, '_blank')}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Open Portal
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={() => portalLinkMutation.mutate()}
-                    disabled={portalLinkMutation.isPending}
-                  >
-                    {portalLinkMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Share2 className="h-4 w-4" />
-                    )}
-                    Generate Client Portal Link
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {job.status !== 'invoiced' && job.status !== 'pending' && (
             <Card data-testid="card-log-site-update">
@@ -2608,6 +2508,93 @@ export default function JobDetailView({
               onCreateQuote={() => onCreateQuote?.(jobId)}
               onCreateInvoice={() => onCreateInvoice?.(jobId)}
             />
+          )}
+
+          {job.clientId && (
+            <Card data-testid="card-client-portal">
+              <CardContent className="py-3">
+                {portalUrl ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Globe className="h-3.5 w-3.5" />
+                        Client Portal
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => window.open(portalUrl, '_blank')}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(portalUrl);
+                          toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={async () => {
+                          try {
+                            await apiRequest("POST", `/api/jobs/${jobId}/share-portal-sms`);
+                            toast({ title: "SMS Sent", description: "Tracking link sent to client" });
+                          } catch (err: any) {
+                            toast({ title: "SMS Failed", description: err.message || "Could not send SMS", variant: "destructive" });
+                          }
+                        }}
+                        disabled={!client?.phone}
+                      >
+                        <Phone className="h-3 w-3" />
+                        SMS
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={async () => {
+                          try {
+                            await apiRequest("POST", `/api/jobs/${jobId}/share-portal-email`);
+                            toast({ title: "Email Sent", description: "Tracking link sent to client" });
+                          } catch (err: any) {
+                            toast({ title: "Email Failed", description: err.message || "Could not send email", variant: "destructive" });
+                          }
+                        }}
+                        disabled={!client?.email}
+                      >
+                        <Mail className="h-3 w-3" />
+                        Email
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2 text-xs"
+                    onClick={() => portalLinkMutation.mutate()}
+                    disabled={portalLinkMutation.isPending}
+                  >
+                    {portalLinkMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Globe className="h-3.5 w-3.5" />
+                    )}
+                    Share Client Portal
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
