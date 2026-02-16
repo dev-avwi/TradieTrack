@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,84 +14,93 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [isEmpty, setIsEmpty] = useState(true);
+    const isDrawingRef = useRef(false);
 
-    // Initialize canvas with proper DPI handling
-    useEffect(() => {
+    const setupCanvas = useCallback((preserveContent = false) => {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
 
-      const resizeCanvas = () => {
-        const dpr = window.devicePixelRatio || 1;
-        const rect = container.getBoundingClientRect();
-        
-        // Set canvas resolution
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
+      let savedImage: string | null = null;
+      if (preserveContent && !isEmpty) {
+        savedImage = canvas.toDataURL('image/png');
+      }
 
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Scale context to match DPI
-          ctx.scale(dpr, dpr);
-          
-          // Set drawing properties
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = '#000000';
-          
-          // Fill with white background for visibility in both light and dark modes
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, rect.width, rect.height);
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      if (savedImage && !isEmpty) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        };
+        img.src = savedImage;
+      }
+    }, [isEmpty]);
+
+    useEffect(() => {
+      setupCanvas(false);
+      
+      const handleResize = () => {
+        if (!isDrawingRef.current) {
+          setupCanvas(true);
         }
       };
 
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
-      return () => window.removeEventListener('resize', resizeCanvas);
-    }, []);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, [setupCanvas]);
 
-    const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
+    const getCoordinates = (e: React.PointerEvent<HTMLCanvasElement>) => {
       const container = containerRef.current;
-      if (!canvas || !container) return null;
-
+      if (!container) return null;
       const rect = container.getBoundingClientRect();
-      let clientX: number, clientY: number;
-
-      if ('touches' in e) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-
       return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
       };
     };
 
-    const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
       e.preventDefault();
-      const coords = getCanvasCoordinates(e);
+      e.stopPropagation();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      canvas.setPointerCapture(e.pointerId);
+      
+      const coords = getCoordinates(e);
       if (!coords) return;
 
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
+      const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       setIsDrawing(true);
+      isDrawingRef.current = true;
       ctx.beginPath();
       ctx.moveTo(coords.x, coords.y);
     };
 
-    const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
       e.preventDefault();
-      if (!isDrawing) return;
+      e.stopPropagation();
+      if (!isDrawingRef.current) return;
 
-      const coords = getCanvasCoordinates(e);
+      const coords = getCoordinates(e);
       if (!coords) return;
 
       const canvas = canvasRef.current;
@@ -103,17 +112,22 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
       setIsEmpty(false);
     };
 
-    const stopDrawing = () => {
-      if (!isDrawing) return;
+    const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDrawingRef.current) return;
       
       setIsDrawing(false);
+      isDrawingRef.current = false;
+      
       const canvas = canvasRef.current;
       if (!canvas) return;
-
+      
+      canvas.releasePointerCapture(e.pointerId);
+      
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.closePath();
-        // Emit the signature as data URL
         const dataUrl = canvas.toDataURL('image/png');
         onSignatureChange(dataUrl);
       }
@@ -130,6 +144,7 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, rect.width, rect.height);
         setIsEmpty(true);
+        isDrawingRef.current = false;
         setIsDrawing(false);
         onSignatureChange(null);
       }
@@ -140,19 +155,16 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
         <div
           ref={containerRef}
           className="relative bg-white dark:bg-white border-2 border-gray-300 dark:border-gray-300 rounded-lg overflow-hidden"
-          style={{ height: '200px', minHeight: '150px' }}
+          style={{ height: '200px', minHeight: '150px', touchAction: 'none' }}
         >
           <canvas
             ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            className="w-full h-full cursor-crosshair touch-none block"
-            style={{ display: 'block' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            className="w-full h-full cursor-crosshair block"
+            style={{ display: 'block', touchAction: 'none' }}
           />
           
           {isEmpty && (
@@ -181,22 +193,23 @@ const SignaturePad = React.forwardRef<HTMLDivElement, SignaturePadProps>(
 
 SignaturePad.displayName = 'SignaturePad';
 
-// SignatureDisplay - Simple component to display a saved signature image
 interface SignatureDisplayProps {
-  signatureDataUrl: string;
+  signatureDataUrl?: string;
+  signatureData?: string;
   className?: string;
   label?: string;
 }
 
-function SignatureDisplay({ signatureDataUrl, className, label }: SignatureDisplayProps) {
-  if (!signatureDataUrl) return null;
+function SignatureDisplay({ signatureDataUrl, signatureData, className, label }: SignatureDisplayProps) {
+  const src = signatureDataUrl || signatureData;
+  if (!src) return null;
   
   return (
     <div className={cn('w-full', className)}>
       {label && <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-2">
         <img 
-          src={signatureDataUrl} 
+          src={src} 
           alt="Signature" 
           className="max-w-full h-auto max-h-24 mx-auto"
         />

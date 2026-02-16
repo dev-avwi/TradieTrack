@@ -253,19 +253,25 @@ const jobIcon = new L.Icon({
 const jobPinIcon = L.divIcon({
   className: '',
   html: `<div style="position:relative;">
-    <div style="width:32px;height:32px;border-radius:50%;background:#DC2626;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <div style="width:40px;height:40px;border-radius:50%;background:#10B981;border:4px solid white;box-shadow:0 3px 12px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     </div>
-    <div style="position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #DC2626;"></div>
-  </div>`,
-  iconSize: [32, 40],
-  iconAnchor: [16, 40],
-  popupAnchor: [0, -40],
+    <div style="position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid #10B981;"></div>
+    <div style="position:absolute;inset:0;width:40px;height:40px;border-radius:50%;border:2px solid rgba(16,185,129,0.3);animation:dest-pulse 3s ease-out infinite;"></div>
+  </div>
+  <style>@keyframes dest-pulse{0%{transform:scale(1);opacity:0.6}100%{transform:scale(2);opacity:0}}</style>`,
+  iconSize: [40, 50],
+  iconAnchor: [20, 50],
+  popupAnchor: [0, -50],
 });
 
 const subbieIcon = new L.DivIcon({
-  className: 'custom-subbie-marker',
-  html: `<div style="width:32px;height:32px;background:#64748b;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center"><div style="width:8px;height:8px;background:white;border-radius:50%"></div></div>`,
+  className: '',
+  html: `<div style="position:relative;width:32px;height:32px;">
+    <div style="width:32px;height:32px;background:#F59E0B;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+    </div>
+  </div>`,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
@@ -342,17 +348,28 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
   if (routeCoords.length < 2) return null;
 
   return (
-    <Polyline
-      positions={routeCoords}
-      pathOptions={{
-        color: '#2563EB',
-        weight: 5,
-        opacity: 0.8,
-        dashArray: undefined,
-        lineCap: 'round',
-        lineJoin: 'round',
-      }}
-    />
+    <>
+      <Polyline
+        positions={routeCoords}
+        pathOptions={{
+          color: '#2563EB',
+          weight: 8,
+          opacity: 0.2,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }}
+      />
+      <Polyline
+        positions={routeCoords}
+        pathOptions={{
+          color: '#2563EB',
+          weight: 4,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }}
+      />
+    </>
   );
 }
 
@@ -461,7 +478,7 @@ function HeroMap({
           <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, #f8fafc 0%, rgba(248,250,252,0.95) 25%, rgba(248,250,252,0.7) 50%, rgba(248,250,252,0) 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '45%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 5%, rgba(248,250,252,0.98) 15%, rgba(248,250,252,0.9) 30%, rgba(248,250,252,0.6) 55%, rgba(248,250,252,0) 100%)' }} />
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
@@ -534,7 +551,7 @@ function HeroMap({
         {hasSingleWorker && crewWorkers.length === 0 && (
           <Marker position={[singleWorkerLoc.latitude, singleWorkerLoc.longitude]} icon={workerIcon}>
             <Popup>
-              <span className="text-sm font-medium">Technician</span>
+              <span className="text-sm font-medium">Your tradesperson</span>
             </Popup>
           </Marker>
         )}
@@ -543,9 +560,34 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-[999]" style={{ background: 'linear-gradient(to top, #f8fafc 0%, rgba(248,250,252,0.95) 25%, rgba(248,250,252,0.7) 50%, rgba(248,250,252,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '45%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 5%, rgba(248,250,252,0.98) 15%, rgba(248,250,252,0.9) 30%, rgba(248,250,252,0.6) 55%, rgba(248,250,252,0) 100%)' }} />
 
-      {isEnRoute && etaMinutes != null && etaMinutes > 0 && (
+      {(crewWorkers.length > 0 || subcontractorWorkers.length > 0) && (
+        <div className="absolute top-16 left-3 z-[1000]">
+          <div className="bg-white/95 backdrop-blur-md rounded-lg shadow-lg px-3 py-2 space-y-1.5">
+            {crewWorkers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#2563EB] border border-white shadow-sm" />
+                <span className="text-[10px] font-medium text-slate-700">Team Member</span>
+              </div>
+            )}
+            {subcontractorWorkers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#F59E0B] border border-white shadow-sm" />
+                <span className="text-[10px] font-medium text-slate-700">Subcontractor</span>
+              </div>
+            )}
+            {hasJobPin && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#10B981] border border-white shadow-sm" />
+                <span className="text-[10px] font-medium text-slate-700">Your Location</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isEnRoute && (
         <div className="absolute bottom-3 left-3 right-3 z-[1000]">
           <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -553,8 +595,8 @@ function HeroMap({
                 <Navigation className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">{etaMinutes} min</p>
-                <p className="text-xs text-slate-500">estimated arrival</p>
+                <p className="text-xl font-bold text-slate-900">{etaMinutes ? `${etaMinutes} min` : 'Arriving'}</p>
+                <p className="text-xs text-slate-500">{etaMinutes ? 'estimated arrival' : 'on the way'}</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-full">

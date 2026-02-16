@@ -128,7 +128,7 @@ export function JobSignature({ jobId }: JobSignatureProps) {
         {clientSignature ? (
           <div className="space-y-3">
             <SignatureDisplay 
-              signatureData={clientSignature.signatureData} 
+              signatureDataUrl={clientSignature.signatureData} 
               label={`Signed by ${clientSignature.signerName}`}
             />
             <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -192,10 +192,7 @@ export function JobSignature({ jobId }: JobSignatureProps) {
               <div className="space-y-2">
                 <Label>Signature</Label>
                 <SignaturePad
-                  onSave={setSignatureData}
-                  showControls={true}
-                  width={380}
-                  height={150}
+                  onSignatureChange={setSignatureData}
                 />
               </div>
             </div>

@@ -1910,6 +1910,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         acceptanceIp: typeof clientIp === 'string' ? clientIp : clientIp[0]
       });
       
+      try {
+        await storage.createNotification({
+          userId: quote.userId,
+          type: 'quote_accepted',
+          title: 'Quote Accepted',
+          message: `Quote ${quote.number} was accepted by ${acceptedBy || 'Client'}`,
+          relatedId: quote.id,
+          relatedType: 'quote'
+        });
+        await notifyQuoteAccepted(quote.userId, quote.number, quote.id, acceptedBy || 'Client');
+      } catch (e) {
+        console.error('Failed to create accept notification:', e);
+      }
+      
       res.json({ success: true, message: 'Quote accepted successfully' });
     } catch (error: any) {
       console.error('Error accepting quote:', error);
@@ -1941,6 +1955,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rejectedAt: new Date(),
         declineReason: reason || null
       });
+      
+      try {
+        const client = await storage.getClientById(quote.clientId);
+        const clientName = client?.name || 'Client';
+        await storage.createNotification({
+          userId: quote.userId,
+          type: 'quote_declined',
+          title: 'Quote Declined',
+          message: `Quote ${quote.number} was declined${reason ? `: ${reason}` : ''}`,
+          relatedId: quote.id,
+          relatedType: 'quote'
+        });
+        await notifyQuoteRejected(quote.userId, quote.number, quote.id, clientName);
+      } catch (e) {
+        console.error('Failed to create decline notification:', e);
+      }
       
       res.json({ success: true, message: 'Quote declined' });
     } catch (error: any) {

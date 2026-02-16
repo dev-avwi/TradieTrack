@@ -1788,11 +1788,7 @@ export default function Settings({
                     </div>
                   ) : (
                     <SignaturePad
-                      onSave={(data) => setSignatureData(prev => ({ ...prev, defaultSignature: data }))}
-                      onClear={() => setSignatureData(prev => ({ ...prev, defaultSignature: "" }))}
-                      width={400}
-                      height={150}
-                      showControls={true}
+                      onSignatureChange={(data) => setSignatureData(prev => ({ ...prev, defaultSignature: data || "" }))}
                     />
                   )}
                 </div>
