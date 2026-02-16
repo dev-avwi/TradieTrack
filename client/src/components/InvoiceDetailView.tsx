@@ -70,7 +70,7 @@ export default function InvoiceDetailView({
   const { data: user } = useQuery({
     queryKey: ['/api/auth/me'],
   });
-  const isDemoUser = user?.email === 'demo@jobrunner.com.au';
+  const isDemoUser = user?.email === 'demo@jobrunner.com.au' || user?.email === 'demo@tradietrack.com.au';
 
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
@@ -666,6 +666,16 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               <Button onClick={() => setShowRecordPaymentDialog(true)} data-testid="button-record-payment">
                 <DollarSign className="h-4 w-4 mr-2" />
                 Record Payment
+              </Button>
+            )}
+            {isDemoUser && invoice.status !== 'paid' && (
+              <Button 
+                onClick={() => setShowDemoPayment(true)}
+                variant="outline"
+                data-testid="button-test-payment"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Test Payment
               </Button>
             )}
             {invoice.status === 'paid' && client?.email && (

@@ -315,7 +315,21 @@ export default function JobFlowWizard({
         </Card>
       )}
 
-      {/* All Done State */}
+      {status === 'scheduled' && !hasQuote && onCreateQuote && (
+        <div 
+          className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 cursor-pointer hover-elevate"
+          onClick={onCreateQuote}
+          data-testid="card-create-quote-secondary"
+        >
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Need to send a quote first?</p>
+            <p className="text-xs text-muted-foreground">Create a quote before starting work</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
+
       {invoicePaid && (
         <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
           <CardContent className="p-4 text-center">

@@ -3050,7 +3050,31 @@ export default function JobDetailView({
             />
           )}
 
-          {/* Photos - show for ALL job statuses so team sync works */}
+          {(job.status === 'pending' || job.status === 'scheduled') && jobPhotos.length === 0 && (
+            <Card className="border-2 border-dashed" data-testid="card-before-photos-prompt">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10">
+                    <Camera className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Take Before Photos</p>
+                    <p className="text-xs text-muted-foreground">Capture the site before starting — these will appear on your quote and invoice</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowBeforePhotoPrompt(true)}
+                  data-testid="button-add-before-photos"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Add Before Photos
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <JobPhotoGallery jobId={jobId} canUpload={job.status !== 'invoiced'} />
 
           {/* Linked Jobs - Client history with photo copy */}
