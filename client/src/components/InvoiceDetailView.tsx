@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Share2, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -52,7 +52,6 @@ export default function InvoiceDetailView({
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -429,226 +428,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
   };
 
   const handlePrint = () => {
-    if (!invoice || !businessSettings) {
-      toast({ title: "Error", description: "Document not ready to print", variant: "destructive" });
-      return;
-    }
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({ title: "Error", description: "Please allow popups to print", variant: "destructive" });
-      return;
-    }
-
-    const escapeHtml = (text: string): string => {
-      return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\n/g, '<br/>');
-    };
-
-    const subtotalVal = (invoice.lineItems || []).reduce((acc: number, item: any) => {
-      const itemTotal = Number(item.total) || (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
-      return acc + itemTotal;
-    }, 0);
-    const gstVal = invoice.includesGst ? subtotalVal * 0.10 : 0;
-    const totalVal = subtotalVal + gstVal;
-
-    const lineItemsHtml = (invoice.lineItems || []).map((item: any) => {
-      const qty = Number(item.quantity) || 0;
-      const unitPrice = Number(item.unitPrice) || 0;
-      const itemTotal = Number(item.total) || (qty * unitPrice);
-      return `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; color: #1a1a1a;">${item.description || ''}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; color: #666;">${qty.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; color: #666;">$${unitPrice.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600; color: #1a1a1a;">$${itemTotal.toFixed(2)}</td>
-      </tr>`;
-    }).join('');
-
-    const logoHtml = businessSettings.logoUrl ? `<img src="${businessSettings.logoUrl}" alt="Logo" style="max-width: 150px; max-height: 60px; object-fit: contain; margin-bottom: 12px;" />` : '';
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice ${invoice.number || ''}</title>
-        <style>
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 11px;
-            line-height: 1.5;
-            color: #1a1a1a;
-            background: white;
-          }
-          .document { max-width: 800px; margin: 0 auto; padding: 20px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 16px; border-bottom: 3px solid ${primaryColor}; }
-          .company-name { font-size: 22px; font-weight: 700; color: ${primaryColor}; margin-bottom: 8px; }
-          .company-details { color: #666; font-size: 10px; line-height: 1.6; }
-          .document-title { font-size: 28px; font-weight: 700; color: ${primaryColor}; text-transform: uppercase; letter-spacing: 1px; text-align: right; }
-          .document-number { color: #666; margin-top: 4px; text-align: right; }
-          .info-section { display: flex; justify-content: space-between; margin-bottom: 24px; gap: 40px; }
-          .info-block { flex: 1; }
-          .info-label { font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
-          .info-value { color: #1a1a1a; line-height: 1.6; }
-          .info-value strong { font-weight: 600; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-          th { background: ${primaryColor}; color: white; padding: 10px 12px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-          th:not(:first-child) { text-align: right; }
-          .totals { display: flex; justify-content: flex-end; margin-bottom: 24px; }
-          .totals-box { width: 250px; }
-          .totals-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-          .totals-row.total { border-top: 2px solid ${primaryColor}; border-bottom: none; padding-top: 12px; margin-top: 8px; }
-          .totals-row.total span { font-size: 14px; font-weight: 700; color: ${primaryColor}; }
-          .notes { background: #f8f9fa; padding: 16px; border-radius: 6px; margin-bottom: 20px; }
-          .notes-title { font-weight: 600; margin-bottom: 8px; color: #1a1a1a; }
-          .payment-box { background: linear-gradient(135deg, ${primaryColor}10, ${primaryColor}05); border: 1px solid ${primaryColor}30; padding: 16px; border-radius: 6px; margin-bottom: 20px; }
-          .payment-title { font-weight: 600; margin-bottom: 8px; color: ${primaryColor}; font-size: 12px; }
-          .terms { border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
-          .terms-title { font-weight: 600; margin-bottom: 8px; color: ${primaryColor}; font-size: 12px; }
-          .terms-content { color: #666; font-size: 10px; line-height: 1.6; white-space: pre-wrap; }
-          @media print {
-            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="document">
-          <div class="header">
-            <div>
-              ${logoHtml}
-              <div class="company-name">${businessSettings.businessName || 'Your Business'}</div>
-              <div class="company-details">
-                ${businessSettings.abn ? `<div>ABN: ${businessSettings.abn}</div>` : ''}
-                ${businessSettings.address ? `<div>${businessSettings.address}</div>` : ''}
-                ${businessSettings.phone ? `<div>Phone: ${businessSettings.phone}</div>` : ''}
-                ${businessSettings.email ? `<div>Email: ${businessSettings.email}</div>` : ''}
-                ${businessSettings.licenseNumber ? `<div>Licence: ${businessSettings.licenseNumber}</div>` : ''}
-              </div>
-            </div>
-            <div>
-              <div class="document-title">${invoice.status === 'paid' ? 'TAX INVOICE' : 'INVOICE'}</div>
-              <div class="document-number">${invoice.number || ''}</div>
-            </div>
-          </div>
-          
-          <div class="info-section">
-            <div class="info-block">
-              <div class="info-label">Bill To</div>
-              <div class="info-value">
-                <strong>${client?.name || ''}</strong><br/>
-                ${client?.address || ''}<br/>
-                ${client?.email || ''}<br/>
-                ${client?.phone || ''}
-              </div>
-            </div>
-            <div class="info-block">
-              <div class="info-label">Invoice Details</div>
-              <div class="info-value">
-                <strong>Date:</strong> ${invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString('en-AU') : ''}<br/>
-                ${invoice.dueDate ? `<strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString('en-AU')}` : ''}
-              </div>
-            </div>
-          </div>
-
-          ${invoice.title || invoice.description ? `
-            <div class="notes">
-              <div class="notes-title">${invoice.title || 'Description'}</div>
-              <div>${invoice.description || ''}</div>
-            </div>
-          ` : ''}
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 50%">Description</th>
-                <th style="width: 15%">Qty</th>
-                <th style="width: 17%">Unit Price</th>
-                <th style="width: 18%">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${lineItemsHtml}
-            </tbody>
-          </table>
-
-          <div class="totals">
-            <div class="totals-box">
-              <div class="totals-row">
-                <span>Subtotal</span>
-                <span>$${subtotalVal.toFixed(2)}</span>
-              </div>
-              ${gstVal > 0 ? `
-                <div class="totals-row">
-                  <span>GST (10%)</span>
-                  <span>$${gstVal.toFixed(2)}</span>
-                </div>
-              ` : ''}
-              <div class="totals-row total">
-                <span>Total${gstVal > 0 ? ' (incl. GST)' : ''}</span>
-                <span>$${totalVal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          ${businessSettings.paymentInstructions ? `
-            <div class="payment-box">
-              <div class="payment-title">Payment Details</div>
-              <div style="color: #666; font-size: 11px; line-height: 1.6;">${escapeHtml(businessSettings.paymentInstructions)}</div>
-            </div>
-          ` : ''}
-
-          ${invoice.notes && includeNotes ? `
-            <div class="notes">
-              <div class="notes-title">Additional Notes</div>
-              <div style="color: #666;">${escapeHtml(invoice.notes)}</div>
-            </div>
-          ` : ''}
-
-          ${termsTemplate?.content ? `
-            <div class="terms">
-              <div class="terms-title">Terms & Conditions</div>
-              <div class="terms-content">${escapeHtml(termsTemplate.content)}</div>
-            </div>
-          ` : ''}
-
-          ${warrantyTemplate?.content ? `
-            <div class="terms">
-              <div class="terms-title">Warranty Information</div>
-              <div class="terms-content">${escapeHtml(warrantyTemplate.content)}</div>
-            </div>
-          ` : ''}
-        </div>
-        <script>
-          window.onload = function() {
-            window.print();
-            window.onafterprint = function() { window.close(); };
-          };
-        </script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    
-    // Add a delay to ensure styles and content are fully loaded before printing
-    setTimeout(() => {
-      if (printWindow) {
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.onafterprint = function() { printWindow.close(); };
-        }, 100);
-      }
-    }, 800);
+    window.print();
   };
 
   // Feature detection: check if download attribute is supported
@@ -751,61 +531,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
     }
   };
 
-  const handleShare = async () => {
-    // Use the public payment URL with the payment token - NOT the dashboard URL
-    const publicUrl = invoice?.stripePaymentLink 
-      || (invoice?.paymentToken ? `${window.location.origin}/portal/invoice/${invoice.paymentToken}` : null);
-    
-    if (!publicUrl) {
-      toast({
-        title: "Cannot Share",
-        description: "No payment link available. Try sending the invoice first.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const shareData = {
-      title: `Invoice ${invoice?.number || invoiceId}`,
-      text: `Invoice for ${invoice?.title || 'work'} - ${formatCurrency(Number(invoice?.total || 0))}`,
-      url: publicUrl,
-    };
-
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-        toast({
-          title: "Shared",
-          description: "Invoice link shared successfully.",
-        });
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          handleCopyLink(publicUrl);
-        }
-      }
-    } else {
-      handleCopyLink(publicUrl);
-    }
-  };
-
-  const handleCopyLink = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      toast({
-        title: "Link Copied",
-        description: "Invoice payment link copied to clipboard.",
-      });
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to copy link. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
@@ -881,6 +606,11 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
           @page { size: A4; margin: 12mm; }
+          .print-content .mb-8 { margin-bottom: 8px !important; }
+          .print-content .mb-4 { margin-bottom: 4px !important; }
+          .print-content .p-6, .print-content .sm\\:p-8 { padding: 12px 16px !important; }
+          .print-content .mt-10 { margin-top: 8px !important; }
+          .print-content .pt-5 { padding-top: 6px !important; }
         }
       `}</style>
 
@@ -996,9 +726,9 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               <Download className="h-4 w-4 mr-2" />
               Save as PDF
             </Button>
-            <Button variant="outline" onClick={handleShare} className="w-full sm:w-auto" data-testid="button-share">
-              {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
-              {copied ? 'Copied!' : 'Share'}
+            <Button variant="outline" onClick={() => setShowEmailCompose(true)} className="w-full sm:w-auto" data-testid="button-send">
+              <Send className="h-4 w-4 mr-2" />
+              Send
             </Button>
             {invoice.jobId && invoice.status !== 'paid' && (
               <Button 
