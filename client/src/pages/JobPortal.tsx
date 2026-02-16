@@ -11,7 +11,7 @@ import {
   MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard, Shield
 } from "lucide-react";
 import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -586,7 +586,7 @@ function HeroMap({
 export default function JobPortal() {
   const { token } = useParams<{ token: string }>();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
     root.classList.remove('dark');

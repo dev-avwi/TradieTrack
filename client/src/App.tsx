@@ -1289,12 +1289,12 @@ function App() {
         <NetworkProvider>
           <TooltipProvider>
             <Switch>
-              {/* Public routes - no auth required */}
+              {/* Public routes - no auth required, more specific paths first */}
               <Route path="/q/:token">{(params) => <QuoteShortRedirect token={params.token} />}</Route>
               <Route path="/i/:token">{(params) => <InvoiceShortRedirect token={params.token} />}</Route>
               <Route path="/pay/:token" component={PaymentPage} />
-              <Route path="/portal" component={ClientPortalHub} />
               <Route path="/portal/:type/:token" component={ClientPortal} />
+              <Route path="/portal" component={ClientPortalHub} />
               <Route path="/job-portal/:token" component={JobPortal} />
               <Route path="/p/:token" component={JobPortal} />
               <Route path="/s/:token">{(params) => <SubcontractorWebView token={params.token} />}</Route>

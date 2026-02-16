@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -165,7 +165,7 @@ export default function ClientPortalHub() {
   const [sourceDocument, setSourceDocument] = useState<{ type: string; token: string } | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
     root.classList.remove('dark');
