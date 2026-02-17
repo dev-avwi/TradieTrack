@@ -427,38 +427,77 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Feature detection: check if download attribute is supported
-  const supportsDownloadAttribute = () => {
-    return 'download' in document.createElement('a');
-  };
-
-  // Detect iOS Safari specifically (needs special handling for blob downloads)
-  const isIOSSafari = () => {
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isWebKit = /WebKit/.test(ua);
-    const isChrome = /CriOS/.test(ua); // Chrome on iOS
-    const isFirefox = /FxiOS/.test(ua); // Firefox on iOS
-    return isIOS && isWebKit && !isChrome && !isFirefox;
-  };
-
-  const handleSaveAsPDF = async () => {
-    setIsPrinting(true);
-    
+  const buildPdfUrl = () => {
     const photoParams = new URLSearchParams();
     if (includeBeforePhotos) photoParams.set('includeBeforePhotos', 'true');
     if (includeAfterPhotos) photoParams.set('includeAfterPhotos', 'true');
     if (!includeNotes) photoParams.set('excludeNotes', 'true');
     const photoQuery = photoParams.toString();
-    const pdfUrl = `/api/invoices/${invoiceId}/pdf${photoQuery ? '?' + photoQuery : ''}`;
+    return `/api/invoices/${invoiceId}/pdf${photoQuery ? '?' + photoQuery : ''}`;
+  };
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      const response = await fetch(buildPdfUrl(), {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to generate PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        });
+      } else {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.top = '-10000px';
+        iframe.style.left = '-10000px';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        iframe.addEventListener('load', () => {
+          setTimeout(() => {
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+              window.URL.revokeObjectURL(url);
+            }, 1000);
+          }, 500);
+        });
+      }
+    } catch (error) {
+      console.error('Error generating PDF for print:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF for printing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const isIOSSafari = () => {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isWebKit = /WebKit/.test(ua);
+    const isChrome = /CriOS/.test(ua);
+    const isFirefox = /FxiOS/.test(ua);
+    return isIOS && isWebKit && !isChrome && !isFirefox;
+  };
+
+  const handleSaveAsPDF = async () => {
+    setIsPrinting(true);
+    const pdfUrl = buildPdfUrl();
     const filename = `Invoice-${invoice?.number || invoice?.id || invoiceId}.pdf`;
     
-    // For iOS Safari: open window SYNCHRONOUSLY before any async operations
-    // This prevents Safari from blocking it as a popup
     let pdfWindow: Window | null = null;
     if (isIOSSafari()) {
       pdfWindow = window.open('', '_blank');
@@ -481,7 +520,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
       const url = window.URL.createObjectURL(blob);
       
       if (isIOSSafari() && pdfWindow) {
-        // iOS Safari: convert blob to data URL and write to already-open window
         const reader = new FileReader();
         reader.onloadend = () => {
           const dataUrl = reader.result as string;
@@ -494,8 +532,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           title: "PDF Opened",
           description: "PDF opened in new tab.",
         });
-      } else if (supportsDownloadAttribute()) {
-        // Desktop and most modern mobile browsers: use anchor click with download attribute
+      } else {
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
@@ -507,14 +544,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           title: "PDF Downloaded",
           description: "Invoice PDF has been downloaded successfully.",
         });
-      } else {
-        // Fallback for browsers without download attribute support
-        window.location.href = url;
-        toast({
-          title: "PDF Ready",
-          description: "PDF opened. Use your browser's save option to download.",
-        });
-        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -764,8 +793,8 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
-              <Printer className="h-4 w-4 mr-1.5" />
+            <Button variant="outline" size="sm" onClick={handlePrint} disabled={isPrinting} data-testid="button-print">
+              {isPrinting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Printer className="h-4 w-4 mr-1.5" />}
               Print
             </Button>
             <Button variant="outline" size="sm" onClick={handleSaveAsPDF} data-testid="button-save-pdf">
