@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
+import { trackEvent } from "@/lib/analytics";
 
 export function useInvoices(options?: { archived?: boolean }) {
   const archived = options?.archived ?? false;
@@ -89,6 +90,7 @@ export function useSendInvoice() {
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      trackEvent('invoice_sent');
     },
   });
 }
@@ -131,6 +133,7 @@ export function useMarkInvoicePaid() {
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      trackEvent('invoice_paid');
     },
   });
 }
@@ -160,6 +163,7 @@ export function useRecordPayment() {
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      trackEvent('payment_received');
     },
   });
 }

@@ -9,6 +9,7 @@ import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building
 import { useState, useEffect, useLayoutEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 import { SignaturePad } from "@/components/ui/signature-pad";
 import DemoPaymentSimulator from "@/components/DemoPaymentSimulator";
 
@@ -197,6 +198,7 @@ export default function ClientPortal() {
         acceptedBy: acceptedName.trim(),
         signature: signature
       });
+      trackEvent('quote_accepted');
       toast({
         title: "Quote Accepted",
         description: "Thank you! The tradie has been notified.",

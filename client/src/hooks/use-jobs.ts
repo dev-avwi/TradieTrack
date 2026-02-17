@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 import { UsageCounts } from "./use-subscription";
+import { trackEvent } from "@/lib/analytics";
 
 export interface SubscriptionLimitError {
   error: string;
@@ -121,6 +122,8 @@ export function useCreateJob() {
       
       // Invalidate subscription usage to update job counts
       safeInvalidateQueries({ queryKey: ["/api/subscription/usage"] });
+      
+      trackEvent('job_created', { source: 'web' });
       
       toast({
         title: "Job Created",

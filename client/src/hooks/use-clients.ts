@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
+import { trackEvent } from "@/lib/analytics";
 
 export function useClients() {
   return useQuery({
@@ -22,6 +23,7 @@ export function useCreateClient() {
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/clients"] });
+      trackEvent('client_created');
     },
   });
 }

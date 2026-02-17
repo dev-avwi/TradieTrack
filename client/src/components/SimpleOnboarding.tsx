@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { trackEvent } from "@/lib/analytics";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 import { tradeCatalog } from "@shared/tradeCatalog";
 
@@ -378,6 +379,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         } catch (e) {
           // best effort
         }
+        trackEvent('onboarding_completed');
       } finally {
         setIsSubmitting(false);
       }

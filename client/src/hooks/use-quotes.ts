@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
+import { trackEvent } from "@/lib/analytics";
 
 export function useQuotes(options?: { archived?: boolean }) {
   const archived = options?.archived ?? false;
@@ -89,6 +90,7 @@ export function useSendQuote() {
     },
     onSuccess: () => {
       safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      trackEvent('quote_sent');
     },
   });
 }

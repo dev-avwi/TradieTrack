@@ -1320,7 +1320,6 @@ function PhoneMockup({ screenshot }: { screenshot: string }) {
             className={`w-full h-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
             onLoad={() => setImageLoaded(true)}
             loading="eager"
-            fetchPriority="high"
           />
         </div>
       </div>
