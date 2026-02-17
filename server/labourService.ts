@@ -47,6 +47,7 @@ export async function generateLabourSummary(
   const business = businessArr;
   const roundingMinutes = business?.timeRoundingMinutes ?? 5;
   const companyDefaultRate = parseFloat(String(business?.defaultHourlyRate ?? '100'));
+  const minimumCalloutHours = parseFloat(String(business?.minimumCalloutHours ?? '0'));
   
   const billableEntries = timeEntriesAll.filter(e => e.isBillable !== false && !e.isBreak);
   
@@ -94,7 +95,11 @@ export async function generateLabourSummary(
     }
     
     const roundedMinutes = roundMinutes(totalRawMinutes, roundingMinutes);
-    const roundedHours = minutesToHours(roundedMinutes);
+    let roundedHours = minutesToHours(roundedMinutes);
+    
+    if (minimumCalloutHours > 0 && roundedHours < minimumCalloutHours && roundedHours > 0) {
+      roundedHours = minimumCalloutHours;
+    }
     
     let workerName = 'Worker';
     if (assignment?.displayName) {
@@ -165,6 +170,9 @@ export async function generateLabourLineItems(
       unitPrice: String(line.hourlyRate),
       total: String(line.total),
       sortOrder: maxSortOrder + 1 + i,
+      sourceType: 'labour',
+      sourceId: line.workerId,
+      rateSnapshot: String(line.hourlyRate),
     });
     
     createdItems.push(item);

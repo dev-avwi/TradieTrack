@@ -17,6 +17,7 @@ Core architectural and design decisions include:
 *   **Error Handling**: React ErrorBoundary with user-friendly fallback UI, global unhandled error/promise rejection capture with analytics, server-side structured error logging middleware with request context and slow-request warnings.
 *   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and professional confirmation emails.
 *   **Live Quote/Invoice Editor**: Real-time preview, catalog item integration, deposit settings, quote-to-invoice conversion, Stripe Elements deposits, and digital signatures.
+*   **Financial-Grade Invoice System**: Rate snapshot system on line items (sourceType/sourceId/rateSnapshot), invoice locking after payment (lockedAt/lockedReason), invoice edit audit trail (invoiceEdits table), calculation hash verification before sending, minimum callout hours enforcement, and time entry validation on job completion (open timers, overlaps, negative durations blocked).
 *   **Payment Collection**: Stripe Payment Links, "Tap to Pay Request Flow," QR code support, comprehensive receipt generation, and Quick Collect Payment.
 *   **Subscription & Billing System**: Three-tier pricing (Free, Pro, Team) with upgrade/downgrade functionality and granular team member access.
 *   **Email Automation**: Customizable emails with AI suggestions via SendGrid.

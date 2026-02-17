@@ -900,10 +900,12 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
       });
     }
 
-    // 5. Update invoice status to paid FIRST (payment is recorded regardless of email)
+    // 5. Update invoice status to paid FIRST (payment is recorded regardless of email) and lock it
     const updatedInvoice = await storage.updateInvoice(req.params.id, req.userId, {
       status: 'paid',
-      paidAt: new Date()
+      paidAt: new Date(),
+      lockedAt: new Date(),
+      lockedReason: 'payment_received',
     });
 
     if (!updatedInvoice) {

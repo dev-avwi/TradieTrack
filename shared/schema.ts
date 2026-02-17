@@ -374,6 +374,7 @@ export const businessSettings = pgTable("business_settings", {
   gstEnabled: boolean("gst_enabled").default(false),
   defaultHourlyRate: decimal("default_hourly_rate", { precision: 10, scale: 2 }).default('100.00'),
   timeRoundingMinutes: integer("time_rounding_minutes").default(5),
+  minimumCalloutHours: decimal("minimum_callout_hours", { precision: 10, scale: 2 }).default('0'),
   calloutFee: decimal("callout_fee", { precision: 10, scale: 2 }).default('80.00'),
   quoteValidityDays: integer("quote_validity_days").default(30),
   invoicePrefix: text("invoice_prefix").default('TT-'),
@@ -882,6 +883,9 @@ export const invoices = pgTable("invoices", {
   // Document-level template settings (locked at creation time - won't change if business template changes later)
   documentTemplate: text("document_template"), // modern, professional, minimal - copied from business settings at creation
   documentTemplateSettings: json("document_template_settings"), // Custom overrides for template - copied from business settings at creation
+  lockedAt: timestamp("locked_at"),
+  lockedReason: text("locked_reason"),
+  calculationHash: text("calculation_hash"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -895,6 +899,9 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull().default('0.00'),
   total: decimal("total", { precision: 10, scale: 2 }).notNull().default('0.00'),
   sortOrder: integer("sort_order").default(0),
+  sourceType: text("source_type"),
+  sourceId: varchar("source_id"),
+  rateSnapshot: decimal("rate_snapshot", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1438,9 +1445,26 @@ export const timeEntryEdits = pgTable("time_entry_edits", {
   editSource: text("edit_source").default('manual'),
 });
 
+// Invoice Edit Audit Trail - financial-grade versioning
+export const invoiceEdits = pgTable("invoice_edits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  editedBy: varchar("edited_by").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  editedAt: timestamp("edited_at").defaultNow(),
+  editReason: text("edit_reason"),
+  fieldChanged: text("field_changed").notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  editSource: text("edit_source").default('manual'),
+});
+
 export const insertTimeEntryEditSchema = createInsertSchema(timeEntryEdits).omit({ id: true, editedAt: true });
 export type InsertTimeEntryEdit = z.infer<typeof insertTimeEntryEditSchema>;
 export type TimeEntryEdit = typeof timeEntryEdits.$inferSelect;
+
+export const insertInvoiceEditSchema = createInsertSchema(invoiceEdits).omit({ id: true, editedAt: true });
+export type InsertInvoiceEdit = z.infer<typeof insertInvoiceEditSchema>;
+export type InvoiceEdit = typeof invoiceEdits.$inferSelect;
 
 // Expense Tracking
 export const expenseCategories = pgTable("expense_categories", {

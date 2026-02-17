@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { randomBytes, randomUUID } from "crypto";
+import { randomBytes, randomUUID, createHash } from "crypto";
 import { z } from "zod";
 import multer from "multer";
 import jwt from "jsonwebtoken";
@@ -112,6 +112,10 @@ import {
   insertTimeEntryEditSchema,
   type InsertTimeEntryEdit,
   type TimeEntryEdit,
+  // Invoice edit audit trail
+  invoiceEdits,
+  type InsertInvoiceEdit,
+  type InvoiceEdit,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, and } from "drizzle-orm";
@@ -534,6 +538,34 @@ async function gatherAIContext(userId: string, storage: any, userContext?: UserC
     teamMemberName,
     assignedJobs
   };
+}
+
+async function verifyInvoiceCalculation(
+  invoiceId: string,
+  userId: string,
+  invoice: any
+): Promise<{ valid: boolean; error?: string; details?: any }> {
+  const lineItems = await storage.getInvoiceLineItems(invoiceId);
+  const calculatedSubtotal = lineItems.reduce((sum, item) => {
+    return sum + parseFloat(String(item.total || '0'));
+  }, 0);
+
+  const storedSubtotal = parseFloat(String(invoice.subtotal || '0'));
+
+  if (Math.abs(calculatedSubtotal - storedSubtotal) > 0.01) {
+    return {
+      valid: false,
+      error: 'Invoice totals don\'t match line items. Please refresh and try again.',
+      details: { calculated: calculatedSubtotal.toFixed(2), stored: storedSubtotal }
+    };
+  }
+
+  const hashInput = lineItems.map((i: any) => `${i.description}:${i.quantity}:${i.unitPrice}:${i.total}`).join('|');
+  const calculationHash = createHash('sha256').update(hashInput).digest('hex').substring(0, 16);
+
+  await storage.updateInvoice(invoiceId, userId, { calculationHash });
+
+  return { valid: true };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -4463,6 +4495,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const invoice = await storage.getInvoiceWithLineItems(action.data.invoiceId, userContext.effectiveUserId);
         if (!invoice) {
           return res.json({ success: false, message: "Invoice not found" });
+        }
+
+        const calcVerification = await verifyInvoiceCalculation(invoice.id, userContext.effectiveUserId, invoice);
+        if (!calcVerification.valid) {
+          return res.json({ success: false, message: calcVerification.error });
         }
 
         const client = await storage.getClientById(invoice.clientId);
@@ -10139,9 +10176,69 @@ Be specific about materials, colors, and features that would be included.`
 
   app.post("/api/jobs/:id/equipment", requireAuth, async (req: any, res) => {
     try {
+      const userContext = await getUserContext(req.userId);
+      const jobId = req.params.id;
+      const equipmentId = req.body.equipmentId;
+      const forceAssign = req.body.forceAssign === true;
+
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (!forceAssign) {
+        const jobDate = job.scheduledAt;
+
+        if (jobDate) {
+          const existingAssignments = await db
+            .select({
+              id: jobEquipment.id,
+              jobId: jobEquipment.jobId,
+              equipmentId: jobEquipment.equipmentId,
+              jobTitle: jobs.title,
+              jobStatus: jobs.status,
+              jobScheduledAt: jobs.scheduledAt,
+            })
+            .from(jobEquipment)
+            .innerJoin(jobs, eq(jobs.id, jobEquipment.jobId))
+            .where(and(
+              eq(jobEquipment.equipmentId, equipmentId),
+              eq(jobs.userId, userContext.effectiveUserId)
+            ));
+
+          const conflicts = [];
+          const jobDay = new Date(jobDate).toDateString();
+
+          for (const assignment of existingAssignments) {
+            if (assignment.jobId === jobId) continue;
+
+            const assignedDate = assignment.jobScheduledAt;
+            if (!assignedDate) continue;
+
+            const assignedDay = new Date(assignedDate).toDateString();
+
+            if (jobDay === assignedDay && !['completed', 'cancelled', 'done'].includes(assignment.jobStatus || '')) {
+              conflicts.push({
+                jobId: assignment.jobId,
+                jobTitle: assignment.jobTitle,
+                date: assignedDay
+              });
+            }
+          }
+
+          if (conflicts.length > 0) {
+            return res.status(409).json({
+              warning: 'Equipment scheduling conflict',
+              conflicts,
+              message: `This equipment is already assigned to ${conflicts.length} other active job(s) on this date`
+            });
+          }
+        }
+      }
+
       const assignment = await storage.addJobEquipment({
-        jobId: req.params.id,
-        equipmentId: req.body.equipmentId,
+        jobId,
+        equipmentId,
         userId: String(req.user.id),
         notes: req.body.notes || null,
       });
@@ -11662,6 +11759,47 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      if (data.status === 'done' || data.status === 'completed') {
+        const timeEntries = await storage.getTimeEntriesForJob(req.params.id);
+        const validationErrors: string[] = [];
+
+        const openEntries = timeEntries.filter(e => !e.endTime && !e.isBreak);
+        if (openEntries.length > 0) {
+          validationErrors.push(`${openEntries.length} timer(s) still running - stop all timers before completing`);
+        }
+
+        const negativeDurations = timeEntries.filter(e => e.duration !== null && e.duration < 0);
+        if (negativeDurations.length > 0) {
+          validationErrors.push(`${negativeDurations.length} time entry/entries have negative duration`);
+        }
+
+        const byWorker = new Map<string, typeof timeEntries>();
+        for (const entry of timeEntries.filter(e => e.startTime && e.endTime)) {
+          const key = entry.userId;
+          if (!byWorker.has(key)) byWorker.set(key, []);
+          byWorker.get(key)!.push(entry);
+        }
+
+        for (const [workerId, entries] of byWorker) {
+          const sorted = entries.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const current = sorted[i];
+            const next = sorted[i + 1];
+            if (current.endTime && new Date(current.endTime) > new Date(next.startTime)) {
+              validationErrors.push('Overlapping time entries detected for a worker');
+              break;
+            }
+          }
+        }
+
+        if (validationErrors.length > 0) {
+          return res.status(400).json({
+            error: 'Time entries need attention before completing this job',
+            validationErrors
+          });
+        }
+      }
+      
       // Validate job assignment RBAC: Manager can only assign to workers, not to other managers or owner
       if (data.assignedTo && data.assignedTo !== existingJob?.assignedTo) {
         const userContext = req.userContext || await getUserContext(req.userId);
@@ -11858,6 +11996,47 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(403).json({ error: "You can only update status on jobs assigned to you" });
       }
       
+      if (status === 'done' || status === 'completed') {
+        const timeEntries = await storage.getTimeEntriesForJob(req.params.id);
+        const validationErrors: string[] = [];
+
+        const openEntries = timeEntries.filter(e => !e.endTime && !e.isBreak);
+        if (openEntries.length > 0) {
+          validationErrors.push(`${openEntries.length} timer(s) still running - stop all timers before completing`);
+        }
+
+        const negativeDurations = timeEntries.filter(e => e.duration !== null && e.duration < 0);
+        if (negativeDurations.length > 0) {
+          validationErrors.push(`${negativeDurations.length} time entry/entries have negative duration`);
+        }
+
+        const byWorker = new Map<string, typeof timeEntries>();
+        for (const entry of timeEntries.filter(e => e.startTime && e.endTime)) {
+          const key = entry.userId;
+          if (!byWorker.has(key)) byWorker.set(key, []);
+          byWorker.get(key)!.push(entry);
+        }
+
+        for (const [workerId, entries] of byWorker) {
+          const sorted = entries.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const current = sorted[i];
+            const next = sorted[i + 1];
+            if (current.endTime && new Date(current.endTime) > new Date(next.startTime)) {
+              validationErrors.push('Overlapping time entries detected for a worker');
+              break;
+            }
+          }
+        }
+
+        if (validationErrors.length > 0) {
+          return res.status(400).json({
+            error: 'Time entries need attention before completing this job',
+            validationErrors
+          });
+        }
+      }
+
       // Build update data with stage timestamps
       const now = new Date();
       const updateData: any = { status };
@@ -12933,7 +13112,7 @@ Be specific about materials, colors, and features that would be included.`
       const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
       const invoiceNumber = `INV${year}-${String(invoiceCount).padStart(3, '0')}-${randomSuffix}`;
 
-      // Create invoice marked as paid
+      // Create invoice marked as paid and locked
       const invoice = await storage.createInvoice({
         clientId: client.id,
         jobId: job.id,
@@ -12948,6 +13127,8 @@ Be specific about materials, colors, and features that would be included.`
         dueDate: new Date(),
         sentAt: new Date(),
         paidAt: new Date(),
+        lockedAt: new Date(),
+        lockedReason: 'payment_received',
       }, userContext.effectiveUserId);
 
       // Copy line items from quote to invoice
@@ -15148,12 +15329,22 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Update invoice (team-aware)
+  // Update invoice (team-aware) with locking enforcement and audit trail
   app.patch("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const data = updateInvoiceSchema.parse(req.body);
-      const invoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, data);
+
+      const existingInvoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!existingInvoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      if (existingInvoice.lockedAt || existingInvoice.status === 'paid') {
+        return res.status(403).json({ error: 'This invoice is locked and cannot be edited. Create a new invoice or credit note instead.' });
+      }
+
+      const invoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, data, 'manual');
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
@@ -15184,6 +15375,18 @@ Be specific about materials, colors, and features that would be included.`
 
   // Invoice actions
   app.post("/api/invoices/:id/send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    const userContext = await getUserContext(req.userId);
+    const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+    const calcVerification = await verifyInvoiceCalculation(invoice.id, userContext.effectiveUserId, invoice);
+    if (!calcVerification.valid) {
+      return res.status(400).json({
+        error: calcVerification.error,
+        details: calcVerification.details
+      });
+    }
     const { handleInvoiceSend } = await import('./emailRoutes');
     return handleInvoiceSend(req, res, storage);
   });
@@ -15218,6 +15421,14 @@ Be specific about materials, colors, and features that would be included.`
       const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      const calcVerification = await verifyInvoiceCalculation(invoice.id, userContext.effectiveUserId, invoice);
+      if (!calcVerification.valid) {
+        return res.status(400).json({
+          error: calcVerification.error,
+          details: calcVerification.details
+        });
       }
       
       const client = await storage.getClient(invoice.clientId, userContext.effectiveUserId);
@@ -15395,10 +15606,12 @@ Be specific about materials, colors, and features that would be included.`
         console.log(`Manual payment: $${parsedAmount.toFixed(2)} recorded for invoice total $${invoiceTotal.toFixed(2)}`);
       }
       
-      // Update invoice with payment details
+      // Update invoice with payment details and lock it
       const updatedInvoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, {
         status: 'paid',
         paidAt: new Date(),
+        lockedAt: new Date(),
+        lockedReason: 'payment_received',
         paymentMethod: paymentMethod,
         paymentReference: reference || null,
         notes: notes ? (invoice.notes ? `${invoice.notes}\n\nPayment notes: ${notes}` : `Payment notes: ${notes}`) : invoice.notes,
@@ -17452,11 +17665,13 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(404).json({ error: "Terminal payment not found" });
       }
       
-      // If linked to an invoice, update invoice status
+      // If linked to an invoice, update invoice status and lock it
       if (updatedPayment.invoiceId) {
         await storage.updateInvoice(updatedPayment.invoiceId, req.userId, {
           status: 'paid',
           paidAt: new Date(),
+          lockedAt: new Date(),
+          lockedReason: 'payment_received',
           paidAmount: updatedPayment.amount,
         });
       }
@@ -18238,13 +18453,15 @@ Be specific about materials, colors, and features that would be included.`
         paymentMethod: paymentMethod || 'card',
       } as any);
       
-      // If linked to an invoice, mark it as paid too
+      // If linked to an invoice, mark it as paid and lock it too
       if (request.invoiceId) {
         const invoice = await storage.getInvoice(request.invoiceId, request.userId);
         if (invoice) {
           await storage.updateInvoice(request.invoiceId, request.userId, {
             status: 'paid',
             paidAt: new Date(),
+            lockedAt: new Date(),
+            lockedReason: 'payment_received',
             paymentMethod: 'online',
           });
         }
@@ -31764,10 +31981,12 @@ Respond with JSON in this format:
       const allPaid = allInstallments.every(i => i.id === id || i.status === 'paid');
       
       if (allPaid) {
-        // Mark invoice as paid
+        // Mark invoice as paid and lock it
         await storage.updateInvoice(schedule.invoiceId, userId, { 
           status: 'paid', 
-          paidAt: new Date() 
+          paidAt: new Date(),
+          lockedAt: new Date(),
+          lockedReason: 'payment_received',
         });
         
         // Create notification

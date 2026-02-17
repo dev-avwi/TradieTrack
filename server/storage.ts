@@ -277,6 +277,9 @@ import {
   timeEntryEdits,
   type InsertTimeEntryEdit,
   type TimeEntryEdit,
+  invoiceEdits,
+  type InsertInvoiceEdit,
+  type InvoiceEdit,
   jobPortalTokens,
   type JobPortalToken,
   type InsertJobPortalToken,
@@ -486,7 +489,7 @@ export interface IStorage {
   getInvoices(userId: string, includeArchived?: boolean): Promise<Invoice[]>;
   getInvoice(id: string, userId: string): Promise<Invoice | undefined>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
-  updateInvoice(id: string, userId: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  updateInvoice(id: string, userId: string, invoice: Partial<InsertInvoice>, editSource?: 'manual' | 'system'): Promise<Invoice | undefined>;
   deleteInvoice(id: string, userId: string): Promise<boolean>;
   getInvoiceWithLineItems(id: string, userId: string): Promise<(Invoice & { lineItems: InvoiceLineItem[] }) | undefined>;
   archiveInvoice(id: string, userId: string): Promise<Invoice | undefined>;
@@ -587,6 +590,9 @@ export interface IStorage {
   createTimeEntryEdit(edit: InsertTimeEntryEdit): Promise<TimeEntryEdit>;
   getTimeEntryEdits(timeEntryId: string): Promise<TimeEntryEdit[]>;
   getTimeEntryEditLog(userId: string, limit?: number, offset?: number): Promise<TimeEntryEdit[]>;
+
+  // Invoice Edit Audit Trail
+  createInvoiceEdit(edit: InsertInvoiceEdit): Promise<InvoiceEdit>;
 
   // Job Assignments
   getJobAssignments(jobId: string): Promise<JobAssignment[]>;
@@ -2298,12 +2304,39 @@ export class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async updateInvoice(id: string, userId: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+  async updateInvoice(id: string, userId: string, invoice: Partial<InsertInvoice>, editSource: 'manual' | 'system' = 'system'): Promise<Invoice | undefined> {
+    const existing = await this.getInvoice(id, userId);
+
     const result = await db
       .update(invoices)
       .set({ ...invoice, updatedAt: new Date() })
       .where(and(eq(invoices.id, id), eq(invoices.userId, userId)))
       .returning();
+
+    if (existing && (existing.sentAt || existing.status !== 'draft')) {
+      const fieldsToTrack = ['title', 'description', 'status', 'subtotal', 'gstAmount', 'total', 'dueDate', 'notes', 'paymentMethod', 'paymentReference'];
+      for (const field of fieldsToTrack) {
+        if (field in invoice) {
+          const oldVal = String((existing as any)[field] ?? '');
+          const newVal = String((invoice as any)[field] ?? '');
+          if (oldVal !== newVal) {
+            try {
+              await db.insert(invoiceEdits).values({
+                invoiceId: id,
+                editedBy: userId,
+                fieldChanged: field,
+                oldValue: oldVal,
+                newValue: newVal,
+                editSource,
+              });
+            } catch (auditErr) {
+              console.error('Failed to log invoice edit audit:', auditErr);
+            }
+          }
+        }
+      }
+    }
+
     return result[0];
   }
 
@@ -3103,6 +3136,11 @@ export class PostgresStorage implements IStorage {
 
   async createTimeEntryEdit(edit: InsertTimeEntryEdit): Promise<TimeEntryEdit> {
     const [result] = await db.insert(timeEntryEdits).values(edit).returning();
+    return result;
+  }
+
+  async createInvoiceEdit(edit: InsertInvoiceEdit): Promise<InvoiceEdit> {
+    const [result] = await db.insert(invoiceEdits).values(edit).returning();
     return result;
   }
 
