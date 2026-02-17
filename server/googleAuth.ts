@@ -170,11 +170,17 @@ export function setupGoogleAuth(app: Express) {
         return done(null, existingUser);
       }
 
-      // Check if user exists with the same email
-      const emailUser = await AuthService.findUserByEmail(profile.emails?.[0]?.value || '');
+      // Check if user exists with the same email (password-based or other OAuth)
+      const googleEmail = profile.emails?.[0]?.value || '';
+      const emailUser = await AuthService.findUserByEmail(googleEmail);
       
       if (emailUser) {
-        // Link Google account to existing user
+        // Link Google account to existing user (may have password set)
+        console.log('🔐 Google OAuth - Linking Google account to existing email user:', {
+          email: googleEmail,
+          userId: emailUser.id,
+          hadGoogleId: !!(emailUser as any).googleId
+        });
         await AuthService.linkGoogleAccount(emailUser.id, profile.id);
         (emailUser as any).isNewUser = false;
         return done(null, emailUser);

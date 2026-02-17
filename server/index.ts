@@ -81,7 +81,7 @@ if (process.env.DATABASE_URL) {
   // Now apply JSON middleware for all other routes
   // Increase limit to 10MB for voice note and photo uploads (base64 encoded)
   app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Serve static public assets (logo, etc.) for emails
   app.use('/public', express.static('public'));

@@ -2862,6 +2862,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apple Sign-In for Web - Authorization Code flow
+  app.get("/api/auth/apple/web", (req: any, res) => {
+    const appleServiceId = process.env.APPLE_WEB_SERVICE_ID;
+    const appleTeamId = process.env.APPLE_TEAM_ID;
+
+    if (!appleServiceId || !appleTeamId) {
+      return res.redirect('/auth?error=apple_not_configured');
+    }
+
+    const baseUrl = process.env.VITE_APP_URL ||
+      (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+    const redirectUri = `${baseUrl}/api/auth/apple/callback`;
+    const state = randomBytes(16).toString('hex');
+
+    req.session.appleAuthState = state;
+    req.session.save();
+
+    const params = new URLSearchParams({
+      client_id: appleServiceId,
+      redirect_uri: redirectUri,
+      response_type: 'code id_token',
+      scope: 'name email',
+      response_mode: 'form_post',
+      state: state,
+    });
+
+    res.redirect(`https://appleid.apple.com/auth/authorize?${params.toString()}`);
+  });
+
+  // Apple Sign-In web callback - receives authorization code via form_post
+  app.post("/api/auth/apple/callback", async (req: any, res) => {
+    try {
+      const { code, id_token, state, user: userJson, error: appleError } = req.body;
+
+      if (appleError) {
+        console.error('Apple auth error:', appleError);
+        return res.redirect('/auth?error=apple_auth_failed');
+      }
+
+      if (!state || state !== req.session?.appleAuthState) {
+        console.error('Apple auth: Invalid state parameter');
+        return res.redirect('/auth?error=invalid_state');
+      }
+
+      delete req.session.appleAuthState;
+
+      if (!id_token) {
+        return res.redirect('/auth?error=no_token');
+      }
+
+      const decoded = jwt.decode(id_token) as {
+        sub: string;
+        email?: string;
+        email_verified?: string;
+        iss?: string;
+        aud?: string;
+      } | null;
+
+      if (!decoded?.sub) {
+        return res.redirect('/auth?error=invalid_token');
+      }
+
+      if (decoded.iss !== 'https://appleid.apple.com') {
+        return res.redirect('/auth?error=invalid_issuer');
+      }
+
+      const appleUserId = decoded.sub;
+      const userEmail = decoded.email;
+
+      let firstName = '';
+      let lastName = '';
+      if (userJson) {
+        try {
+          const userData = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
+          firstName = userData.name?.firstName || '';
+          lastName = userData.name?.lastName || '';
+        } catch (e) {
+          // user data parsing failed, continue without name
+        }
+      }
+
+      let isNewUser = false;
+
+      let user = await AuthService.findUserByAppleId(appleUserId);
+
+      if (!user && userEmail) {
+        user = await AuthService.findUserByEmail(userEmail);
+        if (user) {
+          console.log(`🍎 Web: Linking Apple account to existing user: ${userEmail}`);
+          await AuthService.linkAppleAccount(user.id, appleUserId);
+        }
+      }
+
+      if (!user) {
+        const finalEmail = userEmail || `apple_${appleUserId.substring(0, 8)}@privaterelay.appleid.com`;
+        console.log(`🍎 Web: Creating new Apple user: ${finalEmail}`);
+        user = await AuthService.createAppleUser({
+          appleId: appleUserId,
+          email: finalEmail,
+          firstName: firstName || finalEmail.split('@')[0],
+          lastName: lastName || '',
+          emailVerified: true,
+        });
+        isNewUser = true;
+      }
+
+      req.session.userId = user.id;
+      req.session.user = user;
+      req.session.save((err: any) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.redirect('/auth?error=session_failed');
+        }
+        if (isNewUser) {
+          res.redirect('/?onboarding=true');
+        } else {
+          res.redirect('/');
+        }
+      });
+    } catch (error) {
+      console.error('Apple web callback error:', error);
+      res.redirect('/auth?error=auth_failed');
+    }
+  });
+
   // Apple Sign In server-to-server notifications endpoint
   // This receives notifications when users revoke access, delete their account, etc.
   app.post("/api/auth/apple/notifications", async (req: any, res) => {

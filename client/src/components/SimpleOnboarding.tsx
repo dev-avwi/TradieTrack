@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { 
   Wrench, 
@@ -30,7 +29,13 @@ import {
   Loader2,
   MessageSquarePlus,
   FileText,
-  Receipt
+  Receipt,
+  CreditCard,
+  Eye,
+  Check,
+  ExternalLink,
+  Info,
+  DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -42,14 +47,12 @@ interface SimpleOnboardingProps {
   onSkip?: () => void;
 }
 
-// Build trade options from the centralized catalog
 const TRADE_OPTIONS = Object.entries(tradeCatalog).map(([id, trade]) => ({
   id,
   name: trade.name,
   description: trade.description,
 }));
 
-// Group trades into categories for better organization
 const TRADE_CATEGORIES = [
   {
     label: "Electrical & Mechanical",
@@ -79,30 +82,75 @@ const TRADE_CATEGORIES = [
 
 const getStepsForPlan = (plan: string) => {
   const baseSteps = [
-    { id: 'trade', title: 'Your Trade', description: 'What kind of work do you do?' },
-    { id: 'business', title: 'Business Details', description: 'Quick business setup' },
+    { id: 'trade', title: 'Trade', description: 'What kind of work do you do?' },
+    { id: 'business', title: 'Business', description: 'Quick business setup' },
+    { id: 'payments', title: 'Payments', description: 'Get paid faster' },
   ];
   
   if (plan === 'team') {
     return [
       ...baseSteps,
-      { id: 'team', title: 'Your Team', description: 'Set up your team structure' },
-      { id: 'done', title: 'All Set!', description: 'You\'re ready to go' },
+      { id: 'team', title: 'Team', description: 'Set up your team structure' },
+      { id: 'portal', title: 'Preview', description: 'See your client portal' },
+      { id: 'done', title: 'Done', description: 'You\'re ready to go' },
     ];
   }
   
   return [
     ...baseSteps,
-    { id: 'done', title: 'All Set!', description: 'You\'re ready to go' },
+    { id: 'portal', title: 'Preview', description: 'See your client portal' },
+    { id: 'done', title: 'Done', description: 'You\'re ready to go' },
   ];
 };
+
+function StepIndicator({ steps, currentStep }: { steps: { id: string; title: string }[]; currentStep: number }) {
+  return (
+    <div className="w-full max-w-lg mx-auto mb-6">
+      <div className="flex items-center justify-between relative">
+        {steps.map((step, index) => {
+          const isCompleted = index < currentStep;
+          const isActive = index === currentStep;
+          const isUpcoming = index > currentStep;
+
+          return (
+            <div key={step.id} className="flex flex-col items-center relative z-10" style={{ flex: index === 0 || index === steps.length - 1 ? '0 0 auto' : '1' }}>
+              <div
+                className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                  isCompleted
+                    ? 'bg-white text-green-600'
+                    : isActive
+                    ? 'bg-white text-blue-600 ring-4 ring-white/30'
+                    : 'bg-white/20 text-white/60 border-2 border-white/30'
+                }`}
+              >
+                {isCompleted ? <Check className="h-4 w-4" /> : index + 1}
+              </div>
+              <span className={`mt-1.5 text-[10px] md:text-xs font-medium whitespace-nowrap transition-colors ${
+                isCompleted || isActive ? 'text-white' : 'text-white/50'
+              }`}>
+                {step.title}
+              </span>
+            </div>
+          );
+        })}
+        <div className="absolute top-4 left-0 right-0 h-0.5 bg-white/20 -z-0" style={{ marginLeft: '16px', marginRight: '16px' }}>
+          <div
+            className="h-full bg-white/60 transition-all duration-500"
+            style={{ width: `${currentStep === 0 ? 0 : (currentStep / (steps.length - 1)) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardingProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [resumeChecked, setResumeChecked] = useState(false);
   
-  // Fetch user from API to get intendedTier (persisted on server)
   const { data: user, isLoading: userLoading } = useQuery<{
     id: string;
     intendedTier?: string;
@@ -111,7 +159,6 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     queryKey: ['/api/auth/me'],
   });
   
-  // Use intendedTier from user data, falling back to 'free'
   const selectedPlan = user?.intendedTier || 'free';
   const isTeamPlan = selectedPlan === 'team';
   const isProPlan = selectedPlan === 'pro';
@@ -129,15 +176,46 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     hourlyRate: '85',
     teamSize: 'solo',
   });
-  
-  // Update teamSize when user data loads
+
   useEffect(() => {
     if (user?.intendedTier === 'team') {
       setFormData(prev => ({ ...prev, teamSize: 'team' }));
     }
   }, [user?.intendedTier]);
 
-  const progressPercentage = ((currentStep + 1) / STEPS.length) * 100;
+  useEffect(() => {
+    const checkExistingSettings = async () => {
+      try {
+        const res = await fetch('/api/business-settings', { credentials: 'include' });
+        if (res.ok) {
+          const settings = await res.json();
+          if (!settings.onboardingCompleted) {
+            if (settings.tradeType) {
+              setFormData(prev => ({
+                ...prev,
+                tradeType: settings.tradeType || '',
+                businessName: settings.businessName || '',
+                abn: settings.abn || '',
+                phone: settings.phone || '',
+                gstRegistered: settings.gstEnabled ?? true,
+                hourlyRate: String(settings.defaultHourlyRate || '85'),
+              }));
+              if (settings.businessName) {
+                setCurrentStep(2);
+              } else {
+                setCurrentStep(1);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // No existing settings, start fresh
+      } finally {
+        setResumeChecked(true);
+      }
+    };
+    checkExistingSettings();
+  }, []);
 
   const handleTradeSelect = (tradeId: string) => {
     setFormData(prev => ({ ...prev, tradeType: tradeId }));
@@ -147,13 +225,42 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const autoSaveTrade = async (tradeType: string) => {
+    try {
+      const res = await fetch('/api/business-settings', { credentials: 'include' });
+      if (res.ok) {
+        await apiRequest('PATCH', '/api/business-settings', {
+          tradeType,
+          onboardingCompleted: false,
+        });
+      } else if (res.status === 404) {
+        await apiRequest('POST', '/api/business-settings', {
+          tradeType,
+          onboardingCompleted: false,
+          businessName: '',
+        });
+      }
+    } catch (e) {
+      // Silent fail - auto-save is best effort
+    }
+  };
+
+  const getStepIndexById = (id: string) => STEPS.findIndex(s => s.id === id);
+
   const handleNext = async () => {
-    if (currentStep === 0 && !formData.tradeType) {
-      toast({ variant: "destructive", title: "Please select your trade" });
+    const stepId = STEPS[currentStep]?.id;
+
+    if (stepId === 'trade') {
+      if (!formData.tradeType) {
+        toast({ variant: "destructive", title: "Please select your trade" });
+        return;
+      }
+      autoSaveTrade(formData.tradeType);
+      setCurrentStep(prev => prev + 1);
       return;
     }
     
-    if (currentStep === 1) {
+    if (stepId === 'business') {
       if (!formData.businessName.trim()) {
         toast({ variant: "destructive", title: "Business name is required" });
         return;
@@ -172,11 +279,11 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           defaultHourlyRate: parseFloat(formData.hourlyRate) || 85,
           calloutFee: 90,
           teamSize: isTeamPlan ? 'team' : 'solo',
-          onboardingCompleted: !isTeamPlan, // Team plan completes after team step
+          onboardingCompleted: false,
         });
         
         await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
-        setCurrentStep(2);
+        setCurrentStep(prev => prev + 1);
       } catch (error) {
         toast({ 
           variant: "destructive", 
@@ -188,17 +295,20 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       }
       return;
     }
+
+    if (stepId === 'payments') {
+      setCurrentStep(prev => prev + 1);
+      return;
+    }
     
-    // For Team plan, step 2 is the team setup step
-    if (isTeamPlan && currentStep === 2) {
-      // Team step - mark onboarding as complete and move to done step
+    if (stepId === 'team') {
       setIsSubmitting(true);
       try {
         await apiRequest('PATCH', '/api/business-settings', {
-          onboardingCompleted: true,
+          onboardingCompleted: false,
         });
         await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
-        setCurrentStep(3); // Move to done step
+        setCurrentStep(prev => prev + 1);
       } catch (error) {
         toast({ 
           variant: "destructive", 
@@ -210,26 +320,25 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       }
       return;
     }
+
+    if (stepId === 'portal') {
+      setCurrentStep(prev => prev + 1);
+      return;
+    }
     
-    // Done step - seed demo data and start trial for pro/team users before completing
-    const doneStepIndex = isTeamPlan ? 3 : 2;
-    if (currentStep === doneStepIndex) {
+    if (stepId === 'done') {
       setIsSubmitting(true);
       try {
-        // Seed demo data so user has something to explore
         try {
           await apiRequest('POST', '/api/onboarding/seed-demo-data', {});
-          // Invalidate all data queries so demo data shows up immediately
           await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
         } catch (error) {
           console.log('Demo data seeding skipped:', error);
-          // Don't block onboarding if demo data fails
         }
 
-        // If user selected pro or team, start their trial automatically
         if (isProPlan || isTeamPlan) {
           try {
             await apiRequest('POST', '/api/subscription/trial', {});
@@ -237,12 +346,20 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
           } catch (error) {
             console.error('Failed to start trial:', error);
-            // Don't block onboarding completion if trial start fails
             toast({
               title: "Trial activation pending",
               description: "You can activate your trial from the subscription settings.",
             });
           }
+        }
+
+        try {
+          await apiRequest('PATCH', '/api/business-settings', {
+            onboardingCompleted: true,
+          });
+          await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+        } catch (e) {
+          // best effort
         }
       } finally {
         setIsSubmitting(false);
@@ -260,6 +377,27 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     }
   };
 
+  const handleStripeConnect = async () => {
+    setStripeConnecting(true);
+    try {
+      const res = await apiRequest('POST', '/api/stripe-connect/onboard', {});
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ variant: "destructive", title: "Could not start Stripe setup", description: "Please try again later." });
+      }
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Stripe connection failed", 
+        description: error instanceof Error ? error.message : "Please try again later or skip for now." 
+      });
+    } finally {
+      setStripeConnecting(false);
+    }
+  };
+
   const [showTradeRequest, setShowTradeRequest] = useState(false);
   const [requestedTrade, setRequestedTrade] = useState('');
 
@@ -270,7 +408,6 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     }
     
     try {
-      // Submit the trade request (we'll use general for now)
       await apiRequest('POST', '/api/trade-requests', {
         tradeName: requestedTrade.trim(),
       });
@@ -280,11 +417,9 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         description: "We'll add your trade soon! For now, you'll use the General category.",
       });
       
-      // Set to general and continue
       handleTradeSelect('general');
       setShowTradeRequest(false);
     } catch (error) {
-      // If API doesn't exist yet, just continue with general
       handleTradeSelect('general');
       setShowTradeRequest(false);
       toast({
@@ -526,7 +661,182 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           size="lg"
           data-testid="button-next"
         >
-          {isSubmitting ? 'Saving...' : 'Complete Setup'}
+          {isSubmitting ? 'Saving...' : 'Continue'}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderPaymentsStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 rounded-full flex items-center justify-center mb-4">
+          <CreditCard className="h-8 w-8 text-purple-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Get Paid Faster
+        </h2>
+        <p className="text-muted-foreground max-w-sm mx-auto">
+          Connect Stripe to accept card payments and send payment links
+        </p>
+      </div>
+      
+      <div className="max-w-md mx-auto space-y-4">
+        <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+              <CreditCard className="h-4 w-4 text-purple-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">Accept card payments</h4>
+              <p className="text-sm text-muted-foreground">Clients pay invoices directly online</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+              <ExternalLink className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">Send payment links</h4>
+              <p className="text-sm text-muted-foreground">One-click payment links via SMS or email</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">Fast deposits</h4>
+              <p className="text-sm text-muted-foreground">Funds deposited directly to your bank</p>
+            </div>
+          </div>
+        </div>
+
+        <Button 
+          onClick={handleStripeConnect}
+          disabled={stripeConnecting}
+          size="lg"
+          className="w-full"
+        >
+          {stripeConnecting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Connect Stripe
+            </>
+          )}
+        </Button>
+
+        <div className="flex items-start gap-2 px-1">
+          <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            You can always connect Stripe later from Settings
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex justify-between pt-4">
+        <Button variant="outline" onClick={handleBack} data-testid="button-back">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button 
+          variant="ghost"
+          onClick={handleNext}
+          data-testid="button-skip-stripe"
+        >
+          Skip for now
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderPortalStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-4">
+        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 rounded-full flex items-center justify-center mb-4">
+          <Eye className="h-8 w-8 text-blue-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Your Client Portal
+        </h2>
+        <p className="text-muted-foreground max-w-sm mx-auto">
+          See what your clients will see when they view quotes and invoices
+        </p>
+      </div>
+      
+      <div className="max-w-sm mx-auto">
+        <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3">
+            <p className="text-white font-semibold text-sm">
+              {formData.businessName || 'Your Business'}
+            </p>
+            <p className="text-blue-100 text-xs">Client Portal</p>
+          </div>
+          
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Quote #1024</p>
+                <p className="text-sm font-semibold text-gray-900">Kitchen Renovation</p>
+              </div>
+              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                Pending
+              </span>
+            </div>
+            
+            <div className="border-t pt-3 space-y-2">
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>Demolition & prep work</span>
+                <span className="font-medium">$850.00</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>New cabinetry install</span>
+                <span className="font-medium">$2,400.00</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>Benchtop & splashback</span>
+                <span className="font-medium">$1,200.00</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between text-sm font-semibold text-gray-900">
+                <span>Total (inc. GST)</span>
+                <span>$4,895.00</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 pt-1">
+              <div className="flex-1 bg-green-600 text-white text-center text-xs font-medium py-2 rounded-md">
+                Accept Quote
+              </div>
+              <div className="flex-1 bg-blue-600 text-white text-center text-xs font-medium py-2 rounded-md">
+                Pay Invoice
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <p className="text-xs text-center text-muted-foreground mt-3">
+          Clients receive a link to view and accept quotes or pay invoices online
+        </p>
+      </div>
+      
+      <div className="flex justify-between pt-4">
+        <Button variant="outline" onClick={handleBack} data-testid="button-back">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button 
+          onClick={handleNext}
+          size="lg"
+          data-testid="button-next"
+        >
+          Continue
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
@@ -650,7 +960,6 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </p>
       </div>
       
-      {/* Plan-specific content */}
       {isTeamPlan ? (
         <>
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 max-w-sm mx-auto">
@@ -705,7 +1014,6 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             </ul>
           </div>
 
-          {/* Upgrade CTA for free plan */}
           <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Gift className="h-5 w-5 text-orange-500" />
@@ -744,8 +1052,12 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         return renderTradeStep();
       case 'business':
         return renderBusinessStep();
+      case 'payments':
+        return renderPaymentsStep();
       case 'team':
         return renderTeamStep();
+      case 'portal':
+        return renderPortalStep();
       case 'done':
         return renderDoneStep();
       default:
@@ -753,8 +1065,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     }
   };
 
-  // Show loading state while fetching user data
-  if (userLoading) {
+  if (userLoading || !resumeChecked) {
     return (
       <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding-loading">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
@@ -768,6 +1079,9 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       </div>
     );
   }
+
+  const currentStepId = STEPS[currentStep]?.id;
+  const isDoneStep = currentStepId === 'done';
 
   return (
     <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding">
@@ -785,22 +1099,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           </span>
         </div>
         
-        {currentStep < 2 && (
-          <>
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-full mb-4 mx-auto">
-              <Sparkles className="h-4 w-4" />
-              Quick Setup - {currentStep + 1} of 2
-            </div>
-            
-            <div className="max-w-md mx-auto w-full mb-6">
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-orange-400 to-orange-300 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                />
-              </div>
-            </div>
-          </>
+        {!isDoneStep && (
+          <StepIndicator steps={STEPS} currentStep={currentStep} />
         )}
         
         <Card className="flex-1 shadow-xl bg-white/95 backdrop-blur-sm border-white/50 [&_*]:text-gray-800 [&_.text-muted-foreground]:text-gray-500">
@@ -809,7 +1109,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           </CardContent>
         </Card>
         
-        {onSkip && currentStep < 2 && (
+        {onSkip && !isDoneStep && (
           <div className="text-center py-4">
             <Button 
               variant="ghost" 
