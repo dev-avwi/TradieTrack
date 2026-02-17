@@ -10,6 +10,7 @@ export type AppMode = "solo" | "team" | "loading";
 export type DashboardType = 
   | "owner"
   | "manager"
+  | "office_admin"
   | "staff_tradie"
   | "solo_tradie"
   | "loading";
@@ -43,6 +44,7 @@ export function useAppMode() {
     role, 
     isOwner, 
     isManager, 
+    isOfficeAdmin,
     isTradie, 
     permissions, 
     isLoading: roleLoading,
@@ -121,6 +123,10 @@ export function useAppMode() {
       return "solo_tradie";
     }
     
+    if (isOfficeAdmin) {
+      return "office_admin";
+    }
+    
     if (isManager) {
       return "manager";
     }
@@ -146,6 +152,7 @@ export function useAppMode() {
     if (isLoading) return "staff_tradie";
     if (isOwner && hasActiveTeam) return "owner";
     if (isOwner) return "solo_owner";
+    if (isOfficeAdmin) return "office_admin";
     if (isManager) return "manager";
     if (isTradie) return "staff_tradie";
     return "solo_owner";
@@ -207,6 +214,7 @@ export function useAppMode() {
     role,
     isOwner,
     isManager,
+    isOfficeAdmin,
     isTradie,
     permissions,
     hasPermission,

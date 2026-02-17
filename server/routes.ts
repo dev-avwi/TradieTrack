@@ -70,6 +70,10 @@ import {
   insertJobMaterialSchema,
   // Service reminders schema
   insertServiceReminderSchema,
+  // Equipment schemas
+  insertEquipmentSchema,
+  insertEquipmentCategorySchema,
+  insertEquipmentMaintenanceSchema,
   // Rebates schema
   insertRebateSchema,
   // Team Groups schema
@@ -5380,6 +5384,18 @@ Be specific about materials, colors, and features that would be included.`
       // Include user's subscription tier in business settings response
       const user = await storage.getUser(req.userId);
       
+      // Auto-detect simpleMode default: if never explicitly set, base on team members
+      let simpleMode = settings.simpleMode;
+      if (simpleMode === null || simpleMode === undefined) {
+        try {
+          const teamMembers = await storage.getTeamMembers(req.userId);
+          const acceptedMembers = teamMembers.filter((m: any) => m.inviteStatus === "accepted");
+          simpleMode = acceptedMembers.length === 0;
+        } catch {
+          simpleMode = true;
+        }
+      }
+      
       // Detect mobile app requests - they need absolute URLs for images
       const userAgent = req.headers['user-agent'] || '';
       const isMobileApp = userAgent.includes('Expo') || 
@@ -5388,6 +5404,7 @@ Be specific about materials, colors, and features that would be included.`
       
       res.json({
         ...settings,
+        simpleMode,
         // Ensure logoUrl is accessible - absolute URL for mobile, relative for web
         logoUrl: resolveBrowserLogoUrl(settings.logoUrl, isMobileApp),
         subscriptionTier: user?.subscriptionTier || 'free',
@@ -9548,6 +9565,125 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error completing service reminder:", error);
       res.status(500).json({ error: "Failed to complete service reminder" });
+    }
+  });
+
+  // Equipment Management Routes
+  app.get("/api/equipment/categories", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const categories = await storage.getEquipmentCategories(userContext.effectiveUserId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching equipment categories:", error);
+      res.status(500).json({ error: "Failed to fetch equipment categories" });
+    }
+  });
+
+  app.post("/api/equipment/categories", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const validatedData = insertEquipmentCategorySchema.parse(req.body);
+      const category = await storage.createEquipmentCategory({
+        ...validatedData,
+        userId: userContext.effectiveUserId,
+      });
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating equipment category:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create equipment category" });
+    }
+  });
+
+  app.get("/api/equipment", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const items = await storage.getEquipment(userContext.effectiveUserId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      res.status(500).json({ error: "Failed to fetch equipment" });
+    }
+  });
+
+  app.post("/api/equipment", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const validatedData = insertEquipmentSchema.parse(req.body);
+      const item = await storage.createEquipment({
+        ...validatedData,
+        userId: userContext.effectiveUserId,
+      });
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating equipment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create equipment" });
+    }
+  });
+
+  app.patch("/api/equipment/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const item = await storage.updateEquipment(req.params.id, userContext.effectiveUserId, req.body);
+      if (!item) {
+        return res.status(404).json({ error: "Equipment not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      console.error("Error updating equipment:", error);
+      res.status(500).json({ error: "Failed to update equipment" });
+    }
+  });
+
+  app.delete("/api/equipment/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const success = await storage.deleteEquipment(req.params.id, userContext.effectiveUserId);
+      if (!success) {
+        return res.status(404).json({ error: "Equipment not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting equipment:", error);
+      res.status(500).json({ error: "Failed to delete equipment" });
+    }
+  });
+
+  app.get("/api/equipment/:id/maintenance", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const records = await storage.getEquipmentMaintenance(req.params.id, userContext.effectiveUserId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching maintenance records:", error);
+      res.status(500).json({ error: "Failed to fetch maintenance records" });
+    }
+  });
+
+  app.post("/api/equipment/:id/maintenance", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const validatedData = insertEquipmentMaintenanceSchema.parse({
+        ...req.body,
+        equipmentId: req.params.id,
+      });
+      const record = await storage.createEquipmentMaintenance({
+        ...validatedData,
+        userId: userContext.effectiveUserId,
+      });
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Error creating maintenance record:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create maintenance record" });
     }
   });
 
@@ -15901,6 +16037,90 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error fetching unified dashboard:", error);
       res.status(500).json({ error: "Failed to fetch dashboard data" });
+    }
+  });
+
+  app.get("/api/dashboard/profit-snapshot", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const isOwnerOrManager = userContext.isOwner || userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+      if (!isOwnerOrManager) {
+        return res.status(403).json({ error: 'Access denied - owners and managers only' });
+      }
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      const weekStart = new Date(todayStart);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const [allInvoices, allJobs] = await Promise.all([
+        storage.getInvoices(effectiveUserId),
+        storage.getJobs(effectiveUserId),
+      ]);
+
+      const paidInvoices = allInvoices.filter(i => i.status === 'paid' && i.paidAt);
+
+      const revenueToday = paidInvoices
+        .filter(i => { const d = new Date(i.paidAt!); return d >= todayStart && d < tomorrowStart; })
+        .reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+
+      const revenueThisWeek = paidInvoices
+        .filter(i => new Date(i.paidAt!) >= weekStart)
+        .reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+
+      const revenueThisMonth = paidInvoices
+        .filter(i => new Date(i.paidAt!) >= monthStart)
+        .reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+
+      const cashCollectedToday = revenueToday;
+
+      let labourCostThisMonth = 0;
+      try {
+        const timeEntries = await storage.getTimeEntriesInRange(effectiveUserId, monthStart, now);
+        labourCostThisMonth = timeEntries
+          .filter(e => e.endTime)
+          .reduce((sum, e) => {
+            const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+            return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
+          }, 0);
+      } catch (e) { /* no time entries */ }
+
+      let materialCostThisMonth = 0;
+      try {
+        const monthJobs = allJobs.filter(j => {
+          const created = j.createdAt ? new Date(j.createdAt) : null;
+          return created && created >= monthStart;
+        });
+        const allJobIds = allJobs.map(j => j.id);
+        const materialPromises = allJobIds.map(async (jobId) => {
+          try {
+            const materials = await storage.getJobMaterials(jobId, effectiveUserId);
+            return materials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+          } catch { return 0; }
+        });
+        const materialCosts = await Promise.all(materialPromises);
+        materialCostThisMonth = materialCosts.reduce((sum, c) => sum + c, 0);
+      } catch (e) { /* no materials */ }
+
+      const grossProfit = revenueThisMonth - labourCostThisMonth - materialCostThisMonth;
+      const grossMargin = revenueThisMonth > 0 ? (grossProfit / revenueThisMonth) * 100 : 0;
+
+      res.json({
+        revenueToday,
+        revenueThisWeek,
+        revenueThisMonth,
+        labourCostThisMonth,
+        materialCostThisMonth,
+        grossProfit,
+        grossMargin: parseFloat(grossMargin.toFixed(1)),
+        cashCollectedToday,
+      });
+    } catch (error) {
+      console.error("Error fetching profit snapshot:", error);
+      res.status(500).json({ error: "Failed to fetch profit snapshot" });
     }
   });
 
@@ -27742,19 +27962,31 @@ Respond with JSON in this format:
           }
         } catch (e) {}
 
+        const totalHours = timeEntries
+          .filter(e => e.endTime)
+          .reduce((sum, e) => {
+            return sum + (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+          }, 0);
+
         return {
           jobId: job.id,
           title: job.title,
           status: job.status,
+          clientId: job.clientId || null,
           clientName,
+          assignedTo: (job as any).assignedTo || null,
           quoted: quotedAmount,
           revenue,
+          labourCost,
+          materialCost: materialsCost,
+          expenseCost,
           costs,
           profit,
           margin: parseFloat(margin.toFixed(1)),
           profitStatus: margin > 15 ? 'profitable' : margin > 5 ? 'tight' : 'loss',
           completedAt: (job as any).completedAt || null,
           createdAt: job.createdAt,
+          totalHours: parseFloat(totalHours.toFixed(1)),
         };
       }));
 
@@ -27779,6 +28011,140 @@ Respond with JSON in this format:
     } catch (error) {
       console.error("Error generating profitability report:", error);
       res.status(500).json({ error: "Failed to generate profitability report" });
+    }
+  });
+
+  app.get("/api/reports/profitability/by-client", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const isOwnerOrManager = userContext.isOwner || userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+      if (!isOwnerOrManager) return res.status(403).json({ error: 'Access denied - owners and managers only' });
+      const effectiveUserId = userContext.effectiveUserId;
+      const { startDate, endDate } = req.query;
+
+      let jobs = await storage.getJobs(effectiveUserId);
+      if (startDate) jobs = jobs.filter(j => new Date(j.createdAt!) >= new Date(startDate as string));
+      if (endDate) jobs = jobs.filter(j => new Date(j.createdAt!) <= new Date(endDate as string));
+
+      const allInvoices = await storage.getInvoices(effectiveUserId);
+      const allExpenses = await storage.getExpenses(effectiveUserId);
+
+      const clientMap: Record<string, { clientId: string; clientName: string; jobCount: number; totalRevenue: number; totalCosts: number; totalProfit: number; margins: number[] }> = {};
+
+      await Promise.all(jobs.map(async (job) => {
+        const cid = job.clientId || 'no-client';
+        if (!clientMap[cid]) {
+          let clientName = 'No Client';
+          try {
+            if (job.clientId) {
+              const client = await storage.getClientById(job.clientId);
+              clientName = client ? `${(client as any).firstName || ''} ${(client as any).lastName || ''}`.trim() || 'Unknown' : 'Unknown';
+            }
+          } catch (e) {}
+          clientMap[cid] = { clientId: cid, clientName, jobCount: 0, totalRevenue: 0, totalCosts: 0, totalProfit: 0, margins: [] };
+        }
+        const entry = clientMap[cid];
+        entry.jobCount++;
+
+        const jobInvoices = allInvoices.filter(i => i.jobId === job.id && i.status === 'paid');
+        const revenue = jobInvoices.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+        const jobExpenses = allExpenses.filter(e => e.jobId === job.id);
+        const expenseCost = jobExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+        const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
+        const labourCost = timeEntries.filter(e => e.endTime).reduce((sum, e) => {
+          const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+          return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
+        }, 0);
+        let materialsCost = 0;
+        try { const m = await storage.getJobMaterials(job.id, effectiveUserId); materialsCost = m.reduce((s, x) => s + parseFloat(x.totalCost?.toString() || '0'), 0); } catch (e) {}
+
+        const costs = expenseCost + labourCost + materialsCost;
+        const profit = revenue - costs;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+        entry.totalRevenue += revenue;
+        entry.totalCosts += costs;
+        entry.totalProfit += profit;
+        if (revenue > 0) entry.margins.push(margin);
+      }));
+
+      const clients = Object.values(clientMap).map(c => ({
+        ...c,
+        avgMargin: c.margins.length > 0 ? parseFloat((c.margins.reduce((a, b) => a + b, 0) / c.margins.length).toFixed(1)) : 0,
+        margins: undefined,
+      })).sort((a, b) => b.totalProfit - a.totalProfit);
+
+      res.json({ clients });
+    } catch (error) {
+      console.error("Error generating by-client profitability:", error);
+      res.status(500).json({ error: "Failed to generate by-client report" });
+    }
+  });
+
+  app.get("/api/reports/profitability/by-worker", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const isOwnerOrManager = userContext.isOwner || userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+      if (!isOwnerOrManager) return res.status(403).json({ error: 'Access denied - owners and managers only' });
+      const effectiveUserId = userContext.effectiveUserId;
+      const { startDate, endDate } = req.query;
+
+      let jobs = await storage.getJobs(effectiveUserId);
+      if (startDate) jobs = jobs.filter(j => new Date(j.createdAt!) >= new Date(startDate as string));
+      if (endDate) jobs = jobs.filter(j => new Date(j.createdAt!) <= new Date(endDate as string));
+
+      const allInvoices = await storage.getInvoices(effectiveUserId);
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+
+      const workerMap: Record<string, { workerId: string; workerName: string; jobCount: number; totalHours: number; totalLabourCost: number; revenueGenerated: number; avgHourlyRate: number; rateEntries: number[] }> = {};
+
+      await Promise.all(jobs.map(async (job) => {
+        const assignee = (job as any).assignedTo;
+        if (!assignee) return;
+
+        if (!workerMap[assignee]) {
+          let workerName = 'Unknown Worker';
+          const member = teamMembers.find((m: any) => m.id === assignee || m.memberId === assignee);
+          if (member) {
+            workerName = (member as any).name || 'Team Member';
+          } else {
+            try {
+              const user = await storage.getUser(assignee);
+              if (user) workerName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || 'Unknown';
+            } catch (e) {}
+          }
+          workerMap[assignee] = { workerId: assignee, workerName, jobCount: 0, totalHours: 0, totalLabourCost: 0, revenueGenerated: 0, avgHourlyRate: 0, rateEntries: [] };
+        }
+        const entry = workerMap[assignee];
+        entry.jobCount++;
+
+        const jobInvoices = allInvoices.filter(i => i.jobId === job.id && i.status === 'paid');
+        const revenue = jobInvoices.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+        entry.revenueGenerated += revenue;
+
+        const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
+        timeEntries.filter(e => e.endTime).forEach(e => {
+          const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+          const rate = parseFloat(e.hourlyRate?.toString() || '0');
+          entry.totalHours += hours;
+          entry.totalLabourCost += hours * rate;
+          if (rate > 0) entry.rateEntries.push(rate);
+        });
+      }));
+
+      const workers = Object.values(workerMap).map(w => ({
+        ...w,
+        totalHours: parseFloat(w.totalHours.toFixed(1)),
+        avgHourlyRate: w.rateEntries.length > 0 ? parseFloat((w.rateEntries.reduce((a, b) => a + b, 0) / w.rateEntries.length).toFixed(2)) : 0,
+        rateEntries: undefined,
+      })).sort((a, b) => b.revenueGenerated - a.revenueGenerated);
+
+      res.json({ workers });
+    } catch (error) {
+      console.error("Error generating by-worker profitability:", error);
+      res.status(500).json({ error: "Failed to generate by-worker report" });
     }
   });
 

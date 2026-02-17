@@ -22,6 +22,7 @@ import {
   Files,
   Send,
   Repeat,
+  Wrench,
   type LucideIcon
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ export interface NavItem {
   requiresOwnerOrManager?: boolean;
   hideForTradie?: boolean;
   hideForStaff?: boolean;  // Hide from staff tradies completely
+  hideInSimpleMode?: boolean;  // Hide when simple mode is active
   allowedRoles?: UserRole[];  // Explicit role whitelist
   showInBottomNav?: boolean;
   showInSidebar?: boolean;
@@ -56,7 +58,7 @@ export const mainMenuItems: NavItem[] = [
     showInBottomNav: true,
     showInSidebar: true,
     showInMore: false,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
   {
     title: "Work",
@@ -68,7 +70,7 @@ export const mainMenuItems: NavItem[] = [
     showInBottomNav: true,
     showInSidebar: true,
     showInMore: false,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
   {
     title: "Clients",
@@ -80,7 +82,7 @@ export const mainMenuItems: NavItem[] = [
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
     title: "Documents",
@@ -93,7 +95,7 @@ export const mainMenuItems: NavItem[] = [
     showInSidebar: true,
     showInBottomNav: false,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
     title: "Payment Hub",
@@ -105,7 +107,7 @@ export const mainMenuItems: NavItem[] = [
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
     title: "Schedule",
@@ -116,7 +118,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-success/10",
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
   {
     title: "Time Tracking",
@@ -137,6 +139,7 @@ export const mainMenuItems: NavItem[] = [
     color: "text-success",
     bgColor: "bg-success/10",
     hideForStaff: true,
+    hideInSimpleMode: true,
     requiresOwnerOrManager: true,
     showInSidebar: true,
     showInMore: true,
@@ -153,7 +156,7 @@ export const mainMenuItems: NavItem[] = [
     showInSidebar: true,
     showInMore: false,
     showBadge: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
   {
     title: "Map",
@@ -164,6 +167,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-success/10",
     requiresOwnerOrManager: true,
     hideForStaff: true,
+    hideInSimpleMode: true,
     showInBottomNav: false,
     showInSidebar: true,
     showInMore: true,
@@ -178,6 +182,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-primary/10",
     requiresOwnerOrManager: true,
     hideForStaff: true,
+    hideInSimpleMode: true,
     showInSidebar: true,
     showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
@@ -192,7 +197,7 @@ export const mainMenuItems: NavItem[] = [
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
     title: "Templates",
@@ -232,6 +237,19 @@ export const mainMenuItems: NavItem[] = [
   //   allowedRoles: ['owner', 'solo_owner', 'manager'],
   // },
   {
+    title: "Equipment",
+    url: "/equipment",
+    icon: Wrench,
+    description: "Track tools and equipment",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    hideForStaff: true,
+    hideInSimpleMode: false,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
     title: "Communications",
     url: "/communications",
     icon: Send,
@@ -241,7 +259,7 @@ export const mainMenuItems: NavItem[] = [
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
 ];
 
@@ -286,6 +304,7 @@ export interface FilterOptions {
   isOwner: boolean;
   isManager: boolean;
   userRole?: UserRole;
+  isSimpleMode?: boolean;
 }
 
 export function filterNavItems(items: NavItem[], options: FilterOptions): NavItem[] {
@@ -302,6 +321,11 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     
     // Hide from staff tradies
     if (item.hideForStaff && isStaffTradie) {
+      return false;
+    }
+
+    // Hide in simple mode
+    if (item.hideInSimpleMode && options.isSimpleMode) {
       return false;
     }
     

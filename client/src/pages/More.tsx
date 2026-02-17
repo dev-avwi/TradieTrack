@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useSimpleMode } from "@/hooks/use-simple-mode";
 import { getMorePageItems, type NavItem } from "@/lib/navigation-config";
 
 interface MoreItem {
@@ -24,7 +25,8 @@ export default function More() {
   const { data: businessSettings } = useBusinessSettings();
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
   
-  const morePageItems = getMorePageItems({ isTeam, isTradie, isOwner, isManager, userRole });
+  const { isSimpleMode } = useSimpleMode();
+  const morePageItems = getMorePageItems({ isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode });
   
   const allItems: MoreItem[] = morePageItems.map((item: NavItem) => ({
     title: item.title,

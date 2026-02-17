@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { WORKER_PERMISSIONS, type WorkerPermission } from "@shared/schema";
 
-export type UserRoleType = "owner" | "manager" | "tradie" | "loading";
+export type UserRoleType = "owner" | "manager" | "office_admin" | "tradie" | "loading";
 
 interface User {
   id: string;
@@ -65,6 +65,9 @@ export function useUserRole() {
       
       if (teamMemberInfo.roleName) {
         const roleName = teamMemberInfo.roleName.toLowerCase();
+        if (roleName.includes("office") && roleName.includes("admin")) {
+          return "office_admin";
+        }
         if (roleName.includes("manager") || roleName.includes("admin")) {
           return "manager";
         }
@@ -81,7 +84,8 @@ export function useUserRole() {
 
   const role = getUserRole();
   const isOwner = role === "owner";
-  const isManager = role === "manager";
+  const isManager = role === "manager" || role === "office_admin";
+  const isOfficeAdmin = role === "office_admin";
   const isTradie = role === "tradie";
   
   const hasCustomPermissions = teamMemberInfo?.hasCustomPermissions === true;
@@ -112,6 +116,7 @@ export function useUserRole() {
     role,
     isOwner,
     isManager,
+    isOfficeAdmin,
     isTradie,
     isLoading,
     permissions,

@@ -30,7 +30,7 @@ export const PERMISSIONS = {
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
 // Role types for the UI
-export type UserRole = 'owner' | 'solo_owner' | 'manager' | 'staff_tradie';
+export type UserRole = 'owner' | 'solo_owner' | 'manager' | 'office_admin' | 'staff_tradie';
 
 // Page access configuration - which pages each role can access
 export interface PagePermission {
@@ -44,82 +44,83 @@ export interface PagePermission {
 // Define page-level access control
 export const PAGE_PERMISSIONS: PagePermission[] = [
   // Always accessible
-  { path: '/', label: 'Dashboard', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
-  { path: '/profile', label: 'Profile', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
-  { path: '/my-account', label: 'My Account', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/', label: 'Dashboard', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
+  { path: '/profile', label: 'Profile', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
+  { path: '/my-account', label: 'My Account', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
   
   // Work - unified job view for all roles
-  { path: '/work', label: 'Work', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/work', label: 'Work', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
   
   // Jobs - all roles can see, but staff only sees assigned
-  { path: '/jobs', label: 'Jobs', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/jobs', label: 'Jobs', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
   { path: '/jobs/new', label: 'New Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/jobs/:id', label: 'Job Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  { path: '/jobs/:id', label: 'Job Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
   { path: '/jobs/:id/edit', label: 'Edit Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/jobs/:id/complete', label: 'Complete Job', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
-  // Clients - staff can only view (not in nav for staff)
-  { path: '/clients', label: 'Clients', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
-  { path: '/clients/new', label: 'New Client', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/clients/:id', label: 'Client Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  // Clients - office admin has full client access
+  { path: '/clients', label: 'Clients', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
+  { path: '/clients/new', label: 'New Client', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/clients/:id', label: 'Client Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
   
-  // Documents Hub - unified view for quotes, invoices, and receipts
-  { path: '/documents', label: 'Documents', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Documents Hub - office admin handles documents
+  { path: '/documents', label: 'Documents', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
-  // Quotes - not for staff
-  { path: '/quotes', label: 'Quotes', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
-  { path: '/quotes/new', label: 'New Quote', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/quotes/:id', label: 'Quote Details', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/quote-editor/:id', label: 'Quote Editor', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  // Quotes - office admin can manage quotes
+  { path: '/quotes', label: 'Quotes', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
+  { path: '/quotes/new', label: 'New Quote', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/quotes/:id', label: 'Quote Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/quote-editor/:id', label: 'Quote Editor', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   
-  // Invoices - not for staff
-  { path: '/invoices', label: 'Invoices', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
-  { path: '/invoices/new', label: 'New Invoice', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/invoices/:id', label: 'Invoice Details', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/invoice-editor/:id', label: 'Invoice Editor', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  // Invoices - office admin can manage invoices
+  { path: '/invoices', label: 'Invoices', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
+  { path: '/invoices/new', label: 'New Invoice', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/invoices/:id', label: 'Invoice Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/invoice-editor/:id', label: 'Invoice Editor', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   
-  // Receipts - not for staff
-  { path: '/receipts/:id', label: 'Receipt Details', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  // Receipts - office admin can view receipts
+  { path: '/receipts/:id', label: 'Receipt Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   
   // Calendar/Schedule - staff sees only their assigned jobs
-  { path: '/calendar', label: 'Calendar', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
-  { path: '/schedule', label: 'Schedule', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/calendar', label: 'Calendar', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
+  { path: '/schedule', label: 'Schedule', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
   
   // Dispatch - owner/manager only
   { path: '/dispatch', label: 'Dispatch', allowedRoles: ['owner', 'manager'], showInNav: true },
   
-  // Time Tracking - all roles
+  // Time Tracking - all roles (office admin excluded - no field work)
   { path: '/time-tracking', label: 'Time Tracking', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   
   // Team Operations - consolidated team management
   // Legacy routes redirect to /team-operations (keep in permissions for RouteGuard to allow access before redirect)
   { path: '/team', label: 'Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
-  { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  { path: '/team-dashboard', label: 'Team Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
   { path: '/team/invite', label: 'Invite Team', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   { path: '/team-operations', label: 'Team Operations', allowedRoles: ['owner', 'manager'], showInNav: true },
   
   // Chat - all roles including solo owners for SMS conversations
-  { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
-  { path: '/team-chat', label: 'Team Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
+  { path: '/chat', label: 'Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
+  { path: '/team-chat', label: 'Team Chat', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
   
   // Map - owner/solo_owner/manager (solo owners can view job locations)
   { path: '/map', label: 'Map', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
   // Reports - owner/manager only
   { path: '/reports', label: 'Reports', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  { path: '/reports/profitability', label: 'Profitability', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
-  // Collect Payment - owner/manager only
-  { path: '/collect-payment', label: 'Collect Payment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Collect Payment - office admin can collect payments
+  { path: '/collect-payment', label: 'Collect Payment', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
-  // Payment Hub - owner/manager only
-  { path: '/payment-hub', label: 'Payment Hub', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Payment Hub - office admin can manage payments
+  { path: '/payment-hub', label: 'Payment Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
   // Automations - owner only (controls now in Communications Hub)
   { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
   
-  // Leads / CRM - owner/solo_owner/manager
-  { path: '/leads', label: 'Leads', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Leads / CRM - owner/solo_owner/manager/office_admin
+  { path: '/leads', label: 'Leads', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
   // Recurring Jobs - owner/solo_owner/manager
   { path: '/recurring-jobs', label: 'Recurring Jobs', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
@@ -130,8 +131,11 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Templates Hub - owner/manager only
   { path: '/templates', label: 'Templates', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
-  // Communications Hub - owner/manager only
-  { path: '/communications', label: 'Communications', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Communications Hub - office admin handles communications
+  { path: '/communications', label: 'Communications', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
+  
+  // Equipment - owner/manager
+  { path: '/equipment', label: 'Equipment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
   // Integrations - owner only
   { path: '/integrations', label: 'Integrations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
@@ -291,10 +295,41 @@ export function getActionPermissions(role: UserRole): ActionPermissions {
         canUseDispatch: true,
       };
       
+    case 'office_admin':
+      return {
+        canCreateJobs: false,
+        canEditJobs: false,
+        canDeleteJobs: false,
+        canAssignJobs: false,
+        canCreateClients: true,
+        canEditClients: true,
+        canDeleteClients: false,
+        canCreateQuotes: true,
+        canEditQuotes: true,
+        canDeleteQuotes: false,
+        canSendQuotes: true,
+        canCreateInvoices: true,
+        canEditInvoices: true,
+        canDeleteInvoices: false,
+        canSendInvoices: true,
+        canManageTeam: false,
+        canInviteTeam: false,
+        canRemoveTeam: false,
+        canManageSettings: false,
+        canManageBilling: false,
+        canManageTemplates: false,
+        canManageAutomations: false,
+        canManageIntegrations: false,
+        canViewAllJobs: true,
+        canViewReports: false,
+        canViewMap: false,
+        canUseDispatch: false,
+      };
+
     case 'staff_tradie':
       return {
         canCreateJobs: false,
-        canEditJobs: false, // Can only update status on assigned jobs
+        canEditJobs: false,
         canDeleteJobs: false,
         canAssignJobs: false,
         canCreateClients: false,

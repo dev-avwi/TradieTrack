@@ -29,7 +29,11 @@ Core architectural and design decisions include:
 *   **Comprehensive Offline Mode**: Offline-first support for major workflows with smart synchronization (IndexedDB and SQLite), including time tracking and payment drafts.
 *   **Media Sync**: Photos, videos, voice notes, and text notes sync between mobile and web, including photo markup.
 *   **Recurring Invoices & Jobs**: Functionality for setting up recurring invoices and jobs.
-*   **Financial Management**: Unified dashboard with key performance indicators and per-job profitability reporting.
+*   **Financial Management**: Unified dashboard with key performance indicators, per-job profitability reporting, and Profit Snapshot on owner dashboard (revenue, labour/material costs, gross profit, margin %).
+*   **Profitability Reports**: Enhanced reporting with By Job, By Client, and By Worker tabs, date range filters, and margin analysis.
+*   **Office Admin Role**: Dedicated role preset for office staff with permissions for quotes, invoices, clients, and communications (no time tracking/GPS).
+*   **Simple Mode**: Toggle to hide team-heavy features for solo operators; auto-detects based on team members.
+*   **Equipment Management**: Full CRUD for equipment registry, categories, and maintenance logs with status tracking.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with KPI headers and document relationship links.
 *   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
 *   **Xero Integration**: Comprehensive bidirectional sync including contacts, invoices, payments (two-way), invoice status, credit notes, and inventory items. OAuth 2.0 authentication with token refresh and multi-tenant support.

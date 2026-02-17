@@ -51,6 +51,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TeamMember, UserRole } from "@shared/schema";
+import { ROLE_PRESETS, PERMISSION_LABELS, type WorkerPermission } from "@shared/schema";
 import WorkerCommandCenter from "@/components/WorkerCommandCenter";
 
 // Permission type from API
@@ -455,6 +456,7 @@ export default function TeamManagement() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
   const [inviteHourlyRate, setInviteHourlyRate] = useState("");
+  const [invitePreset, setInvitePreset] = useState<string>("");
 
   // Fetch team members
   const { data: teamMembers, isLoading: membersLoading } = useQuery<TeamMember[]>({
@@ -606,6 +608,24 @@ export default function TeamManagement() {
     setInviteLastName("");
     setInviteRoleId("");
     setInviteHourlyRate("");
+    setInvitePreset("");
+  };
+
+  const handlePresetChange = (presetKey: string) => {
+    setInvitePreset(presetKey);
+    const preset = ROLE_PRESETS[presetKey as keyof typeof ROLE_PRESETS];
+    if (preset && roles) {
+      const matchingRole = roles.find(r => {
+        const roleName = r.name.toLowerCase();
+        if (presetKey === 'worker') return roleName.includes('worker') || roleName.includes('tradie') || roleName.includes('field');
+        if (presetKey === 'office_admin') return roleName.includes('office') || roleName.includes('admin');
+        if (presetKey === 'manager') return roleName.includes('manager') || roleName.includes('administrator');
+        return false;
+      });
+      if (matchingRole) {
+        setInviteRoleId(matchingRole.id);
+      }
+    }
   };
 
   const handleInvite = () => {
@@ -1121,7 +1141,7 @@ export default function TeamManagement() {
 
       {/* Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent data-testid="dialog-invite-member">
+        <DialogContent className="max-w-lg" data-testid="dialog-invite-member">
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
             <DialogDescription>
@@ -1163,7 +1183,55 @@ export default function TeamManagement() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role">Role *</Label>
+              <Label>Role Preset *</Label>
+              <div className="grid gap-2">
+                {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+                  <div
+                    key={key}
+                    className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
+                      invitePreset === key
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover-elevate'
+                    }`}
+                    onClick={() => handlePresetChange(key)}
+                    data-testid={`preset-${key}`}
+                  >
+                    <div className="flex items-center pt-0.5">
+                      <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                        invitePreset === key ? 'border-primary' : 'border-muted-foreground/40'
+                      }`}>
+                        {invitePreset === key && (
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{preset.label}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {preset.permissions.length} permissions
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {invitePreset && (
+                <div className="mt-2 p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Included permissions:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {ROLE_PRESETS[invitePreset as keyof typeof ROLE_PRESETS]?.permissions.map((perm) => (
+                      <Badge key={perm} variant="outline" className="text-xs">
+                        {PERMISSION_LABELS[perm as WorkerPermission] || perm}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Database Role *</Label>
               <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
                 <SelectTrigger data-testid="select-role">
                   <SelectValue placeholder="Select a role" />
@@ -1176,6 +1244,9 @@ export default function TeamManagement() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {invitePreset ? "Auto-selected based on preset. You can change this if needed." : "Select a preset above or choose a role directly."}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="hourlyRate">Hourly Rate (optional)</Label>

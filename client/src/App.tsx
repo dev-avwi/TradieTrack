@@ -74,6 +74,7 @@ import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
 import RecurringJobs from "@/pages/RecurringJobs";
 import ServiceRemindersPage from "@/pages/ServiceReminders";
+import EquipmentPage from "@/pages/Equipment";
 import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
 import AIVisualizationPage from "@/pages/AIVisualization";
@@ -588,6 +589,10 @@ function Router({
       
       <Route path="/service-reminders" component={() => (
         <ServiceRemindersPage />
+      )} />
+      
+      <Route path="/equipment" component={() => (
+        <EquipmentPage />
       )} />
       
       <Route path="/rebates" component={() => (

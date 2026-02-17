@@ -127,8 +127,45 @@ export const DEFAULT_WORKER_PERMISSIONS: WorkerPermission[] = [
   WORKER_PERMISSIONS.VIEW_CLIENTS,  // Basic client info for job sites
 ];
 
+// Office Admin permissions - office/admin staff who handle quotes, invoices, and client communication
+// EXCLUDES: TIME_TRACKING, GPS_CHECKIN, UPDATE_JOB_STATUS, EDIT_JOBS, REQUEST_JOB_ASSIGNMENT
+export const OFFICE_ADMIN_PERMISSIONS: WorkerPermission[] = [
+  WORKER_PERMISSIONS.COLLECT_PAYMENTS,
+  WORKER_PERMISSIONS.VIEW_INVOICES,
+  WORKER_PERMISSIONS.VIEW_QUOTES,
+  WORKER_PERMISSIONS.CREATE_QUOTES,
+  WORKER_PERMISSIONS.CREATE_INVOICES,
+  WORKER_PERMISSIONS.EDIT_DOCUMENTS,
+  WORKER_PERMISSIONS.SEND_QUOTES,
+  WORKER_PERMISSIONS.SEND_INVOICES,
+  WORKER_PERMISSIONS.VIEW_CLIENTS,
+  WORKER_PERMISSIONS.CREATE_CLIENTS,
+  WORKER_PERMISSIONS.EDIT_CLIENTS,
+  WORKER_PERMISSIONS.VIEW_ALL_JOBS,
+  WORKER_PERMISSIONS.TEAM_CHAT,
+  WORKER_PERMISSIONS.CLIENT_SMS,
+];
+
 // All available permissions (for owner UI)
 export const ALL_WORKER_PERMISSIONS = Object.values(WORKER_PERMISSIONS);
+
+export const ROLE_PRESETS = {
+  worker: {
+    label: 'Worker',
+    description: 'Field worker - updates job status, tracks time, checks in at sites',
+    permissions: DEFAULT_WORKER_PERMISSIONS,
+  },
+  office_admin: {
+    label: 'Office Admin',
+    description: 'Office staff - manages quotes, invoices, clients, and communications',
+    permissions: OFFICE_ADMIN_PERMISSIONS,
+  },
+  manager: {
+    label: 'Manager',
+    description: 'Full access - manages team, views reports, assigns jobs',
+    permissions: ALL_WORKER_PERMISSIONS,
+  },
+} as const;
 
 // Permission categories for organized UI display
 export const PERMISSION_CATEGORIES = {
@@ -452,6 +489,7 @@ export const businessSettings = pgTable("business_settings", {
   earlyPaymentDiscountDays: integer("early_payment_discount_days").default(7), // If paid within 7 days
   // Default Payment Method for invoices
   defaultPaymentMethod: text("default_payment_method").default('card'), // 'card', 'bank_transfer', 'becs', 'payto'
+  simpleMode: boolean("simple_mode").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

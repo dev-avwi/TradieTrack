@@ -304,6 +304,15 @@ import {
   subcontractorLocationPings,
   type SubcontractorLocationPing,
   type InsertSubcontractorLocationPing,
+  equipment,
+  equipmentCategories,
+  equipmentMaintenance,
+  type Equipment,
+  type InsertEquipment,
+  type EquipmentCategory,
+  type InsertEquipmentCategory,
+  type EquipmentMaintenance,
+  type InsertEquipmentMaintenance,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -944,6 +953,21 @@ export interface IStorage {
   createSubcontractorLocationPing(data: InsertSubcontractorLocationPing): Promise<SubcontractorLocationPing>;
   getLatestSubcontractorLocationPing(tokenId: string): Promise<SubcontractorLocationPing | null>;
   getSubcontractorLocationPingsByJob(jobId: string): Promise<SubcontractorLocationPing[]>;
+
+  // Equipment Management
+  getEquipment(userId: string): Promise<Equipment[]>;
+  getEquipmentById(id: string, userId: string): Promise<Equipment | undefined>;
+  createEquipment(data: InsertEquipment & { userId: string }): Promise<Equipment>;
+  updateEquipment(id: string, userId: string, updates: Partial<InsertEquipment>): Promise<Equipment | undefined>;
+  deleteEquipment(id: string, userId: string): Promise<boolean>;
+
+  // Equipment Categories
+  getEquipmentCategories(userId: string): Promise<EquipmentCategory[]>;
+  createEquipmentCategory(data: InsertEquipmentCategory & { userId: string }): Promise<EquipmentCategory>;
+
+  // Equipment Maintenance
+  getEquipmentMaintenance(equipmentId: string, userId: string): Promise<EquipmentMaintenance[]>;
+  createEquipmentMaintenance(data: InsertEquipmentMaintenance & { userId: string }): Promise<EquipmentMaintenance>;
 }
 
 // Initialize database connection using standard pg driver
@@ -7315,6 +7339,59 @@ Thank you for your prompt attention to this matter.`,
     return await db.select().from(subcontractorLocationPings)
       .where(eq(subcontractorLocationPings.jobId, jobId))
       .orderBy(desc(subcontractorLocationPings.recordedAt));
+  }
+
+  async getEquipment(userId: string): Promise<Equipment[]> {
+    return await db.select().from(equipment)
+      .where(eq(equipment.userId, userId))
+      .orderBy(desc(equipment.createdAt));
+  }
+
+  async getEquipmentById(id: string, userId: string): Promise<Equipment | undefined> {
+    const [result] = await db.select().from(equipment)
+      .where(and(eq(equipment.id, id), eq(equipment.userId, userId)));
+    return result;
+  }
+
+  async createEquipment(data: InsertEquipment & { userId: string }): Promise<Equipment> {
+    const [result] = await db.insert(equipment).values(data).returning();
+    return result;
+  }
+
+  async updateEquipment(id: string, userId: string, updates: Partial<InsertEquipment>): Promise<Equipment | undefined> {
+    const [result] = await db.update(equipment)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(equipment.id, id), eq(equipment.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async deleteEquipment(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(equipment)
+      .where(and(eq(equipment.id, id), eq(equipment.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getEquipmentCategories(userId: string): Promise<EquipmentCategory[]> {
+    return await db.select().from(equipmentCategories)
+      .where(eq(equipmentCategories.userId, userId))
+      .orderBy(asc(equipmentCategories.name));
+  }
+
+  async createEquipmentCategory(data: InsertEquipmentCategory & { userId: string }): Promise<EquipmentCategory> {
+    const [result] = await db.insert(equipmentCategories).values(data).returning();
+    return result;
+  }
+
+  async getEquipmentMaintenance(equipmentId: string, userId: string): Promise<EquipmentMaintenance[]> {
+    return await db.select().from(equipmentMaintenance)
+      .where(and(eq(equipmentMaintenance.equipmentId, equipmentId), eq(equipmentMaintenance.userId, userId)))
+      .orderBy(desc(equipmentMaintenance.createdAt));
+  }
+
+  async createEquipmentMaintenance(data: InsertEquipmentMaintenance & { userId: string }): Promise<EquipmentMaintenance> {
+    const [result] = await db.insert(equipmentMaintenance).values(data).returning();
+    return result;
   }
 }
 

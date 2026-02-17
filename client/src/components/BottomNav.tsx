@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useSimpleMode } from "@/hooks/use-simple-mode";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -25,6 +26,7 @@ export const BOTTOM_NAV_HEIGHT = 80;
 export default function BottomNav({ onNavigate }: BottomNavProps) {
   const [location] = useLocation();
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
+  const { isSimpleMode } = useSimpleMode();
   const { openMobile, isMobile } = useSidebar();
 
   const { data: unreadCounts } = useQuery<UnreadCountsResponse>({
@@ -33,7 +35,7 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
     staleTime: 10000,
   });
 
-  const navItems = getBottomNavItems({ isTeam, isTradie, isOwner, isManager, userRole });
+  const navItems = getBottomNavItems({ isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode });
   const morePagesPattern = getMorePagesPattern();
   
   const totalUnread = unreadCounts?.total || 0;

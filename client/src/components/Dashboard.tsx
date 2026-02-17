@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useSimpleMode } from "@/hooks/use-simple-mode";
 import OwnerManagerDashboard from "./OwnerManagerDashboard";
 import TeamOwnerDashboard from "./TeamOwnerDashboard";
 import TradieDashboard from "./TradieDashboard";
@@ -32,8 +33,10 @@ export default function Dashboard({
     canCreateJobs,
     canCreateQuotes,
     canCreateInvoices,
-    hasActiveTeam
+    hasActiveTeam,
+    isOwner
   } = useAppMode();
+  const { isSimpleMode } = useSimpleMode();
 
   // Get display name - prioritize actual first name over role labels
   const firstName = (user as any)?.firstName;
@@ -82,7 +85,7 @@ export default function Dashboard({
 
     // Team owner - has team members, shows job scheduler
     case "owner":
-      if (hasActiveTeam) {
+      if (hasActiveTeam && !isSimpleMode) {
         return (
           <TeamOwnerDashboard
             userName={userName}
@@ -119,6 +122,21 @@ export default function Dashboard({
           userName={userName}
           businessName={businessName}
           onCreateJob={canCreateJobs ? onCreateJob : undefined}
+          onCreateQuote={canCreateQuotes ? onCreateQuote : undefined}
+          onCreateInvoice={canCreateInvoices ? onCreateInvoice : undefined}
+          onViewJobs={onViewJobs}
+          onViewInvoices={onViewInvoices}
+          onViewQuotes={onViewQuotes}
+          onNavigate={onNavigate}
+        />
+      );
+
+    // Office Admin - handles quotes, invoices, clients (no field work)
+    case "office_admin":
+      return (
+        <OwnerManagerDashboard
+          userName={userName}
+          businessName={businessName}
           onCreateQuote={canCreateQuotes ? onCreateQuote : undefined}
           onCreateInvoice={canCreateInvoices ? onCreateInvoice : undefined}
           onViewJobs={onViewJobs}
