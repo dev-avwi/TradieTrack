@@ -10,7 +10,7 @@ import {
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
   MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard, Shield
 } from "lucide-react";
-import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
+import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';

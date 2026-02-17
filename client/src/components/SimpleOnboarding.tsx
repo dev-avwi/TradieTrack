@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
+import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 import { tradeCatalog } from "@shared/tradeCatalog";
 
 interface SimpleOnboardingProps {

@@ -27,7 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
-import appIconUrl from '@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png';
+import appIconUrl from '@assets/jobrunner-logo-cropped.png';
 
 // App screenshots for carousel
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";

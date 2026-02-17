@@ -24,7 +24,7 @@ import {
   Shield,
   HeartPulse,
 } from "lucide-react";
-import appIconUrl from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
+import appIconUrl from "@assets/jobrunner-logo-cropped.png";
 
 interface AdminAppShellProps {
   children: ReactNode;

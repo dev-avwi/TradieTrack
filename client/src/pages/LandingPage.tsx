@@ -81,7 +81,7 @@ import {
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
-import jobrunnerLogo from "@assets/ChatGPT_Image_Feb_15,_2026,_08_30_34_PM_1771151701664.png";
+import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 
 // App screenshots for phone mockups
 import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
