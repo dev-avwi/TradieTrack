@@ -4,6 +4,7 @@ import { createQuoteEmailHtml, createInvoiceEmailHtml, createReceiptEmailHtml, r
 import { sendEmailViaIntegration } from './emailIntegrationService';
 import { generateQuotePDF, generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } from './pdfService';
 import { notifyPaymentReceived } from './pushNotifications';
+import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid } from './notifications';
 import { syncSingleInvoiceToXero, markInvoicePaidInXero } from './xeroService';
 import { processPaymentReceivedAutomation } from './automationService';
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
@@ -463,6 +464,12 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
       console.error('Failed to log quote sent activity:', activityError);
     }
 
+    try {
+      await notifyQuoteSent(storage, req.userId, updatedQuote, client.name);
+    } catch (notifErr) {
+      console.error('Failed to send quote sent notification:', notifErr);
+    }
+
     res.json({ 
       ...updatedQuote, 
       emailSent: true, 
@@ -827,6 +834,12 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
       console.error('Failed to log invoice sent activity:', activityError);
     }
 
+    try {
+      await notifyInvoiceSent(storage, req.userId, updatedInvoice, client.name);
+    } catch (notifErr) {
+      console.error('Failed to send invoice sent notification:', notifErr);
+    }
+
     res.json({ 
       ...updatedInvoice, 
       emailSent: true, 
@@ -980,6 +993,12 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
     const invoiceTotal = parseFloat(String(invoiceWithItems.total || '0'));
     const amountInCents = Math.round(invoiceTotal * 100);
     await notifyPaymentReceived(req.userId, amountInCents, invoiceWithItems.number || `INV-${invoiceWithItems.id}`, invoiceWithItems.id);
+    
+    try {
+      await notifyInvoicePaid(storage, req.userId, invoiceWithItems, client.name);
+    } catch (notifErr) {
+      console.error('Failed to send invoice paid notification:', notifErr);
+    }
     
     res.json({ 
       ...updatedInvoice, 

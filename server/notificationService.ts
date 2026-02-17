@@ -378,6 +378,50 @@ export async function notifyJobScheduled(
   return result;
 }
 
+// ===== OWNER SMS NOTIFICATIONS =====
+// These send SMS to the business OWNER when critical events happen
+
+const ownerSmsTemplates = {
+  paymentReceived: (clientName: string, amount: string, invoiceNumber: string) =>
+    `Payment received! ${clientName} paid $${amount} on invoice #${invoiceNumber}`,
+  quoteAccepted: (clientName: string, quoteNumber: string, total: string) =>
+    `Quote accepted! ${clientName} accepted quote #${quoteNumber} for $${total}`,
+  quoteDeclined: (clientName: string, quoteNumber: string) =>
+    `Quote declined. ${clientName} declined quote #${quoteNumber}`,
+  invoiceOverdue: (clientName: string, invoiceNumber: string, amount: string, daysOverdue: number) =>
+    `Invoice overdue: #${invoiceNumber} to ${clientName} for $${amount} is ${daysOverdue} days overdue`,
+  newJobAssigned: (workerName: string, jobTitle: string) =>
+    `${workerName} has been assigned to "${jobTitle}"`,
+  jobCompleted: (workerName: string, jobTitle: string) =>
+    `Job completed! ${workerName} finished "${jobTitle}"`,
+  teamMemberJoined: (memberName: string, role: string) =>
+    `New team member: ${memberName} joined as ${role}`,
+};
+
+export async function notifyOwnerViaSms(
+  ownerPhone: string,
+  templateKey: keyof typeof ownerSmsTemplates,
+  ...args: any[]
+): Promise<{ success: boolean; error?: string }> {
+  if (!ownerPhone) {
+    return { success: false, error: 'No owner phone number' };
+  }
+  
+  try {
+    const template = ownerSmsTemplates[templateKey];
+    if (!template) {
+      return { success: false, error: `Unknown template: ${templateKey}` };
+    }
+    
+    const message = (template as any)(...args);
+    const result = await sendSMS({ to: ownerPhone, message });
+    return { success: result.success, error: result.error };
+  } catch (error: any) {
+    console.error(`[OwnerSMS] Failed to send ${templateKey}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // Get notification service status
 export function getNotificationStatus() {
   return {

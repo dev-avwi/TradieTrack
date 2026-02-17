@@ -40,7 +40,10 @@ Core architectural and design decisions include:
 *   **Safety Form Templates**: Australian-standard WHS compliance templates with digital signatures.
 *   **Templates Hub**: Focuses on Document Styles with integrated live preview for quotes, invoices, and jobs, and includes 81 seeded trade-specific templates.
 *   **Communications Hub**: Unified view of all sent emails and SMS messages.
-*   **Automation Settings**: Configurable job reminders, quote follow-ups, invoice reminders, photo requirements, and GPS auto check-in/out.
+*   **Comprehensive Notification System**: Event-driven notifications for quote sent/accepted/declined, invoice sent/paid/overdue, job assignments, team invites, SMS received, timesheet submissions. Owner SMS alerts via Twilio for critical events (payments, quote responses, job completions). In-app notification center with unified feed (system + SMS + chat).
+*   **Cashflow Insight Dashboard**: Owner dashboard widget showing weekly collection bar chart, this month vs last month comparison, due this week summary, and overdue invoice breakdown with days overdue badges.
+*   **Team Performance Dashboard**: Per-worker performance metrics (hours tracked, jobs completed, revenue generated) with 30-day summary on owner dashboard.
+*   **Automation Settings**: Configurable job reminders, quote follow-ups (with deduped scheduler), invoice overdue reminders (DB + push + SMS), photo requirements, and GPS auto check-in/out.
 *   **Job Materials Tracking**: Per-job material lists with quantities, costs, suppliers, and shipping tracking, including a status workflow.
 *   **Job Brief**: Quote line items automatically display as a work scope checklist in job detail view.
 *   **Trade-Specific Customization System**: Supports 13 priority trades with trade-specific terminology, custom job stages, custom fields, material catalogs, rate cards, safety checklists, and quote categories.

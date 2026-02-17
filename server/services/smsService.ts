@@ -10,6 +10,7 @@ import { storage } from '../storage';
 import type { SmsConversation, SmsMessage, InsertSmsConversation, InsertSmsMessage, BusinessSettings } from '@shared/schema';
 import { broadcastSmsNotification } from '../websocket';
 import { detectSmsJobIntent } from '../ai';
+import { notifySmsReceived } from '../notifications';
 
 interface SendSmsOptions {
   businessOwnerId: string;
@@ -662,6 +663,18 @@ export async function handleIncomingSms(
     });
   } catch (wsError) {
     console.error('[SMS] Error broadcasting WebSocket notification:', wsError);
+  }
+  
+  try {
+    await notifySmsReceived(
+      storage,
+      targetConversation.businessOwnerId,
+      targetConversation.clientName || formattedFromPhone,
+      messageBody.slice(0, 100),
+      targetConversation.id
+    );
+  } catch (notifErr) {
+    console.error('[SMS] Failed to send SMS received notification:', notifErr);
   }
   
   return message;

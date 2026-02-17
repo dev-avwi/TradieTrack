@@ -1,6 +1,7 @@
 import { storage } from './storage';
 import { sendInvoiceEmail } from './emailService';
 import { notifyInvoiceOverdue } from './pushNotifications';
+import { notifyInvoiceOverdue as notifyInvoiceOverdueDB } from './notifications';
 import { sendSMS } from './twilioClient';
 import { getProductionBaseUrl } from './urlHelper';
 
@@ -182,6 +183,13 @@ export async function processOverdueReminders(): Promise<ReminderResult[]> {
           console.log(`[PushNotification] Sent overdue invoice notification for invoice ${invoice.number} to user ${user.id}`);
         } catch (pushError) {
           console.error('[PushNotification] Error sending overdue invoice notification:', pushError);
+        }
+        
+        // Create in-app notification for the owner's notification center
+        try {
+          await notifyInvoiceOverdueDB(storage, user.id, invoice, client.name, daysPastDue);
+        } catch (dbNotifyError) {
+          console.error('[Reminder] Error creating DB notification:', dbNotifyError);
         }
         
         results.push({

@@ -18,6 +18,7 @@ import {
   FileText, 
   Clock,
   User,
+  Users,
   MapPin,
   Plus,
   ChevronRight,
@@ -61,6 +62,26 @@ export default function OwnerManagerDashboard({
   const updateJob = useUpdateJob();
   const { toast } = useToast();
 
+  interface CashflowData {
+    outstandingTotal: number;
+    overdueTotal: number;
+    overdueCount: number;
+    overdueInvoices: Array<{
+      id: string;
+      number: string;
+      clientName: string;
+      total: number;
+      dueDate: string;
+      daysOverdue: number;
+    }>;
+    dueThisWeek: number;
+    dueThisWeekCount: number;
+    collectedThisMonth: number;
+    collectedLastMonth: number;
+    collectedTrend: number;
+    revenueByWeek: Array<{ week: string; amount: number }>;
+  }
+
   interface ProfitSnapshot {
     revenueToday: number;
     revenueThisWeek: number;
@@ -73,6 +94,33 @@ export default function OwnerManagerDashboard({
   }
   const { data: profitSnapshot, isLoading: profitLoading } = useQuery<ProfitSnapshot>({
     queryKey: ["/api/dashboard/profit-snapshot"],
+  });
+
+  const { data: cashflow, isLoading: cashflowLoading } = useQuery<CashflowData>({
+    queryKey: ["/api/dashboard/cashflow"],
+  });
+
+  interface TeamPerformance {
+    workers: Array<{
+      id: string;
+      name: string;
+      role: string;
+      hoursThisMonth: number;
+      hoursThisWeek: number;
+      jobsCompleted: number;
+      jobsActive: number;
+      revenueGenerated: number;
+    }>;
+    summary: {
+      totalHours: number;
+      totalJobs: number;
+      totalRevenue: number;
+    };
+    period: string;
+  }
+
+  const { data: teamPerformance, isLoading: teamPerfLoading } = useQuery<TeamPerformance>({
+    queryKey: ["/api/dashboard/team-performance"],
   });
 
   const getGreeting = () => {
@@ -418,6 +466,229 @@ export default function OwnerManagerDashboard({
                   {profitSnapshot.grossMargin}% margin
                 </p>
               </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Cashflow Insight */}
+      {cashflowLoading ? (
+        <section>
+          <h2 className="ios-label mb-3 flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-primary" />
+            Cashflow Insight
+          </h2>
+          <div className="feed-card">
+            <div className="card-padding">
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+        </section>
+      ) : cashflow ? (
+        <section>
+          <h2 className="ios-label mb-3 flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-primary" />
+            Cashflow Insight
+          </h2>
+          
+          <div className="feed-card mb-3">
+            <div className="card-padding">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <p className="ios-caption">Weekly Collections</p>
+                <div className="flex items-center gap-1">
+                  {cashflow.collectedTrend > 0 ? (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      +{cashflow.collectedTrend}%
+                    </Badge>
+                  ) : cashflow.collectedTrend < 0 ? (
+                    <Badge className="bg-red-500/10 text-red-600 border-red-500/20 text-xs">
+                      <TrendingUp className="h-3 w-3 mr-1 rotate-180" />
+                      {cashflow.collectedTrend}%
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex items-end gap-2 h-20">
+                {cashflow.revenueByWeek.map((week, i) => {
+                  const maxAmount = Math.max(...cashflow.revenueByWeek.map(w => w.amount), 1);
+                  const heightPercent = Math.max((week.amount / maxAmount) * 100, 4);
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {week.amount > 0 ? `$${(week.amount / 1000).toFixed(1)}k` : '-'}
+                      </span>
+                      <div 
+                        className="w-full rounded-t-md transition-all"
+                        style={{ 
+                          height: `${heightPercent}%`,
+                          backgroundColor: i === cashflow.revenueByWeek.length - 1 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.3)',
+                          minHeight: '4px'
+                        }}
+                      />
+                      <span className="text-[10px] text-muted-foreground">{week.week}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t">
+                <div>
+                  <p className="text-xs text-muted-foreground">This Month</p>
+                  <p className="text-lg font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
+                    ${cashflow.collectedThisMonth.toLocaleString('en-AU')}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Last Month</p>
+                  <p className="text-lg font-bold text-muted-foreground">
+                    ${cashflow.collectedLastMonth.toLocaleString('en-AU')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {cashflow.dueThisWeekCount > 0 && (
+            <div className="feed-card mb-3 cursor-pointer card-press" onClick={() => onNavigate?.('/documents?tab=invoices')}>
+              <div className="card-padding">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'hsl(38 92% 50% / 0.1)' }}>
+                      <Clock className="h-5 w-5" style={{ color: 'hsl(38 92% 50%)' }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Due This Week</p>
+                      <p className="text-xs text-muted-foreground">{cashflow.dueThisWeekCount} invoice{cashflow.dueThisWeekCount !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold" style={{ color: 'hsl(38 92% 50%)' }}>${cashflow.dueThisWeek.toLocaleString('en-AU')}</p>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cashflow.overdueCount > 0 && (
+            <div className="feed-card">
+              <div className="card-padding">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+                    <p className="text-sm font-medium" style={{ color: 'hsl(var(--destructive))' }}>
+                      Overdue ({cashflow.overdueCount})
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold" style={{ color: 'hsl(var(--destructive))' }}>
+                    ${cashflow.overdueTotal.toLocaleString('en-AU')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {cashflow.overdueInvoices.map((inv) => (
+                    <div 
+                      key={inv.id} 
+                      className="flex items-center justify-between gap-2 py-2 border-t cursor-pointer"
+                      onClick={() => onNavigate?.(`/invoices/${inv.id}`)}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{inv.clientName}</p>
+                        <p className="text-xs text-muted-foreground">#{inv.number}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <p className="text-sm font-semibold">${inv.total.toLocaleString('en-AU')}</p>
+                        <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
+                          {inv.daysOverdue}d
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* Team Performance */}
+      {teamPerfLoading ? (
+        <section>
+          <h2 className="ios-label mb-3 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            Team Performance
+          </h2>
+          <div className="feed-card">
+            <div className="card-padding">
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+        </section>
+      ) : teamPerformance && teamPerformance.workers.length > 0 ? (
+        <section>
+          <h2 className="ios-label mb-3 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            Team Performance
+            <span className="text-xs text-muted-foreground font-normal ml-auto">Last 30 days</span>
+          </h2>
+          
+          {/* Summary Row */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="feed-card">
+              <div className="card-padding text-center">
+                <p className="text-2xl font-bold">{teamPerformance.summary.totalHours}</p>
+                <p className="ios-caption">Total Hours</p>
+              </div>
+            </div>
+            <div className="feed-card">
+              <div className="card-padding text-center">
+                <p className="text-2xl font-bold">{teamPerformance.summary.totalJobs}</p>
+                <p className="ios-caption">Jobs Done</p>
+              </div>
+            </div>
+            <div className="feed-card">
+              <div className="card-padding text-center">
+                <p className="text-2xl font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
+                  ${(teamPerformance.summary.totalRevenue / 1000).toFixed(1)}k
+                </p>
+                <p className="ios-caption">Revenue</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Worker Cards */}
+          <div className="feed-card">
+            <div className="card-padding space-y-3">
+              {teamPerformance.workers.map((worker, index) => (
+                <div key={worker.id} className={`flex items-center justify-between gap-3 ${index > 0 ? 'pt-3 border-t' : ''}`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold"
+                      style={{ 
+                        backgroundColor: 'hsl(var(--primary) / 0.1)', 
+                        color: 'hsl(var(--primary))' 
+                      }}
+                    >
+                      {worker.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{worker.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{worker.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{worker.hoursThisMonth}h</p>
+                      <p className="text-[10px] text-muted-foreground">{worker.hoursThisWeek}h this wk</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{worker.jobsCompleted}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {worker.jobsActive > 0 ? `${worker.jobsActive} active` : 'jobs'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

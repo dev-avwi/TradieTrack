@@ -845,6 +845,85 @@ export function startInstallmentReminderScheduler(): void {
   console.log(`[Scheduler] Installment reminder scheduler running every ${INSTALLMENT_REMINDER_INTERVAL_MS / 3600000} hours`);
 }
 
+let quoteFollowUpInterval: NodeJS.Timeout | null = null;
+const QUOTE_FOLLOWUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+async function processQuoteFollowUps(): Promise<void> {
+  console.log('[Scheduler] Processing quote follow-ups...');
+  
+  try {
+    const allUsers = await storage.getAllUsersWithSettings();
+    let sentCount = 0;
+    
+    for (const user of allUsers) {
+      const settings = user.businessSettings;
+      if (!settings?.autoQuoteFollowUp) continue;
+      
+      const followUpDays = settings.quoteFollowUpDays || 3;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - followUpDays);
+      
+      try {
+        const userQuotes = await storage.getQuotes(user.id);
+        const pendingQuotes = userQuotes.filter((q: any) => {
+          if (q.status !== 'sent') return false;
+          const sentDate = q.sentAt ? new Date(q.sentAt) : q.createdAt ? new Date(q.createdAt) : null;
+          if (!sentDate) return false;
+          return sentDate <= cutoffDate;
+        });
+        
+        for (const quote of pendingQuotes) {
+          // Check if we already sent a follow-up notification for this quote
+          // Use notifications table to dedup - check if quote_expiring notification exists for this quote
+          try {
+            const existingNotifications = await storage.getNotifications(user.id);
+            const alreadyNotified = existingNotifications.some((n: any) => 
+              n.type === 'quote_expiring' && n.relatedId === quote.id
+            );
+            if (alreadyNotified) continue;
+          } catch (e) {
+            // If we can't check, skip this quote to be safe (prevent spam)
+            console.error('[QuoteFollowUp] Error checking existing notifications:', e);
+            continue;
+          }
+          
+          try {
+            const { notifyQuoteExpiring } = await import('./notifications');
+            const client = quote.clientId ? await storage.getClient(quote.clientId, user.id) : null;
+            await notifyQuoteExpiring(storage, user.id, quote, client?.name || 'Client', followUpDays);
+          } catch (e) {
+            console.error('[QuoteFollowUp] Notification error:', e);
+          }
+          
+          sentCount++;
+        }
+      } catch (e) {
+        console.error(`[QuoteFollowUp] Error processing quotes for user ${user.id}:`, e);
+      }
+    }
+    
+    if (sentCount > 0) {
+      console.log(`[Scheduler] Quote follow-ups: ${sentCount} notifications created`);
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error processing quote follow-ups:', error);
+  }
+}
+
+export function startQuoteFollowUpScheduler(): void {
+  console.log('[Scheduler] Starting quote follow-up scheduler...');
+  
+  if (quoteFollowUpInterval) {
+    clearInterval(quoteFollowUpInterval);
+  }
+  
+  setTimeout(processQuoteFollowUps, 15000);
+  
+  quoteFollowUpInterval = setInterval(processQuoteFollowUps, QUOTE_FOLLOWUP_INTERVAL_MS);
+  
+  console.log(`[Scheduler] Quote follow-up scheduler running every ${QUOTE_FOLLOWUP_INTERVAL_MS / 60000} minutes`);
+}
+
 export function startAllSchedulers(): void {
   startReminderScheduler();
   startRecurringScheduler();
@@ -854,6 +933,7 @@ export function startAllSchedulers(): void {
   startSmsAutomationScheduler();
   startBillingReminderScheduler();
   startInstallmentReminderScheduler();
+  startQuoteFollowUpScheduler();
 }
 
 export function stopAllSchedulers(): void {
@@ -895,6 +975,11 @@ export function stopAllSchedulers(): void {
   if (installmentReminderInterval) {
     clearInterval(installmentReminderInterval);
     installmentReminderInterval = null;
+  }
+  
+  if (quoteFollowUpInterval) {
+    clearInterval(quoteFollowUpInterval);
+    quoteFollowUpInterval = null;
   }
   
   console.log('[Scheduler] All schedulers stopped');

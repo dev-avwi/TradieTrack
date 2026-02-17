@@ -127,7 +127,7 @@ import {
 } from "./tradieTemplates";
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
-import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted } from "./notifications";
+import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted } from "./notifications";
 import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
@@ -139,6 +139,7 @@ import * as myobService from "./myobService";
 import * as quickbooksService from "./quickbooksService";
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 import { generateQuoteEmailTemplate, generateInvoiceEmailTemplate } from './emailTemplates';
+import { notifyOwnerViaSms } from './notificationService';
 
 // Environment check for development-only endpoints
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -858,6 +859,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Send push notification
             await notifyQuoteAccepted(quote.userId, quote.number, quote.id, accepted_by.trim());
 
+            try {
+              const owner = await storage.getUser(quote.userId);
+              if (owner?.phone) {
+                await notifyOwnerViaSms(owner.phone, 'quoteAccepted', accepted_by || 'Client', quote.number || quote.id, Number(quote.total || 0).toFixed(2));
+              }
+            } catch (e) { console.error('Owner SMS failed:', e); }
+
             // Update linked job status to scheduled if quote is accepted
             if (quote.jobId) {
               try {
@@ -908,6 +916,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Send push notification
             await notifyQuoteRejected(quote.userId, quote.number, quote.id, clientName);
+
+            try {
+              const owner = await storage.getUser(quote.userId);
+              if (owner?.phone) {
+                await notifyOwnerViaSms(owner.phone, 'quoteDeclined', clientName, quote.number || quote.id);
+              }
+            } catch (e) { console.error('Owner SMS failed:', e); }
           } catch (e) {
             console.error('Failed to create notification:', e);
           }
@@ -11440,7 +11455,14 @@ Be specific about materials, colors, and features that would be included.`
         } else if (status === 'done') {
           // Notify business owner that staff completed the job
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: userName, username: userName });
-          
+
+          try {
+            const owner = await storage.getUser(effectiveUserId);
+            if (owner?.phone) {
+              await notifyOwnerViaSms(owner.phone, 'jobCompleted', userName || 'Team', job.title);
+            }
+          } catch (e) { console.error('Owner SMS failed:', e); }
+
           // Send email to owner when staff completes job
           try {
             const owner = await storage.getUser(effectiveUserId);
@@ -11560,15 +11582,13 @@ Be specific about materials, colors, and features that would be included.`
       // (assignedTo may be a team member record ID or a user ID)
       const assigneeUserId = await resolveAssigneeUserId(assignedTo, userContext.effectiveUserId) || assignedTo;
       
-      // Create notification for the assigned team member
-      await storage.createNotification({
-        userId: assigneeUserId,
-        type: 'job_assigned',
-        title: 'New Job Assigned',
-        message: `You have been assigned to: ${job.title}`,
-        relatedId: job.id,
-        relatedType: 'job',
-      });
+      // Create DB notification for the assigned team member
+      try {
+        const assigner = await storage.getUser(req.userId);
+        await notifyJobAssignedDB(storage, assigneeUserId, job, assigner || { firstName: 'Manager' });
+      } catch (notifErr) {
+        console.error('Failed to send job assigned DB notification:', notifErr);
+      }
       
       // Send push notification to assigned team member
       await notifyJobAssigned(assigneeUserId, job.title, job.id);
@@ -12658,6 +12678,13 @@ Be specific about materials, colors, and features that would be included.`
                 await notifyJobStarted(storage, effectiveUserId, updatedJob, clientName);
               } else if (workerStatus === 'completed') {
                 await notifyJobCompleted(storage, effectiveUserId, updatedJob, { firstName: actorName, username: actorName });
+
+                try {
+                  const owner = await storage.getUser(effectiveUserId);
+                  if (owner?.phone) {
+                    await notifyOwnerViaSms(owner.phone, 'jobCompleted', actorName || 'Team', updatedJob!.title);
+                  }
+                } catch (e) { console.error('Owner SMS failed:', e); }
 
                 if (req.userId !== effectiveUserId) {
                   try {
@@ -14049,6 +14076,12 @@ Be specific about materials, colors, and features that would be included.`
         { deliveryMethod: 'sms', clientPhone: client.phone, smsMessageId: smsMessage.id }
       );
       
+      try {
+        await notifyQuoteSent(storage, userContext.effectiveUserId, quote, client.name);
+      } catch (notifErr) {
+        console.error('Failed to send quote sent notification:', notifErr);
+      }
+      
       res.json({ 
         success: true, 
         message: `Quote SMS sent to ${client.phone}`,
@@ -14798,6 +14831,12 @@ Be specific about materials, colors, and features that would be included.`
         { deliveryMethod: 'sms', clientPhone: client.phone, smsMessageId: smsMessage.id, amount }
       );
       
+      try {
+        await notifyInvoiceSent(storage, userContext.effectiveUserId, invoice, client.name);
+      } catch (notifErr) {
+        console.error('Failed to send invoice sent notification:', notifErr);
+      }
+      
       res.json({ 
         success: true, 
         message: `Invoice SMS sent to ${client.phone}`,
@@ -14924,6 +14963,21 @@ Be specific about materials, colors, and features that would be included.`
       // Send push notification for payment received
       const amountInCents = Math.round(parsedAmount * 100);
       await notifyPaymentReceived(req.userId, amountInCents, invoice.number || `INV-${invoice.id}`, invoice.id);
+
+      try {
+        const owner = await storage.getUser(userContext.effectiveUserId);
+        if (owner?.phone) {
+          const payClient = invoice.clientId ? await storage.getClient(invoice.clientId, userContext.effectiveUserId) : null;
+          await notifyOwnerViaSms(owner.phone, 'paymentReceived', payClient?.name || 'Client', (amountInCents / 100).toFixed(2), invoice.number || `INV-${invoice.id}`);
+        }
+      } catch (e) { console.error('Owner SMS failed:', e); }
+
+      try {
+        const paymentClient = invoice.clientId ? await storage.getClient(invoice.clientId, userContext.effectiveUserId) : null;
+        await notifyInvoicePaid(storage, userContext.effectiveUserId, invoice, paymentClient?.name || 'Client');
+      } catch (notifErr) {
+        console.error('Failed to send invoice paid notification:', notifErr);
+      }
       
       // Trigger automation rules for payment received
       processPaymentReceivedAutomation(req.userId, invoice.id)
@@ -16121,6 +16175,209 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error fetching profit snapshot:", error);
       res.status(500).json({ error: "Failed to fetch profit snapshot" });
+    }
+  });
+
+  // Cashflow insight endpoint
+  app.get("/api/dashboard/cashflow", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const isOwnerOrManager = userContext.isOwner || userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+      if (!isOwnerOrManager) {
+        return res.status(403).json({ error: 'Access denied - owners and managers only' });
+      }
+      const effectiveUserId = userContext.effectiveUserId;
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const allInvoices = await storage.getInvoices(effectiveUserId);
+
+      let outstandingTotal = 0;
+      let overdueTotal = 0;
+      let overdueCount = 0;
+      let dueThisWeek = 0;
+      let dueThisWeekCount = 0;
+      let collectedThisMonth = 0;
+      let collectedLastMonth = 0;
+
+      const overdueInvoices: any[] = [];
+
+      for (const inv of allInvoices) {
+        const total = Number(inv.total || 0);
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : null;
+        const paidAt = inv.paidAt ? new Date(inv.paidAt) : null;
+
+        if (inv.status === 'sent' || inv.status === 'viewed') {
+          outstandingTotal += total;
+
+          if (dueDate && dueDate < now) {
+            overdueTotal += total;
+            overdueCount++;
+            const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+            overdueInvoices.push({
+              id: inv.id,
+              number: inv.number,
+              clientName: (inv as any).clientName || 'Unknown',
+              total: total,
+              dueDate: inv.dueDate,
+              daysOverdue,
+            });
+          }
+
+          if (dueDate && dueDate >= now && dueDate <= oneWeekFromNow) {
+            dueThisWeek += total;
+            dueThisWeekCount++;
+          }
+        }
+
+        if (inv.status === 'paid' && paidAt && paidAt >= startOfMonth) {
+          collectedThisMonth += total;
+        }
+
+        if (inv.status === 'paid' && paidAt && paidAt >= startOfLastMonth && paidAt <= endOfLastMonth) {
+          collectedLastMonth += total;
+        }
+      }
+
+      const revenueByWeek = [];
+      for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(now.getTime() - (i * 7 + now.getDay()) * 24 * 60 * 60 * 1000);
+        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const weekLabel = weekStart.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+        let weekAmount = 0;
+        for (const inv of allInvoices) {
+          const paidAt = inv.paidAt ? new Date(inv.paidAt) : null;
+          if (inv.status === 'paid' && paidAt && paidAt >= weekStart && paidAt < weekEnd) {
+            weekAmount += Number(inv.total || 0);
+          }
+        }
+        revenueByWeek.push({ week: weekLabel, amount: Math.round(weekAmount) });
+      }
+
+      res.json({
+        outstandingTotal: Math.round(outstandingTotal),
+        overdueTotal: Math.round(overdueTotal),
+        overdueCount,
+        overdueInvoices: overdueInvoices.slice(0, 5),
+        dueThisWeek: Math.round(dueThisWeek),
+        dueThisWeekCount,
+        collectedThisMonth: Math.round(collectedThisMonth),
+        collectedLastMonth: Math.round(collectedLastMonth),
+        collectedTrend: collectedLastMonth > 0 ? Math.round(((collectedThisMonth - collectedLastMonth) / collectedLastMonth) * 100) : 0,
+        revenueByWeek,
+      });
+    } catch (error: any) {
+      console.error('Cashflow endpoint error:', error);
+      res.status(500).json({ error: 'Failed to load cashflow data' });
+    }
+  });
+
+  app.get("/api/dashboard/team-performance", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      
+      if (!userContext.isOwner && !userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      const acceptedMembers = teamMembers.filter((m: any) => m.status === 'accepted');
+      
+      if (acceptedMembers.length === 0) {
+        return res.json({ workers: [], summary: { totalHours: 0, totalJobs: 0, totalRevenue: 0 } });
+      }
+      
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const workers = [];
+      let totalHoursAll = 0;
+      let totalJobsAll = 0;
+      let totalRevenueAll = 0;
+      
+      for (const member of acceptedMembers) {
+        const memberId = member.userId;
+        const memberUser = await storage.getUser(memberId);
+        if (!memberUser) continue;
+        
+        let hoursThisMonth = 0;
+        let hoursThisWeek = 0;
+        try {
+          const timeEntries = await storage.getTimeEntries(effectiveUserId);
+          const memberEntries = timeEntries.filter((e: any) => 
+            e.userId === memberId && 
+            new Date(e.startTime) >= thirtyDaysAgo
+          );
+          for (const entry of memberEntries) {
+            const start = new Date(entry.startTime);
+            const end = entry.endTime ? new Date(entry.endTime) : now;
+            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            hoursThisMonth += hours;
+            if (start >= sevenDaysAgo) {
+              hoursThisWeek += hours;
+            }
+          }
+        } catch (e) {}
+        
+        let jobsCompleted = 0;
+        let jobsActive = 0;
+        let revenueGenerated = 0;
+        try {
+          const jobs = await storage.getJobs(effectiveUserId);
+          for (const job of jobs) {
+            const assignments = (job as any).assignments || [];
+            const isAssigned = Array.isArray(assignments) && assignments.some((a: any) => a.userId === memberId || a.workerId === memberId);
+            const isDirectlyAssigned = job.assignedTo === memberId;
+            
+            if (isAssigned || isDirectlyAssigned) {
+              if (job.status === 'done') {
+                const completedDate = (job as any).completedAt ? new Date((job as any).completedAt) : null;
+                if (completedDate && completedDate >= thirtyDaysAgo) {
+                  jobsCompleted++;
+                  revenueGenerated += Number((job as any).value || 0);
+                }
+              } else if (job.status === 'in_progress' || job.status === 'pending') {
+                jobsActive++;
+              }
+            }
+          }
+        } catch (e) {}
+        
+        totalHoursAll += hoursThisMonth;
+        totalJobsAll += jobsCompleted;
+        totalRevenueAll += revenueGenerated;
+        
+        workers.push({
+          id: memberId,
+          name: `${memberUser.firstName || ''} ${memberUser.lastName || ''}`.trim() || memberUser.username || memberUser.email,
+          role: member.role || 'worker',
+          hoursThisMonth: Math.round(hoursThisMonth * 10) / 10,
+          hoursThisWeek: Math.round(hoursThisWeek * 10) / 10,
+          jobsCompleted,
+          jobsActive,
+          revenueGenerated: Math.round(revenueGenerated),
+        });
+      }
+      
+      workers.sort((a: any, b: any) => b.hoursThisMonth - a.hoursThisMonth);
+      
+      res.json({
+        workers,
+        summary: {
+          totalHours: Math.round(totalHoursAll * 10) / 10,
+          totalJobs: totalJobsAll,
+          totalRevenue: Math.round(totalRevenueAll),
+        },
+        period: '30 days',
+      });
+    } catch (error: any) {
+      console.error('Team performance endpoint error:', error);
+      res.status(500).json({ error: 'Failed to load team performance data' });
     }
   });
 
@@ -19570,6 +19827,16 @@ Respond with JSON in this format:
         userId
       });
       
+      try {
+        const userContext = await getUserContext(userId);
+        if (userContext.effectiveUserId !== userId) {
+          const user = await storage.getUser(userId);
+          await notifyTimesheetSubmitted(storage, userContext.effectiveUserId, user || { firstName: 'Team member' }, timesheet);
+        }
+      } catch (notifErr) {
+        console.error('Failed to send timesheet submitted notification:', notifErr);
+      }
+      
       res.status(201).json(timesheet);
     } catch (error) {
       console.error('Error creating timesheet:', error);
@@ -20485,6 +20752,14 @@ Respond with JSON in this format:
         // Don't fail the invite if email fails
       }
       
+      try {
+        const businessSettings = await storage.getBusinessSettings(userId);
+        const role = await storage.getUserRole(inviteData.roleId);
+        await notifyTeamMemberInvited(storage, newMember.id, businessSettings?.businessName || 'A business', role?.name || 'Team Member');
+      } catch (notifErr) {
+        console.error('Failed to send team member invited notification:', notifErr);
+      }
+      
       res.json(newMember);
     } catch (error) {
       console.error('Error inviting team member:', error);
@@ -20753,6 +21028,14 @@ Respond with JSON in this format:
         inviteToken: null, // Clear the token so it can't be reused
       });
       
+      try {
+        const owner = await storage.getUser(teamMember.businessOwnerId);
+        if (owner?.phone) {
+          const memberName = user.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : (user.email || 'New member');
+          await notifyOwnerViaSms(owner.phone, 'teamMemberJoined', memberName, teamMember.role || 'team member');
+        }
+      } catch (e) { console.error('Owner SMS failed:', e); }
+
       // Auto-assign a unique random color if user doesn't have one
       if (!user.themeColor) {
         const randomColor = await getRandomAvailableTeamColor(teamMember.businessOwnerId, user.id);
