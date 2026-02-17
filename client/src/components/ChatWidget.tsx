@@ -282,21 +282,21 @@ export function ChatWidget({ isOpen, onClose, targetUser, jobId, jobTitle, mode 
           <>
             {/* Participants Banner - Who can see these messages */}
             {mode === 'job' && participantsData && participantsData.participants.length > 0 && (
-              <div className="shrink-0 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border-b">
+              <div className="shrink-0 px-3 py-2 bg-orange-50 dark:bg-orange-950/30 border-b">
                 <div className="flex items-center gap-2 text-xs">
-                  <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="text-blue-800 dark:text-blue-300 font-medium">Who can see:</span>
+                  <Users className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
+                  <span className="text-orange-800 dark:text-orange-300 font-medium">Who can see:</span>
                   <div className="flex items-center gap-1 flex-wrap">
                     {participantsData.participants.map((p, i) => (
                       <span key={p.id} className="inline-flex items-center">
-                        <span className="text-blue-700 dark:text-blue-400">
+                        <span className="text-orange-700 dark:text-orange-400">
                           {p.name.split(' ')[0]}
                         </span>
-                        <span className="text-blue-500 dark:text-blue-500 ml-0.5">
+                        <span className="text-orange-500 dark:text-orange-500 ml-0.5">
                           ({p.role})
                         </span>
                         {i < participantsData.participants.length - 1 && (
-                          <span className="text-blue-400 dark:text-blue-600 mx-1">•</span>
+                          <span className="text-orange-400 dark:text-orange-600 mx-1">•</span>
                         )}
                       </span>
                     ))}

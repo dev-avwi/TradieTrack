@@ -56,7 +56,7 @@ export function SyncStatusIndicator({
   const getStatusColor = () => {
     if (!isOnline) return colors.destructive;
     if (syncError) return '#F59E0B';
-    if (pendingSyncCount > 0) return '#3B82F6';
+    if (pendingSyncCount > 0) return '#F28C4E';
     return '#10B981';
   };
 
@@ -141,7 +141,7 @@ export function SyncStatusIndicator({
           {pendingSyncCount > 0 && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Pending changes</Text>
-              <Text style={[styles.detailValueText, { color: '#3B82F6' }]}>{pendingSyncCount}</Text>
+              <Text style={[styles.detailValueText, { color: '#F28C4E' }]}>{pendingSyncCount}</Text>
             </View>
           )}
           {syncError && (

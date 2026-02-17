@@ -751,8 +751,8 @@ export default function TeamManagement() {
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                  <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold" data-testid="stat-total">{teamStats.total}</p>
@@ -883,7 +883,7 @@ export default function TeamManagement() {
                   <p className="text-muted-foreground text-xs">Delegate work to your team</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
-                  <Clock className="h-5 w-5 text-blue-500 mx-auto mb-2" />
+                  <Clock className="h-5 w-5 text-orange-500 mx-auto mb-2" />
                   <p className="font-medium">Track Time</p>
                   <p className="text-muted-foreground text-xs">Monitor hours and productivity</p>
                 </div>

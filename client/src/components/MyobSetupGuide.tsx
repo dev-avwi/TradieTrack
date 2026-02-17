@@ -297,15 +297,15 @@ export default function MyobSetupGuide({
               to allow JobRunner to access your data. Common scenarios:
               <ul className="space-y-1.5 mt-2">
                 <li className="flex items-start gap-2">
-                  <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Info className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                   <span><strong>No password:</strong> Many files use "Administrator" with no password</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Info className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                   <span><strong>With password:</strong> Enter the credentials you use in MYOB desktop</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Info className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                   <span><strong>Not sure?:</strong> Ask your accountant or check MYOB settings</span>
                 </li>
               </ul>
@@ -319,11 +319,11 @@ export default function MyobSetupGuide({
             <AccordionContent className="text-xs text-muted-foreground pb-3">
               <ul className="space-y-1.5">
                 <li className="flex items-start gap-2">
-                  <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                   <span><strong>Connection:</strong> Under 3 minutes - click, authorize, select company</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                   <span><strong>Credentials:</strong> Additional minute if file is password protected</span>
                 </li>
                 <li className="flex items-start gap-2">

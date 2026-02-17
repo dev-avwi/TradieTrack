@@ -457,7 +457,7 @@ export default function BrandingScreen() {
 
   const handleCustomColorApply = useCallback(async () => {
     if (!isValidHex(customColor)) {
-      Alert.alert('Invalid Color', 'Please enter a valid hex color (e.g., #3b82f6)');
+      Alert.alert('Invalid Color', 'Please enter a valid hex color (e.g., #E86825)');
       return;
     }
     setCustomPrimaryColor(customColor);
@@ -733,7 +733,7 @@ export default function BrandingScreen() {
                   style={styles.customColorInput}
                   value={customColor}
                   onChangeText={setCustomColor}
-                  placeholder="#3b82f6"
+                  placeholder="#E86825"
                   placeholderTextColor={colors.mutedForeground}
                   autoCapitalize="none"
                   maxLength={7}

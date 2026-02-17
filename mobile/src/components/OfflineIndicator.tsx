@@ -210,7 +210,7 @@ export function SyncStatus() {
         <Ionicons 
           name={isSyncing ? 'sync' : 'refresh'} 
           size={18} 
-          color={(!isOnline || isSyncing) ? '#9ca3af' : '#3b82f6'}
+          color={(!isOnline || isSyncing) ? '#9ca3af' : '#F28C4E'}
         />
         <Text style={[
           styles.syncButtonText,
@@ -345,14 +345,14 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#FDE8D4',
     marginTop: 4,
   },
   syncButtonDisabled: {
     backgroundColor: '#f3f4f6',
   },
   syncButtonText: {
-    color: '#3b82f6',
+    color: '#F28C4E',
     fontSize: 14,
     fontWeight: '600',
   },

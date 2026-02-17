@@ -132,7 +132,7 @@ export default function LiveDocumentPreview({
   const total = subtotal + gst;
   const depositAmount = showDepositSection ? total * ((depositPercent || 0) / 100) : 0;
   
-  const brandColor = business.brandColor || '#2563eb';
+  const brandColor = business.brandColor || '#E86825';
   const isPaid = status === 'paid';
   const isOverdue = status === 'overdue';
   const isAccepted = status === 'accepted';
@@ -153,7 +153,7 @@ export default function LiveDocumentPreview({
   const getStatusBadgeStyle = (s: string) => {
     switch (s) {
       case 'draft': return { background: '#e5e7eb', color: '#374151' };
-      case 'sent': return { background: '#dbeafe', color: '#1d4ed8' };
+      case 'sent': return { background: '#FDE8D4', color: '#C45A20' };
       case 'accepted': return { background: '#dcfce7', color: '#166534' };
       case 'declined': return { background: '#fee2e2', color: '#991b1b' };
       case 'paid': return { background: '#dcfce7', color: '#166534' };

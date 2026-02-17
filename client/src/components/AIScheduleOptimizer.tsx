@@ -107,7 +107,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
     switch (priority) {
       case 'urgent': return 'bg-red-500/10 text-red-600 border-red-200 dark:border-red-800';
       case 'high': return 'bg-orange-500/10 text-orange-600 border-orange-200 dark:border-orange-800';
-      case 'medium': return 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800';
+      case 'medium': return 'bg-orange-500/10 text-orange-600 border-orange-200 dark:border-orange-800';
       case 'low': return 'bg-gray-500/10 text-gray-600 border-gray-200 dark:border-gray-800';
       default: return 'bg-gray-500/10 text-gray-600 border-gray-200 dark:border-gray-800';
     }
@@ -214,7 +214,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 text-white">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 text-white">
               <Sparkles className="h-4 w-4" />
             </div>
             AI Day Planner
@@ -240,7 +240,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
       <CardContent className="space-y-4">
         {!optimizedData && (
           <div className="text-center py-8 space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-purple-500/20 to-orange-500/20 flex items-center justify-center">
               <Route className="h-8 w-8 text-primary" />
             </div>
             <div>
@@ -252,7 +252,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
             <Button 
               onClick={handleOptimize}
               disabled={isOptimizing}
-              className="bg-gradient-to-r from-purple-500 to-blue-500"
+              className="bg-gradient-to-r from-purple-500 to-orange-500"
               data-testid="button-optimize-schedule"
             >
               {isOptimizing ? (
@@ -294,7 +294,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
 
             {/* AI Recommendations */}
             {optimizedData.aiRecommendations && (
-              <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-200/50 dark:border-purple-800/50">
+              <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-orange-500/10 border border-purple-200/50 dark:border-purple-800/50">
                 <div className="flex items-start gap-2">
                   <Lightbulb className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-foreground whitespace-pre-wrap">
@@ -517,7 +517,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
                   size="sm"
                   onClick={handleApplyFullPlan}
                   disabled={isSaving}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-orange-500"
                   data-testid="button-apply-schedule"
                 >
                   {isSaving ? (

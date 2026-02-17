@@ -93,7 +93,7 @@ export default function InvoiceDetailScreen() {
   const [showReceiptSendModal, setShowReceiptSendModal] = useState(false);
   const [receiptSendModalDefaultTab, setReceiptSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
-  const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
+  const brandColor = businessSettings?.brandColor || user?.brandColor || '#E86825';
   
   const PAYMENT_METHODS = [
     { id: 'cash', label: 'Cash', icon: 'dollar-sign' },
@@ -2286,15 +2286,15 @@ ${businessName}`;
                     style={styles.linkedDocRow}
                     onPress={() => router.push(`/more/quote/${linkedQuote.id}`)}
                   >
-                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-                      <Feather name="file" size={18} color="#3b82f6" />
+                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(242,140,78,0.1)' }]}>
+                      <Feather name="file" size={18} color="#F28C4E" />
                     </View>
                     <View style={styles.linkedDocInfo}>
                       <Text style={styles.linkedDocLabel}>Quote</Text>
                       <Text style={styles.linkedDocTitle}>{linkedQuote.quoteNumber || `Quote #${linkedQuote.id.slice(0,6)}`}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedQuote.status === 'accepted' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: linkedQuote.status === 'accepted' ? '#22c55e' : '#3b82f6' }]}>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedQuote.status === 'accepted' ? 'rgba(34,197,94,0.1)' : 'rgba(242,140,78,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedQuote.status === 'accepted' ? '#22c55e' : '#F28C4E' }]}>
                         {linkedQuote.status.charAt(0).toUpperCase() + linkedQuote.status.slice(1)}
                       </Text>
                     </View>
@@ -2313,8 +2313,8 @@ ${businessName}`;
                       <Text style={styles.linkedDocLabel}>Job</Text>
                       <Text style={styles.linkedDocTitle} numberOfLines={1}>{linkedJob.title}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#3b82f6' }]}>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(242,140,78,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#F28C4E' }]}>
                         {linkedJob.status.charAt(0).toUpperCase() + linkedJob.status.slice(1)}
                       </Text>
                     </View>

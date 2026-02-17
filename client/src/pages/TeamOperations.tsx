@@ -202,7 +202,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: any; markerBg: string; markerText: string }> = {
   online: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", icon: Circle, markerBg: "#22c55e", markerText: "#fff" },
-  on_job: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: Wrench, markerBg: "#3b82f6", markerText: "#fff" },
+  on_job: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-400", icon: Wrench, markerBg: "#F28C4E", markerText: "#fff" },
   busy: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", icon: Clock, markerBg: "#f59e0b", markerText: "#fff" },
   break: { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", icon: Coffee, markerBg: "#eab308", markerText: "#000" },
   offline: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-500 dark:text-gray-400", icon: Circle, markerBg: "#9ca3af", markerText: "#fff" },
@@ -415,8 +415,8 @@ function LiveOpsTab() {
           </Card>
           <Card>
             <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
+                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
@@ -755,13 +755,13 @@ function LiveOpsTab() {
                           <div className="flex-shrink-0 mt-1">
                             <div className={`p-1.5 rounded-full ${
                               activity.activityType === 'job_completed' ? 'bg-green-100 dark:bg-green-900/30' :
-                              activity.activityType === 'invoice_sent' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                              activity.activityType === 'invoice_sent' ? 'bg-orange-100 dark:bg-orange-900/30' :
                               'bg-muted'
                             }`}>
                               {activity.activityType === 'job_completed' ? (
                                 <CheckCircle2 className="h-3 w-3 text-green-600" />
                               ) : activity.activityType === 'invoice_sent' ? (
-                                <Send className="h-3 w-3 text-blue-600" />
+                                <Send className="h-3 w-3 text-orange-600" />
                               ) : (
                                 <Activity className="h-3 w-3 text-muted-foreground" />
                               )}
@@ -1368,8 +1368,8 @@ function TeamAdminTab() {
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-              <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
+              <Briefcase className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             </div>
             <div className="min-w-0">
               <p className="text-xl font-bold">{onJobCount}</p>
@@ -2025,7 +2025,7 @@ function SchedulingTab() {
       case 'in_progress':
         return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
       case 'scheduled':
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400';
       case 'pending':
         return 'bg-muted text-muted-foreground';
       default:
@@ -2209,7 +2209,7 @@ function SchedulingTab() {
             <UserX className="h-3 w-3" />
             {todaySummary.offToday} Off
           </Badge>
-          <Badge variant="secondary" className="text-xs gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-0">
+          <Badge variant="secondary" className="text-xs gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-0">
             <Briefcase className="h-3 w-3" />
             {todaySummary.onJob} On Job
           </Badge>
@@ -2302,7 +2302,7 @@ function SchedulingTab() {
                             } else if (isWeekend) {
                               cellBg = 'bg-muted/40';
                             } else if (memberJobs.length > 0) {
-                              cellBg = 'bg-blue-50/30 dark:bg-blue-900/5';
+                              cellBg = 'bg-orange-50/30 dark:bg-orange-900/5';
                             } else if (isAvail) {
                               cellBg = 'bg-green-50/30 dark:bg-green-900/5';
                             }
@@ -2347,17 +2347,17 @@ function SchedulingTab() {
                                           key={job.id}
                                           draggable
                                           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, 'job', job.id, dayKey); }}
-                                          className="px-1 py-0.5 rounded bg-blue-100/80 dark:bg-blue-900/30 cursor-grab active:cursor-grabbing"
+                                          className="px-1 py-0.5 rounded bg-orange-100/80 dark:bg-orange-900/30 cursor-grab active:cursor-grabbing"
                                         >
-                                          <p className="text-[9px] font-medium text-blue-700 dark:text-blue-400 truncate">{job.title}</p>
+                                          <p className="text-[9px] font-medium text-orange-700 dark:text-orange-400 truncate">{job.title}</p>
                                           {jTime && (
-                                            <p className="text-[8px] text-blue-600/70 dark:text-blue-400/70">{jTime}</p>
+                                            <p className="text-[8px] text-orange-600/70 dark:text-orange-400/70">{jTime}</p>
                                           )}
                                         </div>
                                       );
                                     })}
                                     {memberJobs.length > 2 && (
-                                      <span className="text-[9px] text-blue-600 dark:text-blue-400 px-1">+{memberJobs.length - 2} more</span>
+                                      <span className="text-[9px] text-orange-600 dark:text-orange-400 px-1">+{memberJobs.length - 2} more</span>
                                     )}
                                   </div>
                                 )}
@@ -3273,8 +3273,8 @@ function PerformanceTab() {
         </Card>
         <Card>
           <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+            <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
+              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
             </div>
             <div className="min-w-0">
               <p className="text-xl sm:text-2xl font-bold">{totalInProgress}</p>
@@ -3341,7 +3341,7 @@ function PerformanceTab() {
                       <span className="font-medium">{member.completedJobs}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs sm:text-sm">
-                      <Briefcase className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                      <Briefcase className="h-3.5 w-3.5 text-orange-600 shrink-0" />
                       <span className="text-muted-foreground">Active:</span>
                       <span className="font-medium">{member.inProgressJobs}</span>
                     </div>

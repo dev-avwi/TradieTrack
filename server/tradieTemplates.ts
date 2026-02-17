@@ -111,14 +111,14 @@ export const tradieQuoteTemplates = [
   // PLUMBING (3 quotes, 3 invoices, 3 jobs)
   // ============================================
   createTemplate('quote', 'plumbing', 'plumbing-standard', 'Standard Plumbing Quote',
-    '#2563eb', 'Plumbing Services Quote', 'Professional plumbing services for your property',
+    '#E86825', 'Plumbing Services Quote', 'Professional plumbing services for your property',
     'Quote valid for 30 days. 50% deposit required to commence work. All work guaranteed for 12 months. GST included.',
     50, 30, [
       { description: 'Labour - Plumbing services', qty: 1, unitPrice: 120.00, unit: 'hour' },
       { description: 'Call-out fee', qty: 1, unitPrice: 80.00, unit: 'flat' }
     ]),
   createTemplate('quote', 'plumbing', 'plumbing-hotwater', 'Hot Water System Quote',
-    '#2563eb', 'Hot Water System Quote', 'Supply and install new hot water system',
+    '#E86825', 'Hot Water System Quote', 'Supply and install new hot water system',
     'Quote valid for 30 days. 5-year manufacturer warranty. Installation guaranteed for 12 months. Old unit disposal included. GST included.',
     40, 30, [
       { description: 'Electric hot water system (315L)', qty: 1, unitPrice: 1200.00, unit: 'each' },
@@ -126,7 +126,7 @@ export const tradieQuoteTemplates = [
       { description: 'Old system disposal', qty: 1, unitPrice: 150.00, unit: 'flat' }
     ]),
   createTemplate('quote', 'plumbing', 'plumbing-bathroom', 'Bathroom Renovation Quote',
-    '#2563eb', 'Bathroom Plumbing Quote', 'Complete bathroom plumbing renovation',
+    '#E86825', 'Bathroom Plumbing Quote', 'Complete bathroom plumbing renovation',
     'Quote valid for 45 days. Progress payments: 30% deposit, 40% rough-in, 30% completion. Waterproofing certificate provided. GST included.',
     30, 45, [
       { description: 'Bathroom strip out and rough-in', qty: 1, unitPrice: 850.00, unit: 'job' },
@@ -134,38 +134,38 @@ export const tradieQuoteTemplates = [
       { description: 'Vanity and basin installation', qty: 1, unitPrice: 420.00, unit: 'each' }
     ]),
   createTemplate('invoice', 'plumbing', 'plumbing-standard-inv', 'Standard Plumbing Invoice',
-    '#2563eb', 'Plumbing Services Invoice', 'Invoice for plumbing work completed',
+    '#E86825', 'Plumbing Services Invoice', 'Invoice for plumbing work completed',
     'Payment due within 14 days. All work guaranteed for 12 months.',
     0, 14, [
       { description: 'Labour - Plumbing services', qty: 1, unitPrice: 120.00, unit: 'hour' },
       { description: 'Materials', qty: 1, unitPrice: 0, unit: 'lot' }
     ]),
   createTemplate('invoice', 'plumbing', 'plumbing-hotwater-inv', 'Hot Water System Invoice',
-    '#2563eb', 'Hot Water Installation Invoice', 'Invoice for hot water system installation',
+    '#E86825', 'Hot Water Installation Invoice', 'Invoice for hot water system installation',
     'Payment due within 14 days. Manufacturer warranty details attached. Keep for your records.',
     0, 14, [
       { description: 'Hot water system complete installation', qty: 1, unitPrice: 0, unit: 'job' }
     ]),
   createTemplate('invoice', 'plumbing', 'plumbing-bathroom-inv', 'Bathroom Renovation Invoice',
-    '#2563eb', 'Bathroom Plumbing Invoice', 'Invoice for bathroom plumbing work',
+    '#E86825', 'Bathroom Plumbing Invoice', 'Invoice for bathroom plumbing work',
     'Payment due within 14 days. Waterproofing certificate attached.',
     0, 14, [
       { description: 'Bathroom plumbing complete', qty: 1, unitPrice: 0, unit: 'job' }
     ]),
   createTemplate('job', 'plumbing', 'plumbing-standard-job', 'Standard Plumbing Job',
-    '#2563eb', 'Plumbing Service', 'General plumbing work',
+    '#E86825', 'Plumbing Service', 'General plumbing work',
     'All work to Australian plumbing standards. Guarantee provided.',
     0, 14, [
       { description: 'Plumbing work as discussed', qty: 1, unitPrice: 0, unit: 'job' }
     ]),
   createTemplate('job', 'plumbing', 'plumbing-hotwater-job', 'Hot Water System Job',
-    '#2563eb', 'Hot Water Installation', 'Install new hot water system',
+    '#E86825', 'Hot Water Installation', 'Install new hot water system',
     'Old unit disposal included. Compliance certificate provided.',
     0, 14, [
       { description: 'Hot water installation', qty: 1, unitPrice: 0, unit: 'job' }
     ]),
   createTemplate('job', 'plumbing', 'plumbing-bathroom-job', 'Bathroom Renovation Job',
-    '#2563eb', 'Bathroom Plumbing', 'Bathroom plumbing renovation',
+    '#E86825', 'Bathroom Plumbing', 'Bathroom plumbing renovation',
     'Waterproofing certificate provided. Full cleanup after work.',
     0, 14, [
       { description: 'Bathroom renovation plumbing', qty: 1, unitPrice: 0, unit: 'job' }

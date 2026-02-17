@@ -195,7 +195,7 @@ export default function AcceptedQuotePicker({ onSelectQuote, selectedQuoteId }: 
                       Accepted
                     </Badge>
                     {quote.depositPaid && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
                         <DollarSign className="h-2.5 w-2.5 mr-1" />
                         Deposit Paid
                       </Badge>

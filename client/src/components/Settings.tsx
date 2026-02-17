@@ -311,8 +311,8 @@ export default function Settings({
     tradeType: "general"
   });
 
-  // Default color matches ThemeProvider's default (#2563EB blue)
-  const DEFAULT_BRAND_COLOR = "#2563EB";
+  // Default color matches ThemeProvider's default (#E86825 blue)
+  const DEFAULT_BRAND_COLOR = "#E86825";
   
   const [brandingData, setBrandingData] = useState({
     color: DEFAULT_BRAND_COLOR,
@@ -1236,7 +1236,7 @@ export default function Settings({
                       className={
                         profile.isOwner
                           ? "bg-primary/10 text-primary border-primary/20"
-                          : "bg-blue-100 text-blue-800"
+                          : "bg-orange-100 text-orange-800"
                       }
                     >
                       {profile.roleInfo?.roleName || "Unknown Role"}
@@ -1692,8 +1692,8 @@ export default function Settings({
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-3">
                     {[
-                      { color: '#2563EB', name: 'Blue' },
-                      { color: '#3b82f6', name: 'Blue' },
+                      { color: '#E86825', name: 'Blue' },
+                      { color: '#F28C4E', name: 'Blue' },
                       { color: '#10b981', name: 'Green' },
                       { color: '#8b5cf6', name: 'Purple' },
                       { color: '#f59e0b', name: 'Orange' },
@@ -1773,7 +1773,7 @@ export default function Settings({
                               }));
                             }
                           }}
-                          placeholder="#2563EB"
+                          placeholder="#E86825"
                           className="h-8 text-sm font-mono"
                           data-testid="input-brand-color"
                         />
@@ -1786,14 +1786,14 @@ export default function Settings({
                         size="sm"
                         onClick={() => {
                           setBrandingDirty(true);
-                          setBrandingData(prev => ({ ...prev, color: '#2563EB', customThemeEnabled: false }));
+                          setBrandingData(prev => ({ ...prev, color: '#E86825', customThemeEnabled: false }));
                           setBrandTheme({
-                            primaryColor: '#2563EB',
+                            primaryColor: '#E86825',
                             customThemeEnabled: false
                           });
                           // Also update localStorage immediately for consistency
                           localStorage.setItem('jobrunner-brand-theme', JSON.stringify({
-                            primaryColor: '#2563EB',
+                            primaryColor: '#E86825',
                             customThemeEnabled: false
                           }));
                         }}
@@ -3623,7 +3623,7 @@ function PaymentMethodsSettings() {
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 rounded-lg border">
               <div className="flex items-center gap-3">
-                <CreditCard className="h-5 w-5 text-blue-600" />
+                <CreditCard className="h-5 w-5 text-orange-600" />
                 <div>
                   <Label className="font-medium">Card Payments</Label>
                   <p className="text-xs text-muted-foreground">

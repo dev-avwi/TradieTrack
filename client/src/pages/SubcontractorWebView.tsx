@@ -442,7 +442,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
 
   if (viewState === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#E86825]/5 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -452,7 +452,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
     const isExpired = errorMessage.toLowerCase().includes('expired');
     const isRevoked = errorMessage.toLowerCase().includes('revoked');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#E86825]/5 flex flex-col">
         <div className="flex-1 flex items-center justify-center px-4">
           <Card className="w-full max-w-md rounded-md">
             <CardContent className="p-8 text-center space-y-4">
@@ -479,8 +479,8 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
 
   if (viewState === 'otp-phone') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#E86825]/5 flex flex-col relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#E86825]/[0.03] via-transparent to-transparent pointer-events-none" />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
@@ -497,8 +497,8 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
           <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60">
             <CardContent className="p-6 space-y-4">
               <div className="text-center">
-                <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto mb-3">
-                  <Phone className="w-6 h-6 text-[#2563EB]" />
+                <div className="w-14 h-14 rounded-full bg-[#E86825]/10 ring-1 ring-[#E86825]/20 flex items-center justify-center mx-auto mb-3">
+                  <Phone className="w-6 h-6 text-[#E86825]" />
                 </div>
                 <h2 className="text-lg font-semibold">Verify Your Identity</h2>
                 <p className="text-sm text-slate-500 mt-1">Enter the mobile number associated with your account</p>
@@ -513,7 +513,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
               <Button
                 onClick={handleRequestCode}
                 disabled={isSubmitting || !phone.trim()}
-                className="w-full bg-[#2563EB]"
+                className="w-full bg-[#E86825]"
                 size="lg"
               >
                 {isSubmitting ? 'Sending...' : 'Send Verification Code'}
@@ -533,8 +533,8 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
 
   if (viewState === 'otp-code') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex flex-col relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#E86825]/5 flex flex-col relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#E86825]/[0.03] via-transparent to-transparent pointer-events-none" />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
@@ -551,8 +551,8 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
           <Card className="w-full max-w-md rounded-md shadow-lg border-slate-200/60">
             <CardContent className="p-6 space-y-4">
               <div className="text-center">
-                <div className="w-14 h-14 rounded-full bg-[#2563EB]/10 ring-1 ring-[#2563EB]/20 flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle2 className="w-6 h-6 text-[#2563EB]" />
+                <div className="w-14 h-14 rounded-full bg-[#E86825]/10 ring-1 ring-[#E86825]/20 flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-[#E86825]" />
                 </div>
                 <h2 className="text-lg font-semibold">Enter Verification Code</h2>
                 <p className="text-sm text-slate-500 mt-1">We sent a 6-digit code to {phone}</p>
@@ -568,7 +568,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
               <Button
                 onClick={handleVerifyCode}
                 disabled={isSubmitting || otpCode.length !== 6}
-                className="w-full bg-[#2563EB]"
+                className="w-full bg-[#E86825]"
                 size="lg"
               >
                 {isSubmitting ? 'Verifying...' : 'Verify & Continue'}
@@ -606,7 +606,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
 
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
-        <header className="bg-[#2563EB] sticky top-0 z-20">
+        <header className="bg-[#E86825] sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -627,7 +627,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
           </div>
         </header>
 
-        <div className="bg-gradient-to-r from-[#2563EB]/[0.04] via-[#2563EB]/[0.02] to-transparent border-b border-slate-200 px-4 py-4">
+        <div className="bg-gradient-to-r from-[#E86825]/[0.04] via-[#E86825]/[0.02] to-transparent border-b border-slate-200 px-4 py-4">
           <div className="max-w-lg mx-auto space-y-2">
             <h2 className="text-lg font-bold text-slate-900">{job?.title}</h2>
             {job?.address && (
@@ -652,7 +652,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
               <Card className="rounded-md">
                 <CardContent className="p-6 space-y-4">
                   <div className="text-center">
-                    <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-[#2563EB]" />
+                    <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-[#E86825]" />
                     <h3 className="text-lg font-semibold">Accept this job?</h3>
                     <p className="text-sm text-slate-500 mt-1">Review the details above before accepting</p>
                   </div>
@@ -660,7 +660,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                     <Button variant="outline" className="flex-1" onClick={handleDecline} disabled={isSubmitting}>
                       <XCircle className="w-4 h-4 mr-2" /> Decline
                     </Button>
-                    <Button className="flex-1 bg-[#2563EB]" onClick={handleAccept} disabled={isSubmitting}>
+                    <Button className="flex-1 bg-[#E86825]" onClick={handleAccept} disabled={isSubmitting}>
                       <CheckCircle2 className="w-4 h-4 mr-2" /> Accept Job
                     </Button>
                   </div>
@@ -678,12 +678,12 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                       return (
                         <div key={step.key} className="flex flex-col items-center flex-1 min-w-0">
                           <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${
-                            isCompleted ? 'bg-[#2563EB] border-[#2563EB]' :
-                            isCurrent ? 'bg-[#2563EB] border-[#2563EB] ring-4 ring-[#2563EB]/20' :
+                            isCompleted ? 'bg-[#E86825] border-[#E86825]' :
+                            isCurrent ? 'bg-[#E86825] border-[#E86825] ring-4 ring-[#E86825]/20' :
                             'bg-white border-slate-300'
                           }`} />
                           <span className={`text-[10px] mt-1 text-center leading-tight ${
-                            isCurrent ? 'font-semibold text-[#2563EB]' :
+                            isCurrent ? 'font-semibold text-[#E86825]' :
                             isCompleted ? 'text-slate-600' : 'text-slate-400'
                           }`}>{step.label}</span>
                         </div>
@@ -692,12 +692,12 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                   </div>
 
                   {currentStatus === 'accepted' && !showEtaPicker && (
-                    <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => setShowEtaPicker(true)} disabled={isSubmitting}>
+                    <Button className="w-full bg-[#E86825]" size="lg" onClick={() => setShowEtaPicker(true)} disabled={isSubmitting}>
                       <Car className="w-4 h-4 mr-2" /> I'm On My Way
                     </Button>
                   )}
                   {currentStatus === 'accepted' && showEtaPicker && (
-                    <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-md p-4">
                       <h4 className="text-sm font-semibold text-slate-800">What's your estimated arrival time?</h4>
                       <div className="flex items-center gap-2 flex-wrap">
                         {[10, 15, 20, 30, 45, 60, 90].map((mins) => (
@@ -705,7 +705,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                             key={mins}
                             variant={etaMinutes === mins ? "default" : "outline"}
                             size="sm"
-                            className={etaMinutes === mins ? "bg-[#2563EB]" : ""}
+                            className={etaMinutes === mins ? "bg-[#E86825]" : ""}
                             onClick={() => setEtaMinutes(mins)}
                           >
                             {mins < 60 ? `${mins} min` : mins === 60 ? '1 hr' : '1.5 hr'}
@@ -716,7 +716,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                         <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowEtaPicker(false)}>
                           Cancel
                         </Button>
-                        <Button className="flex-1 bg-[#2563EB]" size="sm" onClick={() => handleOnMyWay()} disabled={isSubmitting}>
+                        <Button className="flex-1 bg-[#E86825]" size="sm" onClick={() => handleOnMyWay()} disabled={isSubmitting}>
                           {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Car className="w-4 h-4 mr-2" />}
                           Confirm - {etaMinutes < 60 ? `${etaMinutes} min` : etaMinutes === 60 ? '1 hr' : '1.5 hr'} away
                         </Button>
@@ -732,18 +732,18 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                           <span className="text-sm font-medium text-amber-800">ETA: ~{jobData.token.etaMinutes} min</span>
                         </div>
                       )}
-                      <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('arrived')} disabled={isSubmitting}>
+                      <Button className="w-full bg-[#E86825]" size="lg" onClick={() => handleStatusUpdate('arrived')} disabled={isSubmitting}>
                         <MapPin className="w-4 h-4 mr-2" /> I've Arrived
                       </Button>
                     </div>
                   )}
                   {currentStatus === 'arrived' && (
-                    <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('working')} disabled={isSubmitting}>
+                    <Button className="w-full bg-[#E86825]" size="lg" onClick={() => handleStatusUpdate('working')} disabled={isSubmitting}>
                       <Play className="w-4 h-4 mr-2" /> Start Work
                     </Button>
                   )}
                   {currentStatus === 'working' && (
-                    <Button className="w-full bg-[#2563EB]" size="lg" onClick={() => handleStatusUpdate('done')} disabled={isSubmitting}>
+                    <Button className="w-full bg-[#E86825]" size="lg" onClick={() => handleStatusUpdate('done')} disabled={isSubmitting}>
                       <CheckCircle2 className="w-4 h-4 mr-2" /> Finish Work
                     </Button>
                   )}
@@ -764,21 +764,21 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                         className="rounded-md border border-slate-200 bg-white p-3 text-center cursor-pointer hover-elevate"
                         onClick={() => setShowNoteInput(!showNoteInput)}
                       >
-                        <StickyNote className="w-5 h-5 mx-auto mb-1 text-[#2563EB]" />
+                        <StickyNote className="w-5 h-5 mx-auto mb-1 text-[#E86825]" />
                         <span className="text-xs font-medium text-slate-700">Add Note</span>
                       </div>
                       <div
                         className="rounded-md border border-slate-200 bg-white p-3 text-center cursor-pointer hover-elevate"
                         onClick={() => toast({ title: "Coming Soon", description: "Photo upload will be available soon" })}
                       >
-                        <Camera className="w-5 h-5 mx-auto mb-1 text-[#2563EB]" />
+                        <Camera className="w-5 h-5 mx-auto mb-1 text-[#E86825]" />
                         <span className="text-xs font-medium text-slate-700">Upload Photo</span>
                       </div>
                       <div
                         className="rounded-md border border-slate-200 bg-white p-3 text-center cursor-pointer hover-elevate"
                         onClick={() => toast({ title: "Coming Soon", description: "Materials tracking will be available soon" })}
                       >
-                        <Package className="w-5 h-5 mx-auto mb-1 text-[#2563EB]" />
+                        <Package className="w-5 h-5 mx-auto mb-1 text-[#E86825]" />
                         <span className="text-xs font-medium text-slate-700">Materials</span>
                       </div>
                     </div>
@@ -795,7 +795,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                           <Button variant="ghost" size="sm" onClick={() => { setShowNoteInput(false); setNoteText(''); }}>
                             Cancel
                           </Button>
-                          <Button size="sm" className="bg-[#2563EB]" onClick={handleAddNote} disabled={isSubmitting || !noteText.trim()}>
+                          <Button size="sm" className="bg-[#E86825]" onClick={handleAddNote} disabled={isSubmitting || !noteText.trim()}>
                             Save Note
                           </Button>
                         </div>
@@ -812,7 +812,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                 <div className="space-y-3">
                   {events.map((event: any, i: number) => (
                     <div key={event.id || i} className="flex gap-3 items-start">
-                      <div className="w-2 h-2 rounded-full bg-[#2563EB] mt-2 flex-shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-[#E86825] mt-2 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-medium">{EVENT_LABELS[event.eventType] || event.eventType}</p>
                         <p className="text-xs text-slate-400">{formatTime(event.createdAt)}</p>
@@ -842,7 +842,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#E86825]/5 flex items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );

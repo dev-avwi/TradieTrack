@@ -31,7 +31,7 @@ function getGlobalBrandTheme(): BrandTheme {
     try {
       const parsed = JSON.parse(saved);
       if (parsed.primaryColor && /^#[0-9A-Fa-f]{6}$/.test(parsed.primaryColor)) {
-        const isCustomColor = parsed.primaryColor.toUpperCase() !== '#2563EB';
+        const isCustomColor = parsed.primaryColor.toUpperCase() !== '#E86825';
         const explicitlyDisabled = parsed.customThemeEnabled === false;
         
         globalBrandTheme = {
@@ -49,7 +49,7 @@ function getGlobalBrandTheme(): BrandTheme {
   
   // Default brand theme
   globalBrandTheme = {
-    primaryColor: '#2563EB',
+    primaryColor: '#E86825',
     customThemeEnabled: false
   };
   return globalBrandTheme;
@@ -81,7 +81,7 @@ const initialState: ThemeProviderState = {
   setTheme: () => null,
   setThemeWithSync: () => null,
   brandTheme: {
-    primaryColor: '#2563EB',
+    primaryColor: '#E86825',
     customThemeEnabled: false
   },
   setBrandTheme: () => null,
@@ -269,7 +269,7 @@ export function ThemeProvider({
     // Determine if we should use the custom color:
     // - If enabled is explicitly true, use the custom color
     // - If enabled is explicitly false, use the default (user disabled custom theme)
-    const DEFAULT_COLOR = '#2563EB';
+    const DEFAULT_COLOR = '#E86825';
     const isValidColor = color && /^#[0-9A-Fa-f]{6}$/i.test(color);
     const effectiveColor = enabled && isValidColor ? color : DEFAULT_COLOR;
     const isCustomColor = isValidColor && color.toUpperCase() !== DEFAULT_COLOR.toUpperCase();

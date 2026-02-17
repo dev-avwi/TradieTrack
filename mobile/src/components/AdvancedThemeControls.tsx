@@ -182,7 +182,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               style={styles.customColorInput}
               value={customColor}
               onChangeText={setCustomColor}
-              placeholder="#3b82f6"
+              placeholder="#E86825"
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="none"
             />

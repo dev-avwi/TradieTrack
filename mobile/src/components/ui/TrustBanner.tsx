@@ -83,11 +83,11 @@ export function TrustBanner({ businessName }: TrustBannerProps) {
 
 const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: {
-    backgroundColor: isDark ? colors.infoLight : '#eff6ff',
+    backgroundColor: isDark ? colors.infoLight : '#FDE8D4',
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: isDark ? colors.info : '#bfdbfe',
+    borderColor: isDark ? colors.info : '#FCDCBE',
     position: 'relative',
     marginBottom: spacing.lg,
   },

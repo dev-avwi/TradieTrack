@@ -43,8 +43,8 @@ interface ColorPickerProps {
 
 export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
   const [showModal, setShowModal] = useState(false);
-  const [customHex, setCustomHex] = useState(value || '#3b82f6');
-  const [selectedColor, setSelectedColor] = useState(value || '#3b82f6');
+  const [customHex, setCustomHex] = useState(value || '#E86825');
+  const [selectedColor, setSelectedColor] = useState(value || '#E86825');
 
   const handlePresetSelect = (hex: string) => {
     setSelectedColor(hex);
@@ -85,7 +85,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
           <View style={[styles.colorSwatch, { backgroundColor: value || colors.primary }]} />
           <View style={styles.triggerText}>
             <Text style={styles.triggerLabel}>{label || 'Brand Color'}</Text>
-            <Text style={styles.triggerValue}>{value?.toUpperCase() || '#3B82F6'}</Text>
+            <Text style={styles.triggerValue}>{value?.toUpperCase() || '#E86825'}</Text>
           </View>
         </View>
         <Feather name="sliders" size={20} color={colors.mutedForeground} />
@@ -128,7 +128,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
                 style={styles.hexInput}
                 value={customHex}
                 onChangeText={handleCustomHexChange}
-                placeholder="#3B82F6"
+                placeholder="#E86825"
                 placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="characters"
                 maxLength={7}

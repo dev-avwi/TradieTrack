@@ -134,7 +134,7 @@ export default function JobsList({
               ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
               : action.priority === 'medium'
               ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
-              : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+              : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
           )}>
             <Lightbulb className="h-3 w-3 flex-shrink-0" />
             <span className="truncate max-w-[120px]">{action.action}</span>
@@ -686,7 +686,7 @@ export default function JobsList({
                                         ? "border-orange-300 text-orange-600 dark:text-orange-400"
                                         : nextActions[job.id].priority === 'medium'
                                         ? "border-yellow-300 text-yellow-600 dark:text-yellow-400"
-                                        : "border-blue-300 text-blue-600 dark:text-blue-400"
+                                        : "border-orange-300 text-orange-600 dark:text-orange-400"
                                     )}
                                   >
                                     <Lightbulb className="h-2.5 w-2.5 mr-1" />
@@ -781,7 +781,7 @@ export default function JobsList({
                               ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
                               : nextActions[job.id].priority === 'medium'
                               ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
-                              : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                              : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
                           )}>
                             <Lightbulb className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate">{nextActions[job.id].action}</span>

@@ -27,8 +27,8 @@ const STEP_CONFIG = {
   business: { 
     title: 'Business Setup', 
     icon: 'business' as const,
-    color: '#2563eb', // blue
-    lightColor: '#dbeafe',
+    color: '#E86825', // orange
+    lightColor: '#FDE8D4',
   },
   integrations: { 
     title: 'Payments', 
@@ -775,7 +775,7 @@ export default function OnboardingSetupScreen() {
   if (isCheckingSettings) {
     return (
       <LinearGradient
-        colors={['#2563eb', '#3b82f6', '#E8862E']}
+        colors={['#E86825', '#F28C4E', '#E8862E']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientContainer}
@@ -783,7 +783,7 @@ export default function OnboardingSetupScreen() {
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
           <View style={styles.loadingContainer}>
             <View style={styles.loadingCircle}>
-              <ActivityIndicator size="large" color="#2563eb" />
+              <ActivityIndicator size="large" color="#E86825" />
             </View>
             <Text style={styles.loadingTextWhite}>Setting up your account...</Text>
           </View>
@@ -794,7 +794,7 @@ export default function OnboardingSetupScreen() {
 
   return (
     <LinearGradient
-      colors={['#2563eb', '#3b82f6', '#E8862E']}
+      colors={['#E86825', '#F28C4E', '#E8862E']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradientContainer}

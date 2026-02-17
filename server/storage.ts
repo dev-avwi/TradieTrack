@@ -2974,7 +2974,7 @@ export class PostgresStorage implements IStorage {
       userId,
       name: 'Professional',
       isDefault: true,
-      primaryColor: '#1e40af',
+      primaryColor: '#B5491A',
       accentColor: '#059669',
       fontFamily: 'Inter',
       headerFontSize: '24px',

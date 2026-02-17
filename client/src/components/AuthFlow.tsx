@@ -430,12 +430,12 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                     >
-                      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-3 mb-4">
+                      <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-4 space-y-3 mb-4">
                         <div className="flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Account already exists</p>
-                            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                            <p className="text-sm font-medium text-orange-900 dark:text-orange-100">Account already exists</p>
+                            <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
                               An account with <span className="font-medium">{registerData.email}</span> is already registered. Would you like to sign in instead?
                             </p>
                           </div>
@@ -916,7 +916,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
             </div>
 
             {/* Decorative gradient blob */}
-            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-orange-400/30 via-transparent to-blue-400/30 rounded-full blur-3xl"></div>
+            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-orange-400/30 via-transparent to-orange-400/30 rounded-full blur-3xl"></div>
           </motion.div>
 
           {/* Features List */}

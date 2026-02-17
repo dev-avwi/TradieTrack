@@ -44,7 +44,7 @@ const templateFormSchema = z.object({
   tradeType: z.string().min(1, "Trade type is required"),
   familyKey: z.string().min(1, "Family key is required"),
   styling: z.object({
-    brandColor: z.string().default("#2563eb"),
+    brandColor: z.string().default("#E86825"),
     logoDisplay: z.boolean().default(true),
   }),
   sections: z.object({
@@ -109,7 +109,7 @@ export default function LiveTemplateEditor({ editingTemplate, onSave, onCancel }
       tradeType: userCheck?.user?.tradeType || "plumbing",
       familyKey: "",
       styling: {
-        brandColor: "#2563eb",
+        brandColor: "#E86825",
         logoDisplay: true,
       },
       sections: {
@@ -143,7 +143,7 @@ export default function LiveTemplateEditor({ editingTemplate, onSave, onCancel }
         type: editingTemplate.type || "quote",
         tradeType: editingTemplate.tradeType || userCheck?.user?.tradeType || "plumbing",
         familyKey: editingTemplate.familyKey || "",
-        styling: editingTemplate.styling || { brandColor: "#2563eb", logoDisplay: true },
+        styling: editingTemplate.styling || { brandColor: "#E86825", logoDisplay: true },
         sections: editingTemplate.sections || {
           showHeader: true,
           showLineItems: true,
@@ -503,7 +503,7 @@ export default function LiveTemplateEditor({ editingTemplate, onSave, onCancel }
                     <Label className="text-xs text-muted-foreground">Brand Color</Label>
                     <Input
                       type="color"
-                      value={watchedValues.styling?.brandColor || "#2563eb"}
+                      value={watchedValues.styling?.brandColor || "#E86825"}
                       onChange={(e) => form.setValue("styling.brandColor", e.target.value)}
                       className="w-12 h-12 p-1 rounded-xl mt-1"
                       data-testid="input-brand-color"
@@ -511,9 +511,9 @@ export default function LiveTemplateEditor({ editingTemplate, onSave, onCancel }
                   </div>
                   <div className="flex-1">
                     <Input
-                      value={watchedValues.styling?.brandColor || "#2563eb"}
+                      value={watchedValues.styling?.brandColor || "#E86825"}
                       onChange={(e) => form.setValue("styling.brandColor", e.target.value)}
-                      placeholder="#2563eb"
+                      placeholder="#E86825"
                       className="h-12 rounded-xl"
                     />
                   </div>

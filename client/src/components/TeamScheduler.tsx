@@ -78,9 +78,9 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
     border: 'border-l-amber-500' 
   },
   scheduled: { 
-    bg: 'bg-blue-50 dark:bg-blue-900/20', 
-    text: 'text-blue-700 dark:text-blue-300', 
-    border: 'border-l-blue-500' 
+    bg: 'bg-orange-50 dark:bg-orange-900/20', 
+    text: 'text-orange-700 dark:text-orange-300', 
+    border: 'border-l-orange-500' 
   },
   in_progress: { 
     bg: 'bg-orange-50 dark:bg-orange-900/20', 
@@ -659,7 +659,7 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
             <span>Pending</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-100 border-l-2 border-blue-500" />
+            <div className="w-3 h-3 rounded bg-orange-100 border-l-2 border-orange-500" />
             <span>Scheduled</span>
           </div>
           <div className="flex items-center gap-2">

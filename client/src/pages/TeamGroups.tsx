@@ -47,7 +47,7 @@ interface TeamGroupWithMembers extends TeamGroup {
 }
 
 const colorOptions = [
-  { value: "#3b82f6", label: "Blue" },
+  { value: "#F28C4E", label: "Blue" },
   { value: "#22c55e", label: "Green" },
   { value: "#f59e0b", label: "Amber" },
   { value: "#ef4444", label: "Red" },
@@ -66,7 +66,7 @@ export default function TeamGroups() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    color: "#3b82f6",
+    color: "#F28C4E",
   });
 
   const { data: groups = [], isLoading } = useQuery<TeamGroupWithCount[]>({
@@ -177,7 +177,7 @@ export default function TeamGroups() {
     setFormData({
       name: "",
       description: "",
-      color: "#3b82f6",
+      color: "#F28C4E",
     });
   };
 
@@ -193,7 +193,7 @@ export default function TeamGroups() {
     setFormData({
       name: group.name,
       description: group.description || "",
-      color: group.color || "#3b82f6",
+      color: group.color || "#F28C4E",
     });
     setEditingGroup(group);
   };
@@ -274,7 +274,7 @@ export default function TeamGroups() {
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div
                     className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: group.color || "#3b82f6" }}
+                    style={{ backgroundColor: group.color || "#F28C4E" }}
                   />
                   <div className="min-w-0">
                     <CardTitle className="truncate">{group.name}</CardTitle>
@@ -425,7 +425,7 @@ export default function TeamGroups() {
             <div className="flex items-center gap-3">
               <div
                 className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: viewingGroup?.color || "#3b82f6" }}
+                style={{ backgroundColor: viewingGroup?.color || "#F28C4E" }}
               />
               <DialogTitle>{viewingGroup?.name}</DialogTitle>
             </div>

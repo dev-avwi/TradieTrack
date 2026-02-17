@@ -57,7 +57,7 @@ async function sendBillingReminderEmail(
   const cardBrand = formatCardBrand(settings.paymentMethodBrand);
   const cardLast4 = settings.paymentMethodLast4 || '****';
   const manageUrl = `${getBaseUrl()}/settings?tab=subscription`;
-  const brandColor = settings.brandColor || '#2563eb';
+  const brandColor = settings.brandColor || '#E86825';
 
   const isTrialing = subscriptionStatus === 'trialing';
   const planName = subscriptionTier === 'team' ? 'JobRunner Team' : 'JobRunner Pro';

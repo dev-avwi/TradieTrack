@@ -14,40 +14,40 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 40% 98%;
-  --foreground: 217 33% 17%;
-  --border: 217 12% 91%;
+  --background: 30 30% 98%;
+  --foreground: 25 33% 17%;
+  --border: 25 12% 91%;
   --card: 0 0% 96%;
-  --card-foreground: 217 33% 17%;
-  --card-border: 217 12% 88%;
-  --sidebar: 217 15% 94%;
-  --sidebar-foreground: 217 20% 14%;
-  --sidebar-border: 217 12% 86%;
-  --sidebar-primary: 217 91% 53%;
+  --card-foreground: 25 33% 17%;
+  --card-border: 25 12% 88%;
+  --sidebar: 25 15% 94%;
+  --sidebar-foreground: 25 20% 14%;
+  --sidebar-border: 25 12% 86%;
+  --sidebar-primary: 25 95% 50%;
   --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 217 12% 90%;
-  --sidebar-accent-foreground: 217 20% 14%;
-  --sidebar-ring: 217 91% 53%;
+  --sidebar-accent: 25 12% 90%;
+  --sidebar-accent-foreground: 25 20% 14%;
+  --sidebar-ring: 25 95% 50%;
   --popover: 0 0% 92%;
-  --popover-foreground: 217 20% 14%;
-  --popover-border: 217 12% 84%;
-  --primary: 217 91% 53%;
+  --popover-foreground: 25 20% 14%;
+  --popover-border: 25 12% 84%;
+  --primary: 25 95% 50%;
   --primary-foreground: 0 0% 98%;
-  --secondary: 217 8% 89%;
-  --secondary-foreground: 217 20% 14%;
-  --muted: 217 6% 93%;
-  --muted-foreground: 217 10% 46%;
-  --accent: 217 12% 89%;
-  --accent-foreground: 217 20% 14%;
+  --secondary: 25 8% 89%;
+  --secondary-foreground: 25 20% 14%;
+  --muted: 25 6% 93%;
+  --muted-foreground: 25 10% 46%;
+  --accent: 25 12% 89%;
+  --accent-foreground: 25 20% 14%;
   --destructive: 5 85% 55%;
   --destructive-foreground: 0 0% 98%;
-  --input: 217 12% 75%;
-  --ring: 217 91% 53%;
-  --chart-1: 217 91% 60%;
-  --chart-2: 28 80% 55%;
+  --input: 25 12% 75%;
+  --ring: 25 95% 50%;
+  --chart-1: 25 95% 55%;
+  --chart-2: 200 80% 55%;
   --chart-3: 145 60% 42%;
   --chart-4: 280 55% 58%;
-  --chart-5: 10 80% 58%;
+  --chart-5: 350 80% 58%;
 
   /* Semantic status colors for consistency */
   --success: 145 65% 42%;
@@ -58,11 +58,11 @@
   --info-foreground: 0 0% 98%;
 
   /* Trade-specific colors - dynamically set by JavaScript */
-  --trade: 217 91% 53%; /* Default blue, overridden by trade selection */
-  --trade-bg: 217 20% 96%; /* Light tint for backgrounds */
-  --trade-border: 217 70% 40%; /* Darker for borders */
-  --trade-accent: 217 70% 45%; /* Enhanced accent color */
-  --trade-glow: 217 35% 85%; /* Subtle glow effect color */
+  --trade: 25 95% 50%; /* Default orange, overridden by trade selection */
+  --trade-bg: 25 20% 96%; /* Light tint for backgrounds */
+  --trade-border: 25 70% 40%; /* Darker for borders */
+  --trade-accent: 25 70% 45%; /* Enhanced accent color */
+  --trade-glow: 25 35% 85%; /* Subtle glow effect color */
 
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
@@ -120,40 +120,40 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 217 33% 8%;
-  --foreground: 210 25% 95%;
-  --border: 217 20% 15%;
-  --card: 217 30% 11%;
-  --card-foreground: 210 25% 95%;
-  --card-border: 217 20% 18%;
-  --sidebar: 217 33% 9%;
-  --sidebar-foreground: 210 25% 95%;
-  --sidebar-border: 217 20% 16%;
-  --sidebar-primary: 217 15% 95%;
-  --sidebar-primary-foreground: 195 18% 8%;
-  --sidebar-accent: 217 22% 14%;
-  --sidebar-accent-foreground: 210 25% 95%;
-  --sidebar-ring: 217 15% 95%;
-  --popover: 217 28% 12%;
-  --popover-foreground: 210 25% 95%;
-  --popover-border: 217 20% 19%;
-  --primary: 217 15% 95%;
-  --primary-foreground: 195 18% 8%;
-  --secondary: 217 22% 16%;
-  --secondary-foreground: 210 25% 95%;
-  --muted: 217 20% 13%;
-  --muted-foreground: 217 15% 65%;
-  --accent: 217 18% 18%;
-  --accent-foreground: 210 25% 95%;
+  --background: 25 33% 8%;
+  --foreground: 30 25% 95%;
+  --border: 25 20% 15%;
+  --card: 25 30% 11%;
+  --card-foreground: 30 25% 95%;
+  --card-border: 25 20% 18%;
+  --sidebar: 25 33% 9%;
+  --sidebar-foreground: 30 25% 95%;
+  --sidebar-border: 25 20% 16%;
+  --sidebar-primary: 25 15% 95%;
+  --sidebar-primary-foreground: 25 18% 8%;
+  --sidebar-accent: 25 22% 14%;
+  --sidebar-accent-foreground: 30 25% 95%;
+  --sidebar-ring: 25 15% 95%;
+  --popover: 25 28% 12%;
+  --popover-foreground: 30 25% 95%;
+  --popover-border: 25 20% 19%;
+  --primary: 25 15% 95%;
+  --primary-foreground: 25 18% 8%;
+  --secondary: 25 22% 16%;
+  --secondary-foreground: 30 25% 95%;
+  --muted: 25 20% 13%;
+  --muted-foreground: 25 15% 65%;
+  --accent: 25 18% 18%;
+  --accent-foreground: 30 25% 95%;
   --destructive: 5 85% 55%;
   --destructive-foreground: 0 0% 98%;
-  --input: 217 18% 35%;
-  --ring: 217 15% 95%;
-  --chart-1: 217 70% 55%;
-  --chart-2: 28 80% 65%;
+  --input: 25 18% 35%;
+  --ring: 25 15% 95%;
+  --chart-1: 25 70% 55%;
+  --chart-2: 200 80% 65%;
   --chart-3: 145 55% 60%;
   --chart-4: 280 55% 72%;
-  --chart-5: 10 80% 68%;
+  --chart-5: 350 80% 68%;
 
   /* Semantic status colors for consistency - dark mode */
   --success: 145 65% 55%;
@@ -164,11 +164,11 @@
   --info-foreground: 0 0% 10%;
 
   /* Trade-specific colors - dynamically set by JavaScript */
-  --trade: 217 25% 95%; /* Default blue for dark mode */
-  --trade-bg: 217 25% 16%; /* Dark tint for backgrounds */
-  --trade-border: 217 25% 80%; /* Lighter for borders */
-  --trade-accent: 217 50% 65%; /* Enhanced accent color for dark mode */
-  --trade-glow: 217 30% 25%; /* Subtle glow effect color for dark mode */
+  --trade: 25 25% 95%; /* Default orange for dark mode */
+  --trade-bg: 25 25% 16%; /* Dark tint for backgrounds */
+  --trade-border: 25 25% 80%; /* Lighter for borders */
+  --trade-accent: 25 50% 65%; /* Enhanced accent color for dark mode */
+  --trade-glow: 25 30% 25%; /* Subtle glow effect color for dark mode */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.4);
   --shadow-xs: 0px 1px 2px 0px hsl(220 15% 3% / 0.5);
@@ -785,7 +785,7 @@ main[data-scroll-container] > * {
     align-items: flex-start !important;
     margin-bottom: 30px !important;
     padding-bottom: 16px !important;
-    border-bottom: 3px solid var(--print-brand-color, #2563eb) !important;
+    border-bottom: 3px solid var(--print-brand-color, #E86825) !important;
     background: transparent !important;
   }
 
@@ -797,7 +797,7 @@ main[data-scroll-container] > * {
   .print-company-name {
     font-size: 24px !important;
     font-weight: 700 !important;
-    color: var(--print-brand-color, #2563eb) !important;
+    color: var(--print-brand-color, #E86825) !important;
     margin-bottom: 8px !important;
   }
 
@@ -827,7 +827,7 @@ main[data-scroll-container] > * {
   .print-document-title {
     font-size: 32px !important;
     font-weight: 700 !important;
-    color: var(--print-brand-color, #2563eb) !important;
+    color: var(--print-brand-color, #E86825) !important;
     text-transform: uppercase !important;
     letter-spacing: 2px !important;
   }
@@ -879,7 +879,7 @@ main[data-scroll-container] > * {
   .print-description-title {
     font-weight: 600 !important;
     margin-bottom: 8px !important;
-    color: var(--print-brand-color, #2563eb) !important;
+    color: var(--print-brand-color, #E86825) !important;
   }
 
   /* Line items table - matches PDF exactly */
@@ -893,7 +893,7 @@ main[data-scroll-container] > * {
 
   .print-line-items-table th,
   [data-print-table] th {
-    background: var(--print-brand-color, #2563eb) !important;
+    background: var(--print-brand-color, #E86825) !important;
     color: white !important;
     padding: 12px !important;
     text-align: left !important;
@@ -932,7 +932,7 @@ main[data-scroll-container] > * {
 
   .print-line-items-table tr:last-child td,
   [data-print-table] tbody tr:last-child td {
-    border-bottom: 2px solid var(--print-brand-color, #2563eb) !important;
+    border-bottom: 2px solid var(--print-brand-color, #E86825) !important;
   }
 
   /* Totals section - right aligned like PDF */
@@ -955,7 +955,7 @@ main[data-scroll-container] > * {
 
   .print-totals-row.print-total-final {
     border-bottom: none !important;
-    border-top: 2px solid var(--print-brand-color, #2563eb) !important;
+    border-top: 2px solid var(--print-brand-color, #E86825) !important;
     padding-top: 12px !important;
     margin-top: 4px !important;
   }
@@ -964,7 +964,7 @@ main[data-scroll-container] > * {
   .print-totals-row.print-total-final .print-totals-value {
     font-size: 16px !important;
     font-weight: 700 !important;
-    color: var(--print-brand-color, #2563eb) !important;
+    color: var(--print-brand-color, #E86825) !important;
   }
 
   .print-totals-label {
@@ -987,7 +987,7 @@ main[data-scroll-container] > * {
     margin-bottom: 24px !important;
     padding: 16px !important;
     background: #fafafa !important;
-    border-left: 4px solid var(--print-brand-color, #2563eb) !important;
+    border-left: 4px solid var(--print-brand-color, #E86825) !important;
     border-radius: 0 6px 6px 0 !important;
   }
 
@@ -1080,7 +1080,7 @@ main[data-scroll-container] > * {
   }
 
   .print-status-draft { background: #e5e7eb !important; color: #374151 !important; }
-  .print-status-sent { background: #dbeafe !important; color: #1d4ed8 !important; }
+  .print-status-sent { background: #FDE8D4 !important; color: #C45A20 !important; }
   .print-status-accepted { background: #dcfce7 !important; color: #166534 !important; }
   .print-status-declined { background: #fee2e2 !important; color: #991b1b !important; }
   .print-status-paid { background: #dcfce7 !important; color: #166534 !important; }

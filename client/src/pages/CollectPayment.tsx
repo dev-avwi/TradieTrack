@@ -892,9 +892,9 @@ export default function CollectPayment() {
                   Customer taps their card or phone on your device to pay instantly
                 </p>
               </div>
-              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="info-tap-to-pay-web">
-                <AlertTriangle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-700 dark:text-blue-300">
+              <div className="flex items-start gap-2 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg" data-testid="info-tap-to-pay-web">
+                <AlertTriangle className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-orange-700 dark:text-orange-300">
                   Tap to Pay is only available on iPhone XS+ with iOS 16.4+. On web, use QR Code or Send Link instead.
                 </p>
               </div>

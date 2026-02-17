@@ -33,7 +33,7 @@ interface GlobalSearchProps {
 const getTypeConfig = (type: string) => {
   switch (type) {
     case 'job':
-      return { icon: 'briefcase' as const, color: '#3b82f6', label: 'Job' };
+      return { icon: 'briefcase' as const, color: '#F28C4E', label: 'Job' };
     case 'client':
       return { icon: 'user' as const, color: '#8b5cf6', label: 'Client' };
     case 'quote':

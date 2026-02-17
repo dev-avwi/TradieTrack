@@ -102,7 +102,7 @@ const categoryColors: Record<TradeCategory, string> = {
   all: "bg-muted text-foreground",
   building: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   electrical: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  plumbing: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  plumbing: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
   hvac: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   painting: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   tiling: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",

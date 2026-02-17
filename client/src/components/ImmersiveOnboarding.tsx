@@ -31,7 +31,7 @@ const JOB_WALKTHROUGH_STEPS = [
     description: "Sarah calls about a leaky tap. You're on another job, so you quickly add her details in JobRunner.",
     action: "Create client & job",
     icon: Users,
-    color: "#3b82f6"
+    color: "#F28C4E"
   },
   {
     title: "Schedule the Visit",
@@ -66,7 +66,7 @@ const JOB_WALKTHROUGH_STEPS = [
     description: "You fix the tap, take 'after' photos, and mark the job complete. JobRunner generates an invoice.",
     action: "Finish & invoice",
     icon: DollarSign,
-    color: "#3b82f6"
+    color: "#F28C4E"
   },
   {
     title: "Get Paid!",

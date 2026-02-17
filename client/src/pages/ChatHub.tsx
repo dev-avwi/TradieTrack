@@ -215,7 +215,7 @@ interface ConversationItem {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: '#6B7280',
-  scheduled: '#3B82F6',
+  scheduled: '#F28C4E',
   in_progress: '#F59E0B',
   done: '#10B981',
   invoiced: '#8B5CF6',
@@ -1625,8 +1625,8 @@ export default function ChatHub() {
           <div className="flex flex-col items-center justify-center py-16 px-4">
             {filter === 'jobs' ? (
               <>
-                <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
-                  <Briefcase className="h-7 w-7 text-blue-500/50" />
+                <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
+                  <Briefcase className="h-7 w-7 text-orange-500/50" />
                 </div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">
                   {jobStatusFilter !== 'all' ? `No ${STATUS_LABELS[jobStatusFilter]?.toLowerCase() || jobStatusFilter} jobs` : (isTradie ? 'No jobs assigned' : 'No jobs yet')}
@@ -1709,8 +1709,8 @@ export default function ChatHub() {
                           <Users className="h-5 w-5 text-primary" />
                         </div>
                       ) : item.type === 'job' ? (
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                          <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                          <Briefcase className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                         </div>
                       ) : item.type === 'unassigned' ? (
                         <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
@@ -2029,8 +2029,8 @@ export default function ChatHub() {
                     className="w-10 h-10 rounded-lg object-cover shrink-0"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                    <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                    <Briefcase className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -2180,11 +2180,11 @@ export default function ChatHub() {
           <OfflineBanner />
 
           {selectedSmsConversation && isUnknownClient && selectedSmsConversation.id !== 'new' && (
-            <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+            <div className="shrink-0 mx-3 mt-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <User className="h-4 w-4 text-blue-600 shrink-0" />
-                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Unknown contact</span>
+                  <User className="h-4 w-4 text-orange-600 shrink-0" />
+                  <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Unknown contact</span>
                 </div>
                 <Button size="sm" className="h-6 text-xs gap-1" onClick={handleOpenCreateClientDialog} data-testid="button-create-client-from-sms">
                   <Plus className="h-3 w-3" />
@@ -2234,7 +2234,7 @@ export default function ChatHub() {
                       <div className="max-w-[75%] space-y-1.5">
                         {isJobRequest && (
                           <div className="flex flex-wrap items-center gap-1">
-                            <Badge variant="secondary" className="bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[10px] h-5">
+                            <Badge variant="secondary" className="bg-orange-500/15 text-orange-700 dark:text-orange-400 text-[10px] h-5">
                               <Briefcase className="h-2.5 w-2.5 mr-0.5" />
                               {msg.intentType?.replace('_', ' ') || 'Request'}
                             </Badge>

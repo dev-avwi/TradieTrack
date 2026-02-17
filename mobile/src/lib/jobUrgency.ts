@@ -56,8 +56,8 @@ export function getJobUrgency(scheduledAt: string | Date | null | undefined, sta
       level: 'today',
       label: `Today at ${format(scheduledDate, 'h:mm a')}`,
       shortLabel: 'Today',
-      color: '#2563eb',
-      bgColor: '#eff6ff',
+      color: '#E86825',
+      bgColor: '#FDE8D4',
     };
   }
 

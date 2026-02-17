@@ -189,13 +189,13 @@ function formatTimeAgo(dateStr: string | null | undefined): string {
 function getStatusConfig(status: string | null) {
   switch (status) {
     case 'assigned':
-      return { label: 'Scheduled', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', dot: 'bg-blue-500', pulse: false };
+      return { label: 'Scheduled', bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200', dot: 'bg-orange-500', pulse: false };
     case 'on_my_way':
       return { label: 'On the Way', bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500', pulse: true };
     case 'arrived':
       return { label: 'Arrived on Site', bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', pulse: false };
     case 'in_progress':
-      return { label: 'Work in Progress', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', dot: 'bg-blue-500', pulse: true };
+      return { label: 'Work in Progress', bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200', dot: 'bg-orange-500', pulse: true };
     case 'completed':
       return { label: 'Job Complete', bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', pulse: false };
     default:
@@ -210,7 +210,7 @@ function getDocStatusBadge(status: string) {
       return <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 no-default-hover-elevate no-default-active-elevate">{status}</Badge>;
     case 'sent':
     case 'viewed':
-      return <Badge variant="secondary" className="bg-blue-100 text-blue-700 no-default-hover-elevate no-default-active-elevate">{status}</Badge>;
+      return <Badge variant="secondary" className="bg-orange-100 text-orange-700 no-default-hover-elevate no-default-active-elevate">{status}</Badge>;
     case 'overdue':
     case 'declined':
       return <Badge variant="secondary" className="bg-red-100 text-red-700 no-default-hover-elevate no-default-active-elevate">{status}</Badge>;
@@ -230,8 +230,8 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
 const workerIcon = L.divIcon({
   className: '',
   html: `<div style="position:relative;width:40px;height:40px;">
-    <div style="position:absolute;inset:0;width:40px;height:40px;border-radius:50%;background:#2563EB;opacity:0.15;animation:worker-pulse 2.5s ease-out infinite;"></div>
-    <div style="width:40px;height:40px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 10px rgba(37,99,235,0.4);display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:0;width:40px;height:40px;border-radius:50%;background:#E86825;opacity:0.15;animation:worker-pulse 2.5s ease-out infinite;"></div>
+    <div style="width:40px;height:40px;border-radius:50%;background:#E86825;border:3px solid white;box-shadow:0 2px 10px rgba(232,104,37,0.4);display:flex;align-items:center;justify-content:center;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
     </div>
   </div>
@@ -276,7 +276,7 @@ const subbieIcon = new L.DivIcon({
   iconAnchor: [17, 17],
 });
 
-const WORKER_COLORS = ['#2563EB', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
+const WORKER_COLORS = ['#E86825', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
 
 function createWorkerIcon(color: string, isPrimary: boolean) {
   const size = isPrimary ? 40 : 32;
@@ -352,7 +352,7 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
       <Polyline
         positions={routeCoords}
         pathOptions={{
-          color: '#1e40af',
+          color: '#B5491A',
           weight: 10,
           opacity: 0.12,
           lineCap: 'round',
@@ -362,7 +362,7 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
       <Polyline
         positions={routeCoords}
         pathOptions={{
-          color: '#2563EB',
+          color: '#E86825',
           weight: 5,
           opacity: 0.85,
           lineCap: 'round',
@@ -1142,7 +1142,7 @@ export default function JobPortal() {
                             )}
                           </div>
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isCompleted ? 'bg-emerald-50' : isCurrent ? 'bg-blue-50' : 'bg-gray-50'
+                            isCompleted ? 'bg-emerald-50' : isCurrent ? 'bg-orange-50' : 'bg-gray-50'
                           }`}>
                             <StepIcon className={`w-3.5 h-3.5 ${
                               isCompleted ? 'text-emerald-500' : isCurrent ? 'text-brand' : 'text-gray-300'
@@ -1223,7 +1223,7 @@ export default function JobPortal() {
                         {material.status && (
                           <Badge variant="secondary" className={`text-xs no-default-hover-elevate no-default-active-elevate ${
                             material.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
-                            material.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
+                            material.status === 'ordered' ? 'bg-orange-100 text-orange-700' :
                             material.status === 'on_order' ? 'bg-amber-100 text-amber-700' :
                             'bg-gray-100 text-slate-600'
                           }`}>

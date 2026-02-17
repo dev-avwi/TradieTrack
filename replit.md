@@ -3,6 +3,8 @@ JobRunner is a mobile-first web application designed for Australian tradespeople
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
+Brand color: Deep Orange (#E86825, hsl 25 95% 50%). Changed from blue (#2563EB) on 2026-02-17.
+Domain: jobrunner.com.au (registered via Honcho, DNS pointing to Replit).
 
 ### System Architecture
 JobRunner employs an event-driven architecture with TypeScript. The frontend is a mobile-first React 18 application leveraging shadcn/ui, TailwindCSS, Wouter, and TanStack Query. The backend is an Express.js and TypeScript REST API, utilizing Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A React Native/Expo mobile app integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.

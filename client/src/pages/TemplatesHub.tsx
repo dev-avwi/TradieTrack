@@ -558,7 +558,7 @@ function StylePresetsWithPreview() {
                     value={customization.accentColor || DOCUMENT_ACCENT_COLOR}
                     onChange={(e) => updateCustomization({ accentColor: e.target.value })}
                     className="flex-1 font-mono text-sm"
-                    placeholder="#2563eb"
+                    placeholder="#E86825"
                   />
                 </div>
               </div>

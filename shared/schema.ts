@@ -1059,7 +1059,7 @@ export const stylePresets = pgTable("style_presets", {
   isDefault: boolean("is_default").default(false),
   // Branding
   logoUrl: text("logo_url"),
-  primaryColor: text("primary_color").default('#1e40af'), // Blue
+  primaryColor: text("primary_color").default('#B5491A'), // Blue
   accentColor: text("accent_color").default('#059669'), // Green
   // Typography
   fontFamily: text("font_family").default('Inter'),

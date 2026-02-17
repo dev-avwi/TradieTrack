@@ -187,7 +187,7 @@ export function JobDocuments({ jobId, canUpload = true }: JobDocumentsProps) {
       return <FileText className="h-5 w-5 text-red-500" />;
     }
     if (mimeType.startsWith('image/')) {
-      return <FileImage className="h-5 w-5 text-blue-500" />;
+      return <FileImage className="h-5 w-5 text-orange-500" />;
     }
     return <File className="h-5 w-5 text-muted-foreground" />;
   };

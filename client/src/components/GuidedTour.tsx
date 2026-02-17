@@ -477,7 +477,7 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
       // Draw glowing border
       ctx.globalCompositeOperation = 'source-over';
-      const borderColor = isInteractive ? '#10b981' : '#3b82f6';
+      const borderColor = isInteractive ? '#10b981' : '#F28C4E';
       ctx.strokeStyle = borderColor;
       ctx.lineWidth = 3;
       ctx.shadowColor = borderColor;
@@ -702,7 +702,7 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
   const renderArrow = () => {
     if (!targetRect || !isReady || cardPosition === 'center') return null;
 
-    const arrowColor = isInteractive ? '#10b981' : '#3b82f6';
+    const arrowColor = isInteractive ? '#10b981' : '#F28C4E';
     
     const isLeftSide = targetRect.left < 300;
     

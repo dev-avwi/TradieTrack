@@ -64,7 +64,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
 
   const emailConnected = isEmailReady(integrationHealth);
   const convertToInvoiceMutation = useConvertQuoteToInvoice();
-  const brandColor = businessSettings?.brandColor || '#2563eb';
+  const brandColor = businessSettings?.brandColor || '#E86825';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
   const templateStyles = getTemplateStyles(templateId, brandColor);
   const { template, primaryColor, headingStyle, tableHeaderStyle, getTableRowStyle, getNoteStyle } = templateStyles;

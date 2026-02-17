@@ -243,7 +243,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     }
     
     // Define common variables used across all email branches
-    const brandColor = businessSettings.brandColor || '#2563eb';
+    const brandColor = businessSettings.brandColor || '#E86825';
     const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(quoteWithItems.total || '0'));
 
     // 8. Send email (skip if user is sending via Gmail themselves)
@@ -1192,7 +1192,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     );
     
     // 9. Prepare email content
-    const brandColor = businessSettings.brandColor || '#2563eb';
+    const brandColor = businessSettings.brandColor || '#E86825';
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
       style: 'currency', 
       currency: 'AUD' 
@@ -1541,7 +1541,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     );
     
     // 9. Prepare email content
-    const brandColor = businessSettings.brandColor || '#2563eb';
+    const brandColor = businessSettings.brandColor || '#E86825';
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
       style: 'currency', 
       currency: 'AUD' 

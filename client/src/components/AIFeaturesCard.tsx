@@ -66,7 +66,7 @@ export function AIFeaturesCard({ onNavigate, className }: AIFeaturesCardProps) {
     <Card className={cn("border-2 border-primary/10", className)}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 text-white">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 text-white">
             <Sparkles className="h-4 w-4" />
           </div>
           AI-Powered Features
@@ -103,7 +103,7 @@ export function AIFeaturesCard({ onNavigate, className }: AIFeaturesCardProps) {
         ))}
 
         {/* AI Tip */}
-        <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-200/30">
+        <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-orange-500/10 border border-purple-200/30">
           <div className="flex items-start gap-2">
             <Lightbulb className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-muted-foreground">

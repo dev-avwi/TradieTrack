@@ -106,7 +106,7 @@ function StatusIcon({ status }: { status: string }) {
     case 'delivered':
       return <CheckCircle2 className="h-4 w-4 text-green-500" />;
     case 'sent':
-      return <Send className="h-4 w-4 text-blue-500" />;
+      return <Send className="h-4 w-4 text-orange-500" />;
     case 'failed':
       return <XCircle className="h-4 w-4 text-red-500" />;
     case 'pending':
@@ -119,7 +119,7 @@ function StatusIcon({ status }: { status: string }) {
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, { label: string; className: string }> = {
     delivered: { label: 'Delivered', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-    sent: { label: 'Sent', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+    sent: { label: 'Sent', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
     failed: { label: 'Failed', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
     pending: { label: 'Pending', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' },
   };
@@ -150,7 +150,7 @@ function CommunicationCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className={`p-2 rounded-lg shrink-0 ${item.type === 'email' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+            <div className={`p-2 rounded-lg shrink-0 ${item.type === 'email' ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
               <TypeIcon type={item.type} />
             </div>
             
@@ -255,7 +255,7 @@ function CommunicationDetailSheet({
       <SheetContent className="sm:max-w-lg w-full">
         <SheetHeader className="pb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${item.type === 'email' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+            <div className={`p-2 rounded-lg ${item.type === 'email' ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
               <TypeIcon type={item.type} />
             </div>
             <div className="flex-1">
@@ -310,7 +310,7 @@ function CommunicationDetailSheet({
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${
                       item.status === 'delivered' ? 'bg-green-500' : 
-                      item.status === 'sent' ? 'bg-blue-500' :
+                      item.status === 'sent' ? 'bg-orange-500' :
                       item.status === 'failed' ? 'bg-red-500' : 'bg-amber-500'
                     }`} />
                     <span className="text-sm font-medium capitalize">{item.status}</span>
@@ -767,8 +767,8 @@ export default function CommunicationsHub() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="border rounded-md p-4 space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                        <Bell className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30">
+                        <Bell className="h-5 w-5 text-orange-600" />
                       </div>
                       <div>
                         <h4 className="font-semibold text-sm">Job Reminders</h4>
@@ -1123,8 +1123,8 @@ export default function CommunicationsHub() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Mail className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                  <Mail className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.emails}</p>

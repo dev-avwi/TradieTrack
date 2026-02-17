@@ -77,7 +77,7 @@ const getQuoteStatusConfig = (status: string) => {
     case 'draft':
       return { label: 'Draft', icon: Clock, className: 'bg-muted text-muted-foreground' };
     case 'sent':
-      return { label: 'Sent', icon: Send, className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
+      return { label: 'Sent', icon: Send, className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' };
     case 'accepted':
       return { label: 'Accepted', icon: CheckCircle, className: 'bg-green-500/10 text-green-600 dark:text-green-400' };
     case 'rejected':
@@ -92,7 +92,7 @@ const getInvoiceStatusConfig = (status: string) => {
     case 'draft':
       return { label: 'Draft', icon: Clock, className: 'bg-muted text-muted-foreground' };
     case 'sent':
-      return { label: 'Sent', icon: Send, className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
+      return { label: 'Sent', icon: Send, className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' };
     case 'paid':
       return { label: 'Paid', icon: CheckCircle, className: 'bg-green-500/10 text-green-600 dark:text-green-400' };
     case 'overdue':
@@ -189,7 +189,7 @@ function CompactQuoteCard({ quote, onView, onSend, onConvert, onDelete, linkedIn
             {linkedInvoice && (
               <Badge 
                 variant="outline" 
-                className="text-xs px-2 py-0.5 cursor-pointer text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700"
+                className="text-xs px-2 py-0.5 cursor-pointer text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-700"
                 onClick={(e) => { e.stopPropagation(); onViewInvoice?.(); }}
                 data-testid={`quote-invoice-link-${quote.id}`}
               >

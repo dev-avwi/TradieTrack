@@ -122,7 +122,7 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
     <div className="max-w-4xl mx-auto p-6 space-y-6" data-testid="email-setup-guide">
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
-          <Mail className="h-8 w-8 text-blue-600" />
+          <Mail className="h-8 w-8 text-orange-600" />
           <h1 className="text-3xl font-bold">Supercharge Your Business Communication</h1>
         </div>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -131,9 +131,9 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
       </div>
 
       {/* Business Case */}
-      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <Card className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-indigo-50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-900">
+          <CardTitle className="flex items-center gap-2 text-orange-900">
             <Star className="h-6 w-6" />
             Why Successful Businesses Use Professional Email
           </CardTitle>
@@ -142,12 +142,12 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {businessBenefits.map((benefit, index) => (
               <div key={index} className="flex items-start gap-3">
-                <div className="bg-blue-600 text-white p-2 rounded-lg">
+                <div className="bg-orange-600 text-white p-2 rounded-lg">
                   <benefit.icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-blue-900">{benefit.title}</h3>
-                  <p className="text-sm text-blue-700">{benefit.description}</p>
+                  <h3 className="font-semibold text-orange-900">{benefit.title}</h3>
+                  <p className="text-sm text-orange-700">{benefit.description}</p>
                 </div>
               </div>
             ))}
@@ -228,7 +228,7 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
           {setupSteps.map((stepInfo) => (
             <div key={stepInfo.step} className={`p-4 rounded-lg border-2 ${
               currentStep === stepInfo.step 
-                ? 'border-blue-500 bg-blue-50' 
+                ? 'border-orange-500 bg-orange-50' 
                 : currentStep > stepInfo.step 
                   ? 'border-green-500 bg-green-50' 
                   : 'border-gray-200'
@@ -236,7 +236,7 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                   currentStep === stepInfo.step 
-                    ? 'bg-blue-600 text-white' 
+                    ? 'bg-orange-600 text-white' 
                     : currentStep > stepInfo.step 
                       ? 'bg-green-600 text-white' 
                       : 'bg-gray-300 text-gray-600'
@@ -265,7 +265,7 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
               <ul className="space-y-1 text-sm">
                 {stepInfo.actions.map((action, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="w-4 h-4 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                    <span className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
                       {index + 1}
                     </span>
                     <span>{action}</span>
@@ -287,9 +287,9 @@ export default function EmailSetupGuide({ onSetupComplete, onSkip }: EmailSetupG
 
           {/* API Key Input */}
           {currentStep >= 3 && (
-            <Card className="border-2 border-blue-300">
+            <Card className="border-2 border-orange-300">
               <CardHeader>
-                <CardTitle className="text-blue-900">Connect Your SendGrid Account</CardTitle>
+                <CardTitle className="text-orange-900">Connect Your SendGrid Account</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">

@@ -101,20 +101,20 @@ export default function XeroSetupGuide({
 
       {/* Benefits Banner */}
       {!isConnected && (
-        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 space-y-3">
-          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+        <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-4 space-y-3">
+          <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
             Never manually enter invoices in Xero again!
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
               <RefreshCw className="w-3 h-3" />
               <span>Two-way sync</span>
             </div>
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
               <Calculator className="w-3 h-3" />
               <span>Australian GST</span>
             </div>
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
               <FileText className="w-3 h-3" />
               <span>Auto invoices</span>
             </div>
@@ -265,11 +265,11 @@ export default function XeroSetupGuide({
           <AccordionContent className="text-xs text-muted-foreground pb-3">
             <ul className="space-y-1.5">
               <li className="flex items-start gap-2">
-                <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                 <span><strong>Connection:</strong> Under 2 minutes - just click and authorize</span>
               </li>
               <li className="flex items-start gap-2">
-                <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                 <span><strong>Initial sync:</strong> A few seconds for contacts and settings</span>
               </li>
               <li className="flex items-start gap-2">

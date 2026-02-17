@@ -113,7 +113,7 @@ interface GeofenceAlert {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#6B7280",
-  scheduled: "#3B82F6",
+  scheduled: "#F28C4E",
   in_progress: "#F59E0B",
   done: "#10B981",
   invoiced: "#8B5CF6",
@@ -129,7 +129,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const ACTIVITY_COLORS = {
   online: '#22C55E',
-  driving: '#3B82F6',
+  driving: '#F28C4E',
   working: '#F59E0B',
   idle: '#6B7280',
   offline: '#4B5563',
@@ -1029,10 +1029,10 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   if (jobsLoading) {
     return (
       <div className="flex-1 min-h-0 relative">
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-blue-500 to-blue-700">
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-orange-500 to-orange-700">
           <div className="text-center text-white">
             <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-blue-200">Loading map...</p>
+            <p className="text-orange-200">Loading map...</p>
           </div>
         </div>
       </div>
@@ -1096,7 +1096,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
           border-radius: 8px 0 0 0 !important;
         }
         .leaflet-control-attribution a {
-          color: ${isDark ? '#60a5fa' : '#3b82f6'} !important;
+          color: ${isDark ? '#F0975C' : '#F28C4E'} !important;
         }
         /* Hide leaflet container outline */
         .leaflet-container {
@@ -1117,7 +1117,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                 rgba(241, 245, 249, 0.4) 0%,
                 rgba(241, 245, 249, 0.2) 20%,
                 transparent 50%,
-                rgba(59, 130, 246, 0.06) 100%
+                rgba(242, 140, 78, 0.06) 100%
               )`
           };
           pointer-events: none;
@@ -1414,7 +1414,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                       <div className="flex items-center gap-2 mt-1">
                         {member.isActive ? (
                           member.isDriving ? (
-                            <Badge className="bg-blue-600/30 text-blue-600 dark:text-blue-400 border-0">
+                            <Badge className="bg-orange-600/30 text-orange-600 dark:text-orange-400 border-0">
                               <Car className="h-3 w-3 mr-1" />
                               Driving
                             </Badge>
@@ -1441,7 +1441,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                   
                   <div className="space-y-2 text-sm mb-4">
                     {member.isDriving && member.speed > 0 && (
-                      <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                      <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
                         <Gauge className="h-4 w-4" />
                         <span className="font-medium">{Math.round(member.speed)} km/h</span>
                       </div>

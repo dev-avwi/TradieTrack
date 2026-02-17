@@ -119,7 +119,7 @@ function StepIndicator({ steps, currentStep }: { steps: { id: string; title: str
                   isCompleted
                     ? 'bg-white text-green-600'
                     : isActive
-                    ? 'bg-white text-blue-600 ring-4 ring-white/30'
+                    ? 'bg-white text-orange-600 ring-4 ring-white/30'
                     : 'bg-white/20 text-white/60 border-2 border-white/30'
                 }`}
               >
@@ -671,7 +671,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   const renderPaymentsStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 rounded-full flex items-center justify-center mb-4">
+        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-orange-100 dark:from-purple-900/40 dark:to-orange-900/40 rounded-full flex items-center justify-center mb-4">
           <CreditCard className="h-8 w-8 text-purple-600" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -694,8 +694,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-              <ExternalLink className="h-4 w-4 text-blue-600" />
+            <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center flex-shrink-0">
+              <ExternalLink className="h-4 w-4 text-orange-600" />
             </div>
             <div>
               <h4 className="font-medium text-gray-900 dark:text-white">Send payment links</h4>
@@ -760,8 +760,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   const renderPortalStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-4">
-        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 rounded-full flex items-center justify-center mb-4">
-          <Eye className="h-8 w-8 text-blue-600" />
+        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-100 to-indigo-100 dark:from-orange-900/40 dark:to-indigo-900/40 rounded-full flex items-center justify-center mb-4">
+          <Eye className="h-8 w-8 text-orange-600" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           Your Client Portal
@@ -773,11 +773,11 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       
       <div className="max-w-sm mx-auto">
         <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3">
+          <div className="bg-gradient-to-r from-orange-600 to-orange-500 px-4 py-3">
             <p className="text-white font-semibold text-sm">
               {formData.businessName || 'Your Business'}
             </p>
-            <p className="text-blue-100 text-xs">Client Portal</p>
+            <p className="text-orange-100 text-xs">Client Portal</p>
           </div>
           
           <div className="p-4 space-y-3">
@@ -814,7 +814,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
               <div className="flex-1 bg-green-600 text-white text-center text-xs font-medium py-2 rounded-md">
                 Accept Quote
               </div>
-              <div className="flex-1 bg-blue-600 text-white text-center text-xs font-medium py-2 rounded-md">
+              <div className="flex-1 bg-orange-600 text-white text-center text-xs font-medium py-2 rounded-md">
                 Pay Invoice
               </div>
             </div>
@@ -939,7 +939,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-500" />
+            <Users className="h-4 w-4 text-orange-500" />
             <span>5 sample clients</span>
           </div>
           <div className="flex items-center gap-2">
@@ -977,12 +977,12 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </>
       ) : isProPlan ? (
         <>
-          <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-50 dark:from-orange-900/20 dark:to-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 max-w-sm mx-auto">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Gift className="h-5 w-5 text-orange-500" />
-              <span className="font-semibold text-blue-900 dark:text-blue-100">Pro Features Unlocked</span>
+              <span className="font-semibold text-orange-900 dark:text-orange-100">Pro Features Unlocked</span>
             </div>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+            <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
               All Pro features are free during beta - unlimited jobs, invoices, and AI!
             </p>
             <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
@@ -1014,12 +1014,12 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             </ul>
           </div>
 
-          <div className="bg-gradient-to-r from-blue-50 to-orange-50 dark:from-blue-900/20 dark:to-orange-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 max-w-sm mx-auto">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-50 dark:from-orange-900/20 dark:to-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 max-w-sm mx-auto">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Gift className="h-5 w-5 text-orange-500" />
-              <span className="font-semibold text-blue-900 dark:text-blue-100">Want Unlimited Access?</span>
+              <span className="font-semibold text-orange-900 dark:text-orange-100">Want Unlimited Access?</span>
             </div>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+            <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
               All Pro features are unlocked during beta!
             </p>
             <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
@@ -1068,7 +1068,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   if (userLoading || !resumeChecked) {
     return (
       <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding-loading">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-orange-500 to-orange-400" />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center gap-4">
             <img src={jobrunnerLogo} alt="JobRunner" className="h-16 w-auto" />
@@ -1085,10 +1085,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
 
   return (
     <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-orange-500 to-orange-400" />
       
       <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400/30 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-700/40 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-700/40 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
       
       <div className="relative z-10 max-w-2xl mx-auto p-4 md:p-6 min-h-screen flex flex-col">
         <div className="flex items-center justify-center gap-3 mb-6">

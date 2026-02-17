@@ -546,7 +546,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     chipActive: {
       borderColor: colors.primary,
-      backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.08)',
+      backgroundColor: isDark ? 'rgba(242,140,78,0.15)' : 'rgba(242,140,78,0.08)',
     },
     chipText: {
       ...typography.caption,
@@ -562,10 +562,10 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       gap: spacing.sm,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
-      backgroundColor: isDark ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.05)',
+      backgroundColor: isDark ? 'rgba(242,140,78,0.08)' : 'rgba(242,140,78,0.05)',
       borderRadius: radius.md,
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)',
+      borderColor: isDark ? 'rgba(242,140,78,0.15)' : 'rgba(242,140,78,0.1)',
     },
     infoText: {
       ...typography.caption,

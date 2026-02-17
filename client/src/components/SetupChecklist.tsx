@@ -357,11 +357,11 @@ export default function SetupChecklist({
                       </p>
                       
                       {step.requirements && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                          <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">
+                        <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+                          <p className="text-xs font-medium text-orange-800 dark:text-orange-200 mb-2">
                             What you'll need:
                           </p>
-                          <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                          <ul className="text-xs text-orange-700 dark:text-orange-300 space-y-1">
                             {step.requirements.map((req, i) => (
                               <li key={i} className="flex items-start gap-2">
                                 <Circle className="w-3 h-3 mt-0.5 flex-shrink-0" />

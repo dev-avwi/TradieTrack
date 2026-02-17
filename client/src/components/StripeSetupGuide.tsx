@@ -194,7 +194,7 @@ export default function StripeSetupGuide({
                 <span><strong>JobRunner fee:</strong> 2.5% platform fee on transactions</span>
               </li>
               <li className="flex items-start gap-2">
-                <Info className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Info className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                 <span>Example: $500 invoice = You receive ~$478 after all fees</span>
               </li>
             </ul>
@@ -208,11 +208,11 @@ export default function StripeSetupGuide({
           <AccordionContent className="text-xs text-muted-foreground pb-3">
             <ul className="space-y-1.5">
               <li className="flex items-start gap-2">
-                <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                 <span><strong>Setup time:</strong> 5-10 minutes to connect</span>
               </li>
               <li className="flex items-start gap-2">
-                <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
                 <span><strong>Verification:</strong> Usually instant, sometimes 1-2 days</span>
               </li>
               <li className="flex items-start gap-2">

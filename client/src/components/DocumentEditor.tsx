@@ -234,11 +234,11 @@ export default function DocumentEditor({ type, onSave, onCancel }: DocumentEdito
     address: "",
     phone: "",
     email: userCheck?.user?.email || "",
-    brandColor: "#2563eb",
+    brandColor: "#E86825",
     gstEnabled: true,
   };
 
-  const brandColor = business.brandColor || (type === "quote" ? "#2563eb" : "#dc2626");
+  const brandColor = business.brandColor || (type === "quote" ? "#E86825" : "#dc2626");
   const isGstRegistered = business.gstEnabled !== false;
 
   const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);

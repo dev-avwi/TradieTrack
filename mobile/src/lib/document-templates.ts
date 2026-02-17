@@ -133,7 +133,7 @@ export interface TemplateStyles {
 
 export function getTemplateStyles(
   templateId: TemplateId = DEFAULT_TEMPLATE,
-  _brandColor: string = '#2563eb',
+  _brandColor: string = '#E86825',
   customization?: TemplateCustomization
 ): TemplateStyles {
   const baseTemplate = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;

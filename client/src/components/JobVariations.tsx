@@ -129,7 +129,7 @@ const ACTION_CONFIG: Record<MaterialAction, { label: string; className: string; 
   removed: { label: 'Removed', className: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30', icon: Minus },
   replaced: { label: 'Replaced', className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30', icon: RefreshCw },
   added: { label: 'Added', className: 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30', icon: CirclePlus },
-  modified: { label: 'Modified', className: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30', icon: Wrench },
+  modified: { label: 'Modified', className: 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30', icon: Wrench },
 };
 
 interface JobVariationsProps {
@@ -410,7 +410,7 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
       case 'draft':
         return <Badge variant="secondary">Draft</Badge>;
       case 'sent':
-        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Sent</Badge>;
+        return <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Sent</Badge>;
       case 'approved':
         return <Badge className="bg-green-500 hover:bg-green-600 text-white">Approved</Badge>;
       case 'rejected':

@@ -116,7 +116,7 @@ interface CommandCenterData {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-slate-500",
-  scheduled: "bg-blue-500",
+  scheduled: "bg-orange-500",
   in_progress: "bg-amber-500",
   done: "bg-emerald-500",
   invoiced: "bg-violet-500",
@@ -137,7 +137,7 @@ function createWorkerMarkerIcon(color: string) {
       <div style="
         width: 40px;
         height: 40px;
-        background: ${color || '#3B82F6'};
+        background: ${color || '#F28C4E'};
         border: 3px solid white;
         border-radius: 50%;
         box-shadow: 0 3px 12px rgba(0,0,0,0.25);
@@ -231,7 +231,7 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
       working: { color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30', label: 'Working' },
-      driving: { color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'Driving' },
+      driving: { color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30', label: 'Driving' },
       idle: { color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30', label: 'Idle' },
       online: { color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30', label: 'Online' },
       offline: { color: 'text-slate-500', bg: 'bg-slate-100 dark:bg-slate-800', label: 'Offline' },
@@ -249,7 +249,7 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
 
   const hasLocation = data?.location?.latitude && data?.location?.longitude;
   const locationEnabled = data?.member.locationEnabledByOwner && data?.member.locationEnabledByUser;
-  const themeColor = data?.member.themeColor || '#3B82F6';
+  const themeColor = data?.member.themeColor || '#F28C4E';
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -327,7 +327,7 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
                       <div 
                         className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-background flex items-center justify-center ${
                           data.location.status === 'working' ? 'bg-emerald-500' :
-                          data.location.status === 'driving' ? 'bg-blue-500' :
+                          data.location.status === 'driving' ? 'bg-orange-500' :
                           data.location.status === 'online' ? 'bg-green-400' :
                           'bg-slate-400'
                         }`}
@@ -424,8 +424,8 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
                       </div>
                     )}
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center border-l-3 border-blue-500">
-                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-active-jobs">
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 text-center border-l-3 border-orange-500">
+                    <div className="text-3xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-active-jobs">
                       {data.stats.activeJobs}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">Active Jobs</div>

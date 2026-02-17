@@ -103,7 +103,7 @@ const HOUR_HEIGHT = 60;
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300' },
-  scheduled: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300' },
+  scheduled: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-300' },
   in_progress: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-300' },
   done: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-green-300' },
   invoiced: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-300' },
@@ -205,7 +205,7 @@ const workerIcon = new L.Icon({
 });
 
 const KANBAN_COLUMNS = [
-  { key: 'assigned', label: 'Assigned', color: 'bg-blue-500', bgLight: 'bg-blue-50 dark:bg-blue-900/20' },
+  { key: 'assigned', label: 'Assigned', color: 'bg-orange-500', bgLight: 'bg-orange-50 dark:bg-orange-900/20' },
   { key: 'en_route', label: 'En Route', color: 'bg-amber-500', bgLight: 'bg-amber-50 dark:bg-amber-900/20' },
   { key: 'arrived', label: 'Arrived', color: 'bg-purple-500', bgLight: 'bg-purple-50 dark:bg-purple-900/20' },
   { key: 'in_progress', label: 'In Progress', color: 'bg-orange-500', bgLight: 'bg-orange-50 dark:bg-orange-900/20' },
@@ -386,7 +386,7 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
                 {job.client && <p className="text-xs text-gray-600">{job.client.name}</p>}
                 {job.address && <p className="text-xs text-gray-500 mt-1">{job.address}</p>}
                 <div className="flex items-center gap-1 mt-1">
-                  <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">{job.status}</span>
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">{job.status}</span>
                   {job.scheduledTime && <span className="text-xs text-gray-500">{job.scheduledTime}</span>}
                 </div>
               </div>

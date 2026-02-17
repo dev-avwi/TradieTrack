@@ -226,7 +226,7 @@ export default function JobFlowWizard({
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center transition-all",
                       step.status === 'completed' && "bg-green-500 text-white",
-                      step.status === 'current' && "ring-2 ring-offset-2 ring-blue-500 bg-blue-500 text-white",
+                      step.status === 'current' && "ring-2 ring-offset-2 ring-orange-500 bg-orange-500 text-white",
                       step.status === 'upcoming' && "bg-muted text-muted-foreground",
                       step.clickable && step.status === 'completed' && "group-hover:ring-2 group-hover:ring-offset-2 group-hover:ring-amber-500",
                       step.id === 'in_progress' && timerRunning && status === 'in_progress' && "animate-pulse"
@@ -240,7 +240,7 @@ export default function JobFlowWizard({
                     className={cn(
                       "text-[10px] mt-1 text-center whitespace-nowrap",
                       step.status === 'completed' && "text-green-600 font-medium",
-                      step.status === 'current' && "font-semibold text-blue-600",
+                      step.status === 'current' && "font-semibold text-orange-600",
                       step.status === 'upcoming' && "text-muted-foreground"
                     )}
                   >
