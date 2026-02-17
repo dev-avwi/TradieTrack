@@ -3605,6 +3605,365 @@ export const generatePaymentReceiptPDF = (data: PaymentReceiptData): string => {
   `;
 };
 
+export const generateJobProofPackPDF = (data: {
+  job: any;
+  business: any;
+  client: any;
+  timeEntries: Array<{workerName: string; startTime: string; endTime?: string; duration?: number; billable?: boolean}>;
+  materials: Array<{name: string; quantity?: string; unitCost?: string; totalCost?: string; supplier?: string; status?: string}>;
+  photos: Array<{url: string; caption?: string; category: string; createdAt?: string}>;
+  invoice?: {number: string; date: string; total: string; gstAmount: string; status: string} | null;
+  accentColor?: string;
+}): string => {
+  const { job, business, client, timeEntries, materials, photos, invoice, accentColor: overrideColor } = data;
+
+  const { template, accentColor: templateColor } = getTemplateFromBusinessSettings(business);
+  const brandColor = overrideColor || templateColor;
+
+  const formatProofDate = (date: Date | string | null | undefined): string => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-AU', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Australia/Sydney',
+    }) + ', ' + d.toLocaleTimeString('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Australia/Sydney',
+    });
+  };
+
+  const formatShortDate = (date: Date | string | null | undefined): string => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' });
+  };
+
+  const formatShortTime = (date: Date | string | null | undefined): string => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Australia/Sydney' });
+  };
+
+  const formatDuration = (minutes: number | undefined): string => {
+    if (!minutes && minutes !== 0) return '-';
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    if (h === 0) return `${m}m`;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  };
+
+  const logoHtml = business.logoUrl
+    ? `<img src="${business.logoUrl}" class="logo" alt="${business.businessName || 'Business'}" />`
+    : '';
+
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = { pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced', cancelled: 'Cancelled' };
+    return map[s] || s;
+  };
+
+  const statusColor = (s: string) => {
+    const map: Record<string, string> = { pending: '#f59e0b', scheduled: '#3b82f6', in_progress: '#8b5cf6', done: '#22c55e', invoiced: '#06b6d4', cancelled: '#ef4444' };
+    return map[s] || '#6b7280';
+  };
+
+  const dateRange = [job.scheduledAt, job.completedAt].filter(Boolean);
+  const dateRangeStr = dateRange.length === 2
+    ? `${formatShortDate(dateRange[0])} → ${formatShortDate(dateRange[1])}`
+    : dateRange.length === 1
+      ? formatShortDate(dateRange[0])
+      : 'No dates set';
+
+  const totalTimeMinutes = timeEntries.reduce((sum, e) => sum + (e.duration || 0), 0);
+  const totalTimeStr = formatDuration(totalTimeMinutes);
+
+  const materialsTotal = materials.reduce((sum, m) => sum + parseFloat(m.totalCost || '0'), 0);
+
+  const timelineRows = [
+    { label: 'Created', date: job.createdAt },
+    { label: 'Scheduled', date: job.scheduledAt },
+    { label: 'Started', date: job.startedAt },
+    { label: 'Completed', date: job.completedAt },
+  ];
+
+  const timeEntriesHtml = timeEntries.length > 0
+    ? `<table class="proof-table">
+        <thead>
+          <tr>
+            <th>Worker</th>
+            <th>Date</th>
+            <th>Start</th>
+            <th>End</th>
+            <th style="text-align:right">Duration</th>
+            <th style="text-align:center">Billable</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${timeEntries.map(e => `
+          <tr>
+            <td>${e.workerName || 'Owner'}</td>
+            <td>${formatShortDate(e.startTime)}</td>
+            <td>${formatShortTime(e.startTime)}</td>
+            <td>${e.endTime ? formatShortTime(e.endTime) : '-'}</td>
+            <td style="text-align:right">${formatDuration(e.duration)}</td>
+            <td style="text-align:center">${e.billable !== false ? 'Yes' : 'No'}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="text-align:right;font-weight:700;border-top:2px solid ${brandColor}">Total Hours</td>
+            <td style="text-align:right;font-weight:700;border-top:2px solid ${brandColor}">${totalTimeStr}</td>
+            <td style="border-top:2px solid ${brandColor}"></td>
+          </tr>
+        </tfoot>
+      </table>`
+    : `<p class="empty-message">No time entries recorded</p>`;
+
+  const materialsHtml = materials.length > 0
+    ? `<table class="proof-table">
+        <thead>
+          <tr>
+            <th>Material</th>
+            <th style="text-align:right">Qty</th>
+            <th style="text-align:right">Unit Cost</th>
+            <th style="text-align:right">Total</th>
+            <th>Supplier</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${materials.map(m => `
+          <tr>
+            <td>${m.name || '-'}</td>
+            <td style="text-align:right">${m.quantity || '-'}</td>
+            <td style="text-align:right">${m.unitCost ? `$${parseFloat(m.unitCost).toFixed(2)}` : '-'}</td>
+            <td style="text-align:right">${m.totalCost ? `$${parseFloat(m.totalCost).toFixed(2)}` : '-'}</td>
+            <td>${m.supplier || '-'}</td>
+            <td><span class="status-pill">${m.status || '-'}</span></td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="text-align:right;font-weight:700;border-top:2px solid ${brandColor}">Materials Total</td>
+            <td style="text-align:right;font-weight:700;border-top:2px solid ${brandColor}">$${materialsTotal.toFixed(2)}</td>
+            <td colspan="2" style="border-top:2px solid ${brandColor}"></td>
+          </tr>
+        </tfoot>
+      </table>`
+    : `<p class="empty-message">No materials tracked</p>`;
+
+  const photosHtml = photos.length > 0
+    ? `<div class="photo-grid">
+        ${photos.map(p => `
+        <div class="photo-card">
+          <img src="${p.url}" alt="${p.caption || 'Job photo'}" class="photo-img" />
+          <div class="photo-meta">
+            <span class="photo-category">${p.category || 'general'}</span>
+            ${p.caption ? `<span class="photo-caption">${p.caption}</span>` : ''}
+            ${p.createdAt ? `<span class="photo-date">${formatShortDate(p.createdAt)}</span>` : ''}
+          </div>
+        </div>`).join('')}
+      </div>`
+    : `<p class="empty-message">No photos attached</p>`;
+
+  const invoiceHtml = invoice
+    ? `<table class="proof-table">
+        <tbody>
+          <tr><td style="font-weight:600;width:180px">Invoice Number</td><td>${invoice.number}</td></tr>
+          <tr><td style="font-weight:600">Date</td><td>${invoice.date}</td></tr>
+          <tr><td style="font-weight:600">Total (inc GST)</td><td>$${parseFloat(invoice.total).toFixed(2)}</td></tr>
+          <tr><td style="font-weight:600">GST</td><td>$${parseFloat(invoice.gstAmount).toFixed(2)}</td></tr>
+          <tr><td style="font-weight:600">Payment Status</td><td><span class="status-pill" style="background:${invoice.status === 'paid' ? '#dcfce7' : '#fef3c7'};color:${invoice.status === 'paid' ? '#166534' : '#92400e'}">${invoice.status === 'paid' ? 'Paid' : invoice.status}</span></td></tr>
+        </tbody>
+      </table>`
+    : `<p class="empty-message">No invoice generated</p>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${generateGoogleFontsLink()}
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: ${template.fontFamily};
+      font-size: ${template.baseFontSize};
+      font-weight: ${template.bodyWeight};
+      line-height: 1.5;
+      color: #1a1a1a;
+      background: #fff;
+    }
+    .document { max-width: 800px; margin: 0 auto; padding: 15px 20px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid ${brandColor};
+    }
+    .company-info { flex: 1; }
+    .company-name { font-size: 22px; font-weight: ${template.headingWeight}; color: ${brandColor}; margin-bottom: 4px; }
+    .company-details { color: #666; font-size: 10px; line-height: 1.6; }
+    .logo { max-width: 140px; max-height: 55px; object-fit: contain; margin-bottom: 8px; }
+    .document-type { text-align: right; }
+    .document-title { font-size: 24px; font-weight: ${template.headingWeight}; color: ${brandColor}; text-transform: uppercase; letter-spacing: 1.5px; }
+    .job-meta { margin-top: 6px; font-size: 11px; color: #555; }
+    .job-meta p { margin: 2px 0; }
+    .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; color: white; }
+    .info-section { display: flex; justify-content: space-between; margin-bottom: 14px; gap: 20px; }
+    .info-block { flex: 1; }
+    .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px; font-weight: 600; }
+    .info-value { color: #1a1a1a; line-height: 1.5; font-size: 11px; }
+
+    .section { margin-bottom: 18px; page-break-inside: avoid; }
+    .section-title {
+      font-size: 14px;
+      font-weight: ${template.headingWeight};
+      color: ${brandColor};
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid ${brandColor}40;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-icon { font-size: 16px; }
+
+    .proof-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    .proof-table th {
+      background: ${brandColor};
+      color: white;
+      padding: 6px 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .proof-table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; vertical-align: top; }
+    .proof-table tbody tr:nth-child(odd) { background: #f9fafb; }
+    .proof-table tfoot td { background: transparent; }
+
+    .empty-message { color: #888; font-style: italic; padding: 12px; background: #f9fafb; border-radius: 6px; text-align: center; font-size: 11px; }
+
+    .status-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; background: #f3f4f6; color: #374151; }
+
+    .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .photo-card { border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+    .photo-img { width: 100%; height: 140px; object-fit: cover; display: block; }
+    .photo-meta { padding: 4px 6px; font-size: 9px; color: #555; }
+    .photo-category { display: inline-block; background: ${brandColor}15; color: ${brandColor}; padding: 1px 6px; border-radius: 8px; font-weight: 600; text-transform: capitalize; margin-right: 4px; }
+    .photo-caption { display: block; margin-top: 2px; color: #333; }
+    .photo-date { display: block; color: #999; font-size: 9px; }
+
+    .footer {
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 2px solid ${brandColor};
+      text-align: center;
+      color: #888;
+      font-size: 10px;
+    }
+    .footer p { margin: 3px 0; }
+    .footer .official { font-weight: 600; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <div class="header">
+      <div class="company-info">
+        ${logoHtml}
+        <div class="company-name">${business.businessName || 'Business'}</div>
+        <div class="company-details">
+          ${business.abn ? `<p>ABN: ${business.abn}</p>` : ''}
+          ${business.address ? `<p>${business.address}</p>` : ''}
+          ${business.phone ? `<p>${business.phone}</p>` : ''}
+          ${business.email ? `<p>${business.email}</p>` : ''}
+        </div>
+      </div>
+      <div class="document-type">
+        <div class="document-title">Job Proof Pack</div>
+        <div class="job-meta">
+          <p><strong>${job.title || 'Untitled Job'}</strong></p>
+          ${job.number ? `<p>Job #${job.number}</p>` : `<p>Job ID: ${job.id?.slice(0, 8)}</p>`}
+          <p><span class="status-badge" style="background:${statusColor(job.status)}">${statusLabel(job.status)}</span></p>
+          <p style="margin-top:4px">${dateRangeStr}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div class="info-block">
+        <div class="info-label">Client</div>
+        <div class="info-value">
+          <strong>${client?.name || 'Unknown Client'}</strong>
+          ${client?.email ? `<br/>${client.email}` : ''}
+          ${client?.phone ? `<br/>${client.phone}` : ''}
+          ${client?.address ? `<br/>${client.address}` : ''}
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Job Site</div>
+        <div class="info-value">
+          ${job.address || job.location || client?.address || 'Not specified'}
+          ${job.description ? `<br/><span style="color:#666;font-size:10px">${job.description.substring(0, 120)}${job.description.length > 120 ? '...' : ''}</span>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">1. Job Timeline</div>
+      <table class="proof-table">
+        <thead>
+          <tr>
+            <th>Milestone</th>
+            <th>Date &amp; Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${timelineRows.map(r => `
+          <tr>
+            <td style="font-weight:600">${r.label}</td>
+            <td>${formatProofDate(r.date)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title">2. Hours Per Worker</div>
+      ${timeEntriesHtml}
+    </div>
+
+    <div class="section">
+      <div class="section-title">3. Materials &amp; Costs</div>
+      ${materialsHtml}
+    </div>
+
+    <div class="section">
+      <div class="section-title">4. Photos (Before / After)</div>
+      ${photosHtml}
+    </div>
+
+    <div class="section">
+      <div class="section-title">5. Invoice Summary</div>
+      ${invoiceHtml}
+    </div>
+
+    <div class="footer">
+      <p>Generated by JobRunner &bull; ${formatDate(new Date())}</p>
+      <p class="official">This document is an official record of work performed</p>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
 // Convert HTML to actual PDF using Puppeteer
 export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
   const puppeteer = await import('puppeteer');
