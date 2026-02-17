@@ -3835,10 +3835,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
 
+      // Fetch team members and equipment for full day plan context
+      const [teamMembers, equipmentList] = await Promise.all([
+        storage.getTeamMembers(effectiveUserId),
+        storage.getEquipment(effectiveUserId),
+      ]);
+
+      const activeTeamMembers = teamMembers.filter((m: any) => m.isActive).map((m: any) => ({
+        id: m.id,
+        memberId: m.memberId,
+        name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email,
+        role: m.roleName,
+      }));
+
+      const availableEquipment = equipmentList.filter((e: any) => e.status === 'available' || e.status === 'in_use').map((e: any) => ({
+        id: e.id,
+        name: e.name,
+        category: e.category,
+        status: e.status,
+      }));
+
+      const jobEquipmentData: Record<string, any[]> = {};
+      for (const job of scheduledJobs) {
+        const assignments = await storage.getJobEquipment(job.id);
+        if (assignments.length > 0) {
+          jobEquipmentData[job.id] = assignments;
+        }
+      }
+
       res.json({
         date: targetDate.toISOString().split('T')[0],
         ...optimizedSchedule,
-        aiRecommendations
+        aiRecommendations,
+        teamMembers: activeTeamMembers,
+        availableEquipment,
+        jobEquipmentAssignments: jobEquipmentData,
+        jobAssignments: scheduledJobs.reduce((acc: Record<string, string | null>, job) => {
+          acc[job.id] = job.assignedTo || null;
+          return acc;
+        }, {}),
       });
     } catch (error: any) {
       console.error("AI schedule optimization error:", error);

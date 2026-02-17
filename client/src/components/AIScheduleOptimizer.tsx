@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Sparkles, MapPin, Clock, Route, Calendar as CalendarIcon, ChevronRight, Lightbulb, Loader2, Navigation, AlertTriangle } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Sparkles, MapPin, Clock, Route, Calendar as CalendarIcon, ChevronRight, Lightbulb, Loader2, Navigation, AlertTriangle, Users, Wrench, User, HardHat, ArrowRight } from 'lucide-react';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface OptimizedJob {
@@ -17,10 +20,25 @@ interface OptimizedJob {
     clientName: string;
     address?: string;
     priority?: string;
+    estimatedDuration?: number;
   };
   suggestedTime: string;
   travelDistance?: number;
   reason: string;
+}
+
+interface TeamMemberInfo {
+  id: string;
+  memberId: string;
+  name: string;
+  role: string;
+}
+
+interface EquipmentInfo {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
 }
 
 interface OptimizedSchedule {
@@ -30,6 +48,16 @@ interface OptimizedSchedule {
   totalTime: number;
   aiSuggestions: string[];
   aiRecommendations: string;
+  teamMembers?: TeamMemberInfo[];
+  availableEquipment?: EquipmentInfo[];
+  jobAssignments?: Record<string, string | null>;
+  jobEquipmentAssignments?: Record<string, any[]>;
+}
+
+interface JobAssignment {
+  jobId: string;
+  workerId: string | null;
+  equipmentIds: string[];
 }
 
 interface AIScheduleOptimizerProps {
@@ -40,6 +68,9 @@ interface AIScheduleOptimizerProps {
 export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOptimizerProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [assignments, setAssignments] = useState<Record<string, JobAssignment>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   const optimizeMutation = useMutation({
     mutationFn: async (date: Date) => {
@@ -50,8 +81,17 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
       });
       return await response.json() as OptimizedSchedule;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setIsOptimizing(false);
+      const initial: Record<string, JobAssignment> = {};
+      data.optimizedOrder.forEach(item => {
+        initial[item.job.id] = {
+          jobId: item.job.id,
+          workerId: data.jobAssignments?.[item.job.id] || null,
+          equipmentIds: data.jobEquipmentAssignments?.[item.job.id]?.map((a: any) => a.equipmentId) || [],
+        };
+      });
+      setAssignments(initial);
     },
     onError: () => {
       setIsOptimizing(false);
@@ -65,15 +105,109 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500/10 text-red-600 border-red-200';
-      case 'high': return 'bg-orange-500/10 text-orange-600 border-orange-200';
-      case 'medium': return 'bg-blue-500/10 text-blue-600 border-blue-200';
-      case 'low': return 'bg-gray-500/10 text-gray-600 border-gray-200';
-      default: return 'bg-gray-500/10 text-gray-600 border-gray-200';
+      case 'urgent': return 'bg-red-500/10 text-red-600 border-red-200 dark:border-red-800';
+      case 'high': return 'bg-orange-500/10 text-orange-600 border-orange-200 dark:border-orange-800';
+      case 'medium': return 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800';
+      case 'low': return 'bg-gray-500/10 text-gray-600 border-gray-200 dark:border-gray-800';
+      default: return 'bg-gray-500/10 text-gray-600 border-gray-200 dark:border-gray-800';
     }
   };
 
   const optimizedData = optimizeMutation.data;
+
+  const updateWorkerAssignment = (jobId: string, workerId: string | null) => {
+    setAssignments(prev => ({
+      ...prev,
+      [jobId]: { ...prev[jobId], workerId }
+    }));
+  };
+
+  const toggleEquipment = (jobId: string, equipmentId: string) => {
+    setAssignments(prev => {
+      const current = prev[jobId]?.equipmentIds || [];
+      const updated = current.includes(equipmentId)
+        ? current.filter(id => id !== equipmentId)
+        : [...current, equipmentId];
+      return {
+        ...prev,
+        [jobId]: { ...prev[jobId], equipmentIds: updated }
+      };
+    });
+  };
+
+  const handleApplyFullPlan = async () => {
+    if (!optimizedData) return;
+    setIsSaving(true);
+    try {
+      for (const item of optimizedData.optimizedOrder) {
+        const assignment = assignments[item.job.id];
+        if (!assignment) continue;
+
+        if (assignment.workerId) {
+          await apiRequest('PATCH', `/api/jobs/${item.job.id}`, {
+            assignedTo: assignment.workerId,
+          });
+        }
+
+        for (const eqId of assignment.equipmentIds) {
+          try {
+            await apiRequest('POST', `/api/jobs/${item.job.id}/equipment`, {
+              equipmentId: eqId,
+            });
+          } catch {
+            // might already be assigned
+          }
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/job-equipment-summary'] });
+
+      toast({
+        title: 'Day plan applied',
+        description: `Updated ${optimizedData.optimizedOrder.length} job assignments`,
+      });
+
+      if (onApplySchedule) {
+        onApplySchedule(optimizedData);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error applying plan',
+        description: 'Some assignments may not have been saved. Please check and retry.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const workerJobCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(assignments).forEach(a => {
+      if (a.workerId) {
+        counts[a.workerId] = (counts[a.workerId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [assignments]);
+
+  const equipmentUsageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(assignments).forEach(a => {
+      a.equipmentIds.forEach(id => {
+        counts[id] = (counts[id] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [assignments]);
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const teamMembers = optimizedData?.teamMembers || [];
+  const equipment = optimizedData?.availableEquipment || [];
 
   return (
     <Card className={cn("border-2 border-primary/20", className)}>
@@ -83,7 +217,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
             <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 text-white">
               <Sparkles className="h-4 w-4" />
             </div>
-            AI Schedule Optimiser
+            AI Day Planner
           </CardTitle>
           <Popover>
             <PopoverTrigger asChild>
@@ -110,26 +244,26 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
               <Route className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h3 className="font-medium text-foreground">Optimise Your Day</h3>
+              <h3 className="font-medium text-foreground">Plan Your Full Day</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Let AI analyse your jobs and suggest the most efficient route
+                AI builds an optimised schedule assigning workers, equipment &amp; routes for every job
               </p>
             </div>
             <Button 
               onClick={handleOptimize}
               disabled={isOptimizing}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+              className="bg-gradient-to-r from-purple-500 to-blue-500"
               data-testid="button-optimize-schedule"
             >
               {isOptimizing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Analysing...
+                  Building Day Plan...
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Optimise Schedule
+                  Build Day Plan
                 </>
               )}
             </Button>
@@ -138,19 +272,23 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
 
         {optimizedData && (
           <div className="space-y-4">
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center p-3 rounded-lg bg-muted/50">
+            {/* Stats Row */}
+            <div className="grid grid-cols-4 gap-2">
+              <div className="text-center p-2.5 rounded-lg bg-muted/50">
                 <div className="text-lg font-bold text-foreground">{optimizedData.optimizedOrder.length}</div>
-                <div className="text-xs text-muted-foreground">Jobs</div>
+                <div className="text-[10px] text-muted-foreground">Jobs</div>
               </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="text-center p-2.5 rounded-lg bg-muted/50">
+                <div className="text-lg font-bold text-foreground">{teamMembers.length}</div>
+                <div className="text-[10px] text-muted-foreground">Workers</div>
+              </div>
+              <div className="text-center p-2.5 rounded-lg bg-muted/50">
+                <div className="text-lg font-bold text-foreground">{equipment.length}</div>
+                <div className="text-[10px] text-muted-foreground">Equipment</div>
+              </div>
+              <div className="text-center p-2.5 rounded-lg bg-muted/50">
                 <div className="text-lg font-bold text-foreground">{optimizedData.totalDistance}km</div>
-                <div className="text-xs text-muted-foreground">Distance</div>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <div className="text-lg font-bold text-foreground">{optimizedData.totalTime}h</div>
-                <div className="text-xs text-muted-foreground">Duration</div>
+                <div className="text-[10px] text-muted-foreground">Travel</div>
               </div>
             </div>
 
@@ -168,7 +306,7 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
 
             {/* Suggestions */}
             {optimizedData.aiSuggestions.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {optimizedData.aiSuggestions.map((suggestion, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-sm p-2 rounded bg-muted/30">
                     <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -178,49 +316,180 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
               </div>
             )}
 
-            {/* Optimised Order */}
+            {/* Team Summary Bar */}
+            {teamMembers.length > 0 && (
+              <div className="rounded-lg border p-3">
+                <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Team Allocation
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {teamMembers.map(member => {
+                    const count = workerJobCounts[member.memberId] || 0;
+                    return (
+                      <div key={member.id} className="flex items-center gap-1.5 text-xs">
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                            {getInitials(member.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-foreground">{member.name.split(' ')[0]}</span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {count} job{count !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Equipment Summary */}
+            {equipment.length > 0 && (
+              <div className="rounded-lg border p-3">
+                <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Wrench className="h-3.5 w-3.5" />
+                  Equipment Allocation
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {equipment.map(eq => {
+                    const count = equipmentUsageCounts[eq.id] || 0;
+                    return (
+                      <div key={eq.id} className="flex items-center gap-1.5 text-xs">
+                        <HardHat className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-foreground truncate max-w-[100px]">{eq.name}</span>
+                        {count > 0 && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {count}x
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Full Day Plan */}
             {optimizedData.optimizedOrder.length > 0 ? (
               <div className="space-y-2">
                 <h4 className="font-medium text-sm text-foreground flex items-center gap-2">
                   <Navigation className="h-4 w-4" />
-                  Suggested Route
+                  Day Plan
                 </h4>
-                <div className="space-y-1">
-                  {optimizedData.optimizedOrder.map((item, index) => (
-                    <div 
-                      key={item.job.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
-                      data-testid={`schedule-item-${item.job.id}`}
-                    >
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-foreground truncate">{item.job.title}</span>
-                          {item.job.priority && (
-                            <Badge variant="outline" className={cn("text-xs", getPriorityColor(item.job.priority))}>
-                              {item.job.priority}
-                            </Badge>
+                <div className="space-y-3">
+                  {optimizedData.optimizedOrder.map((item, index) => {
+                    const jobAssignment = assignments[item.job.id];
+                    const assignedWorker = teamMembers.find(m => m.memberId === jobAssignment?.workerId);
+                    const assignedEquipmentIds = jobAssignment?.equipmentIds || [];
+
+                    return (
+                      <div 
+                        key={item.job.id}
+                        className="rounded-lg border bg-card overflow-visible"
+                        data-testid={`schedule-item-${item.job.id}`}
+                      >
+                        {/* Job Header */}
+                        <div className="flex items-center gap-3 p-3">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-foreground truncate">{item.job.title}</span>
+                              {item.job.priority && (
+                                <Badge variant="outline" className={cn("text-[10px]", getPriorityColor(item.job.priority))}>
+                                  {item.job.priority}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {item.suggestedTime}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {item.job.clientName}
+                              </span>
+                              {item.travelDistance !== undefined && item.travelDistance > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {item.travelDistance.toFixed(1)}km
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Assignment Controls */}
+                        <div className="border-t px-3 py-2.5 space-y-2 bg-muted/20">
+                          {/* Worker Assignment */}
+                          {teamMembers.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              <Users className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <Select
+                                value={jobAssignment?.workerId || 'unassigned'}
+                                onValueChange={(val) => updateWorkerAssignment(item.job.id, val === 'unassigned' ? null : val)}
+                              >
+                                <SelectTrigger className="h-8 text-xs flex-1">
+                                  <SelectValue placeholder="Assign worker" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                                  {teamMembers.map(member => (
+                                    <SelectItem key={member.memberId} value={member.memberId}>
+                                      <span className="flex items-center gap-1.5">
+                                        {member.name}
+                                        <span className="text-muted-foreground">({member.role})</span>
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {/* Equipment Assignment */}
+                          {equipment.length > 0 && (
+                            <div className="flex items-start gap-2">
+                              <Wrench className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-1" />
+                              <div className="flex flex-wrap gap-1.5 flex-1">
+                                {equipment.map(eq => {
+                                  const isAssigned = assignedEquipmentIds.includes(eq.id);
+                                  return (
+                                    <Badge
+                                      key={eq.id}
+                                      variant={isAssigned ? "default" : "outline"}
+                                      className={cn(
+                                        "text-[10px] cursor-pointer transition-colors",
+                                        isAssigned ? "bg-primary/90" : "hover-elevate"
+                                      )}
+                                      onClick={() => toggleEquipment(item.job.id, eq.id)}
+                                    >
+                                      {eq.name}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Assignment Summary */}
+                          {(assignedWorker || assignedEquipmentIds.length > 0) && (
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-1 border-t border-dashed">
+                              <ArrowRight className="h-3 w-3" />
+                              {assignedWorker && <span>{assignedWorker.name}</span>}
+                              {assignedWorker && assignedEquipmentIds.length > 0 && <span>+</span>}
+                              {assignedEquipmentIds.length > 0 && (
+                                <span>{assignedEquipmentIds.length} equipment</span>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {item.suggestedTime}
-                          </span>
-                          {item.travelDistance && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {item.travelDistance.toFixed(1)}km
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 italic">{item.reason}</p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -234,20 +503,34 @@ export function AIScheduleOptimizer({ onApplySchedule, className }: AIScheduleOp
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => optimizeMutation.reset()}
+                onClick={() => {
+                  optimizeMutation.reset();
+                  setAssignments({});
+                }}
                 className="flex-1"
                 data-testid="button-reset-schedule"
               >
                 Start Over
               </Button>
-              {onApplySchedule && optimizedData.optimizedOrder.length > 0 && (
+              {optimizedData.optimizedOrder.length > 0 && (
                 <Button
                   size="sm"
-                  onClick={() => onApplySchedule(optimizedData)}
+                  onClick={handleApplyFullPlan}
+                  disabled={isSaving}
                   className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"
                   data-testid="button-apply-schedule"
                 >
-                  Apply Schedule
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Apply Day Plan
+                    </>
+                  )}
                 </Button>
               )}
             </div>
