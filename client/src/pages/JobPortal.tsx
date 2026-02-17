@@ -479,7 +479,7 @@ function HeroMap({
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '65%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 15%, rgba(248,250,252,0.98) 30%, rgba(248,250,252,0.9) 45%, rgba(248,250,252,0.6) 65%, rgba(248,250,252,0) 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '55%', background: 'linear-gradient(to top, #ffffff 0%, #ffffff 10%, rgba(255,255,255,0.95) 25%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0) 100%)' }} />
       </div>
     );
   }
@@ -554,7 +554,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '65%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 15%, rgba(248,250,252,0.98) 30%, rgba(248,250,252,0.9) 45%, rgba(248,250,252,0.6) 65%, rgba(248,250,252,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '55%', background: 'linear-gradient(to top, #ffffff 0%, #ffffff 10%, rgba(255,255,255,0.95) 25%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0) 100%)' }} />
 
       {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
         <div className="absolute top-16 left-3 z-[1000]">

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -499,6 +499,17 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               >
                 <Receipt className="h-4 w-4 mr-2" />
                 View Invoice
+              </Button>
+            )}
+
+            {quote.acceptanceToken && (
+              <Button 
+                variant="outline"
+                onClick={() => window.open(`/portal/quote/${quote.acceptanceToken}`, '_blank')}
+                data-testid="button-view-as-client"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View as Client
               </Button>
             )}
           </div>

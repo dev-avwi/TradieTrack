@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock, Eye } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -748,6 +748,17 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               >
                 <FileText className="h-4 w-4 mr-2" />
                 View Quote
+              </Button>
+            )}
+
+            {invoice.paymentToken && (
+              <Button 
+                variant="outline"
+                onClick={() => window.open(`/portal/invoice/${invoice.paymentToken}`, '_blank')}
+                data-testid="button-view-as-client"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View as Client
               </Button>
             )}
           </div>
