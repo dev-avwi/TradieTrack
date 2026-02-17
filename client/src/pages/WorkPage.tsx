@@ -32,7 +32,7 @@ import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import StatusBadge from "@/components/StatusBadge";
-import { useJobs, useUpdateJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
+import { useJobs, useUpdateJob, useArchiveJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useLocation } from "wouter";
@@ -74,6 +74,7 @@ export default function WorkPage({
   const [pasteJobOpen, setPasteJobOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
   const [, navigate] = useLocation();
@@ -82,6 +83,7 @@ export default function WorkPage({
   const { data: jobs = [], isLoading } = useJobs({ archived: showArchived }) as { data: Job[], isLoading: boolean };
   const { toast } = useToast();
   const updateJobMutation = useUpdateJob();
+  const archiveJobMutation = useArchiveJob();
   const unarchiveJobMutation = useUnarchiveJob();
   const deleteJobMutation = useDeleteJob();
   const { actionPermissions } = useAppMode();
@@ -159,6 +161,28 @@ export default function WorkPage({
       toast({
         title: "Error",
         description: "Failed to restore job",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleArchiveJob = (job: Job) => {
+    setSelectedJob(job);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleConfirmArchiveJob = async () => {
+    if (!selectedJob) return;
+    try {
+      await archiveJobMutation.mutateAsync(selectedJob.id);
+      toast({
+        title: "Job Archived",
+        description: `${selectedJob.title || 'Job'} has been archived`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to archive job",
         variant: "destructive",
       });
     }
@@ -253,7 +277,6 @@ export default function WorkPage({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`button-job-table-actions-${row.id}`}
               >
@@ -269,6 +292,12 @@ export default function WorkPage({
                 <DropdownMenuItem onClick={nextAction.action}>
                   <nextAction.icon className="h-4 w-4 mr-2" />
                   {nextAction.label}
+                </DropdownMenuItem>
+              )}
+              {!showArchived && (
+                <DropdownMenuItem onClick={() => handleArchiveJob(row)}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archive
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem 
@@ -323,7 +352,7 @@ export default function WorkPage({
                 <StatusBadge status={job.status} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" data-testid={`job-card-menu-${job.id}`}>
+                    <Button variant="ghost" size="icon" data-testid={`job-card-menu-${job.id}`}>
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -332,6 +361,12 @@ export default function WorkPage({
                       <Briefcase className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
+                    {!showArchived && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchiveJob(job); }}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem 
                       onClick={(e) => { e.stopPropagation(); handleDeleteJob(job); }}
                       className="text-red-600 dark:text-red-400"
@@ -463,7 +498,7 @@ export default function WorkPage({
           { id: 'pending', label: 'Pending', count: stats.pending, icon: <Hourglass className="h-3 w-3" /> },
           { id: 'scheduled', label: 'Scheduled', count: stats.scheduled, icon: <Calendar className="h-3 w-3" /> },
           { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
-          { id: 'done', label: 'Done', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
+          { id: 'done', label: 'Completed', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
           { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
           { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> },
         ]}
@@ -492,7 +527,7 @@ export default function WorkPage({
       ) : filteredJobs.length === 0 ? (
         <EmptyState
           icon={Briefcase}
-          title="No jobs found"
+          title={searchTerm ? "No jobs found" : "No jobs yet"}
           description={
             searchTerm 
               ? "Try adjusting your search terms"
@@ -585,6 +620,16 @@ export default function WorkPage({
         variant="destructive"
         onConfirm={handleConfirmDeleteJob}
         isPending={deleteJobMutation.isPending}
+      />
+
+      <ConfirmationDialog
+        open={archiveDialogOpen}
+        onOpenChange={setArchiveDialogOpen}
+        title="Archive this job?"
+        description={`${selectedJob?.title || 'This job'} will be moved to the archive. Archived jobs can be restored later from the archive tab.`}
+        confirmLabel="Archive"
+        onConfirm={handleConfirmArchiveJob}
+        isPending={archiveJobMutation.isPending}
       />
     </PageShell>
   );

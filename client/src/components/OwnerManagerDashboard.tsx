@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,8 @@ import {
   Zap,
   Timer,
   Receipt,
-  CreditCard
+  CreditCard,
+  WifiOff
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -45,6 +47,33 @@ interface OwnerManagerDashboardProps {
   onViewInvoices?: () => void;
   onViewQuotes?: () => void;
   onNavigate?: (path: string) => void;
+}
+
+function ConnectionBanner() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  if (isOnline) return null;
+
+  return (
+    <div className="mb-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-2.5 flex items-center gap-3">
+      <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">You're offline</p>
+        <p className="text-xs text-amber-600 dark:text-amber-400">Data may be out of date. Changes will sync when you're back online.</p>
+      </div>
+    </div>
+  );
 }
 
 export default function OwnerManagerDashboard({
@@ -292,6 +321,8 @@ export default function OwnerManagerDashboard({
           </Button>
         </div>
       </div>
+
+      <ConnectionBanner />
 
       <TrustBanner />
 

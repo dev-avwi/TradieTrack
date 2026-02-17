@@ -1,6 +1,7 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -579,6 +580,26 @@ function HeroMap({
           </div>
         </div>
       )}
+
+      {(() => {
+        const staleWorker = crewWorkers.find(w => w.stale) || (hasSingleWorker && singleWorkerLoc?.stale ? singleWorkerLoc : null);
+        const staleSubbie = subcontractorWorkers.find(s => s.stale);
+        const isStale = !!staleWorker || !!staleSubbie;
+        const lastUpdated = staleWorker 
+          ? ('location' in staleWorker && staleWorker.location ? staleWorker.location.recordedAt : null)
+          : staleSubbie?.lastUpdated || (staleSubbie?.location?.recordedAt ?? null);
+        if (!isStale) return null;
+        return (
+          <div className="absolute top-3 right-3 z-[1000]">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+              <span className="text-xs text-amber-700">
+                Location last updated {lastUpdated ? formatTimeAgo(lastUpdated) : 'a while ago'}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -870,6 +891,35 @@ export default function JobPortal() {
             </div>
           </div>
         )}
+
+        <div className="mx-4 mt-3">
+          <Card className="border-0 shadow-none bg-blue-50 dark:bg-blue-950/30">
+            <CardContent className="py-3 px-4 flex items-center gap-3">
+              <div className={cn(
+                "w-2.5 h-2.5 rounded-full flex-shrink-0",
+                job.workerStatus === 'on_my_way' ? "bg-green-500 animate-pulse" :
+                job.workerStatus === 'arrived' ? "bg-emerald-500" :
+                job.workerStatus === 'in_progress' ? "bg-blue-500 animate-pulse" :
+                job.workerStatus === 'completed' ? "bg-emerald-500" :
+                "bg-gray-400"
+              )} />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {job.workerStatus === 'on_my_way' ? "Your tradesperson is on the way" :
+                   job.workerStatus === 'arrived' ? "Your tradesperson has arrived at the job site" :
+                   job.workerStatus === 'in_progress' ? "Work is in progress" :
+                   job.workerStatus === 'completed' ? "This job has been completed" :
+                   "We'll notify you when your tradesperson is on the way"}
+                </p>
+                {job.workerStatus === 'on_my_way' && (job.workerEtaMinutes || job.workerEta) && (
+                  <p className="text-xs text-muted-foreground">
+                    Estimated arrival: {job.workerEtaMinutes ? `~${job.workerEtaMinutes} minutes` : job.workerEta}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="px-4 py-4 space-y-4 flex-1">
 
@@ -1238,14 +1288,14 @@ export default function JobPortal() {
             </div>
           )}
 
-          {hasPhotos && (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
-              <div className="bg-brand text-white px-5 py-3">
-                <div className="flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-slate-300" />
-                  <span className="font-semibold text-sm">Photos</span>
-                </div>
+          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-brand text-white px-5 py-3">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-slate-300" />
+                <span className="font-semibold text-sm">Photos</span>
               </div>
+            </div>
+            {hasPhotos ? (
               <div className="p-4">
                 <div className="grid grid-cols-2 gap-2">
                   {job.photos.map((photo, idx) => (
@@ -1267,17 +1317,23 @@ export default function JobPortal() {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
-
-          {hasDocuments && (
-            <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
-              <div className="bg-brand text-white px-5 py-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-300" />
-                  <span className="font-semibold text-sm">Documents & Payments</span>
-                </div>
+            ) : (
+              <div className="text-center py-6">
+                <Camera className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">No photos yet</p>
+                <p className="text-xs text-muted-foreground/60">Job photos will be shared here as work progresses</p>
               </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+            <div className="bg-brand text-white px-5 py-3">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-300" />
+                <span className="font-semibold text-sm">Documents & Payments</span>
+              </div>
+            </div>
+            {hasDocuments ? (
               <div className="p-4 space-y-3">
                 {documents.quotes.map((quote) => (
                   <a
@@ -1360,8 +1416,14 @@ export default function JobPortal() {
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-6">
+                <FileText className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">No documents yet</p>
+                <p className="text-xs text-muted-foreground/60">Quotes and invoices will appear here</p>
+              </div>
+            )}
+          </div>
 
           <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
             <div className="bg-brand text-white px-5 py-3">

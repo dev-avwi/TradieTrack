@@ -163,6 +163,7 @@ export default function ClientPortalHub() {
   const [selectedInvoice, setSelectedInvoice] = useState<PortalInvoice | null>(null);
   const [sourceDocument, setSourceDocument] = useState<{ type: string; token: string } | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -258,6 +259,7 @@ export default function ClientPortalHub() {
 
   const fetchPortalData = async (token: string) => {
     setIsLoadingData(true);
+    setLoadError(false);
     try {
       const res = await fetch('/api/portal/data', {
         headers: {
@@ -287,9 +289,10 @@ export default function ClientPortalHub() {
       }
     } catch (error) {
       console.error('Error fetching portal data:', error);
+      setLoadError(true);
       toast({
-        title: "Error",
-        description: "Failed to load your data. Please try again.",
+        title: "Couldn't Load Data",
+        description: "Something went wrong loading your documents. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -763,6 +766,15 @@ export default function ClientPortalHub() {
                 <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-48 w-full" />
               </div>
+            ) : loadError ? (
+              <div className="text-center py-12">
+                <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
+                <h2 className="text-lg font-semibold mb-2 text-foreground">Couldn't load your documents</h2>
+                <p className="text-sm text-muted-foreground mb-4">Something went wrong. Please check your connection and try again.</p>
+                <Button variant="outline" size="sm" onClick={() => sessionToken && fetchPortalData(sessionToken)}>
+                  Try again
+                </Button>
+              </div>
             ) : (
               <Tabs defaultValue="quotes" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted">
@@ -1072,7 +1084,7 @@ export default function ClientPortalHub() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
                                   <Badge className={getJobStatusColor(job.status)}>
-                                    {job.status.replace('_', ' ')}
+                                    {job.status === 'done' ? 'Completed' : job.status === 'in_progress' ? 'In Progress' : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                                   </Badge>
                                 </div>
                               </div>
@@ -1111,9 +1123,9 @@ export default function ClientPortalHub() {
             <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
             <span className="text-sm text-muted-foreground">Powered by <span className="font-semibold text-foreground">JobRunner</span></span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Shield className="w-3 h-3" />
-            <span>Secure & encrypted</span>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Secure portal with industry-standard encryption</span>
           </div>
         </div>
       </div>

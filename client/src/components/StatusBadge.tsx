@@ -13,7 +13,8 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; colorClass?: string }> = {
       // Job statuses - ServiceM8 style workflow
-      pending: { label: 'New', variant: 'secondary', colorClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+      pending: { label: 'Pending', variant: 'secondary', colorClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+      cancelled: { label: 'Cancelled', variant: 'destructive', colorClass: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
       scheduled: { label: 'Scheduled', variant: 'outline', colorClass: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' },
       in_progress: { label: 'In Progress', variant: 'default', colorClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' },
       done: { label: 'Completed', variant: 'default', colorClass: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },

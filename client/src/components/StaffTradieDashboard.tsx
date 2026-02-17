@@ -29,7 +29,8 @@ import {
   FileText,
   Receipt,
   FolderOpen,
-  Zap
+  Zap,
+  WifiOff
 } from "lucide-react";
 
 interface StaffTradieDashboardProps {
@@ -49,6 +50,33 @@ interface Job {
   clientPhone?: string;
   address?: string;
   description?: string;
+}
+
+function ConnectionBanner() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  if (isOnline) return null;
+
+  return (
+    <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-2.5 flex items-center gap-3">
+      <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">You're offline</p>
+        <p className="text-xs text-amber-600 dark:text-amber-400">Your changes will sync when you're back online</p>
+      </div>
+    </div>
+  );
 }
 
 export default function StaffTradieDashboard({
@@ -383,7 +411,12 @@ export default function StaffTradieDashboard({
             ? `You have ${activeJobs.length} assigned job${activeJobs.length > 1 ? 's' : ''}`
             : "Waiting for job assignments"}
         </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Updated {new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+        </p>
       </div>
+
+      <ConnectionBanner />
 
       {/* Time Tracking Widget */}
       <Card 
@@ -757,17 +790,10 @@ export default function StaffTradieDashboard({
             Today
           </h2>
           <Card className="border-dashed bg-muted/30">
-            <CardContent className="py-6 text-center">
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-                style={{ backgroundColor: 'hsl(var(--muted))' }}
-              >
-                <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium mb-1">No jobs scheduled for today</h3>
-              <p className="text-sm text-muted-foreground">
-                You've got {upcomingJobs.length} job{upcomingJobs.length > 1 ? 's' : ''} coming up. Enjoy your day off!
-              </p>
+            <CardContent className="text-center py-8">
+              <Calendar className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">No jobs assigned today</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Check with your manager for today's schedule</p>
             </CardContent>
           </Card>
         </section>
@@ -809,7 +835,22 @@ export default function StaffTradieDashboard({
                         </p>
                       </div>
                     </div>
-                    {getStatusBadge(job.status)}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {activeTimeEntry?.jobId === job.id ? (
+                        <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); stopTimer.mutate(); }}>
+                          <Square className="w-3 h-3 mr-1" />
+                          {formatElapsedTime()}
+                        </Button>
+                      ) : (
+                        <>
+                          {getStatusBadge(job.status)}
+                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startWork.mutate(job); }}>
+                            <Play className="w-3 h-3 mr-1" />
+                            Start
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

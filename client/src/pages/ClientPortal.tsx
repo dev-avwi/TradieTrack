@@ -167,8 +167,8 @@ export default function ClientPortal() {
       window.open(pdfUrl, '_blank');
     } catch (err) {
       toast({
-        title: "Error",
-        description: "Failed to download PDF",
+        title: "Download Failed",
+        description: "Couldn't download the PDF. Please try again.",
         variant: "destructive"
       });
     }
@@ -206,8 +206,8 @@ export default function ClientPortal() {
       refetch();
     } catch (err: any) {
       toast({
-        title: "Error",
-        description: err.message || "Failed to accept quote",
+        title: "Couldn't Accept Quote",
+        description: `Couldn't accept this quote right now. Please try again or contact ${data?.business?.name || 'the business'}.`,
         variant: "destructive"
       });
     } finally {
@@ -226,8 +226,8 @@ export default function ClientPortal() {
       refetch();
     } catch (err: any) {
       toast({
-        title: "Error",
-        description: err.message || "Failed to decline quote",
+        title: "Couldn't Decline Quote",
+        description: `Something went wrong. Please try again or contact ${data?.business?.name || 'the business'}.`,
         variant: "destructive"
       });
     } finally {
@@ -256,18 +256,12 @@ export default function ClientPortal() {
   if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-white">
-        <Card className="max-w-md w-full bg-white rounded-xl shadow-sm border">
-          <CardHeader className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <CardTitle className="text-foreground">Document Not Found</CardTitle>
-            <p className="text-muted-foreground text-sm mt-2">
-              This link may have expired or the document doesn't exist.
-            </p>
-          </CardHeader>
-          <CardContent className="text-center text-sm text-muted-foreground">
-            If you received this link from a business, please contact them directly.
-          </CardContent>
-        </Card>
+        <div className="max-w-md w-full text-center py-12">
+          <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
+          <h2 className="text-lg font-semibold mb-2 text-foreground">Document not found</h2>
+          <p className="text-sm text-muted-foreground mb-4">This link may have expired or the document may no longer be available.</p>
+          <p className="text-xs text-muted-foreground">If you think this is an error, please contact the business that sent this to you.</p>
+        </div>
       </div>
     );
   }
