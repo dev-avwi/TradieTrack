@@ -244,7 +244,7 @@ export default function OwnerManagerDashboard({
   const hasOverdue = (cashflow?.overdueCount ?? 0) > 0;
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 pb-28" data-testid="owner-manager-dashboard">
+    <div className="w-full px-4 sm:px-6 py-4 pb-28" data-testid="owner-manager-dashboard">
       {/* ─── HEADER + QUICK ACTIONS ─── */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
         <div>
