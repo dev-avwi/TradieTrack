@@ -30822,7 +30822,8 @@ Respond with JSON in this format:
         (n.priority === 'urgent' || n.priority === 'important' ||
          // Include money and job events even without explicit priority
          ['payment_received', 'quote_accepted', 'quote_rejected', 'invoice_paid', 'job_completed', 'job_assigned', 'installment_received', 'payment_plan_completed'].includes(n.type))
-      ).slice(0, 10); // Max 10 items
+      ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+       .slice(0, 10); // Max 10 items, newest first
       
       res.json({
         notifications: missedNotifications,
