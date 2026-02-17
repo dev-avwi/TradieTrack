@@ -70,7 +70,7 @@ export default function InvoiceDetailView({
   const { data: user } = useQuery({
     queryKey: ['/api/auth/me'],
   });
-  const isDemoUser = user?.email === 'demo@jobrunner.com.au' || user?.email === 'demo@tradietrack.com.au';
+  const isDemoUser = user?.email === 'demo@jobrunner.com.au';
 
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
@@ -446,32 +446,32 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
       if (!response.ok) throw new Error('Failed to generate PDF');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const printWindow = window.open(url, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
-        });
-      } else {
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.top = '-10000px';
-        iframe.style.left = '-10000px';
-        iframe.style.width = '1px';
-        iframe.style.height = '1px';
-        iframe.src = url;
-        document.body.appendChild(iframe);
-        iframe.addEventListener('load', () => {
-          setTimeout(() => {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.top = '-10000px';
+      iframe.style.left = '-10000px';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.addEventListener('load', () => {
+        setTimeout(() => {
+          try {
+            iframe.contentWindow?.focus();
             iframe.contentWindow?.print();
-            setTimeout(() => {
-              document.body.removeChild(iframe);
-              window.URL.revokeObjectURL(url);
-            }, 1000);
-          }, 500);
-        });
-      }
+          } catch {
+            toast({
+              title: "Print Unavailable",
+              description: "Could not open print dialog. Try using Save as PDF instead.",
+              variant: "destructive",
+            });
+          }
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            window.URL.revokeObjectURL(url);
+          }, 60000);
+        }, 500);
+      });
     } catch (error) {
       console.error('Error generating PDF for print:', error);
       toast({
