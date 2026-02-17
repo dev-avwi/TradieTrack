@@ -240,7 +240,7 @@ export default function OwnerManagerDashboard({
   const fmtAud = (n: number) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 space-y-6" data-testid="owner-manager-dashboard">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 pb-28 space-y-4" data-testid="owner-manager-dashboard">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -256,21 +256,21 @@ export default function OwnerManagerDashboard({
       <TrustBanner />
 
       {/* KPI Row - Full Width */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
         {(kpis?.unpaidInvoicesTotal ?? 0) > 0 && (
           <Card 
-            className="cursor-pointer hover-elevate col-span-2 sm:col-span-2"
+            className="cursor-pointer hover-elevate col-span-2 sm:col-span-1"
             onClick={() => onNavigate?.('/documents?tab=invoices&filter=sent')}
             data-testid="kpi-money-owed"
           >
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                    style={{ backgroundColor: 'hsl(var(--destructive) / 0.1)' }}>
-                <DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--destructive))' }} />
+                <DollarSign className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground font-medium">Money Owed</p>
-                <p className="text-xl font-bold" style={{ color: 'hsl(var(--destructive))' }}>
+                <p className="text-lg font-bold" style={{ color: 'hsl(var(--destructive))' }}>
                   {fmtAud(kpis?.unpaidInvoicesTotal || 0)}
                 </p>
               </div>
@@ -286,12 +286,12 @@ export default function OwnerManagerDashboard({
           onClick={() => onNavigate?.('/jobs?filter=in_progress')}
           data-testid="kpi-jobs-today"
         >
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <Briefcase className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
               <span className="text-xs text-muted-foreground font-medium">Jobs Today</span>
             </div>
-            <p className="text-2xl font-bold">{kpis?.jobsToday || 0}</p>
+            <p className="text-xl font-bold">{kpis?.jobsToday || 0}</p>
           </CardContent>
         </Card>
 
@@ -300,12 +300,12 @@ export default function OwnerManagerDashboard({
           onClick={() => onNavigate?.('/jobs?filter=done')}
           data-testid="kpi-jobs-to-invoice"
         >
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="h-4 w-4" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
               <span className="text-xs text-muted-foreground font-medium">To Invoice</span>
             </div>
-            <p className="text-2xl font-bold">{kpis?.jobsToInvoice ?? 0}</p>
+            <p className="text-xl font-bold">{kpis?.jobsToInvoice ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -314,12 +314,12 @@ export default function OwnerManagerDashboard({
           onClick={() => onNavigate?.('/documents?tab=quotes&filter=sent')}
           data-testid="kpi-pending"
         >
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">Quotes Pending</span>
             </div>
-            <p className="text-2xl font-bold">{kpis?.quotesAwaiting || 0}</p>
+            <p className="text-xl font-bold">{kpis?.quotesAwaiting || 0}</p>
           </CardContent>
         </Card>
 
@@ -328,12 +328,12 @@ export default function OwnerManagerDashboard({
           onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
           data-testid="kpi-earnings"
         >
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-4 w-4" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }} />
               <span className="text-xs text-muted-foreground font-medium">This Week</span>
             </div>
-            <p className="text-xl font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
+            <p className="text-lg font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
               {fmtAud(kpis?.weeklyEarnings || 0)}
             </p>
             <p className="text-[10px] text-muted-foreground">{fmtAud(kpis?.monthlyEarnings || 0)} this month</p>
@@ -343,7 +343,7 @@ export default function OwnerManagerDashboard({
 
       {/* Quick Actions - Full Width */}
       <Card data-testid="quick-actions-section">
-        <CardContent className="p-4">
+        <CardContent className="p-3">
           <div className="flex flex-wrap gap-2">
             {onCreateJob && (
               <Button 
@@ -402,12 +402,12 @@ export default function OwnerManagerDashboard({
       </Card>
 
       {/* Main Content - Two Columns on Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* LEFT COLUMN */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Today's Schedule */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                 Today's Schedule
@@ -426,7 +426,7 @@ export default function OwnerManagerDashboard({
             </CardHeader>
             <CardContent className="pt-0">
               {todaysJobs.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <Briefcase className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground mb-4">No jobs scheduled for today</p>
                   {onCreateJob && (
@@ -515,7 +515,7 @@ export default function OwnerManagerDashboard({
           {/* Cashflow Insight */}
           {cashflowLoading ? (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Receipt className="h-4 w-4 text-primary" />
                   Cashflow Insight
@@ -525,7 +525,7 @@ export default function OwnerManagerDashboard({
             </Card>
           ) : cashflow ? (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Receipt className="h-4 w-4 text-primary" />
                   Cashflow Insight
@@ -544,7 +544,7 @@ export default function OwnerManagerDashboard({
                 {/* Weekly Bar Chart */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Weekly Collections</p>
-                  <div className="flex items-end gap-2 h-16">
+                  <div className="flex items-end gap-2 h-12">
                     {cashflow.revenueByWeek.map((week, i) => {
                       const maxAmount = Math.max(...cashflow.revenueByWeek.map(w => w.amount), 1);
                       const heightPercent = Math.max((week.amount / maxAmount) * 100, 4);
@@ -638,11 +638,11 @@ export default function OwnerManagerDashboard({
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Profit Snapshot */}
           {profitLoading ? (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }} />
                   Profit Snapshot
@@ -652,7 +652,7 @@ export default function OwnerManagerDashboard({
             </Card>
           ) : profitSnapshot && (profitSnapshot.revenueThisMonth > 0 || profitSnapshot.labourCostThisMonth > 0 || profitSnapshot.materialCostThisMonth > 0) ? (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }} />
                   Profit Snapshot
@@ -690,7 +690,7 @@ export default function OwnerManagerDashboard({
           {/* Team Performance */}
           {teamPerfLoading ? (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
                   Team Performance
@@ -700,7 +700,7 @@ export default function OwnerManagerDashboard({
             </Card>
           ) : teamPerformance && teamPerformance.workers.length > 0 ? (
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
+              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
                   Team Performance
@@ -710,15 +710,15 @@ export default function OwnerManagerDashboard({
               <CardContent className="pt-0 space-y-4">
                 {/* Summary */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-2.5 rounded-lg bg-muted/50">
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
                     <p className="text-lg font-bold">{teamPerformance.summary.totalHours}</p>
                     <p className="text-[10px] text-muted-foreground">Hours</p>
                   </div>
-                  <div className="text-center p-2.5 rounded-lg bg-muted/50">
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
                     <p className="text-lg font-bold">{teamPerformance.summary.totalJobs}</p>
                     <p className="text-[10px] text-muted-foreground">Jobs</p>
                   </div>
-                  <div className="text-center p-2.5 rounded-lg bg-muted/50">
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
                     <p className="text-lg font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
                       ${(teamPerformance.summary.totalRevenue / 1000).toFixed(1)}k
                     </p>
