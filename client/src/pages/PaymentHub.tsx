@@ -236,8 +236,8 @@ function QuoteRow({ quote, onView }: QuoteRowProps) {
       data-testid={`quote-row-${quote.id}`}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="rounded-lg bg-orange-500/10 p-2 flex-shrink-0">
-          <Receipt className="h-4 w-4 text-orange-500" />
+        <div className="rounded-lg bg-blue-500/10 p-2 flex-shrink-0">
+          <Receipt className="h-4 w-4 text-blue-500" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -723,7 +723,7 @@ export default function PaymentHub() {
                 title="Pending Quotes"
                 value={formatCurrency(stats.pendingQuotesTotal * 100)}
                 subtitle={`${stats.pendingQuotesCount} awaiting response`}
-                icon={<Receipt className="h-5 w-5 text-orange-500" />}
+                icon={<Receipt className="h-5 w-5 text-blue-500" />}
               />
             </>
           )}
@@ -790,7 +790,7 @@ export default function PaymentHub() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Receipt className="h-4 w-4 text-orange-500" />
+                    <Receipt className="h-4 w-4 text-blue-500" />
                     Pending Quotes
                   </CardTitle>
                   <CardDescription>Awaiting client response</CardDescription>

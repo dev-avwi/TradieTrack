@@ -355,11 +355,11 @@ export default function QuickBooksIntegration({
                 <AccordionContent className="text-xs text-muted-foreground pb-3">
                   <ul className="space-y-1.5">
                     <li className="flex items-start gap-2">
-                      <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                      <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
                       <span><strong>Connection:</strong> Under 2 minutes - just click and authorize</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                      <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
                       <span><strong>Initial sync:</strong> A few seconds for contacts and settings</span>
                     </li>
                     <li className="flex items-start gap-2">

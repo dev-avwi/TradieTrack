@@ -113,7 +113,7 @@ export const tradieSafetyForms: SafetyFormDefinition[] = [
       ]),
       ...standardFooterFields
     ],
-    settings: { color: '#E86825', icon: 'Droplets' }
+    settings: { color: '#2563eb', icon: 'Droplets' }
   },
   {
     name: 'Plumbing Work Completion',
@@ -134,7 +134,7 @@ export const tradieSafetyForms: SafetyFormDefinition[] = [
       ]),
       ...standardFooterFields
     ],
-    settings: { color: '#E86825', icon: 'CheckCircle' }
+    settings: { color: '#2563eb', icon: 'CheckCircle' }
   },
 
   // ============================================

@@ -64,9 +64,9 @@ export default function BalusterSpacingCalc() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="p-3 bg-orange-500/10 rounded-lg flex items-start gap-2">
-            <Info className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-orange-600 dark:text-orange-400">
+          <div className="p-3 bg-blue-500/10 rounded-lg flex items-start gap-2">
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-600 dark:text-blue-400">
               Australian Building Code requires a maximum gap of 100mm between balusters to prevent children from passing through.
             </p>
           </div>

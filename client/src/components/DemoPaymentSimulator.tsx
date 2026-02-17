@@ -148,8 +148,8 @@ export default function DemoPaymentSimulator({
               </CardContent>
             </Card>
 
-            <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
-              <p className="text-xs text-orange-700 dark:text-orange-300">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
                 <strong>In real mode:</strong> Your client would see a secure Stripe checkout page 
                 where they enter their card details. You'd receive an instant notification when they pay.
               </p>

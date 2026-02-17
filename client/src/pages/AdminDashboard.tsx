@@ -226,8 +226,8 @@ function OverviewView({
           title="Total Users"
           value={stats?.kpis.totalUsers || 0}
           loading={statsLoading}
-          icon={<Users className="h-5 w-5 md:h-6 md:w-6 text-orange-600 dark:text-orange-400" />}
-          iconBgClass="bg-orange-100 dark:bg-orange-500/20"
+          icon={<Users className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />}
+          iconBgClass="bg-blue-100 dark:bg-blue-500/20"
         />
         <KPICard
           testId="card-active-users"
@@ -613,7 +613,7 @@ function UsersView({
                             </Badge>
                           )}
                           {user.emailVerified && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30 text-xs hidden xl:inline-flex">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30 text-xs hidden xl:inline-flex">
                               Verified
                             </Badge>
                           )}
@@ -745,8 +745,8 @@ function ActivityView({
         return { 
           icon: UserPlus, 
           label: 'New signup',
-          iconBg: 'bg-orange-100 dark:bg-orange-500/20',
-          iconColor: 'text-orange-600 dark:text-orange-400'
+          iconBg: 'bg-blue-100 dark:bg-blue-500/20',
+          iconColor: 'text-blue-600 dark:text-blue-400'
         };
       case 'onboarding': 
         return { 
@@ -779,8 +779,8 @@ function ActivityView({
           testId="card-total-jobs"
           title="Jobs Created"
           value={stats?.featureUsage.totalJobs || 0}
-          icon={<Briefcase className="h-5 w-5 md:h-6 md:w-6 text-orange-600 dark:text-orange-400" />}
-          iconBgClass="bg-orange-100 dark:bg-orange-500/20"
+          icon={<Briefcase className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />}
+          iconBgClass="bg-blue-100 dark:bg-blue-500/20"
         />
         <KPICard
           testId="card-invoices-sent"

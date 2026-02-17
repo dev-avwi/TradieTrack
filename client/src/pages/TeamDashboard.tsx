@@ -146,7 +146,7 @@ interface TeamUtilizationData {
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: typeof Circle }> = {
   online: { color: "#22C55E", label: "Online", icon: Circle },
   busy: { color: "#EAB308", label: "Busy", icon: Circle },
-  on_job: { color: "#F28C4E", label: "On Job", icon: Wrench },
+  on_job: { color: "#3B82F6", label: "On Job", icon: Wrench },
   break: { color: "#F97316", label: "On Break", icon: Coffee },
   offline: { color: "#6B7280", label: "Offline", icon: Circle },
 };
@@ -236,7 +236,7 @@ function createTeamMemberMarker(
 }
 
 function createJobMarker(status: string, isDark: boolean) {
-  const color = status === "in_progress" ? "#F59E0B" : "#F28C4E";
+  const color = status === "in_progress" ? "#F59E0B" : "#3B82F6";
   const borderColor = isDark ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,1)";
 
   return L.divIcon({
@@ -694,7 +694,7 @@ function MemberDetailsPanel({
                       className="w-full flex flex-col items-center gap-1 h-auto py-3"
                       data-testid="button-email-member"
                     >
-                      <Mail className="h-5 w-5 text-orange-600" />
+                      <Mail className="h-5 w-5 text-blue-600" />
                       <span className="text-xs">Email</span>
                     </Button>
                   </a>

@@ -93,7 +93,7 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
   const subtotal = Number(quote.subtotal);
   const gstAmount = Number(quote.gstAmount);
   const totalAmount = Number(quote.total);
-  const brandColor = business.brandColor || '#E86825';
+  const brandColor = business.brandColor || '#2563EB';
   
   // Get logo URL - use business logo if available, otherwise JobRunner logo
   const baseUrl = getBaseUrl();
@@ -180,13 +180,13 @@ const createQuoteEmail = (quote: any, client: any, business: any, acceptanceUrl?
               <span>GST (10%):</span>
               <span>$${gstAmount.toFixed(2)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; border-top: 2px solid #E86825; padding-top: 10px; font-size: 20px; font-weight: bold; color: #E86825;">
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563EB; padding-top: 10px; font-size: 20px; font-weight: bold; color: #2563EB;">
               <span>Total Amount:</span>
               <span>$${totalAmount.toFixed(2)}</span>
             </div>
           ` : `
             <h3 style="margin: 0 0 10px 0; color: #333;">Total Amount</h3>
-            <p style="font-size: 24px; font-weight: bold; color: #E86825; margin: 0;">$${totalAmount.toFixed(2)}</p>
+            <p style="font-size: 24px; font-weight: bold; color: #2563EB; margin: 0;">$${totalAmount.toFixed(2)}</p>
           `}
         </div>
 
@@ -242,7 +242,7 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
   const subtotal = Number(invoice.subtotal);
   const gstAmount = Number(invoice.gstAmount);
   const totalAmount = Number(invoice.total);
-  const brandColor = business.brandColor || '#E86825';
+  const brandColor = business.brandColor || '#2563EB';
   const dueDateStr = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-AU') : null;
   
   // Get logo URL - use business logo if available, otherwise JobRunner logo
@@ -332,12 +332,12 @@ const createInvoiceEmail = (invoice: any, client: any, business: any, paymentUrl
               <span>GST (10%):</span>
               <span>$${gstAmount.toFixed(2)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; border-top: 2px solid #ddd; padding-top: 10px; font-size: 20px; font-weight: bold; color: #E86825;">
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #ddd; padding-top: 10px; font-size: 20px; font-weight: bold; color: #2563EB;">
               <span>Total Amount:</span>
               <span>$${totalAmount.toFixed(2)}</span>
             </div>
           ` : `
-            <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #E86825;">
+            <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #2563EB;">
               <span>Total Amount:</span>
               <span>$${totalAmount.toFixed(2)}</span>
             </div>
@@ -428,7 +428,7 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
         <title>Receipt - ${invoice.title}</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #E86825; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background: #2563EB; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <div style="background: white; display: inline-block; padding: 12px 20px; border-radius: 8px; margin-bottom: 12px;">
             <img src="${logoUrl}" alt="${business.businessName || 'JobRunner'}" style="max-height: 48px; max-width: 160px; display: block;" />
           </div>
@@ -438,12 +438,12 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
         </div>
         
         <div style="margin-bottom: 20px;">
-          <h2 style="color: #333; border-bottom: 2px solid #E86825; padding-bottom: 10px;">Payment Details</h2>
+          <h2 style="color: #333; border-bottom: 2px solid #2563EB; padding-bottom: 10px;">Payment Details</h2>
           <p><strong>Service:</strong> ${invoice.title}</p>
           ${invoice.description ? `<p><strong>Description:</strong> ${invoice.description}</p>` : ''}
           <p><strong>Client:</strong> ${client.name}</p>
           <p><strong>Payment Date:</strong> ${new Date(invoice.paidAt || Date.now()).toLocaleDateString()}</p>
-          <p><strong>Status:</strong> <span style="background: #E86825; color: white; padding: 2px 8px; border-radius: 4px;">PAID</span></p>
+          <p><strong>Status:</strong> <span style="background: #2563EB; color: white; padding: 2px 8px; border-radius: 4px;">PAID</span></p>
         </div>
 
         ${invoice.lineItems?.length ? `
@@ -475,12 +475,12 @@ const createReceiptEmail = (invoice: any, client: any, business: any) => {
               <span>GST (10%):</span>
               <span>$${gstAmount.toFixed(2)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; border-top: 2px solid #E86825; padding-top: 10px; font-size: 20px; font-weight: bold; color: #E86825;">
+            <div style="display: flex; justify-content: space-between; border-top: 2px solid #2563EB; padding-top: 10px; font-size: 20px; font-weight: bold; color: #2563EB;">
               <span>Amount Paid:</span>
               <span>$${totalAmount.toFixed(2)}</span>
             </div>
           ` : `
-            <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #E86825;">
+            <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #2563EB;">
               <span>Amount Paid:</span>
               <span>$${totalAmount.toFixed(2)}</span>
             </div>
@@ -787,7 +787,7 @@ export async function sendReceiptEmailWithPdf(
         phone: businessWithLogo?.phone,
         email: businessWithLogo?.email,
         logoUrl: businessWithLogo?.logoUrl,
-        brandColor: businessWithLogo?.brandColor || '#E86825',
+        brandColor: businessWithLogo?.brandColor || '#2563EB',
       },
       invoice: invoice ? {
         id: invoice.id,
@@ -833,7 +833,7 @@ export async function sendReceiptEmailWithPdf(
 
 // Email template for job confirmation/scheduling
 const createJobConfirmationEmail = (job: any, client: any, business: any) => {
-  const brandColor = business.brandColor || '#E86825';
+  const brandColor = business.brandColor || '#2563EB';
   const scheduledDate = job.scheduledAt ? new Date(job.scheduledAt).toLocaleDateString('en-AU', {
     weekday: 'long',
     year: 'numeric',
@@ -876,7 +876,7 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
           ${business.abn ? `<p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 12px;">ABN: ${business.abn}</p>` : ''}
         </div>
 
-        <div style="background: #E86825; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background: #2563EB; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <h2 style="margin: 0; font-size: 22px;">Job Confirmed</h2>
           <p style="margin: 8px 0 0 0; opacity: 0.9;">Your appointment has been scheduled</p>
         </div>
@@ -996,7 +996,7 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
         <title>Verify Your Email - JobRunner</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f9fafb;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 40px 32px; border-radius: 16px 16px 0 0; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%); padding: 40px 32px; border-radius: 16px 16px 0 0; text-align: center;">
           <img src="${logoUrl}" alt="JobRunner" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
           <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to JobRunner!</h1>
           <p style="color: rgba(255,255,255,0.85); margin: 12px 0 0 0; font-size: 15px; font-weight: 400;">Your business management platform</p>
@@ -1008,7 +1008,7 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
           <p style="margin: 0 0 24px 0; color: #4b5563;">To get started, please verify your email address by clicking the button below:</p>
           
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${verificationUrl}" style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 10px; display: inline-block; font-weight: 600; font-size: 15px; box-shadow: 0 4px 14px rgba(232, 104, 37, 0.35);">Verify Email Address</a>
+            <a href="${verificationUrl}" style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 10px; display: inline-block; font-weight: 600; font-size: 15px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">Verify Email Address</a>
           </div>
           
           <p style="color: #6b7280; font-size: 13px; margin: 24px 0 8px 0;">If the button doesn't work, copy and paste this link into your browser:</p>
@@ -1127,14 +1127,14 @@ export const sendLoginCodeEmail = async (email: string, code: string) => {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h1 style="color: #E86825; margin: 0;">JobRunner</h1>
+          <h1 style="color: #2563EB; margin: 0;">JobRunner</h1>
         </div>
         
         <div style="margin-bottom: 20px;">
           <h2 style="color: #333;">Your Login Code</h2>
           <p>Use this code to log in to your JobRunner account:</p>
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-            <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #E86825; margin: 0;">${code}</p>
+            <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2563EB; margin: 0;">${code}</p>
           </div>
           <p><strong>This code will expire in 10 minutes.</strong></p>
           <p>If you didn't request this code, please ignore this email.</p>
@@ -1214,7 +1214,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
         <title>Reset Your Password - JobRunner</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <img src="${logoUrl}" alt="JobRunner" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
         </div>
@@ -1225,7 +1225,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
           <p>Click the button below to create a new password:</p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" style="background: #F28C4E; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
+            <a href="${resetUrl}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
           </div>
           
           <p style="color: #666; font-size: 14px;">If the button doesn't work, you can also copy and paste this link into your browser:</p>
@@ -1290,7 +1290,7 @@ export async function sendPaymentSuccessEmail(user: any, businessSettings: any, 
         <title>Payment Successful</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <h1 style="color: white; margin: 0;">Payment Successful! 🎉</h1>
         </div>
         
@@ -1299,7 +1299,7 @@ export async function sendPaymentSuccessEmail(user: any, businessSettings: any, 
           <p>Thank you for subscribing to JobRunner ${plan}! Your payment has been processed successfully.</p>
           
           <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #E86825;">Your ${plan} Plan is Active</h3>
+            <h3 style="margin-top: 0; color: #2563EB;">Your ${plan} Plan is Active</h3>
             <p style="margin: 0;">You now have access to all ${plan} features.</p>
           </div>
           
@@ -1401,7 +1401,7 @@ export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams)
         <title>Payment Request</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <h1 style="color: white; margin: 0;">${businessName}</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Payment Request</p>
         </div>
@@ -1420,7 +1420,7 @@ export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams)
         </div>
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${paymentUrl}" style="background-color: #E86825; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
+          <a href="${paymentUrl}" style="background-color: #2563EB; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 18px; font-weight: bold;">
             Pay Now Securely
           </a>
           <p style="margin-top: 12px; color: #666; font-size: 14px;">Click the button above to pay with your card</p>
@@ -1479,7 +1479,7 @@ export async function sendWelcomeEmail(
         <title>Welcome to JobRunner</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f9fafb;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 44px 32px; border-radius: 16px 16px 0 0; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 44px 32px; border-radius: 16px 16px 0 0; text-align: center;">
           <img src="${logoUrl}" alt="JobRunner" style="max-width: 140px; height: auto; margin-bottom: 20px;" />
           <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Welcome to JobRunner!</h1>
           <p style="color: rgba(255,255,255,0.85); margin: 12px 0 0 0; font-size: 15px; font-weight: 400;">The business management platform built for Australian tradies</p>
@@ -1490,43 +1490,43 @@ export async function sendWelcomeEmail(
           
           <p style="margin: 0 0 20px 0; color: #4b5563;">Thanks for signing up to JobRunner. You've just taken the first step towards running a more organised, professional trade business.</p>
           
-          <div style="background: #FFF5EB; padding: 28px; border-radius: 12px; margin: 28px 0;">
-            <h3 style="margin: 0 0 24px 0; color: #E86825; text-align: center; font-size: 17px; font-weight: 600; letter-spacing: -0.3px;">Quick Start Guide</h3>
+          <div style="background: #eff6ff; padding: 28px; border-radius: 12px; margin: 28px 0;">
+            <h3 style="margin: 0 0 24px 0; color: #2563EB; text-align: center; font-size: 17px; font-weight: 600; letter-spacing: -0.3px;">Quick Start Guide</h3>
             
             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
               <tr>
                 <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
-                  <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">1</div>
+                  <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">1</div>
                 </td>
                 <td style="padding-bottom: 18px; vertical-align: top;">
-                  <strong style="color: #E86825; font-size: 14px; font-weight: 600;">Set up your business profile</strong>
+                  <strong style="color: #2563EB; font-size: 14px; font-weight: 600;">Set up your business profile</strong>
                   <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Add your ABN, logo, and business details for professional quotes and invoices</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
-                  <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">2</div>
+                  <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">2</div>
                 </td>
                 <td style="padding-bottom: 18px; vertical-align: top;">
-                  <strong style="color: #E86825; font-size: 14px; font-weight: 600;">Add your first client</strong>
+                  <strong style="color: #2563EB; font-size: 14px; font-weight: 600;">Add your first client</strong>
                   <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Store customer details and job history in one place</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
-                  <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">3</div>
+                  <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">3</div>
                 </td>
                 <td style="padding-bottom: 18px; vertical-align: top;">
-                  <strong style="color: #E86825; font-size: 14px; font-weight: 600;">Create a quote</strong>
+                  <strong style="color: #2563EB; font-size: 14px; font-weight: 600;">Create a quote</strong>
                   <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Use our templates to send professional quotes with one click</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding-bottom: 18px; vertical-align: top; width: 44px;">
-                  <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">4</div>
+                  <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); color: white; width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; display: inline-block;">4</div>
                 </td>
                 <td style="padding-bottom: 18px; vertical-align: top;">
-                  <strong style="color: #E86825; font-size: 14px; font-weight: 600;">Convert quote to job</strong>
+                  <strong style="color: #2563EB; font-size: 14px; font-weight: 600;">Convert quote to job</strong>
                   <p style="margin: 6px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.5;">Once accepted, turn it into a trackable job with scheduling</p>
                 </td>
               </tr>
@@ -1549,7 +1549,7 @@ export async function sendWelcomeEmail(
           </div>
           
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${effectiveBaseUrl}" style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; display: inline-block; font-size: 15px; font-weight: 600; box-shadow: 0 4px 14px rgba(232, 104, 37, 0.35);">
+            <a href="${effectiveBaseUrl}" style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); color: white; padding: 14px 36px; text-decoration: none; border-radius: 10px; display: inline-block; font-size: 15px; font-weight: 600; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
               Get Started Now
             </a>
           </div>
@@ -1613,7 +1613,7 @@ export async function sendTestEmail(
         <title>Test Email</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
           <h1 style="color: white; margin: 0;">Email Test Successful!</h1>
         </div>
         
@@ -1685,7 +1685,7 @@ export async function sendTeamInviteEmail(
         <title>Team Invitation</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
           <img src="${logoUrl}" alt="JobRunner" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
           <h1 style="color: white; margin: 0; font-size: 24px;">You're Invited to Join ${businessName}</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">on JobRunner</p>
@@ -1696,8 +1696,8 @@ export async function sendTeamInviteEmail(
           
           <p><strong>${inviterName}</strong> has invited you to join <strong>${businessName}</strong> as a <strong>${roleName}</strong>.</p>
           
-          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #E86825;">
-            <h3 style="margin: 0 0 15px 0; color: #E86825;">What you'll be able to do:</h3>
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2563EB;">
+            <h3 style="margin: 0 0 15px 0; color: #2563EB;">What you'll be able to do:</h3>
             <ul style="margin: 0; padding-left: 20px;">
               <li style="margin-bottom: 8px;">View and manage your assigned jobs</li>
               <li style="margin-bottom: 8px;">Track your time on jobs</li>
@@ -1874,7 +1874,7 @@ export async function sendJobCompletionNotificationEmail(
         <title>Job Completed</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-        <div style="background: linear-gradient(135deg, #E86825 0%, #B5491A 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 22px;">Job Completed</h1>
         </div>
         
@@ -1999,7 +1999,7 @@ export function createEmailFromTemplate(
   business: any,
   client: any
 ): { to: string; from: { email: string; name: string }; replyTo: string; subject: string; html: string } {
-  const brandColor = business.brandColor || '#E86825';
+  const brandColor = business.brandColor || '#2563EB';
   
   // Apply merge field replacement to subject and content
   const subject = replaceMergeFields(template.subject || 'Message from {business_name}', data);
@@ -2302,7 +2302,7 @@ function formatDateAustralian(date: Date): string {
 }
 
 export function createDailySummaryEmail(data: DailySummaryData): { to: string; from: any; subject: string; html: string } {
-  const brandColor = data.business.brandColor || '#E86825';
+  const brandColor = data.business.brandColor || '#2563EB';
   const hasActivity = data.jobs.completed > 0 || data.quotes.sent > 0 || data.invoices.sent > 0 || data.payments.received > 0;
 
   const completedJobsHtml = data.jobs.completedList.length > 0 
@@ -2320,7 +2320,7 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
       <tr>
         <td style="padding: 10px 12px; border-bottom: 1px solid #eee;">${payment.client}</td>
         <td style="padding: 10px 12px; border-bottom: 1px solid #eee;">${payment.invoice}</td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; color: #E86825; font-weight: 600;">${formatCurrency(payment.amount)}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; color: #2563EB; font-weight: 600;">${formatCurrency(payment.amount)}</td>
       </tr>
     `).join('')
     : '';
@@ -2376,9 +2376,9 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
               <p style="margin: 0; color: #059669; font-size: 28px; font-weight: 700;">${formatCurrency(data.payments.totalAmount)}</p>
               <p style="margin: 4px 0 0 0; color: #047857; font-size: 13px;">Payments Received</p>
             </div>
-            <div style="flex: 1; min-width: 140px; background: #FFF5EB; padding: 20px; border-radius: 8px; text-align: center;">
-              <p style="margin: 0; color: #E86825; font-size: 28px; font-weight: 700;">${data.jobs.completed}</p>
-              <p style="margin: 4px 0 0 0; color: #E86825; font-size: 13px;">Jobs Completed</p>
+            <div style="flex: 1; min-width: 140px; background: #eff6ff; padding: 20px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; color: #2563EB; font-size: 28px; font-weight: 700;">${data.jobs.completed}</p>
+              <p style="margin: 4px 0 0 0; color: #2563EB; font-size: 13px;">Jobs Completed</p>
             </div>
             <div style="flex: 1; min-width: 140px; background: #faf5ff; padding: 20px; border-radius: 8px; text-align: center;">
               <p style="margin: 0; color: #7c3aed; font-size: 28px; font-weight: 700;">${data.quotes.conversionRate}%</p>
@@ -2393,10 +2393,10 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
             </h2>
             <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
               <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
-                <span style="color: #E86825; font-weight: 600;">${data.jobs.completed}</span> Completed
+                <span style="color: #2563EB; font-weight: 600;">${data.jobs.completed}</span> Completed
               </div>
               <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
-                <span style="color: #E86825; font-weight: 600;">${data.jobs.inProgress}</span> In Progress
+                <span style="color: #2563EB; font-weight: 600;">${data.jobs.inProgress}</span> In Progress
               </div>
               <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
                 <span style="color: #8b5cf6; font-weight: 600;">${data.jobs.scheduled}</span> Scheduled
@@ -2425,10 +2425,10 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
             </h2>
             <div style="display: flex; flex-wrap: wrap; gap: 12px;">
               <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
-                <span style="color: #F28C4E; font-weight: 600;">${data.quotes.sent}</span> Sent (${formatCurrency(data.quotes.sentTotal)})
+                <span style="color: #3b82f6; font-weight: 600;">${data.quotes.sent}</span> Sent (${formatCurrency(data.quotes.sentTotal)})
               </div>
               <div style="background: #f0fdf4; padding: 12px 16px; border-radius: 6px;">
-                <span style="color: #E86825; font-weight: 600;">${data.quotes.accepted}</span> Accepted (${formatCurrency(data.quotes.acceptedTotal)})
+                <span style="color: #2563EB; font-weight: 600;">${data.quotes.accepted}</span> Accepted (${formatCurrency(data.quotes.acceptedTotal)})
               </div>
               <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px;">
                 <span style="color: #dc2626; font-weight: 600;">${data.quotes.rejected}</span> Rejected
@@ -2446,10 +2446,10 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
             </h2>
             <div style="display: flex; flex-wrap: wrap; gap: 12px;">
               <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 6px;">
-                <span style="color: #F28C4E; font-weight: 600;">${data.invoices.sent}</span> Sent (${formatCurrency(data.invoices.sentTotal)})
+                <span style="color: #3b82f6; font-weight: 600;">${data.invoices.sent}</span> Sent (${formatCurrency(data.invoices.sentTotal)})
               </div>
               <div style="background: #f0fdf4; padding: 12px 16px; border-radius: 6px;">
-                <span style="color: #E86825; font-weight: 600;">${data.invoices.paid}</span> Paid (${formatCurrency(data.invoices.paidTotal)})
+                <span style="color: #2563EB; font-weight: 600;">${data.invoices.paid}</span> Paid (${formatCurrency(data.invoices.paidTotal)})
               </div>
               ${data.invoices.overdue > 0 ? `
               <div style="background: #fef2f2; padding: 12px 16px; border-radius: 6px;">
@@ -2479,7 +2479,7 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
               <tfoot>
                 <tr style="background: #f0fdf4;">
                   <td colspan="2" style="padding: 12px; font-weight: 600;">Total Received</td>
-                  <td style="padding: 12px; text-align: right; font-weight: 700; color: #E86825; font-size: 16px;">${formatCurrency(data.payments.totalAmount)}</td>
+                  <td style="padding: 12px; text-align: right; font-weight: 700; color: #2563EB; font-size: 16px;">${formatCurrency(data.payments.totalAmount)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -2502,7 +2502,7 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
             <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; text-align: center;">
               <div>
                 <p style="margin: 0; color: #666; font-size: 12px;">Total Revenue Today</p>
-                <p style="margin: 4px 0 0 0; font-weight: 700; color: #E86825; font-size: 18px;">${formatCurrency(data.metrics.totalRevenue)}</p>
+                <p style="margin: 4px 0 0 0; font-weight: 700; color: #2563EB; font-size: 18px;">${formatCurrency(data.metrics.totalRevenue)}</p>
               </div>
               <div>
                 <p style="margin: 0; color: #666; font-size: 12px;">Outstanding Invoices</p>

@@ -666,7 +666,7 @@ export default function LandingPage() {
           {/* Feature 1: Scheduling */}
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
             <AnimatedSection animation="fade-right" className="order-2 lg:order-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-6">
                 <Calendar className="w-6 h-6 text-brand" />
               </div>
               <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
@@ -917,7 +917,7 @@ export default function LandingPage() {
             <AnimatedSection animation="fade-right">
               <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
                     <Monitor className="w-7 h-7 text-brand" />
                   </div>
                   <div>
@@ -997,7 +997,7 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight mb-6">
             Ready to simplify your business?
           </h2>
-          <p className="text-lg lg:text-xl text-orange-100 mb-10 max-w-xl mx-auto">
+          <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
             Join our growing community of Australian trade professionals. Free during beta - first 10 users get lifetime access!
           </p>
           <Link href="/auth?mode=signup">
@@ -1011,7 +1011,7 @@ export default function LandingPage() {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
-          <p className="text-sm text-orange-200 mt-5">
+          <p className="text-sm text-blue-200 mt-5">
             No credit card required. Just agree to provide a testimonial.
           </p>
         </AnimatedSection>
@@ -1032,7 +1032,7 @@ export default function LandingPage() {
                   className="h-10 w-auto brightness-0 invert"
                 />
                 <span className="text-lg font-bold">
-                  <span className="text-orange-400">Job</span>
+                  <span className="text-blue-400">Job</span>
                   <span className="text-orange-400">Runner</span>
                 </span>
               </button>

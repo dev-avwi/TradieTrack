@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorButtonSelected: {
-    borderColor: '#F28C4E',
+    borderColor: '#3b82f6',
     transform: [{ scale: 1.1 }],
   },
   colorButtonWhite: {

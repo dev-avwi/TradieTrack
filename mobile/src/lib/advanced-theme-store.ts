@@ -46,8 +46,8 @@ export interface ThemePreset {
 }
 
 const DEFAULT_LIGHT_PALETTE: ColorPalette = {
-  primary: '#F28C4E',
-  primaryLight: '#FDE8D4',
+  primary: '#3b82f6',
+  primaryLight: '#eff6ff',
   primaryForeground: '#ffffff',
   accent: '#8b5cf6',
   accentLight: '#f5f3ff',
@@ -58,8 +58,8 @@ const DEFAULT_LIGHT_PALETTE: ColorPalette = {
   warningLight: '#fffbeb',
   destructive: '#ef4444',
   destructiveLight: '#fef2f2',
-  info: '#F28C4E',
-  infoLight: '#FDE8D4',
+  info: '#3b82f6',
+  infoLight: '#eff6ff',
 };
 
 const DEFAULT_DARK_PALETTE: ColorPalette = {

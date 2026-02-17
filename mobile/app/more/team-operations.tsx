@@ -37,21 +37,21 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: keyof typeof Feather.glyphMap }> = {
   online: { color: '#22c55e', label: 'Online', icon: 'circle' },
   busy: { color: '#f59e0b', label: 'Busy', icon: 'circle' },
-  on_job: { color: '#F28C4E', label: 'On Job', icon: 'tool' },
+  on_job: { color: '#3b82f6', label: 'On Job', icon: 'tool' },
   break: { color: '#a855f7', label: 'On Break', icon: 'coffee' },
   offline: { color: '#6b7280', label: 'Offline', icon: 'circle' },
 };
 
 const ACTIVITY_CONFIG: Record<string, { icon: keyof typeof Feather.glyphMap; color: string; bgColor: string }> = {
-  job_created: { icon: 'briefcase', color: '#F28C4E', bgColor: 'rgba(242,140,78,0.1)' },
+  job_created: { icon: 'briefcase', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
   job_started: { icon: 'play', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' },
   job_completed: { icon: 'check-circle', color: '#10b981', bgColor: 'rgba(16,185,129,0.1)' },
   quote_sent: { icon: 'file-text', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' },
   invoice_sent: { icon: 'send', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
   invoice_paid: { icon: 'credit-card', color: '#10b981', bgColor: 'rgba(16,185,129,0.1)' },
-  check_in: { icon: 'map-pin', color: '#F28C4E', bgColor: 'rgba(242,140,78,0.1)' },
+  check_in: { icon: 'map-pin', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
   check_out: { icon: 'log-out', color: '#a855f7', bgColor: 'rgba(168,85,247,0.1)' },
-  client_added: { icon: 'user-plus', color: '#F28C4E', bgColor: 'rgba(242,140,78,0.1)' },
+  client_added: { icon: 'user-plus', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
   message_sent: { icon: 'message-circle', color: '#a855f7', bgColor: 'rgba(168,85,247,0.1)' },
 };
 
@@ -626,7 +626,7 @@ export default function TeamOperationsScreen() {
               const lastName = member.lastName || '';
               const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
               const shortName = firstName || member.email?.split('@')[0] || 'Team';
-              const memberColor = member.themeColor || statusConfig?.color || '#F28C4E';
+              const memberColor = member.themeColor || statusConfig?.color || '#3b82f6';
               
               return (
                 <Marker
@@ -676,8 +676,8 @@ export default function TeamOperationsScreen() {
       >
         <View style={styles.kpiStatsRow}>
           <View style={styles.kpiStatItem}>
-            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(242,140,78,0.1)' }]}>
-              <Feather name="users" size={16} color="#F28C4E" />
+            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+              <Feather name="users" size={16} color="#3b82f6" />
             </View>
             <Text style={styles.kpiStatValue}>{acceptedMembers.length}</Text>
             <Text style={styles.kpiStatLabel}>Team</Text>
@@ -690,8 +690,8 @@ export default function TeamOperationsScreen() {
             <Text style={styles.kpiStatLabel}>Online</Text>
           </View>
           <View style={styles.kpiStatItem}>
-            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(242,140,78,0.1)' }]}>
-              <Feather name="tool" size={16} color="#F28C4E" />
+            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+              <Feather name="tool" size={16} color="#3b82f6" />
             </View>
             <Text style={styles.kpiStatValue}>{onJobCount}</Text>
             <Text style={styles.kpiStatLabel}>On Job</Text>
@@ -738,8 +738,8 @@ export default function TeamOperationsScreen() {
     >
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: 'rgba(242,140,78,0.1)' }]}>
-            <Feather name="users" size={18} color="#F28C4E" />
+          <View style={[styles.statIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+            <Feather name="users" size={18} color="#3b82f6" />
           </View>
           <Text style={styles.statValue}>{acceptedMembers.length}</Text>
           <Text style={styles.statLabel}>Active</Text>
@@ -932,8 +932,8 @@ export default function TeamOperationsScreen() {
           <Text style={styles.statCardLabel}>Jobs Completed</Text>
         </View>
         <View style={styles.statCard}>
-          <View style={[styles.statCardIcon, { backgroundColor: 'rgba(242,140,78,0.1)' }]}>
-            <Feather name="clock" size={20} color="#F28C4E" />
+          <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+            <Feather name="clock" size={20} color="#3b82f6" />
           </View>
           <Text style={styles.statCardValue}>{totalInProgress}</Text>
           <Text style={styles.statCardLabel}>In Progress</Text>

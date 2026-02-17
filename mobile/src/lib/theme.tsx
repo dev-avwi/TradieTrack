@@ -95,7 +95,7 @@ export interface ThemeShadows {
   };
 }
 
-const DEFAULT_BRAND_COLOR = '#E86825';
+const DEFAULT_BRAND_COLOR = '#2563EB';
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -191,9 +191,9 @@ const MIN_TEXT_CONTRAST = 4.5;
 
 // Guaranteed visible fallback - vibrant blue works on any background
 const FALLBACK_BUTTON = {
-  bg: '#E86825',
-  bgPressed: '#C45A20', 
-  border: '#C45A20',
+  bg: '#2563EB',
+  bgPressed: '#1D4ED8', 
+  border: '#1D4ED8',
   text: '#ffffff',
 };
 
@@ -557,7 +557,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const baseColors = isDark ? darkColors : lightColors;
     
     // Default blue colors for both light and dark modes (from preset defaults)
-    const DEFAULT_LIGHT_BLUE = '#F28C4E';
+    const DEFAULT_LIGHT_BLUE = '#3B82F6';
     const DEFAULT_DARK_BLUE = '#60A5FA';
     
     // Helper to check if a color is a default preset blue (not a custom brand color)

@@ -586,8 +586,8 @@ export default function Automations() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30">
-                <Zap className="h-5 w-5 text-orange-600" />
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                <Zap className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{availablePresets.length}</p>
@@ -806,8 +806,8 @@ export default function Automations() {
               <Card data-testid="settings-job-reminders">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/30">
-                      <Bell className="h-5 w-5 text-orange-600" />
+                    <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                      <Bell className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">Job Reminders</CardTitle>

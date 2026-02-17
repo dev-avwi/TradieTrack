@@ -219,7 +219,7 @@ export function EmailIntegration() {
             <div className="bg-success/10 p-4 rounded-lg border border-success/20">
               <div className="flex items-start gap-3">
                 {integration.provider === 'smtp' && integration.emailAddress?.includes('outlook') ? (
-                  <Mail className="w-5 h-5 text-orange-500 mt-0.5" />
+                  <Mail className="w-5 h-5 text-blue-500 mt-0.5" />
                 ) : (
                   <CheckCircle className="w-5 h-5 text-success mt-0.5" />
                 )}
@@ -321,7 +321,7 @@ export function EmailIntegration() {
                 <DialogTrigger asChild>
                   <div className="p-4 border rounded-lg hover-elevate cursor-pointer" data-testid="button-connect-email">
                     <div className="flex items-center gap-3">
-                      <Mail className="w-6 h-6 text-orange-500" />
+                      <Mail className="w-6 h-6 text-blue-500" />
                       <div className="flex-1">
                         <p className="font-medium text-sm">Outlook / Other Email</p>
                         <p className="text-xs text-muted-foreground">Connect via SMTP settings</p>

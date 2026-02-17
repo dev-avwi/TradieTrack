@@ -139,7 +139,7 @@ export default function GeofenceSettingsCard({
         </div>
 
         {!enabled && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-sm text-orange-700 dark:text-orange-300">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-300">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <span>This job has GPS coordinates. Enable geofencing for automatic time tracking when workers arrive.</span>
           </div>

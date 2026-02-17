@@ -44,7 +44,7 @@ const SETTINGS_TABS = [
 ];
 
 const BRAND_COLORS = [
-  '#E86825', '#1877F2', '#0A66C2', '#E86825', '#F28C4E',
+  '#2563EB', '#1877F2', '#0A66C2', '#2563EB', '#3B82F6',
   '#059669', '#10B981', '#22C55E', '#84CC16', '#EAB308',
   '#F59E0B', '#E8862E', '#EF4444', '#DC2626', '#E11D48',
   '#EC4899', '#D946EF', '#A855F7', '#8B5CF6', '#6366F1',
@@ -895,7 +895,7 @@ export default function SettingsScreen() {
   const [autoClockOut, setAutoClockOut] = useState(true);
 
   // Brand tab settings
-  const [selectedColor, setSelectedColor] = useState('#E86825');
+  const [selectedColor, setSelectedColor] = useState('#2563EB');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
@@ -982,11 +982,11 @@ export default function SettingsScreen() {
     try {
       // First try to use server-synced business settings
       if (businessSettings?.brandColor || businessSettings?.logoUrl) {
-        setSelectedColor(businessSettings.brandColor || '#E86825');
+        setSelectedColor(businessSettings.brandColor || '#2563EB');
         setLogoUrl(businessSettings.logoUrl || null);
         // Also save locally for offline access
         await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ 
-          color: businessSettings.brandColor || '#E86825', 
+          color: businessSettings.brandColor || '#2563EB', 
           logoUrl: businessSettings.logoUrl || null 
         }));
         return;
@@ -995,7 +995,7 @@ export default function SettingsScreen() {
       const stored = await AsyncStorage.getItem(BRAND_SETTINGS_KEY);
       if (stored) {
         const settings = JSON.parse(stored);
-        setSelectedColor(settings.color || '#E86825');
+        setSelectedColor(settings.color || '#2563EB');
         setLogoUrl(settings.logoUrl || null);
       }
     } catch (error) {

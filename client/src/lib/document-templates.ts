@@ -103,7 +103,7 @@ export const DOCUMENT_ACCENT_COLOR = '#1e3a5f';
 // Now accepts optional customizations to override template defaults
 export function getTemplateStyles(
   templateId: TemplateId, 
-  _brandColor: string = '#E86825',
+  _brandColor: string = '#2563eb',
   customization?: TemplateCustomization
 ) {
   const baseTemplate = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;

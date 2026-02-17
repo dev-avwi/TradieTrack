@@ -214,7 +214,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   emailIcon: {
-    backgroundColor: 'rgba(242,140,78,0.1)',
+    backgroundColor: 'rgba(59,130,246,0.1)',
   },
   smsIcon: {
     backgroundColor: 'rgba(34,197,94,0.1)',
@@ -401,7 +401,7 @@ const getStatusConfig = (status: string) => {
     case 'delivered':
       return { label: 'Delivered', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' };
     case 'sent':
-      return { label: 'Sent', color: '#F28C4E', bgColor: 'rgba(242,140,78,0.1)' };
+      return { label: 'Sent', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' };
     case 'failed':
       return { label: 'Failed', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' };
     case 'pending':
@@ -603,7 +603,7 @@ export default function CommunicationsScreen() {
             <Feather 
               name={item.type === 'email' ? 'mail' : 'message-square'} 
               size={iconSizes.md} 
-              color={item.type === 'email' ? '#F28C4E' : '#22c55e'} 
+              color={item.type === 'email' ? '#3b82f6' : '#22c55e'} 
             />
           </View>
           
@@ -686,7 +686,7 @@ export default function CommunicationsScreen() {
           <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={[styles.statValue, { color: '#F28C4E' }]}>{stats.emails}</Text>
+          <Text style={[styles.statValue, { color: '#3b82f6' }]}>{stats.emails}</Text>
           <Text style={styles.statLabel}>Emails</Text>
         </View>
         <View style={styles.statCard}>
@@ -793,7 +793,7 @@ export default function CommunicationsScreen() {
                     <Feather 
                       name={selectedItem.type === 'email' ? 'mail' : 'message-square'} 
                       size={iconSizes.md} 
-                      color={selectedItem.type === 'email' ? '#F28C4E' : '#22c55e'} 
+                      color={selectedItem.type === 'email' ? '#3b82f6' : '#22c55e'} 
                     />
                   </View>
                   <Text style={styles.modalTitle}>

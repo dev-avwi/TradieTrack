@@ -1004,7 +1004,7 @@ interface NewTemplate {
 
 const colorPresets = [
   '#1e3a5f',
-  '#E86825',
+  '#2563eb',
   '#059669',
   '#d97706',
   '#dc2626',

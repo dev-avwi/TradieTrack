@@ -197,7 +197,7 @@ export default function NotificationDropdown() {
         return { bg: 'bg-red-100 dark:bg-red-900/40', icon: 'text-red-600 dark:text-red-400' };
       case 'job_reminder':
       case 'job_scheduled':
-        return { bg: 'bg-orange-100 dark:bg-orange-900/40', icon: 'text-orange-600 dark:text-orange-400' };
+        return { bg: 'bg-blue-100 dark:bg-blue-900/40', icon: 'text-blue-600 dark:text-blue-400' };
       case 'quote_sent':
       case 'quote_created':
       case 'invoice_sent':

@@ -136,7 +136,7 @@ export function LinkedDocumentsCard({
   const getQuoteStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'sent':
-        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">Sent</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">Sent</Badge>;
       case 'accepted':
         return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">Accepted</Badge>;
       case 'declined':
@@ -149,7 +149,7 @@ export function LinkedDocumentsCard({
   const getInvoiceStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'sent':
-        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">Sent</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">Sent</Badge>;
       case 'paid':
         return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">Paid</Badge>;
       case 'overdue':
@@ -181,9 +181,9 @@ export function LinkedDocumentsCard({
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-9 h-9 rounded-lg flex items-center justify-center",
-              linkedQuote ? "bg-orange-500/10" : "bg-muted"
+              linkedQuote ? "bg-blue-500/10" : "bg-muted"
             )}>
-              <FileText className={cn("h-4 w-4", linkedQuote ? "text-orange-600" : "text-muted-foreground")} />
+              <FileText className={cn("h-4 w-4", linkedQuote ? "text-blue-600" : "text-muted-foreground")} />
             </div>
             <div>
               <p className="text-sm font-medium">

@@ -168,7 +168,7 @@ class NotificationService {
       name: 'Team Messages',
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 250],
-      lightColor: '#F28C4E',
+      lightColor: '#3b82f6',
       sound: 'default',
     });
 

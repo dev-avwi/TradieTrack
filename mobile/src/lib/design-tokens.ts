@@ -377,10 +377,10 @@ export const statusColors = {
     dot: '#f59e0b',
   },
   scheduled: {
-    bg: '#FDE8D4',
-    text: '#E86825',
-    border: '#F28C4E',
-    dot: '#F28C4E',
+    bg: '#dbeafe',
+    text: '#2563eb',
+    border: '#93c5fd',
+    dot: '#3b82f6',
   },
   in_progress: {
     bg: '#dcfce7',

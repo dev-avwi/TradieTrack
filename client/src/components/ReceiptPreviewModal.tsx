@@ -55,7 +55,7 @@ export default function ReceiptPreviewModal({
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const brandColor = businessSettings?.brandColor || '#E86825';
+  const brandColor = businessSettings?.brandColor || '#2563eb';
 
   useEffect(() => {
     if (open && receiptId) {

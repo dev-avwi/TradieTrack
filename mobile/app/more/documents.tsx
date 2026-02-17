@@ -83,7 +83,7 @@ const getQuoteStatusConfig = (status: string) => {
     case 'draft':
       return { label: 'Draft', icon: 'clock' as const, color: '#6b7280', bgColor: 'rgba(107,114,128,0.1)' };
     case 'sent':
-      return { label: 'Sent', icon: 'send' as const, color: '#F28C4E', bgColor: 'rgba(242,140,78,0.1)' };
+      return { label: 'Sent', icon: 'send' as const, color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' };
     case 'accepted':
       return { label: 'Accepted', icon: 'check-circle' as const, color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' };
     case 'rejected':
@@ -98,7 +98,7 @@ const getInvoiceStatusConfig = (status: string) => {
     case 'draft':
       return { label: 'Draft', icon: 'clock' as const, color: '#6b7280', bgColor: 'rgba(107,114,128,0.1)' };
     case 'sent':
-      return { label: 'Sent', icon: 'send' as const, color: '#F28C4E', bgColor: 'rgba(242,140,78,0.1)' };
+      return { label: 'Sent', icon: 'send' as const, color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' };
     case 'paid':
       return { label: 'Paid', icon: 'check-circle' as const, color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' };
     case 'overdue':
@@ -352,7 +352,7 @@ export default function DocumentsScreen() {
     <View style={styles.kpiRow}>
       <View style={styles.kpiCard}>
         <Text style={styles.kpiLabel}>TOTAL</Text>
-        <Text style={[styles.kpiValue, { color: '#F28C4E' }]}>
+        <Text style={[styles.kpiValue, { color: '#3b82f6' }]}>
           {formatCurrency(stats.totalQuotes)}
         </Text>
       </View>
@@ -418,7 +418,7 @@ export default function DocumentsScreen() {
         <Text style={[styles.tabText, activeTab === 'quotes' && styles.activeTabText]}>
           Quotes
         </Text>
-        <View style={[styles.tabBadge, { backgroundColor: '#F28C4E' }]}>
+        <View style={[styles.tabBadge, { backgroundColor: '#3b82f6' }]}>
           <Text style={styles.tabBadgeText}>{quotes.length}</Text>
         </View>
       </TouchableOpacity>

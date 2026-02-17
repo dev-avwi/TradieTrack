@@ -4839,7 +4839,7 @@ export default function JobDetailScreen() {
                   )}
                   {photo.category && photo.category !== 'general' && (
                     <View style={[styles.photoCategoryBadge, 
-                      photo.category === 'before' && { backgroundColor: colors.info || '#F28C4E' },
+                      photo.category === 'before' && { backgroundColor: colors.info || '#3b82f6' },
                       photo.category === 'after' && { backgroundColor: colors.success || '#22c55e' },
                       photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' }
                     ]}>
@@ -5545,7 +5545,7 @@ export default function JobDetailScreen() {
                       )}
                       {photo.category && photo.category !== 'general' && (
                         <View style={[styles.photoCategoryBadge, 
-                          photo.category === 'before' && { backgroundColor: colors.info || '#F28C4E' },
+                          photo.category === 'before' && { backgroundColor: colors.info || '#3b82f6' },
                           photo.category === 'after' && { backgroundColor: colors.success || '#22c55e' },
                           photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' }
                         ]}>

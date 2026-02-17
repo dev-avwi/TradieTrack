@@ -2520,14 +2520,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
                      display: flex; flex-direction: column; align-items: center; justify-content: center;
-                     min-height: 100vh; margin: 0; padding: 20px; background: linear-gradient(135deg, #f97316 0%, #E86825 100%); }
+                     min-height: 100vh; margin: 0; padding: 20px; background: linear-gradient(135deg, #f97316 0%, #2563eb 100%); }
               .card { background: white; border-radius: 16px; padding: 32px; max-width: 400px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
               h1 { color: #1f2937; margin-bottom: 8px; }
               p { color: #6b7280; margin-bottom: 24px; }
               .btn { display: inline-block; background: #f97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; }
               .btn:hover { background: #ea580c; }
               .secondary { margin-top: 16px; font-size: 14px; color: #6b7280; }
-              .secondary a { color: #E86825; }
+              .secondary a { color: #2563eb; }
             </style>
           </head>
           <body>
@@ -6200,7 +6200,7 @@ Be specific about materials, colors, and features that would be included.`
       }
 
       const businessName = businessSettings?.businessName || 'Demo Tradie Business';
-      const brandColor = businessSettings?.brandColor || '#E86825';
+      const brandColor = businessSettings?.brandColor || '#2563eb';
       
       const result = await sendEmail({
         to: toEmail,
@@ -6213,7 +6213,7 @@ Be specific about materials, colors, and features that would be included.`
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, ${brandColor} 0%, #C45A20 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <div style="background: linear-gradient(135deg, ${brandColor} 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
               <h1 style="color: white; margin: 0;">${businessName}</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">JobRunner Demo</p>
             </div>
@@ -6277,7 +6277,7 @@ Be specific about materials, colors, and features that would be included.`
           <title>Welcome to JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-          <div style="background: linear-gradient(135deg, #E86825 0%, #C45A20 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to JobRunner!</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">The business management platform built for Australian tradies</p>
           </div>
@@ -6288,36 +6288,36 @@ Be specific about materials, colors, and features that would be included.`
             <p>Thanks for signing up to JobRunner. You've just taken the first step towards running a more organised, professional trade business.</p>
             
             <div style="background: #f0f9ff; padding: 25px; border-radius: 8px; margin: 25px 0;">
-              <h3 style="margin: 0 0 20px 0; color: #C45A20; text-align: center;">Quick Start Guide</h3>
+              <h3 style="margin: 0 0 20px 0; color: #1d4ed8; text-align: center;">Quick Start Guide</h3>
               
               <div style="display: flex; margin-bottom: 15px;">
-                <div style="background: #E86825; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">1</div>
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">1</div>
                 <div>
-                  <strong style="color: #C45A20;">Set up your business profile</strong>
+                  <strong style="color: #1d4ed8;">Set up your business profile</strong>
                   <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Add your ABN, logo, and business details for professional quotes and invoices</p>
                 </div>
               </div>
               
               <div style="display: flex; margin-bottom: 15px;">
-                <div style="background: #E86825; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">2</div>
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">2</div>
                 <div>
-                  <strong style="color: #C45A20;">Add your first client</strong>
+                  <strong style="color: #1d4ed8;">Add your first client</strong>
                   <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Store customer details and job history in one place</p>
                 </div>
               </div>
               
               <div style="display: flex; margin-bottom: 15px;">
-                <div style="background: #E86825; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">3</div>
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">3</div>
                 <div>
-                  <strong style="color: #C45A20;">Create a quote</strong>
+                  <strong style="color: #1d4ed8;">Create a quote</strong>
                   <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Use our templates to send professional quotes with one click</p>
                 </div>
               </div>
               
               <div style="display: flex; margin-bottom: 15px;">
-                <div style="background: #E86825; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">4</div>
+                <div style="background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; margin-right: 12px;">4</div>
                 <div>
-                  <strong style="color: #C45A20;">Convert quote to job</strong>
+                  <strong style="color: #1d4ed8;">Convert quote to job</strong>
                   <p style="margin: 4px 0 0 0; color: #666; font-size: 14px;">Once accepted, turn it into a trackable job with scheduling</p>
                 </div>
               </div>
@@ -6338,7 +6338,7 @@ Be specific about materials, colors, and features that would be included.`
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${getBaseUrl()}" style="background-color: #E86825; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
+              <a href="${getBaseUrl()}" style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-size: 16px; font-weight: bold;">
                 Get Started Now
               </a>
             </div>
@@ -11999,7 +11999,7 @@ Be specific about materials, colors, and features that would be included.`
         address: '',
         phone: '',
         email: '',
-        brandColor: '#E86825'
+        brandColor: '#2563eb'
       };
 
       if (method === 'email') {
@@ -12024,7 +12024,7 @@ Be specific about materials, colors, and features that would be included.`
           text: body || `Hi ${client.firstName || 'there'},\n\nHere are the details for your job: ${job.title}\n\nScheduled: ${job.scheduledDate || 'To be confirmed'}\nAddress: ${job.address || 'To be confirmed'}\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers,\n${businessName}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: ${business.brandColor || '#E86825'};">${businessName}</h2>
+              <h2 style="color: ${business.brandColor || '#2563eb'};">${businessName}</h2>
               <p>Hi ${client.firstName || 'there'},</p>
               <p>${body?.replace(/\n/g, '<br>') || `Here are the details for your job: <strong>${job.title}</strong>`}</p>
               <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
@@ -12087,7 +12087,7 @@ Be specific about materials, colors, and features that would be included.`
         address: '',
         phone: '',
         email: '',
-        brandColor: '#E86825'
+        brandColor: '#2563eb'
       };
 
       await sendJobConfirmationEmail(job, client, business);
@@ -13394,7 +13394,7 @@ Be specific about materials, colors, and features that would be included.`
             <h2 style="color: #333;">Hi ${client.name},</h2>
             <p style="color: #555; font-size: 16px;">You can track the progress of your job "<strong>${job.title}</strong>" using the link below:</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${portalUrl}" style="background-color: #E86825; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Track Your Job</a>
+              <a href="${portalUrl}" style="background-color: #2563EB; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Track Your Job</a>
             </div>
             <p style="color: #888; font-size: 14px;">This link gives you live updates on your job status, photos, and documents.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
@@ -14782,7 +14782,7 @@ Be specific about materials, colors, and features that would be included.`
         address: '',
         phone: '',
         email: '',
-        brandColor: '#E86825',
+        brandColor: '#2563eb',
         gstEnabled: true,
       });
       const html = generateQuotePDF({
@@ -20051,29 +20051,29 @@ Respond with JSON in this format:
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size:11px; color:#1f2937; padding:32px; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #E86825; }
-  .header-left h1 { font-size:22px; color:#E86825; margin-bottom:4px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #2563EB; }
+  .header-left h1 { font-size:22px; color:#2563EB; margin-bottom:4px; }
   .header-left p { font-size:12px; color:#4b5563; }
   .header-right { text-align:right; }
-  .header-right .biz-name { font-size:14px; font-weight:700; color:#E86825; }
+  .header-right .biz-name { font-size:14px; font-weight:700; color:#2563EB; }
   .header-right p { font-size:11px; color:#6b7280; }
   .meta-row { display:flex; gap:32px; margin-bottom:20px; padding:12px 16px; background:#f0fdfa; border-radius:6px; border:1px solid #ccfbf1; }
   .meta-item label { font-size:10px; text-transform:uppercase; color:#6b7280; letter-spacing:0.5px; }
   .meta-item span { display:block; font-size:12px; font-weight:600; color:#1f2937; }
   table { width:100%; border-collapse:collapse; margin-bottom:20px; }
-  thead th { background:#E86825; color:white; padding:8px 6px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+  thead th { background:#2563EB; color:white; padding:8px 6px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
   tbody td { padding:6px; border-bottom:1px solid #e5e7eb; font-size:10px; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  .day-header td { background:#f9fafb; font-weight:700; font-size:11px; color:#E86825; padding:8px 6px; border-bottom:2px solid #d1fae5; }
+  .day-header td { background:#f9fafb; font-weight:700; font-size:11px; color:#2563EB; padding:8px 6px; border-bottom:2px solid #d1fae5; }
   .subtotal-row td { background:#f0fdfa; border-bottom:2px solid #ccfbf1; }
   .category-badge { display:inline-block; padding:2px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:9px; text-transform:capitalize; }
   .totals { margin-top:16px; page-break-inside:avoid; }
-  .totals h3 { font-size:14px; color:#E86825; margin-bottom:8px; border-bottom:2px solid #E86825; padding-bottom:4px; }
+  .totals h3 { font-size:14px; color:#2563EB; margin-bottom:8px; border-bottom:2px solid #2563EB; padding-bottom:4px; }
   .totals-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .total-item { display:flex; justify-content:space-between; padding:6px 10px; background:#f9fafb; border-radius:4px; border:1px solid #e5e7eb; }
   .total-item label { font-size:11px; color:#4b5563; }
   .total-item span { font-size:12px; font-weight:700; color:#1f2937; }
-  .total-item.highlight { background:#E86825; border-color:#E86825; }
+  .total-item.highlight { background:#2563EB; border-color:#2563EB; }
   .total-item.highlight label, .total-item.highlight span { color:white; }
   .footer { margin-top:32px; padding-top:12px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; color:#9ca3af; font-size:9px; }
 </style>
@@ -20892,7 +20892,7 @@ Respond with JSON in this format:
   
   // Unified color palette for team members - 20 visually distinct colors
   const TEAM_MEMBER_COLOR_PALETTE = [
-    '#F28C4E', // Blue
+    '#3B82F6', // Blue
     '#22C55E', // Green
     '#F59E0B', // Amber
     '#EF4444', // Red
@@ -21019,7 +21019,7 @@ Respond with JSON in this format:
       const { themeColor } = req.body;
       
       if (!themeColor || !/^#[0-9A-Fa-f]{6}$/.test(themeColor)) {
-        return res.status(400).json({ error: 'Invalid color format. Use hex format like #F28C4E' });
+        return res.status(400).json({ error: 'Invalid color format. Use hex format like #3B82F6' });
       }
       
       // Get the team member to find their user ID
@@ -22060,7 +22060,7 @@ Respond with JSON in this format:
           firstName: owner.firstName || 'Owner',
           lastName: owner.lastName || '',
           initials,
-          themeColor: owner.themeColor || '#F28C4E',
+          themeColor: owner.themeColor || '#3B82F6',
           isOwner: true,
         });
       }
@@ -30658,7 +30658,7 @@ Respond with JSON in this format:
           <title>Welcome to JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #F28C4E 0%, #C45A20 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
             <img src="${logoUrl}" alt="JobRunner" style="max-width: 180px; height: auto; margin-bottom: 15px;" />
             <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to JobRunner!</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your business management platform</p>
@@ -30670,7 +30670,7 @@ Respond with JSON in this format:
             <p>JobRunner helps you manage your trade business with ease - from quotes and invoices to scheduling and client management.</p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="#" style="background: #F28C4E; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Get Started</a>
+              <a href="#" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Get Started</a>
             </div>
           </div>
           
@@ -30690,7 +30690,7 @@ Respond with JSON in this format:
           <title>Reset Your Password - JobRunner</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #F28C4E 0%, #C45A20 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
             <img src="${logoUrl}" alt="JobRunner" style="max-width: 160px; height: auto; margin-bottom: 15px;" />
             <h1 style="color: white; margin: 0; font-size: 28px;">Password Reset Request</h1>
           </div>
@@ -30701,7 +30701,7 @@ Respond with JSON in this format:
             <p>Click the button below to create a new password:</p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="#" style="background: #F28C4E; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
+              <a href="#" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">Reset Password</a>
             </div>
           </div>
           

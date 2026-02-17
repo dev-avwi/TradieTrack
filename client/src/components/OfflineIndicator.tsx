@@ -63,7 +63,7 @@ export default function OfflineIndicator() {
           !isOnline
             ? "bg-orange-500/95 text-white border-orange-600"
             : isSyncing
-            ? "bg-orange-500/95 text-white border-orange-600"
+            ? "bg-blue-500/95 text-white border-blue-600"
             : showSuccess
             ? "bg-green-500/95 text-white border-green-600"
             : "bg-card/95 text-foreground border-border"

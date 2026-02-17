@@ -35,8 +35,8 @@ const getEmptyStateConfig = (type: EmptyStateType): EmptyStateConfig => {
         title: 'No jobs yet',
         description: 'Create your first job to start tracking your work',
         actionLabel: 'Create Job',
-        iconColor: '#F28C4E',
-        bgColor: 'rgba(242,140,78,0.1)',
+        iconColor: '#3b82f6',
+        bgColor: 'rgba(59,130,246,0.1)',
       };
     case 'clients':
       return {
@@ -79,8 +79,8 @@ const getEmptyStateConfig = (type: EmptyStateType): EmptyStateConfig => {
         title: 'No team members',
         description: 'Invite team members to collaborate on jobs',
         actionLabel: 'Invite Member',
-        iconColor: '#F28C4E',
-        bgColor: 'rgba(242,140,78,0.1)',
+        iconColor: '#3b82f6',
+        bgColor: 'rgba(59,130,246,0.1)',
       };
     case 'messages':
       return {
@@ -111,8 +111,8 @@ const getEmptyStateConfig = (type: EmptyStateType): EmptyStateConfig => {
         icon: 'folder',
         title: 'No documents yet',
         description: 'Your quotes, invoices, and receipts will appear here',
-        iconColor: '#F28C4E',
-        bgColor: 'rgba(242,140,78,0.1)',
+        iconColor: '#3b82f6',
+        bgColor: 'rgba(59,130,246,0.1)',
       };
     case 'time':
       return {

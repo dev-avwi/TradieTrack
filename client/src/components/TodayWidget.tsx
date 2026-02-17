@@ -266,7 +266,7 @@ export default function TodayWidget({
                 <p className="text-xs text-muted-foreground">Scheduled</p>
               </div>
               <div className="text-center p-2 rounded-md bg-muted/50">
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-2xl font-bold text-blue-600">
                   {inProgressJobs.length}
                 </p>
                 <p className="text-xs text-muted-foreground">In Progress</p>

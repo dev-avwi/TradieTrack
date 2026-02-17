@@ -134,7 +134,7 @@ export default function TeamOwnerDashboard({
     switch (status) {
       case "online": return "#22C55E";
       case "busy": return "#EAB308";
-      case "on_job": return "#F28C4E";
+      case "on_job": return "#3B82F6";
       case "break": return "#F97316";
       default: return "#6B7280";
     }

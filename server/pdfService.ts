@@ -857,7 +857,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .status-draft { background: #e5e7eb; color: #374151; }
-    .status-sent { background: #FDE8D4; color: #C45A20; }
+    .status-sent { background: #dbeafe; color: #1d4ed8; }
     .status-accepted { background: #dcfce7; color: #166534; }
     .status-declined { background: #fee2e2; color: #991b1b; }
     .status-paid { background: #dcfce7; color: #166534; }
@@ -1082,9 +1082,9 @@ ${business.paymentInstructions ? `<span style="font-size: 9px; color: #666;">${b
     ` : ''}
     
     ${(business as any).insuranceDetails || (business as any).insuranceProvider ? `
-      <div class="notes-section" style="margin-top: 6px; background: #f0f9ff; border-left-color: #F28C4E;">
-        <div class="notes-title" style="color: #B5491A;">Insurance & Licensing</div>
-        <div class="notes-content" style="color: #B5491A;">
+      <div class="notes-section" style="margin-top: 6px; background: #f0f9ff; border-left-color: #3b82f6;">
+        <div class="notes-title" style="color: #1e40af;">Insurance & Licensing</div>
+        <div class="notes-content" style="color: #1e40af;">
 ${business.licenseNumber ? `Licence: ${business.licenseNumber}` : ''}
 ${(business as any).insuranceProvider ? `Insurer: ${(business as any).insuranceProvider}` : ''}
 ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAmount}` : ''}
@@ -1147,8 +1147,8 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
       }
       if (assignmentSigs.length > 0) {
         html += `
-      <div style="margin-top: 24px; padding: 20px; border: 1px solid #F6B88A; border-radius: 8px; background: #FFF5EB; page-break-inside: avoid;">
-        <div style="font-size: 12px; font-weight: 600; color: #B5491A; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+      <div style="margin-top: 24px; padding: 20px; border: 1px solid #93c5fd; border-radius: 8px; background: #eff6ff; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
           Subcontractor Acceptance Signatures
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
@@ -1159,11 +1159,11 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
             const signerName = sig.signerName || 'Worker';
             return `
             <div style="text-align: center; min-width: 150px;">
-              <div style="background: white; border: 1px solid #F6B88A; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              <div style="background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
                 <img src="${sigDataUrl}" alt="${signerName} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
               </div>
-              <div style="font-size: 11px; font-weight: 500; color: #B5491A;">${signerName}</div>
-              <div style="font-size: 10px; color: #F28C4E;">Assignment Accepted</div>
+              <div style="font-size: 11px; font-weight: 500; color: #1e40af;">${signerName}</div>
+              <div style="font-size: 10px; color: #3b82f6;">Assignment Accepted</div>
               <div style="font-size: 9px; color: #6b7280;">${formatDate(sig.signedAt)}</div>
               <div style="font-size: 8px; color: #6b7280; margin-top: 2px;">Confidentiality agreement signed</div>
             </div>
@@ -1499,9 +1499,9 @@ Amount: ${formatCurrency(total)}
     </div>
     
     ${(business as any).insuranceDetails || (business as any).insuranceProvider ? `
-      <div class="notes-section" style="margin-top: 16px; background: #f0f9ff; border-left-color: #F28C4E;">
-        <div class="notes-title" style="color: #B5491A;">Insurance & Licensing</div>
-        <div class="notes-content" style="color: #B5491A;">
+      <div class="notes-section" style="margin-top: 16px; background: #f0f9ff; border-left-color: #3b82f6;">
+        <div class="notes-title" style="color: #1e40af;">Insurance & Licensing</div>
+        <div class="notes-content" style="color: #1e40af;">
 ${business.licenseNumber ? `Licence: ${business.licenseNumber}` : ''}
 ${(business as any).insuranceProvider ? `Insurer: ${(business as any).insuranceProvider}` : ''}
 ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAmount}` : ''}
@@ -1527,7 +1527,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
               <td>${a.workerName}</td>
               <td>${formatAUDateTime(a.travelStartedAt)}</td>
               <td>${formatAUDateTime(a.arrivedAt)}</td>
-              <td><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 500; background: ${a.assignmentStatus === 'completed' || a.assignmentStatus === 'done' ? '#dcfce7; color: #166534' : a.assignmentStatus === 'arrived' || a.assignmentStatus === 'working' ? '#FDE8D4; color: #B5491A' : a.assignmentStatus === 'en_route' || a.assignmentStatus === 'travelling' ? '#fef3c7; color: #92400e' : '#f3f4f6; color: #374151'};">${a.assignmentStatus}</span></td>
+              <td><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 500; background: ${a.assignmentStatus === 'completed' || a.assignmentStatus === 'done' ? '#dcfce7; color: #166534' : a.assignmentStatus === 'arrived' || a.assignmentStatus === 'working' ? '#dbeafe; color: #1e40af' : a.assignmentStatus === 'en_route' || a.assignmentStatus === 'travelling' ? '#fef3c7; color: #92400e' : '#f3f4f6; color: #374151'};">${a.assignmentStatus}</span></td>
             </tr>
           `).join('')}
         </tbody>
@@ -1566,8 +1566,8 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
       }
       if (assignmentSigs.length > 0) {
         html += `
-      <div style="margin-top: 24px; padding: 20px; border: 1px solid #F6B88A; border-radius: 8px; background: #FFF5EB; page-break-inside: avoid;">
-        <div style="font-size: 12px; font-weight: 600; color: #B5491A; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+      <div style="margin-top: 24px; padding: 20px; border: 1px solid #93c5fd; border-radius: 8px; background: #eff6ff; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
           Subcontractor Acceptance Signatures
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
@@ -1578,11 +1578,11 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
             const signerName = sig.signerName || 'Worker';
             return `
             <div style="text-align: center; min-width: 150px;">
-              <div style="background: white; border: 1px solid #F6B88A; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              <div style="background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
                 <img src="${sigDataUrl}" alt="${signerName} signature" style="max-height: 50px; max-width: 140px; width: auto;" />
               </div>
-              <div style="font-size: 11px; font-weight: 500; color: #B5491A;">${signerName}</div>
-              <div style="font-size: 10px; color: #F28C4E;">Assignment Accepted</div>
+              <div style="font-size: 11px; font-weight: 500; color: #1e40af;">${signerName}</div>
+              <div style="font-size: 10px; color: #3b82f6;">Assignment Accepted</div>
               <div style="font-size: 9px; color: #6b7280;">${formatDate(sig.signedAt)}</div>
               <div style="font-size: 8px; color: #6b7280; margin-top: 2px;">Confidentiality agreement signed</div>
             </div>
@@ -1619,7 +1619,7 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 
 export const generateQuoteAcceptancePage = (data: QuoteWithDetails, acceptanceUrl: string): string => {
   const { quote, lineItems, client, business, signature, previousSignature, token, canAcceptPayments, showSuccess } = data;
-  const brandColor = business.brandColor || '#E86825';
+  const brandColor = business.brandColor || '#2563eb';
   
   const subtotal = parseFloat(quote.subtotal as unknown as string);
   const gstAmount = parseFloat(quote.gstAmount as unknown as string);

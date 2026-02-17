@@ -78,7 +78,7 @@ export default function VerifyEmailPending() {
             </p>
           </div>
           
-          <Alert className="border-orange-200 bg-orange-50 text-orange-800 dark:bg-orange-950/30 dark:border-orange-800 dark:text-orange-300">
+          <Alert className="border-blue-200 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300">
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
               The verification link will expire in 24 hours.

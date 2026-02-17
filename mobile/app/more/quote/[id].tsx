@@ -91,7 +91,7 @@ export default function QuoteDetailScreen() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
-  const brandColor = businessSettings?.brandColor || user?.brandColor || '#E86825';
+  const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
 
   const handleDeleteQuote = () => {
     if (!quote) return;
@@ -1383,8 +1383,8 @@ ${businessName}`;
                       <Text style={styles.linkedDocLabel}>Job</Text>
                       <Text style={styles.linkedDocTitle} numberOfLines={1}>{linkedJob.title}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(242,140,78,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#F28C4E' }]}>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#3b82f6' }]}>
                         {linkedJob.status.charAt(0).toUpperCase() + linkedJob.status.slice(1)}
                       </Text>
                     </View>
@@ -1406,12 +1406,12 @@ ${businessName}`;
                     <View style={[styles.linkedDocStatus, { 
                       backgroundColor: linkedInvoice.status === 'paid' ? 'rgba(34,197,94,0.1)' : 
                                        linkedInvoice.status === 'overdue' ? 'rgba(239,68,68,0.1)' : 
-                                       'rgba(242,140,78,0.1)' 
+                                       'rgba(59,130,246,0.1)' 
                     }]}>
                       <Text style={[styles.linkedDocStatusText, { 
                         color: linkedInvoice.status === 'paid' ? '#22c55e' : 
                                linkedInvoice.status === 'overdue' ? '#ef4444' : 
-                               '#F28C4E' 
+                               '#3b82f6' 
                       }]}>
                         {linkedInvoice.status.charAt(0).toUpperCase() + linkedInvoice.status.slice(1)}
                       </Text>

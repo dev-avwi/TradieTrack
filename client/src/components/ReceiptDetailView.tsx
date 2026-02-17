@@ -67,7 +67,7 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
 
-  const brandColor = businessSettings?.brandColor || '#E86825';
+  const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
   const templateStyles = getTemplateStyles(templateId, brandColor);
   const { template, primaryColor, headingStyle } = templateStyles;
@@ -146,7 +146,7 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
 
     const amount = typeof receipt.amount === 'string' ? parseFloat(receipt.amount) : (receipt.amount || 0);
     const gstAmount = typeof receipt.gstAmount === 'string' ? parseFloat(receipt.gstAmount) : (receipt.gstAmount || 0);
-    const color = primaryColor || '#E86825';
+    const color = primaryColor || '#2563eb';
 
     const logoHtml = businessSettings.logoUrl ? `<img src="${businessSettings.logoUrl}" alt="Logo" style="max-width: 150px; max-height: 60px; object-fit: contain; margin-bottom: 12px;" crossorigin="anonymous" />` : '';
 

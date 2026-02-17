@@ -508,7 +508,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 8,
     backgroundColor: '#E8862E',
     borderWidth: 2,
-    borderColor: '#E86825',
+    borderColor: '#2563eb',
   },
   logoInner: {
     flex: 1,
@@ -529,7 +529,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appNameBlue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#E86825',
+    color: '#2563eb',
   },
   appNameOrange: {
     fontSize: 28,

@@ -13,7 +13,7 @@ import ColorThief from "colorthief";
 
 const brandingSchema = z.object({
   logoUrl: z.string().optional(),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").default("#E86825"),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").default("#2563eb"),
   quotePrefix: z.string().min(1, "Quote prefix is required").max(10, "Maximum 10 characters").default("Q"),
   invoicePrefix: z.string().min(1, "Invoice prefix is required").max(10, "Maximum 10 characters").default("INV"),
   businessTagline: z.string().max(200, "Maximum 200 characters").optional().default(""),
@@ -41,7 +41,7 @@ export default function BrandingStep({
     resolver: zodResolver(brandingSchema),
     defaultValues: {
       logoUrl: data.logoUrl || '',
-      primaryColor: data.primaryColor || '#E86825',
+      primaryColor: data.primaryColor || '#2563eb',
       quotePrefix: data.quotePrefix || 'Q',
       invoicePrefix: data.invoicePrefix || 'INV',
       businessTagline: data.businessTagline || '',
@@ -147,7 +147,7 @@ export default function BrandingStep({
   const handleSkip = () => {
     onComplete({
       logoUrl: '',
-      primaryColor: '#E86825',
+      primaryColor: '#2563eb',
       quotePrefix: 'Q',
       invoicePrefix: 'INV',
       businessTagline: '',
@@ -265,7 +265,7 @@ export default function BrandingStep({
                     <Input
                       value={field.value}
                       onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="#E86825"
+                      placeholder="#2563eb"
                       className="font-mono"
                       data-testid="input-color-hex"
                     />

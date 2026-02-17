@@ -87,7 +87,7 @@ export default function ServiceReadinessWidget({
   const getStatusIcon = (status?: string) => {
     if (status === 'ready') return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />;
     if (status === 'error') return <AlertCircle className="h-3.5 w-3.5 text-amber-500" />;
-    return <Shield className="h-3.5 w-3.5 text-orange-500" />;
+    return <Shield className="h-3.5 w-3.5 text-blue-500" />;
   };
 
   const getStatusText = (status?: string) => {
@@ -107,12 +107,12 @@ export default function ServiceReadinessWidget({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                allReady ? 'bg-green-100 dark:bg-green-900/50' : 'bg-orange-100 dark:bg-orange-900/50'
+                allReady ? 'bg-green-100 dark:bg-green-900/50' : 'bg-blue-100 dark:bg-blue-900/50'
               }`}>
                 {allReady ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : (
-                  <Shield className="h-5 w-5 text-orange-600" />
+                  <Shield className="h-5 w-5 text-blue-600" />
                 )}
               </div>
               <div>
@@ -137,12 +137,12 @@ export default function ServiceReadinessWidget({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              allReady ? 'bg-green-100 dark:bg-green-900/50' : 'bg-orange-100 dark:bg-orange-900/50'
+              allReady ? 'bg-green-100 dark:bg-green-900/50' : 'bg-blue-100 dark:bg-blue-900/50'
             }`}>
               {allReady ? (
                 <Sparkles className="h-5 w-5 text-green-600" />
               ) : (
-                <Shield className="h-5 w-5 text-orange-600" />
+                <Shield className="h-5 w-5 text-blue-600" />
               )}
             </div>
             <div>

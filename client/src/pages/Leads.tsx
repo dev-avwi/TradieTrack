@@ -90,7 +90,7 @@ const statusLabels: Record<LeadStatus, string> = {
 
 const statusColors: Record<LeadStatus, string> = {
   new: 'bg-primary/10 text-primary',
-  contacted: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  contacted: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   quoted: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   won: 'bg-success/10 text-success',
   lost: 'bg-destructive/10 text-destructive',

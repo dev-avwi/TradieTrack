@@ -91,7 +91,7 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
               style={[styles.resolutionButton, styles.serverButton]}
               onPress={() => onResolve('kept_server')}
             >
-              <Ionicons name="cloud-outline" size={16} color="#F28C4E" />
+              <Ionicons name="cloud-outline" size={16} color="#3b82f6" />
               <Text style={styles.serverButtonText}>Use Server</Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -363,10 +363,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   serverButton: {
-    backgroundColor: '#FDE8D4',
+    backgroundColor: '#eff6ff',
   },
   serverButtonText: {
-    color: '#F28C4E',
+    color: '#3b82f6',
     fontSize: 14,
     fontWeight: '500',
   },

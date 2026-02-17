@@ -32,7 +32,7 @@ const NOTIFICATION_PREFERENCES: NotificationPreference[] = [
     label: 'Job Assigned',
     description: 'When a new job is assigned to you',
     icon: 'briefcase',
-    color: '#F28C4E',
+    color: '#3b82f6',
     category: 'jobs',
   },
   {
@@ -40,7 +40,7 @@ const NOTIFICATION_PREFERENCES: NotificationPreference[] = [
     label: 'Job Updates',
     description: 'When a job status changes',
     icon: 'refresh-cw',
-    color: '#F28C4E',
+    color: '#3b82f6',
     category: 'jobs',
   },
   {
@@ -56,7 +56,7 @@ const NOTIFICATION_PREFERENCES: NotificationPreference[] = [
     label: 'Quote Responses',
     description: 'When clients accept or reject your quotes',
     icon: 'file-text',
-    color: '#F28C4E',
+    color: '#3b82f6',
     category: 'payments',
   },
   {

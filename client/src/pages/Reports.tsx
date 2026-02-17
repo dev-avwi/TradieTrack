@@ -527,7 +527,7 @@ export default function Reports() {
                   </Badge>
                   <Badge 
                     variant="outline" 
-                    className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700"
+                    className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
                     data-testid="badge-bas-quarter"
                   >
                     <FileCheck className="h-3 w-3 mr-1" />
@@ -661,8 +661,8 @@ export default function Reports() {
                         {`${(summary?.quotes.conversionRate || 0).toFixed(0)}%`}
                       </p>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
@@ -850,8 +850,8 @@ export default function Reports() {
                               {formatCurrency(stripeData?.totals?.totalNet || 0)}
                             </p>
                           </div>
-                          <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                            <Banknote className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                            <Banknote className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
@@ -942,8 +942,8 @@ export default function Reports() {
                             {stripeData?.payouts?.slice(0, 5).map((payout) => (
                               <div key={payout.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                 <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                                    <ArrowUpRight className="h-5 w-5 text-orange-600" />
+                                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                                    <ArrowUpRight className="h-5 w-5 text-blue-600" />
                                   </div>
                                   <div>
                                     <p className="font-medium">Bank Transfer</p>
@@ -1066,7 +1066,7 @@ export default function Reports() {
                       </div>
                       <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-orange-600" />
+                          <Clock className="h-5 w-5 text-blue-600" />
                           <span>In Progress</span>
                         </div>
                         <span className="text-xl font-semibold" data-testid="text-jobs-in-progress">
@@ -1201,8 +1201,8 @@ export default function Reports() {
                                 {teamData.totals.totalMembers}
                               </p>
                             </div>
-                            <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                              <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </div>
                           </div>
                         </CardContent>
@@ -1311,7 +1311,7 @@ export default function Reports() {
                                   <td className="text-right py-3 px-2 font-medium text-green-600">
                                     {member.jobsCompleted}
                                   </td>
-                                  <td className="text-right py-3 px-2 hidden sm:table-cell text-orange-600">
+                                  <td className="text-right py-3 px-2 hidden sm:table-cell text-blue-600">
                                     {member.jobsInProgress}
                                   </td>
                                   <td className="text-right py-3 px-2 hidden md:table-cell">

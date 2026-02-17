@@ -378,7 +378,7 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
                   <Circle 
                     center={[lastLocation.lat, lastLocation.lng]} 
                     radius={50} 
-                    pathOptions={{ color: '#F28C4E', fillColor: '#F28C4E', fillOpacity: 0.2 }}
+                    pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }}
                   />
                 </MapContainer>
               </div>

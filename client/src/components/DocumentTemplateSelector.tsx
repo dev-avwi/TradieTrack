@@ -25,7 +25,7 @@ interface DocumentTemplateSelectorProps {
 
 function MiniDocumentPreview({ 
   templateId, 
-  brandColor = '#E86825',
+  brandColor = '#2563eb',
   isSelected = false,
   customization
 }: { 
@@ -155,7 +155,7 @@ function MiniDocumentPreview({
 // Large preview for customization section
 function LargeDocumentPreview({ 
   templateId, 
-  brandColor = '#E86825',
+  brandColor = '#2563eb',
   customization
 }: { 
   templateId: TemplateId; 
@@ -272,7 +272,7 @@ export default function DocumentTemplateSelector({
   onSelectTemplate,
   customization = {},
   onCustomizationChange,
-  brandColor = '#E86825',
+  brandColor = '#2563eb',
 }: DocumentTemplateSelectorProps) {
   const templates = Object.values(DOCUMENT_TEMPLATES);
   const selectedBaseTemplate = DOCUMENT_TEMPLATES[selectedTemplate];

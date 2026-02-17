@@ -113,20 +113,20 @@ export default function GoogleCalendarSetupGuide({
 
       {/* Benefits Banner */}
       {!isConnected && (
-        <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-4 space-y-3">
-          <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 space-y-3">
+          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
             Never miss a job appointment again!
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs" data-testid="list-google-calendar-features">
-            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
               <Calendar className="w-3 h-3" />
               <span>Auto sync jobs</span>
             </div>
-            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
               <Bell className="w-3 h-3" />
               <span>Smart reminders</span>
             </div>
-            <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
               <MapPin className="w-3 h-3" />
               <span>Location details</span>
             </div>
@@ -313,11 +313,11 @@ export default function GoogleCalendarSetupGuide({
           <AccordionContent className="text-xs text-muted-foreground pb-3">
             <ul className="space-y-1.5">
               <li className="flex items-start gap-2">
-                <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
                 <span><strong>Connection:</strong> Less than 1 minute - just click and authorize</span>
               </li>
               <li className="flex items-start gap-2">
-                <Clock className="w-3 h-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
                 <span><strong>Initial sync:</strong> Existing scheduled jobs sync within seconds</span>
               </li>
               <li className="flex items-start gap-2">

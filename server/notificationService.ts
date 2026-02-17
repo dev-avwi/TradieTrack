@@ -142,7 +142,7 @@ export async function notifyQuoteReady(
         text: `Hi ${clientName.split(' ')[0]},\n\nYour quote #${quoteNumber} for ${quoteTotal} from ${businessName} is ready for review.\n\nView your quote: ${viewQuoteUrl}\n\nThanks,\n${businessName}`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="background: #E86825; padding: 24px 32px;">
+            <div style="background: #2563eb; padding: 24px 32px;">
               <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${businessName}</h2>
               <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">Quote #${quoteNumber}</p>
             </div>
@@ -150,7 +150,7 @@ export async function notifyQuoteReady(
               <p style="margin: 0 0 16px 0; color: #1e293b; font-size: 16px;">Hi ${clientName.split(' ')[0]},</p>
               <p style="margin: 0 0 24px 0; color: #475569; font-size: 15px; line-height: 1.6;">Your quote for <strong>${quoteTotal}</strong> is ready for review.</p>
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${viewQuoteUrl}" style="background-color: #E86825; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 15px;">View & Accept Quote</a>
+                <a href="${viewQuoteUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 15px;">View & Accept Quote</a>
               </div>
               <p style="margin: 24px 0 0 0; color: #64748b; font-size: 14px;">Thanks,<br><strong>${businessName}</strong></p>
             </div>
@@ -214,7 +214,7 @@ export async function notifyInvoiceSent(
         text: `Hi ${clientName.split(' ')[0]},\n\nInvoice #${invoiceNumber} for ${invoiceTotal} from ${businessName} is due on ${dueDate}.\n\nPay now: ${paymentUrl}\n\nThanks,\n${businessName}`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="background: #E86825; padding: 24px 32px;">
+            <div style="background: #2563eb; padding: 24px 32px;">
               <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${businessName}</h2>
               <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">Invoice #${invoiceNumber}</p>
             </div>
@@ -343,7 +343,7 @@ export async function notifyJobScheduled(
         text: `Hi ${clientName},\n\nYour job has been scheduled for ${jobDate}.\n\n${jobDescription ? `Details: ${jobDescription}\n\n` : ''}We'll see you then!\n\n${businessName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #E86825;">Job Scheduled</h2>
+            <h2 style="color: #2563eb;">Job Scheduled</h2>
             <p>Hi ${clientName},</p>
             <p>Your job has been scheduled for <strong>${jobDate}</strong>.</p>
             ${jobDescription ? `<p><strong>Details:</strong> ${jobDescription}</p>` : ''}

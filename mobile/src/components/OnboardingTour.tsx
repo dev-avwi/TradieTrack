@@ -30,7 +30,7 @@ const TOUR_STEPS: TourStep[] = [
     title: 'Welcome to JobRunner!',
     description: 'The all-in-one app for Australian tradespeople. Let\'s show you around.',
     icon: 'home',
-    color: '#F28C4E',
+    color: '#3b82f6',
   },
   {
     id: 'jobs',

@@ -114,7 +114,7 @@ function getServiceIconBg(status: string | undefined, fetchFailed?: boolean) {
   if (status === 'test') return 'bg-orange-100 dark:bg-orange-900/50';
   if (status === 'error' || fetchFailed) return 'bg-red-100 dark:bg-red-900/50';
   if (status === 'not_connected') return 'bg-gray-100 dark:bg-gray-800/50';
-  return 'bg-orange-100 dark:bg-orange-900/50';
+  return 'bg-blue-100 dark:bg-blue-900/50';
 }
 
 function getServiceIconColor(status: string | undefined, fetchFailed?: boolean) {
@@ -122,7 +122,7 @@ function getServiceIconColor(status: string | undefined, fetchFailed?: boolean) 
   if (status === 'test') return 'text-orange-600 dark:text-orange-400';
   if (status === 'error' || fetchFailed) return 'text-red-600 dark:text-red-400';
   if (status === 'not_connected') return 'text-gray-500 dark:text-gray-400';
-  return 'text-orange-600 dark:text-orange-400';
+  return 'text-blue-600 dark:text-blue-400';
 }
 
 function ServiceBadge({ status, fetchFailed }: { status: string | undefined; fetchFailed?: boolean }) {
@@ -969,11 +969,11 @@ export default function Integrations() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    outlookStatus?.connected ? 'bg-orange-100 dark:bg-orange-900/50' :
+                    outlookStatus?.connected ? 'bg-blue-100 dark:bg-blue-900/50' :
                     'bg-gray-100 dark:bg-gray-800/50'
                   }`}>
                     <Mail className={`w-5 h-5 ${
-                      outlookStatus?.connected ? 'text-orange-600 dark:text-orange-400' :
+                      outlookStatus?.connected ? 'text-blue-600 dark:text-blue-400' :
                       'text-gray-500 dark:text-gray-400'
                     }`} />
                   </div>
@@ -983,7 +983,7 @@ export default function Integrations() {
                   </div>
                 </div>
                 {outlookStatus?.connected ? (
-                  <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-0">
+                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Connected
                   </Badge>

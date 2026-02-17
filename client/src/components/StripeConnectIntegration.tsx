@@ -171,16 +171,16 @@ export function StripeConnectIntegration() {
             <p>Payment processing is not configured for this platform. Contact support for assistance.</p>
           </div>
         ) : connectNotEnabled ? (
-          <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <p className="font-medium text-orange-800 dark:text-orange-100">Coming Soon!</p>
-                <p className="text-sm text-orange-700 dark:text-orange-200 mt-1">
+                <p className="font-medium text-blue-800 dark:text-blue-100">Coming Soon!</p>
+                <p className="text-sm text-blue-700 dark:text-blue-200 mt-1">
                   Online payments are being set up for the JobRunner platform. 
                   This feature will be available soon and will let your customers pay invoices with their credit card.
                 </p>
-                <p className="text-sm text-orange-600 dark:text-orange-300 mt-2">
+                <p className="text-sm text-blue-600 dark:text-blue-300 mt-2">
                   In the meantime, you can continue using bank transfers or cash payments.
                 </p>
               </div>

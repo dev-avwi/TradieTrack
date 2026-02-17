@@ -78,8 +78,8 @@ export function Button({
       case 'brand':
         // HARDCODED blue for guaranteed visibility - bypassing helper
         return {
-          backgroundColor: pressed ? '#C45A20' : '#E86825',
-          borderColor: '#C45A20',
+          backgroundColor: pressed ? '#1D4ED8' : '#2563EB',
+          borderColor: '#1D4ED8',
           textColor: '#FFFFFF',
           overlayColor: elevateColor,
         };

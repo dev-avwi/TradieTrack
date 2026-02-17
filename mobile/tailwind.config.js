@@ -53,7 +53,7 @@ module.exports = {
         },
         
         info: {
-          DEFAULT: "#F28C4E", // orange info
+          DEFAULT: "#3b82f6", // hsl(210 80% 52%)
           foreground: "#ffffff",
         },
         

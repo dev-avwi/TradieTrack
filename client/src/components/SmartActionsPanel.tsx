@@ -86,7 +86,7 @@ const getStatusBadge = (status: ActionStatus) => {
     case 'suggested':
       return <Badge variant="secondary" className="text-xs">Suggested</Badge>;
     case 'queued':
-      return <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">Queued</Badge>;
+      return <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">Queued</Badge>;
     case 'running':
       return <Badge className="text-xs bg-amber-500"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Running</Badge>;
     case 'completed':
