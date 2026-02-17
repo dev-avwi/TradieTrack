@@ -1487,6 +1487,20 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 </div>
               )}
 
+              {(invoice.status === 'processing' || invoice.status === 'pending_payment') && (
+                <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="payment-processing-notice">
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0 animate-pulse" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Payment Processing</p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        Payment processing may take a few moments. This page will update automatically once confirmed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {invoice.status === 'paid' && (
                 <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg" data-testid="payment-details-paid">
                   <div className="flex items-center gap-2 mb-3">

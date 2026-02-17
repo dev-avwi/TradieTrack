@@ -129,6 +129,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
   const startLocationPing = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
 
+    let gpsDeniedNotified = false;
     const sendLocation = () => {
       if (!navigator.geolocation) return;
       navigator.geolocation.getCurrentPosition(
@@ -146,7 +147,15 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
             }),
           }).catch(() => {});
         },
-        () => {},
+        (error) => {
+          if (error.code === 1 && !gpsDeniedNotified) {
+            gpsDeniedNotified = true;
+            toast({
+              title: "Location access denied",
+              description: "Enable location in your browser settings so your location can be shared with the business.",
+            });
+          }
+        },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     };

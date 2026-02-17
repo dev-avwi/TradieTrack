@@ -225,13 +225,20 @@ export function TimerWidget({
     );
   };
 
-  // Check location when timer starts
   const captureLocation = () => {
     setLocationStatus('checking');
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         () => setLocationStatus('captured'),
-        () => setLocationStatus('unavailable'),
+        (error) => {
+          setLocationStatus('unavailable');
+          if (error.code === 1) {
+            toast({
+              title: "Location access denied",
+              description: "Enable location in your browser settings to record your work location. Time tracking will continue without it.",
+            });
+          }
+        },
         { timeout: 5000, enableHighAccuracy: true }
       );
     } else {

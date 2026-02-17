@@ -188,6 +188,14 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   }, [user?.intendedTier]);
 
   useEffect(() => {
+    if (!resumeChecked) return;
+    const stepId = STEPS[currentStep]?.id;
+    if (stepId) {
+      trackEvent('onboarding_step_viewed', { step: stepId });
+    }
+  }, [currentStep, resumeChecked]);
+
+  useEffect(() => {
     const checkExistingSettings = async () => {
       try {
         const res = await fetch('/api/business-settings', { credentials: 'include' });
@@ -347,14 +355,16 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           }
         }
 
-        try {
-          await apiRequest('POST', '/api/onboarding/seed-demo-data', {});
-          await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-          await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-          await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
-          await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-        } catch (error) {
-          console.log('Demo data seeding skipped:', error);
+        if (seedDemoData) {
+          try {
+            await apiRequest('POST', '/api/onboarding/seed-demo-data', {});
+            await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+            await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+            await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+            await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+          } catch (error) {
+            console.log('Demo data seeding skipped:', error);
+          }
         }
 
         if (isProPlan || isTeamPlan) {
@@ -419,6 +429,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [seedDemoData, setSeedDemoData] = useState(true);
   const [teamInviteEmails, setTeamInviteEmails] = useState<string[]>([]);
   const [currentInviteEmail, setCurrentInviteEmail] = useState('');
 
@@ -1077,36 +1088,45 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           You're Ready to Go!
         </h2>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          We've set up sample data so you can explore the app right away.
+          Your workspace is ready. Start managing jobs, quotes, and invoices right away.
         </p>
       </div>
 
-      <div className="bg-muted/50 rounded-xl p-4 max-w-sm mx-auto text-left">
-        <h3 className="font-medium text-center mb-3 flex items-center justify-center gap-2">
-          <Sparkles className="h-4 w-4 text-orange-500" />
-          What's Waiting for You
-        </h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-500" />
-            <span>5 sample clients</span>
+      <div className="max-w-sm mx-auto">
+        <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Load sample data</p>
+              <p className="text-xs text-muted-foreground">Try JobRunner with a sample job, client, and quote to see how it works</p>
+            </div>
+            <Switch checked={seedDemoData} onCheckedChange={setSeedDemoData} />
           </div>
-          <div className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-orange-500" />
-            <span>6 example jobs</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-purple-500" />
-            <span>3 draft quotes</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-green-500" />
-            <span>2 invoices</span>
-          </div>
+          {seedDemoData && (
+            <div className="border-t border-border/50 pt-3">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  <span>5 sample clients</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-orange-500" />
+                  <span>6 example jobs</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-purple-500" />
+                  <span>3 draft quotes</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-green-500" />
+                  <span>2 invoices</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Click through these to see how everything works!
+              </p>
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-3">
-          Click through these to see how everything works!
-        </p>
       </div>
       
       {isTeamPlan ? (

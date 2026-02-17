@@ -228,7 +228,20 @@ export default function TradieDashboard({
         return { success: false, error: 'Server error' };
       }
     } catch (error: any) {
-      // Surface GPS errors but don't block the job action
+      if (error.code === 1 || error.message?.includes('denied') || error.message?.includes('permission')) {
+        toast({
+          title: "Location access denied",
+          description: "Enable location in your browser settings to record GPS check-ins. Job actions will continue without location.",
+          variant: "destructive",
+        });
+        return { success: false, error: 'Location access denied' };
+      }
+      if (error.code === 2 || error.message?.includes('unavailable')) {
+        return { success: false, error: 'Location unavailable — check GPS signal' };
+      }
+      if (error.code === 3 || error.message?.includes('timeout')) {
+        return { success: false, error: 'Location timed out — weak GPS signal' };
+      }
       if (error.message?.includes('Location not supported')) {
         return { success: false, error: 'Location not supported on this device' };
       }

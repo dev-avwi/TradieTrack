@@ -1,6 +1,6 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { z } from "zod";
 import multer from "multer";
 import jwt from "jsonwebtoken";
@@ -537,6 +537,22 @@ async function gatherAIContext(userId: string, storage: any, userContext?: UserC
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      if (duration > 2000) {
+        console.warn('[SLOW]', JSON.stringify({
+          method: req.method,
+          path: req.path,
+          duration: `${duration}ms`,
+          status: res.statusCode
+        }));
+      }
+    });
+    next();
+  });
+
   // In-memory tracking tokens for ETA tracking (simple countdown-based)
   const trackingTokens = new Map<string, {
     businessName: string;
@@ -32219,6 +32235,27 @@ Respond with JSON in this format:
     } catch (error) {
       console.error("Address details error:", error);
       res.status(500).json({ error: "Details lookup failed" });
+    }
+  });
+
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    const errorContext = {
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      path: req.path,
+      statusCode: err.status || err.statusCode || 500,
+      message: err.message || 'Internal server error',
+      userId: (req as any).session?.userId || 'anonymous',
+      requestId: req.headers['x-request-id'] || randomUUID().substring(0, 8),
+    };
+
+    console.error('[ERROR]', JSON.stringify(errorContext));
+
+    if (!res.headersSent) {
+      res.status(errorContext.statusCode).json({
+        error: errorContext.message,
+        requestId: errorContext.requestId
+      });
     }
   });
 

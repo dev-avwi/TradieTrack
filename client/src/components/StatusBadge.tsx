@@ -30,6 +30,8 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
       paid: { label: 'Paid', variant: 'default', colorClass: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
       overdue: { label: 'Overdue', variant: 'destructive' },
       partial: { label: 'Partial', variant: 'outline', colorClass: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300' },
+      processing: { label: 'Processing', variant: 'outline', colorClass: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700' },
+      pending_payment: { label: 'Pending Payment', variant: 'outline', colorClass: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700' },
     };
     
     return configs[status] || { label: status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '), variant: 'secondary' as const };

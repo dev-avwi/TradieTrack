@@ -96,6 +96,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     
     // Track signup tab click
     if (mode === 'register') {
+      trackEvent('signup_started');
       trackEvent('signup_clicked', { source: 'auth_tab' });
     }
   };
@@ -233,6 +234,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
       const result = await response.json();
 
       if (result.success) {
+        trackEvent('login_completed', { method: 'email' });
         // Save session token for Bearer auth (iOS/Safari fallback)
         if (result.sessionToken) {
           setSessionToken(result.sessionToken);

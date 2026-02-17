@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CheckCircle, AlertCircle, CreditCard, FileText, Clock, ShieldCheck, Lock } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, CreditCard, FileText, Clock, ShieldCheck, Lock, RefreshCw } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
@@ -69,6 +69,34 @@ function PaymentForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const getPaymentErrorMessage = (error: any): { title: string; description: string } => {
+    const code = error?.code || '';
+    const declineCode = error?.decline_code || '';
+    
+    if (code === 'card_declined' || declineCode) {
+      if (declineCode === 'insufficient_funds') {
+        return { title: 'Insufficient funds', description: 'Your card does not have enough funds. Please try a different card.' };
+      }
+      if (declineCode === 'expired_card') {
+        return { title: 'Card expired', description: 'This card has expired. Please use a different payment method.' };
+      }
+      return { title: 'Card declined', description: error.message || 'Your card was declined. Please check your details or try a different card.' };
+    }
+    if (code === 'expired_card') {
+      return { title: 'Card expired', description: 'This card has expired. Please use a different payment method.' };
+    }
+    if (code === 'incorrect_cvc' || code === 'incorrect_number') {
+      return { title: 'Invalid card details', description: 'Please double-check your card number and security code.' };
+    }
+    if (code === 'processing_error') {
+      return { title: 'Processing error', description: 'Something went wrong while processing. Please try again in a moment.' };
+    }
+    if (error?.type === 'api_connection_error' || error?.type === 'api_error') {
+      return { title: 'Connection error', description: 'Unable to reach the payment server. Please check your internet and try again.' };
+    }
+    return { title: 'Payment failed', description: error?.message || 'Something went wrong. Please try again or use a different payment method.' };
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -88,7 +116,8 @@ function PaymentForm({
     });
 
     if (error) {
-      setErrorMessage(error.message || "Payment failed");
+      const parsed = getPaymentErrorMessage(error);
+      setErrorMessage(`${parsed.title}: ${parsed.description}`);
       onError(error.message || "Payment failed");
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
@@ -101,9 +130,20 @@ function PaymentForm({
       <PaymentElement />
       
       {errorMessage && (
-        <div className="flex items-center gap-2 text-destructive text-sm">
-          <AlertCircle className="h-4 w-4" />
-          {errorMessage}
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => { setErrorMessage(null); }}
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Try Again
+          </Button>
         </div>
       )}
       
@@ -915,6 +955,17 @@ function PaymentRequestView({
                 </Elements>
               </div>
               
+              {confirmPaymentMutation.isPending && (
+                <div className="px-6 py-4 bg-blue-50 border-t border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-4 w-4 text-blue-600 animate-spin shrink-0" />
+                    <p className="text-sm text-blue-700">
+                      Confirming your payment... This may take a few moments.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               {/* Trust badges */}
               <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 backdrop-blur-sm">
                 <div className="flex items-center justify-center gap-8 text-xs font-medium text-slate-500">
@@ -944,9 +995,16 @@ function PaymentRequestView({
                 <AlertCircle className="h-6 w-6 text-red-600" />
               </div>
               <p className="font-semibold text-slate-900 mb-2">Unable to Process Payment</p>
-              <p className="text-slate-600 text-sm">
+              <p className="text-slate-600 text-sm mb-4">
                 {(createPaymentIntentMutation.error as Error)?.message || 'This payment link may have expired or been cancelled.'}
               </p>
+              <Button 
+                variant="outline"
+                onClick={() => createPaymentIntentMutation.mutate()}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
             </div>
           )}
           

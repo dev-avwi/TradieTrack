@@ -98,6 +98,7 @@ import WhatYouMissedModal from "@/components/WhatYouMissedModal";
 import TimeEditAuditLog from "@/pages/TimeEditAuditLog";
 import ProfitabilityReport from "@/pages/ProfitabilityReport";
 import SubcontractorWebView from "@/pages/SubcontractorWebView";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Types for job completion
 interface JobPhoto {
@@ -1289,6 +1290,7 @@ function AppLayout() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
       <ThemeProvider defaultTheme="light" storageKey="jobrunner-ui-theme">
         <NetworkProvider>
           <TooltipProvider>
@@ -1315,6 +1317,7 @@ function App() {
           </TooltipProvider>
         </NetworkProvider>
       </ThemeProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
