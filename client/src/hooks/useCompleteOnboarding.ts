@@ -1,6 +1,47 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import type { OnboardingData } from '@/components/OnboardingWizard';
+
+interface OnboardingData {
+  businessProfile: {
+    companyName: string;
+    abn: string;
+    contactEmail: string;
+    contactPhone: string;
+    address: string;
+    city: string;
+    state: string;
+    postcode: string;
+    gstRegistered: boolean;
+    tradeType: string;
+  };
+  branding: {
+    logoUrl?: string;
+    primaryColor: string;
+    quotePrefix: string;
+    invoicePrefix: string;
+    businessTagline: string;
+  };
+  defaultRates: {
+    hourlyRate: number;
+    calloutFee: number;
+    paymentTerms: number;
+    quoteValidityPeriod: number;
+    gstRate: number;
+  };
+  teamSize?: {
+    teamSize: 'solo' | 'small' | 'medium' | 'large';
+  };
+  teamInvitation?: {
+    inviteTeamMembers: boolean;
+    invitations: Array<{
+      email: string;
+      role: 'admin' | 'employee';
+    }>;
+  };
+  demoData?: {
+    useDemoData: boolean;
+  };
+}
 
 interface BusinessSettingsPayload {
   businessName: string;

@@ -6,7 +6,6 @@ import { NetworkProvider } from "@/contexts/NetworkContext";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import AuthFlow from "@/components/AuthFlow";
 import SimpleOnboarding from "@/components/SimpleOnboarding";
-import OnboardingWizard, { type OnboardingData } from "@/components/OnboardingWizard";
 import { useCompleteOnboarding } from "@/hooks/useCompleteOnboarding";
 import { useRealtimeUpdates } from "@/hooks/use-realtime-updates";
 import { Toaster } from "@/components/ui/toaster";

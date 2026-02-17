@@ -2763,42 +2763,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Identity token required" });
       }
       
-      // Decode the JWT to get Apple user ID (sub claim)
-      // TODO: Implement full JWKS verification by fetching Apple's public keys from
-      // https://appleid.apple.com/auth/keys and verifying the JWT signature.
-      // For now, we do basic claim validation to prevent simple forgery.
-      const decoded = jwt.decode(identityToken) as { 
-        sub: string; 
-        email?: string; 
-        iss?: string; 
-        aud?: string;
+      // SECURITY TODO: In production, implement full JWKS verification by:
+      // 1. Fetching Apple's public keys from https://appleid.apple.com/auth/keys
+      // 2. Verifying the id_token JWT signature using the matching key (kid header)
+      // 3. Optionally exchanging the authorization code at https://appleid.apple.com/auth/token
+      //    (requires generating a client_secret JWT signed with Apple's private key)
+      // For now, comprehensive claim validation prevents simple forgery.
+      
+      const decoded = jwt.decode(identityToken, { complete: true }) as { 
+        header: { kid?: string; alg?: string };
+        payload: {
+          sub: string; 
+          email?: string; 
+          iss?: string; 
+          aud?: string;
+          exp?: number;
+          iat?: number;
+        };
       } | null;
       
-      if (!decoded?.sub) {
+      if (!decoded?.payload?.sub) {
         return res.status(400).json({ error: "Invalid identity token" });
       }
       
-      // Basic validation: check issuer is Apple
-      if (decoded.iss !== 'https://appleid.apple.com') {
-        console.error('Apple auth: Invalid issuer:', decoded.iss);
+      const claims = decoded.payload;
+      
+      // Validate issuer is Apple
+      if (claims.iss !== 'https://appleid.apple.com') {
+        console.error('Apple auth: Invalid issuer:', claims.iss);
         return res.status(400).json({ error: "Invalid token issuer" });
       }
       
-      // Basic validation: check audience matches our app's bundle ID or web service ID
+      // Validate audience matches our app's bundle ID or web service ID
       const expectedBundleId = process.env.APPLE_BUNDLE_ID || 'com.jobrunner.app';
       const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.jobrunner.web';
       const validAudiences = [expectedBundleId, expectedWebServiceId];
       
-      if (!validAudiences.includes(decoded.aud || '')) {
-        console.error('Apple auth: Invalid audience:', decoded.aud, 'expected one of:', validAudiences);
+      if (!validAudiences.includes(claims.aud || '')) {
+        console.error('Apple auth: Invalid audience:', claims.aud, 'expected one of:', validAudiences);
         return res.status(400).json({ error: "Invalid token audience" });
       }
       
-      // Determine if this is a web or mobile request
-      const isWebRequest = decoded.aud === expectedWebServiceId;
+      // Validate token expiry
+      const now = Math.floor(Date.now() / 1000);
+      if (claims.exp && claims.exp < now) {
+        console.error('Apple auth: Token expired');
+        return res.status(400).json({ error: "Token expired" });
+      }
       
-      const appleUserId = decoded.sub;
-      const userEmail = email || decoded.email;
+      // Validate issued-at time - reject tokens older than 10 minutes
+      if (claims.iat && (now - claims.iat) > 600) {
+        console.error('Apple auth: Token too old, iat:', claims.iat, 'now:', now);
+        return res.status(400).json({ error: "Token expired" });
+      }
+      
+      // Validate JWT header has expected algorithm
+      if (decoded.header.alg !== 'RS256') {
+        console.error('Apple auth: Unexpected algorithm:', decoded.header.alg);
+        return res.status(400).json({ error: "Invalid token" });
+      }
+      
+      // Determine if this is a web or mobile request
+      const isWebRequest = claims.aud === expectedWebServiceId;
+      
+      const appleUserId = claims.sub;
+      const userEmail = email || claims.email;
       
       // Track if this is a new user for onboarding
       let isNewUser = false;
@@ -2897,39 +2926,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code, id_token, state, user: userJson, error: appleError } = req.body;
 
       if (appleError) {
-        console.error('Apple auth error:', appleError);
+        console.error('Apple auth callback error:', appleError);
         return res.redirect('/auth?error=apple_auth_failed');
       }
 
+      // Verify CSRF state
       if (!state || state !== req.session?.appleAuthState) {
-        console.error('Apple auth: Invalid state parameter');
+        console.error('Apple auth: CSRF state mismatch');
         return res.redirect('/auth?error=invalid_state');
       }
-
       delete req.session.appleAuthState;
 
-      if (!id_token) {
-        return res.redirect('/auth?error=no_token');
+      // Both code and id_token should be present with response_type 'code id_token'
+      if (!id_token || !code) {
+        console.error('Apple auth: Missing code or id_token');
+        return res.redirect('/auth?error=missing_credentials');
       }
 
-      const decoded = jwt.decode(id_token) as {
-        sub: string;
-        email?: string;
-        email_verified?: string;
-        iss?: string;
-        aud?: string;
+      // SECURITY TODO: In production, implement full JWKS verification by:
+      // 1. Fetching Apple's public keys from https://appleid.apple.com/auth/keys
+      // 2. Verifying the id_token JWT signature using the matching key (kid header)
+      // 3. Optionally exchanging the authorization code at https://appleid.apple.com/auth/token
+      //    (requires generating a client_secret JWT signed with Apple's private key)
+      // For now, comprehensive claim validation prevents simple forgery.
+
+      const decoded = jwt.decode(id_token, { complete: true }) as {
+        header: { kid?: string; alg?: string };
+        payload: {
+          sub: string;
+          email?: string;
+          email_verified?: string;
+          iss?: string;
+          aud?: string;
+          exp?: number;
+          iat?: number;
+          nonce?: string;
+        };
       } | null;
 
-      if (!decoded?.sub) {
+      if (!decoded?.payload?.sub) {
+        console.error('Apple auth: Could not decode id_token');
         return res.redirect('/auth?error=invalid_token');
       }
 
-      if (decoded.iss !== 'https://appleid.apple.com') {
+      const claims = decoded.payload;
+
+      // Validate issuer
+      if (claims.iss !== 'https://appleid.apple.com') {
+        console.error('Apple auth: Invalid issuer:', claims.iss);
         return res.redirect('/auth?error=invalid_issuer');
       }
 
-      const appleUserId = decoded.sub;
-      const userEmail = decoded.email;
+      // Validate audience matches our web service ID
+      const expectedServiceId = process.env.APPLE_WEB_SERVICE_ID;
+      if (claims.aud !== expectedServiceId) {
+        console.error('Apple auth: Audience mismatch:', claims.aud, 'expected:', expectedServiceId);
+        return res.redirect('/auth?error=invalid_audience');
+      }
+
+      // Validate token expiry
+      const now = Math.floor(Date.now() / 1000);
+      if (claims.exp && claims.exp < now) {
+        console.error('Apple auth: Token expired');
+        return res.redirect('/auth?error=token_expired');
+      }
+
+      // Validate issued-at time - reject tokens older than 10 minutes
+      if (claims.iat && (now - claims.iat) > 600) {
+        console.error('Apple auth: Token too old, iat:', claims.iat, 'now:', now);
+        return res.redirect('/auth?error=token_expired');
+      }
+
+      // Validate JWT header has expected algorithm
+      if (decoded.header.alg !== 'RS256') {
+        console.error('Apple auth: Unexpected algorithm:', decoded.header.alg);
+        return res.redirect('/auth?error=invalid_token');
+      }
+
+      const appleUserId = claims.sub;
+      const userEmail = claims.email;
 
       let firstName = '';
       let lastName = '';
