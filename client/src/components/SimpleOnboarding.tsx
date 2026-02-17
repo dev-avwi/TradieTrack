@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,10 @@ import {
   Check,
   ExternalLink,
   Info,
-  DollarSign
+  DollarSign,
+  Camera,
+  X,
+  Plus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -280,6 +283,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           calloutFee: 90,
           teamSize: isTeamPlan ? 'team' : 'solo',
           onboardingCompleted: false,
+          logoUrl: logoPreview || undefined,
         });
         
         await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
@@ -329,6 +333,19 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     if (stepId === 'done') {
       setIsSubmitting(true);
       try {
+        if (teamInviteEmails.length > 0) {
+          for (const email of teamInviteEmails) {
+            try {
+              await apiRequest('POST', '/api/team/invite', {
+                email,
+                role: 'tradie',
+              });
+            } catch (error) {
+              console.log('Failed to send invite to:', email);
+            }
+          }
+        }
+
         try {
           await apiRequest('POST', '/api/onboarding/seed-demo-data', {});
           await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
@@ -396,6 +413,25 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     } finally {
       setStripeConnecting(false);
     }
+  };
+
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [teamInviteEmails, setTeamInviteEmails] = useState<string[]>([]);
+  const [currentInviteEmail, setCurrentInviteEmail] = useState('');
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "File too large", description: "Please upload an image under 5MB" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setLogoPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const [showTradeRequest, setShowTradeRequest] = useState(false);
@@ -576,6 +612,28 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       </div>
       
       <div className="space-y-4 max-w-md mx-auto">
+        <div className="flex flex-col items-center mb-4">
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            className="w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden transition-all"
+          >
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <Camera className="h-6 w-6 text-muted-foreground/50" />
+            )}
+          </button>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleLogoSelect}
+            className="hidden"
+          />
+          <p className="text-xs text-muted-foreground mt-2">Add your logo (optional)</p>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="businessName" className="flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
@@ -601,6 +659,34 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             value={formData.phone}
             onChange={(e) => handleInputChange('phone', e.target.value)}
             data-testid="input-phone"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Email
+          </Label>
+          <Input
+            id="email"
+            placeholder="hello@yourbusiness.com.au"
+            value={formData.email}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+            data-testid="input-email"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="address" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Address
+          </Label>
+          <Input
+            id="address"
+            placeholder="123 Main St, Sydney NSW 2000"
+            value={formData.address}
+            onChange={(e) => handleInputChange('address', e.target.value)}
+            data-testid="input-address"
           />
         </div>
         
@@ -894,6 +980,67 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         <p className="text-sm text-green-700 dark:text-green-300">
           After setup, go to Team Management to invite your first team member.
         </p>
+      </div>
+
+      <div className="max-w-md mx-auto space-y-3">
+        <Label className="flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          Invite Team Members (optional)
+        </Label>
+        <div className="flex gap-2">
+          <Input
+            placeholder="team@example.com"
+            type="email"
+            value={currentInviteEmail}
+            onChange={(e) => setCurrentInviteEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentInviteEmail.trim() && currentInviteEmail.includes('@')) {
+                  setTeamInviteEmails(prev => [...prev, currentInviteEmail.trim()]);
+                  setCurrentInviteEmail('');
+                }
+              }
+            }}
+            data-testid="input-team-invite-email"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (currentInviteEmail.trim() && currentInviteEmail.includes('@')) {
+                setTeamInviteEmails(prev => [...prev, currentInviteEmail.trim()]);
+                setCurrentInviteEmail('');
+              }
+            }}
+            disabled={!currentInviteEmail.trim() || !currentInviteEmail.includes('@')}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {teamInviteEmails.length > 0 && (
+          <div className="space-y-1">
+            {teamInviteEmails.map((email, index) => (
+              <div key={index} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-3 w-3 text-muted-foreground" />
+                  <span>{email}</span>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setTeamInviteEmails(prev => prev.filter((_, i) => i !== index))}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Invites will be sent when you complete setup
+            </p>
+          </div>
+        )}
       </div>
       
       <div className="flex justify-between pt-4">
