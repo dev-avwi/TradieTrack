@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -56,6 +56,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -159,6 +160,15 @@ interface JobMaterial {
   createdAt: string;
 }
 
+interface JobEquipmentAssignment {
+  id: string;
+  jobId: string;
+  equipmentId: string;
+  userId: string;
+  notes: string | null;
+  assignedAt: string;
+}
+
 interface JobWithLinks {
   linkedQuote?: LinkedDocument | null;
   linkedInvoice?: LinkedDocument | null;
@@ -226,6 +236,9 @@ export default function JobDetailView({
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [showAssignEquipment, setShowAssignEquipment] = useState(false);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
+  const [equipmentNotes, setEquipmentNotes] = useState('');
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState("09:00");
@@ -332,6 +345,14 @@ export default function JobDetailView({
   const { data: jobVariations = [] } = useQuery<any[]>({
     queryKey: ['/api/jobs', jobId, 'variations'],
     enabled: !!jobId,
+  });
+
+  const { data: jobEquipmentList = [] } = useQuery<JobEquipmentAssignment[]>({
+    queryKey: ['/api/jobs', jobId, 'equipment'],
+  });
+
+  const { data: allEquipment = [] } = useQuery<any[]>({
+    queryKey: ['/api/equipment'],
   });
 
   // Fetch team members for assignment (only for owners/managers)
@@ -894,6 +915,36 @@ export default function JobDetailView({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'materials'] });
       toast({ title: 'Material removed' });
+    },
+  });
+
+  const assignEquipmentMutation = useMutation({
+    mutationFn: async (data: { equipmentId: string; notes?: string }) => {
+      const res = await apiRequest('POST', `/api/jobs/${jobId}/equipment`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'equipment'] });
+      setShowAssignEquipment(false);
+      setSelectedEquipmentId('');
+      setEquipmentNotes('');
+      toast({ title: 'Equipment assigned to job' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to assign equipment', variant: 'destructive' });
+    },
+  });
+
+  const unassignEquipmentMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      await apiRequest('DELETE', `/api/jobs/${jobId}/equipment/${assignmentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'equipment'] });
+      toast({ title: 'Equipment removed from job' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to remove equipment', variant: 'destructive' });
     },
   });
 
@@ -2362,6 +2413,45 @@ export default function JobDetailView({
                   </div>
                 )}
 
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Wrench className="h-3.5 w-3.5" />
+                      Equipment Used
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => setShowAssignEquipment(true)}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                  {jobEquipmentList.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {jobEquipmentList.map((assignment) => {
+                        const eq = allEquipment.find((e: any) => e.id === assignment.equipmentId);
+                        return (
+                          <div key={assignment.id} className="flex items-center gap-2 text-sm group">
+                            <Wrench className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="flex-1 min-w-0 truncate">{eq?.name || 'Unknown'}</span>
+                            {eq?.serialNumber && (
+                              <span className="text-xs text-muted-foreground flex-shrink-0">SN: {eq.serialNumber}</span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="invisible group-hover:visible flex-shrink-0"
+                              onClick={(e) => { e.stopPropagation(); unassignEquipmentMutation.mutate(assignment.id); }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No equipment assigned</p>
+                  )}
+                </div>
+
                 {!isTradie && linkedQuote?.total && (
                   <div className="pt-2 border-t space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -3793,6 +3883,49 @@ export default function JobDetailView({
               ) : (
                 'Save Update'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showAssignEquipment} onOpenChange={setShowAssignEquipment}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Assign Equipment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Equipment</Label>
+              <Select value={selectedEquipmentId} onValueChange={setSelectedEquipmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select equipment..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allEquipment
+                    .filter((eq: any) => !jobEquipmentList.some(je => je.equipmentId === eq.id))
+                    .map((eq: any) => (
+                      <SelectItem key={eq.id} value={eq.id}>
+                        {eq.name}{eq.serialNumber ? ` (${eq.serialNumber})` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Input
+                value={equipmentNotes}
+                onChange={(e) => setEquipmentNotes(e.target.value)}
+                placeholder="e.g., Needed for installation"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignEquipment(false)}>Cancel</Button>
+            <Button
+              onClick={() => assignEquipmentMutation.mutate({ equipmentId: selectedEquipmentId, notes: equipmentNotes || undefined })}
+              disabled={!selectedEquipmentId || assignEquipmentMutation.isPending}
+            >
+              {assignEquipmentMutation.isPending ? 'Assigning...' : 'Assign'}
             </Button>
           </DialogFooter>
         </DialogContent>

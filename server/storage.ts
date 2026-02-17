@@ -313,6 +313,9 @@ import {
   type InsertEquipmentCategory,
   type EquipmentMaintenance,
   type InsertEquipmentMaintenance,
+  jobEquipment,
+  type JobEquipment,
+  type InsertJobEquipment,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -397,6 +400,11 @@ export interface IStorage {
   createJobMaterial(material: InsertJobMaterial): Promise<JobMaterial>;
   updateJobMaterial(id: string, userId: string, updates: Partial<InsertJobMaterial>): Promise<JobMaterial | undefined>;
   deleteJobMaterial(id: string, userId: string): Promise<boolean>;
+
+  // Job Equipment Assignments
+  getJobEquipment(jobId: string): Promise<JobEquipment[]>;
+  addJobEquipment(data: InsertJobEquipment): Promise<JobEquipment>;
+  removeJobEquipment(id: string, userId: string): Promise<void>;
 
   // Service Reminders
   getServiceReminders(userId: string): Promise<ServiceReminder[]>;
@@ -1548,6 +1556,20 @@ export class PostgresStorage implements IStorage {
       .where(and(eq(jobMaterials.id, id), eq(jobMaterials.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  // Job Equipment Assignments
+  async getJobEquipment(jobId: string): Promise<JobEquipment[]> {
+    return await db.select().from(jobEquipment).where(eq(jobEquipment.jobId, jobId)).orderBy(desc(jobEquipment.assignedAt));
+  }
+
+  async addJobEquipment(data: InsertJobEquipment): Promise<JobEquipment> {
+    const result = await db.insert(jobEquipment).values(data).returning();
+    return result[0];
+  }
+
+  async removeJobEquipment(id: string, userId: string): Promise<void> {
+    await db.delete(jobEquipment).where(and(eq(jobEquipment.id, id), eq(jobEquipment.userId, userId)));
   }
 
   // Service Reminders

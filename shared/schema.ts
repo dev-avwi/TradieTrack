@@ -3507,6 +3507,20 @@ export const insertJobMaterialSchema = createInsertSchema(jobMaterials).omit({ i
 export type InsertJobMaterial = z.infer<typeof insertJobMaterialSchema>;
 export type JobMaterial = typeof jobMaterials.$inferSelect;
 
+// Job Equipment Assignments - Track equipment assigned to jobs
+export const jobEquipment = pgTable("job_equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  equipmentId: varchar("equipment_id").notNull().references(() => equipment.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  notes: text("notes"),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+});
+
+export const insertJobEquipmentSchema = createInsertSchema(jobEquipment).omit({ id: true, assignedAt: true });
+export type InsertJobEquipment = z.infer<typeof insertJobEquipmentSchema>;
+export type JobEquipment = typeof jobEquipment.$inferSelect;
+
 // Automation Settings - Configure automatic behaviors
 export const automationSettings = pgTable("automation_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

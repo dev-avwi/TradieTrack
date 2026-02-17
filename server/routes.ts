@@ -74,6 +74,7 @@ import {
   insertEquipmentSchema,
   insertEquipmentCategorySchema,
   insertEquipmentMaintenanceSchema,
+  jobEquipment,
   // Rebates schema
   insertRebateSchema,
   // Team Groups schema
@@ -3167,6 +3168,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  // Change password endpoint
+  app.post("/api/auth/change-password", requireAuth, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Current and new password are required" });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "New password must be at least 6 characters" });
+      }
+
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.password) {
+        return res.status(400).json({ error: "Cannot change password for this account" });
+      }
+
+      const bcrypt = await import("bcrypt");
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(req.user.id, { password: hashedPassword });
+
+      res.json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
 
   // SUBCONTRACTOR WEB VIEW: Generate token (requires auth)
   app.post("/api/jobs/:jobId/subcontractor-token", requireAuth, ownerOnly(), async (req: any, res) => {
@@ -9899,6 +9932,85 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
       res.status(500).json({ error: "Failed to create maintenance record" });
+    }
+  });
+
+  app.get("/api/job-equipment-summary", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const results = await db
+        .select({ jobId: jobEquipment.jobId })
+        .from(jobEquipment)
+        .where(eq(jobEquipment.userId, userContext.effectiveUserId));
+      const jobIds = [...new Set(results.map(r => r.jobId))];
+      res.json(jobIds);
+    } catch (error) {
+      console.error("Error fetching job equipment summary:", error);
+      res.status(500).json({ error: "Failed to fetch job equipment summary" });
+    }
+  });
+
+  app.get("/api/equipment/:id/assignments", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const assignments = await db
+        .select({
+          id: jobEquipment.id,
+          jobId: jobEquipment.jobId,
+          equipmentId: jobEquipment.equipmentId,
+          userId: jobEquipment.userId,
+          notes: jobEquipment.notes,
+          assignedAt: jobEquipment.assignedAt,
+          jobTitle: jobs.title,
+          jobStatus: jobs.status,
+        })
+        .from(jobEquipment)
+        .innerJoin(jobs, eq(jobs.id, jobEquipment.jobId))
+        .where(and(
+          eq(jobEquipment.equipmentId, req.params.id),
+          eq(jobs.userId, userContext.effectiveUserId)
+        ))
+        .orderBy(desc(jobEquipment.assignedAt));
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching equipment assignments:", error);
+      res.status(500).json({ error: "Failed to fetch equipment assignments" });
+    }
+  });
+
+  // Job Equipment Assignments
+  app.get("/api/jobs/:id/equipment", requireAuth, async (req: any, res) => {
+    try {
+      const assignments = await storage.getJobEquipment(req.params.id);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching job equipment:", error);
+      res.status(500).json({ error: "Failed to fetch job equipment" });
+    }
+  });
+
+  app.post("/api/jobs/:id/equipment", requireAuth, async (req: any, res) => {
+    try {
+      const assignment = await storage.addJobEquipment({
+        jobId: req.params.id,
+        equipmentId: req.body.equipmentId,
+        userId: String(req.user.id),
+        notes: req.body.notes || null,
+      });
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error assigning equipment to job:", error);
+      res.status(500).json({ error: "Failed to assign equipment" });
+    }
+  });
+
+  app.delete("/api/jobs/:id/equipment/:assignmentId", requireAuth, async (req: any, res) => {
+    try {
+      await storage.removeJobEquipment(req.params.assignmentId, String(req.user.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing equipment from job:", error);
+      res.status(500).json({ error: "Failed to remove equipment" });
     }
   });
 

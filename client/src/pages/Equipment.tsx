@@ -39,6 +39,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Briefcase,
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
@@ -117,6 +118,16 @@ export default function EquipmentPage() {
     queryFn: async () => {
       const res = await fetch(`/api/equipment/${selectedItem!.id}/maintenance`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const { data: allJobEquipment = [] } = useQuery<any[]>({
+    queryKey: ["/api/equipment", selectedItem?.id, "assignments"],
+    enabled: !!selectedItem,
+    queryFn: async () => {
+      const res = await fetch(`/api/equipment/${selectedItem!.id}/assignments`, { credentials: "include" });
+      if (!res.ok) return [];
       return res.json();
     },
   });
@@ -731,6 +742,30 @@ export default function EquipmentPage() {
                         </Card>
                       ))}
                     </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Assigned to Jobs</h3>
+                  {allJobEquipment.length > 0 ? (
+                    <div className="space-y-2">
+                      {allJobEquipment.map((assignment: any) => (
+                        <div key={assignment.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                          <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{assignment.jobTitle || 'Job'}</p>
+                            {assignment.notes && (
+                              <p className="text-xs text-muted-foreground truncate">{assignment.notes}</p>
+                            )}
+                          </div>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
+                            {assignment.jobStatus || 'Active'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Not assigned to any jobs</p>
                   )}
                 </div>
               </div>

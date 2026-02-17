@@ -78,6 +78,13 @@ import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
 import { PRICING } from "@shared/schema";
 import { tradeCatalog, getTradeDefinition } from "@shared/tradeCatalog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Types for MyAccount tab
 interface ColorOption {
@@ -104,6 +111,7 @@ interface ProfileData {
     tradeType: string | null;
     emailVerified: boolean;
     createdAt: string;
+    googleId: string | null;
   };
   isOwner: boolean;
   isTeamMember: boolean;
@@ -349,6 +357,68 @@ export default function Settings({
     lastName: "",
     phone: "",
   });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const res = await apiRequest('POST', '/api/auth/change-password', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      toast({ title: 'Password updated successfully' });
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || 'Failed to change password', variant: 'destructive' });
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('DELETE', '/api/account');
+    },
+    onSuccess: () => {
+      window.location.href = '/';
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || 'Failed to delete account', variant: 'destructive' });
+    },
+  });
+
+  function handleChangePassword() {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+    });
+  }
+
+  function handleSignOut() {
+    apiRequest('POST', '/api/auth/logout').then(() => {
+      window.location.href = '/';
+    }).catch(() => {
+      toast({ title: 'Failed to sign out', variant: 'destructive' });
+    });
+  }
+
+  function handleDeleteAccount() {
+    deleteAccountMutation.mutate();
+  }
 
   // Profile query for My Account tab
   const { data: profile, isLoading: isLoadingProfile } = useQuery<ProfileData>({
@@ -1212,6 +1282,194 @@ export default function Settings({
               </Card>
             </>
           )}
+
+          {/* Security - Password Change */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Security
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Manage your password and sign-in methods
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Change Password</h4>
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    placeholder="Enter current password"
+                    data-testid="input-current-password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    placeholder="At least 6 characters"
+                    data-testid="input-new-password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    placeholder="Repeat new password"
+                    data-testid="input-confirm-password"
+                  />
+                </div>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={changePasswordMutation.isPending || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                  data-testid="button-change-password"
+                >
+                  {changePasswordMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Connected Accounts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Connected Accounts
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Sign-in methods linked to your account
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center border">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Email & Password</p>
+                    <p className="text-xs text-muted-foreground">{profile?.user.email}</p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Active
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center border">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Google</p>
+                    <p className="text-xs text-muted-foreground">
+                      {profile?.user.googleId ? 'Connected' : 'Not connected'}
+                    </p>
+                  </div>
+                </div>
+                {profile?.user.googleId ? (
+                  <Badge variant="secondary" className="text-xs">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Linked
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                    Not linked
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Account Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Sign Out</p>
+                  <p className="text-xs text-muted-foreground">Log out of your account on this device</p>
+                </div>
+                <Button variant="outline" onClick={handleSignOut} data-testid="button-sign-out">
+                  Sign Out
+                </Button>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-destructive">Delete Account</p>
+                  <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  data-testid="button-delete-account"
+                >
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Delete Account Confirmation Dialog */}
+          <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-destructive">Delete Account</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                This will permanently delete your account and all associated data including jobs, quotes, invoices, clients, and team settings. This action cannot be undone.
+              </p>
+              <div className="space-y-2">
+                <Label>Type "DELETE" to confirm</Label>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder='Type "DELETE"'
+                  data-testid="input-delete-confirm"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== 'DELETE' || deleteAccountMutation.isPending}
+                  data-testid="button-confirm-delete"
+                >
+                  {deleteAccountMutation.isPending ? 'Deleting...' : 'Delete My Account'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Clear Sample Data Card - shown when user has demo data */}
           <ClearSampleDataCard />

@@ -26,7 +26,8 @@ import {
   Loader2,
   X,
   ArrowRight,
-  Info
+  Info,
+  Wrench,
 } from "lucide-react";
 import {
   format,
@@ -284,6 +285,12 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ['/api/team/members'],
   });
+
+  const { data: jobsWithEquipment = [] } = useQuery<string[]>({
+    queryKey: ['/api/job-equipment-summary'],
+  });
+
+  const jobEquipmentSet = useMemo(() => new Set(jobsWithEquipment), [jobsWithEquipment]);
 
   const clientsMap = useMemo(() => 
     new Map(clients.map(c => [c.id, c])), 
@@ -821,6 +828,9 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                       <div className="flex items-center gap-1.5 mt-2 text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                         <span className="text-xs truncate">{job.address}</span>
+                        {jobEquipmentSet.has(job.id) && (
+                          <Wrench className="h-3.5 w-3.5 flex-shrink-0 ml-auto" style={{ color: 'hsl(var(--trade))' }} />
+                        )}
                       </div>
                     </div>
                   ))
@@ -893,6 +903,9 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                         <div className="flex items-center gap-1 mb-1">
                           <Clock className="h-3 w-3" style={{ color: 'hsl(var(--trade))' }} />
                           <span className="text-xs font-medium">{job.time}</span>
+                          {jobEquipmentSet.has(job.id) && (
+                            <Wrench className="h-3 w-3 flex-shrink-0 ml-auto" style={{ color: 'hsl(var(--trade))' }} />
+                          )}
                         </div>
                         <p className="text-xs font-medium line-clamp-1">{job.title}</p>
                         <p className="text-xs text-muted-foreground line-clamp-1">{job.client}</p>
@@ -990,9 +1003,14 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                                 <div className="flex items-start gap-2">
                                   <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
-                                    <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                      {job.title}
-                                    </h4>
+                                    <div className="flex items-center gap-1">
+                                      <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
+                                        {job.title}
+                                      </h4>
+                                      {jobEquipmentSet.has(job.id) && (
+                                        <Wrench className="h-3 w-3 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground truncate">
                                       {job.clientName}
                                     </p>
@@ -1151,9 +1169,14 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                                       <div className="flex items-start gap-1">
                                         <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                                         <div className="flex-1 min-w-0">
-                                          <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                            {job.title}
-                                          </h4>
+                                          <div className="flex items-center gap-1">
+                                            <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
+                                              {job.title}
+                                            </h4>
+                                            {jobEquipmentSet.has(job.id) && (
+                                              <Wrench className="h-3 w-3 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+                                            )}
+                                          </div>
                                           <p className="text-xs text-muted-foreground truncate">
                                             {job.clientName}
                                           </p>

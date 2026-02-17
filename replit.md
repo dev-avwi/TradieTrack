@@ -33,7 +33,7 @@ Core architectural and design decisions include:
 *   **Profitability Reports**: Enhanced reporting with By Job, By Client, and By Worker tabs, date range filters, and margin analysis.
 *   **Office Admin Role**: Dedicated role preset for office staff with permissions for quotes, invoices, clients, and communications (no time tracking/GPS).
 *   **Simple Mode**: Toggle to hide team-heavy features for solo operators; auto-detects based on team members.
-*   **Equipment Management**: Full CRUD for equipment registry, categories, and maintenance logs with status tracking.
+*   **Equipment Management**: Full CRUD for equipment registry, categories, and maintenance logs with status tracking. Job-equipment assignments via `job_equipment` join table with wrench indicators on Schedule cards and "Assigned to Jobs" in equipment detail sheets.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with KPI headers and document relationship links.
 *   **Client Asset Library & Smart Pre-fill**: API endpoints for reusing job photos, quote items, invoice items, and notes.
 *   **Xero Integration**: Comprehensive bidirectional sync including contacts, invoices, payments (two-way), invoice status, credit notes, and inventory items. OAuth 2.0 authentication with token refresh and multi-tenant support.
