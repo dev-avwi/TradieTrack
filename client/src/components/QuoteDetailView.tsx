@@ -334,12 +334,13 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
             width: 100%;
             max-width: none !important;
             margin: 0 !important;
-            padding: 20px !important;
+            padding: 10px !important;
             box-shadow: none !important;
             border: none !important;
             background: white !important;
             height: auto !important;
             overflow: visible !important;
+            font-size: 9px !important;
           }
           .no-print { display: none !important; }
           .print-job-context [data-state] { display: block !important; }
@@ -358,12 +359,39 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           tr { page-break-inside: avoid; page-break-after: auto; }
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
-          @page { size: A4; margin: 12mm; }
-          .print-content .mb-8 { margin-bottom: 8px !important; }
-          .print-content .mb-4 { margin-bottom: 4px !important; }
-          .print-content .p-6, .print-content .sm\\:p-8 { padding: 12px 16px !important; }
-          .print-content .mt-10 { margin-top: 8px !important; }
-          .print-content .pt-5 { padding-top: 6px !important; }
+          @page { size: A4; margin: 10mm; }
+          .print-content h1 { font-size: 18px !important; margin-bottom: 4px !important; }
+          .print-content h2 { font-size: 16px !important; }
+          .print-content h3 { font-size: 10px !important; margin-bottom: 2px !important; }
+          .print-content p, .print-content span, .print-content td, .print-content th, .print-content div { font-size: inherit !important; }
+          .print-content .text-2xl, .print-content .sm\\:text-3xl, .print-content .text-3xl { font-size: 18px !important; }
+          .print-content .text-xl { font-size: 14px !important; }
+          .print-content .text-lg { font-size: 11px !important; }
+          .print-content .text-base { font-size: 9px !important; }
+          .print-content .text-sm { font-size: 8px !important; }
+          .print-content .text-xs { font-size: 7px !important; }
+          .print-content .mb-8 { margin-bottom: 4px !important; }
+          .print-content .mb-6 { margin-bottom: 4px !important; }
+          .print-content .mb-4 { margin-bottom: 3px !important; }
+          .print-content .mb-3 { margin-bottom: 2px !important; }
+          .print-content .mb-2 { margin-bottom: 1px !important; }
+          .print-content .mt-10, .print-content .mt-8, .print-content .mt-6 { margin-top: 6px !important; }
+          .print-content .mt-4 { margin-top: 4px !important; }
+          .print-content .p-6, .print-content .sm\\:p-8 { padding: 10px 14px !important; }
+          .print-content .p-5, .print-content .p-4 { padding: 6px 10px !important; }
+          .print-content .pt-5, .print-content .pt-4 { padding-top: 4px !important; }
+          .print-content .pb-4, .print-content .pb-3 { padding-bottom: 3px !important; }
+          .print-content .gap-6 { gap: 8px !important; }
+          .print-content .gap-4 { gap: 4px !important; }
+          .print-content .gap-3 { gap: 3px !important; }
+          .print-content .space-y-4 > * + * { margin-top: 4px !important; }
+          .print-content .space-y-3 > * + * { margin-top: 3px !important; }
+          .print-content .space-y-2 > * + * { margin-top: 2px !important; }
+          .print-content .space-y-0\\.5 > * + * { margin-top: 0px !important; }
+          .print-content .max-w-\\[150px\\] { max-width: 100px !important; }
+          .print-content .max-h-\\[60px\\] { max-height: 40px !important; }
+          .print-content table th, .print-content table td { padding: 4px 6px !important; font-size: 8px !important; }
+          .print-content .whitespace-pre-wrap { font-size: 7px !important; line-height: 1.3 !important; }
         }
       `}</style>
 
