@@ -435,8 +435,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       case 'highlighted':
         return `
     .notes-section {
-      margin-bottom: 14px;
-      padding: 10px;
+      margin-bottom: 8px;
+      padding: 6px 8px;
       background: linear-gradient(135deg, ${brandColor}10, ${brandColor}05);
       border: 1px solid ${brandColor}30;
       border-radius: 6px;
@@ -444,8 +444,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       case 'simple':
         return `
     .notes-section {
-      margin-bottom: 14px;
-      padding: 10px 0;
+      margin-bottom: 8px;
+      padding: 6px 0;
       background: transparent;
       border-top: 1px solid #e5e7eb;
       border-left: none;
@@ -455,8 +455,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
       default:
         return `
     .notes-section {
-      margin-bottom: 14px;
-      padding: 10px;
+      margin-bottom: 8px;
+      padding: 6px 8px;
       background: #fafafa;
       border-left: 4px solid ${brandColor};
       border-radius: 0 6px 6px 0;
@@ -485,15 +485,15 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .document {
       max-width: 800px;
       margin: 0 auto;
-      padding: 25px 30px;
+      padding: 15px 20px;
     }
     
     .header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
       ${headerBorder}
     }
     
@@ -548,8 +548,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .info-section {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 18px;
-      gap: 30px;
+      margin-bottom: 10px;
+      gap: 20px;
     }
     
     .info-block {
@@ -575,8 +575,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .description-section {
-      margin-bottom: 18px;
-      padding: 12px;
+      margin-bottom: 10px;
+      padding: 8px;
       background: ${template.noteStyle === 'simple' ? 'transparent' : '#f8f9fa'};
       border-radius: 6px;
     }
@@ -590,12 +590,12 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .line-items-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     
     .line-items-table th {
       ${tableHeaderStyles}
-      padding: 12px;
+      padding: 8px;
       text-align: left;
       font-weight: 600;
       font-size: 10px;
@@ -621,7 +621,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .line-items-table td {
-      padding: 12px;
+      padding: 8px;
       vertical-align: top;
     }
     
@@ -640,7 +640,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .totals-section {
       display: flex;
       justify-content: flex-end;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     
     .totals-table {
@@ -699,8 +699,8 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .payment-section {
-      margin-bottom: 12px;
-      padding: 10px 12px;
+      margin-bottom: 8px;
+      padding: 6px 10px;
       background: linear-gradient(135deg, ${brandColor}10, ${brandColor}05);
       border: 1px solid ${brandColor}30;
       border-radius: 6px;
@@ -721,39 +721,39 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .terms-section {
-      margin-bottom: 16px;
+      margin-bottom: 8px;
     }
     
     .terms-title {
       font-weight: ${template.headingWeight};
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       color: #333;
-      font-size: 9px;
+      font-size: 8px;
     }
     
     .terms-content {
       color: #666;
-      font-size: 8px;
-      line-height: 1.4;
+      font-size: 7px;
+      line-height: 1.3;
     }
     
     .acceptance-section {
-      margin-top: 40px;
-      padding: 20px;
+      margin-top: 16px;
+      padding: 12px;
       border: 2px dashed #ddd;
       border-radius: 8px;
     }
     
     .acceptance-title {
       font-weight: ${template.headingWeight};
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       color: #333;
     }
     
     .signature-line {
       display: flex;
-      gap: 40px;
-      margin-top: 20px;
+      gap: 30px;
+      margin-top: 10px;
     }
     
     .signature-block {
@@ -763,7 +763,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .signature-label {
       font-size: 10px;
       color: #888;
-      margin-bottom: 30px;
+      margin-bottom: 16px;
     }
     
     .signature-underline {
@@ -788,16 +788,16 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     }
     
     .footer {
-      margin-top: 20px;
-      padding-top: 12px;
+      margin-top: 10px;
+      padding-top: 8px;
       border-top: 1px solid #eee;
       text-align: center;
-      font-size: 9px;
+      font-size: 8px;
       color: #999;
     }
     
     .photos-section {
-      margin: 20px 0;
+      margin: 10px 0;
       page-break-inside: avoid;
     }
     .photos-section-title {
@@ -877,7 +877,7 @@ const generateDocumentStyles = (template: DocumentTemplate, accentColor: string)
     .terms-section { page-break-inside: avoid; page-break-after: auto; }
     .payment-section { page-break-inside: avoid; }
     .acceptance-section { page-break-inside: avoid; page-break-before: auto; }
-    .footer { page-break-inside: avoid; margin-top: 20px; }
+    .footer { page-break-inside: avoid; margin-top: 10px; }
     .signature-section { page-break-inside: avoid; }
     
     /* Keep acceptance info and signature together as one block */
@@ -960,7 +960,7 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
     </div>
     
     ${job?.address ? `
-    <div class="info-section" style="margin-top: 16px;">
+    <div class="info-section" style="margin-top: 6px;">
       <div class="info-block" style="flex: 1;">
         <div class="info-label">Job Site Location</div>
         <div class="info-value">
@@ -971,10 +971,10 @@ export const generateQuotePDF = (data: QuoteWithDetails): string => {
     </div>
     ` : ''}
     
-    ${quote.description ? `
+    ${quote.title ? `
       <div class="description-section">
         <div class="description-title">${quote.title}</div>
-        <div>${quote.description}</div>
+        ${quote.description ? `<div>${quote.description}</div>` : ''}
       </div>
     ` : ''}
     
@@ -1041,10 +1041,10 @@ ${business.paymentInstructions ? `<span style="font-size: 9px; color: #666;">${b
     ` : ''}
     
     ${acceptanceUrl && quote.status !== 'accepted' && quote.status !== 'declined' ? `
-      <div style="margin: 24px 0; padding: 20px; background: linear-gradient(135deg, ${accentColor}10 0%, ${accentColor}05 100%); border-radius: 8px; border: 2px solid ${accentColor}; text-align: center;">
-        <p style="font-size: 12px; font-weight: 600; color: ${accentColor}; margin: 0 0 8px 0;">Accept This Quote Online</p>
-        <p style="font-size: 10px; color: #666; margin: 0 0 12px 0;">Click the link or scan the QR code to accept this quote</p>
-        <a href="${acceptanceUrl}" style="display: inline-block; background: ${accentColor}; color: white; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 11px;">${acceptanceUrl}</a>
+      <div style="margin: 12px 0; padding: 12px; background: linear-gradient(135deg, ${accentColor}10 0%, ${accentColor}05 100%); border-radius: 6px; border: 2px solid ${accentColor}; text-align: center;">
+        <p style="font-size: 11px; font-weight: 600; color: ${accentColor}; margin: 0 0 4px 0;">Accept This Quote Online</p>
+        <p style="font-size: 9px; color: #666; margin: 0 0 8px 0;">Click the link or scan the QR code to accept this quote</p>
+        <a href="${acceptanceUrl}" style="display: inline-block; background: ${accentColor}; color: white; padding: 6px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 10px;">${acceptanceUrl}</a>
       </div>
     ` : ''}
     
@@ -1075,14 +1075,14 @@ ${business.paymentInstructions ? `<span style="font-size: 9px; color: #666;">${b
     </div>
     
     ${business.warrantyPeriod ? `
-      <div class="notes-section" style="margin-top: 16px;">
+      <div class="notes-section" style="margin-top: 6px;">
         <div class="notes-title">Warranty</div>
         <div class="notes-content">All work is guaranteed for ${business.warrantyPeriod} from completion date.</div>
       </div>
     ` : ''}
     
     ${(business as any).insuranceDetails || (business as any).insuranceProvider ? `
-      <div class="notes-section" style="margin-top: 16px; background: #f0f9ff; border-left-color: #3b82f6;">
+      <div class="notes-section" style="margin-top: 6px; background: #f0f9ff; border-left-color: #3b82f6;">
         <div class="notes-title" style="color: #1e40af;">Insurance & Licensing</div>
         <div class="notes-content" style="color: #1e40af;">
 ${business.licenseNumber ? `Licence: ${business.licenseNumber}` : ''}
@@ -1094,22 +1094,22 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
     
     
     ${quote.status === 'accepted' && quote.acceptedBy ? `
-      <div class="quote-acceptance-block" style="page-break-inside: avoid; display: block; margin-top: 20px; border: 1px solid #22c55e; border-radius: 8px; overflow: hidden;">
-        <div style="background: #dcfce7; padding: 12px 16px;">
-          <div style="font-weight: 600; color: #166534; font-size: 12px; margin-bottom: 6px;">Quote Accepted</div>
-          <div style="font-size: 10px; color: #166534; line-height: 1.5;">
+      <div class="quote-acceptance-block" style="page-break-inside: avoid; display: block; margin-top: 10px; border: 1px solid #22c55e; border-radius: 6px; overflow: hidden;">
+        <div style="background: #dcfce7; padding: 8px 12px;">
+          <div style="font-weight: 600; color: #166534; font-size: 11px; margin-bottom: 2px;">Quote Accepted</div>
+          <div style="font-size: 9px; color: #166534; line-height: 1.4;">
             Accepted by: ${quote.acceptedBy}<br/>
             Date: ${formatDate(quote.acceptedAt)}
           </div>
         </div>
         ${data.signature?.signatureData ? `
-          <div style="background: #f0fdf4; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px; display: inline-block;">
-              <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 36px; max-width: 100px; width: auto; display: block;" />
+          <div style="background: #f0fdf4; padding: 6px 12px; display: flex; align-items: center; gap: 10px;">
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px; display: inline-block;">
+              <img src="${data.signature.signatureData.startsWith('data:') ? data.signature.signatureData : 'data:image/png;base64,' + data.signature.signatureData}" alt="${data.signature.signerName || 'Client'} signature" style="max-height: 28px; max-width: 80px; width: auto; display: block;" />
             </div>
             <div style="display: inline-block;">
-              <div style="font-size: 10px; font-weight: 500; color: #166534;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
-              <div style="font-size: 9px; color: #6b7280;">Signed ${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
+              <div style="font-size: 9px; font-weight: 500; color: #166534;">${data.signature.signerName || quote.acceptedBy || 'Client'}</div>
+              <div style="font-size: 8px; color: #6b7280;">Signed ${formatDate(data.signature.signedAt || quote.acceptedAt)}</div>
             </div>
           </div>
         ` : ''}

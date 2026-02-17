@@ -986,6 +986,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         total: quoteWithItems.total || '0',
       };
       
+      let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+      if (quoteWithItems.jobId && job) {
+        try {
+          const { getJobPhotos } = await import('./photoService');
+          const allPhotos = await getJobPhotos(job.id, quoteWithItems.userId);
+          beforePhotos = allPhotos
+            .filter(p => p.category === 'before')
+            .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+        } catch (photoError) {
+          console.error('Error fetching before photos for public quote PDF:', photoError);
+        }
+      }
+      
       const html = generateQuotePDF({
         quote: safeQuote,
         lineItems: quoteWithItems.lineItems || [],
@@ -994,6 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job,
         jobSignatures,
         signature: acceptanceSignature,
+        beforePhotos,
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
