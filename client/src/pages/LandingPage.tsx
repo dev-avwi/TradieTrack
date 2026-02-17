@@ -228,6 +228,9 @@ export default function LandingPage() {
               >
                 Download
               </a>
+              <Link href="/portal" className="text-[15px] text-brand hover:text-brand/80 font-medium transition-colors" data-testid="nav-client-portal">
+                Client Portal
+              </Link>
             </div>
 
             {/* Desktop CTA - Get Started and Login grouped together */}
@@ -340,6 +343,15 @@ export default function LandingPage() {
                   <Download className="w-5 h-5 text-gray-400" />
                   Download App
                 </a>
+                <Link 
+                  href="/portal" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 py-3 px-3 text-brand font-medium rounded-lg hover:bg-brand/5 transition-colors" 
+                  data-testid="mobile-nav-client-portal"
+                >
+                  <Globe className="w-5 h-5 text-brand" />
+                  Client Portal
+                </Link>
               </nav>
             </div>
 
