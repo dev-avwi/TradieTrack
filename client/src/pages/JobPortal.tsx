@@ -468,7 +468,7 @@ function HeroMap({
 
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
+      <div className="relative w-full overflow-hidden" style={{ height: '40vh', minHeight: '300px', maxHeight: '400px' }}>
         <MapContainer
           center={[-33.8688, 151.2093]}
           zoom={12}
@@ -479,13 +479,13 @@ function HeroMap({
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '55%', background: 'linear-gradient(to top, #ffffff 0%, #ffffff 10%, rgba(255,255,255,0.95) 25%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0) 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '40%', background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 100%)' }} />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: '35vh', minHeight: '280px', maxHeight: '350px' }}>
+    <div className="relative w-full overflow-hidden" style={{ height: '40vh', minHeight: '300px', maxHeight: '400px' }}>
       <MapContainer
         center={center}
         zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
@@ -554,7 +554,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '55%', background: 'linear-gradient(to top, #ffffff 0%, #ffffff 10%, rgba(255,255,255,0.95) 25%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '40%', background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 100%)' }} />
 
       {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
         <div className="absolute top-16 left-3 z-[1000]">
@@ -572,7 +572,7 @@ function HeroMap({
       )}
 
       {!isEnRoute && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
-        <div className="absolute bottom-3 left-3 z-[1000]">
+        <div className="absolute bottom-8 left-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
             <span className="text-xs font-medium text-slate-700">Your job location</span>
@@ -806,7 +806,7 @@ export default function JobPortal() {
         </div>
 
         {job.workerStatus && (
-          <div className="-mt-6 relative z-10 px-4">
+          <div className="-mt-16 relative z-10 px-4">
             <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-visible pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
