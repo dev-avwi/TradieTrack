@@ -479,7 +479,7 @@ function HeroMap({
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '65%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 15%, rgba(248,250,252,0.98) 30%, rgba(248,250,252,0.9) 45%, rgba(248,250,252,0.6) 65%, rgba(248,250,252,0) 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '65%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 15%, rgba(248,250,252,0.98) 30%, rgba(248,250,252,0.9) 45%, rgba(248,250,252,0.6) 65%, rgba(248,250,252,0) 100%)' }} />
       </div>
     );
   }
@@ -554,7 +554,7 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[999]" style={{ height: '65%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 15%, rgba(248,250,252,0.98) 30%, rgba(248,250,252,0.9) 45%, rgba(248,250,252,0.6) 65%, rgba(248,250,252,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '65%', background: 'linear-gradient(to top, #f8fafc 0%, #f8fafc 15%, rgba(248,250,252,0.98) 30%, rgba(248,250,252,0.9) 45%, rgba(248,250,252,0.6) 65%, rgba(248,250,252,0) 100%)' }} />
 
       {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
         <div className="absolute top-16 left-3 z-[1000]">
@@ -806,8 +806,8 @@ export default function JobPortal() {
         </div>
 
         {job.workerStatus && (
-          <div className="-mt-12 relative z-10 px-4">
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-100 overflow-visible pt-8 px-4 pb-4">
+          <div className="-mt-6 relative z-10 px-4">
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-visible pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
                   <div className={`w-3 h-3 rounded-full ${statusConfig.dot}`} />
