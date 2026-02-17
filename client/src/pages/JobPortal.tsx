@@ -533,7 +533,7 @@ function HeroMap({
               <Popup>
                 <span className="text-sm font-medium">{s.name}</span>
                 {s.lastUpdated && (
-                  <span className="text-xs block text-slate-500">
+                  <span className="text-xs block text-muted-foreground">
                     Last updated {formatTimeAgo(s.lastUpdated)}
                   </span>
                 )}
@@ -560,12 +560,12 @@ function HeroMap({
         <div className="absolute top-16 left-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-3 py-1.5 flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#2563EB]" />
-              <span className="text-[10px] text-slate-500">Team</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-brand" />
+              <span className="text-[10px] text-muted-foreground">Team</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-              <span className="text-[10px] text-slate-500">Subbie</span>
+              <span className="text-[10px] text-muted-foreground">Subbie</span>
             </div>
           </div>
         </div>
@@ -574,8 +574,8 @@ function HeroMap({
       {!isEnRoute && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
         <div className="absolute bottom-8 left-3 z-[1000]">
           <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
-            <span className="text-xs font-medium text-slate-700">Your job location</span>
+            <MapPin className="w-3.5 h-3.5 text-brand" />
+            <span className="text-xs font-medium text-foreground">Your job location</span>
           </div>
         </div>
       )}
@@ -696,7 +696,7 @@ export default function JobPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, rgba(37,99,235,0.05), #ffffff, #eff6ff)' }}>
+      <div className="min-h-screen bg-white">
         <div className="max-w-2xl mx-auto">
           <Skeleton className="h-[300px] w-full" />
           <div className="p-4 space-y-4">
@@ -712,12 +712,12 @@ export default function JobPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, rgba(37,99,235,0.05), #ffffff, #eff6ff)' }}>
-        <Card className="max-w-md w-full border-slate-200/60 rounded-2xl shadow-lg">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+        <Card className="max-w-md w-full border rounded-2xl shadow-lg">
           <CardContent className="pt-8 pb-8 text-center">
-            <AlertCircle className="w-14 h-14 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">Job Not Found</h2>
-            <p className="text-slate-500 text-sm">
+            <AlertCircle className="w-14 h-14 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Job Not Found</h2>
+            <p className="text-muted-foreground text-sm">
               This link may have expired or the job doesn't exist. Please contact the business directly if you need assistance.
             </p>
           </CardContent>
@@ -745,7 +745,7 @@ export default function JobPortal() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom, rgba(37,99,235,0.05), #ffffff, #eff6ff)' }}>
+    <div className="min-h-screen flex flex-col bg-white">
       <div className="max-w-2xl mx-auto w-full flex flex-col flex-1">
 
         <div className="relative">
@@ -761,7 +761,7 @@ export default function JobPortal() {
           )}
 
           <div className="absolute top-0 left-0 right-0 z-[1000]">
-            <div className="bg-[#2563EB]/90 backdrop-blur-md px-4 py-3">
+            <div className="bg-brand backdrop-blur-md px-4 py-3">
               <div className="flex items-center gap-3">
                 {business.logo ? (
                   <img src={business.logo} alt={business.name}
@@ -807,7 +807,7 @@ export default function JobPortal() {
 
         {job.workerStatus && (
           <div className="-mt-16 relative z-10 px-4">
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-visible pt-5 px-4 pb-4">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-visible pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
                   <div className={`w-3 h-3 rounded-full ${statusConfig.dot}`} />
@@ -816,13 +816,13 @@ export default function JobPortal() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-bold text-lg text-slate-900">{statusConfig.label}</span>
+                  <span className="font-bold text-lg text-foreground">{statusConfig.label}</span>
                 </div>
                 {job.workerStatus === 'completed' && (
                   <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0" />
                 )}
                 {job.workerStatus === 'on_my_way' && (job.workerEtaMinutes || job.workerEta) && (
-                  <span className="text-sm font-semibold text-[#2563EB] bg-[#2563EB]/10 px-3 py-1 rounded-full flex-shrink-0">
+                  <span className="text-sm font-semibold text-brand bg-brand/10 px-3 py-1 rounded-full flex-shrink-0">
                     ETA: {job.workerEtaMinutes ? `${job.workerEtaMinutes} min` : job.workerEta}
                   </span>
                 )}
@@ -837,17 +837,17 @@ export default function JobPortal() {
                     <div key={step.key} className="flex flex-col items-center flex-1 min-w-0">
                       <div className="flex items-center w-full">
                         {idx > 0 && (
-                          <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-[#2563EB]/30' : 'bg-gray-200'}`} />
+                          <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-brand/30' : 'bg-gray-200'}`} />
                         )}
                         <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                          isCompleted ? 'bg-emerald-500' : isCurrent ? 'bg-[#2563EB]' : 'bg-gray-200'
+                          isCompleted ? 'bg-emerald-500' : isCurrent ? 'bg-brand' : 'bg-gray-200'
                         }`} />
                         {idx < progressSteps.length - 1 && (
                           <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-emerald-400' : 'bg-gray-200'}`} />
                         )}
                       </div>
                       <span className={`text-[9px] mt-1.5 text-center leading-tight ${
-                        isCompleted ? 'text-emerald-600 font-medium' : isCurrent ? 'text-[#2563EB] font-semibold' : 'text-slate-400'
+                        isCompleted ? 'text-emerald-600 font-medium' : isCurrent ? 'text-brand font-semibold' : 'text-muted-foreground'
                       }`}>{step.label}</span>
                     </div>
                   );
@@ -857,12 +857,12 @@ export default function JobPortal() {
               {job.workerStatusUpdatedAt && (
                 <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
                   {job.workerStatus === 'on_my_way' && (
-                    <span className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                       <Signal className="w-2.5 h-2.5" />
                       Live tracking
                     </span>
                   )}
-                  <p className="text-[10px] text-slate-400 ml-auto">
+                  <p className="text-[10px] text-muted-foreground ml-auto">
                     Updated {formatTimeAgo(job.workerStatusUpdatedAt)}
                   </p>
                 </div>
@@ -874,8 +874,8 @@ export default function JobPortal() {
         <div className="px-4 py-4 space-y-4 flex-1">
 
           {(data.assignments && data.assignments.length > 0) ? (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Your Team</span>
@@ -905,25 +905,25 @@ export default function JobPortal() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold text-slate-900 text-sm truncate">{a.worker.name}</p>
+                          <p className="font-semibold text-foreground text-sm truncate">{a.worker.name}</p>
                           {a.isPrimary && (
-                            <span className="text-[10px] font-medium text-slate-500 bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
+                            <span className="text-[10px] font-medium text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">Lead</span>
                           )}
                         </div>
-                        <p className={`text-xs ${isActive ? 'text-emerald-600' : 'text-slate-500'}`}>{statusLabel}</p>
+                        <p className={`text-xs ${isActive ? 'text-emerald-600' : 'text-muted-foreground'}`}>{statusLabel}</p>
                         {a.worker.phone && (
-                          <p className="text-xs text-slate-400">{a.worker.phone}</p>
+                          <p className="text-xs text-muted-foreground">{a.worker.phone}</p>
                         )}
                       </div>
                       {a.worker.phone && (
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <a href={`sms:${a.worker.phone}`}>
-                            <Button variant="outline" size="icon" className="rounded-full border-slate-200">
-                              <MessageCircle className="w-4 h-4 text-[#2563EB]" />
+                            <Button variant="outline" size="icon" className="rounded-full border">
+                              <MessageCircle className="w-4 h-4 text-brand" />
                             </Button>
                           </a>
                           <a href={`tel:${a.worker.phone}`}>
-                            <Button variant="default" size="icon" className="rounded-full bg-[#2563EB]">
+                            <Button variant="default" size="icon" className="rounded-full bg-brand">
                               <Phone className="w-4 h-4" />
                             </Button>
                           </a>
@@ -937,12 +937,12 @@ export default function JobPortal() {
                   return (
                     <div key={`sub-list-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                          <User className="w-4 h-4 text-slate-500" />
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <User className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{s.name}</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-sm font-medium text-foreground">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
                             {s.status === 'en_route' && s.etaMinutes
                               ? `ETA: ~${s.etaMinutes} min`
                               : s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
@@ -958,8 +958,8 @@ export default function JobPortal() {
               </div>
             </div>
           ) : worker && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Your Technician</span>
@@ -968,7 +968,7 @@ export default function JobPortal() {
               <div className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-[#2563EB] flex items-center justify-center text-white font-semibold text-base shadow-md">
+                    <div className="w-12 h-12 rounded-full bg-brand flex items-center justify-center text-white font-semibold text-base shadow-md">
                       {worker.firstName?.[0]}{worker.lastName?.[0]}
                     </div>
                     {job.workerStatus && ['on_my_way', 'arrived', 'in_progress'].includes(job.workerStatus) && (
@@ -976,21 +976,21 @@ export default function JobPortal() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 text-sm">{worker.firstName} {worker.lastName}</p>
-                    <p className="text-xs text-slate-500">Your assigned technician</p>
+                    <p className="font-semibold text-foreground text-sm">{worker.firstName} {worker.lastName}</p>
+                    <p className="text-xs text-muted-foreground">Your assigned technician</p>
                     {worker.phone && (
-                      <p className="text-xs text-slate-500 mt-0.5">{worker.phone}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{worker.phone}</p>
                     )}
                   </div>
                   {worker.phone && (
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <a href={`sms:${worker.phone}`}>
-                        <Button variant="outline" size="icon" className="rounded-full border-slate-200">
-                          <MessageCircle className="w-4 h-4 text-[#2563EB]" />
+                        <Button variant="outline" size="icon" className="rounded-full border">
+                          <MessageCircle className="w-4 h-4 text-brand" />
                         </Button>
                       </a>
                       <a href={`tel:${worker.phone}`}>
-                        <Button variant="default" size="icon" className="rounded-full bg-[#2563EB]">
+                        <Button variant="default" size="icon" className="rounded-full bg-brand">
                           <Phone className="w-4 h-4" />
                         </Button>
                       </a>
@@ -1000,14 +1000,14 @@ export default function JobPortal() {
                 {crewLocationData?.subcontractors?.map((s) => {
                   const sConf2 = getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status);
                   return (
-                    <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border-slate-100">
+                    <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                          <User className="w-4 h-4 text-slate-500" />
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <User className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{s.name}</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-sm font-medium text-foreground">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
                             {s.status === 'en_route' && s.etaMinutes
                               ? `ETA: ~${s.etaMinutes} min`
                               : s.lastUpdated ? `Last update ${formatTimeAgo(s.lastUpdated)}` : 'No location data'}
@@ -1024,8 +1024,8 @@ export default function JobPortal() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-brand text-white px-5 py-3">
               <span className="font-semibold text-sm">{job.title}</span>
             </div>
             <div className="p-5 space-y-3">
@@ -1034,12 +1034,12 @@ export default function JobPortal() {
               )}
               {job.address && (
                 <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700">{job.address}</p>
+                    <p className="text-sm text-foreground">{job.address}</p>
                     {mapsUrl && (
                       <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="mt-2 text-[#2563EB] border-[#2563EB]/30">
+                        <Button variant="outline" size="sm" className="mt-2 text-brand border-brand/30">
                           <Navigation className="w-3.5 h-3.5 mr-1.5" />
                           Navigate
                         </Button>
@@ -1051,13 +1051,13 @@ export default function JobPortal() {
               <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
                 {(job.scheduledAt || job.scheduledTime) && (
                   <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span>{job.scheduledAt ? formatDate(job.scheduledAt) : ''}{job.scheduledTime ? ` at ${job.scheduledTime}` : ''}</span>
                   </div>
                 )}
                 {job.estimatedDuration && (
                   <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                    <Clock className="w-4 h-4 text-slate-400" />
+                    <Clock className="w-4 h-4 text-muted-foreground" />
                     <span>{job.estimatedDuration} {job.estimatedDuration === 1 ? 'hour' : 'hours'}</span>
                   </div>
                 )}
@@ -1066,8 +1066,8 @@ export default function JobPortal() {
           </div>
 
           {job.notes && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Notes</span>
@@ -1080,8 +1080,8 @@ export default function JobPortal() {
           )}
 
           {job.workerStatus && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Progress</span>
@@ -1112,7 +1112,7 @@ export default function JobPortal() {
                         {!isLast && (
                           <div
                             className={`absolute left-[-20px] top-8 w-0.5 h-full ${
-                              isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-[#2563EB]/30' : 'bg-gray-200'
+                              isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-brand/30' : 'bg-gray-200'
                             }`}
                           />
                         )}
@@ -1124,8 +1124,8 @@ export default function JobPortal() {
                               </div>
                             ) : isCurrent ? (
                               <div className="relative mt-0.5">
-                                <div className="w-5 h-5 rounded-full bg-[#2563EB] shadow-sm" />
-                                <div className="absolute inset-0 w-5 h-5 rounded-full bg-[#2563EB] animate-ping opacity-50" />
+                                <div className="w-5 h-5 rounded-full bg-brand shadow-sm" />
+                                <div className="absolute inset-0 w-5 h-5 rounded-full bg-brand animate-ping opacity-50" />
                               </div>
                             ) : (
                               <div className="w-5 h-5 rounded-full bg-gray-200 mt-0.5" />
@@ -1133,19 +1133,19 @@ export default function JobPortal() {
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm font-semibold ${
-                              isCompleted ? 'text-emerald-700' : isCurrent ? 'text-slate-900' : 'text-slate-400'
+                              isCompleted ? 'text-emerald-700' : isCurrent ? 'text-foreground' : 'text-muted-foreground'
                             }`}>
                               {step.label}
                             </p>
                             {step.timestamp && (isCompleted || isCurrent) && (
-                              <p className="text-xs text-slate-500 mt-0.5">{formatDateTime(step.timestamp)}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(step.timestamp)}</p>
                             )}
                           </div>
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
                             isCompleted ? 'bg-emerald-50' : isCurrent ? 'bg-blue-50' : 'bg-gray-50'
                           }`}>
                             <StepIcon className={`w-3.5 h-3.5 ${
-                              isCompleted ? 'text-emerald-500' : isCurrent ? 'text-[#2563EB]' : 'text-gray-300'
+                              isCompleted ? 'text-emerald-500' : isCurrent ? 'text-brand' : 'text-gray-300'
                             }`} />
                           </div>
                         </div>
@@ -1158,8 +1158,8 @@ export default function JobPortal() {
           )}
 
           {data.checklist && data.checklist.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Work Scope</span>
@@ -1178,7 +1178,7 @@ export default function JobPortal() {
                       }`}>
                         {item.isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
                       </div>
-                      <span className={`text-sm ${item.isCompleted ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                      <span className={`text-sm ${item.isCompleted ? 'text-muted-foreground line-through' : 'text-slate-800'}`}>
                         {item.text}
                       </span>
                     </div>
@@ -1186,12 +1186,12 @@ export default function JobPortal() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted-foreground">
                       {data.checklist.filter(c => c.isCompleted).length} of {data.checklist.length} completed
                     </span>
                     <div className="flex-1 max-w-[120px] h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-[#2563EB] rounded-full transition-all"
+                        className="h-full bg-brand rounded-full transition-all"
                         style={{ width: `${(data.checklist.filter(c => c.isCompleted).length / data.checklist.length) * 100}%` }}
                       />
                     </div>
@@ -1202,8 +1202,8 @@ export default function JobPortal() {
           )}
 
           {data.materials && data.materials.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Materials</span>
@@ -1216,7 +1216,7 @@ export default function JobPortal() {
                       <span className="text-sm text-slate-800">{material.name}</span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {material.quantity && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             {material.quantity}{material.unit ? ` ${material.unit}` : ''}
                           </span>
                         )}
@@ -1239,8 +1239,8 @@ export default function JobPortal() {
           )}
 
           {hasPhotos && (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Camera className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Photos</span>
@@ -1271,8 +1271,8 @@ export default function JobPortal() {
           )}
 
           {hasDocuments && (
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+            <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-300" />
                   <span className="font-semibold text-sm">Documents & Payments</span>
@@ -1283,24 +1283,24 @@ export default function JobPortal() {
                   <a
                     key={`q-${quote.id}`}
                     href={`/portal/quote/${quote.token}`}
-                    className="block rounded-xl border border-slate-200 overflow-hidden hover-elevate active-elevate-2"
+                    className="block rounded-xl border overflow-hidden hover-elevate active-elevate-2"
                   >
                     <div className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-slate-500" />
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{quote.title || 'Quote'}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{formatDate(quote.createdAt)}</p>
+                          <p className="text-sm font-semibold text-foreground truncate">{quote.title || 'Quote'}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{formatDate(quote.createdAt)}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-base font-bold text-slate-900">{formatCurrency(quote.total)}</p>
+                          <p className="text-base font-bold text-foreground">{formatCurrency(quote.total)}</p>
                           <div className="mt-1">{getDocStatusBadge(quote.status)}</div>
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-slate-100">
-                        <Button variant="outline" size="sm" className="w-full text-[#2563EB] border-[#2563EB]/30">
+                      <div className="mt-3 pt-3 border-t border">
+                        <Button variant="outline" size="sm" className="w-full text-brand border-brand/30">
                           View Quote
                           <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
@@ -1316,31 +1316,31 @@ export default function JobPortal() {
                       href={`/portal/invoice/${invoice.token}`}
                       className={`block rounded-xl overflow-hidden hover-elevate active-elevate-2 ${
                         isPayable 
-                          ? 'bg-[#2563EB]/5 border-2 border-[#2563EB]/20' 
-                          : 'border border-slate-200'
+                          ? 'bg-brand/5 border-2 border-brand/20' 
+                          : 'border'
                       }`}
                     >
                       <div className="p-4">
                         <div className="flex items-start gap-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isPayable ? 'bg-[#2563EB]/10' : 'bg-slate-100'
+                            isPayable ? 'bg-brand/10' : 'bg-muted'
                           }`}>
-                            <CreditCard className={`w-5 h-5 ${isPayable ? 'text-[#2563EB]' : 'text-slate-500'}`} />
+                            <CreditCard className={`w-5 h-5 ${isPayable ? 'text-brand' : 'text-muted-foreground'}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">Invoice #{invoice.invoiceNumber}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{formatDate(invoice.createdAt)}</p>
+                            <p className="text-sm font-semibold text-foreground truncate">Invoice #{invoice.invoiceNumber}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{formatDate(invoice.createdAt)}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className={`text-base font-bold ${isPayable ? 'text-[#2563EB]' : 'text-slate-900'}`}>{formatCurrency(invoice.total)}</p>
+                            <p className={`text-base font-bold ${isPayable ? 'text-brand' : 'text-foreground'}`}>{formatCurrency(invoice.total)}</p>
                             <div className="mt-1">{getDocStatusBadge(invoice.status)}</div>
                           </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-slate-100">
+                        <div className="mt-3 pt-3 border-t border">
                           <Button 
                             variant={isPayable ? 'default' : 'outline'} 
                             size="sm" 
-                            className={`w-full ${isPayable ? 'bg-[#2563EB]' : 'text-[#2563EB] border-[#2563EB]/30'}`}
+                            className={`w-full ${isPayable ? 'bg-brand' : 'text-brand border-brand/30'}`}
                           >
                             {isPayable ? (
                               <>
@@ -1363,8 +1363,8 @@ export default function JobPortal() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] text-white px-5 py-3">
+          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-brand text-white px-5 py-3">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-slate-300" />
                 <span className="font-semibold text-sm">Message {business.name}</span>
@@ -1391,7 +1391,7 @@ export default function JobPortal() {
                     onChange={(e) => setPortalMessage(e.target.value)}
                     placeholder={`Send a message to ${business.name}...`}
                     maxLength={1000}
-                    className="resize-none min-h-[100px] border-gray-200 text-sm bg-white text-slate-900 placeholder:text-slate-400"
+                    className="resize-none min-h-[100px] border-gray-200 text-sm bg-white text-foreground placeholder:text-muted-foreground"
                   />
                   {sendMessageMutation.isError && (
                     <p className="text-xs text-red-600">
@@ -1399,13 +1399,13 @@ export default function JobPortal() {
                     </p>
                   )}
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs text-slate-400">{portalMessage.length}/1000</span>
+                    <span className="text-xs text-muted-foreground">{portalMessage.length}/1000</span>
                     <Button
                       type="submit"
                       disabled={!portalMessage.trim() || sendMessageMutation.isPending}
                       variant="default"
                       size="lg"
-                      className="bg-[#2563EB]"
+                      className="bg-brand"
                     >
                       {sendMessageMutation.isPending ? (
                         <>
@@ -1425,14 +1425,14 @@ export default function JobPortal() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
             <div className="p-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-5 h-5 text-[#2563EB]" />
+                <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 text-brand" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-slate-900 text-sm">Your Documents</h3>
+                  <h3 className="font-semibold text-foreground text-sm">Your Documents</h3>
                   <p className="text-xs text-slate-600 mt-0.5">View invoices, quotes, and make secure payments</p>
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     <Button 
@@ -1443,12 +1443,12 @@ export default function JobPortal() {
                       }}
                       variant="outline"
                       size="sm"
-                      className="text-sm text-[#2563EB] border-[#2563EB]/30"
+                      className="text-sm text-brand border-brand/30"
                     >
                       View Documents
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Shield className="w-3 h-3" /> Secure
                     </span>
                   </div>
@@ -1464,19 +1464,19 @@ export default function JobPortal() {
             variant="outline"
             size="sm"
             onClick={() => window.open('/portal', '_blank')}
-            className="text-[#2563EB] border-[#2563EB]/30"
+            className="text-brand border-brand/30"
           >
             <FileText className="w-4 h-4 mr-1.5" />
             Open Client Portal
           </Button>
           <div className="flex items-center justify-center gap-2.5">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-9 h-9 object-contain" />
-            <span className="text-sm font-medium text-[#2563EB]/70">Powered by <strong className="text-[#2563EB]">JobRunner</strong></span>
+            <span className="text-sm font-medium text-brand/70">Powered by <strong className="text-brand">JobRunner</strong></span>
           </div>
           {business.abn && (
-            <p className="text-xs text-slate-400">ABN: {business.abn}</p>
+            <p className="text-xs text-muted-foreground">ABN: {business.abn}</p>
           )}
-          <div className="flex items-center justify-center gap-1.5 text-xs text-[#2563EB]/50">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-brand/50">
             <Shield className="w-3.5 h-3.5" />
             <span>Secure & encrypted</span>
           </div>

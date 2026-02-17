@@ -80,7 +80,7 @@ function getStatusColor(status: string, type: string): string {
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'declined': return 'bg-red-100 text-red-800';
       case 'sent': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-slate-100 text-slate-700';
+      default: return 'bg-muted text-foreground';
     }
   }
   if (type === 'invoice') {
@@ -88,7 +88,7 @@ function getStatusColor(status: string, type: string): string {
       case 'paid': return 'bg-green-100 text-green-800';
       case 'overdue': return 'bg-red-100 text-red-800';
       case 'sent': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-slate-100 text-slate-700';
+      default: return 'bg-muted text-foreground';
     }
   }
   return 'bg-green-100 text-green-800';
@@ -241,7 +241,7 @@ export default function ClientPortal() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen p-4 md:p-8" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
+      <div className="min-h-screen p-4 md:p-8 bg-white">
         <div className="max-w-3xl mx-auto space-y-6">
           <Skeleton className="h-32 w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
@@ -253,16 +253,16 @@ export default function ClientPortal() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
-        <Card className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200/60">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+        <Card className="max-w-md w-full bg-white rounded-xl shadow-sm border">
           <CardHeader className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <CardTitle className="text-slate-900">Document Not Found</CardTitle>
-            <p className="text-slate-500 text-sm mt-2">
+            <CardTitle className="text-foreground">Document Not Found</CardTitle>
+            <p className="text-muted-foreground text-sm mt-2">
               This link may have expired or the document doesn't exist.
             </p>
           </CardHeader>
-          <CardContent className="text-center text-sm text-slate-500">
+          <CardContent className="text-center text-sm text-muted-foreground">
             If you received this link from a business, please contact them directly.
           </CardContent>
         </Card>
@@ -278,10 +278,10 @@ export default function ClientPortal() {
   const isPaid = data.status === 'paid';
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff, #eff6ff)' }}>
+    <div className="min-h-screen bg-white">
       <div className="min-h-screen flex flex-col">
         {/* Teal Branded Header */}
-        <header className="bg-gradient-to-r from-[#2563EB] to-[#2563EB]/90 text-white sticky top-0 z-20">
+        <header className="bg-brand text-white sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -323,16 +323,16 @@ export default function ClientPortal() {
         </header>
 
         {/* Document Title Section */}
-        <div className="bg-white border-b border-slate-200/60 py-5 px-4">
+        <div className="bg-white border-b border py-5 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#2563EB]/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-[#2563EB]" />
+                <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-brand" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{docTypeLabel} #{data.number}</h2>
-                  <p className="text-sm text-slate-500">{data.title}</p>
+                  <h2 className="text-xl font-bold text-foreground">{docTypeLabel} #{data.number}</h2>
+                  <p className="text-sm text-muted-foreground">{data.title}</p>
                 </div>
               </div>
               <Badge className={`${getStatusColor(data.status, type || '')} rounded-full px-3 py-1 text-sm font-medium no-default-hover-elevate no-default-active-elevate`}>
@@ -347,39 +347,39 @@ export default function ClientPortal() {
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Client & Document Info */}
             <div className="grid md:grid-cols-2 gap-4">
-              <Card className="bg-white rounded-xl shadow-sm border border-slate-200/60">
+              <Card className="bg-white rounded-xl shadow-sm border">
                 <CardContent className="pt-4">
-                  <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Bill To</h3>
-                  <p className="font-semibold text-slate-900">{data.client.name}</p>
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Bill To</h3>
+                  <p className="font-semibold text-foreground">{data.client.name}</p>
                   {data.client.address && (
-                    <p className="text-sm text-slate-500 flex items-start gap-1 mt-1">
+                    <p className="text-sm text-muted-foreground flex items-start gap-1 mt-1">
                       <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" /> {data.client.address}
                     </p>
                   )}
                   {data.client.email && (
-                    <p className="text-sm text-slate-500 mt-1">{data.client.email}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{data.client.email}</p>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="bg-white rounded-xl shadow-sm border border-slate-200/60">
+              <Card className="bg-white rounded-xl shadow-sm border">
                 <CardContent className="pt-4">
-                  <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Details</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Details</h3>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Date:</span>
-                      <span className="font-medium text-slate-900">{formatDate(data.createdAt)}</span>
+                      <span className="text-muted-foreground">Date:</span>
+                      <span className="font-medium text-foreground">{formatDate(data.createdAt)}</span>
                     </div>
                     {data.validUntil && (
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Valid Until:</span>
-                        <span className="font-medium text-slate-900">{formatDate(data.validUntil)}</span>
+                        <span className="text-muted-foreground">Valid Until:</span>
+                        <span className="font-medium text-foreground">{formatDate(data.validUntil)}</span>
                       </div>
                     )}
                     {data.dueDate && (
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Due Date:</span>
-                        <span className="font-medium text-slate-900">{formatDate(data.dueDate)}</span>
+                        <span className="text-muted-foreground">Due Date:</span>
+                        <span className="font-medium text-foreground">{formatDate(data.dueDate)}</span>
                       </div>
                     )}
                     {data.paidAt && (
@@ -401,19 +401,19 @@ export default function ClientPortal() {
 
             {/* Job Site */}
             {data.job?.address && data.job.address !== data.client.address && (
-              <Card className="bg-white rounded-xl shadow-sm border border-slate-200/60">
+              <Card className="bg-white rounded-xl shadow-sm border">
                 <CardContent className="py-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <Building2 className="w-4 h-4 text-[#2563EB]" />
-                    <span className="text-slate-500">Job Site:</span>
-                    <span className="font-medium text-slate-900">{data.job.address}</span>
+                    <Building2 className="w-4 h-4 text-brand" />
+                    <span className="text-muted-foreground">Job Site:</span>
+                    <span className="font-medium text-foreground">{data.job.address}</span>
                   </div>
                 </CardContent>
               </Card>
             )}
 
             {data.description && (
-              <Card className="bg-white rounded-xl shadow-sm border border-slate-200/60">
+              <Card className="bg-white rounded-xl shadow-sm border">
                 <CardContent className="py-3">
                   <p className="text-sm text-slate-600">{data.description}</p>
                 </CardContent>
@@ -421,12 +421,12 @@ export default function ClientPortal() {
             )}
 
             {/* Line Items Table */}
-            <Card className="bg-white rounded-xl shadow-sm border border-slate-200/60">
+            <Card className="bg-white rounded-xl shadow-sm border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-slate-900">Items</CardTitle>
+                <CardTitle className="text-base text-foreground">Items</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="hidden sm:grid sm:grid-cols-12 text-xs font-medium text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-100">
+                <div className="hidden sm:grid sm:grid-cols-12 text-xs font-medium text-muted-foreground uppercase tracking-wider pb-2 border-b border-slate-100">
                   <div className="col-span-6">Description</div>
                   <div className="col-span-2 text-right">Qty</div>
                   <div className="col-span-2 text-right">Rate</div>
@@ -436,34 +436,34 @@ export default function ClientPortal() {
                 <div className="divide-y divide-slate-100">
                   {data.lineItems.map((item, idx) => (
                     <div key={item.id || idx} className="py-3 sm:grid sm:grid-cols-12 sm:gap-2 space-y-1 sm:space-y-0">
-                      <div className="col-span-6 font-medium text-slate-900">{item.description}</div>
+                      <div className="col-span-6 font-medium text-foreground">{item.description}</div>
                       <div className="col-span-2 text-right text-slate-600">
                         <span className="sm:hidden text-xs">Qty: </span>{parseFloat(item.quantity).toFixed(2)}
                       </div>
                       <div className="col-span-2 text-right text-slate-600">
                         <span className="sm:hidden text-xs">Rate: </span>{formatCurrency(item.unitPrice)}
                       </div>
-                      <div className="col-span-2 text-right font-medium text-slate-900">{formatCurrency(item.total)}</div>
+                      <div className="col-span-2 text-right font-medium text-foreground">{formatCurrency(item.total)}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Totals */}
-                <div className="border-t border-slate-200 pt-4 mt-4 space-y-2">
+                <div className="border-t border pt-4 mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Subtotal</span>
-                    <span className="text-slate-900">{formatCurrency(data.subtotal)}</span>
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-foreground">{formatCurrency(data.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">GST (10%)</span>
-                    <span className="text-slate-900">{formatCurrency(data.gstAmount)}</span>
+                    <span className="text-muted-foreground">GST (10%)</span>
+                    <span className="text-foreground">{formatCurrency(data.gstAmount)}</span>
                   </div>
-                  <div className="flex justify-between font-bold text-xl pt-3 border-t border-slate-200">
-                    <span className="text-slate-900">Total (AUD)</span>
-                    <span className="text-[#2563EB]">{formatCurrency(data.total)}</span>
+                  <div className="flex justify-between font-bold text-xl pt-3 border-t border">
+                    <span className="text-foreground">Total (AUD)</span>
+                    <span className="text-brand">{formatCurrency(data.total)}</span>
                   </div>
                   {data.depositRequired && data.depositAmount && (
-                    <div className="flex justify-between text-[#2563EB] text-sm pt-1">
+                    <div className="flex justify-between text-brand text-sm pt-1">
                       <span>Deposit Required</span>
                       <span className="flex items-center gap-1">
                         {formatCurrency(data.depositAmount)}
@@ -515,27 +515,27 @@ export default function ClientPortal() {
 
             {/* Quote Accept/Decline Card */}
             {showAcceptButtons && (
-              <Card className="bg-white rounded-xl shadow-sm border border-[#2563EB]/20">
+              <Card className="bg-white rounded-xl shadow-sm border border-brand/20">
                 <CardContent className="pt-5 pb-5">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 bg-[#2563EB]/10 rounded-full flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-[#2563EB]" />
+                      <div className="w-8 h-8 bg-brand/10 rounded-full flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-brand" />
                       </div>
-                      <h3 className="font-semibold text-slate-900">Ready to accept this quote?</h3>
+                      <h3 className="font-semibold text-foreground">Ready to accept this quote?</h3>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Your Name</label>
                       <Input
                         type="text"
                         placeholder="Enter your full name"
                         value={acceptedName}
                         onChange={(e) => setAcceptedName(e.target.value)}
-                        className="w-full text-slate-900 bg-white border-slate-300"
+                        className="w-full text-foreground bg-white border-slate-300"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Your Signature</label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Your Signature</label>
                       <SignaturePad 
                         onSignatureChange={setSignature}
                         className="w-full"
@@ -545,7 +545,7 @@ export default function ClientPortal() {
                       <Button 
                         onClick={handleAcceptQuote}
                         disabled={isAccepting || !acceptedName.trim() || !signature}
-                        className="flex-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                        className="flex-1 bg-brand text-white"
                         size="lg"
                       >
                         <Check className="w-5 h-5 mr-2" />
@@ -556,7 +556,7 @@ export default function ClientPortal() {
                         onClick={handleDeclineQuote}
                         disabled={isDeclining}
                         size="lg"
-                        className="border-slate-300 text-slate-700"
+                        className="border-slate-300 text-foreground"
                       >
                         <X className="w-5 h-5 mr-2" />
                         Decline
@@ -569,24 +569,24 @@ export default function ClientPortal() {
             
             {/* Invoice Pay Card */}
             {showPayButton && (
-              <Card className="bg-white rounded-xl shadow-sm border border-[#2563EB]/20">
+              <Card className="bg-white rounded-xl shadow-sm border border-brand/20">
                 <CardContent className="pt-5 pb-5">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 bg-[#2563EB]/10 rounded-full flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-[#2563EB]" />
+                      <div className="w-8 h-8 bg-brand/10 rounded-full flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-brand" />
                       </div>
-                      <h3 className="font-semibold text-slate-900">Pay securely online</h3>
+                      <h3 className="font-semibold text-foreground">Pay securely online</h3>
                     </div>
                     <Button 
                       onClick={handlePayNow}
-                      className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                      className="w-full bg-brand text-white"
                       size="lg"
                     >
                       <CreditCard className="w-5 h-5 mr-2" />
                       Pay {formatCurrency(data.total)} Now
                     </Button>
-                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                       <Lock className="w-3 h-3 text-green-600" />
                       <span>Encrypted & secure via Stripe</span>
                     </div>
@@ -611,7 +611,7 @@ export default function ClientPortal() {
             <Button 
               variant="outline" 
               onClick={handleDownloadPdf}
-              className="w-full border-[#2563EB]/30 text-[#2563EB]"
+              className="w-full border-brand/30 text-brand"
             >
               <Download className="w-4 h-4 mr-2" />
               Download PDF
@@ -620,14 +620,14 @@ export default function ClientPortal() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-slate-200/60 py-5 px-4 mt-auto">
+        <footer className="bg-white border-t border py-5 px-4 mt-auto">
           <div className="max-w-4xl mx-auto text-center space-y-2">
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-              <ShieldCheck className="w-4 h-4 text-[#2563EB]" />
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="w-4 h-4 text-brand" />
               <span>Secure & encrypted</span>
             </div>
-            <p className="text-xs text-slate-400">
-              Powered by <span className="text-[#2563EB] font-medium">JobRunner</span> · Questions? Contact{' '}
+            <p className="text-xs text-muted-foreground">
+              Powered by <span className="text-brand font-medium">JobRunner</span> · Questions? Contact{' '}
               <a href={`tel:${data.business.phone}`} className="hover:underline text-slate-600">{data.business.name}</a>
             </p>
           </div>
