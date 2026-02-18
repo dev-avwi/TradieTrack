@@ -2427,7 +2427,8 @@ export default function JobDetailView({
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                       <Wrench className="h-3.5 w-3.5" />
-                      Equipment Used
+                      Equipment
+                      <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60">optional</span>
                     </span>
                     <Button variant="ghost" size="sm" onClick={() => setShowAssignEquipment(true)}>
                       <Plus className="h-3 w-3 mr-1" />
@@ -2458,7 +2459,7 @@ export default function JobDetailView({
                       })}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">No equipment assigned</p>
+                    <p className="text-xs text-muted-foreground">No equipment assigned yet</p>
                   )}
                 </div>
 
@@ -3901,6 +3902,7 @@ export default function JobDetailView({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Assign Equipment</DialogTitle>
+            <p className="text-sm text-muted-foreground">Optionally track which equipment is used on this job.</p>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">

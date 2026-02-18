@@ -1741,6 +1741,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/subcontractor/:token/photos", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
+      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
+      if (!session) return res.status(401).json({ error: 'Invalid session' });
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      if (!(tokenRecord.permissions as string[])?.includes('add_photos')) return res.status(403).json({ error: 'No permission to add photos' });
+
+      const { fileName, fileBase64, mimeType, category, caption } = req.body;
+      if (!fileName || !fileBase64 || !mimeType) {
+        return res.status(400).json({ error: 'fileName, fileBase64, and mimeType required' });
+      }
+
+      const fileBuffer = Buffer.from(fileBase64, 'base64');
+      const { uploadJobPhoto } = await import('./photoService');
+      const result = await uploadJobPhoto(tokenRecord.userId, tokenRecord.jobId, fileBuffer, {
+        fileName,
+        fileSize: fileBuffer.length,
+        mimeType,
+        category: category || 'general',
+        caption: caption || `Photo by ${tokenRecord.contactName || 'Subcontractor'}`,
+      });
+
+      if (!result.success) {
+        return res.status(500).json({ error: result.error });
+      }
+
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_PHOTO_UPLOADED',
+        eventData: { fileName, category: category || 'general', author: tokenRecord.contactName || 'Subcontractor' },
+      });
+
+      res.json({ success: true, photo: result });
+    } catch (error: any) {
+      console.error('Error uploading subcontractor photo:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/subcontractor/:token/location", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;

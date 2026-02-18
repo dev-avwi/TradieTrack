@@ -836,8 +836,10 @@ export default function JobPortal() {
           </div>
         </div>
 
+        <div className="relative z-10 -mt-10">
+
         {job.workerStatus && (
-          <div className="-mt-16 relative z-10 px-4">
+          <div className="px-4">
             <div className="bg-white rounded-2xl shadow-lg border overflow-visible pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
@@ -1552,6 +1554,7 @@ export default function JobPortal() {
             <Shield className="w-3.5 h-3.5" />
             <span>Secure & encrypted</span>
           </div>
+        </div>
         </div>
       </div>
 
