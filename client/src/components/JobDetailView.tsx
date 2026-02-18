@@ -1470,7 +1470,7 @@ export default function JobDetailView({
       {/* Full-width banners */}
       <div className="space-y-4">
         {/* Urgency Banner for scheduled jobs */}
-        {job.status === 'scheduled' && jobUrgency && (
+        {job.status === 'scheduled' && jobUrgency && !activeTimerForThisJob && (
           <div 
             className={`rounded-xl p-4 border ${jobUrgency.bgColor} ${jobUrgency.animate ? 'animate-pulse' : ''}`}
             data-testid="banner-job-urgency"

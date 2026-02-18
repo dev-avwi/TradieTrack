@@ -19742,7 +19742,41 @@ Respond with JSON in this format:
       const jobId = req.query.jobId as string | undefined;
       
       const timeEntries = await storage.getTimeEntries(userId, jobId);
-      res.json(timeEntries);
+      
+      const userCache = new Map<string, any>();
+      const jobCache = new Map<string, any>();
+      const enriched = await Promise.all(timeEntries.map(async (entry: any) => {
+        let userName = null;
+        if (entry.userId) {
+          if (!userCache.has(entry.userId)) {
+            const u = await storage.getUser(entry.userId);
+            userCache.set(entry.userId, u);
+          }
+          const u = userCache.get(entry.userId);
+          if (u) {
+            userName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.name || u.email;
+          }
+        }
+        let jobTitle = null;
+        let clientName = null;
+        if (entry.jobId) {
+          if (!jobCache.has(entry.jobId)) {
+            const j = await storage.getJob(entry.jobId, userId);
+            jobCache.set(entry.jobId, j);
+          }
+          const j = jobCache.get(entry.jobId);
+          if (j) {
+            jobTitle = j.title || null;
+            if (j.clientId) {
+              const c = await storage.getClient(j.clientId, userId);
+              clientName = c?.name || null;
+            }
+          }
+        }
+        return { ...entry, userName, jobTitle, clientName };
+      }));
+      
+      res.json(enriched);
     } catch (error) {
       console.error('Error fetching time entries:', error);
       res.status(500).json({ error: 'Failed to fetch time entries' });

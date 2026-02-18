@@ -666,6 +666,13 @@ export default function TimeTrackingPage() {
   // Start break timer mutation
   const startBreakMutation = useMutation({
     mutationFn: async () => {
+      const activeRes = await fetch('/api/time-entries/active/current', { credentials: 'include' });
+      if (activeRes.ok) {
+        const activeTimer = await activeRes.json();
+        if (activeTimer && activeTimer.id) {
+          await apiRequest('POST', `/api/time-entries/${activeTimer.id}/stop`);
+        }
+      }
       return apiRequest('POST', '/api/time-entries', {
         description: 'Break',
         isBreak: true,
@@ -674,6 +681,7 @@ export default function TimeTrackingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
       toast({
         title: "Break Started",

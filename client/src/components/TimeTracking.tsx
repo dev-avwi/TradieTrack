@@ -58,6 +58,7 @@ interface TimeEntry {
   userId: string;
   jobTitle?: string;
   clientName?: string;
+  userName?: string;
 }
 
 interface ActiveTimer {
@@ -255,10 +256,12 @@ export function TimerWidget({
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
       queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-      if (jobId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
-      }
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+        if (jobId) {
+          queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+        }
+      }, 300);
       captureLocation();
       onTimerStart?.();
       toast({
@@ -478,12 +481,21 @@ export function TimerWidget({
     if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) return;
     
     try {
-      await offlinePauseTimer();
-      
-      if (!isOffline) {
-        queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      if (isOffline) {
+        await offlinePauseTimer();
+      } else {
+        await apiRequest('POST', `/api/time-entries/${(activeTimer as any).id}/stop`);
+        
+        await apiRequest('POST', '/api/time-entries', {
+          description: `Break - ${jobTitle || 'Work session'}`,
+          jobId: jobId,
+          isBreak: true,
+        });
       }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
       
       toast({
         title: "Break Started",
@@ -503,16 +515,23 @@ export function TimerWidget({
     if (!activeTimer || typeof activeTimer !== 'object' || !('id' in activeTimer)) return;
     
     try {
-      const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
-      await offlineResumeTimer({
-        description,
-        hourlyRate: 85.00,
-      });
-      
-      if (!isOffline) {
-        queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      if (isOffline) {
+        const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
+        await offlineResumeTimer({ description, hourlyRate: 85.00 });
+      } else {
+        await apiRequest('POST', `/api/time-entries/${(activeTimer as any).id}/stop`);
+        
+        const description = jobTitle ? `Working on ${jobTitle}` : 'General work';
+        await apiRequest('POST', '/api/time-entries', {
+          description,
+          jobId: jobId,
+          hourlyRate: '85.00',
+        });
       }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
       
       toast({
         title: "Work Resumed",
@@ -989,6 +1008,12 @@ export function TimesheetList({
                     {!entry.endTime && (
                       <Badge variant="outline" className="text-success border-success">
                         Active
+                      </Badge>
+                    )}
+                    {entry.userName && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Users className="h-3 w-3 mr-1" />
+                        {entry.userName}
                       </Badge>
                     )}
                   </div>
