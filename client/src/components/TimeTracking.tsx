@@ -608,7 +608,7 @@ export function TimerWidget({
           }}
         />
         
-        <div className="relative p-4 space-y-3">
+        <div className="relative p-4 px-5 space-y-3">
           {/* Live timer display */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">

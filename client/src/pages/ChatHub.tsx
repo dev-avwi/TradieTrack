@@ -1692,7 +1692,7 @@ export default function ChatHub() {
                   )}
                   
                   <div
-                    className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-start gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
                       isSelected 
                         ? 'bg-accent' 
                         : hasUnread
@@ -2248,7 +2248,7 @@ export default function ChatHub() {
                         )}
                         
                         <div className={`rounded-2xl px-3.5 py-2 ${isOwn ? 'bg-green-600 text-white' : 'bg-muted'}`}>
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{msg.body}</p>
                           <div className={`flex items-center gap-1 mt-0.5 ${isOwn ? 'justify-end' : ''}`}>
                             <span className={`text-[10px] ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
                               {formatTime(msg.createdAt)}
