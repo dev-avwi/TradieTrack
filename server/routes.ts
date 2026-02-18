@@ -5395,6 +5395,99 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Job Proof Pack HTML Preview (for iframe preview before download)
+  app.get("/api/jobs/:jobId/proof-pack/preview", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobId = req.params.jobId;
+      const userId = userContext.effectiveUserId;
+
+      const job = await storage.getJob(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const client = job.clientId ? await storage.getClientById(job.clientId) : null;
+      const businessRaw = await storage.getBusinessSettingsByUserId(userId);
+      if (!businessRaw) {
+        return res.status(404).json({ error: 'Business settings not found' });
+      }
+
+      const { generateJobProofPackPDF, resolveBusinessLogoForPdf } = await import('./pdfService');
+      const business = await resolveBusinessLogoForPdf(businessRaw);
+
+      const rawTimeEntries = await storage.getTimeEntriesForJob(jobId);
+      const ownerUser = await storage.getUser(userId);
+      const ownerName = [ownerUser?.firstName, ownerUser?.lastName].filter(Boolean).join(' ') || 'Owner';
+
+      const timeEntries = rawTimeEntries.map((e: any) => {
+        const durationMinutes = e.endTime
+          ? Math.floor((new Date(e.endTime).getTime() - new Date(e.startTime).getTime()) / 60000)
+          : (e.duration || 0);
+        return {
+          workerName: e.userId === userId ? ownerName : (e.workerName || 'Team Member'),
+          startTime: e.startTime?.toISOString?.() || String(e.startTime),
+          endTime: e.endTime ? (e.endTime?.toISOString?.() || String(e.endTime)) : undefined,
+          duration: durationMinutes,
+          billable: e.billable !== false,
+        };
+      });
+
+      const materials = await storage.getJobMaterials(jobId, userId);
+
+      const { getJobPhotos } = await import('./photoService');
+      const rawPhotos = await getJobPhotos(jobId, userId);
+      const photos = rawPhotos
+        .filter(p => p.signedUrl)
+        .map(p => ({
+          url: p.signedUrl!,
+          caption: p.caption || undefined,
+          category: p.category || 'general',
+          createdAt: p.createdAt ? (p.createdAt instanceof Date ? p.createdAt.toISOString() : String(p.createdAt)) : undefined,
+        }));
+
+      let invoiceData: { number: string; date: string; total: string; gstAmount: string; status: string } | null = null;
+      try {
+        const linkedInvoices = await db.select().from(invoices).where(eq(invoices.jobId, jobId)).limit(1);
+        if (linkedInvoices.length > 0) {
+          const inv = linkedInvoices[0];
+          invoiceData = {
+            number: inv.invoiceNumber || inv.id.slice(0, 8),
+            date: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-AU') : '-',
+            total: inv.total || '0',
+            gstAmount: inv.gstAmount || '0',
+            status: inv.status || 'draft',
+          };
+        }
+      } catch (e) {
+        console.error('Error fetching invoice for proof pack preview:', e);
+      }
+
+      const html = generateJobProofPackPDF({
+        job,
+        business,
+        client: client || { name: 'Unknown Client' },
+        timeEntries,
+        materials: materials.map(m => ({
+          name: m.name,
+          quantity: m.quantity || undefined,
+          unitCost: m.unitCost || undefined,
+          totalCost: m.totalCost || undefined,
+          supplier: m.supplier || undefined,
+          status: m.status || undefined,
+        })),
+        photos,
+        invoice: invoiceData,
+      });
+
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+    } catch (error) {
+      console.error("Error generating proof pack preview:", error);
+      res.status(500).json({ error: "Failed to generate proof pack preview" });
+    }
+  });
+
   // Job Proof Pack PDF download
   app.get("/api/jobs/:jobId/proof-pack", requireAuth, async (req: any, res) => {
     try {

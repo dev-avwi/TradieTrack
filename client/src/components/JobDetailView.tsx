@@ -258,6 +258,7 @@ export default function JobDetailView({
   const [siteUpdatePhoto, setSiteUpdatePhoto] = useState<File | null>(null);
   const [siteUpdatePhotoPreview, setSiteUpdatePhotoPreview] = useState<string | null>(null);
   const [selectedDurationEstimate, setSelectedDurationEstimate] = useState<string>('');
+  const [proofPackPreviewOpen, setProofPackPreviewOpen] = useState(false);
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -1908,9 +1909,7 @@ export default function JobDetailView({
               <Button
                 variant="outline"
                 className="flex-1 gap-2"
-                onClick={() => {
-                  window.open(`/api/jobs/${jobId}/proof-pack`, '_blank');
-                }}
+                onClick={() => setProofPackPreviewOpen(true)}
                 data-testid="button-proof-pack"
               >
                 <FileDown className="h-4 w-4" />
@@ -3939,6 +3938,29 @@ export default function JobDetailView({
               {assignEquipmentMutation.isPending ? 'Assigning...' : 'Assign'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={proofPackPreviewOpen} onOpenChange={setProofPackPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Job Proof Pack</DialogTitle>
+          </DialogHeader>
+          <iframe 
+            src={`/api/jobs/${jobId}/proof-pack/preview`}
+            className="w-full border rounded-md bg-white"
+            style={{ height: '65vh' }}
+            title="Proof Pack Preview"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setProofPackPreviewOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => window.open(`/api/jobs/${jobId}/proof-pack`, '_blank')}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </PageShell>

@@ -480,7 +480,12 @@ function HeroMap({
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
           <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
         </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '40%', background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 100%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
+          style={{ 
+            height: '60%', 
+            background: 'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 25%, hsl(var(--background) / 0.4) 60%, transparent 100%)' 
+          }} 
+        />
       </div>
     );
   }
@@ -555,7 +560,12 @@ function HeroMap({
           <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
         )}
       </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" style={{ height: '40%', background: 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 100%)' }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
+        style={{ 
+          height: '60%', 
+          background: 'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 25%, hsl(var(--background) / 0.4) 60%, transparent 100%)' 
+        }} 
+      />
 
       {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
         <div className="absolute top-16 left-3 z-[1000]">
