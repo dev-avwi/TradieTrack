@@ -14,7 +14,6 @@ import {
   Calendar,
   Briefcase,
   ArrowRight,
-  ChevronDown,
 } from "lucide-react";
 
 interface ActionItem {
@@ -123,12 +122,6 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     queryKey: ["/api/bi/action-center"],
   });
 
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
-  const toggleSection = (key: string) => {
-    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const getCategoryIcon = (category: string) => {
     const config = categoryConfig[category];
     if (!config) return Briefcase;
@@ -179,21 +172,17 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       )}
 
       {data && !isEmpty && (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {sectionConfig.map((section) => {
             const items = data.sections[section.key];
             const count = data.summary[section.countKey];
             if (!items || items.length === 0) return null;
 
-            const isCollapsed = collapsed[section.key];
             const SectionIcon = section.icon;
 
             return (
-              <div key={section.key} className="space-y-2">
-                <button
-                  className="flex items-center gap-2 w-full text-left py-1 group"
-                  onClick={() => toggleSection(section.key)}
-                >
+              <div key={section.key} className="space-y-3">
+                <div className="flex items-center gap-2 py-1">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: section.bgColor }}
@@ -209,71 +198,63 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                   <Badge variant="outline" className="no-default-hover-elevate text-xs">
                     {count}
                   </Badge>
-                  <ChevronDown
-                    className="h-4 w-4 text-muted-foreground ml-auto transition-transform"
-                    style={{
-                      transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
-                    }}
-                  />
-                </button>
+                </div>
 
-                {!isCollapsed && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                    {items.map((action) => {
-                      const CategoryIcon = getCategoryIcon(action.category);
-                      return (
-                        <Card key={action.id} className="hover-elevate cursor-pointer" onClick={() => navigate(action.ctaUrl)}>
-                          <CardContent className="p-4">
-                            <div className="flex flex-col gap-3">
-                              <div className="flex items-start justify-between gap-3 flex-wrap">
-                                <Badge variant="outline" className="no-default-hover-elevate text-xs gap-1">
-                                  <CategoryIcon
-                                    className="h-3 w-3"
-                                    style={{ color: getCategoryColor(action.category) }}
-                                  />
-                                  {action.category}
-                                </Badge>
-                              </div>
-                              <div>
-                                <p className="text-sm font-semibold text-foreground">
-                                  {action.title}
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {action.description}
-                                </p>
-                              </div>
-                              {action.impact && (
-                                <p className="text-xs text-muted-foreground">
-                                  {action.metric && (
-                                    <span
-                                      className="font-semibold text-foreground"
-                                    >
-                                      {action.metric}
-                                    </span>
-                                  )}{" "}
-                                  {action.impact}
-                                </p>
-                              )}
-                              <div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(action.ctaUrl);
-                                  }}
-                                >
-                                  {action.cta}
-                                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                                </Button>
-                              </div>
+                <div className="space-y-2">
+                  {items.map((action) => {
+                    const CategoryIcon = getCategoryIcon(action.category);
+                    return (
+                      <Card key={action.id} className="hover-elevate cursor-pointer" onClick={() => navigate(action.ctaUrl)}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <Badge variant="outline" className="no-default-hover-elevate text-xs gap-1">
+                                <CategoryIcon
+                                  className="h-3 w-3"
+                                  style={{ color: getCategoryColor(action.category) }}
+                                />
+                                {action.category}
+                              </Badge>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">
+                                {action.title}
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {action.description}
+                              </p>
+                            </div>
+                            {action.impact && (
+                              <p className="text-xs text-muted-foreground">
+                                {action.metric && (
+                                  <span
+                                    className="font-semibold text-foreground"
+                                  >
+                                    {action.metric}
+                                  </span>
+                                )}{" "}
+                                {action.impact}
+                              </p>
+                            )}
+                            <div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(action.ctaUrl);
+                                }}
+                              >
+                                {action.cta}
+                                <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
