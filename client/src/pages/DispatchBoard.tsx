@@ -25,6 +25,7 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
+  ChevronDown,
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
@@ -152,6 +153,19 @@ interface ScheduleSuggestionsResponse {
   suggestions: ScheduleSuggestion[];
   summary: string;
   optimizationNotes?: string[];
+}
+
+interface OpsHealth {
+  todayJobCount: number;
+  unassignedJobs: number;
+  overdueJobs: number;
+  overCapacityWorkers: number;
+  conflicts: Array<{ memberId: string; memberName: string; jobs: Array<{ id: string; title: string; time: string }> }>;
+  conflictCount: number;
+  overdueInvoices: number;
+  unpaidInvoiceTotal: number;
+  activeWorkers: number;
+  totalSeverity: number;
 }
 
 interface DispatchJob {
@@ -411,6 +425,137 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
   );
 }
 
+function OpsHealthBanner({ opsHealth }: { opsHealth?: OpsHealth }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!opsHealth) return null;
+
+  const hasIssues = opsHealth.conflictCount > 0 || opsHealth.overdueJobs > 0 ||
+    opsHealth.unassignedJobs > 0 || opsHealth.overCapacityWorkers > 0 || opsHealth.overdueInvoices > 0;
+
+  if (!hasIssues) return null;
+
+  const severity = opsHealth.conflictCount > 0 ? 'critical' :
+    (opsHealth.overdueJobs > 0 || opsHealth.overCapacityWorkers > 0) ? 'warning' : 'info';
+
+  return (
+    <div className={`rounded-lg border px-3 py-2 mb-3 ${
+      severity === 'critical' ? 'bg-destructive/5 border-destructive/20' :
+      severity === 'warning' ? 'bg-amber-500/5 border-amber-500/20' :
+      'bg-muted/50 border-border'
+    }`}>
+      <div
+        className="flex items-center gap-3 cursor-pointer flex-wrap"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {severity === 'critical' ? (
+            <AlertCircle className="h-4 w-4 text-destructive" />
+          ) : (
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+          )}
+          <span className={`text-xs font-semibold ${
+            severity === 'critical' ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'
+          }`}>
+            Ops Alert
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap flex-1">
+          {opsHealth.conflictCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-destructive/10 text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {opsHealth.conflictCount} Conflicts
+            </span>
+          )}
+          {opsHealth.overdueJobs > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Clock className="h-3 w-3" />
+              {opsHealth.overdueJobs} Overdue
+            </span>
+          )}
+          {opsHealth.unassignedJobs > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Briefcase className="h-3 w-3" />
+              {opsHealth.unassignedJobs} Unassigned
+            </span>
+          )}
+          {opsHealth.overCapacityWorkers > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Users className="h-3 w-3" />
+              {opsHealth.overCapacityWorkers} Over Capacity
+            </span>
+          )}
+          {opsHealth.overdueInvoices > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="h-3 w-3" />
+              {opsHealth.overdueInvoices} Overdue Invoices
+            </span>
+          )}
+        </div>
+
+        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+      </div>
+
+      {expanded && opsHealth.conflicts.length > 0 && (
+        <div className="mt-2 pt-2 border-t space-y-1.5">
+          <p className="text-xs font-medium text-destructive">Schedule Conflicts:</p>
+          {opsHealth.conflicts.map((conflict, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs">
+              <AlertCircle className="h-3 w-3 text-destructive mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="font-medium">{conflict.memberName}</span>
+                <span className="text-muted-foreground"> has overlapping jobs: </span>
+                {conflict.jobs.map((j, k) => (
+                  <span key={j.id}>
+                    {k > 0 && ', '}
+                    <span className="font-medium">{j.title}</span>
+                    <span className="text-muted-foreground"> ({j.time})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function detectScheduleConflicts(jobs: Job[]): Set<string> {
+  const conflictIds = new Set<string>();
+  const jobsWithTimes = jobs
+    .filter(j => j.scheduledAt && j.scheduledTime)
+    .map(j => {
+      const { hour, minute } = parseJobTime(j.scheduledTime);
+      const startMinutes = hour * 60 + minute;
+      const duration = j.estimatedDuration || 60;
+      const endMinutes = startMinutes + duration;
+      return { ...j, startMinutes, endMinutes };
+    });
+
+  const byAssignee: Record<string, typeof jobsWithTimes> = {};
+  jobsWithTimes.forEach(j => {
+    const key = j.assignedTo || 'owner';
+    if (!byAssignee[key]) byAssignee[key] = [];
+    byAssignee[key].push(j);
+  });
+
+  Object.values(byAssignee).forEach(memberJobs => {
+    memberJobs.sort((a, b) => a.startMinutes - b.startMinutes);
+    for (let i = 0; i < memberJobs.length; i++) {
+      for (let k = i + 1; k < memberJobs.length; k++) {
+        if (memberJobs[i].endMinutes > memberJobs[k].startMinutes) {
+          conflictIds.add(memberJobs[i].id);
+          conflictIds.add(memberJobs[k].id);
+        }
+      }
+    }
+  });
+
+  return conflictIds;
+}
+
 export default function DispatchBoard() {
   const [topView, setTopView] = useState<'schedule' | 'board' | 'map'>('schedule');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -457,6 +602,11 @@ export default function DispatchBoard() {
     },
     enabled: showAISuggestions,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const { data: opsHealth } = useQuery<OpsHealth>({
+    queryKey: ['/api/ops/health'],
+    refetchInterval: 30000,
   });
 
   // Apply AI suggestion mutation
@@ -611,6 +761,19 @@ export default function DispatchBoard() {
     });
   }, [teamMembers, scheduledJobsForDate]);
 
+  const getBestFitWorker = useCallback(() => {
+    const available = teamMembersWithJobs.filter(m => m.totalHours < m.capacity);
+    if (available.length === 0) return null;
+    return available.reduce((best, curr) => 
+      (curr.totalHours / curr.capacity) < (best.totalHours / best.capacity) ? curr : best
+    );
+  }, [teamMembersWithJobs]);
+
+  const conflictJobIds = useMemo(() => 
+    detectScheduleConflicts(scheduledJobsForDate),
+    [scheduledJobsForDate]
+  );
+
   const handleDragStart = (job: Job, memberId: string | null) => {
     setDraggedJob({ job, originMemberId: memberId });
   };
@@ -645,6 +808,28 @@ export default function DispatchBoard() {
     console.log('[DispatchBoard] handleDrop - memberId received:', memberId);
     console.log('[DispatchBoard] handleDrop - jobId:', draggedJob.job.id);
     console.log('[DispatchBoard] handleDrop - full mutation payload:', mutationPayload);
+
+    const existingJobsForMember = scheduledJobsForDate.filter(j => 
+      (j.assignedTo === (memberId === 'owner' ? null : memberId) || (!j.assignedTo && memberId === 'owner')) &&
+      j.id !== draggedJob.job.id
+    );
+    const newJobStart = hour * 60;
+    const newJobEnd = newJobStart + (draggedJob.job.estimatedDuration || 60);
+    const hasConflict = existingJobsForMember.some(j => {
+      if (!j.scheduledTime) return false;
+      const { hour: jHour, minute: jMin } = parseJobTime(j.scheduledTime);
+      const jStart = jHour * 60 + jMin;
+      const jEnd = jStart + (j.estimatedDuration || 60);
+      return newJobStart < jEnd && newJobEnd > jStart;
+    });
+
+    if (hasConflict) {
+      toast({
+        title: "Schedule conflict",
+        description: `This time overlaps with another job for this worker. The job was still assigned - review the schedule.`,
+        variant: "destructive",
+      });
+    }
 
     rescheduleJobMutation.mutate(mutationPayload);
 
@@ -841,6 +1026,8 @@ export default function DispatchBoard() {
           </div>
         </div>
       </div>
+
+      <OpsHealthBanner opsHealth={opsHealth} />
 
       {topView === 'board' && (
         dispatchLoading ? (
@@ -1178,7 +1365,7 @@ export default function DispatchBoard() {
                               onDragStart={() => handleDragStart(job, member.memberId)}
                               onDragEnd={() => setDraggedJob(null)}
                               onClick={() => handleJobClick(job, 'reassign')}
-                              className={`absolute mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                              className={`absolute mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
                               style={{
                                 top: top + 1,
                                 left: leftOffset,
@@ -1193,6 +1380,9 @@ export default function DispatchBoard() {
                               <div className="p-2 h-full flex flex-col">
                                 <div className="flex items-start gap-1">
                                   <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                  {conflictJobIds.has(job.id) && (
+                                    <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                                  )}
                                   <div className="flex-1 min-w-0">
                                     <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
                                       {job.title}
@@ -1281,6 +1471,27 @@ export default function DispatchBoard() {
                                   <span className="truncate">{job.address}</span>
                                 </div>
                               )}
+                              {(() => {
+                                const bestFit = getBestFitWorker();
+                                if (!bestFit) return null;
+                                return (
+                                  <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-dashed">
+                                    <Sparkles className="h-3 w-3 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+                                    <span className="text-[10px] text-muted-foreground">Available:</span>
+                                    <Avatar className="h-3.5 w-3.5">
+                                      <AvatarFallback className="text-[7px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}>
+                                        {(bestFit.firstName?.[0] || '') + (bestFit.lastName?.[0] || '')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-[10px] font-medium truncate">
+                                      {bestFit.firstName}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      ({bestFit.totalHours}h/{bestFit.capacity}h)
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>

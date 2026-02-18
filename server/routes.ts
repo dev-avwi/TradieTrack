@@ -13648,6 +13648,133 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Get operational health metrics for the dispatch board
+  app.get("/api/ops/health", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = req.userId;
+      const effectiveUserId = userContext.effectiveUserId;
+      
+      const allJobs = await storage.getJobs(effectiveUserId);
+      const invoices = await storage.getInvoices(effectiveUserId);
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      
+      const todayJobs = allJobs.filter(j => {
+        if (!j.scheduledAt) return false;
+        return new Date(j.scheduledAt).toISOString().split('T')[0] === todayStr;
+      });
+      
+      const unassignedJobs = allJobs.filter(j => 
+        !j.assignedTo && 
+        ['pending', 'scheduled'].includes((j.status || '').toLowerCase())
+      ).length;
+      
+      const overdueJobs = todayJobs.filter(j => {
+        if (['done', 'completed', 'invoiced', 'cancelled'].includes((j.status || '').toLowerCase())) return false;
+        if (!j.scheduledAt || !j.scheduledTime) return false;
+        const scheduledTime = new Date(j.scheduledAt);
+        if (j.scheduledTime) {
+          const [h, m] = j.scheduledTime.split(':').map(Number);
+          scheduledTime.setHours(h || 0, m || 0);
+        }
+        return scheduledTime < now && (j.status || '').toLowerCase() !== 'in_progress';
+      }).length;
+      
+      const activeMembers = teamMembers.filter((m: any) => m.inviteStatus === 'accepted');
+      const memberJobCounts: Record<string, number> = {};
+      const memberJobMinutes: Record<string, number> = {};
+      todayJobs.forEach(j => {
+        const assignee = j.assignedTo || 'owner';
+        memberJobCounts[assignee] = (memberJobCounts[assignee] || 0) + 1;
+        memberJobMinutes[assignee] = (memberJobMinutes[assignee] || 0) + (j.estimatedDuration || 60);
+      });
+      
+      const overCapacityWorkers = Object.entries(memberJobMinutes).filter(
+        ([_, minutes]) => minutes > 480
+      ).length;
+      
+      const conflicts: Array<{ memberId: string; memberName: string; jobs: Array<{ id: string; title: string; time: string }> }> = [];
+      
+      const memberSchedules: Record<string, Array<{ id: string; title: string; start: Date; end: Date; time: string }>> = {};
+      todayJobs.forEach(j => {
+        if (!j.scheduledAt || !j.scheduledTime) return;
+        const assignee = j.assignedTo || 'owner';
+        if (!memberSchedules[assignee]) memberSchedules[assignee] = [];
+        
+        const start = new Date(j.scheduledAt!);
+        if (j.scheduledTime) {
+          const [h, m] = j.scheduledTime.split(':').map(Number);
+          start.setHours(h || 0, m || 0, 0, 0);
+        }
+        const end = new Date(start.getTime() + (j.estimatedDuration || 60) * 60 * 1000);
+        
+        memberSchedules[assignee].push({
+          id: j.id,
+          title: j.title,
+          start,
+          end,
+          time: j.scheduledTime || 'TBD',
+        });
+      });
+      
+      Object.entries(memberSchedules).forEach(([memberId, schedule]) => {
+        schedule.sort((a, b) => a.start.getTime() - b.start.getTime());
+        const overlaps: Array<{ id: string; title: string; time: string }> = [];
+        for (let i = 0; i < schedule.length; i++) {
+          for (let k = i + 1; k < schedule.length; k++) {
+            if (schedule[i].end > schedule[k].start) {
+              if (!overlaps.find(o => o.id === schedule[i].id)) {
+                overlaps.push({ id: schedule[i].id, title: schedule[i].title, time: schedule[i].time });
+              }
+              if (!overlaps.find(o => o.id === schedule[k].id)) {
+                overlaps.push({ id: schedule[k].id, title: schedule[k].title, time: schedule[k].time });
+              }
+            }
+          }
+        }
+        if (overlaps.length > 0) {
+          const member = activeMembers.find((m: any) => m.memberId === memberId);
+          conflicts.push({
+            memberId,
+            memberName: member ? `${(member as any).firstName || ''} ${(member as any).lastName || ''}`.trim() : memberId === 'owner' ? 'You' : 'Unknown',
+            jobs: overlaps,
+          });
+        }
+      });
+      
+      const overdueInvoices = invoices.filter((inv: any) => {
+        if (!inv.dueDate) return false;
+        if (['paid', 'cancelled', 'void'].includes((inv.status || '').toLowerCase())) return false;
+        return new Date(inv.dueDate) < now;
+      }).length;
+      
+      const unpaidInvoiceTotal = invoices
+        .filter((inv: any) => {
+          if (['paid', 'cancelled', 'void', 'draft'].includes((inv.status || '').toLowerCase())) return false;
+          return true;
+        })
+        .reduce((sum: number, inv: any) => sum + (Number(inv.total) || 0), 0);
+      
+      res.json({
+        todayJobCount: todayJobs.length,
+        unassignedJobs,
+        overdueJobs,
+        overCapacityWorkers,
+        conflicts,
+        conflictCount: conflicts.reduce((sum, c) => sum + c.jobs.length, 0),
+        overdueInvoices,
+        unpaidInvoiceTotal,
+        activeWorkers: activeMembers.length + 1,
+        totalSeverity: (conflicts.length > 0 ? 2 : 0) + (overdueJobs > 0 ? 1 : 0) + (unassignedJobs > 3 ? 1 : 0) + (overCapacityWorkers > 0 ? 1 : 0),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get ops health' });
+    }
+  });
+
   // Send "Running Late" notification to client
   app.post("/api/jobs/:id/running-late", requireAuth, async (req: any, res) => {
     try {
