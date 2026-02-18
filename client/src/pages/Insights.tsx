@@ -14,6 +14,9 @@ import {
   Percent,
   ArrowUpRight,
   ArrowDownRight,
+  ChevronRight,
+  FileBarChart,
+  PieChart,
 } from "lucide-react";
 
 interface InsightsProps {
@@ -388,6 +391,48 @@ export default function Insights({ onNavigate }: InsightsProps) {
           )}
         </>
       )}
+
+      <div className="mt-6">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-3">
+          Detailed Reports
+        </p>
+        <div className="space-y-2">
+          <Card
+            className="cursor-pointer hover-elevate"
+            onClick={() => onNavigate?.("/reports/profitability")}
+          >
+            <CardContent className="p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <PieChart className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Profitability Report</p>
+                    <p className="text-xs text-muted-foreground">By job, client, and worker</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover-elevate"
+            onClick={() => onNavigate?.("/reports")}
+          >
+            <CardContent className="p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <FileBarChart className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">All Reports</p>
+                    <p className="text-xs text-muted-foreground">Financials, activity, and exports</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
