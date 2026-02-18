@@ -73,7 +73,7 @@ function AdminSidebar({
     <Sidebar data-testid="admin-sidebar">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-transparent flex items-center justify-center">
+          <div className="w-6 h-6 rounded overflow-hidden bg-transparent flex items-center justify-center">
             <img
               src={appIconUrl}
               alt="JobRunner Admin"

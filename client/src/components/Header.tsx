@@ -106,7 +106,7 @@ export default function Header({
             <img 
               src={appIconUrl} 
               alt="JobRunner" 
-              className="h-10 w-10 object-contain"
+              className="h-6 w-6 object-contain"
               data-testid="img-header-logo"
             />
             <span 
