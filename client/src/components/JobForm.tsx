@@ -18,7 +18,9 @@ import UpgradePrompt from "@/components/UpgradePrompt";
 import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
+import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import { useSearch } from "wouter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -33,6 +35,7 @@ const jobFormSchema = z.object({
   scheduledAt: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   estimatedHours: z.string().optional(),
+  requiresInspection: z.boolean().optional(),
   customFields: z.record(z.any()).optional(),
 });
 
@@ -111,6 +114,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       scheduledAt: "",
       priority: "medium",
       estimatedHours: "",
+      requiresInspection: false,
       customFields: {},
     },
   });
@@ -730,6 +734,19 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <Checkbox
+                  id="requiresInspection"
+                  checked={!!form.getValues("requiresInspection")}
+                  onCheckedChange={(checked) => form.setValue("requiresInspection", !!checked)}
+                  data-testid="checkbox-requires-inspection"
+                />
+                <Label htmlFor="requiresInspection" className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Search className="w-4 h-4" />
+                  Requires site inspection first
+                </Label>
               </div>
 
               <div className="flex gap-4">

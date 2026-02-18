@@ -12443,6 +12443,9 @@ Be specific about materials, colors, and features that would be included.`
       if (body.startedAt && typeof body.startedAt === 'string') {
         body.startedAt = new Date(body.startedAt);
       }
+      if (body.inspectionCompletedAt && typeof body.inspectionCompletedAt === 'string') {
+        body.inspectionCompletedAt = new Date(body.inspectionCompletedAt);
+      }
       
       const data = insertJobSchema.partial().parse(body);
       console.log('[PATCH /api/jobs/:id] Parsed data after validation:', JSON.stringify(data, null, 2));
@@ -12859,6 +12862,33 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error updating job status:", error);
       res.status(500).json({ error: "Failed to update job status" });
+    }
+  });
+
+  app.post("/api/jobs/:id/complete-inspection", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      if (!job.requiresInspection) {
+        return res.status(400).json({ error: "This job does not require inspection" });
+      }
+      
+      const updatedJob = await storage.updateJob(req.params.id, effectiveUserId, {
+        inspectionCompletedAt: new Date(),
+        inspectionNotes: req.body.notes || null,
+      });
+      
+      res.json(updatedJob);
+    } catch (error) {
+      console.error("Error completing inspection:", error);
+      res.status(500).json({ error: "Failed to complete inspection" });
     }
   });
 
@@ -32695,7 +32725,7 @@ Respond with JSON in this format:
     try {
       const userId = req.userId!;
       const { id } = req.params;
-      const { createJob, createQuote } = req.body;
+      const { createJob, createQuote, createInspection } = req.body;
       
       // Get the lead
       const lead = await storage.getLead(id, userId);
@@ -32722,8 +32752,19 @@ Respond with JSON in this format:
       let job = null;
       let quote = null;
       
+      // Optionally create an inspection job
+      if (createInspection) {
+        job = await storage.createJob({
+          userId,
+          clientId: client.id,
+          title: `Inspection - ${lead.name}`,
+          description: lead.notes || '',
+          status: 'pending',
+          requiresInspection: true,
+        });
+      }
       // Optionally create a job
-      if (createJob) {
+      else if (createJob) {
         job = await storage.createJob({
           userId,
           clientId: client.id,

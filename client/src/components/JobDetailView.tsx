@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -100,6 +100,9 @@ interface Job {
   workerEta?: string;
   workerEtaMinutes?: number;
   portalEnabled?: boolean;
+  requiresInspection?: boolean;
+  inspectionCompletedAt?: string;
+  inspectionNotes?: string;
 }
 
 interface Client {
@@ -259,6 +262,7 @@ export default function JobDetailView({
   const [siteUpdatePhotoPreview, setSiteUpdatePhotoPreview] = useState<string | null>(null);
   const [selectedDurationEstimate, setSelectedDurationEstimate] = useState<string>('');
   const [proofPackPreviewOpen, setProofPackPreviewOpen] = useState(false);
+  const [inspectionNotesInput, setInspectionNotesInput] = useState("");
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -603,6 +607,20 @@ export default function JobDetailView({
         title: "Time Saved",
         description: "Your time has been recorded",
       });
+    },
+  });
+
+  const completeInspectionMutation = useMutation({
+    mutationFn: async (notes: string) => {
+      return apiRequest('POST', `/api/jobs/${jobId}/complete-inspection`, { notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+      toast({ title: "Inspection Complete", description: "Inspection marked as done. You can now create a quote." });
+      setInspectionNotesInput("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to mark inspection as complete", variant: "destructive" });
     },
   });
 
@@ -2573,6 +2591,100 @@ export default function JobDetailView({
 
         {/* Right column - Secondary/supporting content */}
         <div className="flex flex-col gap-4 lg:col-span-2">
+          {job.requiresInspection && !job.inspectionCompletedAt && !isTradie && (
+            <Card className="border-2" style={{ borderColor: 'hsl(45 93% 47% / 0.5)' }} data-testid="card-inspection-required">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(45 93% 47% / 0.15)' }}>
+                    <Search className="h-5 w-5" style={{ color: 'hsl(45 93% 47%)' }} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Inspection Required</p>
+                    <p className="text-xs text-muted-foreground">Complete the site inspection, then create a quote for the work</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Inspection notes (optional)..."
+                    value={inspectionNotesInput}
+                    onChange={(e) => setInspectionNotesInput(e.target.value)}
+                    className="text-sm"
+                    data-testid="textarea-inspection-notes"
+                  />
+                  <Button
+                    className="w-full"
+                    style={{ backgroundColor: 'hsl(45 93% 47%)', color: 'white' }}
+                    onClick={() => completeInspectionMutation.mutate(inspectionNotesInput)}
+                    disabled={completeInspectionMutation.isPending}
+                    data-testid="button-complete-inspection"
+                  >
+                    {completeInspectionMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Mark Inspection Complete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {job.requiresInspection && job.inspectionCompletedAt && !linkedQuote && !isTradie && (
+            <Card className="border-2" style={{ borderColor: 'hsl(221.2 83.2% 53.3% / 0.5)' }} data-testid="card-inspection-done-quote">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(221.2 83.2% 53.3% / 0.15)' }}>
+                    <FileText className="h-5 w-5" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Inspection Done — Create Quote</p>
+                    <p className="text-xs text-muted-foreground">
+                      Inspection completed {job.inspectionCompletedAt ? new Date(job.inspectionCompletedAt).toLocaleDateString() : ''}. Ready to quote the work.
+                    </p>
+                  </div>
+                </div>
+                {job.inspectionNotes && (
+                  <p className="text-xs text-muted-foreground mb-3 pl-1 italic">Notes: {job.inspectionNotes}</p>
+                )}
+                <Button
+                  className="w-full"
+                  style={{ backgroundColor: 'hsl(221.2 83.2% 53.3%)', color: 'white' }}
+                  onClick={() => onCreateQuote?.(jobId)}
+                  data-testid="button-create-quote-after-inspection"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create Quote
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {!job.requiresInspection && (job.status === 'pending' || job.status === 'scheduled') && !linkedQuote && !isTradie && (
+            <Card data-testid="card-ready-to-quote">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Ready to Quote</p>
+                    <p className="text-xs text-muted-foreground">Create a quote for this job to get started</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => onCreateQuote?.(jobId)}
+                  data-testid="button-create-quote-prompt"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create Quote
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {job.status === 'done' && !linkedInvoice && !isTradie && (
             <Card className="border-2" style={{ borderColor: 'hsl(142.1 76.2% 36.3% / 0.5)' }} data-testid="card-create-invoice-prompt">
               <CardContent className="py-4">

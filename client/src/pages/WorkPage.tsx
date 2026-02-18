@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Archive,
   RotateCcw,
-  Trash2
+  Trash2,
+  Search
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import { useJobs, useUpdateJob, useArchiveJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +55,8 @@ interface Job {
   address?: string;
   scheduledAt?: string;
   status: JobStatus;
+  requiresInspection?: boolean;
+  inspectionCompletedAt?: string;
   isXeroImport?: boolean;
   xeroJobId?: string;
 }
@@ -104,6 +108,7 @@ export default function WorkPage({
     inProgress: jobs.filter(j => j.status === 'in_progress').length,
     done: jobs.filter(j => j.status === 'done').length,
     invoiced: jobs.filter(j => j.status === 'invoiced').length,
+    inspection: jobs.filter(j => j.requiresInspection && !j.inspectionCompletedAt).length,
     archived: showArchived ? jobs.length : undefined,
   }), [jobs, showArchived]);
 
@@ -115,7 +120,11 @@ export default function WorkPage({
         (job.clientName || '').toLowerCase().includes(search) ||
         (job.address || '').toLowerCase().includes(search);
 
-      const matchesFilter = activeFilter === 'all' || activeFilter === 'archived' || job.status === activeFilter;
+      const matchesFilter = activeFilter === 'all' || activeFilter === 'archived'
+        ? true
+        : activeFilter === 'inspection'
+        ? (job.requiresInspection && !job.inspectionCompletedAt)
+        : job.status === activeFilter;
 
       return matchesSearch && matchesFilter;
     });
@@ -350,6 +359,12 @@ export default function WorkPage({
               </h4>
               <div className="flex items-center gap-1 shrink-0">
                 <StatusBadge status={job.status} />
+                {job.requiresInspection && (
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Search className="w-3 h-3" />
+                    {job.inspectionCompletedAt ? 'Inspected' : 'Inspection'}
+                  </Badge>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" data-testid={`job-card-menu-${job.id}`}>
@@ -500,6 +515,7 @@ export default function WorkPage({
           { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
           { id: 'done', label: 'Completed', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
           { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
+          { id: 'inspection', label: 'Inspection', count: stats.inspection, icon: <Search className="h-3 w-3" /> },
           { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> },
         ]}
         activeId={activeFilter}

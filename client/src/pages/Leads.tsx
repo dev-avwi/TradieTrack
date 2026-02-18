@@ -121,6 +121,7 @@ export default function Leads() {
   const [convertOptions, setConvertOptions] = useState({
     createJob: false,
     createQuote: false,
+    createInspection: false,
   });
 
   const { data: leads = [], isLoading } = useQuery<Lead[]>({
@@ -214,10 +215,10 @@ export default function Leads() {
   });
 
   const convertMutation = useMutation({
-    mutationFn: async ({ id, createJob, createQuote }: { id: string; createJob: boolean; createQuote: boolean }) => {
+    mutationFn: async ({ id, createJob, createQuote, createInspection }: { id: string; createJob: boolean; createQuote: boolean; createInspection: boolean }) => {
       return apiRequest(`/api/leads/${id}/convert`, {
         method: 'POST',
-        body: JSON.stringify({ createJob, createQuote }),
+        body: JSON.stringify({ createJob, createQuote, createInspection }),
         headers: { 'Content-Type': 'application/json' },
       });
     },
@@ -228,7 +229,7 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
       setConvertDialogOpen(false);
       setLeadToConvert(null);
-      setConvertOptions({ createJob: false, createQuote: false });
+      setConvertOptions({ createJob: false, createQuote: false, createInspection: false });
       toast({ title: 'Lead converted to client successfully' });
       
       if (data?.client?.id) {
@@ -301,6 +302,7 @@ export default function Leads() {
       id: leadToConvert.id,
       createJob: convertOptions.createJob,
       createQuote: convertOptions.createQuote,
+      createInspection: convertOptions.createInspection,
     });
   };
 
@@ -679,10 +681,33 @@ export default function Leads() {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Checkbox
+                    id="createInspection"
+                    checked={convertOptions.createInspection}
+                    onCheckedChange={(checked) => setConvertOptions({ 
+                      ...convertOptions, 
+                      createInspection: !!checked,
+                      createJob: !!checked ? false : convertOptions.createJob,
+                      createQuote: !!checked ? false : convertOptions.createQuote
+                    })}
+                    data-testid="checkbox-create-inspection"
+                  />
+                  <Label htmlFor="createInspection" className="flex items-center gap-2 cursor-pointer">
+                    <Search className="w-4 h-4" />
+                    Book an inspection first
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Checkbox
                     id="createJob"
                     checked={convertOptions.createJob}
-                    onCheckedChange={(checked) => setConvertOptions({ ...convertOptions, createJob: !!checked })}
+                    onCheckedChange={(checked) => setConvertOptions({ 
+                      ...convertOptions, 
+                      createJob: !!checked,
+                      createInspection: !!checked ? false : convertOptions.createInspection 
+                    })}
                     data-testid="checkbox-create-job"
+                    disabled={convertOptions.createInspection}
                   />
                   <Label htmlFor="createJob" className="flex items-center gap-2 cursor-pointer">
                     <Briefcase className="w-4 h-4" />
@@ -696,6 +721,7 @@ export default function Leads() {
                     checked={convertOptions.createQuote}
                     onCheckedChange={(checked) => setConvertOptions({ ...convertOptions, createQuote: !!checked })}
                     data-testid="checkbox-create-quote"
+                    disabled={convertOptions.createInspection}
                   />
                   <Label htmlFor="createQuote" className="flex items-center gap-2 cursor-pointer">
                     <FileText className="w-4 h-4" />
@@ -703,6 +729,12 @@ export default function Leads() {
                   </Label>
                 </div>
               </div>
+
+              {convertOptions.createInspection && (
+                <p className="text-xs text-muted-foreground pl-7">
+                  An inspection job will be created. After completing the inspection, you'll be prompted to create a quote.
+                </p>
+              )}
             </div>
           )}
           

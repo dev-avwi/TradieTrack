@@ -695,6 +695,9 @@ export const jobs = pgTable("jobs", {
   workerEta: text("worker_eta"),
   workerEtaMinutes: integer("worker_eta_minutes"),
   portalEnabled: boolean("portal_enabled").default(false),
+  requiresInspection: boolean("requires_inspection").default(false),
+  inspectionCompletedAt: timestamp("inspection_completed_at"),
+  inspectionNotes: text("inspection_notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
