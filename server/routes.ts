@@ -16484,6 +16484,18 @@ Be specific about materials, colors, and features that would be included.`
       const labourItems = await generateLabourLineItems(invoice.jobId, invoiceId, userContext.effectiveUserId);
       const summary = await generateLabourSummary(invoice.jobId, userContext.effectiveUserId);
       
+      const allLineItems = await storage.getInvoiceLineItems(invoiceId);
+      const newSubtotal = allLineItems.reduce((sum, item) => sum + parseFloat(item.total || '0'), 0);
+      const gstRate = invoice.taxRate ? parseFloat(invoice.taxRate) / 100 : 0.1;
+      const gstAmount = Math.round(newSubtotal * gstRate * 100) / 100;
+      const newTotal = newSubtotal + gstAmount;
+
+      await storage.updateInvoice(invoiceId, userContext.effectiveUserId, {
+        subtotal: String(newSubtotal.toFixed(2)),
+        taxAmount: String(gstAmount.toFixed(2)),
+        total: String(newTotal.toFixed(2)),
+      });
+
       const updatedInvoice = await storage.getInvoiceWithLineItems(invoiceId, userContext.effectiveUserId);
       
       res.json({ 
@@ -16501,6 +16513,45 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error("[Generate Labour Lines] Error:", error);
       res.status(500).json({ error: error.message || "Failed to generate labour lines" });
+    }
+  });
+
+  // Remove labour line items from invoice
+  app.delete("/api/invoices/:id/labour-lines", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const invoiceId = req.params.id;
+      const userContext = await getUserContext(req.userId);
+      
+      const invoice = await storage.getInvoice(invoiceId, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      const existingItems = await storage.getInvoiceLineItems(invoiceId);
+      const labourItems = existingItems.filter(item => 
+        item.description.startsWith('Labour —') || item.description.startsWith('Labour -')
+      );
+      
+      for (const item of labourItems) {
+        await storage.deleteInvoiceLineItem(item.id);
+      }
+      
+      const remainingItems = await storage.getInvoiceLineItems(invoiceId);
+      const newSubtotal = remainingItems.reduce((sum, item) => sum + parseFloat(item.total || '0'), 0);
+      const gstRate = invoice.taxRate ? parseFloat(invoice.taxRate) / 100 : 0.1;
+      const gstAmount = Math.round(newSubtotal * gstRate * 100) / 100;
+      const newTotal = newSubtotal + gstAmount;
+      
+      await storage.updateInvoice(invoiceId, userContext.effectiveUserId, {
+        subtotal: String(newSubtotal.toFixed(2)),
+        taxAmount: String(gstAmount.toFixed(2)),
+        total: String(newTotal.toFixed(2)),
+      });
+      
+      res.json({ removed: labourItems.length });
+    } catch (error: any) {
+      console.error("[Remove Labour Lines] Error:", error);
+      res.status(500).json({ error: error.message || "Failed to remove labour lines" });
     }
   });
 

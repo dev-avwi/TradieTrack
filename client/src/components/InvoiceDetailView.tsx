@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,8 @@ export default function InvoiceDetailView({
   const [paymentPlanInstallments, setPaymentPlanInstallments] = useState<number>(3);
   const [paymentPlanFrequency, setPaymentPlanFrequency] = useState<'weekly' | 'fortnightly' | 'monthly'>('fortnightly');
   const [sendingReceipt, setSendingReceipt] = useState(false);
+  const hasLabourLines = invoice?.lineItems?.some((item: any) => item.description?.startsWith('Labour —') || item.description?.startsWith('Labour -'));
+  const [includeLabourLines, setIncludeLabourLines] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const markPaidMutation = useMarkInvoicePaid();
   const recordPaymentMutation = useRecordPayment();
@@ -264,6 +266,10 @@ export default function InvoiceDetailView({
     }
   });
 
+  useEffect(() => {
+    setIncludeLabourLines(!!hasLabourLines);
+  }, [hasLabourLines]);
+
   const generateLabourLinesMutation = useMutation({
     mutationFn: async () => {
       return apiRequest('POST', `/api/invoices/${invoiceId}/generate-labour-lines`);
@@ -281,9 +287,31 @@ export default function InvoiceDetailView({
       });
     },
     onError: (error: any) => {
+      setIncludeLabourLines(false);
       toast({
         title: "Error generating labour lines",
         description: error.message || "Failed to generate labour lines from time tracking",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const removeLabourLinesMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('DELETE', `/api/invoices/${invoiceId}/labour-lines`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+      toast({
+        title: "Labour lines removed",
+        description: "Labour line items have been removed from the invoice",
+      });
+    },
+    onError: (error: any) => {
+      setIncludeLabourLines(true);
+      toast({
+        title: "Error removing labour lines",
+        description: error.message || "Failed to remove labour lines",
         variant: "destructive",
       });
     }
@@ -806,20 +834,24 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               Send
             </Button>
             {invoice.jobId && invoice.status !== 'paid' && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => generateLabourLinesMutation.mutate()}
-                disabled={generateLabourLinesMutation.isPending}
-                data-testid="button-generate-labour-lines"
-              >
-                {generateLabourLinesMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                ) : (
-                  <Clock className="h-4 w-4 mr-1.5" />
-                )}
-                Generate Labour Lines
-              </Button>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={includeLabourLines}
+                  onCheckedChange={(checked) => {
+                    setIncludeLabourLines(checked);
+                    if (checked) {
+                      generateLabourLinesMutation.mutate();
+                    } else {
+                      removeLabourLinesMutation.mutate();
+                    }
+                  }}
+                  id="include-labour-lines"
+                  disabled={generateLabourLinesMutation.isPending || removeLabourLinesMutation.isPending}
+                />
+                <Label htmlFor="include-labour-lines" className="text-xs text-muted-foreground whitespace-nowrap">
+                  Labour lines
+                </Label>
+              </div>
             )}
 
             {(invoice.jobId || invoice.notes) && (

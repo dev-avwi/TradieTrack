@@ -322,6 +322,7 @@ export default function OwnerManagerDashboard({
           data-testid="kpi-jobs-today"
         >
           <CardContent className="text-center py-3 px-2">
+            <CalendarDays className="h-4 w-4 mx-auto mb-1 text-muted-foreground" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
             <p className="text-2xl font-bold">{kpis?.jobsToday || 0}</p>
             <p className="text-[11px] text-muted-foreground font-medium">Jobs Today</p>
           </CardContent>
@@ -332,6 +333,7 @@ export default function OwnerManagerDashboard({
           data-testid="kpi-jobs-to-invoice"
         >
           <CardContent className="text-center py-3 px-2">
+            <DollarSign className="h-4 w-4 mx-auto mb-1 text-muted-foreground" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
             <p className="text-2xl font-bold" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }}>
               {kpis?.jobsToInvoice ?? 0}
             </p>
@@ -344,54 +346,56 @@ export default function OwnerManagerDashboard({
           data-testid="kpi-pending"
         >
           <CardContent className="text-center py-3 px-2">
+            <FileText className="h-4 w-4 mx-auto mb-1 text-muted-foreground" style={{ color: 'hsl(var(--trade))' }} />
             <p className="text-2xl font-bold">{kpis?.quotesAwaiting || 0}</p>
             <p className="text-[11px] text-muted-foreground font-medium">Quotes Out</p>
           </CardContent>
         </Card>
       </div>
 
-      {actionData && actionData.summary.totalCount > 0 && (
-        <Card className="mb-4">
-          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
-            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Target className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
-              Action Centre
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/action-center')} data-testid="button-view-action-center">
-              View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-0 px-4 pb-4">
-            <div className="space-y-2">
-              {actionData.actions.slice(0, 3).map((action) => {
-                const priorityIcon = action.priority === 'fix_now' ? AlertTriangle : action.priority === 'this_week' ? Clock : Lightbulb;
-                const PIcon = priorityIcon;
-                const priorityColor = action.priority === 'fix_now' ? 'hsl(0 84.2% 60.2%)' : action.priority === 'this_week' ? 'hsl(38 92% 50%)' : 'hsl(142.1 76.2% 36.3%)';
-                return (
-                  <div
-                    key={action.id}
-                    className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
-                    onClick={() => onNavigate?.(action.ctaUrl)}
-                    data-testid={`action-item-${action.id}`}
-                  >
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                         style={{ backgroundColor: `${priorityColor}15` }}>
-                      <PIcon className="h-4 w-4" style={{ color: priorityColor }} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {actionData && actionData.summary.totalCount > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Target className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+                Action Centre
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/action-center')} data-testid="button-view-action-center">
+                View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+              </Button>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 pb-4">
+              <div className="space-y-2">
+                {actionData.actions.slice(0, 3).map((action) => {
+                  const priorityIcon = action.priority === 'fix_now' ? AlertTriangle : action.priority === 'this_week' ? Clock : Lightbulb;
+                  const PIcon = priorityIcon;
+                  const priorityColor = action.priority === 'fix_now' ? 'hsl(0 84.2% 60.2%)' : action.priority === 'this_week' ? 'hsl(38 92% 50%)' : 'hsl(142.1 76.2% 36.3%)';
+                  return (
+                    <div
+                      key={action.id}
+                      className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
+                      onClick={() => onNavigate?.(action.ctaUrl)}
+                      data-testid={`action-item-${action.id}`}
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                           style={{ backgroundColor: `${priorityColor}15` }}>
+                        <PIcon className="h-4 w-4" style={{ color: priorityColor }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{action.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{action.impact}</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{action.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{action.impact}</p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      <Card className="mb-4">
+        <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
           <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <CalendarDays className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
@@ -479,6 +483,7 @@ export default function OwnerManagerDashboard({
           )}
         </CardContent>
       </Card>
+      </div>
 
       <ActivityFeed 
         limit={5}
