@@ -482,8 +482,8 @@ function HeroMap({
         </MapContainer>
         <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
           style={{ 
-            height: '60%', 
-            background: 'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 25%, hsl(var(--background) / 0.4) 60%, transparent 100%)' 
+            height: '40%', 
+            background: 'linear-gradient(to top, white 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.5) 70%, transparent 100%)' 
           }} 
         />
       </div>
@@ -562,8 +562,8 @@ function HeroMap({
       </MapContainer>
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
         style={{ 
-          height: '60%', 
-          background: 'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 25%, hsl(var(--background) / 0.4) 60%, transparent 100%)' 
+          height: '40%', 
+          background: 'linear-gradient(to top, white 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.5) 70%, transparent 100%)' 
         }} 
       />
 
@@ -836,11 +836,11 @@ export default function JobPortal() {
           </div>
         </div>
 
-        <div className="relative z-10 -mt-10">
+        <div className="relative z-10 -mt-6">
 
         {job.workerStatus && (
           <div className="px-4">
-            <div className="bg-white rounded-2xl shadow-lg border overflow-visible pt-5 px-4 pb-4">
+            <div className="bg-white rounded-2xl shadow-lg border pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
                   <div className={`w-3 h-3 rounded-full ${statusConfig.dot}`} />

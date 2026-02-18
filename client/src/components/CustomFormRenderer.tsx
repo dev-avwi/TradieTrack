@@ -196,10 +196,7 @@ export function FormRenderer({ form, jobId, onSubmit, onCancel, existingSubmissi
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/form-submissions', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', '/api/form-submissions', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'form-submissions'] });
@@ -213,10 +210,7 @@ export function FormRenderer({ form, jobId, onSubmit, onCancel, existingSubmissi
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/form-submissions/${existingSubmission?.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('PATCH', `/api/form-submissions/${existingSubmission?.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'form-submissions'] });
