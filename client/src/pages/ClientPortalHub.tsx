@@ -431,7 +431,7 @@ export default function ClientPortalHub() {
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-20 h-20 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
             <p className="text-sm text-muted-foreground mt-1">Access your quotes, invoices, and job history</p>
           </div>
@@ -488,7 +488,7 @@ export default function ClientPortalHub() {
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-20 h-20 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
             <p className="text-sm text-muted-foreground mt-1">Secure verification</p>
           </div>
@@ -560,7 +560,7 @@ export default function ClientPortalHub() {
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-20 h-20 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
             <p className="text-sm text-muted-foreground mt-1">Account lookup</p>
           </div>
@@ -622,7 +622,7 @@ export default function ClientPortalHub() {
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(37,99,235,0.03), transparent, transparent)' }} />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-20 h-20 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
             <p className="text-sm text-muted-foreground mt-1">Select your account</p>
           </div>
@@ -694,10 +694,10 @@ export default function ClientPortalHub() {
                   <img
                     src={business.logoUrl}
                     alt={business.businessName || 'Business'}
-                    className="w-12 h-12 object-contain rounded-md bg-white/10 p-1"
+                    className="w-8 h-8 object-contain rounded-md bg-white/10 p-1"
                   />
                 ) : (
-                  <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 object-contain" />
+                  <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
                 )}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base text-white truncate">

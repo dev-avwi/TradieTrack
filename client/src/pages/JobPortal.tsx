@@ -1544,7 +1544,7 @@ export default function JobPortal() {
             Open Client Portal
           </Button>
           <div className="flex items-center justify-center gap-2.5">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-9 h-9 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-7 h-7 object-contain" />
             <span className="text-sm font-medium text-brand/70">Powered by <strong className="text-brand">JobRunner</strong></span>
           </div>
           {business.abn && (

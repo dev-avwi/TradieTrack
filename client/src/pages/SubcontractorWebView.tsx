@@ -542,7 +542,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-slate-900">Subcontractor Portal</h1>
             {tokenInfo && (
               <p className="text-sm text-slate-500 mt-1">
@@ -596,7 +596,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2563EB]/[0.03] via-transparent to-transparent pointer-events-none" />
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
-            <img src={jobrunnerLogo} alt="JobRunner" className="w-12 h-12 mx-auto mb-3 object-contain" />
+            <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-slate-900">Subcontractor Portal</h1>
             {tokenInfo && (
               <p className="text-sm text-slate-500 mt-1">
