@@ -1231,10 +1231,10 @@ export default function JobDetailView({
     return () => clearInterval(interval);
   }, [job?.workerStatusUpdatedAt, job?.workerStatus]);
 
-  const portalFetchedRef = useRef(false);
+  const portalFetchedRef = useRef<string | false>(false);
   useEffect(() => {
-    if (job?.portalEnabled && jobId && !portalUrl && !portalFetchedRef.current) {
-      portalFetchedRef.current = true;
+    if (job?.portalEnabled && jobId && portalFetchedRef.current !== jobId) {
+      portalFetchedRef.current = jobId;
       fetch(`/api/jobs/${jobId}/portal-links`, {
         credentials: 'include',
       }).then(res => res.ok ? res.json() : []).then((tokens: any[]) => {
@@ -1247,7 +1247,7 @@ export default function JobDetailView({
         }
       }).catch(() => { portalFetchedRef.current = false; });
     }
-  }, [job?.portalEnabled, jobId, portalUrl]);
+  }, [job?.portalEnabled, jobId]);
 
   // Portal link mutation - generates client tracking link
   const portalLinkMutation = useMutation({

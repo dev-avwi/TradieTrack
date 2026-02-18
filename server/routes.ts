@@ -14589,7 +14589,7 @@ Be specific about materials, colors, and features that would be included.`
           latitude: job.latitude,
           longitude: job.longitude,
           status: job.status,
-          workerStatus: job.workerStatus,
+          workerStatus: job.status === 'done' ? 'completed' : job.workerStatus,
           workerStatusUpdatedAt: job.workerStatusUpdatedAt,
           workerEta: dynamicEtaText,
           workerEtaMinutes: dynamicEtaMinutes,

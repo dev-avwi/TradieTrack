@@ -933,6 +933,43 @@ export default function JobPortal() {
           </Card>
         </div>
 
+        {(() => {
+          const unpaidInvoices = job.workerStatus === 'completed' 
+            ? documents.invoices.filter(i => i.status !== 'paid') 
+            : [];
+          if (unpaidInvoices.length === 0) return null;
+          const totalDue = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+          return (
+            <div className="mx-4 mt-3 space-y-2">
+              {unpaidInvoices.map((inv) => (
+                <Card 
+                  key={inv.id} 
+                  className="border-2 border-brand/30 bg-brand/5 shadow-md cursor-pointer hover-elevate"
+                  onClick={() => window.location.href = `/portal/invoice/${inv.token}`}
+                >
+                  <CardContent className="py-4 px-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
+                      <CreditCard className="w-5 h-5 text-brand" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {unpaidInvoices.length > 1 ? `Invoice ${inv.invoiceNumber}` : 'Invoice Ready for Payment'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatCurrency(inv.total)}
+                      </p>
+                    </div>
+                    <Button size="sm" className="bg-brand flex-shrink-0">
+                      <CreditCard className="w-4 h-4 mr-1.5" />
+                      Pay Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          );
+        })()}
+
         <div className="px-4 py-4 space-y-4 flex-1">
 
           {(data.assignments && data.assignments.length > 0) ? (
