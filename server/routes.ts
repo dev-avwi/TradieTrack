@@ -8916,6 +8916,278 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // ============================================
+  // CSV IMPORT ENDPOINTS
+  // ============================================
+
+  function parseCSV(text: string): string[][] {
+    const rows: string[][] = [];
+    let current = '';
+    let inQuotes = false;
+    let row: string[] = [];
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const next = text[i + 1];
+
+      if (inQuotes) {
+        if (char === '"' && next === '"') {
+          current += '"';
+          i++;
+        } else if (char === '"') {
+          inQuotes = false;
+        } else {
+          current += char;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+        } else if (char === ',') {
+          row.push(current.trim());
+          current = '';
+        } else if (char === '\n' || (char === '\r' && next === '\n')) {
+          row.push(current.trim());
+          current = '';
+          if (row.some(cell => cell !== '')) {
+            rows.push(row);
+          }
+          row = [];
+          if (char === '\r') i++;
+        } else {
+          current += char;
+        }
+      }
+    }
+    if (current !== '' || row.length > 0) {
+      row.push(current.trim());
+      if (row.some(cell => cell !== '')) {
+        rows.push(row);
+      }
+    }
+    return rows;
+  }
+
+  function suggestFieldMappings(headers: string[], type: 'clients' | 'catalog'): Record<string, string> {
+    const mappings: Record<string, string> = {};
+    const clientMap: Record<string, string> = {
+      'name': 'name', 'client name': 'name', 'client': 'name', 'full name': 'name', 'company': 'name', 'business name': 'name',
+      'email': 'email', 'email address': 'email', 'e-mail': 'email',
+      'phone': 'phone', 'phone number': 'phone', 'mobile': 'phone', 'telephone': 'phone', 'contact number': 'phone',
+      'address': 'address', 'street address': 'address', 'location': 'address',
+      'notes': 'notes', 'note': 'notes', 'comments': 'notes', 'comment': 'notes', 'description': 'notes',
+    };
+    const catalogMap: Record<string, string> = {
+      'name': 'name', 'item name': 'name', 'item': 'name', 'service': 'name', 'product': 'name',
+      'description': 'description', 'desc': 'description', 'details': 'description',
+      'unit': 'unit', 'uom': 'unit', 'unit of measure': 'unit', 'measurement': 'unit',
+      'unit price': 'unitPrice', 'price': 'unitPrice', 'rate': 'unitPrice', 'cost': 'unitPrice', 'unitprice': 'unitPrice', 'unit_price': 'unitPrice',
+      'default qty': 'defaultQty', 'quantity': 'defaultQty', 'qty': 'defaultQty', 'default quantity': 'defaultQty', 'defaultqty': 'defaultQty', 'default_qty': 'defaultQty',
+      'trade type': 'tradeType', 'trade': 'tradeType', 'tradetype': 'tradeType', 'trade_type': 'tradeType', 'category': 'tradeType',
+    };
+    const map = type === 'clients' ? clientMap : catalogMap;
+
+    for (const header of headers) {
+      const normalized = header.toLowerCase().trim();
+      if (map[normalized]) {
+        mappings[header] = map[normalized];
+      }
+    }
+    return mappings;
+  }
+
+  const csvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req: any, file: any, cb: any) => {
+      if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv') || file.mimetype === 'application/vnd.ms-excel') {
+        cb(null, true);
+      } else {
+        cb(new Error('Only CSV files are allowed'));
+      }
+    },
+  });
+
+  app.post("/api/import/preview", requireAuth, csvUpload.single('file'), async (req: any, res) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const type = req.body?.type;
+      if (!type || (type !== 'clients' && type !== 'catalog')) {
+        return res.status(400).json({ error: 'Type must be "clients" or "catalog"' });
+      }
+
+      const csvText = file.buffer.toString('utf-8');
+      const rows = parseCSV(csvText);
+
+      if (rows.length < 2) {
+        return res.status(400).json({ error: 'CSV must have at least a header row and one data row' });
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+      const previewRows = dataRows.slice(0, 5).map(row => {
+        const obj: Record<string, string> = {};
+        headers.forEach((h, i) => {
+          obj[h] = row[i] || '';
+        });
+        return obj;
+      });
+
+      const mappings = suggestFieldMappings(headers, type);
+
+      res.json({
+        headers,
+        preview: previewRows,
+        totalRows: dataRows.length,
+        suggestedMappings: mappings,
+      });
+    } catch (error: any) {
+      console.error('CSV preview error:', error);
+      res.status(500).json({ error: error.message || 'Failed to parse CSV' });
+    }
+  });
+
+  app.post("/api/import/execute", requireAuth, async (req: any, res) => {
+    try {
+      const { type, data, mappings } = req.body;
+      const userId = req.userId!;
+
+      if (!type || (type !== 'clients' && type !== 'catalog')) {
+        return res.status(400).json({ error: 'Type must be "clients" or "catalog"' });
+      }
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ error: 'Data array is required' });
+      }
+      if (!mappings || typeof mappings !== 'object') {
+        return res.status(400).json({ error: 'Field mappings are required' });
+      }
+
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      if (type === 'clients') {
+        for (let i = 0; i < data.length; i++) {
+          try {
+            const row = data[i];
+            const mapped: Record<string, any> = {};
+            for (const [csvHeader, schemaField] of Object.entries(mappings)) {
+              if (row[csvHeader] !== undefined && row[csvHeader] !== '') {
+                mapped[schemaField as string] = row[csvHeader];
+              }
+            }
+
+            if (!mapped.name) {
+              errors.push(`Row ${i + 1}: Name is required`);
+              skipped++;
+              continue;
+            }
+
+            await storage.createClient({
+              userId,
+              name: mapped.name,
+              email: mapped.email || null,
+              phone: mapped.phone || null,
+              address: mapped.address || null,
+              notes: mapped.notes || null,
+            } as any);
+            imported++;
+          } catch (err: any) {
+            errors.push(`Row ${i + 1}: ${err.message || 'Failed to import'}`);
+            skipped++;
+          }
+        }
+      } else if (type === 'catalog') {
+        const settings = await storage.getBusinessSettings(userId);
+        const defaultTradeType = settings?.businessName ? (settings as any).tradeType || 'general' : 'general';
+        const user = await storage.getUser(userId);
+        const userTradeType = user?.tradeType || defaultTradeType;
+
+        for (let i = 0; i < data.length; i++) {
+          try {
+            const row = data[i];
+            const mapped: Record<string, any> = {};
+            for (const [csvHeader, schemaField] of Object.entries(mappings)) {
+              if (row[csvHeader] !== undefined && row[csvHeader] !== '') {
+                mapped[schemaField as string] = row[csvHeader];
+              }
+            }
+
+            if (!mapped.name) {
+              errors.push(`Row ${i + 1}: Name is required`);
+              skipped++;
+              continue;
+            }
+            if (!mapped.description) {
+              mapped.description = mapped.name;
+            }
+
+            const validUnits = ['hour', 'item', 'm', 'sqm'];
+            let unit = (mapped.unit || 'item').toLowerCase().trim();
+            if (!validUnits.includes(unit)) {
+              unit = 'item';
+            }
+
+            const unitPrice = parseFloat(mapped.unitPrice || '0');
+            if (isNaN(unitPrice)) {
+              errors.push(`Row ${i + 1}: Invalid unit price`);
+              skipped++;
+              continue;
+            }
+
+            const defaultQty = parseFloat(mapped.defaultQty || '1');
+
+            await storage.createLineItemCatalogItem({
+              userId,
+              tradeType: mapped.tradeType || userTradeType,
+              name: mapped.name,
+              description: mapped.description,
+              unit,
+              unitPrice: unitPrice.toFixed(2),
+              defaultQty: isNaN(defaultQty) ? '1.00' : defaultQty.toFixed(2),
+              tags: [],
+            } as any);
+            imported++;
+          } catch (err: any) {
+            errors.push(`Row ${i + 1}: ${err.message || 'Failed to import'}`);
+            skipped++;
+          }
+        }
+      }
+
+      res.json({ imported, skipped, errors });
+    } catch (error: any) {
+      console.error('CSV import execution error:', error);
+      res.status(500).json({ error: error.message || 'Failed to execute import' });
+    }
+  });
+
+  app.get("/api/import/templates/:type", requireAuth, async (req: any, res) => {
+    try {
+      const { type } = req.params;
+
+      if (type === 'clients') {
+        const csv = 'Name,Email,Phone,Address,Notes\n"Example Client","client@example.com","0400 000 000","123 Main St, Sydney NSW 2000","Regular customer"\n';
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="clients_template.csv"');
+        return res.send(csv);
+      } else if (type === 'catalog') {
+        const csv = 'Name,Description,Unit,Unit Price,Default Qty\n"Standard Service Call","Standard service call including travel","hour","85.00","1"\n"Pipe Repair","General pipe repair work","item","150.00","1"\n';
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="catalog_template.csv"');
+        return res.send(csv);
+      } else {
+        return res.status(400).json({ error: 'Type must be "clients" or "catalog"' });
+      }
+    } catch (error: any) {
+      console.error('CSV template download error:', error);
+      res.status(500).json({ error: error.message || 'Failed to generate template' });
+    }
+  });
+
   // OAuth redirect URIs helper endpoint - shows required URIs for OAuth setup
   // This helps users configure their Google Cloud Console and Xero Developer Portal correctly
   app.get("/api/integrations/oauth-uris", async (req, res) => {

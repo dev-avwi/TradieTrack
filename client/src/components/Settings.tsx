@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -248,6 +248,124 @@ function ClearSampleDataCard() {
             </>
           )}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ImportDataCard() {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const [importType, setImportType] = useState<'clients' | 'catalog' | null>(null);
+  const [preview, setPreview] = useState<any>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !importType) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', importType);
+    try {
+      const res = await fetch('/api/import/preview', { method: 'POST', body: formData, credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to parse file');
+      setPreview(await res.json());
+    } catch {
+      toast({ variant: "destructive", title: "Could not read that file", description: "Make sure it's a CSV with headers." });
+    }
+  };
+
+  const handleImport = async () => {
+    if (!preview || !importType) return;
+    setIsImporting(true);
+    try {
+      const res = await fetch('/api/import/execute', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ type: importType, data: preview.rows, mappings: preview.suggestedMappings }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setResult(data);
+      if (data.imported > 0) {
+        queryClient.invalidateQueries({ queryKey: importType === 'clients' ? ['/api/clients'] : ['/api/catalog'] });
+        toast({ title: `Imported ${data.imported} ${importType === 'clients' ? 'clients' : 'items'}` });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Import failed" });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const reset = () => { setImportType(null); setPreview(null); setResult(null); };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Upload className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+          Import Data
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!importType && !result && (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Import clients or price list items from a CSV file.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setImportType('clients')}>
+                <Users className="h-4 w-4 mr-1" />
+                Import Clients
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setImportType('catalog')}>
+                <FileText className="h-4 w-4 mr-1" />
+                Import Price List
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => window.open('/api/import/templates/clients', '_blank')}>
+                Download client template
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => window.open('/api/import/templates/catalog', '_blank')}>
+                Download price list template
+              </Button>
+            </div>
+          </>
+        )}
+        {importType && !preview && !result && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Upload a CSV file with your {importType === 'clients' ? 'client list' : 'price list'}.
+            </p>
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFileSelect} className="hidden" />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => fileRef.current?.click()}>Choose CSV File</Button>
+              <Button variant="ghost" size="sm" onClick={reset}>Cancel</Button>
+            </div>
+          </div>
+        )}
+        {preview && !result && (
+          <div className="space-y-3">
+            <p className="text-sm font-medium">{preview.totalRows} rows found</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleImport} disabled={isImporting}>
+                {isImporting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Importing...</> : `Import ${preview.totalRows} ${importType === 'clients' ? 'clients' : 'items'}`}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={reset}>Cancel</Button>
+            </div>
+          </div>
+        )}
+        {result && (
+          <div className="space-y-3">
+            <p className="text-sm text-green-600 font-medium">
+              Imported {result.imported} {importType === 'clients' ? 'clients' : 'items'}
+              {result.skipped > 0 ? ` (${result.skipped} skipped)` : ''}
+            </p>
+            <Button variant="outline" size="sm" onClick={reset}>Import more</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -1473,6 +1591,9 @@ export default function Settings({
 
           {/* Clear Sample Data Card - shown when user has demo data */}
           <ClearSampleDataCard />
+
+          {/* Import Data Card */}
+          <ImportDataCard />
         </TabsContent>
 
         <TabsContent value="business" className="space-y-6">

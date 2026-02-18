@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,6 +90,7 @@ const getStepsForPlan = (plan: string) => {
     { id: 'trade', title: 'Trade', description: 'What kind of work do you do?' },
     { id: 'business', title: 'Business', description: 'Quick business setup' },
     { id: 'payments', title: 'Payments', description: 'Get paid faster' },
+    { id: 'import', title: 'Import', description: 'Bring your data' },
   ];
   
   if (plan === 'team') {
@@ -355,6 +357,11 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       setCurrentStep(prev => prev + 1);
       return;
     }
+
+    if (stepId === 'import') {
+      setCurrentStep(prev => prev + 1);
+      return;
+    }
     
     if (stepId === 'team') {
       setIsSubmitting(true);
@@ -472,6 +479,12 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [seedDemoData, setSeedDemoData] = useState(true);
+  const [importMode, setImportMode] = useState<'none' | 'clients' | 'catalog'>('none');
+  const [importPreview, setImportPreview] = useState<{ headers: string[]; rows: any[]; totalRows: number; suggestedMappings: Record<string, string> } | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [teamInviteEmails, setTeamInviteEmails] = useState<string[]>([]);
   const [currentInviteEmail, setCurrentInviteEmail] = useState('');
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -488,6 +501,64 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       setLogoPreview(ev.target?.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImportFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFile(file);
+    setImportResult(null);
+    
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+    formDataUpload.append('type', importMode);
+    
+    try {
+      const res = await fetch('/api/import/preview', {
+        method: 'POST',
+        body: formDataUpload,
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to parse file');
+      const data = await res.json();
+      setImportPreview(data);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Could not read that file", description: "Make sure it's a CSV file with headers in the first row." });
+      setImportFile(null);
+    }
+  };
+
+  const handleExecuteImport = async () => {
+    if (!importPreview) return;
+    setIsImporting(true);
+    try {
+      const res = await apiRequest('POST', '/api/import/execute', {
+        type: importMode,
+        data: importPreview.rows,
+        mappings: importPreview.suggestedMappings,
+      });
+      const result = await res.json();
+      setImportResult(result);
+      if (result.imported > 0) {
+        await queryClient.invalidateQueries({ queryKey: importMode === 'clients' ? ['/api/clients'] : ['/api/catalog'] });
+        toast({ title: `Imported ${result.imported} ${importMode === 'clients' ? 'clients' : 'items'}` });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Import failed", description: "Please check your file and try again." });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleDownloadTemplate = (type: string) => {
+    window.open(`/api/import/templates/${type}`, '_blank');
+  };
+
+  const resetImport = () => {
+    setImportMode('none');
+    setImportPreview(null);
+    setImportFile(null);
+    setImportResult(null);
   };
 
   const [showTradeRequest, setShowTradeRequest] = useState(false);
@@ -531,7 +602,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             What's your trade?
           </h2>
           <p className="text-muted-foreground">
-            Select your trade category to customize JobRunner for your business
+            We'll set up your workspace with the right templates, pricing, and job types
           </p>
         </div>
         
@@ -660,10 +731,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Quick business setup
+          Tell us about your business
         </h2>
         <p className="text-muted-foreground">
-          Just the basics to get you started
+          This goes on your quotes and invoices - takes 30 seconds
         </p>
       </div>
       
@@ -820,7 +891,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           Get Paid Faster
         </h2>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          Connect Stripe to accept card payments and send payment links
+          Clients can pay your invoices online with one tap. No chasing, no delays.
         </p>
       </div>
       
@@ -899,6 +970,193 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     </div>
   );
 
+  const renderImportStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Switching from another app?
+        </h2>
+        <p className="text-muted-foreground max-w-sm mx-auto">
+          Bring your clients and price list across in seconds. Or skip this and start fresh.
+        </p>
+      </div>
+      
+      {importMode === 'none' && !importResult && (
+        <div className="max-w-md mx-auto space-y-3">
+          <div 
+            className="p-4 rounded-xl border hover-elevate cursor-pointer transition-all"
+            onClick={() => setImportMode('clients')}
+            data-testid="import-clients-option"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900 dark:text-white">Import Clients</p>
+                <p className="text-sm text-muted-foreground">Upload a CSV with your client list</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <div 
+            className="p-4 rounded-xl border hover-elevate cursor-pointer transition-all"
+            onClick={() => setImportMode('catalog')}
+            data-testid="import-catalog-option"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                <FileText className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900 dark:text-white">Import Price List</p>
+                <p className="text-sm text-muted-foreground">Upload your materials or service items</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <p className="text-xs text-center text-muted-foreground pt-2">
+            You can also import data later from Settings
+          </p>
+        </div>
+      )}
+      
+      {importMode !== 'none' && !importResult && (
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              {importMode === 'clients' ? 'Import Clients' : 'Import Price List'}
+            </h3>
+            <Button variant="ghost" size="sm" onClick={resetImport}>
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+          </div>
+          
+          {!importPreview && (
+            <div className="space-y-3">
+              <div 
+                className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors hover:border-muted-foreground/40"
+                onClick={() => importFileRef.current?.click()}
+              >
+                <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Drop your CSV file here</p>
+                <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
+              </div>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".csv"
+                onChange={handleImportFileSelect}
+                className="hidden"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={() => handleDownloadTemplate(importMode === 'clients' ? 'clients' : 'catalog')}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Download CSV template
+              </Button>
+            </div>
+          )}
+          
+          {importPreview && (
+            <div className="space-y-3">
+              <div className="bg-muted/30 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium">{importFile?.name}</p>
+                  <Badge variant="secondary">{importPreview.totalRows} rows</Badge>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr>
+                        {importPreview.headers.slice(0, 4).map((h, i) => (
+                          <th key={i} className="text-left p-1 font-medium text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.rows.slice(0, 3).map((row, i) => (
+                        <tr key={i} className="border-t border-border/50">
+                          {importPreview.headers.slice(0, 4).map((h, j) => (
+                            <td key={j} className="p-1 truncate max-w-[120px]">{row[h] || '-'}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {importPreview.totalRows > 3 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    ...and {importPreview.totalRows - 3} more rows
+                  </p>
+                )}
+              </div>
+              
+              <Button 
+                onClick={handleExecuteImport} 
+                disabled={isImporting}
+                className="w-full"
+                data-testid="button-execute-import"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Import {importPreview.totalRows} {importMode === 'clients' ? 'clients' : 'items'}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {importResult && (
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 text-center">
+            <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <p className="font-medium text-green-900 dark:text-green-100">
+              {importResult.imported} {importMode === 'clients' ? 'clients' : 'items'} imported
+            </p>
+            {importResult.skipped > 0 && (
+              <p className="text-sm text-green-700 dark:text-green-300">
+                {importResult.skipped} skipped (missing required fields)
+              </p>
+            )}
+          </div>
+          <Button variant="outline" className="w-full" onClick={resetImport}>
+            Import more data
+          </Button>
+        </div>
+      )}
+      
+      <div className="flex justify-between pt-4">
+        <Button variant="outline" onClick={handleBack} data-testid="button-back">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button 
+          onClick={() => { resetImport(); handleNext(); }}
+          size="lg"
+          data-testid="button-next"
+        >
+          {importResult ? 'Continue' : 'Skip for now'}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderPortalStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-4">
@@ -906,10 +1164,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           <Eye className="h-8 w-8 text-blue-600" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Your Client Portal
+          Professional from Day One
         </h2>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          See what your clients will see when they view quotes and invoices
+          This is what your clients see. Clean, professional, and branded with your business.
         </p>
       </div>
       
@@ -1128,10 +1386,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          You're Ready to Go!
+          You're all set!
         </h2>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          Your workspace is ready. Start managing jobs, quotes, and invoices right away.
+          Start quoting, invoicing, and getting paid. Everything you need is right here.
         </p>
       </div>
 
@@ -1266,6 +1524,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         return renderBusinessStep();
       case 'payments':
         return renderPaymentsStep();
+      case 'import':
+        return renderImportStep();
       case 'team':
         return renderTeamStep();
       case 'portal':
