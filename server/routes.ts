@@ -17271,6 +17271,193 @@ Be specific about materials, colors, and features that would be included.`
       res.status(500).json({ error: "Failed to fetch activity" });
     }
   });
+
+  app.get("/api/bi/action-center", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const [jobs, quotes, invoices] = await Promise.all([
+        storage.getJobs(effectiveUserId),
+        storage.getQuotes(effectiveUserId),
+        storage.getInvoices(effectiveUserId),
+      ]);
+
+      const actions: Array<{
+        id: string;
+        priority: "fix_now" | "this_week" | "suggestions";
+        title: string;
+        description: string;
+        impact: string;
+        cta: string;
+        ctaUrl: string;
+        metric?: string;
+        category: string;
+      }> = [];
+
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+      const invoicedJobIds = new Set(invoices.filter(inv => inv.jobId).map(inv => inv.jobId));
+      const doneNotInvoiced = jobs.filter(j => j.status === 'done' && !invoicedJobIds.has(j.id));
+      if (doneNotInvoiced.length > 0) {
+        actions.push({
+          id: "revenue-leak-uninvoiced",
+          priority: "fix_now",
+          title: `${doneNotInvoiced.length} job${doneNotInvoiced.length > 1 ? 's' : ''} done but not invoiced`,
+          description: "Completed work without invoices means money left on the table.",
+          impact: "Revenue at risk",
+          cta: "Create Invoices",
+          ctaUrl: "/documents?tab=invoices&action=create",
+          metric: `${doneNotInvoiced.length} jobs`,
+          category: "revenue",
+        });
+      }
+
+      const overdueInvoices = invoices.filter(inv => {
+        if (inv.status === 'paid' || inv.status === 'draft') return false;
+        if (!inv.dueDate) return false;
+        return new Date(inv.dueDate) < now;
+      });
+      if (overdueInvoices.length > 0) {
+        const overdueTotal = overdueInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+        actions.push({
+          id: "revenue-leak-overdue",
+          priority: "fix_now",
+          title: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} overdue across ${overdueInvoices.length} invoice${overdueInvoices.length > 1 ? 's' : ''}`,
+          description: "Overdue invoices hurt your cashflow. Send reminders or follow up.",
+          impact: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} at risk`,
+          cta: "Chase Payments",
+          ctaUrl: "/documents?tab=invoices&filter=overdue",
+          metric: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})}`,
+          category: "revenue",
+        });
+      }
+
+      const staleQuotes = quotes.filter(q => {
+        if (q.status !== 'sent') return false;
+        const sentDate = q.sentAt ? new Date(q.sentAt) : (q.createdAt ? new Date(q.createdAt) : null);
+        return sentDate && sentDate < sevenDaysAgo;
+      });
+      if (staleQuotes.length > 0) {
+        const staleTotal = staleQuotes.reduce((sum, q) => sum + parseFloat(q.total || '0'), 0);
+        actions.push({
+          id: "revenue-leak-stale-quotes",
+          priority: staleQuotes.some(q => {
+            const sentDate = q.sentAt ? new Date(q.sentAt) : (q.createdAt ? new Date(q.createdAt) : null);
+            return sentDate && sentDate < fourteenDaysAgo;
+          }) ? "fix_now" : "this_week",
+          title: `${staleQuotes.length} quote${staleQuotes.length > 1 ? 's' : ''} waiting over 7 days`,
+          description: "Quotes older than a week are much less likely to convert. Follow up or close them.",
+          impact: `$${staleTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} potential revenue`,
+          cta: "Follow Up",
+          ctaUrl: "/documents?tab=quotes&filter=sent",
+          metric: `${staleQuotes.length} quotes`,
+          category: "revenue",
+        });
+      }
+
+      const draftInvoices = invoices.filter(inv => inv.status === 'draft');
+      if (draftInvoices.length > 0) {
+        const draftTotal = draftInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+        actions.push({
+          id: "revenue-leak-draft-invoices",
+          priority: draftInvoices.length >= 3 ? "this_week" : "suggestions",
+          title: `${draftInvoices.length} draft invoice${draftInvoices.length > 1 ? 's' : ''} not sent`,
+          description: "Invoices sitting in draft aren't earning you money. Review and send them.",
+          impact: `$${draftTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} waiting to be sent`,
+          cta: "Review Drafts",
+          ctaUrl: "/documents?tab=invoices&filter=draft",
+          metric: `$${draftTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})}`,
+          category: "revenue",
+        });
+      }
+
+      const pendingJobs = jobs.filter(j => j.status === 'pending');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todaysJobs = jobs.filter(job => {
+        if (!job.scheduledAt) return false;
+        const schedDate = new Date(job.scheduledAt);
+        return schedDate >= today && schedDate < tomorrow;
+      });
+
+      if (todaysJobs.length === 0 && pendingJobs.length > 0) {
+        actions.push({
+          id: "schedule-no-jobs-today",
+          priority: "suggestions",
+          title: "No jobs scheduled for today",
+          description: `You have ${pendingJobs.length} pending job${pendingJobs.length > 1 ? 's' : ''} that could be scheduled.`,
+          impact: "Optimize your time",
+          cta: "View Schedule",
+          ctaUrl: "/schedule",
+          metric: `${pendingJobs.length} pending`,
+          category: "schedule",
+        });
+      }
+
+      const draftQuotes = quotes.filter(q => q.status === 'draft');
+      if (draftQuotes.length >= 2) {
+        actions.push({
+          id: "quotes-unsent",
+          priority: "this_week",
+          title: `${draftQuotes.length} quotes ready to send`,
+          description: "Unsent quotes delay potential work. Review and send them to start winning jobs.",
+          impact: "Win more work",
+          cta: "Review Quotes",
+          ctaUrl: "/documents?tab=quotes&filter=draft",
+          metric: `${draftQuotes.length} drafts`,
+          category: "revenue",
+        });
+      }
+
+      const noClientJobs = jobs.filter(j => !j.clientId && j.status !== 'cancelled');
+      if (noClientJobs.length > 0) {
+        actions.push({
+          id: "jobs-no-client",
+          priority: "suggestions",
+          title: `${noClientJobs.length} job${noClientJobs.length > 1 ? 's' : ''} without a client linked`,
+          description: "Linking clients to jobs helps with invoicing and record keeping.",
+          impact: "Better records",
+          cta: "Review Jobs",
+          ctaUrl: "/work",
+          metric: `${noClientJobs.length} jobs`,
+          category: "operations",
+        });
+      }
+
+      actions.sort((a, b) => {
+        const priorityOrder = { fix_now: 0, this_week: 1, suggestions: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+
+      const fixNow = actions.filter(a => a.priority === "fix_now");
+      const thisWeek = actions.filter(a => a.priority === "this_week");
+      const suggestions = actions.filter(a => a.priority === "suggestions");
+
+      res.json({
+        actions,
+        summary: {
+          fixNowCount: fixNow.length,
+          thisWeekCount: thisWeek.length,
+          suggestionsCount: suggestions.length,
+          totalCount: actions.length,
+        },
+        sections: {
+          fix_now: fixNow,
+          this_week: thisWeek,
+          suggestions: suggestions,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching action center data:", error);
+      res.status(500).json({ error: "Failed to fetch action center data" });
+    }
+  });
+
   // Test data endpoint (for development only)
   app.post("/api/test-data", requireAuth, requireDevelopment, async (req: any, res) => {
     try {

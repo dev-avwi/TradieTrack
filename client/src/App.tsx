@@ -45,6 +45,9 @@ import Settings from "@/components/Settings";
 import EmailSetupGuide from "@/components/EmailSetupGuide";
 import More from "@/pages/More";
 import Integrations from "@/pages/Integrations";
+import ActionCenter from "@/pages/ActionCenter";
+import Insights from "@/pages/Insights";
+import Autopilot from "@/pages/Autopilot";
 import NotFound from "@/pages/not-found";
 import VerifyEmail from "@/pages/VerifyEmail";
 import VerifyEmailPending from "@/pages/VerifyEmailPending";
@@ -562,6 +565,18 @@ function Router({
         }}
       </Route>
       
+      <Route path="/action-center" component={() => (
+        <ActionCenter onNavigate={onNavigate} />
+      )} />
+
+      <Route path="/insights" component={() => (
+        <Insights onNavigate={onNavigate} />
+      )} />
+
+      <Route path="/autopilot" component={() => (
+        <Autopilot onNavigate={onNavigate} />
+      )} />
+
       <Route path="/reports/profitability" component={ProfitabilityReport} />
 
       <Route path="/reports" component={() => (
