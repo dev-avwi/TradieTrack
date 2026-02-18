@@ -29914,7 +29914,11 @@ Respond with JSON in this format:
         };
       }));
 
-      jobProfitability.sort((a, b) => a.margin - b.margin);
+      jobProfitability.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.completedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || b.completedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
 
       const totalProfit = totalRevenue - totalCosts;
       const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;

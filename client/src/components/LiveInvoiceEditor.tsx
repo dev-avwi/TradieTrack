@@ -258,7 +258,34 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
                 : `Invoice prefilled from "${job.title}" with quote line items`,
             });
           } else {
-            const { items: varOnlyItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, []);
+            let timeBasedItems: any[] = [];
+            try {
+              const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include' });
+              if (timeRes.ok) {
+                const timeEntries = await timeRes.json();
+                const completedEntries = Array.isArray(timeEntries) ? timeEntries.filter((e: any) => e.endTime) : [];
+                if (completedEntries.length > 0) {
+                  const totalMs = completedEntries.reduce((sum: number, e: any) => {
+                    const start = new Date(e.startTime).getTime();
+                    const end = new Date(e.endTime).getTime();
+                    return sum + (end - start);
+                  }, 0);
+                  const totalHours = Math.round((totalMs / (1000 * 60 * 60)) * 100) / 100;
+                  
+                  if (totalHours > 0) {
+                    const hourlyRate = businessSettings?.hourlyRate || 0;
+                    timeBasedItems = [{
+                      description: `${job.title || 'Labour'} - ${totalHours} hours`,
+                      quantity: String(totalHours),
+                      unitPrice: String(hourlyRate),
+                    }];
+                  }
+                }
+              }
+            } catch (err) {
+            }
+            
+            const { items: varOnlyItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, timeBasedItems);
             form.setValue("lineItems", varOnlyItems);
 
             toast({
@@ -269,7 +296,34 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
             });
           }
         } catch {
-          const { items: varOnlyItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, []);
+          let timeBasedItems: any[] = [];
+          try {
+            const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include' });
+            if (timeRes.ok) {
+              const timeEntries = await timeRes.json();
+              const completedEntries = Array.isArray(timeEntries) ? timeEntries.filter((e: any) => e.endTime) : [];
+              if (completedEntries.length > 0) {
+                const totalMs = completedEntries.reduce((sum: number, e: any) => {
+                  const start = new Date(e.startTime).getTime();
+                  const end = new Date(e.endTime).getTime();
+                  return sum + (end - start);
+                }, 0);
+                const totalHours = Math.round((totalMs / (1000 * 60 * 60)) * 100) / 100;
+                
+                if (totalHours > 0) {
+                  const hourlyRate = businessSettings?.hourlyRate || 0;
+                  timeBasedItems = [{
+                    description: `${job.title || 'Labour'} - ${totalHours} hours`,
+                    quantity: String(totalHours),
+                    unitPrice: String(hourlyRate),
+                  }];
+                }
+              }
+            }
+          } catch (err) {
+          }
+          
+          const { items: varOnlyItems, count: varCount } = await fetchVariationsForAutoLoad(job.id, timeBasedItems);
           form.setValue("lineItems", varOnlyItems);
 
           toast({
@@ -431,8 +485,34 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         console.error("Error fetching linked documents:", err);
       }
       
-      // No quote line items - check for variations only
-      const { items: varOnlyItems, count: varCount } = await fetchApprovedVariations(job.id, []);
+      let timeBasedItems: any[] = [];
+      try {
+        const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include' });
+        if (timeRes.ok) {
+          const timeEntries = await timeRes.json();
+          const completedEntries = Array.isArray(timeEntries) ? timeEntries.filter((e: any) => e.endTime) : [];
+          if (completedEntries.length > 0) {
+            const totalMs = completedEntries.reduce((sum: number, e: any) => {
+              const start = new Date(e.startTime).getTime();
+              const end = new Date(e.endTime).getTime();
+              return sum + (end - start);
+            }, 0);
+            const totalHours = Math.round((totalMs / (1000 * 60 * 60)) * 100) / 100;
+            
+            if (totalHours > 0) {
+              const hourlyRate = businessSettings?.hourlyRate || 0;
+              timeBasedItems = [{
+                description: `${job.title || 'Labour'} - ${totalHours} hours`,
+                quantity: String(totalHours),
+                unitPrice: String(hourlyRate),
+              }];
+            }
+          }
+        }
+      } catch (err) {
+      }
+
+      const { items: varOnlyItems, count: varCount } = await fetchApprovedVariations(job.id, timeBasedItems);
       form.setValue("lineItems", varOnlyItems);
       setSourceQuoteId(undefined);
       setSelectedQuoteId(undefined);

@@ -750,14 +750,24 @@ export default function JobDetailView({
         : `/api/jobs/${jobId}`;
       return await apiRequest("PATCH", endpoint, data);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'linked-documents'] });
-      toast({
-        title: "Job Updated",
-        description: "Job status has been updated",
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'activity'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/activity-feed'] });
+      
+      if (variables?.status === 'done') {
+        toast({
+          title: "Job Completed",
+          description: "Job has been marked as completed successfully",
+        });
+      } else {
+        toast({
+          title: "Job Updated",
+          description: "Job status has been updated",
+        });
+      }
     },
     onError: () => {
       toast({
@@ -3219,8 +3229,8 @@ export default function JobDetailView({
             </CardContent>
           </Card>
 
-          {/* Time Tracking Widget - Show for scheduled and in_progress jobs */}
-          {(job.status === 'scheduled' || job.status === 'in_progress') && (
+          {/* Time Tracking Widget - Show only for in_progress jobs */}
+          {job.status === 'in_progress' && (
             <Card 
               className="border-2"
               style={{ borderColor: 'hsl(var(--trade) / 0.3)' }}
