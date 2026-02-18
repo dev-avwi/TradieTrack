@@ -54,8 +54,8 @@ export default function DemoPaymentSimulator({
 
     if (success) {
       try {
-        await apiRequest('PATCH', `/api/invoices/${invoiceId}/status`, {
-          status: 'paid',
+        await apiRequest('POST', `/api/invoices/${invoiceId}/mark-paid`, {
+          paymentMethod: 'demo',
           paidAt: new Date().toISOString()
         });
         

@@ -65,11 +65,19 @@ async function handleStripeEvent(event: any, storage: any) {
         if (invoiceId && userId) {
           const invoice = await storage.getInvoice(invoiceId, userId);
           if (invoice) {
+            // Issue 2: Idempotency check - if invoice is already paid, return early to prevent duplicate receipt
+            if (invoice.status === 'paid') {
+              console.log(`⚠️ Invoice ${invoiceId} already marked as paid. Skipping duplicate processing.`);
+              break;
+            }
+
             await storage.updateInvoice(invoiceId, userId, {
               status: 'paid',
               paidAt: new Date().toISOString(),
               paymentMethod: 'stripe',
               stripePaymentIntentId: session.payment_intent,
+              lockedAt: new Date().toISOString(),
+              lockedReason: 'payment_received',
             });
 
             // Create payment receipt record using Stripe-confirmed amount
@@ -412,6 +420,8 @@ async function handleStripeEvent(event: any, storage: any) {
                 paidAt: new Date().toISOString(),
                 paymentMethod: 'stripe_connect',
                 stripePaymentIntentId: paymentIntent.id,
+                lockedAt: new Date().toISOString(),
+                lockedReason: 'payment_received',
               });
               
               // Create payment receipt record using Stripe-confirmed amount

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,6 +188,47 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   }, [user?.intendedTier]);
 
   useEffect(() => {
+    if (currentStep !== 1) return;
+
+    const savedDraft = localStorage.getItem('jobrunner_onboarding_business_draft');
+    if (savedDraft) {
+      try {
+        const draftData = JSON.parse(savedDraft);
+        setFormData(prev => ({ ...prev, ...draftData }));
+      } catch {
+        localStorage.removeItem('jobrunner_onboarding_business_draft');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentStep !== 1) return;
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      const businessDraftData = {
+        businessName: formData.businessName,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        abn: formData.abn,
+        gstRegistered: formData.gstRegistered,
+        hourlyRate: formData.hourlyRate,
+      };
+      localStorage.setItem('jobrunner_onboarding_business_draft', JSON.stringify(businessDraftData));
+    }, 3000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [formData, currentStep]);
+
+  useEffect(() => {
     if (!resumeChecked) return;
     const stepId = STEPS[currentStep]?.id;
     if (stepId) {
@@ -295,6 +336,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           logoUrl: logoPreview || undefined,
         });
         
+        localStorage.removeItem('jobrunner_onboarding_business_draft');
         await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
         setCurrentStep(prev => prev + 1);
       } catch (error) {
@@ -432,6 +474,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   const [seedDemoData, setSeedDemoData] = useState(true);
   const [teamInviteEmails, setTeamInviteEmails] = useState<string[]>([]);
   const [currentInviteEmail, setCurrentInviteEmail] = useState('');
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -26,8 +26,14 @@ export class AuthService {
     intendedTier?: string;
   }): Promise<{ success: true; user: SafeUser } | { success: false; error: string }> {
     try {
+      // Normalize email
+      const normalizedEmail = userData.email.toLowerCase().trim();
+      
       // Validate input
-      const validatedData = insertUserSchema.parse(userData);
+      const validatedData = insertUserSchema.parse({
+        ...userData,
+        email: normalizedEmail,
+      });
 
       // Prevent registering demo email in production
       if (process.env.NODE_ENV === 'production' && validatedData.email === 'demo@jobrunner.com.au') {
@@ -78,11 +84,10 @@ export class AuthService {
     password: string;
   }): Promise<{ success: true; user: SafeUser } | { success: false; error: string }> {
     try {
-      // Validate input
       const validatedCredentials = loginSchema.parse(credentials);
 
-      // Get user by email
-      const user = await storage.getUserByEmail(validatedCredentials.email);
+      const normalizedEmail = validatedCredentials.email.toLowerCase().trim();
+      const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
         return { success: false, error: 'Invalid email or password' };
       }
@@ -303,14 +308,17 @@ export class AuthService {
     emailVerified: boolean;
   }): Promise<SafeUser> {
     try {
+      // Normalize email
+      const normalizedEmail = userData.email.toLowerCase().trim();
+      
       // Generate username from email
-      const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
+      const username = normalizedEmail.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
       
       // Create base user
       const user = await storage.createUser({
-        email: userData.email,
+        email: normalizedEmail,
         username: username,
-        password: '', // No password for Google users
+        password: null, // No password for Google users
         firstName: userData.firstName,
         lastName: userData.lastName,
       });
@@ -384,14 +392,17 @@ export class AuthService {
     emailVerified: boolean;
   }): Promise<SafeUser> {
     try {
+      // Normalize email
+      const normalizedEmail = userData.email.toLowerCase().trim();
+      
       // Generate username from email
-      const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
+      const username = normalizedEmail.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
       
       // Create base user
       const user = await storage.createUser({
-        email: userData.email,
+        email: normalizedEmail,
         username: username,
-        password: '', // No password for Apple users
+        password: null, // No password for Apple users
         firstName: userData.firstName,
         lastName: userData.lastName,
       });

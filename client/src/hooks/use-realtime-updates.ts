@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeInvalidateQueries, isRemoteChange } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface JobStatusEvent {
   type: 'job_status_changed';
@@ -120,6 +121,7 @@ export function useRealtimeUpdates({
   onNotification,
 }: UseRealtimeUpdatesOptions) {
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -242,6 +244,8 @@ export function useRealtimeUpdates({
 
   const connect = useCallback(() => {
     if (!enabled || !businessId) return;
+    // Don't attempt connection if auth is still loading or user is not authenticated
+    if (authLoading || !isAuthenticated) return;
     if (isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) return;
 
     isConnectingRef.current = true;
@@ -317,7 +321,7 @@ export function useRealtimeUpdates({
       console.error('[RealtimeUpdates] Failed to connect:', error);
       isConnectingRef.current = false;
     }
-  }, [enabled, businessId, handleMessage]);
+  }, [enabled, businessId, authLoading, isAuthenticated, handleMessage]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -334,14 +338,19 @@ export function useRealtimeUpdates({
   }, []);
 
   useEffect(() => {
-    if (enabled && businessId) {
+    // Only attempt connection if:
+    // 1. WebSocket is enabled
+    // 2. businessId is provided
+    // 3. Auth check is complete (not loading)
+    // 4. User is authenticated (has valid session)
+    if (enabled && businessId && !authLoading && isAuthenticated) {
       reconnectAttempts.current = 0;
       connect();
     }
     return () => {
       disconnect();
     };
-  }, [enabled, businessId, connect, disconnect]);
+  }, [enabled, businessId, authLoading, isAuthenticated, connect, disconnect]);
 
   return {
     isConnected,

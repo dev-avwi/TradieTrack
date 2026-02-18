@@ -2856,12 +2856,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Identity token required" });
       }
       
-      // SECURITY TODO: In production, implement full JWKS verification by:
-      // 1. Fetching Apple's public keys from https://appleid.apple.com/auth/keys
-      // 2. Verifying the id_token JWT signature using the matching key (kid header)
-      // 3. Optionally exchanging the authorization code at https://appleid.apple.com/auth/token
+      // ⚠️ SECURITY WARNING: Using jwt.decode() without signature verification
+      // This relies entirely on comprehensive claim validation (issuer, audience, expiry, iat)
+      // to prevent token forgery. While Apple tokens are cryptographically signed,
+      // a production-grade implementation should:
+      // 1. Fetch Apple's public keys from https://appleid.apple.com/auth/keys
+      // 2. Verify JWT signature using the matching JWKS key (kid header)
+      // 3. Exchange authorization code at https://appleid.apple.com/auth/token
       //    (requires generating a client_secret JWT signed with Apple's private key)
-      // For now, comprehensive claim validation prevents simple forgery.
+      // The claim validation below provides interim protection but is not a substitute for
+      // proper signature verification. This should be upgraded to jwt.verify() with JWKS
+      // validation in a future security hardening pass.
       
       const decoded = jwt.decode(identityToken, { complete: true }) as { 
         header: { kid?: string; alg?: string };
@@ -2881,13 +2886,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const claims = decoded.payload;
       
-      // Validate issuer is Apple
+      // Validate issuer is Apple (required claim)
       if (claims.iss !== 'https://appleid.apple.com') {
         console.error('Apple auth: Invalid issuer:', claims.iss);
         return res.status(400).json({ error: "Invalid token issuer" });
       }
       
-      // Validate audience matches our app's bundle ID or web service ID
+      // Validate audience matches our app's bundle ID or web service ID (required claim)
       const expectedBundleId = process.env.APPLE_BUNDLE_ID || 'com.jobrunner.app';
       const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.jobrunner.web';
       const validAudiences = [expectedBundleId, expectedWebServiceId];
@@ -2897,14 +2902,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid token audience" });
       }
       
-      // Validate token expiry
+      // Validate token expiry (required claim)
       const now = Math.floor(Date.now() / 1000);
       if (claims.exp && claims.exp < now) {
         console.error('Apple auth: Token expired');
         return res.status(400).json({ error: "Token expired" });
       }
       
-      // Validate issued-at time - reject tokens older than 10 minutes
+      // Validate issued-at time - reject tokens older than 10 minutes (freshness check)
       if (claims.iat && (now - claims.iat) > 600) {
         console.error('Apple auth: Token too old, iat:', claims.iat, 'now:', now);
         return res.status(400).json({ error: "Token expired" });
@@ -3036,12 +3041,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect('/auth?error=missing_credentials');
       }
 
-      // SECURITY TODO: In production, implement full JWKS verification by:
-      // 1. Fetching Apple's public keys from https://appleid.apple.com/auth/keys
-      // 2. Verifying the id_token JWT signature using the matching key (kid header)
-      // 3. Optionally exchanging the authorization code at https://appleid.apple.com/auth/token
+      // ⚠️ SECURITY WARNING: Using jwt.decode() without signature verification
+      // This relies entirely on comprehensive claim validation (issuer, audience, expiry, iat)
+      // to prevent token forgery. While Apple tokens are cryptographically signed,
+      // a production-grade implementation should:
+      // 1. Fetch Apple's public keys from https://appleid.apple.com/auth/keys
+      // 2. Verify JWT signature using the matching JWKS key (kid header)
+      // 3. Exchange authorization code at https://appleid.apple.com/auth/token
       //    (requires generating a client_secret JWT signed with Apple's private key)
-      // For now, comprehensive claim validation prevents simple forgery.
+      // The claim validation below provides interim protection but is not a substitute for
+      // proper signature verification. This should be upgraded to jwt.verify() with JWKS
+      // validation in a future security hardening pass.
 
       const decoded = jwt.decode(id_token, { complete: true }) as {
         header: { kid?: string; alg?: string };
@@ -3064,33 +3074,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const claims = decoded.payload;
 
-      // Validate issuer
+      // Validate issuer is Apple (required claim)
       if (claims.iss !== 'https://appleid.apple.com') {
         console.error('Apple auth: Invalid issuer:', claims.iss);
         return res.redirect('/auth?error=invalid_issuer');
       }
 
-      // Validate audience matches our web service ID
+      // Validate audience matches our web service ID (required claim)
       const expectedServiceId = process.env.APPLE_WEB_SERVICE_ID;
       if (claims.aud !== expectedServiceId) {
         console.error('Apple auth: Audience mismatch:', claims.aud, 'expected:', expectedServiceId);
         return res.redirect('/auth?error=invalid_audience');
       }
 
-      // Validate token expiry
+      // Validate token expiry (required claim)
       const now = Math.floor(Date.now() / 1000);
       if (claims.exp && claims.exp < now) {
         console.error('Apple auth: Token expired');
         return res.redirect('/auth?error=token_expired');
       }
 
-      // Validate issued-at time - reject tokens older than 10 minutes
+      // Validate issued-at time - reject tokens older than 10 minutes (freshness check)
       if (claims.iat && (now - claims.iat) > 600) {
         console.error('Apple auth: Token too old, iat:', claims.iat, 'now:', now);
         return res.redirect('/auth?error=token_expired');
       }
 
-      // Validate JWT header has expected algorithm
+      // Validate JWT header has expected algorithm (RS256 indicates public key signing)
       if (decoded.header.alg !== 'RS256') {
         console.error('Apple auth: Unexpected algorithm:', decoded.header.alg);
         return res.redirect('/auth?error=invalid_token');
@@ -10556,7 +10566,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.post("/api/team-groups", requireAuth, ownerOnly, async (req: any, res) => {
+  app.post("/api/team-groups", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const validatedData = insertTeamGroupSchema.parse({
@@ -10574,7 +10584,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.patch("/api/team-groups/:id", requireAuth, ownerOnly, async (req: any, res) => {
+  app.patch("/api/team-groups/:id", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const group = await storage.updateTeamGroup(req.params.id, userContext.effectiveUserId, req.body);
@@ -10588,7 +10598,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.delete("/api/team-groups/:id", requireAuth, ownerOnly, async (req: any, res) => {
+  app.delete("/api/team-groups/:id", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const success = await storage.deleteTeamGroup(req.params.id, userContext.effectiveUserId);
@@ -10602,7 +10612,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.post("/api/team-groups/:id/members", requireAuth, ownerOnly, async (req: any, res) => {
+  app.post("/api/team-groups/:id/members", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const group = await storage.getTeamGroupById(req.params.id, userContext.effectiveUserId);
@@ -10623,7 +10633,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.delete("/api/team-groups/:id/members/:memberId", requireAuth, ownerOnly, async (req: any, res) => {
+  app.delete("/api/team-groups/:id/members/:memberId", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const group = await storage.getTeamGroupById(req.params.id, userContext.effectiveUserId);
@@ -15499,6 +15509,17 @@ Be specific about materials, colors, and features that would be included.`
   app.delete("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
+      
+      // Issue 3: Check if invoice is locked or paid before allowing deletion
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      if (invoice.status === 'paid' || invoice.lockedAt) {
+        return res.status(403).json({ error: "Cannot delete a paid or locked invoice." });
+      }
+      
       const success = await storage.deleteInvoice(req.params.id, userContext.effectiveUserId);
       if (!success) {
         return res.status(404).json({ error: "Invoice not found" });
@@ -29482,7 +29503,7 @@ Respond with JSON in this format:
   });
 
   // Get team performance report (Owner/Admin only)
-  app.get("/api/reports/team", requireAuth, createPermissionMiddleware(PERMISSIONS.VIEW_TEAM), async (req: any, res) => {
+  app.get("/api/reports/team", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { startDate, endDate } = req.query;
@@ -32340,7 +32361,7 @@ Respond with JSON in this format:
   // ============================================
 
   // List invites for a job (owner only)
-  app.get("/api/jobs/:jobId/invites", requireAuth, ownerOnly, async (req: any, res) => {
+  app.get("/api/jobs/:jobId/invites", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
@@ -32360,7 +32381,7 @@ Respond with JSON in this format:
   });
 
   // Create a new job invite (owner only)
-  app.post("/api/jobs/:jobId/invites", requireAuth, ownerOnly, async (req: any, res) => {
+  app.post("/api/jobs/:jobId/invites", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
@@ -32401,7 +32422,7 @@ Respond with JSON in this format:
   });
 
   // Revoke a job invite (owner only)
-  app.delete("/api/jobs/:jobId/invites/:inviteId", requireAuth, ownerOnly, async (req: any, res) => {
+  app.delete("/api/jobs/:jobId/invites/:inviteId", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { jobId, inviteId } = req.params;
