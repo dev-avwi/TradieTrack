@@ -2821,6 +2821,9 @@ export const smsConversations = pgTable("sms_conversations", {
   unreadCount: integer("unread_count").default(0),
   isArchived: boolean("is_archived").default(false),
   deletedAt: timestamp("deleted_at"),
+  routingState: text("routing_state").default('resolved'),
+  pendingOptions: jsonb("pending_options").default([]),
+  lastRoutingPromptAt: timestamp("last_routing_prompt_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -766,6 +766,8 @@ export interface IStorage {
   getSmsConversationsByJobIds(jobIds: string[]): Promise<SmsConversation[]>;
   createSmsConversation(conversation: InsertSmsConversation): Promise<SmsConversation>;
   updateSmsConversation(id: string, updates: Partial<InsertSmsConversation>): Promise<SmsConversation>;
+  updateSmsConversationRoutingState(conversationId: string, state: string, options?: any[]): Promise<void>;
+  getJobsByClientAndBusiness(clientId: string, businessOwnerId: string): Promise<Job[]>;
 
   // SMS Messages  
   getSmsMessage(id: string): Promise<SmsMessage | undefined>;
@@ -4578,6 +4580,25 @@ export class PostgresStorage implements IStorage {
       .where(eq(smsConversations.id, id))
       .returning();
     return result;
+  }
+
+  async updateSmsConversationRoutingState(conversationId: string, state: string, options?: any[]): Promise<void> {
+    await db.update(smsConversations)
+      .set({
+        routingState: state,
+        pendingOptions: options ?? [],
+        lastRoutingPromptAt: state !== 'resolved' ? new Date() : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(smsConversations.id, conversationId));
+  }
+
+  async getJobsByClientAndBusiness(clientId: string, businessOwnerId: string): Promise<Job[]> {
+    return await db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.clientId, clientId), eq(jobs.userId, businessOwnerId)))
+      .orderBy(desc(jobs.createdAt));
   }
 
   // SMS Messages

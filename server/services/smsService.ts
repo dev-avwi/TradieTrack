@@ -133,6 +133,20 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
   
   const validMediaUrls = options.mediaUrls?.slice(0, 10) || [];
   
+  let brandedMessage = options.message;
+  try {
+    const settings = await storage.getBusinessSettings(options.businessOwnerId);
+    const businessName = settings?.businessName;
+    if (businessName) {
+      if (options.isQuickAction) {
+        brandedMessage = `${options.message} via JobRunner`;
+      } else {
+        brandedMessage = `${businessName} via JobRunner: ${options.message}`;
+      }
+    }
+  } catch {
+  }
+  
   const message = await storage.createSmsMessage({
     conversationId: conversation.id,
     direction: 'outbound',
@@ -149,7 +163,7 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
   
   const result = await sendSmsPlatform(
     conversation.clientPhone,
-    options.message,
+    brandedMessage,
     validMediaUrls.length > 0 ? validMediaUrls : undefined,
     options.businessOwnerId
   );
@@ -450,11 +464,87 @@ async function checkAndProcessQuoteAcceptance(
 }
 
 /**
+ * Check active jobs for a client in a business and optionally send job selection menu.
+ * Returns the target conversation (possibly updated with jobId) and whether a menu was sent.
+ */
+async function checkAndRouteJobs(
+  targetConversation: SmsConversation,
+  clientId: string,
+  businessOwnerId: string,
+  formattedFromPhone: string
+): Promise<{ conversation: SmsConversation; pendingJob: boolean }> {
+  const activeJobs = await storage.getJobsByClientAndBusiness(clientId, businessOwnerId);
+  const relevantJobs = activeJobs.filter(j => !['completed', 'cancelled', 'archived'].includes(j.status || ''));
+
+  if (relevantJobs.length > 1) {
+    const now = new Date();
+    const lastPrompt = targetConversation.lastRoutingPromptAt ? new Date(targetConversation.lastRoutingPromptAt) : null;
+    const rateLimited = lastPrompt && (now.getTime() - lastPrompt.getTime()) < 5 * 60 * 1000;
+
+    if (!rateLimited) {
+      const jobOptions = relevantJobs.map((j) => ({
+        id: j.id,
+        label: `${j.title}${j.address ? ' (' + j.address.substring(0, 30) + ')' : ''}`,
+      }));
+      const menuLines = jobOptions.map((opt, i) => `${i + 1}. ${opt.label}`);
+      const menuText = `Which job is this about? Reply with a number:\n${menuLines.join('\n')}`;
+      await sendSMS({ to: formattedFromPhone, message: menuText });
+      await storage.updateSmsConversationRoutingState(targetConversation.id, 'pending_job', jobOptions);
+      console.log(`[SMS Routing] Sent job selection menu to ${formattedFromPhone} (${relevantJobs.length} active jobs)`);
+    }
+    return { conversation: targetConversation, pendingJob: true };
+  } else if (relevantJobs.length === 1) {
+    const updated = await storage.updateSmsConversation(targetConversation.id, { jobId: relevantJobs[0].id });
+    await storage.updateSmsConversationRoutingState(targetConversation.id, 'resolved');
+    return { conversation: updated, pendingJob: false };
+  }
+
+  await storage.updateSmsConversationRoutingState(targetConversation.id, 'resolved');
+  return { conversation: targetConversation, pendingJob: false };
+}
+
+/**
+ * Get all recipients who should be notified about an SMS on a job
+ * Includes: business owner, job manager (if exists), assigned workers
+ */
+async function getJobSmsRecipients(jobId: string, businessOwnerId: string): Promise<string[]> {
+  const recipients = new Set<string>();
+  recipients.add(businessOwnerId);
+
+  try {
+    const job = await storage.getJob(jobId, businessOwnerId);
+    if (job) {
+      if ((job as any).managerId) {
+        recipients.add((job as any).managerId);
+      }
+    }
+
+    const assignments = await storage.getJobAssignments(jobId);
+    if (assignments) {
+      for (const assignment of assignments) {
+        if (assignment.userId) {
+          recipients.add(assignment.userId);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[SMS] Error getting job recipients:', err);
+  }
+
+  return Array.from(recipients);
+}
+
+/**
  * Handle incoming SMS/MMS from Twilio webhook
  * 
- * Multi-tenant safety: When multiple businesses serve the same client,
- * we resolve to the most recent conversation that has had an outbound message.
- * This ensures replies go to the business that most recently contacted the client.
+ * Smart routing with disambiguation for shared Twilio number across multiple businesses.
+ * Uses a state machine approach (routingState) to handle multi-business and multi-job scenarios.
+ * 
+ * Routing priority:
+ * 1. Check for pending disambiguation replies (pending_business / pending_job)
+ * 2. Match phone to clients across all businesses
+ * 3. For single match: auto-route; for multiple: disambiguate via SMS menu
+ * 4. Unknown callers: single business = assign; multiple = inform
  * 
  * MMS support: Extracts media URLs from Twilio webhook (MediaUrl0, MediaUrl1, etc.)
  */
@@ -463,124 +553,288 @@ export async function handleIncomingSms(
   toPhone: string,
   body: string,
   twilioSid: string,
-  mediaUrls?: string[] // MMS media URLs from Twilio webhook
+  mediaUrls?: string[]
 ): Promise<SmsMessage | null> {
   const formattedFromPhone = formatPhoneNumber(fromPhone);
-  
-  // Find all conversations with this client phone number
+
   const conversations = await storage.getSmsConversationsByClientPhone(formattedFromPhone);
-  
+
   let isNewConversation = false;
   let isUnknownCaller = false;
-  
-  if (conversations.length === 0) {
-    console.log(`[SMS] No conversation found for incoming SMS from ${formattedFromPhone} - auto-creating...`);
-    
-    // Try to find ALL business owners and match against their clients
-    // For now, we'll need to iterate through all businesses to find a client match
-    // This is a necessary trade-off for handling truly unknown inbound SMS
-    const allBusinessSettings = await storage.getAllBusinessSettings();
-    
-    let matchedClient = null;
-    let matchedBusinessOwnerId = null;
-    
-    for (const business of allBusinessSettings) {
-      const client = await storage.getClientByPhone(business.userId, formattedFromPhone);
-      if (client) {
-        matchedClient = client;
-        matchedBusinessOwnerId = business.userId;
-        console.log(`[SMS] Found matching client "${client.name}" for business ${business.businessName}`);
-        break;
+  let targetConversation: SmsConversation | null = null;
+
+  // ── Step 1: Check for pending disambiguation replies ──
+  const pendingConversations = conversations.filter(c =>
+    c.routingState === 'pending_business' || c.routingState === 'pending_job'
+  );
+
+  if (pendingConversations.length > 0 && body) {
+    const pending = pendingConversations[0];
+    const selection = parseInt(body.trim());
+    const options = (pending.pendingOptions as any[]) || [];
+
+    if (selection >= 1 && selection <= options.length) {
+      const selected = options[selection - 1];
+
+      if (pending.routingState === 'pending_business') {
+        const selectedBusinessOwnerId = selected.id as string;
+        const selectedBusinessName = selected.label as string;
+
+        let resolvedConv = conversations.find(
+          c => c.businessOwnerId === selectedBusinessOwnerId && c.routingState !== 'pending_business'
+        );
+        if (!resolvedConv) {
+          const client = await storage.getClientByPhone(selectedBusinessOwnerId, formattedFromPhone);
+          resolvedConv = await storage.createSmsConversation({
+            businessOwnerId: selectedBusinessOwnerId,
+            clientId: client?.id || null,
+            clientPhone: formattedFromPhone,
+            clientName: client?.name || pending.clientName || null,
+            jobId: null,
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+            isArchived: false,
+            deletedAt: null,
+            routingState: 'resolved',
+            pendingOptions: [],
+            lastRoutingPromptAt: null,
+          });
+          isNewConversation = true;
+        }
+
+        await storage.updateSmsConversationRoutingState(pending.id, 'resolved');
+
+        if (resolvedConv.clientId) {
+          const jobResult = await checkAndRouteJobs(resolvedConv, resolvedConv.clientId, selectedBusinessOwnerId, formattedFromPhone);
+          targetConversation = jobResult.conversation;
+        } else {
+          await storage.updateSmsConversationRoutingState(resolvedConv.id, 'resolved');
+          targetConversation = resolvedConv;
+        }
+
+        console.log(`[SMS Routing] Business disambiguation resolved: ${selectedBusinessName}`);
+      } else if (pending.routingState === 'pending_job') {
+        const selectedJobId = selected.id as string;
+        const selectedJob = await storage.getJob(selectedJobId, pending.businessOwnerId);
+        if (!selectedJob || selectedJob.userId !== pending.businessOwnerId) {
+          const menuLines = options.map((opt: any, i: number) => `${i + 1}. ${opt.label}`);
+          await sendSMS({ to: formattedFromPhone, message: `Invalid selection. Please reply with a number to select a job:\n${menuLines.join('\n')}` });
+          targetConversation = pending;
+          console.log(`[SMS Routing] Job selection failed validation (job doesn't belong to business) for ${formattedFromPhone}`);
+        } else {
+          const updated = await storage.updateSmsConversation(pending.id, { jobId: selectedJobId });
+          await storage.updateSmsConversationRoutingState(pending.id, 'resolved');
+          targetConversation = updated;
+          console.log(`[SMS Routing] Job disambiguation resolved: ${selected.label}`);
+        }
       }
-    }
-    
-    if (matchedClient && matchedBusinessOwnerId) {
-      // Create conversation linked to the found client
-      const newConversation = await storage.createSmsConversation({
-        businessOwnerId: matchedBusinessOwnerId,
-        clientId: matchedClient.id,
-        clientPhone: formattedFromPhone,
-        clientName: matchedClient.name,
-        jobId: null,
-        lastMessageAt: new Date(),
-        unreadCount: 0,
-        isArchived: false,
-        deletedAt: null,
-      });
-      conversations.push(newConversation);
-      isNewConversation = true;
-      console.log(`[SMS] Created new conversation ${newConversation.id} for existing client "${matchedClient.name}"`);
     } else {
-      // No client match found - create conversation with Unknown Caller
-      // Use the first business as default (or could be configured)
-      if (allBusinessSettings.length > 0) {
-        const defaultBusiness = allBusinessSettings[0];
+      const now = new Date();
+      const lastPrompt = pending.lastRoutingPromptAt ? new Date(pending.lastRoutingPromptAt) : null;
+      const rateLimited = lastPrompt && (now.getTime() - lastPrompt.getTime()) < 5 * 60 * 1000;
+
+      if (!rateLimited) {
+        const menuLines = options.map((opt: any, i: number) => `${i + 1}. ${opt.label}`);
+        const helpText = pending.routingState === 'pending_business'
+          ? `Please reply with a number to select a business:\n${menuLines.join('\n')}`
+          : `Please reply with a number to select a job:\n${menuLines.join('\n')}`;
+        await sendSMS({ to: formattedFromPhone, message: helpText });
+        await storage.updateSmsConversationRoutingState(pending.id, pending.routingState, options);
+      }
+
+      targetConversation = pending;
+      console.log(`[SMS Routing] Invalid selection "${body.trim()}" from ${formattedFromPhone}, re-prompted`);
+    }
+  }
+
+  // ── Step 2: Smart routing (no pending disambiguation) ──
+  if (!targetConversation) {
+    const resolvedConversations = conversations.filter(c =>
+      !c.routingState || c.routingState === 'resolved'
+    );
+
+    if (resolvedConversations.length > 0) {
+      let bestConv: SmsConversation | null = null;
+      let bestOutboundTime = new Date(0);
+
+      for (const conv of resolvedConversations) {
+        const messages = await storage.getSmsMessages(conv.id);
+        const lastOutbound = messages
+          .filter(m => m.direction === 'outbound')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+        if (lastOutbound) {
+          const outboundTime = new Date(lastOutbound.createdAt);
+          if (outboundTime > bestOutboundTime) {
+            bestOutboundTime = outboundTime;
+            bestConv = conv;
+          }
+        }
+      }
+
+      if (!bestConv) {
+        bestConv = resolvedConversations.sort((a, b) =>
+          new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
+        )[0];
+      }
+
+      targetConversation = bestConv;
+    } else {
+      const allBusinessSettings = await storage.getAllBusinessSettings();
+
+      if (allBusinessSettings.length === 0) {
+        console.log(`[SMS] No business settings found - cannot create conversation for ${formattedFromPhone}`);
+        return null;
+      }
+
+      const matchedBusinesses: Array<{
+        businessOwnerId: string;
+        businessName: string;
+        clientId: string;
+        clientName: string;
+      }> = [];
+
+      for (const business of allBusinessSettings) {
+        const client = await storage.getClientByPhone(business.userId, formattedFromPhone);
+        if (client) {
+          matchedBusinesses.push({
+            businessOwnerId: business.userId,
+            businessName: business.businessName || 'Unknown Business',
+            clientId: client.id,
+            clientName: client.name,
+          });
+        }
+      }
+
+      if (matchedBusinesses.length === 0) {
+        // ── 0 matches: Unknown caller ──
+        isUnknownCaller = true;
+        isNewConversation = true;
+
+        if (allBusinessSettings.length === 1) {
+          const defaultBusiness = allBusinessSettings[0];
+          const newConversation = await storage.createSmsConversation({
+            businessOwnerId: defaultBusiness.userId,
+            clientId: null,
+            clientPhone: formattedFromPhone,
+            clientName: `Unknown Caller (${formattedFromPhone})`,
+            jobId: null,
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+            isArchived: false,
+            deletedAt: null,
+            routingState: 'resolved',
+            pendingOptions: [],
+            lastRoutingPromptAt: null,
+          });
+          targetConversation = newConversation;
+          console.log(`[SMS Routing] Unknown caller ${formattedFromPhone} assigned to sole business "${defaultBusiness.businessName}"`);
+        } else {
+          await sendSMS({
+            to: formattedFromPhone,
+            message: "Hi! This is JobRunner. We couldn't match your number to a business. Please contact your tradie directly or text us the business name you're trying to reach.",
+          });
+          console.log(`[SMS Routing] Unknown caller ${formattedFromPhone} - multi-tenant, no conversation created (${allBusinessSettings.length} businesses on platform)`);
+          return null;
+        }
+      } else if (matchedBusinesses.length === 1) {
+        // ── 1 match: Single business ──
+        const match = matchedBusinesses[0];
+        isNewConversation = true;
+
         const newConversation = await storage.createSmsConversation({
-          businessOwnerId: defaultBusiness.userId,
-          clientId: null,
+          businessOwnerId: match.businessOwnerId,
+          clientId: match.clientId,
           clientPhone: formattedFromPhone,
-          clientName: `Unknown Caller (${formattedFromPhone})`,
+          clientName: match.clientName,
           jobId: null,
           lastMessageAt: new Date(),
           unreadCount: 0,
           isArchived: false,
           deletedAt: null,
+          routingState: 'resolved',
+          pendingOptions: [],
+          lastRoutingPromptAt: null,
         });
-        conversations.push(newConversation);
-        isNewConversation = true;
-        isUnknownCaller = true;
-        console.log(`[SMS] Created new conversation ${newConversation.id} for unknown caller ${formattedFromPhone}`);
+
+        const jobResult = await checkAndRouteJobs(newConversation, match.clientId, match.businessOwnerId, formattedFromPhone);
+        targetConversation = jobResult.conversation;
+        console.log(`[SMS Routing] Single match: client "${match.clientName}" routed to "${match.businessName}"`);
       } else {
-        console.log(`[SMS] No business settings found - cannot create conversation for ${formattedFromPhone}`);
-        return null;
+        // ── Multiple matches: Check for recent outbound within 24 hours ──
+        let recentConv: SmsConversation | null = null;
+        let recentOutboundTime = new Date(0);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        for (const match of matchedBusinesses) {
+          const existingConv = await storage.getSmsConversationByPhone(match.businessOwnerId, formattedFromPhone);
+          if (existingConv) {
+            const messages = await storage.getSmsMessages(existingConv.id);
+            const lastOutbound = messages
+              .filter(m => m.direction === 'outbound')
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+            if (lastOutbound) {
+              const outboundTime = new Date(lastOutbound.createdAt);
+              if (outboundTime > twentyFourHoursAgo && outboundTime > recentOutboundTime) {
+                recentOutboundTime = outboundTime;
+                recentConv = existingConv;
+              }
+            }
+          }
+        }
+
+        if (recentConv) {
+          targetConversation = recentConv;
+          console.log(`[SMS Routing] Multiple matches but recent outbound found - auto-routing to conversation ${recentConv.id}`);
+        } else {
+          isNewConversation = true;
+          const routingConv = await storage.createSmsConversation({
+            businessOwnerId: matchedBusinesses[0].businessOwnerId,
+            clientId: matchedBusinesses[0].clientId,
+            clientPhone: formattedFromPhone,
+            clientName: matchedBusinesses[0].clientName,
+            jobId: null,
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+            isArchived: false,
+            deletedAt: null,
+            routingState: 'pending_business',
+            pendingOptions: matchedBusinesses.map(b => ({ id: b.businessOwnerId, label: b.businessName })),
+            lastRoutingPromptAt: new Date(),
+          });
+
+          const menuLines = matchedBusinesses.map((b, i) => `${i + 1}. ${b.businessName}`);
+          const menuText = `You're a client of multiple businesses. Reply with a number:\n${menuLines.join('\n')}`;
+          await sendSMS({ to: formattedFromPhone, message: menuText });
+
+          targetConversation = routingConv;
+          console.log(`[SMS Routing] Multiple matches (${matchedBusinesses.length}) - sent business disambiguation menu to ${formattedFromPhone}`);
+        }
       }
     }
   }
-  
-  // Multi-tenant safety: Find the conversation that most recently sent an outbound message
-  // This ensures replies go to the business that last contacted the client
-  let targetConversation = null;
-  let latestOutboundTime = new Date(0);
-  
-  for (const conv of conversations) {
-    // Get the most recent outbound message for this conversation
-    const messages = await storage.getSmsMessages(conv.id);
-    const lastOutbound = messages
-      .filter(m => m.direction === 'outbound')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-    
-    if (lastOutbound) {
-      const outboundTime = new Date(lastOutbound.createdAt);
-      if (outboundTime > latestOutboundTime) {
-        latestOutboundTime = outboundTime;
-        targetConversation = conv;
-      }
-    }
-  }
-  
-  // Fallback: if no outbound messages found, use the most recent conversation
+
+  // ── Fallback safety: should never happen but guard against null ──
   if (!targetConversation) {
-    targetConversation = conversations.sort((a, b) => 
-      new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
-    )[0];
-    console.log(`[SMS] No outbound messages found for ${formattedFromPhone}, using most recent conversation`);
+    console.error(`[SMS] Critical: No target conversation resolved for ${formattedFromPhone}`);
+    return null;
   }
-  
+
   const isMMS = mediaUrls && mediaUrls.length > 0;
   const messageBody = body || (isMMS ? '[Media message]' : '');
-  
+
   // Check for quote acceptance via SMS reply (YES, ACCEPT, APPROVED, etc.)
   const quoteAcceptanceResult = await checkAndProcessQuoteAcceptance(
     messageBody,
     formattedFromPhone,
     targetConversation
   );
-  
+
   if (quoteAcceptanceResult.processed) {
     console.log(`[SMS] Quote acceptance processed: ${quoteAcceptanceResult.message}`);
-    // Continue to store the message but don't process further
   }
-  
+
   // AI Intent Detection - detect if message is a job/quote request
   let intentData: {
     isJobRequest: boolean;
@@ -589,16 +843,15 @@ export async function handleIncomingSms(
     suggestedJobTitle?: string;
     suggestedDescription?: string;
   } = { isJobRequest: false };
-  
+
   try {
-    // Only run intent detection on inbound messages with actual content
     if (messageBody && messageBody !== '[Media message]') {
       const intentResult = await detectSmsJobIntent(
         messageBody,
         targetConversation.clientName || undefined,
         isMMS
       );
-      
+
       intentData = {
         isJobRequest: intentResult.isJobRequest,
         intentConfidence: intentResult.confidence,
@@ -606,7 +859,7 @@ export async function handleIncomingSms(
         suggestedJobTitle: intentResult.suggestedJobTitle,
         suggestedDescription: intentResult.suggestedDescription,
       };
-      
+
       if (intentResult.isJobRequest) {
         console.log(`[SMS AI] Detected job request (${intentResult.confidence} confidence): "${intentResult.suggestedJobTitle}"`);
       }
@@ -614,7 +867,7 @@ export async function handleIncomingSms(
   } catch (aiError) {
     console.error('[SMS AI] Intent detection failed (non-blocking):', aiError);
   }
-  
+
   // Create inbound message (with MMS media URLs and AI intent data)
   const message = await storage.createSmsMessage({
     conversationId: targetConversation.id,
@@ -635,48 +888,55 @@ export async function handleIncomingSms(
     readAt: null,
     errorMessage: null,
   });
-  
+
   // Update conversation
   const newUnreadCount = (targetConversation.unreadCount || 0) + 1;
   await storage.updateSmsConversation(targetConversation.id, {
     lastMessageAt: new Date(),
     unreadCount: newUnreadCount,
   });
-  
-  console.log(`[${isMMS ? 'MMS' : 'SMS'}] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})${isMMS ? ` with ${mediaUrls.length} media attachment(s)` : ''}${intentData.isJobRequest ? ' [JOB REQUEST DETECTED]' : ''}`);
-  
-  // Broadcast WebSocket notification to business owner and team members
-  try {
-    broadcastSmsNotification(targetConversation.businessOwnerId, {
-      conversationId: targetConversation.id,
-      senderPhone: formattedFromPhone,
-      senderName: targetConversation.clientName,
-      messagePreview: messageBody.slice(0, 100),
-      jobId: targetConversation.jobId,
-      unreadCount: newUnreadCount,
-      // Include job request flag for UI to show action button
-      isJobRequest: intentData.isJobRequest,
-      suggestedJobTitle: intentData.suggestedJobTitle,
-      // Include flags for new/unknown conversations
-      isNewConversation,
-      isUnknownCaller,
-    });
-  } catch (wsError) {
-    console.error('[SMS] Error broadcasting WebSocket notification:', wsError);
+
+  console.log(`[${isMMS ? 'MMS' : 'SMS'}] Inbound message routed to conversation ${targetConversation.id} (business: ${targetConversation.businessOwnerId})${isMMS ? ` with ${mediaUrls!.length} media attachment(s)` : ''}${intentData.isJobRequest ? ' [JOB REQUEST DETECTED]' : ''}`);
+
+  const recipients = targetConversation.jobId
+    ? await getJobSmsRecipients(targetConversation.jobId, targetConversation.businessOwnerId)
+    : [targetConversation.businessOwnerId];
+
+  const notificationData = {
+    conversationId: targetConversation.id,
+    senderPhone: formattedFromPhone,
+    senderName: targetConversation.clientName,
+    messagePreview: messageBody.slice(0, 100),
+    jobId: targetConversation.jobId,
+    unreadCount: newUnreadCount,
+    isJobRequest: intentData.isJobRequest,
+    suggestedJobTitle: intentData.suggestedJobTitle,
+    isNewConversation,
+    isUnknownCaller,
+  };
+
+  for (const recipientId of recipients) {
+    try {
+      broadcastSmsNotification(recipientId, notificationData);
+    } catch (wsError) {
+      console.error('[SMS] Error broadcasting to recipient:', wsError);
+    }
   }
-  
-  try {
-    await notifySmsReceived(
-      storage,
-      targetConversation.businessOwnerId,
-      targetConversation.clientName || formattedFromPhone,
-      messageBody.slice(0, 100),
-      targetConversation.id
-    );
-  } catch (notifErr) {
-    console.error('[SMS] Failed to send SMS received notification:', notifErr);
+
+  for (const recipientId of recipients) {
+    try {
+      await notifySmsReceived(
+        storage,
+        recipientId,
+        targetConversation.clientName || formattedFromPhone,
+        messageBody.slice(0, 100),
+        targetConversation.id
+      );
+    } catch (notifErr) {
+      console.error('[SMS] Failed to send notification to:', recipientId, notifErr);
+    }
   }
-  
+
   return message;
 }
 
