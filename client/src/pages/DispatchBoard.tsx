@@ -735,6 +735,32 @@ export default function DispatchBoard() {
 
   const goToToday = () => setCurrentDate(new Date());
 
+  const getWeekDays = useCallback(() => {
+    const startOfCurrentWeek = new Date(currentDate);
+    const day = startOfCurrentWeek.getDay();
+    const diff = startOfCurrentWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfCurrentWeek.setDate(diff);
+    return Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
+  }, [currentDate]);
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => direction === 'next' ? addDays(prev, 7) : subDays(prev, 7));
+  };
+
+  const weekDays = useMemo(() => getWeekDays(), [getWeekDays]);
+
+  const jobsByDate = useMemo(() => {
+    const map: Record<string, typeof jobsWithClients> = {};
+    weekDays.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      map[dateStr] = jobsWithClients.filter(job => {
+        if (!job.scheduledAt) return false;
+        return format(parseISO(job.scheduledAt), 'yyyy-MM-dd') === dateStr;
+      });
+    });
+    return map;
+  }, [weekDays, jobsWithClients]);
+
   const isToday = isSameDay(currentDate, new Date());
 
   return (
@@ -775,37 +801,43 @@ export default function DispatchBoard() {
 
           {topView === 'schedule' && (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => navigateDate('prev')} data-testid="button-prev-day-bar">
+              <Button variant="outline" size="icon" onClick={() => viewMode === 'week' ? navigateWeek('prev') : navigateDate('prev')} data-testid="button-prev-day-bar">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button variant={isToday ? "default" : "outline"} size="sm" onClick={goToToday} data-testid="button-today-bar">
                 Today
               </Button>
               <span className="text-sm font-semibold hidden md:inline-flex items-center gap-1.5">
-                {isToday && <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} /><span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'hsl(var(--trade))' }} /></span>}
-                {format(currentDate, 'EEE, MMM d')}
+                {viewMode === 'week'
+                  ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
+                  : <>
+                      {isToday && <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} /><span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'hsl(var(--trade))' }} /></span>}
+                      {format(currentDate, 'EEE, MMM d')}
+                    </>
+                }
               </span>
-              <Button variant="outline" size="icon" onClick={() => navigateDate('next')} data-testid="button-next-day-bar">
+              <Button variant="outline" size="icon" onClick={() => viewMode === 'week' ? navigateWeek('next') : navigateDate('next')} data-testid="button-next-day-bar">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-4 text-xs font-medium flex-wrap">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
-              <span style={{ color: 'hsl(var(--trade))' }}>{scheduledJobsForDate.length}</span> Scheduled
-            </span>
-            <span className="text-muted-foreground/40">|</span>
-            <span className="flex items-center gap-1.5">
+              <span className="font-semibold tabular-nums" style={{ color: 'hsl(var(--trade))' }}>{scheduledJobsForDate.length}</span>
+              <span className="text-muted-foreground">Scheduled</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10">
               <span className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-orange-500">{scheduledJobsForDate.filter(j => j.status === 'in_progress').length}</span> Active
-            </span>
-            <span className="text-muted-foreground/40">|</span>
-            <span className="flex items-center gap-1.5">
+              <span className="font-semibold tabular-nums text-orange-600">{scheduledJobsForDate.filter(j => j.status === 'in_progress').length}</span>
+              <span className="text-muted-foreground">Active</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
-              <span className="text-amber-500">{unscheduledJobs.length}</span> Unscheduled
-            </span>
+              <span className="font-semibold tabular-nums text-amber-600">{unscheduledJobs.length}</span>
+              <span className="text-muted-foreground">Unscheduled</span>
+            </div>
           </div>
         </div>
       </div>
@@ -884,7 +916,7 @@ export default function DispatchBoard() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => navigateDate('prev')}
+                    onClick={() => viewMode === 'week' ? navigateWeek('prev') : navigateDate('prev')}
                     data-testid="button-prev-day"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -900,7 +932,7 @@ export default function DispatchBoard() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => navigateDate('next')}
+                    onClick={() => viewMode === 'week' ? navigateWeek('next') : navigateDate('next')}
                     data-testid="button-next-day"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -908,7 +940,7 @@ export default function DispatchBoard() {
                 </div>
 
                 <div className="flex items-center gap-2 text-center">
-                  {isToday && (
+                  {viewMode !== 'week' && isToday && (
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: 'hsl(var(--trade))' }} />
@@ -916,10 +948,16 @@ export default function DispatchBoard() {
                   )}
                   <div>
                     <h2 className="text-lg font-bold tracking-tight">
-                      {format(currentDate, 'EEEE, MMMM d, yyyy')}
+                      {viewMode === 'week'
+                        ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
+                        : format(currentDate, 'EEEE, MMMM d, yyyy')
+                      }
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      {scheduledJobsForDate.length} job{scheduledJobsForDate.length !== 1 ? 's' : ''} scheduled
+                      {viewMode === 'week'
+                        ? `${Object.values(jobsByDate).reduce((sum, jobs) => sum + jobs.length, 0)} jobs this week`
+                        : `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''} scheduled`
+                      }
                     </p>
                   </div>
                 </div>
@@ -954,6 +992,90 @@ export default function DispatchBoard() {
             </CardHeader>
 
             <CardContent className="p-0">
+              {viewMode === 'week' ? (
+                <div className="overflow-x-auto">
+                  <div className="grid grid-cols-7 min-w-[700px]">
+                    {weekDays.map(day => {
+                      const dateStr = format(day, 'yyyy-MM-dd');
+                      const dayJobs = jobsByDate[dateStr] || [];
+                      const isDayToday = isSameDay(day, new Date());
+                      return (
+                        <div key={dateStr} className="border-r last:border-r-0 min-h-[400px]">
+                          <div
+                            className={`p-2.5 border-b text-center cursor-pointer transition-colors ${
+                              isDayToday ? 'bg-muted/50' : 'bg-muted/20 hover:bg-muted/40'
+                            }`}
+                            onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                          >
+                            <p className={`text-xs font-medium ${isDayToday ? '' : 'text-muted-foreground'}`}>
+                              {format(day, 'EEE')}
+                            </p>
+                            <p className={`text-lg font-bold tabular-nums ${isDayToday ? '' : ''}`}
+                              style={isDayToday ? { color: 'hsl(var(--trade))' } : undefined}
+                            >
+                              {format(day, 'd')}
+                            </p>
+                            {dayJobs.length > 0 && (
+                              <div className="flex items-center justify-center gap-1 mt-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                                <span className="text-[10px] text-muted-foreground">{dayJobs.length}</span>
+                              </div>
+                            )}
+                          </div>
+                          <ScrollArea className="h-[350px]">
+                            <div className="p-1.5 space-y-1.5">
+                              {dayJobs.map(job => {
+                                const statusStyle = getStatusStyle(job.status);
+                                const assignedMember = teamMembersWithJobs.find(m =>
+                                  m.memberId === job.assignedTo || (!job.assignedTo && m.id === 'owner')
+                                );
+                                return (
+                                  <div
+                                    key={job.id}
+                                    className={`p-2 rounded-md border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border}`}
+                                    onClick={() => handleJobClick(job, 'reassign')}
+                                    data-testid={`week-job-${job.id}`}
+                                  >
+                                    <div className="flex items-start gap-1.5">
+                                      {assignedMember && (
+                                        <Avatar className="h-5 w-5 flex-shrink-0 mt-0.5">
+                                          <AvatarImage src={assignedMember.profileImageUrl} />
+                                          <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                            {(assignedMember.firstName?.[0] || '') + (assignedMember.lastName?.[0] || '')}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className={`font-medium text-xs truncate ${statusStyle.text}`}>
+                                          {job.title}
+                                        </h4>
+                                        <p className="text-[10px] text-muted-foreground truncate">
+                                          {job.clientName}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {job.scheduledTime && (
+                                      <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                                        <Clock className="h-2.5 w-2.5" />
+                                        <span>{job.scheduledTime}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              {dayJobs.length === 0 && (
+                                <div className="text-center py-6 text-xs text-muted-foreground">
+                                  No jobs
+                                </div>
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-[800px]">
                   <div className="flex border-b bg-muted/30">
@@ -1104,6 +1226,7 @@ export default function DispatchBoard() {
                   </ScrollArea>
                 </div>
               </div>
+              )}
             </CardContent>
           </Card>
         </div>

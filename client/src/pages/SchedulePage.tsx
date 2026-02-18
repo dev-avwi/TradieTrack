@@ -1,14 +1,11 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
 import StatusBadge from "@/components/StatusBadge";
+import { useLocation } from "wouter";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -17,16 +14,8 @@ import {
   MapPin,
   Briefcase,
   Plus,
-  GripVertical,
-  Timer,
-  AlertCircle,
   Users,
   LayoutGrid,
-  Route,
-  Loader2,
-  X,
-  ArrowRight,
-  Info,
   Wrench,
 } from "lucide-react";
 import {
@@ -52,17 +41,6 @@ interface Job {
   priority?: string;
 }
 
-interface TeamMember {
-  id: string;
-  memberId: string;
-  firstName?: string;
-  lastName?: string;
-  email: string;
-  roleName: string;
-  profileImageUrl?: string;
-  isActive: boolean;
-}
-
 interface Client {
   id: string;
   name: string;
@@ -84,39 +62,6 @@ interface JobForDate {
 interface SchedulePageProps {
   onCreateJob?: () => void;
   onViewJob?: (id: string) => void;
-}
-
-const WORK_HOURS = Array.from({ length: 15 }, (_, i) => i + 6);
-const HOUR_HEIGHT = 60;
-
-const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300' },
-  scheduled: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300' },
-  in_progress: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-300' },
-  done: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-green-300' },
-  invoiced: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-300' },
-};
-
-function getStatusStyle(status: string) {
-  const lower = status.toLowerCase().replace(' ', '_');
-  return STATUS_COLORS[lower] || STATUS_COLORS.pending;
-}
-
-function formatTime(hour: number) {
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const h = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-  return `${h}:00 ${ampm}`;
-}
-
-function parseJobTime(timeStr?: string): { hour: number; minute: number } {
-  if (!timeStr) return { hour: 9, minute: 0 };
-  const [h, m] = timeStr.split(':').map(Number);
-  return { hour: h || 9, minute: m || 0 };
-}
-
-interface DraggedJob {
-  job: Job;
-  originMemberId: string | null;
 }
 
 function MonthView({ 
@@ -266,13 +211,8 @@ function MonthView({
 
 export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePageProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'week' | 'month' | 'dispatch'>('week');
-  const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
-  const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
-  const [dispatchTipDismissed, setDispatchTipDismissed] = useState(() => 
-    typeof window !== 'undefined' && localStorage.getItem('dispatch-onboarding-dismissed') === 'true'
-  );
-  const { toast } = useToast();
+  const [view, setView] = useState<'week' | 'month'>('week');
+  const [, navigate] = useLocation();
 
   const { data: jobs = [] } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
@@ -280,10 +220,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
-  });
-
-  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
-    queryKey: ['/api/team/members'],
   });
 
   const { data: jobsWithEquipment = [] } = useQuery<string[]>({
@@ -297,112 +233,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
     [clients]
   );
 
-  const rescheduleJobMutation = useMutation({
-    mutationFn: async ({ 
-      jobId, 
-      scheduledAt, 
-      scheduledTime,
-      assignedTo 
-    }: { 
-      jobId: string; 
-      scheduledAt: string;
-      scheduledTime?: string;
-      assignedTo: string | null;
-    }) => {
-      return apiRequest('PATCH', `/api/jobs/${jobId}`, {
-        scheduledAt,
-        scheduledTime,
-        assignedTo,
-        status: 'scheduled'
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-      toast({
-        title: "Job rescheduled",
-        description: "The job has been moved to the new time slot",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to reschedule",
-        description: error.message || "Could not move the job",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const unscheduleJobMutation = useMutation({
-    mutationFn: async (jobId: string) => {
-      return apiRequest('PATCH', `/api/jobs/${jobId}`, {
-        scheduledAt: null,
-        scheduledTime: null,
-        assignedTo: null,
-        status: 'pending'
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-      toast({
-        title: "Job unscheduled",
-        description: "The job has been moved back to the unscheduled list",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to unschedule",
-        description: error.message || "Could not unschedule the job",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const optimizeRouteMutation = useMutation({
-    mutationFn: async (jobIds: string[]) => {
-      return apiRequest('POST', '/api/routes/optimize', { jobIds });
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-      toast({
-        title: "Route Optimized",
-        description: `Saved ${Math.round(data.totalDistance || 0)} km - ${data.stops?.length || 0} stops reordered`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Could not optimize",
-        description: error.message || "Failed to optimize route",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleOptimizeRoute = () => {
-    const jobsToOptimize = scheduledJobsForDate.filter(job => 
-      (job as any).latitude && (job as any).longitude
-    );
-    
-    if (scheduledJobsForDate.length < 2) {
-      toast({
-        title: "Not enough jobs",
-        description: "Add at least 2 scheduled jobs to optimize the route",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (jobsToOptimize.length < 2) {
-      toast({
-        title: "Missing addresses",
-        description: "At least 2 jobs need valid addresses to optimize",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    optimizeRouteMutation.mutate(jobsToOptimize.map(j => j.id));
-  };
-
   const jobsWithClients = useMemo(() => 
     jobs.map(job => ({
       ...job,
@@ -410,56 +240,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
     })),
     [jobs, clientsMap]
   );
-
-  const scheduledJobsForDate = useMemo(() => {
-    const dateStr = format(currentDate, 'yyyy-MM-dd');
-    return jobsWithClients.filter(job => {
-      if (!job.scheduledAt) return false;
-      const jobDate = format(parseISO(job.scheduledAt), 'yyyy-MM-dd');
-      return jobDate === dateStr;
-    });
-  }, [jobsWithClients, currentDate]);
-
-  const unscheduledJobs = useMemo(() => 
-    jobsWithClients.filter(job => 
-      !job.scheduledAt && 
-      ['pending', 'scheduled'].includes(job.status.toLowerCase())
-    ),
-    [jobsWithClients]
-  );
-
-  const teamMembersWithJobs = useMemo(() => {
-    const ownerMember = {
-      id: 'owner',
-      memberId: 'owner',
-      firstName: 'Me',
-      lastName: '(Owner)',
-      email: '',
-      roleName: 'Owner',
-      profileImageUrl: undefined as string | undefined,
-      isActive: true,
-    };
-
-    const allMembers = [ownerMember, ...teamMembers.filter(m => m.isActive)];
-    
-    return allMembers.map(member => {
-      const memberJobs = scheduledJobsForDate.filter(job => 
-        job.assignedTo === member.memberId || 
-        (!job.assignedTo && member.id === 'owner')
-      );
-
-      const totalMinutes = memberJobs.reduce((sum, job) => 
-        sum + (job.estimatedDuration || 60), 0
-      );
-
-      return {
-        ...member,
-        jobs: memberJobs,
-        totalHours: Math.round(totalMinutes / 60 * 10) / 10,
-        capacity: 8,
-      };
-    });
-  }, [teamMembers, scheduledJobsForDate]);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString('en-AU', { 
@@ -502,10 +282,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
     setCurrentDate(newDate);
   };
 
-  const navigateDay = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => direction === 'next' ? addDays(prev, 1) : subDays(prev, 1));
-  };
-
   const getJobsForDate = (date: Date): JobForDate[] => {
     const dateStr = date.toISOString().split('T')[0];
     return jobsWithClients.filter(job => {
@@ -537,55 +313,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
   const weekStart = formatDateShort(weekDays[0]);
   const weekEnd = formatDateShort(weekDays[6]);
   const weekJobCount = weekDays.reduce((total, date) => total + getJobsForDate(date).length, 0);
-
-  const handleDragStart = (job: Job, memberId: string | null) => {
-    setDraggedJob({ job, originMemberId: memberId });
-  };
-
-  const handleDragOver = (e: React.DragEvent, slotId: string) => {
-    e.preventDefault();
-    setDragOverSlot(slotId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverSlot(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, memberId: string, hour: number) => {
-    e.preventDefault();
-    setDragOverSlot(null);
-
-    if (!draggedJob) return;
-
-    const scheduledDate = new Date(currentDate);
-    scheduledDate.setHours(hour, 0, 0, 0);
-    const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-
-    rescheduleJobMutation.mutate({
-      jobId: draggedJob.job.id,
-      scheduledAt: scheduledDate.toISOString(),
-      scheduledTime: timeStr,
-      assignedTo: memberId === 'owner' ? null : memberId,
-    });
-
-    setDraggedJob(null);
-  };
-
-  const handleUnscheduledDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedJob) return;
-
-    unscheduleJobMutation.mutate(draggedJob.job.id);
-    setDraggedJob(null);
-  };
-
-  const getJobPosition = (job: Job) => {
-    const { hour, minute } = parseJobTime(job.scheduledTime);
-    const top = (hour - 6) * HOUR_HEIGHT + (minute / 60) * HOUR_HEIGHT;
-    const duration = job.estimatedDuration || 60;
-    const height = Math.max((duration / 60) * HOUR_HEIGHT, 40);
-    return { top, height };
-  };
 
   const goToToday = () => setCurrentDate(new Date());
 
@@ -643,20 +370,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                   <LayoutGrid className="h-4 w-4 mr-1.5" />
                   Month
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setView('dispatch')}
-                  data-testid="button-dispatch-view"
-                  className={`flex-1 sm:flex-none px-3 ${view === 'dispatch' ? 'shadow-sm' : ''}`}
-                  style={view === 'dispatch' ? {
-                    backgroundColor: 'hsl(var(--trade))',
-                    color: 'white'
-                  } : {}}
-                >
-                  <Users className="h-4 w-4 mr-1.5" />
-                  Dispatch
-                </Button>
               </div>
               <Button
                 variant="outline"
@@ -668,25 +381,15 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
                 <CalendarIcon className="h-4 w-4 mr-1" />
                 Today
               </Button>
-              
-              {view === 'dispatch' && scheduledJobsForDate.length >= 2 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOptimizeRoute}
-                  disabled={optimizeRouteMutation.isPending}
-                  data-testid="button-optimize-route-schedule"
-                  className="px-3"
-                  title="Optimize route order for today's jobs"
-                >
-                  {optimizeRouteMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Route className="h-4 w-4 mr-1" />
-                  )}
-                  Optimize
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/dispatch-board')}
+                className="px-3"
+              >
+                <Users className="h-4 w-4 mr-1.5" />
+                Dispatch Board
+              </Button>
             </div>
           </div>
 
@@ -696,8 +399,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
               size="icon"
               onClick={() => {
                 if (view === 'week') navigateWeek('prev');
-                else if (view === 'month') navigateMonth('prev');
-                else navigateDay('prev');
+                else navigateMonth('prev');
               }}
               data-testid="button-prev-period"
             >
@@ -708,16 +410,12 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
               <h2 className="text-base sm:text-lg font-semibold truncate">
                 {view === 'week' 
                   ? `${weekStart} - ${weekEnd}`
-                  : view === 'month'
-                  ? formatMonthYear(currentDate)
-                  : format(currentDate, 'EEEE, MMMM d, yyyy')
+                  : formatMonthYear(currentDate)
                 }
               </h2>
               <p className="text-xs text-muted-foreground">
                 {view === 'week' && weekJobCount > 0 
                   ? `${weekJobCount} job${weekJobCount === 1 ? '' : 's'} scheduled` 
-                  : view === 'dispatch'
-                  ? `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''} scheduled`
                   : ''
                 }
               </p>
@@ -728,8 +426,7 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
               size="icon"
               onClick={() => {
                 if (view === 'week') navigateWeek('next');
-                else if (view === 'month') navigateMonth('next');
-                else navigateDay('next');
+                else navigateMonth('next');
               }}
               data-testid="button-next-period"
             >
@@ -933,286 +630,6 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
           onViewJob={onViewJob}
         />
       )}
-
-      {view === 'dispatch' && (() => {
-        const hasScheduledJobs = scheduledJobsForDate.length > 0;
-
-        return (
-          <div className="mt-2 space-y-2">
-            {!dispatchTipDismissed && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/20 bg-primary/5">
-                <Info className="h-4 w-4 text-primary flex-shrink-0" />
-                <p className="text-xs flex-1">
-                  <span className="font-medium">Tip:</span> Drag jobs from the Unscheduled panel onto a team member's time slot to schedule them.
-                </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    localStorage.setItem('dispatch-onboarding-dismissed', 'true');
-                    setDispatchTipDismissed(true);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="w-full lg:w-72 flex-shrink-0 order-first">
-                <Card>
-                  <CardHeader className="py-2 px-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Briefcase className="h-4 w-4" />
-                      Unscheduled
-                      {unscheduledJobs.length > 0 && (
-                        <ArrowRight className="h-3.5 w-3.5 text-amber-500 ml-0.5" />
-                      )}
-                      <Badge
-                        variant="secondary"
-                        className="ml-auto"
-                        style={unscheduledJobs.length > 0 ? {
-                          backgroundColor: 'hsl(45 93% 47% / 0.15)',
-                          color: 'hsl(45 93% 37%)',
-                        } : {}}
-                      >
-                        {unscheduledJobs.length}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent 
-                    className="p-2"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={handleUnscheduledDrop}
-                  >
-                    <ScrollArea className="h-[calc(100vh-320px)] max-h-[600px] min-h-[200px]">
-                      <div className="space-y-2 pr-2">
-                        {unscheduledJobs.length > 0 ? (
-                          unscheduledJobs.map(job => {
-                            const statusStyle = getStatusStyle(job.status);
-                            return (
-                              <div
-                                key={job.id}
-                                draggable
-                                onDragStart={() => handleDragStart(job, null)}
-                                onDragEnd={() => setDraggedJob(null)}
-                                onClick={() => onViewJob?.(job.id)}
-                                className={`p-2 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate transition-all ${statusStyle.bg} ${statusStyle.border}`}
-                                data-testid={`unscheduled-job-${job.id}`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1">
-                                      <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                        {job.title}
-                                      </h4>
-                                      {jobEquipmentSet.has(job.id) && (
-                                        <Wrench className="h-3 w-3 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {job.clientName}
-                                    </p>
-                                    {job.address && (
-                                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                        <MapPin className="h-3 w-3 flex-shrink-0" />
-                                        <span className="truncate">{job.address}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                            <Briefcase className="h-7 w-7 mb-2 opacity-30" />
-                            <p className="text-sm">No unscheduled jobs</p>
-                            <p className="text-xs mt-0.5">All jobs are scheduled</p>
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="flex-1">
-                <Card>
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto relative">
-                      <div className="min-w-[800px]">
-                        <div className="flex border-b bg-muted/30">
-                          <div className="w-16 flex-shrink-0 p-2 flex items-center">
-                            <span className="text-xs font-medium text-muted-foreground">Time</span>
-                          </div>
-                          {teamMembersWithJobs.map(member => (
-                            <div 
-                              key={member.id}
-                              className="flex-1 min-w-[180px] px-2 py-1.5 border-l"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-7 w-7">
-                                  <AvatarImage src={member.profileImageUrl} />
-                                  <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                                    {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate">
-                                    {member.firstName} {member.lastName}
-                                  </p>
-                                  <div className="flex items-center gap-1">
-                                    <Timer className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-[11px] text-muted-foreground">
-                                      {member.totalHours}h / {member.capacity}h
-                                    </span>
-                                    {member.totalHours > member.capacity && (
-                                      <AlertCircle className="h-3 w-3 text-destructive" />
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
-                                <div 
-                                  className="h-full rounded-full transition-all"
-                                  style={{ 
-                                    width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
-                                    backgroundColor: member.totalHours > member.capacity 
-                                      ? 'hsl(var(--destructive))' 
-                                      : 'hsl(var(--trade))'
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <ScrollArea className="h-[calc(100vh-340px)] min-h-[400px]">
-                          <div className="relative">
-                            {!hasScheduledJobs && (
-                              <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none">
-                                <div className="text-center p-4 max-w-xs">
-                                  <CalendarIcon className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
-                                  <p className="text-sm text-muted-foreground font-medium mb-0.5">
-                                    No jobs scheduled for today
-                                  </p>
-                                  <p className="text-xs text-muted-foreground/70">
-                                    Drag jobs from the panel on the left, or click + New Job to get started.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            {WORK_HOURS.map(hour => (
-                              <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
-                                <div className="w-16 flex-shrink-0 p-2 text-xs text-muted-foreground border-r bg-muted/10">
-                                  {formatTime(hour)}
-                                </div>
-                                {teamMembersWithJobs.map(member => {
-                                  const slotId = `${member.id}-${hour}`;
-                                  const isOver = dragOverSlot === slotId;
-                                  
-                                  return (
-                                    <div
-                                      key={slotId}
-                                      className={`flex-1 min-w-[180px] border-l relative transition-colors group ${
-                                        isOver ? 'bg-primary/10' : ''
-                                      }`}
-                                      onDragOver={(e) => handleDragOver(e, slotId)}
-                                      onDragLeave={handleDragLeave}
-                                      onDrop={(e) => handleDrop(e, member.memberId, hour)}
-                                      data-testid={`slot-${member.id}-${hour}`}
-                                    >
-                                      {isOver && (
-                                        <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
-                                          <span className="text-xs text-primary font-medium">Drop here</span>
-                                        </div>
-                                      )}
-                                      {!isOver && (
-                                        <div className="absolute inset-1 border border-dashed border-transparent group-hover:border-muted-foreground/20 rounded-lg flex items-center justify-center transition-colors">
-                                          <Plus className="h-4 w-4 text-muted-foreground/0 group-hover:text-muted-foreground/25 transition-colors" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ))}
-
-                            {teamMembersWithJobs.map((member, memberIndex) => (
-                              member.jobs.map(job => {
-                                const { top, height } = getJobPosition(job);
-                                const statusStyle = getStatusStyle(job.status);
-                                const leftOffset = 64 + memberIndex * 180;
-
-                                return (
-                                  <div
-                                    key={job.id}
-                                    draggable
-                                    onDragStart={() => handleDragStart(job, member.memberId)}
-                                    onDragEnd={() => setDraggedJob(null)}
-                                    onClick={() => onViewJob?.(job.id)}
-                                    className={`absolute mx-1 rounded-lg border cursor-grab active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border}`}
-                                    style={{
-                                      top: top + 1,
-                                      left: leftOffset,
-                                      width: 'calc(100% / ' + teamMembersWithJobs.length + ' - 12px)',
-                                      minWidth: 168,
-                                      height: height - 2,
-                                      zIndex: draggedJob?.job.id === job.id ? 50 : 10,
-                                      opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
-                                    }}
-                                    data-testid={`scheduled-job-${job.id}`}
-                                  >
-                                    <div className="p-2 h-full flex flex-col">
-                                      <div className="flex items-start gap-1">
-                                        <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1">
-                                            <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                              {job.title}
-                                            </h4>
-                                            {jobEquipmentSet.has(job.id) && (
-                                              <Wrench className="h-3 w-3 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
-                                            )}
-                                          </div>
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {job.clientName}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      {height > 60 && (
-                                        <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
-                                          <Clock className="h-3 w-3" />
-                                          <span>{job.scheduledTime || '9:00'}</span>
-                                          {job.estimatedDuration && (
-                                            <span>({Math.round(job.estimatedDuration / 60)}h)</span>
-                                          )}
-                                        </div>
-                                      )}
-                                      {height > 80 && job.address && (
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                          <MapPin className="h-3 w-3 flex-shrink-0" />
-                                          <span className="truncate">{job.address}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
     </PageShell>
   );

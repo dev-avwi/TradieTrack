@@ -1798,6 +1798,7 @@ function TeamAdminTab() {
 
 function SchedulingTab() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [timeOffDialogOpen, setTimeOffDialogOpen] = useState(false);
   const [timeOffStart, setTimeOffStart] = useState("");
@@ -2235,10 +2236,19 @@ function SchedulingTab() {
               <CalendarDays className="h-4 w-4" />
               Team Schedule Board
             </CardTitle>
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-xs text-muted-foreground mr-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">
                 {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
               </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/dispatch-board')}
+                className="text-xs"
+              >
+                <Navigation className="h-3 w-3 mr-1" />
+                Dispatch Board
+              </Button>
             </div>
           </div>
         </CardHeader>

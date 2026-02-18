@@ -59,7 +59,6 @@ export default function InvoiceDetailView({
   const [paymentPlanInstallments, setPaymentPlanInstallments] = useState<number>(3);
   const [paymentPlanFrequency, setPaymentPlanFrequency] = useState<'weekly' | 'fortnightly' | 'monthly'>('fortnightly');
   const [sendingReceipt, setSendingReceipt] = useState(false);
-  const hasLabourLines = invoice?.lineItems?.some((item: any) => item.description?.startsWith('Labour —') || item.description?.startsWith('Labour -'));
   const [includeLabourLines, setIncludeLabourLines] = useState(false);
   const { data: businessSettings } = useBusinessSettings();
   const markPaidMutation = useMarkInvoicePaid();
@@ -93,6 +92,8 @@ export default function InvoiceDetailView({
       return response.json();
     }
   });
+
+  const hasLabourLines = invoice?.lineItems?.some((item: any) => item.description?.startsWith('Labour —') || item.description?.startsWith('Labour -'));
 
   const { data: client } = useQuery({
     queryKey: ['/api/clients', invoice?.clientId],

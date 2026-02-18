@@ -154,11 +154,11 @@ export const mainMenuItems: NavItem[] = [
     color: "text-success",
     bgColor: "bg-success/10",
     hideForStaff: true,
-    hideInSimpleMode: true,
+    hideInSimpleMode: false,
     requiresOwnerOrManager: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
     title: "Chat",
