@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -58,6 +58,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -263,6 +264,7 @@ export default function JobDetailView({
   const [selectedDurationEstimate, setSelectedDurationEstimate] = useState<string>('');
   const [proofPackPreviewOpen, setProofPackPreviewOpen] = useState(false);
   const [inspectionNotesInput, setInspectionNotesInput] = useState("");
+  const [workerPopoverOpen, setWorkerPopoverOpen] = useState(false);
   
   // Update current time every second for live timer display
   useEffect(() => {
@@ -2107,44 +2109,70 @@ export default function JobDetailView({
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Assign Worker</span>
                   </div>
-                  <Select
-                    value={job.assignedTo || "unassigned"}
-                    onValueChange={(value) => {
-                      assignWorkerMutation.mutate(value === "unassigned" ? null : value);
-                    }}
-                    disabled={assignWorkerMutation.isPending}
-                  >
-                    <SelectTrigger 
-                      className="w-full" 
-                      data-testid="select-assign-worker"
-                    >
-                      <SelectValue placeholder="Select worker..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">
-                        Unassigned
-                      </SelectItem>
-                      {teamMembers.filter(m => m.isActive && m.roleName?.toLowerCase() !== 'administrator').map((member) => {
-                        const onOtherJob = isWorkerOnOtherJob(member.memberId);
-                        return (
-                          <SelectItem 
-                            key={member.memberId} 
-                            value={member.memberId}
-                            data-testid={`option-worker-${member.memberId}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>{member.firstName} {member.lastName} ({member.roleName})</span>
-                              {onOtherJob ? (
-                                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">On a job</span>
-                              ) : (
-                                <span className="text-xs text-green-600 dark:text-green-400 font-medium">Available</span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={workerPopoverOpen} onOpenChange={setWorkerPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={workerPopoverOpen}
+                        className="w-full justify-between font-normal"
+                        disabled={assignWorkerMutation.isPending}
+                        data-testid="select-assign-worker"
+                      >
+                        {job.assignedTo ? (
+                          (() => {
+                            const assigned = teamMembers.find(m => m.memberId === job.assignedTo);
+                            return assigned ? `${assigned.firstName} ${assigned.lastName}` : 'Unknown';
+                          })()
+                        ) : (
+                          <span className="text-muted-foreground">Unassigned</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search workers..." />
+                        <CommandEmpty>No worker found.</CommandEmpty>
+                        <CommandList>
+                          <CommandGroup>
+                            <CommandItem
+                              value="unassigned"
+                              onSelect={() => {
+                                assignWorkerMutation.mutate(null);
+                                setWorkerPopoverOpen(false);
+                              }}
+                            >
+                              <Check className={`mr-2 h-4 w-4 ${!job.assignedTo ? 'opacity-100' : 'opacity-0'}`} />
+                              <span>Unassigned</span>
+                            </CommandItem>
+                            {teamMembers.filter(m => m.isActive && m.roleName?.toLowerCase() !== 'administrator').map((member) => {
+                              const onOtherJob = isWorkerOnOtherJob(member.memberId);
+                              return (
+                                <CommandItem
+                                  key={member.memberId}
+                                  value={`${member.firstName} ${member.lastName} ${member.roleName}`}
+                                  onSelect={() => {
+                                    assignWorkerMutation.mutate(member.memberId);
+                                    setWorkerPopoverOpen(false);
+                                  }}
+                                  data-testid={`option-worker-${member.memberId}`}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${job.assignedTo === member.memberId ? 'opacity-100' : 'opacity-0'}`} />
+                                  <span className="flex-1">{member.firstName} {member.lastName} ({member.roleName})</span>
+                                  {onOtherJob ? (
+                                    <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 ml-2">On a job</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400 border-green-300 dark:border-green-700 ml-2">Available</Badge>
+                                  )}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {jobAssignments.filter(a => a.isActive && a.acceptanceSignatureData).length > 0 && (
                     <div className="mt-3 space-y-2">
                       {jobAssignments.filter(a => a.isActive && a.acceptanceSignatureData).map((assignment) => (

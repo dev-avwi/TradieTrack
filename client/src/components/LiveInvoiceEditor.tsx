@@ -2,7 +2,17 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useSearch, Link } from "wouter";
+import { useSearch, useLocation, Link } from "wouter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +47,10 @@ import {
   ChevronLeft,
   Check,
   Palette,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description required"),
@@ -63,6 +76,7 @@ interface LiveInvoiceEditorProps {
 
 export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEditorProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { data: clients = [] } = useClients();
   const { data: businessSettings } = useBusinessSettings();
   const createInvoiceMutation = useCreateInvoice();
@@ -82,6 +96,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   const [sourceQuoteId, setSourceQuoteId] = useState<string | undefined>(urlQuoteId || undefined);
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(urlJobId || undefined);
   const [autoLoaded, setAutoLoaded] = useState(false);
+  const [showExistingInvoiceDialog, setShowExistingInvoiceDialog] = useState(false);
+  const [existingInvoiceData, setExistingInvoiceData] = useState<any>(null);
 
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -129,6 +145,7 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   
   // Track selected document template
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templatePopoverOpen, setTemplatePopoverOpen] = useState(false);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
@@ -239,6 +256,10 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         try {
           const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
           const data = res.ok ? await res.json() : null;
+          if (data?.linkedInvoice) {
+            setExistingInvoiceData(data.linkedInvoice);
+            setShowExistingInvoiceDialog(true);
+          }
           if (data?.quote?.lineItems && data.quote.lineItems.length > 0) {
             const baseItems = data.quote.lineItems.map((item: any) => ({
               description: String(item.description ?? ""),
@@ -394,6 +415,20 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   // Prefill form from completed job - the primary workflow for invoice creation
   const handleSelectJob = async (job: any) => {
     setSelectedJobId(job.id);
+    
+    // Check if job already has an invoice
+    try {
+      const linkedRes = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
+      if (linkedRes.ok) {
+        const linkedData = await linkedRes.json();
+        if (linkedData.linkedInvoice) {
+          setExistingInvoiceData(linkedData.linkedInvoice);
+          setShowExistingInvoiceDialog(true);
+        }
+      }
+    } catch (err) {
+      // Continue with invoice creation
+    }
     
     // Set client from job
     if (job.client?.id) {
@@ -852,32 +887,60 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
                 {documentTemplates.length > 0 && (
                   <div>
                     <Label className="text-xs text-muted-foreground">Template</Label>
-                    <Select
-                      value={selectedTemplateId || ""}
-                      onValueChange={(value) => {
-                        setSelectedTemplateId(value || null);
-                        const template = documentTemplates.find((t) => t.id === value);
-                        if (template) {
-                          handleApplyTemplate(template);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl mt-1">
-                        <SelectValue placeholder="Start from a template (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {documentTemplates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{template.name}</span>
-                              <Badge variant="secondary" className="text-xs">
-                                {template.tradeType}
+                    <Popover open={templatePopoverOpen} onOpenChange={setTemplatePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={templatePopoverOpen}
+                          className="w-full h-12 rounded-xl mt-1 justify-between font-normal"
+                        >
+                          {selectedTemplateId ? (
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="truncate">
+                                {documentTemplates.find(t => t.id === selectedTemplateId)?.name}
+                              </span>
+                              <Badge variant="secondary" className="text-xs flex-shrink-0">
+                                {documentTemplates.find(t => t.id === selectedTemplateId)?.tradeType}
                               </Badge>
                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          ) : (
+                            <span className="text-muted-foreground">Start from a template (optional)</span>
+                          )}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search templates..." />
+                          <CommandEmpty>No template found.</CommandEmpty>
+                          <CommandList>
+                            <CommandGroup>
+                              {documentTemplates.map((template) => (
+                                <CommandItem
+                                  key={template.id}
+                                  value={`${template.name} ${template.tradeType}`}
+                                  onSelect={() => {
+                                    setSelectedTemplateId(template.id);
+                                    const found = documentTemplates.find((t) => t.id === template.id);
+                                    if (found) {
+                                      handleApplyTemplate(found);
+                                    }
+                                    setTemplatePopoverOpen(false);
+                                  }}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${selectedTemplateId === template.id ? 'opacity-100' : 'opacity-0'}`} />
+                                  <span className="flex-1 truncate">{template.name}</span>
+                                  <Badge variant="secondary" className="text-xs ml-2 flex-shrink-0">
+                                    {template.tradeType}
+                                  </Badge>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
                 
@@ -1004,8 +1067,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
                   </Button>
                 </div>
 
-                {form.formState.errors.lineItems && (
-                  <p className="text-xs text-destructive">{form.formState.errors.lineItems.message}</p>
+                {(lineItems?.length || 0) === 0 && form.formState.errors.lineItems && (
+                  <p className="text-xs text-destructive">At least one line item required</p>
                 )}
 
                 {/* Totals */}
@@ -1068,6 +1131,55 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
               )}
             </Button>
           </form>
+
+          <AlertDialog open={showExistingInvoiceDialog} onOpenChange={setShowExistingInvoiceDialog}>
+            <AlertDialogContent className="max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" style={{ color: 'hsl(38 92% 50%)' }} />
+                  Invoice Already Exists
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    <p>This job already has an invoice attached. Are you sure you want to create another one?</p>
+                    
+                    {existingInvoiceData && (
+                      <Card className="bg-muted/50">
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-medium text-sm text-foreground">{existingInvoiceData.title || 'Existing Invoice'}</span>
+                            <Badge variant="secondary" className="text-xs capitalize">{existingInvoiceData.status}</Badge>
+                          </div>
+                          {existingInvoiceData.invoiceNumber && (
+                            <p className="text-xs text-muted-foreground">#{existingInvoiceData.invoiceNumber}</p>
+                          )}
+                          {existingInvoiceData.total && (
+                            <p className="text-sm font-semibold text-foreground">
+                              ${parseFloat(existingInvoiceData.total).toFixed(2)}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                <AlertDialogCancel 
+                  onClick={() => {
+                    if (existingInvoiceData?.id) {
+                      navigate(`/invoices/${existingInvoiceData.id}`);
+                    }
+                  }}
+                >
+                  View Existing Invoice
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={() => setShowExistingInvoiceDialog(false)}>
+                  Create Another Invoice
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {/* Preview Panel */}
