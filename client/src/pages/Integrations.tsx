@@ -7,7 +7,7 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-business-settings";
-import QuickBooksIntegration from "@/components/QuickBooksIntegration";
+
 import { 
   CreditCard, 
   Mail, 
@@ -321,6 +321,57 @@ export default function Integrations() {
     },
   });
 
+  const fullSyncXeroMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/full-sync');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Full Sync Complete",
+        description: "All Xero data has been synced",
+      });
+      refetchXero();
+    },
+    onError: (error: any) => {
+      toast({ title: "Full Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const syncXeroPaymentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/sync-payments-from-xero');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Payments Synced",
+        description: "Payment status has been synced from Xero",
+      });
+      refetchXero();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const syncXeroQuotesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/xero/sync-all-quotes');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Quotes Synced",
+        description: `Synced quotes to Xero`,
+      });
+      refetchXero();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const { data: myobStatus, refetch: refetchMyob } = useQuery<MyobStatus>({
     queryKey: ['/api/integrations/myob/status'],
   });
@@ -415,6 +466,57 @@ export default function Integrations() {
     },
   });
 
+  const syncMyobQuotesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/sync-quotes');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Quotes Synced",
+        description: `Synced ${data.synced} quote${data.synced !== 1 ? 's' : ''} to MYOB`,
+      });
+      refetchMyob();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const syncMyobPaymentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/sync-payments');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Payments Synced",
+        description: `Updated ${data.updated} payment${data.updated !== 1 ? 's' : ''} from MYOB`,
+      });
+      refetchMyob();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const fullSyncMyobMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/myob/full-sync');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Full Sync Complete",
+        description: "All MYOB data has been synced",
+      });
+      refetchMyob();
+    },
+    onError: (error: any) => {
+      toast({ title: "Full Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const [quickbooksSyncError, setQuickbooksSyncError] = useState<string | undefined>();
   const { data: quickbooksStatus, refetch: refetchQuickbooks } = useQuery<QuickBooksStatus>({
     queryKey: ['/api/integrations/quickbooks/status'],
@@ -482,6 +584,91 @@ export default function Integrations() {
         description: error.message || "Failed to sync with QuickBooks",
         variant: "destructive",
       });
+    },
+  });
+
+  const syncQbContactsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/sync-contacts');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Contacts Synced",
+        description: `Synced ${data.synced} contact${data.synced !== 1 ? 's' : ''} to QuickBooks`,
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const syncQbInvoicesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/sync-invoices');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Invoices Synced",
+        description: `Synced ${data.synced} invoice${data.synced !== 1 ? 's' : ''} to QuickBooks`,
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const syncQbQuotesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/sync-quotes');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Quotes Synced",
+        description: `Synced ${data.synced} quote${data.synced !== 1 ? 's' : ''} to QuickBooks`,
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const syncQbPaymentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/sync-payments');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Payments Synced",
+        description: `Updated ${data.updated} payment${data.updated !== 1 ? 's' : ''} from QuickBooks`,
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const fullSyncQbMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/integrations/quickbooks/full-sync');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Full Sync Complete",
+        description: "All QuickBooks data has been synced",
+      });
+      refetchQuickbooks();
+    },
+    onError: (error: any) => {
+      toast({ title: "Full Sync Failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1139,7 +1326,7 @@ export default function Integrations() {
                       variant="outline"
                       size="sm"
                       onClick={() => syncXeroContactsMutation.mutate()}
-                      disabled={syncXeroContactsMutation.isPending || syncXeroInvoicesMutation.isPending}
+                      disabled={syncXeroContactsMutation.isPending || fullSyncXeroMutation.isPending}
                       data-testid="button-sync-xero-contacts"
                     >
                       {syncXeroContactsMutation.isPending ? (
@@ -1153,7 +1340,7 @@ export default function Integrations() {
                       variant="outline"
                       size="sm"
                       onClick={() => syncXeroInvoicesMutation.mutate()}
-                      disabled={syncXeroInvoicesMutation.isPending || syncXeroContactsMutation.isPending}
+                      disabled={syncXeroInvoicesMutation.isPending || fullSyncXeroMutation.isPending}
                       data-testid="button-sync-xero-invoices"
                     >
                       {syncXeroInvoicesMutation.isPending ? (
@@ -1163,21 +1350,60 @@ export default function Integrations() {
                       )}
                       Push Invoices
                     </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncXeroQuotesMutation.mutate()}
+                      disabled={syncXeroQuotesMutation.isPending || fullSyncXeroMutation.isPending}
+                    >
+                      {syncXeroQuotesMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Push Quotes
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncXeroPaymentsMutation.mutate()}
+                      disabled={syncXeroPaymentsMutation.isPending || fullSyncXeroMutation.isPending}
+                    >
+                      {syncXeroPaymentsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Wallet className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Payments
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fullSyncXeroMutation.mutate()}
+                      disabled={fullSyncXeroMutation.isPending}
+                    >
+                      {fullSyncXeroMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Full Sync
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => disconnectXeroMutation.mutate()}
+                      disabled={disconnectXeroMutation.isPending}
+                      data-testid="button-disconnect-xero"
+                    >
+                      {disconnectXeroMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Link2Off className="w-4 h-4 mr-2" />
+                      )}
+                      Disconnect Xero
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={() => disconnectXeroMutation.mutate()}
-                    disabled={disconnectXeroMutation.isPending}
-                    data-testid="button-disconnect-xero"
-                  >
-                    {disconnectXeroMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Link2Off className="w-4 h-4 mr-2" />
-                    )}
-                    Disconnect Xero
-                  </Button>
                 </>
               ) : xeroStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
@@ -1207,18 +1433,157 @@ export default function Integrations() {
           </Card>
 
           {/* QuickBooks */}
-          <QuickBooksIntegration
-            isConnected={quickbooksStatus?.connected || false}
-            isConfigured={quickbooksStatus?.configured || false}
-            companyName={quickbooksStatus?.companyName}
-            lastSyncAt={quickbooksStatus?.lastSyncAt}
-            onConnect={() => connectQuickbooksMutation.mutate()}
-            onDisconnect={() => disconnectQuickbooksMutation.mutate()}
-            onSync={() => syncQuickbooksMutation.mutate()}
-            isConnecting={connectQuickbooksMutation.isPending}
-            isSyncing={syncQuickbooksMutation.isPending}
-            syncError={quickbooksSyncError}
-          />
+          <Card data-testid="card-quickbooks-integration">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    quickbooksStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                    'bg-gray-100 dark:bg-gray-800/50'
+                  }`}>
+                    <Wallet className={`w-5 h-5 ${
+                      quickbooksStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                      'text-gray-500 dark:text-gray-400'
+                    }`} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">QuickBooks Online</CardTitle>
+                    <p className="text-xs text-muted-foreground">Sync invoices, quotes and contacts with QuickBooks</p>
+                  </div>
+                </div>
+                {quickbooksStatus?.connected ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : quickbooksStatus?.configured === false ? (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Configured
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+                    Not Connected
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {quickbooksStatus?.connected ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="w-4 h-4" />
+                    <span>{quickbooksStatus.companyName || 'QuickBooks Company'}</span>
+                    {quickbooksStatus.lastSyncAt && (
+                      <span className="text-xs">— Last synced: {new Date(quickbooksStatus.lastSyncAt).toLocaleString()}</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncQbContactsMutation.mutate()}
+                      disabled={syncQbContactsMutation.isPending || fullSyncQbMutation.isPending}
+                    >
+                      {syncQbContactsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Users className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Contacts
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncQbInvoicesMutation.mutate()}
+                      disabled={syncQbInvoicesMutation.isPending || fullSyncQbMutation.isPending}
+                    >
+                      {syncQbInvoicesMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <FileText className="w-4 h-4 mr-2" />
+                      )}
+                      Push Invoices
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncQbQuotesMutation.mutate()}
+                      disabled={syncQbQuotesMutation.isPending || fullSyncQbMutation.isPending}
+                    >
+                      {syncQbQuotesMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Push Quotes
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncQbPaymentsMutation.mutate()}
+                      disabled={syncQbPaymentsMutation.isPending || fullSyncQbMutation.isPending}
+                    >
+                      {syncQbPaymentsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Wallet className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Payments
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fullSyncQbMutation.mutate()}
+                      disabled={fullSyncQbMutation.isPending}
+                    >
+                      {fullSyncQbMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Full Sync
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => disconnectQuickbooksMutation.mutate()}
+                      disabled={disconnectQuickbooksMutation.isPending}
+                    >
+                      {disconnectQuickbooksMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Link2Off className="w-4 h-4 mr-2" />
+                      )}
+                      Disconnect QuickBooks
+                    </Button>
+                  </div>
+                </>
+              ) : quickbooksStatus?.configured === false ? (
+                <p className="text-sm text-muted-foreground">
+                  QuickBooks integration is not configured. Contact support to enable this feature.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your QuickBooks Online account to automatically sync invoices, quotes and contacts.
+                  </p>
+                  <Button 
+                    onClick={() => connectQuickbooksMutation.mutate()}
+                    disabled={connectQuickbooksMutation.isPending}
+                    data-testid="button-connect-quickbooks"
+                  >
+                    {connectQuickbooksMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Wallet className="w-4 h-4 mr-2" />
+                    )}
+                    Connect to QuickBooks
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           {/* MYOB Card */}
           <Card data-testid="card-myob-integration">
@@ -1236,7 +1601,7 @@ export default function Integrations() {
                   </div>
                   <div>
                     <CardTitle className="text-base">MYOB AccountRight</CardTitle>
-                    <p className="text-xs text-muted-foreground">Sync invoices and contacts with MYOB</p>
+                    <p className="text-xs text-muted-foreground">Sync invoices, quotes and contacts with MYOB</p>
                   </div>
                 </div>
                 {myobStatus?.connected ? (
@@ -1270,7 +1635,7 @@ export default function Integrations() {
                       variant="outline"
                       size="sm"
                       onClick={() => syncMyobContactsMutation.mutate()}
-                      disabled={syncMyobContactsMutation.isPending || syncMyobInvoicesMutation.isPending}
+                      disabled={syncMyobContactsMutation.isPending || fullSyncMyobMutation.isPending}
                       data-testid="button-sync-myob-contacts"
                     >
                       {syncMyobContactsMutation.isPending ? (
@@ -1284,7 +1649,7 @@ export default function Integrations() {
                       variant="outline"
                       size="sm"
                       onClick={() => syncMyobInvoicesMutation.mutate()}
-                      disabled={syncMyobInvoicesMutation.isPending || syncMyobContactsMutation.isPending}
+                      disabled={syncMyobInvoicesMutation.isPending || fullSyncMyobMutation.isPending}
                       data-testid="button-sync-myob-invoices"
                     >
                       {syncMyobInvoicesMutation.isPending ? (
@@ -1294,21 +1659,60 @@ export default function Integrations() {
                       )}
                       Push Invoices
                     </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncMyobQuotesMutation.mutate()}
+                      disabled={syncMyobQuotesMutation.isPending || fullSyncMyobMutation.isPending}
+                    >
+                      {syncMyobQuotesMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Push Quotes
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncMyobPaymentsMutation.mutate()}
+                      disabled={syncMyobPaymentsMutation.isPending || fullSyncMyobMutation.isPending}
+                    >
+                      {syncMyobPaymentsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Wallet className="w-4 h-4 mr-2" />
+                      )}
+                      Sync Payments
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fullSyncMyobMutation.mutate()}
+                      disabled={fullSyncMyobMutation.isPending}
+                    >
+                      {fullSyncMyobMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Full Sync
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => disconnectMyobMutation.mutate()}
+                      disabled={disconnectMyobMutation.isPending}
+                      data-testid="button-disconnect-myob"
+                    >
+                      {disconnectMyobMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Link2Off className="w-4 h-4 mr-2" />
+                      )}
+                      Disconnect MYOB
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={() => disconnectMyobMutation.mutate()}
-                    disabled={disconnectMyobMutation.isPending}
-                    data-testid="button-disconnect-myob"
-                  >
-                    {disconnectMyobMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Link2Off className="w-4 h-4 mr-2" />
-                    )}
-                    Disconnect MYOB
-                  </Button>
                 </>
               ) : myobStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">

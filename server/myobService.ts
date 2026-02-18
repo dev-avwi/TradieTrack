@@ -360,3 +360,244 @@ export async function setCompanyFileCredentials(
 export async function disconnect(userId: string): Promise<boolean> {
   return await storage.deleteMyobConnection(userId);
 }
+
+export async function syncSingleInvoiceToMyob(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const connection = await storage.getMyobConnection(userId);
+    if (!connection || connection.status !== "active") {
+      return { success: true };
+    }
+
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice) {
+      return { success: false, error: "Invoice not found" };
+    }
+
+    const refreshedConnection = await refreshTokenIfNeeded(connection);
+    const tokens = decryptTokens(refreshedConnection);
+    const cfToken = getCfToken(refreshedConnection);
+    if (!cfToken) {
+      return { success: false, error: "Company file credentials not configured" };
+    }
+
+    const client = await storage.getClientById(invoice.clientId);
+    if (!client) {
+      return { success: false, error: "Client not found" };
+    }
+
+    const lineItems = await storage.getInvoiceLineItems(invoice.id);
+    
+    const myobInvoice = {
+      Number: invoice.number || (invoice as any).invoiceNumber,
+      Customer: { Name: client.name },
+      Lines: lineItems.map(item => ({
+        Description: item.description,
+        Total: parseFloat(item.total || "0"),
+      })),
+      Date: invoice.createdAt ? new Date(invoice.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    };
+
+    const headers = getApiHeaders(tokens.accessToken, cfToken);
+    headers["Content-Type"] = "application/json";
+    await axios.post(
+      `${MYOB_API_BASE}/${refreshedConnection.businessId}/Sale/Invoice/Service`,
+      myobInvoice,
+      { headers }
+    );
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[MYOB] Failed to sync single invoice:', error);
+    return { success: false, error: error.message || "Failed to sync invoice" };
+  }
+}
+
+export async function syncQuotesToMyob(userId: string): Promise<{ synced: number; skipped: number; errors: string[] }> {
+  const connection = await storage.getMyobConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active MYOB connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const tokens = decryptTokens(refreshedConnection);
+  const cfToken = getCfToken(refreshedConnection);
+  if (!cfToken) {
+    throw new Error("Company file credentials not configured");
+  }
+
+  let synced = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  try {
+    const quotes = await storage.getQuotes(userId);
+    const clients = await storage.getClients(userId);
+
+    for (const quote of quotes) {
+      try {
+        if (quote.status === 'draft') { skipped++; continue; }
+
+        const client = clients.find(c => c.id === quote.clientId);
+        if (!client) { skipped++; continue; }
+
+        const lineItems = await storage.getQuoteLineItems(quote.id);
+
+        const myobInvoice = {
+          Number: `Q-${quote.number || quote.id}`,
+          Customer: { Name: client.name },
+          Lines: lineItems.map(item => ({
+            Description: item.description,
+            Total: parseFloat(item.total || "0"),
+          })),
+          Date: quote.createdAt ? new Date(quote.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          Comment: `Quote ${quote.number || ''} - ${quote.title || ''}`.trim(),
+        };
+
+        const headers = getApiHeaders(tokens.accessToken, cfToken);
+        headers["Content-Type"] = "application/json";
+        await axios.post(
+          `${MYOB_API_BASE}/${refreshedConnection.businessId}/Sale/Invoice/Service`,
+          myobInvoice,
+          { headers }
+        );
+
+        synced++;
+      } catch (err) {
+        errors.push(`Failed to sync quote ${quote.number}: ${err}`);
+      }
+    }
+
+    await storage.updateMyobConnection(refreshedConnection.id, { lastSyncAt: new Date() });
+    return { synced, skipped, errors };
+  } catch (err) {
+    throw new Error(`Failed to sync quotes to MYOB: ${err}`);
+  }
+}
+
+export async function syncPaymentsFromMyob(userId: string): Promise<{ updated: number; errors: string[] }> {
+  const connection = await storage.getMyobConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active MYOB connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const tokens = decryptTokens(refreshedConnection);
+  const cfToken = getCfToken(refreshedConnection);
+  if (!cfToken) {
+    throw new Error("Company file credentials not configured");
+  }
+
+  let updated = 0;
+  const errors: string[] = [];
+
+  try {
+    const paymentsResponse = await axios.get(
+      `${MYOB_API_BASE}/${refreshedConnection.businessId}/Sale/CustomerPayment`,
+      { headers: getApiHeaders(tokens.accessToken, cfToken) }
+    );
+
+    const payments = paymentsResponse.data.Items || [];
+    const invoices = await storage.getInvoices(userId);
+
+    for (const payment of payments) {
+      try {
+        const invoiceRef = payment.Invoices?.[0]?.Number;
+        if (!invoiceRef) continue;
+
+        const matchingInvoice = invoices.find(inv => 
+          inv.number === invoiceRef || (inv as any).invoiceNumber === invoiceRef
+        );
+
+        if (matchingInvoice && matchingInvoice.status !== 'paid') {
+          await storage.updateInvoice(matchingInvoice.id, userId, {
+            status: 'paid',
+            paidAt: payment.Date ? new Date(payment.Date) : new Date(),
+          });
+          updated++;
+        }
+      } catch (err) {
+        errors.push(`Failed to process MYOB payment: ${err}`);
+      }
+    }
+
+    await storage.updateMyobConnection(refreshedConnection.id, { lastSyncAt: new Date() });
+    return { updated, errors };
+  } catch (err) {
+    throw new Error(`Failed to sync payments from MYOB: ${err}`);
+  }
+}
+
+export async function voidInvoiceInMyob(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const connection = await storage.getMyobConnection(userId);
+    if (!connection || connection.status !== "active") {
+      return { success: false, error: "No active MYOB connection" };
+    }
+
+    console.log(`[MYOB] Void invoice ${invoiceId} requested - MYOB API does not natively support void, marking as noted`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function runFullMyobSync(userId: string): Promise<{
+  contacts: { synced: number; errors: string[] };
+  invoices: { synced: number; errors: string[] };
+  payments: { updated: number; errors: string[] };
+  quotes: { synced: number; skipped: number; errors: string[] };
+}> {
+  const contacts = await syncContactsFromMyob(userId);
+  const invoices = await syncInvoicesToMyob(userId);
+  const payments = await syncPaymentsFromMyob(userId);
+  const quotes = await syncQuotesToMyob(userId);
+
+  return { contacts, invoices, payments, quotes };
+}
+
+export async function getSyncSummary(userId: string): Promise<{
+  connected: boolean;
+  lastSyncAt?: Date;
+  companyName?: string;
+}> {
+  const connection = await storage.getMyobConnection(userId);
+  if (!connection || connection.status !== "active") {
+    return { connected: false };
+  }
+
+  return {
+    connected: true,
+    lastSyncAt: connection.lastSyncAt || undefined,
+    companyName: connection.companyName || undefined,
+  };
+}
+
+export async function getDetailedSyncStatus(userId: string): Promise<{
+  connected: boolean;
+  companyName?: string;
+  lastSyncAt?: Date;
+  status?: string;
+  cfCredentialsSet?: boolean;
+  capabilities: string[];
+}> {
+  const connection = await storage.getMyobConnection(userId);
+  if (!connection) {
+    return { connected: false, capabilities: [] };
+  }
+
+  return {
+    connected: connection.status === "active",
+    companyName: connection.companyName || undefined,
+    lastSyncAt: connection.lastSyncAt || undefined,
+    status: connection.status || "unknown",
+    cfCredentialsSet: !!(connection.cfUsername && connection.cfPassword),
+    capabilities: [
+      'contacts_sync',
+      'invoices_sync', 
+      'quotes_sync',
+      'payments_sync',
+      'single_invoice_sync',
+      'full_sync',
+    ],
+  };
+}

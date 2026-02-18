@@ -25,7 +25,11 @@ import {
   MapPin,
   Mail,
   Shield,
-  Users
+  Users,
+  UserCircle,
+  Heart,
+  Loader2,
+  MessageCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
@@ -94,6 +98,8 @@ interface PortalJob {
   completedAt?: string;
   photos?: any[];
   portalToken?: string;
+  assignedWorkers?: Array<{ id: string; name: string }>;
+  userId?: string;
 }
 
 interface PortalData {
@@ -164,6 +170,10 @@ export default function ClientPortalHub() {
   const [sourceDocument, setSourceDocument] = useState<{ type: string; token: string } | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [requestingWorker, setRequestingWorker] = useState<{ workerId: string; workerName: string; jobId: string; jobTitle: string } | null>(null);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [submittedRequests, setSubmittedRequests] = useState<Set<string>>(new Set());
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -422,6 +432,48 @@ export default function ClientPortalHub() {
   const handleViewReceipt = (receipt: PortalReceipt) => {
     if (receipt.viewToken) {
       window.location.href = `/portal/receipt/${receipt.viewToken}`;
+    }
+  };
+
+  const handleRequestWorker = async (workerId: string, workerName: string, jobId: string, jobTitle: string, clientId?: string) => {
+    setIsSubmittingRequest(true);
+    try {
+      const res = await fetch('/api/portal/request-worker', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          workerId,
+          workerName,
+          jobId,
+          jobTitle,
+          clientId,
+          message: requestMessage || undefined,
+        })
+      });
+      
+      if (res.ok) {
+        toast({
+          title: "Request Sent!",
+          description: `Your request for ${workerName} has been sent to the business`,
+        });
+        setSubmittedRequests(prev => new Set([...prev, `${workerId}-${jobId}`]));
+        setRequestingWorker(null);
+        setRequestMessage('');
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to send request');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Request Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -1044,12 +1096,7 @@ export default function ClientPortalHub() {
                       return (
                         <div
                           key={job.id}
-                          onClick={() => {
-                            if (job.portalToken) {
-                              window.location.href = `/p/${job.portalToken}`;
-                            }
-                          }}
-                          className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
+                          className={`bg-white rounded-md shadow-lg border overflow-hidden ${
                             isDone
                               ? 'border-green-200'
                               : isInProgress
@@ -1059,7 +1106,14 @@ export default function ClientPortalHub() {
                               : 'border'
                           }`}
                         >
-                          <div className="p-5">
+                          <div 
+                            className="p-5 cursor-pointer hover-elevate"
+                            onClick={() => {
+                              if (job.portalToken) {
+                                window.location.href = `/p/${job.portalToken}`;
+                              }
+                            }}
+                          >
                             <div className="flex items-center gap-3 mb-3">
                               <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                                 isDone
@@ -1108,6 +1162,114 @@ export default function ClientPortalHub() {
                               </p>
                             </div>
                           </div>
+                          
+                          {job.assignedWorkers && job.assignedWorkers.length > 0 && (
+                            <div className="px-5 pb-4 border-t">
+                              <div className="pt-3">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">Assigned Team</p>
+                                <div className="space-y-2">
+                                  {job.assignedWorkers.map((worker) => {
+                                    const requestKey = `${worker.id}-${job.id}`;
+                                    const alreadyRequested = submittedRequests.has(requestKey);
+                                    const isExpanded = requestingWorker?.workerId === worker.id && requestingWorker?.jobId === job.id;
+                                    
+                                    return (
+                                      <div key={worker.id} className="space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
+                                              <UserCircle className="w-4 h-4 text-brand" />
+                                            </div>
+                                            <span className="text-sm font-medium text-foreground truncate">{worker.name}</span>
+                                          </div>
+                                          {alreadyRequested ? (
+                                            <Badge variant="secondary" className="flex-shrink-0">
+                                              <Check className="w-3 h-3 mr-1" />
+                                              Requested
+                                            </Badge>
+                                          ) : isDone ? (
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              className="flex-shrink-0"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isExpanded) {
+                                                  setRequestingWorker(null);
+                                                  setRequestMessage('');
+                                                } else {
+                                                  setRequestingWorker({ workerId: worker.id, workerName: worker.name, jobId: job.id, jobTitle: job.title });
+                                                }
+                                              }}
+                                            >
+                                              <Heart className="w-3.5 h-3.5 mr-1" />
+                                              Request Again
+                                            </Button>
+                                          ) : null}
+                                        </div>
+                                        
+                                        {isExpanded && (
+                                          <div className="ml-9 p-3 bg-muted/50 rounded-md space-y-2">
+                                            <p className="text-xs text-muted-foreground">Add a note for the business (optional):</p>
+                                            <textarea
+                                              className="w-full text-sm border rounded-md p-2 bg-white text-foreground resize-none"
+                                              rows={2}
+                                              placeholder="e.g. Great work last time, would love the same person..."
+                                              value={requestMessage}
+                                              onChange={(e) => setRequestMessage(e.target.value)}
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <div className="flex gap-2">
+                                              <Button 
+                                                size="sm" 
+                                                className="flex-1"
+                                                disabled={isSubmittingRequest}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleRequestWorker(worker.id, worker.name, job.id, job.title, selectedClientId || undefined);
+                                                }}
+                                              >
+                                                {isSubmittingRequest ? (
+                                                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                                ) : (
+                                                  <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                                                )}
+                                                Send Request
+                                              </Button>
+                                              <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setRequestingWorker(null);
+                                                  setRequestMessage('');
+                                                }}
+                                              >
+                                                Cancel
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {job.portalToken && (isInProgress || isScheduled) && (
+                            <div className="px-5 pb-4">
+                              <Button 
+                                variant="outline" 
+                                className="w-full"
+                                onClick={() => window.location.href = `/p/${job.portalToken}`}
+                              >
+                                <MapPin className="w-4 h-4 mr-2" />
+                                Track Live Progress
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })

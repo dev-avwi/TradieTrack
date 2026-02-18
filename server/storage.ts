@@ -319,6 +319,9 @@ import {
   jobEquipment,
   type JobEquipment,
   type InsertJobEquipment,
+  workerRequests,
+  type WorkerRequest,
+  type InsertWorkerRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -984,6 +987,12 @@ export interface IStorage {
   // Equipment Maintenance
   getEquipmentMaintenance(equipmentId: string, userId: string): Promise<EquipmentMaintenance[]>;
   createEquipmentMaintenance(data: InsertEquipmentMaintenance & { userId: string }): Promise<EquipmentMaintenance>;
+
+  // Worker Requests
+  createWorkerRequest(data: InsertWorkerRequest): Promise<WorkerRequest>;
+  getWorkerRequests(businessOwnerId: string): Promise<WorkerRequest[]>;
+  getWorkerRequestsByClient(clientId: string): Promise<WorkerRequest[]>;
+  updateWorkerRequestStatus(id: string, status: string): Promise<WorkerRequest | undefined>;
 }
 
 // Initialize database connection using standard pg driver
@@ -7473,6 +7482,24 @@ Thank you for your prompt attention to this matter.`,
   async createEquipmentMaintenance(data: InsertEquipmentMaintenance & { userId: string }): Promise<EquipmentMaintenance> {
     const [result] = await db.insert(equipmentMaintenance).values(data).returning();
     return result;
+  }
+
+  async createWorkerRequest(data: InsertWorkerRequest): Promise<WorkerRequest> {
+    const [request] = await db.insert(workerRequests).values(data).returning();
+    return request;
+  }
+
+  async getWorkerRequests(businessOwnerId: string): Promise<WorkerRequest[]> {
+    return await db.select().from(workerRequests).where(eq(workerRequests.businessOwnerId, businessOwnerId)).orderBy(desc(workerRequests.createdAt));
+  }
+
+  async getWorkerRequestsByClient(clientId: string): Promise<WorkerRequest[]> {
+    return await db.select().from(workerRequests).where(eq(workerRequests.clientId, clientId)).orderBy(desc(workerRequests.createdAt));
+  }
+
+  async updateWorkerRequestStatus(id: string, status: string): Promise<WorkerRequest | undefined> {
+    const [updated] = await db.update(workerRequests).set({ status, respondedAt: new Date() }).where(eq(workerRequests.id, id)).returning();
+    return updated;
   }
 }
 

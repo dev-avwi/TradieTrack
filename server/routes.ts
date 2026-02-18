@@ -1300,6 +1300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const jobsWithPortalTokens = await Promise.all(jobs.map(async (j) => {
         let portalToken = null;
+        let assignedWorkers: Array<{ id: string; name: string }> = [];
         try {
           const tokens = await storage.getJobPortalTokensByJobId(j.id);
           const activeToken = tokens?.find((t: any) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()));
@@ -1307,9 +1308,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             portalToken = activeToken.token;
           }
         } catch (e) {}
+        try {
+          const assignments = await storage.getJobAssignments(j.id);
+          if (assignments && assignments.length > 0) {
+            for (const a of assignments) {
+              try {
+                if (a.teamMemberId) {
+                  const worker = await storage.getTeamMember(a.teamMemberId, j.userId);
+                  if (worker) {
+                    assignedWorkers.push({ 
+                      id: worker.memberId || worker.id, 
+                      name: `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || a.displayName || a.workerDisplayNameSnapshot || 'Worker'
+                    });
+                  }
+                } else if (a.displayName || a.workerDisplayNameSnapshot) {
+                  assignedWorkers.push({
+                    id: a.userId || a.id,
+                    name: a.displayName || a.workerDisplayNameSnapshot || 'Worker'
+                  });
+                }
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
         return {
           ...j,
           portalToken,
+          assignedWorkers,
           businessInfo: businessInfoMap.get(j.userId),
         };
       }));
@@ -1391,6 +1416,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error in portal auto-auth:', error);
       res.status(500).json({ error: 'Failed to authenticate' });
+    }
+  });
+
+  // CLIENT PORTAL: Request Same Worker
+  app.post("/api/portal/request-worker", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const { workerId, workerName, jobId, jobTitle, message } = req.body;
+      if (!workerId || !workerName) {
+        return res.status(400).json({ error: 'Worker ID and name are required' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      const client = req.body.clientId 
+        ? allClients.find((c: any) => c.id === req.body.clientId) || allClients[0]
+        : allClients[0];
+
+      const request = await storage.createWorkerRequest({
+        clientId: client.id,
+        businessOwnerId: client.userId,
+        preferredWorkerId: workerId,
+        workerName,
+        referenceJobId: jobId || null,
+        referenceJobTitle: jobTitle || null,
+        message: message || null,
+        status: 'pending',
+      });
+
+      await storage.createNotification({
+        userId: client.userId,
+        type: 'worker_request',
+        title: 'Worker Request from Client',
+        message: `${client.name || 'A client'} has requested ${workerName} for future work${jobTitle ? ` (ref: ${jobTitle})` : ''}`,
+        relatedId: request.id,
+        relatedType: 'worker_request',
+      });
+
+      res.json({ success: true, request });
+    } catch (error: any) {
+      console.error('Error creating worker request:', error);
+      res.status(500).json({ error: 'Failed to create worker request' });
+    }
+  });
+
+  // CLIENT PORTAL: Get worker requests
+  app.get("/api/portal/worker-requests", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.json({ requests: [] });
+      }
+
+      const allRequests: any[] = [];
+      for (const client of allClients) {
+        const requests = await storage.getWorkerRequestsByClient(client.id);
+        allRequests.push(...requests);
+      }
+
+      res.json({ requests: allRequests });
+    } catch (error: any) {
+      console.error('Error fetching worker requests:', error);
+      res.status(500).json({ error: 'Failed to fetch worker requests' });
+    }
+  });
+
+  // BUSINESS OWNER: Get worker requests
+  app.get("/api/worker-requests", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const requests = await storage.getWorkerRequests(req.user.id);
+      res.json(requests);
+    } catch (error: any) {
+      console.error('Error fetching worker requests:', error);
+      res.status(500).json({ error: 'Failed to fetch worker requests' });
+    }
+  });
+
+  // BUSINESS OWNER: Accept/Decline worker request
+  app.patch("/api/worker-requests/:id/status", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const { status } = req.body;
+      if (!['accepted', 'declined'].includes(status)) {
+        return res.status(400).json({ error: 'Status must be accepted or declined' });
+      }
+      const updated = await storage.updateWorkerRequestStatus(req.params.id, status);
+      if (!updated) return res.status(404).json({ error: 'Request not found' });
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating worker request:', error);
+      res.status(500).json({ error: 'Failed to update worker request' });
     }
   });
 
@@ -8156,6 +8295,69 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.post("/api/integrations/myob/sync-quotes", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.syncQuotesToMyob(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/myob/sync-payments", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.syncPaymentsFromMyob(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/myob/push-invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.syncSingleInvoiceToMyob(req.userId, req.params.invoiceId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/myob/void-invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.voidInvoiceInMyob(req.userId, req.params.invoiceId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/myob/full-sync", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.runFullMyobSync(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/integrations/myob/sync-summary", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.getSyncSummary(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/integrations/myob/detailed-status", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.getDetailedSyncStatus(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // QuickBooks Integration Routes
   app.post("/api/integrations/quickbooks/connect", requireAuth, async (req: any, res) => {
     try {
@@ -8290,6 +8492,87 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error("Error syncing contacts to QuickBooks:", error);
       res.status(500).json({ error: error.message || "Failed to sync contacts to QuickBooks" });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync-quotes", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncQuotesToQuickbooks(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync-payments", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncPaymentsFromQuickbooks(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/push-invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncSingleInvoiceToQuickbooks(req.userId, req.params.invoiceId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/void-invoice/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.voidInvoiceInQuickbooks(req.userId, req.params.invoiceId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync-credit-notes", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncCreditNotesFromQuickbooks(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/sync-inventory", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.syncInventoryFromQuickbooks(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/full-sync", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.runFullQuickbooksSync(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/integrations/quickbooks/sync-summary", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.getSyncSummary(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/integrations/quickbooks/detailed-status", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.getDetailedSyncStatus(req.userId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

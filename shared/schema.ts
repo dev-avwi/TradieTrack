@@ -3956,3 +3956,22 @@ export const subcontractorLocationPings = pgTable("subcontractor_location_pings"
 export const insertSubcontractorLocationPingSchema = createInsertSchema(subcontractorLocationPings).omit({ id: true, recordedAt: true });
 export type InsertSubcontractorLocationPing = z.infer<typeof insertSubcontractorLocationPingSchema>;
 export type SubcontractorLocationPing = typeof subcontractorLocationPings.$inferSelect;
+
+// Worker Requests - Clients can request the same worker from a previous job
+export const workerRequests = pgTable("worker_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  preferredWorkerId: varchar("preferred_worker_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workerName: text("worker_name").notNull(),
+  referenceJobId: varchar("reference_job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  referenceJobTitle: text("reference_job_title"),
+  message: text("message"),
+  status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+});
+
+export const insertWorkerRequestSchema = createInsertSchema(workerRequests).omit({ id: true, createdAt: true, respondedAt: true });
+export type InsertWorkerRequest = z.infer<typeof insertWorkerRequestSchema>;
+export type WorkerRequest = typeof workerRequests.$inferSelect;

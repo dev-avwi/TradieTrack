@@ -565,3 +565,300 @@ export async function syncSingleInvoiceToQuickbooks(userId: string, invoiceId: s
     return { success: false, error: error.message || "Failed to sync invoice" };
   }
 }
+
+export async function syncQuotesToQuickbooks(userId: string): Promise<{ synced: number; skipped: number; errors: string[] }> {
+  const connection = await storage.getQuickbooksConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active QuickBooks connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const tokens = decryptTokens(refreshedConnection);
+
+  let synced = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  try {
+    const quotes = await storage.getQuotes(userId);
+    const clients = await storage.getClients(userId);
+
+    for (const quote of quotes) {
+      try {
+        if (quote.status === 'draft') { skipped++; continue; }
+
+        const client = clients.find(c => c.id === quote.clientId);
+        if (!client) { skipped++; continue; }
+
+        let customer = await findCustomerByEmail(tokens.accessToken, refreshedConnection.realmId, client.email);
+        if (!customer) {
+          customer = await createCustomer(tokens.accessToken, refreshedConnection.realmId, {
+            DisplayName: client.name,
+            PrimaryEmailAddr: client.email ? { Address: client.email } : undefined,
+            PrimaryPhone: client.phone ? { FreeFormNumber: client.phone } : undefined,
+          });
+        }
+
+        const lineItems = await storage.getQuoteLineItems(quote.id);
+
+        const estimate = {
+          CustomerRef: { value: customer.Id },
+          Line: lineItems.map(item => ({
+            DetailType: "SalesItemLineDetail",
+            Amount: parseFloat(item.unitPrice || "0") * parseFloat(item.quantity || "1"),
+            SalesItemLineDetail: {
+              ItemRef: { value: "1", name: "Services" },
+              Qty: parseFloat(item.quantity || "1"),
+              UnitPrice: parseFloat(item.unitPrice || "0"),
+            },
+            Description: item.description,
+          })),
+          DocNumber: quote.number || undefined,
+          TxnDate: quote.createdAt ? new Date(quote.createdAt).toISOString().split('T')[0] : undefined,
+          ExpirationDate: quote.validUntil ? new Date(quote.validUntil).toISOString().split('T')[0] : undefined,
+        };
+
+        const response = await fetch(
+          `${QUICKBOOKS_API_BASE_URL}/${refreshedConnection.realmId}/estimate?minorversion=65`,
+          {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tokens.accessToken}`,
+            },
+            body: JSON.stringify(estimate),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Failed to create estimate: ${error}`);
+        }
+
+        synced++;
+      } catch (err) {
+        errors.push(`Failed to sync quote ${quote.number}: ${err}`);
+      }
+    }
+
+    await storage.updateQuickbooksConnection(refreshedConnection.id, { lastSyncAt: new Date() });
+    return { synced, skipped, errors };
+  } catch (err) {
+    throw new Error(`Failed to sync quotes to QuickBooks: ${err}`);
+  }
+}
+
+export async function voidInvoiceInQuickbooks(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const connection = await storage.getQuickbooksConnection(userId);
+    if (!connection || connection.status !== "active") {
+      return { success: false, error: "No active QuickBooks connection" };
+    }
+
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice) {
+      return { success: false, error: "Invoice not found" };
+    }
+
+    const qbInvoiceId = (invoice as any).quickbooksInvoiceId;
+    if (!qbInvoiceId) {
+      return { success: false, error: "Invoice not synced to QuickBooks" };
+    }
+
+    const refreshedConnection = await refreshTokenIfNeeded(connection);
+    const tokens = decryptTokens(refreshedConnection);
+
+    const qbInvoice = await getQuickbooksInvoice(tokens.accessToken, refreshedConnection.realmId, qbInvoiceId);
+    if (!qbInvoice) {
+      return { success: false, error: "Invoice not found in QuickBooks" };
+    }
+
+    const response = await fetch(
+      `${QUICKBOOKS_API_BASE_URL}/${refreshedConnection.realmId}/invoice?operation=void&minorversion=65`,
+      {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${tokens.accessToken}`,
+        },
+        body: JSON.stringify({
+          Id: qbInvoice.Id,
+          SyncToken: qbInvoice.SyncToken,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      return { success: false, error: `Failed to void invoice in QuickBooks: ${error}` };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function syncCreditNotesFromQuickbooks(userId: string): Promise<{ synced: number; errors: string[] }> {
+  const connection = await storage.getQuickbooksConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active QuickBooks connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const tokens = decryptTokens(refreshedConnection);
+
+  let synced = 0;
+  const errors: string[] = [];
+
+  try {
+    const query = encodeURIComponent("SELECT * FROM CreditMemo MAXRESULTS 100");
+    const response = await fetch(
+      `${QUICKBOOKS_API_BASE_URL}/${refreshedConnection.realmId}/query?query=${query}&minorversion=65`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${tokens.accessToken}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const creditMemos = data.QueryResponse?.CreditMemo || [];
+      synced = creditMemos.length;
+      console.log(`[QuickBooks] Found ${synced} credit memos`);
+    }
+
+    await storage.updateQuickbooksConnection(refreshedConnection.id, { lastSyncAt: new Date() });
+    return { synced, errors };
+  } catch (err) {
+    throw new Error(`Failed to sync credit notes from QuickBooks: ${err}`);
+  }
+}
+
+export async function syncInventoryFromQuickbooks(userId: string): Promise<{ synced: number; errors: string[] }> {
+  const connection = await storage.getQuickbooksConnection(userId);
+  if (!connection || connection.status !== "active") {
+    throw new Error("No active QuickBooks connection found");
+  }
+
+  const refreshedConnection = await refreshTokenIfNeeded(connection);
+  const tokens = decryptTokens(refreshedConnection);
+
+  let synced = 0;
+  const errors: string[] = [];
+
+  try {
+    const query = encodeURIComponent("SELECT * FROM Item WHERE Type = 'Inventory' MAXRESULTS 200");
+    const response = await fetch(
+      `${QUICKBOOKS_API_BASE_URL}/${refreshedConnection.realmId}/query?query=${query}&minorversion=65`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${tokens.accessToken}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const items = data.QueryResponse?.Item || [];
+      
+      for (const item of items) {
+        try {
+          const existingItems = await storage.getLineItemCatalog(userId);
+          const matchingItem = existingItems.find(
+            (ci: any) => ci.name?.toLowerCase() === item.Name?.toLowerCase()
+          );
+
+          if (!matchingItem && item.Name) {
+            await storage.createLineItemCatalogItem({
+              userId,
+              name: item.Name,
+              description: item.Description || null,
+              unitPrice: item.UnitPrice ? String(item.UnitPrice) : null,
+              category: 'inventory',
+            } as any);
+            synced++;
+          }
+        } catch (err) {
+          errors.push(`Failed to sync inventory item ${item.Name}: ${err}`);
+        }
+      }
+    }
+
+    await storage.updateQuickbooksConnection(refreshedConnection.id, { lastSyncAt: new Date() });
+    return { synced, errors };
+  } catch (err) {
+    throw new Error(`Failed to sync inventory from QuickBooks: ${err}`);
+  }
+}
+
+export async function runFullQuickbooksSync(userId: string): Promise<{
+  contacts: { synced: number; errors: string[] };
+  invoices: { synced: number; skipped: number; errors: string[] };
+  payments: { updated: number; errors: string[] };
+  quotes: { synced: number; skipped: number; errors: string[] };
+  creditNotes: { synced: number; errors: string[] };
+  inventory: { synced: number; errors: string[] };
+}> {
+  const contacts = await syncContactsToQuickbooks(userId);
+  const invoices = await syncInvoicesToQuickbooks(userId);
+  const payments = await syncPaymentsFromQuickbooks(userId);
+  const quotes = await syncQuotesToQuickbooks(userId);
+  const creditNotes = await syncCreditNotesFromQuickbooks(userId);
+  const inventory = await syncInventoryFromQuickbooks(userId);
+
+  return { contacts, invoices, payments, quotes, creditNotes, inventory };
+}
+
+export async function getSyncSummary(userId: string): Promise<{
+  connected: boolean;
+  lastSyncAt?: Date;
+  companyName?: string;
+}> {
+  const connection = await storage.getQuickbooksConnection(userId);
+  if (!connection || connection.status !== "active") {
+    return { connected: false };
+  }
+
+  return {
+    connected: true,
+    lastSyncAt: connection.lastSyncAt || undefined,
+    companyName: connection.companyName || undefined,
+  };
+}
+
+export async function getDetailedSyncStatus(userId: string): Promise<{
+  connected: boolean;
+  companyName?: string;
+  lastSyncAt?: Date;
+  status?: string;
+  capabilities: string[];
+}> {
+  const connection = await storage.getQuickbooksConnection(userId);
+  if (!connection) {
+    return { connected: false, capabilities: [] };
+  }
+
+  return {
+    connected: connection.status === "active",
+    companyName: connection.companyName || undefined,
+    lastSyncAt: connection.lastSyncAt || undefined,
+    status: connection.status || "unknown",
+    capabilities: [
+      'contacts_sync',
+      'invoices_sync',
+      'quotes_sync',
+      'payments_sync',
+      'credit_notes_sync',
+      'inventory_sync',
+      'single_invoice_sync',
+      'void_invoice',
+      'full_sync',
+    ],
+  };
+}
