@@ -25,7 +25,12 @@ import {
   Phone,
   MessageSquare,
   Navigation,
-  WifiOff
+  WifiOff,
+  Target,
+  AlertTriangle,
+  Lightbulb,
+  Calendar,
+  ArrowRight,
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -88,6 +93,27 @@ export default function OwnerManagerDashboard({
 
   const { data: cashflow } = useQuery<CashflowData>({
     queryKey: ["/api/dashboard/cashflow"],
+  });
+
+  interface ActionItem {
+    id: string;
+    priority: string;
+    title: string;
+    description: string;
+    impact: string;
+    cta: string;
+    ctaUrl: string;
+    metric: string;
+    category: string;
+  }
+  interface ActionCenterData {
+    actions: ActionItem[];
+    summary: { fixNowCount: number; thisWeekCount: number; suggestionsCount: number; totalCount: number };
+    sections: { fix_now: ActionItem[]; this_week: ActionItem[]; suggestions: ActionItem[] };
+  }
+
+  const { data: actionData } = useQuery<ActionCenterData>({
+    queryKey: ["/api/bi/action-center"],
   });
 
   const getGreeting = () => {
@@ -323,6 +349,47 @@ export default function OwnerManagerDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {actionData && actionData.summary.totalCount > 0 && (
+        <Card className="mb-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Target className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+              Action Centre
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/action-center')} data-testid="button-view-action-center">
+              View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-4">
+            <div className="space-y-2">
+              {actionData.actions.slice(0, 3).map((action) => {
+                const priorityIcon = action.priority === 'fix_now' ? AlertTriangle : action.priority === 'this_week' ? Clock : Lightbulb;
+                const PIcon = priorityIcon;
+                const priorityColor = action.priority === 'fix_now' ? 'hsl(0 84.2% 60.2%)' : action.priority === 'this_week' ? 'hsl(38 92% 50%)' : 'hsl(142.1 76.2% 36.3%)';
+                return (
+                  <div
+                    key={action.id}
+                    className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
+                    onClick={() => onNavigate?.(action.ctaUrl)}
+                    data-testid={`action-item-${action.id}`}
+                  >
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                         style={{ backgroundColor: `${priorityColor}15` }}>
+                      <PIcon className="h-4 w-4" style={{ color: priorityColor }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{action.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{action.impact}</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
