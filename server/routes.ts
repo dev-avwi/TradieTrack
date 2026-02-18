@@ -17449,6 +17449,8 @@ Be specific about materials, colors, and features that would be included.`
         .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= currentMonth)
         .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
 
+      const activeJobs = jobs.filter(j => j.status === 'in_progress').length;
+
       res.json({
         jobsToday,
         unpaidInvoicesCount: unpaidInvoices.length,
@@ -17457,6 +17459,7 @@ Be specific about materials, colors, and features that would be included.`
         monthlyEarnings,
         weeklyEarnings,
         jobsToInvoice,
+        activeJobs,
       });
     } catch (error) {
       console.error("Error fetching dashboard KPIs:", error);

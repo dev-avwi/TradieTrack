@@ -31,6 +31,7 @@ import {
   Lightbulb,
   Calendar,
   ArrowRight,
+  TrendingUp,
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -315,16 +316,18 @@ export default function OwnerManagerDashboard({
         </Card>
       )}
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
         <Card 
           className="cursor-pointer hover-elevate"
           onClick={() => onNavigate?.('/jobs?filter=in_progress')}
           data-testid="kpi-jobs-today"
         >
-          <CardContent className="text-center py-3 px-2">
-            <CalendarDays className="h-4 w-4 mx-auto mb-1 text-muted-foreground" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
-            <p className="text-2xl font-bold">{kpis?.jobsToday || 0}</p>
-            <p className="text-[11px] text-muted-foreground font-medium">Jobs Today</p>
+          <CardContent className="py-2.5 px-2">
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
+              <p className="text-xl font-bold">{kpis?.jobsToday || 0}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Jobs Today</p>
           </CardContent>
         </Card>
         <Card 
@@ -332,12 +335,14 @@ export default function OwnerManagerDashboard({
           onClick={() => onNavigate?.('/jobs?filter=done')}
           data-testid="kpi-jobs-to-invoice"
         >
-          <CardContent className="text-center py-3 px-2">
-            <DollarSign className="h-4 w-4 mx-auto mb-1 text-muted-foreground" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
-            <p className="text-2xl font-bold" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }}>
-              {kpis?.jobsToInvoice ?? 0}
-            </p>
-            <p className="text-[11px] text-muted-foreground font-medium">To Invoice</p>
+          <CardContent className="py-2.5 px-2">
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-4 w-4 flex-shrink-0" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
+              <p className="text-xl font-bold" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }}>
+                {kpis?.jobsToInvoice ?? 0}
+              </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">To Invoice</p>
           </CardContent>
         </Card>
         <Card 
@@ -345,13 +350,119 @@ export default function OwnerManagerDashboard({
           onClick={() => onNavigate?.('/documents?tab=quotes&filter=sent')}
           data-testid="kpi-pending"
         >
-          <CardContent className="text-center py-3 px-2">
-            <FileText className="h-4 w-4 mx-auto mb-1 text-muted-foreground" style={{ color: 'hsl(var(--trade))' }} />
-            <p className="text-2xl font-bold">{kpis?.quotesAwaiting || 0}</p>
-            <p className="text-[11px] text-muted-foreground font-medium">Quotes Out</p>
+          <CardContent className="py-2.5 px-2">
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+              <p className="text-xl font-bold">{kpis?.quotesAwaiting || 0}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Quotes Out</p>
+          </CardContent>
+        </Card>
+        <Card 
+          className="cursor-pointer hover-elevate"
+          onClick={() => onNavigate?.('/jobs?filter=in_progress')}
+          data-testid="kpi-active-jobs"
+        >
+          <CardContent className="py-2.5 px-2">
+            <div className="flex items-center gap-1.5">
+              <Briefcase className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+              <p className="text-xl font-bold">{kpis?.activeJobs || 0}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Active Jobs</p>
+          </CardContent>
+        </Card>
+        <Card 
+          className="cursor-pointer hover-elevate"
+          onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
+          data-testid="kpi-weekly-earnings"
+        >
+          <CardContent className="py-2.5 px-2">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+              <p className="text-xl font-bold" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>
+                {fmtAud(kpis?.weeklyEarnings || 0)}
+              </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground font-medium mt-0.5">This Week</p>
           </CardContent>
         </Card>
       </div>
+
+      {todaysJobs.length > 0 && (
+        <Card className="mb-4" data-testid="todays-overview">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+              Today's Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-4">
+            {(() => {
+              const now = new Date();
+              const sortedJobs = [...todaysJobs].sort((a: any, b: any) => 
+                new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+              );
+              const nextJob = sortedJobs.find((job: any) => 
+                new Date(job.scheduledAt) > now && job.status !== 'done'
+              );
+              return (
+                <div className="space-y-1.5">
+                  {nextJob && (
+                    <div className="flex items-center gap-2 mb-3 px-2 py-1.5 rounded-md bg-muted/50">
+                      <ArrowRight className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+                      <p className="text-xs font-medium">
+                        <span className="text-muted-foreground">Next: </span>
+                        <span>{nextJob.title}</span>
+                        <span className="text-muted-foreground"> at </span>
+                        <span style={{ color: 'hsl(var(--trade))' }}>{formatJobTime(nextJob.scheduledAt)}</span>
+                      </p>
+                    </div>
+                  )}
+                  {sortedJobs.map((job: any) => {
+                    const statusColor = job.status === 'done' 
+                      ? 'hsl(142.1 76.2% 36.3%)' 
+                      : job.status === 'in_progress' 
+                        ? 'hsl(38 92% 50%)' 
+                        : 'hsl(var(--trade))';
+                    return (
+                      <div
+                        key={job.id}
+                        className="flex items-center gap-3 py-1.5 cursor-pointer hover-elevate rounded-md px-1"
+                        onClick={() => onNavigate?.(`/jobs/${job.id}`)}
+                      >
+                        <div 
+                          className="w-1 self-stretch rounded-full flex-shrink-0"
+                          style={{ backgroundColor: statusColor }}
+                        />
+                        <div className="w-12 flex-shrink-0">
+                          <p className="text-xs font-semibold" style={{ color: 'hsl(var(--trade))' }}>
+                            {formatJobTime(job.scheduledAt)}
+                          </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{job.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {job.assignedToName && (
+                              <span className="flex items-center gap-1 truncate">
+                                <User className="h-3 w-3 flex-shrink-0" />
+                                {job.assignedToName}
+                              </span>
+                            )}
+                            {job.clientName && !job.assignedToName && (
+                              <span className="truncate">{job.clientName}</span>
+                            )}
+                          </div>
+                        </div>
+                        {getStatusBadge(job.status)}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {actionData && actionData.summary.totalCount > 0 && (

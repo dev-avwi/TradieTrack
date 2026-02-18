@@ -314,7 +314,12 @@ export default function SchedulePage({ onCreateJob, onViewJob }: SchedulePagePro
   const weekEnd = formatDateShort(weekDays[6]);
   const weekJobCount = weekDays.reduce((total, date) => total + getJobsForDate(date).length, 0);
 
-  const goToToday = () => setCurrentDate(new Date());
+  const goToToday = () => {
+    setCurrentDate(new Date());
+    if (view === 'month') {
+      setView('week');
+    }
+  };
 
   return (
     <PageShell data-testid="schedule-page" className="!space-y-3">

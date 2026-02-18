@@ -2320,7 +2320,7 @@ function SchedulingTab() {
                             return (
                               <div
                                 key={`${member.id}-${dayIndex}`}
-                                className={`${cellBg} p-1 border-t border-border flex flex-col items-center justify-center gap-0.5 min-h-[60px] group ${
+                                className={`${cellBg} p-1 border-t border-border flex flex-col items-start justify-start gap-0.5 min-h-[60px] group ${
                                   isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
                                 } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''} ${
                                   isAvail && memberJobs.length === 0 && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-default' : ''
@@ -2350,7 +2350,7 @@ function SchedulingTab() {
                                 )}
                                 {memberJobs.length > 0 && (
                                   <div className="w-full space-y-0.5">
-                                    {memberJobs.slice(0, 2).map((job) => {
+                                    {memberJobs.map((job) => {
                                       const jTime = getJobTime(job);
                                       return (
                                         <div
@@ -2366,8 +2366,10 @@ function SchedulingTab() {
                                         </div>
                                       );
                                     })}
-                                    {memberJobs.length > 2 && (
-                                      <span className="text-[9px] text-blue-600 dark:text-blue-400 px-1">+{memberJobs.length - 2} more</span>
+                                    {isAvail && (
+                                      <div className="group/add w-full flex items-center justify-center pt-0.5">
+                                        <Plus className="h-2.5 w-2.5 text-muted-foreground/0 group-hover/add:text-muted-foreground/40 transition-colors" />
+                                      </div>
                                     )}
                                   </div>
                                 )}

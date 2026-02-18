@@ -8,6 +8,7 @@ interface DashboardKPIs {
   monthlyEarnings: number;
   weeklyEarnings: number;
   jobsToInvoice: number;
+  activeJobs: number;
 }
 
 interface RecentActivity {

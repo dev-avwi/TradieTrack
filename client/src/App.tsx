@@ -505,6 +505,10 @@ function Router({
         <Redirect to="/schedule" />
       </Route>
 
+      <Route path="/dispatch-board" component={() => (
+        <DispatchBoard />
+      )} />
+
       <Route path="/dispatch">
         <Redirect to="/schedule" />
       </Route>
