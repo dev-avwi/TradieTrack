@@ -482,7 +482,7 @@ function HeroMap({
         </MapContainer>
         <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
           style={{ 
-            height: '40%', 
+            height: '50%', 
             background: 'linear-gradient(to top, white 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.5) 70%, transparent 100%)' 
           }} 
         />
@@ -562,7 +562,7 @@ function HeroMap({
       </MapContainer>
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
         style={{ 
-          height: '40%', 
+          height: '50%', 
           background: 'linear-gradient(to top, white 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.5) 70%, transparent 100%)' 
         }} 
       />
@@ -758,8 +758,9 @@ export default function JobPortal() {
   }
 
   const { job, business, worker, client, documents } = data;
-  const statusConfig = getStatusConfig(job.workerStatus);
-  const statusIdx = getStatusIndex(job.workerStatus);
+  const effectiveWorkerStatus = job.status === 'done' ? 'completed' : job.workerStatus;
+  const statusConfig = getStatusConfig(effectiveWorkerStatus);
+  const statusIdx = getStatusIndex(effectiveWorkerStatus);
   const hasPhotos = job.photos && job.photos.length > 0;
   const hasDocuments = (documents.quotes.length + documents.invoices.length) > 0;
 
@@ -836,9 +837,9 @@ export default function JobPortal() {
           </div>
         </div>
 
-        <div className="relative z-10 -mt-6">
+        <div className="relative z-10 -mt-10">
 
-        {job.workerStatus && (
+        {(effectiveWorkerStatus) && (
           <div className="px-4">
             <div className="bg-white rounded-2xl shadow-lg border pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
@@ -851,10 +852,10 @@ export default function JobPortal() {
                 <div className="flex-1 min-w-0">
                   <span className="font-bold text-lg text-foreground">{statusConfig.label}</span>
                 </div>
-                {job.workerStatus === 'completed' && (
+                {effectiveWorkerStatus === 'completed' && (
                   <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0" />
                 )}
-                {job.workerStatus === 'on_my_way' && (job.workerEtaMinutes || job.workerEta) && (
+                {effectiveWorkerStatus === 'on_my_way' && (job.workerEtaMinutes || job.workerEta) && (
                   <span className="text-sm font-semibold text-brand bg-brand/10 px-3 py-1 rounded-full flex-shrink-0">
                     ETA: {job.workerEtaMinutes ? `${job.workerEtaMinutes} min` : job.workerEta}
                   </span>
@@ -889,7 +890,7 @@ export default function JobPortal() {
 
               {job.workerStatusUpdatedAt && (
                 <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
-                  {job.workerStatus === 'on_my_way' && (
+                  {effectiveWorkerStatus === 'on_my_way' && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                       <Signal className="w-2.5 h-2.5" />
                       Live tracking
@@ -909,21 +910,21 @@ export default function JobPortal() {
             <CardContent className="py-3 px-4 flex items-center gap-3">
               <div className={cn(
                 "w-2.5 h-2.5 rounded-full flex-shrink-0",
-                job.workerStatus === 'on_my_way' ? "bg-green-500 animate-pulse" :
-                job.workerStatus === 'arrived' ? "bg-emerald-500" :
-                job.workerStatus === 'in_progress' ? "bg-blue-500 animate-pulse" :
-                job.workerStatus === 'completed' ? "bg-emerald-500" :
+                effectiveWorkerStatus === 'on_my_way' ? "bg-green-500 animate-pulse" :
+                effectiveWorkerStatus === 'arrived' ? "bg-emerald-500" :
+                effectiveWorkerStatus === 'in_progress' ? "bg-blue-500 animate-pulse" :
+                effectiveWorkerStatus === 'completed' ? "bg-emerald-500" :
                 "bg-gray-400"
               )} />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  {job.workerStatus === 'on_my_way' ? "Your tradesperson is on the way" :
-                   job.workerStatus === 'arrived' ? "Your tradesperson has arrived at the job site" :
-                   job.workerStatus === 'in_progress' ? "Work is in progress" :
-                   job.workerStatus === 'completed' ? "This job has been completed" :
+                  {effectiveWorkerStatus === 'on_my_way' ? "Your tradesperson is on the way" :
+                   effectiveWorkerStatus === 'arrived' ? "Your tradesperson has arrived at the job site" :
+                   effectiveWorkerStatus === 'in_progress' ? "Work is in progress" :
+                   effectiveWorkerStatus === 'completed' ? "This job has been completed" :
                    "We'll notify you when your tradesperson is on the way"}
                 </p>
-                {job.workerStatus === 'on_my_way' && (job.workerEtaMinutes || job.workerEta) && (
+                {effectiveWorkerStatus === 'on_my_way' && (job.workerEtaMinutes || job.workerEta) && (
                   <p className="text-xs text-muted-foreground">
                     Estimated arrival: {job.workerEtaMinutes ? `~${job.workerEtaMinutes} minutes` : job.workerEta}
                   </p>
@@ -934,7 +935,7 @@ export default function JobPortal() {
         </div>
 
         {(() => {
-          const unpaidInvoices = job.workerStatus === 'completed' 
+          const unpaidInvoices = effectiveWorkerStatus === 'completed' 
             ? documents.invoices.filter(i => i.status !== 'paid') 
             : [];
           if (unpaidInvoices.length === 0) return null;
