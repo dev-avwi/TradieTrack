@@ -36,6 +36,11 @@ Core architectural and design decisions include:
 *   **Recurring Invoices & Jobs**: Functionality for setting up recurring invoices and jobs.
 *   **Financial Management**: Unified dashboard with key performance indicators, per-job profitability reporting, and Profit Snapshot on owner dashboard (revenue, labour/material costs, gross profit, margin %).
 *   **Profitability Reports**: Enhanced reporting with By Job, By Client, and By Worker tabs, date range filters, and margin analysis.
+*   **Payroll & Pay Run System**: Worker pay summaries with hours, rates, overtime (1.5x), break deductions, billable/non-billable tracking, and subcontractor pay management. CSV export for accounting integration. Time category breakdown (work, travel, admin, training). Approval status tracking per time entry.
+*   **Aged Receivables Report**: Financial aging report with 5 buckets (Current, 1-30, 31-60, 61-90, 90+ days overdue), visual aging bar, per-client breakdown, and CSV export. Powered by `/api/reports/receivables`.
+*   **Team Utilisation Dashboard**: Worker utilisation % (hours worked vs 8h/day capacity), billable utilisation, revenue per worker, labour cost, idle hours detection, and jobs completed metrics. Powered by `/api/reports/utilisation`.
+*   **Job Aging Alerts**: Automatic detection of jobs stuck in status beyond configurable thresholds (quoted 7d, scheduled 3d, in_progress 14d, assigned 2d). Severity levels (warning/critical). Integrated into Ops Health Banner on Dispatch Board. Powered by `/api/ops/job-aging`.
+*   **Daily Operations Summary**: Digest endpoint for schedule, workforce, and financial metrics including active timers, hours logged, unpaid invoices, quote conversion rate. Powered by `/api/ops/daily-summary`.
 *   **Office Admin Role**: Dedicated role preset for office staff with permissions for quotes, invoices, clients, and communications (no time tracking/GPS).
 *   **Simple Mode**: Toggle to hide team-heavy features for solo operators; auto-detects based on team members.
 *   **Equipment Management**: Full CRUD for equipment registry, categories, and maintenance logs with status tracking. Job-equipment assignments via `job_equipment` join table with wrench indicators on Schedule cards and "Assigned to Jobs" in equipment detail sheets.

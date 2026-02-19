@@ -39,6 +39,7 @@ import {
   Navigation,
   Phone,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Play,
   Pause,
@@ -428,15 +429,21 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
 function OpsHealthBanner({ opsHealth }: { opsHealth?: OpsHealth }) {
   const [expanded, setExpanded] = useState(false);
 
+  const { data: jobAgingData } = useQuery({
+    queryKey: ['/api/ops/job-aging'],
+    refetchInterval: 30000,
+  });
+
   if (!opsHealth) return null;
 
+  const agingCount = jobAgingData?.totalAging || 0;
   const hasIssues = opsHealth.conflictCount > 0 || opsHealth.overdueJobs > 0 ||
-    opsHealth.unassignedJobs > 0 || opsHealth.overCapacityWorkers > 0 || opsHealth.overdueInvoices > 0;
+    opsHealth.unassignedJobs > 0 || opsHealth.overCapacityWorkers > 0 || opsHealth.overdueInvoices > 0 || agingCount > 0;
 
   if (!hasIssues) return null;
 
   const severity = opsHealth.conflictCount > 0 ? 'critical' :
-    (opsHealth.overdueJobs > 0 || opsHealth.overCapacityWorkers > 0) ? 'warning' : 'info';
+    (opsHealth.overdueJobs > 0 || opsHealth.overCapacityWorkers > 0 || (jobAgingData?.criticalCount || 0) > 0) ? 'warning' : 'info';
 
   return (
     <div className={`rounded-lg border px-3 py-2 mb-3 ${
@@ -492,6 +499,13 @@ function OpsHealthBanner({ opsHealth }: { opsHealth?: OpsHealth }) {
               {opsHealth.overdueInvoices} Overdue Invoices
             </span>
           )}
+          {agingCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" 
+              style={{ backgroundColor: jobAgingData?.criticalCount > 0 ? 'hsl(var(--destructive) / 0.1)' : 'hsl(45 100% 50% / 0.15)', color: jobAgingData?.criticalCount > 0 ? 'hsl(var(--destructive))' : 'hsl(45 80% 35%)' }}>
+              <AlertTriangle className="h-3 w-3" />
+              {agingCount} Stale Jobs
+            </span>
+          )}
         </div>
 
         <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform flex-shrink-0 ${expanded ? 'rotate-180' : ''}`} />
@@ -514,6 +528,20 @@ function OpsHealthBanner({ opsHealth }: { opsHealth?: OpsHealth }) {
                   </span>
                 ))}
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {agingCount > 0 && expanded && (
+        <div className="mt-2 space-y-1">
+          <p className="text-xs font-medium">Stale Jobs (stuck too long in status):</p>
+          {(jobAgingData?.agingJobs || []).slice(0, 5).map((j: any) => (
+            <div key={j.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="h-3 w-3" style={{ color: j.severity === 'critical' ? 'hsl(var(--destructive))' : 'hsl(45 80% 35%)' }} />
+              <span className="font-medium">{j.title}</span>
+              <Badge variant="outline" className="text-[10px] h-4">{j.status}</Badge>
+              <span>{j.daysInStatus}d in status ({j.daysOverThreshold}d over)</span>
             </div>
           ))}
         </div>

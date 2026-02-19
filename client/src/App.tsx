@@ -80,6 +80,7 @@ import EquipmentPage from "@/pages/Equipment";
 import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
 import AIVisualizationPage from "@/pages/AIVisualization";
+import PayrollReports from "@/pages/PayrollReports";
 import ClientPortal from "@/pages/ClientPortal";
 import ClientPortalHub from "@/pages/ClientPortalHub";
 import JobPortal from "@/pages/JobPortal";
@@ -582,6 +583,8 @@ function Router({
       )} />
 
       <Route path="/reports/profitability" component={ProfitabilityReport} />
+
+      <Route path="/reports/payroll" component={PayrollReports} />
 
       <Route path="/reports" component={() => (
         <Reports />

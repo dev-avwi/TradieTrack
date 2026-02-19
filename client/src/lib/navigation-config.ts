@@ -26,6 +26,7 @@ import {
   Target,
   LineChart,
   Bot,
+  DollarSign,
   type LucideIcon
 } from "lucide-react";
 
@@ -197,6 +198,20 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-primary/10",
     requiresOwnerOrManager: true,
     hideForStaff: true,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Payroll",
+    url: "/reports/payroll",
+    icon: DollarSign,
+    description: "Pay runs, receivables, and utilisation",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    requiresOwnerOrManager: true,
+    hideForStaff: true,
+    hideInSimpleMode: true,
     showInSidebar: true,
     showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],

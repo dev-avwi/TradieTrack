@@ -107,6 +107,8 @@ import {
   teamMemberMetrics,
   // Job assignment requests
   jobAssignmentRequests,
+  timeEntries,
+  userRoles,
   // Time entry edit audit trail
   timeEntryEdits,
   insertTimeEntryEditSchema,
@@ -118,7 +120,7 @@ import {
   type InvoiceEdit,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq, sql, desc, and } from "drizzle-orm";
+import { eq, sql, desc, and, gte, lte, isNotNull, isNull, inArray } from "drizzle-orm";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError,
@@ -13772,6 +13774,439 @@ Be specific about materials, colors, and features that would be included.`
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get ops health' });
+    }
+  });
+
+  // ============================================
+  // REPORTING & OPS ENDPOINTS
+  // ============================================
+
+  app.get("/api/payroll/summary", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const { start, end, teamMemberId } = req.query;
+
+      const periodStart = start ? new Date(start as string) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const periodEnd = end ? new Date(end as string) : new Date();
+
+      const members = await storage.getTeamMembers(ownerId);
+      const filteredMembers = teamMemberId
+        ? members.filter(m => m.id === teamMemberId)
+        : members;
+
+      const workerSummaries = [];
+      let totalPayAll = 0;
+      let totalHoursAll = 0;
+
+      for (const member of filteredMembers) {
+        if (!member.memberId) continue;
+
+        const entries = await db.select().from(timeEntries)
+          .where(and(
+            eq(timeEntries.userId, member.memberId),
+            gte(timeEntries.startTime, periodStart),
+            lte(timeEntries.startTime, periodEnd),
+            isNotNull(timeEntries.endTime)
+          ));
+
+        const rate = parseFloat(member.hourlyRate || '0') || 0;
+
+        let regularMins = 0, overtimeMins = 0, breakMins = 0, billableMins = 0, nonBillableMins = 0;
+        const jobIdSet = new Set<string>();
+        const categories: Record<string, number> = {};
+
+        for (const e of entries) {
+          const dur = e.duration || 0;
+          if (e.isBreak) {
+            breakMins += dur;
+            continue;
+          }
+          if (e.isOvertime) {
+            overtimeMins += dur;
+          } else {
+            regularMins += dur;
+          }
+          if (e.isBillable) billableMins += dur;
+          else nonBillableMins += dur;
+          if (e.jobId) jobIdSet.add(e.jobId);
+          const cat = e.timeCategory || 'work';
+          categories[cat] = (categories[cat] || 0) + dur;
+        }
+
+        const regularHrs = regularMins / 60;
+        const overtimeHrs = overtimeMins / 60;
+        const breakHrs = breakMins / 60;
+        const totalHrs = regularHrs + overtimeHrs;
+        const grossPay = (regularHrs * rate) + (overtimeHrs * rate * 1.5);
+
+        const role = await db.select().from(userRoles).where(eq(userRoles.id, member.roleId)).limit(1);
+        const isSubcontractor = role[0]?.name?.toLowerCase().includes('subcontractor') || false;
+
+        totalPayAll += grossPay;
+        totalHoursAll += totalHrs;
+
+        workerSummaries.push({
+          teamMemberId: member.id,
+          memberId: member.memberId,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          email: member.email,
+          hourlyRate: rate,
+          isSubcontractor,
+          regularHours: Math.round(regularHrs * 100) / 100,
+          overtimeHours: Math.round(overtimeHrs * 100) / 100,
+          breakHours: Math.round(breakHrs * 100) / 100,
+          totalHours: Math.round(totalHrs * 100) / 100,
+          billableHours: Math.round(billableMins / 60 * 100) / 100,
+          nonBillableHours: Math.round(nonBillableMins / 60 * 100) / 100,
+          grossPay: Math.round(grossPay * 100) / 100,
+          overtimePay: Math.round(overtimeHrs * rate * 1.5 * 100) / 100,
+          jobCount: jobIdSet.size,
+          timeCategories: Object.fromEntries(Object.entries(categories).map(([k, v]) => [k, Math.round(v / 60 * 100) / 100])),
+          entryCount: entries.filter(e => !e.isBreak).length,
+          approved: entries.filter(e => e.approved).length,
+          unapproved: entries.filter(e => !e.approved).length,
+        });
+      }
+
+      res.json({
+        period: { start: periodStart.toISOString(), end: periodEnd.toISOString() },
+        workers: workerSummaries,
+        totals: {
+          totalHours: Math.round(totalHoursAll * 100) / 100,
+          totalPay: Math.round(totalPayAll * 100) / 100,
+          workerCount: workerSummaries.length,
+          subcontractorCount: workerSummaries.filter(w => w.isSubcontractor).length,
+        }
+      });
+    } catch (error: any) {
+      console.error('[Payroll] Error:', error);
+      res.status(500).json({ error: "Failed to generate payroll summary" });
+    }
+  });
+
+  app.get("/api/reports/receivables", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const asOf = req.query.asOf ? new Date(req.query.asOf as string) : new Date();
+
+      const allInvoices = await db.select().from(invoices)
+        .where(and(
+          eq(invoices.userId, ownerId),
+          inArray(invoices.status, ['sent', 'overdue'])
+        ));
+
+      const buckets = {
+        current: { count: 0, total: 0, invoices: [] as any[] },
+        '1-30': { count: 0, total: 0, invoices: [] as any[] },
+        '31-60': { count: 0, total: 0, invoices: [] as any[] },
+        '61-90': { count: 0, total: 0, invoices: [] as any[] },
+        '90+': { count: 0, total: 0, invoices: [] as any[] },
+      };
+
+      const clientTotals: Record<string, { clientId: string, clientName: string, total: number, count: number }> = {};
+
+      for (const inv of allInvoices) {
+        const total = parseFloat(inv.total || '0');
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : null;
+        const daysOverdue = dueDate ? Math.floor((asOf.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+        const client = await db.select().from(clients).where(eq(clients.id, inv.clientId)).limit(1);
+        const clientName = client[0]?.name || 'Unknown';
+
+        const invSummary = {
+          id: inv.id,
+          number: inv.number,
+          title: inv.title,
+          clientId: inv.clientId,
+          clientName,
+          total,
+          dueDate: dueDate?.toISOString(),
+          daysOverdue: Math.max(0, daysOverdue),
+          sentAt: inv.sentAt,
+        };
+
+        let bucket: keyof typeof buckets;
+        if (daysOverdue <= 0) bucket = 'current';
+        else if (daysOverdue <= 30) bucket = '1-30';
+        else if (daysOverdue <= 60) bucket = '31-60';
+        else if (daysOverdue <= 90) bucket = '61-90';
+        else bucket = '90+';
+
+        buckets[bucket].count++;
+        buckets[bucket].total = Math.round((buckets[bucket].total + total) * 100) / 100;
+        buckets[bucket].invoices.push(invSummary);
+
+        if (!clientTotals[inv.clientId]) {
+          clientTotals[inv.clientId] = { clientId: inv.clientId, clientName, total: 0, count: 0 };
+        }
+        clientTotals[inv.clientId].total = Math.round((clientTotals[inv.clientId].total + total) * 100) / 100;
+        clientTotals[inv.clientId].count++;
+      }
+
+      const grandTotal = Object.values(buckets).reduce((sum, b) => sum + b.total, 0);
+
+      res.json({
+        asOf: asOf.toISOString(),
+        buckets,
+        clientBreakdown: Object.values(clientTotals).sort((a, b) => b.total - a.total),
+        grandTotal: Math.round(grandTotal * 100) / 100,
+        invoiceCount: allInvoices.length,
+      });
+    } catch (error: any) {
+      console.error('[Receivables] Error:', error);
+      res.status(500).json({ error: "Failed to generate receivables report" });
+    }
+  });
+
+  app.get("/api/reports/utilisation", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const periodStart = req.query.start ? new Date(req.query.start as string) : new Date(new Date().setDate(new Date().getDate() - 30));
+      const periodEnd = req.query.end ? new Date(req.query.end as string) : new Date();
+
+      const members = await storage.getTeamMembers(ownerId);
+      const allJobs = await storage.getJobs(ownerId);
+
+      const workingDays = (() => {
+        let count = 0;
+        const d = new Date(periodStart);
+        while (d <= periodEnd) {
+          if (d.getDay() !== 0 && d.getDay() !== 6) count++;
+          d.setDate(d.getDate() + 1);
+        }
+        return count;
+      })();
+
+      const DAILY_CAPACITY = 8;
+      const totalCapacityHours = workingDays * DAILY_CAPACITY;
+
+      const workerStats = [];
+
+      for (const member of members) {
+        if (!member.memberId) continue;
+        if (req.query.teamMemberId && member.id !== req.query.teamMemberId) continue;
+
+        const entries = await db.select().from(timeEntries)
+          .where(and(
+            eq(timeEntries.userId, member.memberId),
+            gte(timeEntries.startTime, periodStart),
+            lte(timeEntries.startTime, periodEnd),
+            isNotNull(timeEntries.endTime)
+          ));
+
+        const workedMins = entries.filter(e => !e.isBreak).reduce((sum, e) => sum + (e.duration || 0), 0);
+        const billableMins = entries.filter(e => !e.isBreak && e.isBillable).reduce((sum, e) => sum + (e.duration || 0), 0);
+        const workedHours = workedMins / 60;
+        const billableHours = billableMins / 60;
+
+        const utilisation = totalCapacityHours > 0 ? (workedHours / totalCapacityHours) * 100 : 0;
+        const billableUtil = totalCapacityHours > 0 ? (billableHours / totalCapacityHours) * 100 : 0;
+
+        const memberJobs = allJobs.filter(j =>
+          j.assignedTo === member.memberId &&
+          j.completedAt &&
+          new Date(j.completedAt) >= periodStart &&
+          new Date(j.completedAt) <= periodEnd
+        );
+
+        const jobIds = memberJobs.map(j => j.id);
+        let revenue = 0;
+        if (jobIds.length > 0) {
+          const invs = await db.select().from(invoices)
+            .where(and(
+              eq(invoices.userId, ownerId),
+              inArray(invoices.jobId, jobIds),
+              eq(invoices.status, 'paid')
+            ));
+          revenue = invs.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+        }
+
+        const rate = parseFloat(member.hourlyRate || '0') || 0;
+        const labourCost = workedHours * rate;
+
+        workerStats.push({
+          teamMemberId: member.id,
+          memberId: member.memberId,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          hoursWorked: Math.round(workedHours * 100) / 100,
+          billableHours: Math.round(billableHours * 100) / 100,
+          capacityHours: totalCapacityHours,
+          utilisation: Math.round(utilisation * 10) / 10,
+          billableUtilisation: Math.round(billableUtil * 10) / 10,
+          jobsCompleted: memberJobs.length,
+          revenue: Math.round(revenue * 100) / 100,
+          labourCost: Math.round(labourCost * 100) / 100,
+          revenuePerHour: workedHours > 0 ? Math.round((revenue / workedHours) * 100) / 100 : 0,
+          idleHours: Math.max(0, Math.round((totalCapacityHours - workedHours) * 100) / 100),
+        });
+      }
+
+      const avgUtilisation = workerStats.length > 0
+        ? workerStats.reduce((sum, w) => sum + w.utilisation, 0) / workerStats.length : 0;
+
+      res.json({
+        period: { start: periodStart.toISOString(), end: periodEnd.toISOString(), workingDays },
+        workers: workerStats,
+        averageUtilisation: Math.round(avgUtilisation * 10) / 10,
+        totalRevenue: Math.round(workerStats.reduce((sum, w) => sum + w.revenue, 0) * 100) / 100,
+        totalLabourCost: Math.round(workerStats.reduce((sum, w) => sum + w.labourCost, 0) * 100) / 100,
+        totalIdleHours: Math.round(workerStats.reduce((sum, w) => sum + w.idleHours, 0) * 100) / 100,
+      });
+    } catch (error: any) {
+      console.error('[Utilisation] Error:', error);
+      res.status(500).json({ error: "Failed to generate utilisation report" });
+    }
+  });
+
+  app.get("/api/ops/job-aging", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const allJobs = await storage.getJobs(ownerId);
+      const now = new Date();
+
+      const thresholds: Record<string, number> = {
+        'quoted': 7,
+        'scheduled': 3,
+        'in_progress': 14,
+        'assigned': 2,
+      };
+
+      const agingJobs = [];
+
+      for (const job of allJobs) {
+        const status = (job.status || '').toLowerCase();
+        if (['done', 'completed', 'invoiced', 'cancelled'].includes(status)) continue;
+
+        const updatedAt = job.updatedAt ? new Date(job.updatedAt) : (job.createdAt ? new Date(job.createdAt) : now);
+        const daysInStatus = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+
+        const threshold = thresholds[status] || 7;
+
+        if (daysInStatus > threshold) {
+          let clientName = 'Unknown';
+          if (job.clientId) {
+            const client = await db.select().from(clients).where(eq(clients.id, job.clientId)).limit(1);
+            if (client[0]) clientName = client[0].name || 'Unknown';
+          }
+
+          agingJobs.push({
+            id: job.id,
+            title: job.title,
+            status: job.status,
+            clientName,
+            daysInStatus,
+            threshold,
+            daysOverThreshold: daysInStatus - threshold,
+            severity: daysInStatus > threshold * 2 ? 'critical' : 'warning',
+            updatedAt: updatedAt.toISOString(),
+            scheduledAt: job.scheduledAt,
+          });
+        }
+      }
+
+      agingJobs.sort((a, b) => b.daysOverThreshold - a.daysOverThreshold);
+
+      res.json({
+        agingJobs,
+        totalAging: agingJobs.length,
+        criticalCount: agingJobs.filter(j => j.severity === 'critical').length,
+        warningCount: agingJobs.filter(j => j.severity === 'warning').length,
+        thresholds,
+      });
+    } catch (error: any) {
+      console.error('[JobAging] Error:', error);
+      res.status(500).json({ error: "Failed to get job aging data" });
+    }
+  });
+
+  app.get("/api/ops/daily-summary", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const allJobs = await storage.getJobs(ownerId);
+      const members = await storage.getTeamMembers(ownerId);
+      const allInvoices = await db.select().from(invoices).where(eq(invoices.userId, ownerId));
+
+      const todayJobs = allJobs.filter(j => {
+        if (!j.scheduledAt) return false;
+        const schedDate = new Date(j.scheduledAt);
+        return schedDate >= dayStart && schedDate <= dayEnd;
+      });
+
+      const statusCounts: Record<string, number> = {};
+      for (const j of todayJobs) {
+        const s = j.status || 'unknown';
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+      }
+
+      const activeTimers = await db.select().from(timeEntries)
+        .where(and(
+          isNull(timeEntries.endTime),
+          gte(timeEntries.startTime, dayStart)
+        ));
+
+      const todayEntries = await db.select().from(timeEntries)
+        .where(and(
+          gte(timeEntries.startTime, dayStart),
+          lte(timeEntries.startTime, dayEnd),
+          isNotNull(timeEntries.endTime)
+        ));
+      const hoursLoggedToday = todayEntries.filter(e => !e.isBreak).reduce((sum, e) => sum + (e.duration || 0), 0) / 60;
+
+      const unpaidInvoices = allInvoices.filter(i => ['sent', 'overdue'].includes(i.status));
+      const overdueInvoices = allInvoices.filter(i => i.status === 'overdue' || (i.status === 'sent' && i.dueDate && new Date(i.dueDate) < new Date()));
+      const unpaidTotal = unpaidInvoices.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+
+      const paidToday = allInvoices.filter(i => i.paidAt && new Date(i.paidAt) >= dayStart && new Date(i.paidAt) <= dayEnd);
+      const receivedToday = paidToday.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+
+      const unassignedJobs = allJobs.filter(j =>
+        !j.assignedTo && !['done', 'completed', 'invoiced', 'cancelled'].includes((j.status || '').toLowerCase())
+      );
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const allQuotes = await db.select().from(quotes).where(eq(quotes.userId, ownerId));
+      const recentQuotes = allQuotes.filter(q => q.createdAt && new Date(q.createdAt) >= thirtyDaysAgo);
+      const acceptedQuotes = recentQuotes.filter(q => q.status === 'accepted');
+      const quoteConversion = recentQuotes.length > 0 ? Math.round((acceptedQuotes.length / recentQuotes.length) * 100) : 0;
+
+      res.json({
+        date: date.toISOString().split('T')[0],
+        schedule: {
+          totalJobs: todayJobs.length,
+          statusBreakdown: statusCounts,
+          unassignedJobs: unassignedJobs.length,
+        },
+        workforce: {
+          activeTimers: activeTimers.length,
+          hoursLoggedToday: Math.round(hoursLoggedToday * 100) / 100,
+          teamSize: members.filter(m => m.isActive).length,
+        },
+        financial: {
+          unpaidInvoices: unpaidInvoices.length,
+          unpaidTotal: Math.round(unpaidTotal * 100) / 100,
+          overdueInvoices: overdueInvoices.length,
+          receivedToday: Math.round(receivedToday * 100) / 100,
+          quoteConversionRate: quoteConversion,
+        },
+      });
+    } catch (error: any) {
+      console.error('[DailySummary] Error:', error);
+      res.status(500).json({ error: "Failed to generate daily summary" });
     }
   });
 
