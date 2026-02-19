@@ -469,127 +469,118 @@ function HeroMap({
 
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
-      <div className="relative w-full overflow-hidden" style={{ height: '40vh', minHeight: '300px', maxHeight: '400px' }}>
-        <MapContainer
-          center={[-33.8688, 151.2093]}
-          zoom={12}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-          attributionControl={false}
-        >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-          <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
-        </MapContainer>
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
-          style={{ 
-            height: '50%', 
-            background: 'linear-gradient(to top, white 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.5) 70%, transparent 100%)' 
-          }} 
-        />
+      <div className="relative w-full pt-16 pb-4 px-4">
+        <div className="rounded-2xl overflow-hidden shadow-lg" style={{ height: '250px' }}>
+          <MapContainer
+            center={[-33.8688, 151.2093]}
+            zoom={12}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+            attributionControl={false}
+          >
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            <RecenterControl center={[-33.8688, 151.2093]} bounds={null} />
+          </MapContainer>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: '40vh', minHeight: '300px', maxHeight: '400px' }}>
-      <MapContainer
-        center={center}
-        zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-        <RecenterControl center={center} bounds={bounds} />
-        {bounds && <FitBounds bounds={bounds} />}
-        {hasJobPin && (
-          <Marker position={[jobPinLat!, jobPinLng!]} icon={jobPinIcon}>
-            <Popup>
-              <span className="text-sm font-medium">{jobAddress || 'Your job location'}</span>
-            </Popup>
-          </Marker>
-        )}
-
-        {crewWorkers.map((w, idx) => {
-          if (!w.location) return null;
-          const color = WORKER_COLORS[idx % WORKER_COLORS.length];
-          const icon = createWorkerIcon(color, w.isPrimary);
-          return (
-            <Marker 
-              key={w.assignmentId}
-              position={[w.location.latitude, w.location.longitude]} 
-              icon={icon}
-            >
+    <div className="relative w-full pt-16 pb-4 px-4">
+      <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{ height: '250px' }}>
+        <MapContainer
+          center={center}
+          zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+          attributionControl={false}
+        >
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+          <RecenterControl center={center} bounds={bounds} />
+          {bounds && <FitBounds bounds={bounds} />}
+          {hasJobPin && (
+            <Marker position={[jobPinLat!, jobPinLng!]} icon={jobPinIcon}>
               <Popup>
-                <span className="text-sm font-medium">{w.name}</span>
-                {w.etaMinutes && <span className="text-xs block">ETA: {w.etaMinutes} min</span>}
+                <span className="text-sm font-medium">{jobAddress || 'Your job location'}</span>
               </Popup>
             </Marker>
-          );
-        })}
+          )}
 
-        {subcontractorWorkers.map((s) => {
-          if (!s.location) return null;
-          return (
-            <Marker 
-              key={`sub-${s.tokenId}`}
-              position={[s.location.latitude, s.location.longitude]} 
-              icon={subbieIcon}
-            >
+          {crewWorkers.map((w, idx) => {
+            if (!w.location) return null;
+            const color = WORKER_COLORS[idx % WORKER_COLORS.length];
+            const icon = createWorkerIcon(color, w.isPrimary);
+            return (
+              <Marker 
+                key={w.assignmentId}
+                position={[w.location.latitude, w.location.longitude]} 
+                icon={icon}
+              >
+                <Popup>
+                  <span className="text-sm font-medium">{w.name}</span>
+                  {w.etaMinutes && <span className="text-xs block">ETA: {w.etaMinutes} min</span>}
+                </Popup>
+              </Marker>
+            );
+          })}
+
+          {subcontractorWorkers.map((s) => {
+            if (!s.location) return null;
+            return (
+              <Marker 
+                key={`sub-${s.tokenId}`}
+                position={[s.location.latitude, s.location.longitude]} 
+                icon={subbieIcon}
+              >
+                <Popup>
+                  <span className="text-sm font-medium">{s.name}</span>
+                  {s.lastUpdated && (
+                    <span className="text-xs block text-muted-foreground">
+                      Last updated {formatTimeAgo(s.lastUpdated)}
+                    </span>
+                  )}
+                </Popup>
+              </Marker>
+            );
+          })}
+
+          {hasSingleWorker && crewWorkers.length === 0 && (
+            <Marker position={[singleWorkerLoc.latitude, singleWorkerLoc.longitude]} icon={workerIcon}>
               <Popup>
-                <span className="text-sm font-medium">{s.name}</span>
-                {s.lastUpdated && (
-                  <span className="text-xs block text-muted-foreground">
-                    Last updated {formatTimeAgo(s.lastUpdated)}
-                  </span>
-                )}
+                <span className="text-sm font-medium">Your tradesperson</span>
               </Popup>
             </Marker>
-          );
-        })}
+          )}
 
-        {hasSingleWorker && crewWorkers.length === 0 && (
-          <Marker position={[singleWorkerLoc.latitude, singleWorkerLoc.longitude]} icon={workerIcon}>
-            <Popup>
-              <span className="text-sm font-medium">Your tradesperson</span>
-            </Popup>
-          </Marker>
-        )}
+          {hasJobPin && workerPosition && (
+            <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
+          )}
+        </MapContainer>
 
-        {hasJobPin && workerPosition && (
-          <RouteLine from={workerPosition} to={[jobPinLat!, jobPinLng!]} />
-        )}
-      </MapContainer>
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5]" 
-        style={{ 
-          height: '50%', 
-          background: 'linear-gradient(to top, white 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.5) 70%, transparent 100%)' 
-        }} 
-      />
-
-      {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
-        <div className="absolute top-16 left-3 z-[1000]">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-3 py-1.5 flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-brand" />
-              <span className="text-[10px] text-muted-foreground">Team</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-              <span className="text-[10px] text-muted-foreground">Subbie</span>
+        {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
+          <div className="absolute top-3 left-3 z-[1000]">
+            <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-3 py-1.5 flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-brand" />
+                <span className="text-[10px] text-muted-foreground">Team</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+                <span className="text-[10px] text-muted-foreground">Subbie</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {!isEnRoute && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
-        <div className="absolute bottom-8 left-3 z-[1000]">
-          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-brand" />
-            <span className="text-xs font-medium text-foreground">Your job location</span>
+        {!isEnRoute && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
+          <div className="absolute bottom-3 left-3 z-[1000]">
+            <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5 text-brand" />
+              <span className="text-xs font-medium text-foreground">Your job location</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {(() => {
         const staleWorker = crewWorkers.find(w => w.stale) || (hasSingleWorker && singleWorkerLoc?.stale ? singleWorkerLoc : null);
@@ -667,10 +658,13 @@ export default function JobPortal() {
     retry: false,
     refetchInterval: (query) => {
       const d = query.state.data as JobPortalData | undefined;
-      if (d?.job?.workerStatus && ['on_my_way', 'arrived', 'in_progress'].includes(d.job.workerStatus)) {
-        return 30000;
+      if (d?.job?.status === 'done' || d?.job?.status === 'invoiced') {
+        return false;
       }
-      return false;
+      if (d?.job?.workerStatus && ['on_my_way', 'arrived', 'in_progress'].includes(d.job.workerStatus)) {
+        return 15000;
+      }
+      return 60000;
     },
   });
 
@@ -837,7 +831,7 @@ export default function JobPortal() {
           </div>
         </div>
 
-        <div className="relative z-10 -mt-10">
+        <div className="relative z-10">
 
         {(effectiveWorkerStatus) && (
           <div className="px-4">
