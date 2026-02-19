@@ -9,6 +9,7 @@ import { useAppMode } from "@/hooks/use-app-mode";
 import { useTheme } from "@/components/ThemeProvider";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { useLocationSocket } from "@/hooks/use-location-socket";
 import { 
   MapPin, 
   Navigation, 
@@ -285,6 +286,22 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
       ${Math.round(member.speed)} km/h
     </div>
   ` : '';
+
+  const headingArrow = member.isDriving && member.heading !== null && member.heading !== undefined ? `
+    <div style="
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%) rotate(${member.heading}deg);
+      transform-origin: center bottom;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 10px solid ${memberColor};
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    "></div>
+  ` : '';
   
   const avatarContent = member.profileImageUrl 
     ? `background-image: url('${member.profileImageUrl}'); background-size: cover; background-position: center;`
@@ -317,6 +334,7 @@ function createTeamMemberIcon(member: TeamMemberLocation, isDark: boolean) {
         ${activityDot}
         ${batteryIndicator}
         ${speedBadge}
+        ${headingArrow}
       </div>
     `,
     iconSize: [40, 40],
@@ -627,6 +645,74 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
     enabled: isTeam,
     refetchInterval: 60000,
   });
+
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ["/api/auth/me"],
+  });
+
+  const [liveLocationOverrides, setLiveLocationOverrides] = useState<Map<string, { latitude: number; longitude: number; speed: number; heading: number | null; batteryLevel: number | null; isCharging: boolean; activityStatus: string; timestamp: number }>>(new Map());
+
+  const { isConnected: locationSocketConnected } = useLocationSocket({
+    userId: currentUser?.id || '',
+    businessId: currentUser?.businessId || '',
+    isTradie: false,
+    enabled: isTeam && !!currentUser?.id && !!currentUser?.businessId,
+    onLocationUpdate: useCallback((update: any) => {
+      setLiveLocationOverrides(prev => {
+        const next = new Map(prev);
+        next.set(update.userId, {
+          latitude: update.latitude,
+          longitude: update.longitude,
+          speed: update.speed || 0,
+          heading: update.heading ?? null,
+          batteryLevel: update.batteryLevel ?? null,
+          isCharging: update.isCharging || false,
+          activityStatus: update.activityStatus || 'online',
+          timestamp: update.timestamp,
+        });
+        return next;
+      });
+    }, []),
+  });
+
+  const mergedTeamLocations = useMemo(() => {
+    return teamLocations.map(member => {
+      const override = liveLocationOverrides.get(member.id);
+      if (override) {
+        return {
+          ...member,
+          latitude: override.latitude,
+          longitude: override.longitude,
+          speed: override.speed,
+          heading: override.heading,
+          batteryLevel: override.batteryLevel !== null ? override.batteryLevel : member.batteryLevel,
+          isCharging: override.isCharging,
+          activityStatus: override.activityStatus as any,
+          isDriving: override.activityStatus === 'driving' || override.speed > 5,
+          isActive: true,
+        };
+      }
+      return member;
+    });
+  }, [teamLocations, liveLocationOverrides]);
+
+  useEffect(() => {
+    if (teamLocations.length > 0) {
+      setLiveLocationOverrides(prev => {
+        if (prev.size === 0) return prev;
+        const now = Date.now();
+        const next = new Map(prev);
+        let changed = false;
+        next.forEach((val, key) => {
+          if (now - val.timestamp > 60000) {
+            next.delete(key);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [teamLocations]);
   
   // Saved routes state and queries
   const [showSavedRoutes, setShowSavedRoutes] = useState(false);
@@ -892,7 +978,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
 
   // Sort team members: active members first, then by activity type (working > driving > online > offline)
   const sortedTeamLocations = useMemo(() => {
-    return [...teamLocations].sort((a, b) => {
+    return [...mergedTeamLocations].sort((a, b) => {
       // Active members first
       if (a.isActive && !b.isActive) return -1;
       if (!a.isActive && b.isActive) return 1;
@@ -913,7 +999,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
       
       return 0;
     });
-  }, [teamLocations]);
+  }, [mergedTeamLocations]);
 
   const handleRefresh = () => {
     refetchJobs();
@@ -1040,7 +1126,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   }
 
   return (
-    <div className="flex-1 min-h-0 relative overflow-hidden z-0">
+    <div className="flex-1 min-h-0 relative overflow-hidden z-0" style={{ minHeight: 'calc(100vh - 64px)' }}>
       {/* Global styles for the map */}
       <style>{`
         @keyframes life360-pulse {
@@ -1056,6 +1142,12 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
         .custom-job-marker, .custom-team-marker {
           background: transparent !important;
           border: none !important;
+        }
+        .custom-team-marker {
+          transition: transform 0.8s ease-out !important;
+        }
+        .custom-team-marker > div {
+          transition: all 0.5s ease-out;
         }
         .leaflet-popup-content-wrapper {
           background: ${isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)'} !important;
@@ -1141,13 +1233,13 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
           
           <FitBoundsController 
             jobs={jobsWithCoords} 
-            teamLocations={teamLocations}
+            teamLocations={mergedTeamLocations}
             showTeamMembers={showTeamMembers}
           />
           
           <FlyToTeamMember
             selectedId={selectedTeamMemberId}
-            teamLocations={teamLocations}
+            teamLocations={mergedTeamLocations}
             markersRef={teamMemberMarkersRef}
             onComplete={() => setSelectedTeamMemberId(null)}
           />
@@ -1381,7 +1473,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
             </Marker>
           ))}
 
-          {showTeamMembers && teamLocations.map((member) => (
+          {showTeamMembers && mergedTeamLocations.map((member) => (
             <Marker
               key={member.id}
               position={[member.latitude, member.longitude]}
@@ -1451,6 +1543,14 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                       <div className="flex items-center gap-2">
                         <Briefcase className="h-4 w-4 text-muted-foreground" />
                         <span>{member.currentJobTitle}</span>
+                      </div>
+                    )}
+
+                    {member.isDriving && member.currentJobTitle && (
+                      <div className="flex items-center gap-2 text-xs font-medium" style={{ color: ACTIVITY_COLORS.driving }}>
+                        <Navigation2 className="h-3.5 w-3.5" />
+                        <span>En route to job</span>
+                        {member.speed > 0 && <span>• {Math.round(member.speed)} km/h</span>}
                       </div>
                     )}
                     
@@ -1550,7 +1650,12 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
                 <div>
                   <h1 className="text-base font-bold leading-tight">Job Map</h1>
                   <p className="text-xs text-muted-foreground">
-                    {jobsWithCoords.length} jobs{isTeam ? ` • ${teamLocations.filter(t => t.isActive).length} active` : ''}
+                    {jobsWithCoords.length} jobs{isTeam ? ` • ${mergedTeamLocations.filter(t => t.isActive).length} active` : ''}
+                    {locationSocketConnected && isTeam && (
+                      <span className="inline-flex items-center ml-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -2109,7 +2214,7 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
       )}
       
       {/* Empty state */}
-      {jobsData.length === 0 && teamLocations.length === 0 && (
+      {jobsData.length === 0 && mergedTeamLocations.length === 0 && (
         <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
           <Card className="backdrop-blur-xl bg-background/90 pointer-events-auto max-w-sm mx-4">
             <CardContent className="py-8 px-6 text-center">
