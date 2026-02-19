@@ -319,7 +319,7 @@ export default function ClientPortal() {
         </header>
 
         {/* Document Title Section */}
-        <div className="bg-white border-b border py-5 px-4">
+        <div className="bg-white border-b border-slate-100 py-5 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
@@ -343,7 +343,7 @@ export default function ClientPortal() {
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Client & Document Info */}
             <div className="grid md:grid-cols-2 gap-4">
-              <Card className="bg-white rounded-xl shadow-sm border">
+              <Card className="bg-white rounded-xl shadow-sm">
                 <CardContent className="pt-4">
                   <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Bill To</h3>
                   <p className="font-semibold text-foreground">{data.client.name}</p>
@@ -358,7 +358,7 @@ export default function ClientPortal() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-white rounded-xl shadow-sm border">
+              <Card className="bg-white rounded-xl shadow-sm">
                 <CardContent className="pt-4">
                   <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Details</h3>
                   <div className="space-y-1 text-sm">
@@ -397,7 +397,7 @@ export default function ClientPortal() {
 
             {/* Job Site */}
             {data.job?.address && data.job.address !== data.client.address && (
-              <Card className="bg-white rounded-xl shadow-sm border">
+              <Card className="bg-white rounded-xl shadow-sm">
                 <CardContent className="py-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="w-4 h-4 text-brand" />
@@ -409,7 +409,7 @@ export default function ClientPortal() {
             )}
 
             {data.description && (
-              <Card className="bg-white rounded-xl shadow-sm border">
+              <Card className="bg-white rounded-xl shadow-sm">
                 <CardContent className="py-3">
                   <p className="text-sm text-slate-600">{data.description}</p>
                 </CardContent>
@@ -417,7 +417,7 @@ export default function ClientPortal() {
             )}
 
             {/* Line Items Table */}
-            <Card className="bg-white rounded-xl shadow-sm border">
+            <Card className="bg-white rounded-xl shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base text-foreground">Items</CardTitle>
               </CardHeader>
@@ -445,7 +445,7 @@ export default function ClientPortal() {
                 </div>
 
                 {/* Totals */}
-                <div className="border-t border pt-4 mt-4 space-y-2">
+                <div className="border-t border-slate-100 pt-4 mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span className="text-foreground">{formatCurrency(data.subtotal)}</span>
@@ -454,7 +454,7 @@ export default function ClientPortal() {
                     <span className="text-muted-foreground">GST (10%)</span>
                     <span className="text-foreground">{formatCurrency(data.gstAmount)}</span>
                   </div>
-                  <div className="flex justify-between font-bold text-xl pt-3 border-t border">
+                  <div className="flex justify-between font-bold text-xl pt-3 border-t border-slate-100">
                     <span className="text-foreground">Total (AUD)</span>
                     <span className="text-brand">{formatCurrency(data.total)}</span>
                   </div>
@@ -616,7 +616,7 @@ export default function ClientPortal() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border py-5 px-4 mt-auto">
+        <footer className="bg-white border-t border-slate-100 py-5 px-4 mt-auto">
           <div className="max-w-4xl mx-auto text-center space-y-2">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="w-4 h-4 text-brand" />

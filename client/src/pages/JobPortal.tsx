@@ -744,7 +744,7 @@ export default function JobPortal() {
   if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-white">
-        <Card className="max-w-md w-full border rounded-2xl shadow-lg">
+        <Card className="max-w-md w-full rounded-2xl shadow-lg">
           <CardContent className="pt-8 pb-8 text-center">
             <AlertCircle className="w-14 h-14 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">Job Not Found</h2>
@@ -841,7 +841,7 @@ export default function JobPortal() {
 
         {(effectiveWorkerStatus) && (
           <div className="px-4">
-            <div className="bg-white rounded-2xl shadow-lg border pt-5 px-4 pb-4">
+            <div className="bg-white rounded-2xl shadow-lg pt-5 px-4 pb-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-shrink-0">
                   <div className={`w-3 h-3 rounded-full ${statusConfig.dot}`} />
@@ -974,7 +974,7 @@ export default function JobPortal() {
         <div className="px-4 py-4 space-y-4 flex-1">
 
           {(data.assignments && data.assignments.length > 0) ? (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-300" />
@@ -1058,7 +1058,7 @@ export default function JobPortal() {
               </div>
             </div>
           ) : worker && (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-300" />
@@ -1100,7 +1100,7 @@ export default function JobPortal() {
                 {crewLocationData?.subcontractors?.map((s) => {
                   const sConf2 = getStatusConfig(s.status === 'en_route' ? 'on_my_way' : s.status);
                   return (
-                    <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border">
+                    <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border-slate-100">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                           <User className="w-4 h-4 text-muted-foreground" />
@@ -1124,7 +1124,7 @@ export default function JobPortal() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="bg-brand text-white px-5 py-3">
               <span className="font-semibold text-sm">{job.title}</span>
             </div>
@@ -1166,7 +1166,7 @@ export default function JobPortal() {
           </div>
 
           {job.notes && (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-300" />
@@ -1180,7 +1180,7 @@ export default function JobPortal() {
           )}
 
           {job.workerStatus && (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-300" />
@@ -1258,7 +1258,7 @@ export default function JobPortal() {
           )}
 
           {data.checklist && data.checklist.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <ClipboardCheck className="w-4 h-4 text-slate-300" />
@@ -1302,7 +1302,7 @@ export default function JobPortal() {
           )}
 
           {data.materials && data.materials.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-slate-300" />
@@ -1338,7 +1338,7 @@ export default function JobPortal() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="bg-brand text-white px-5 py-3">
               <div className="flex items-center gap-2">
                 <Camera className="w-4 h-4 text-slate-300" />
@@ -1376,7 +1376,7 @@ export default function JobPortal() {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div className="bg-brand text-white px-5 py-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-slate-300" />
@@ -1405,7 +1405,7 @@ export default function JobPortal() {
                           <div className="mt-1">{getDocStatusBadge(quote.status)}</div>
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border">
+                      <div className="mt-3 pt-3 border-t border-slate-100">
                         <Button variant="outline" size="sm" className="w-full text-brand border-brand/30">
                           View Quote
                           <ChevronRight className="w-4 h-4 ml-1" />
@@ -1442,7 +1442,7 @@ export default function JobPortal() {
                             <div className="mt-1">{getDocStatusBadge(invoice.status)}</div>
                           </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border">
+                        <div className="mt-3 pt-3 border-t border-slate-100">
                           <Button 
                             variant={isPayable ? 'default' : 'outline'} 
                             size="sm" 
@@ -1475,7 +1475,7 @@ export default function JobPortal() {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="bg-brand text-white px-5 py-3">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-slate-300" />
@@ -1537,7 +1537,7 @@ export default function JobPortal() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">

@@ -490,7 +490,7 @@ export default function ClientPortalHub() {
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4 relative">
-          <Card className="w-full max-w-md rounded-md shadow-lg border bg-white">
+          <Card className="w-full max-w-md rounded-md shadow-lg bg-white">
             <CardHeader className="text-center pb-2">
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto mb-3">
                 <Phone className="w-6 h-6 text-brand" />
@@ -547,7 +547,7 @@ export default function ClientPortalHub() {
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4 relative">
-          <Card className="w-full max-w-md rounded-md shadow-lg border bg-white">
+          <Card className="w-full max-w-md rounded-md shadow-lg bg-white">
             <CardHeader className="text-center pb-2">
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="w-6 h-6 text-brand" />
@@ -693,7 +693,7 @@ export default function ClientPortalHub() {
               {portalData?.clients.map((client) => (
                 <div
                   key={client.id}
-                  className="bg-white rounded-md shadow-lg border p-4 cursor-pointer hover-elevate"
+                  className="bg-white rounded-md shadow-lg p-4 cursor-pointer hover-elevate"
                   onClick={() => {
                     setSelectedClientId(client.id);
                     setViewState('dashboard');
@@ -862,7 +862,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="quotes" className="space-y-4">
                   {filteredQuotes?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg border p-10 text-center">
+                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                         <FileText className="w-8 h-8 text-muted-foreground" />
                       </div>
@@ -873,10 +873,10 @@ export default function ClientPortalHub() {
                     filteredQuotes?.map((quote) => (
                       <div
                         key={quote.id}
-                        className={`bg-white rounded-md shadow-lg border overflow-hidden hover-elevate cursor-pointer ${
+                        className={`bg-white rounded-md shadow-lg overflow-hidden hover-elevate cursor-pointer ${
                           quote.status === 'sent'
-                            ? 'border-brand/20'
-                            : 'border'
+                            ? 'border border-brand/20'
+                            : ''
                         }`}
                         onClick={() => handleViewQuote(quote)}
                       >
@@ -931,7 +931,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="invoices" className="space-y-4">
                   {filteredInvoices?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg border p-10 text-center">
+                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                         <CreditCard className="w-8 h-8 text-muted-foreground" />
                       </div>
@@ -954,7 +954,7 @@ export default function ClientPortalHub() {
                               ? 'bg-white shadow-lg border border-green-200'
                               : isOverdue
                               ? 'bg-white shadow-lg border border-red-200'
-                              : 'bg-white shadow-lg border'
+                              : 'bg-white shadow-lg'
                           }`}
                         >
                           <div className="p-5">
@@ -1032,7 +1032,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="receipts" className="space-y-4">
                   {filteredReceipts?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg border p-10 text-center">
+                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                         <Receipt className="w-8 h-8 text-green-300" />
                       </div>
@@ -1080,7 +1080,7 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="jobs" className="space-y-4">
                   {filteredJobs?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg border p-10 text-center">
+                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                         <Briefcase className="w-8 h-8 text-muted-foreground" />
                       </div>
@@ -1096,14 +1096,14 @@ export default function ClientPortalHub() {
                       return (
                         <div
                           key={job.id}
-                          className={`bg-white rounded-md shadow-lg border overflow-hidden ${
+                          className={`bg-white rounded-md shadow-lg overflow-hidden ${
                             isDone
-                              ? 'border-green-200'
+                              ? 'border border-green-200'
                               : isInProgress
-                              ? 'border-blue-200'
+                              ? 'border border-blue-200'
                               : isScheduled
-                              ? 'border-purple-200'
-                              : 'border'
+                              ? 'border border-purple-200'
+                              : ''
                           }`}
                         >
                           <div 
