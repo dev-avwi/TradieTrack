@@ -33,6 +33,7 @@ import {
   Calendar,
   ArrowRight,
   TrendingUp,
+  Receipt,
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -319,66 +320,30 @@ export default function OwnerManagerDashboard({
         </Card>
       )}
 
-      {(() => {
-        const attentionItems = [
-          kpis?.jobsToInvoice ? { label: `${kpis.jobsToInvoice} completed job${kpis.jobsToInvoice > 1 ? 's' : ''} to invoice`, icon: DollarSign, color: 'hsl(38 92% 50%)', url: '/jobs?filter=done' } : null,
-          kpis?.quotesAwaiting ? { label: `${kpis.quotesAwaiting} quote${kpis.quotesAwaiting > 1 ? 's' : ''} awaiting response`, icon: FileText, color: 'hsl(var(--trade))', url: '/documents?tab=quotes&filter=sent' } : null,
-        ].filter(Boolean);
-        
-        if (attentionItems.length === 0) return null;
-        
-        return (
-          <Card className="mb-3">
-            <CardContent className="p-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5" style={{ color: 'hsl(38 92% 50%)' }} />
-                Needs Attention
-              </p>
-              <div className="space-y-1.5">
-                {attentionItems.map((item: any, i: number) => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2.5 py-1 cursor-pointer hover-elevate rounded-md px-1"
-                      onClick={() => onNavigate?.(item.url)}
-                    >
-                      <ItemIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: item.color }} />
-                      <span className="text-sm">{item.label}</span>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground ml-auto flex-shrink-0" />
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
-
       {kpisLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3">
-          {[1,2,3,4,5].map(i => (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
+          {[1,2,3,4,5,6].map(i => (
             <Card key={i}>
               <CardContent className="py-1.5 px-2">
-                <Skeleton className="h-6 w-16 mb-1" />
-                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-6 w-12 mb-1" />
+                <Skeleton className="h-3 w-10" />
               </CardContent>
             </Card>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
           <Card 
             className="cursor-pointer hover-elevate"
             onClick={() => onNavigate?.('/jobs?filter=in_progress')}
             data-testid="kpi-jobs-today"
           >
             <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1.5">
-                <CalendarDays className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
+              <div className="flex items-center gap-1">
+                <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
                 <p className="text-lg font-bold">{kpis?.jobsToday || 0}</p>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium mt-0">Jobs Today</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Jobs Today</p>
             </CardContent>
           </Card>
           <Card 
@@ -387,13 +352,13 @@ export default function OwnerManagerDashboard({
             data-testid="kpi-jobs-to-invoice"
           >
             <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1.5">
-                <DollarSign className="h-4 w-4 flex-shrink-0" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5 flex-shrink-0" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
                 <p className="text-lg font-bold" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }}>
                   {kpis?.jobsToInvoice ?? 0}
                 </p>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium mt-0">To Invoice</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">To Invoice</p>
             </CardContent>
           </Card>
           <Card 
@@ -402,11 +367,11 @@ export default function OwnerManagerDashboard({
             data-testid="kpi-pending"
           >
             <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1.5">
-                <FileText className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="flex items-center gap-1">
+                <FileText className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
                 <p className="text-lg font-bold">{kpis?.quotesAwaiting || 0}</p>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium mt-0">Quotes Out</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Quotes Out</p>
             </CardContent>
           </Card>
           <Card 
@@ -415,11 +380,11 @@ export default function OwnerManagerDashboard({
             data-testid="kpi-active-jobs"
           >
             <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1.5">
-                <Briefcase className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="flex items-center gap-1">
+                <Briefcase className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
                 <p className="text-lg font-bold">{kpis?.activeJobs || 0}</p>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium mt-0">Active Jobs</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Active Jobs</p>
             </CardContent>
           </Card>
           <Card 
@@ -428,13 +393,28 @@ export default function OwnerManagerDashboard({
             data-testid="kpi-weekly-earnings"
           >
             <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1.5">
-                <TrendingUp className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
                 <p className="text-lg font-bold" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>
                   {fmtAud(kpis?.weeklyEarnings || 0)}
                 </p>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium mt-0">This Week</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">This Week</p>
+            </CardContent>
+          </Card>
+          <Card 
+            className="cursor-pointer hover-elevate"
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
+            data-testid="kpi-monthly-earnings"
+          >
+            <CardContent className="py-1.5 px-2">
+              <div className="flex items-center gap-1">
+                <Receipt className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                <p className="text-lg font-bold" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>
+                  {fmtAud(kpis?.monthlyEarnings || 0)}
+                </p>
+              </div>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">This Month</p>
             </CardContent>
           </Card>
         </div>
