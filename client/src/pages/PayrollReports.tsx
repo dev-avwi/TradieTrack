@@ -16,6 +16,14 @@ import {
 
 const fmtAud = (n: number) => `$${n.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
 
+const csvEscape = (val: any) => {
+  const str = String(val ?? '');
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+};
+
 function getUtilColor(pct: number) {
   if (pct >= 80) return "text-green-600 dark:text-green-400";
   if (pct >= 50) return "text-amber-600 dark:text-amber-400";
@@ -129,6 +137,7 @@ export default function PayrollReports() {
       const res = await fetch(`/api/payroll/summary?start=${payrollDates.start.toISOString()}&end=${payrollDates.end.toISOString()}`);
       return res.json();
     },
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: receivablesData, isLoading: receivablesLoading } = useQuery({
@@ -137,6 +146,7 @@ export default function PayrollReports() {
       const res = await fetch('/api/reports/receivables');
       return res.json();
     },
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: utilisationData, isLoading: utilisationLoading } = useQuery({
@@ -145,6 +155,7 @@ export default function PayrollReports() {
       const res = await fetch(`/api/reports/utilisation?start=${utilisationDates.start.toISOString()}&end=${utilisationDates.end.toISOString()}`);
       return res.json();
     },
+    staleTime: 2 * 60 * 1000,
   });
 
   const exportPayrollCSV = () => {
@@ -157,7 +168,7 @@ export default function PayrollReports() {
       w.hourlyRate.toFixed(2), w.overtimePay.toFixed(2), w.grossPay.toFixed(2),
       w.jobCount, w.approved, w.unapproved
     ]);
-    const csv = [headers.join(','), ...rows.map((r: any[]) => r.join(','))].join('\n');
+    const csv = [headers.join(','), ...rows.map((r: any[]) => r.map(csvEscape).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -177,7 +188,7 @@ export default function PayrollReports() {
         rows.push([inv.number, inv.clientName, inv.total.toFixed(2), inv.dueDate?.split('T')[0] || '', String(inv.daysOverdue), bucketNames[key] || key]);
       }
     }
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const csv = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -373,13 +384,13 @@ export default function PayrollReports() {
                           const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
                           return nameA.localeCompare(nameB);
                         })
-                        .map((w: any) => {
+                        .map((w: any, index: number) => {
                           const name = `${w.firstName || ''} ${w.lastName || ''}`.trim() || 'Unknown';
                           const initials = getInitials(w.firstName, w.lastName);
                           const isExpanded = expandedWorkers.has(w.id || w.userId);
                           const billablePct = w.totalHours > 0 ? Math.round((w.billableHours / w.totalHours) * 100) : 0;
                           return (
-                            <tr key={w.id || w.userId} className="border-b last:border-0">
+                            <tr key={w.id || w.userId || `worker-${index}`} className="border-b last:border-0">
                               <td className="px-4 py-2.5">
                                 <div
                                   className="flex items-center gap-2.5 cursor-pointer"
@@ -436,7 +447,6 @@ export default function PayrollReports() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-6 w-6"
                                   onClick={() => toggleWorker(w.id || w.userId)}
                                 >
                                   {isExpanded ? (
@@ -503,11 +513,11 @@ export default function PayrollReports() {
                       </tr>
                     </thead>
                     <tbody>
-                      {subcontractors.map((w: any) => {
+                      {subcontractors.map((w: any, index: number) => {
                         const name = `${w.firstName || ''} ${w.lastName || ''}`.trim() || 'Unknown';
                         const initials = getInitials(w.firstName, w.lastName);
                         return (
-                          <tr key={w.id || w.userId} className="border-b last:border-0">
+                          <tr key={w.id || w.userId || `subcontractor-${index}`} className="border-b last:border-0">
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2.5">
                                 <Avatar className="h-7 w-7">
@@ -668,7 +678,7 @@ export default function PayrollReports() {
                         </thead>
                         <tbody>
                           {clientBreakdown.map((client, idx) => (
-                            <tr key={idx} className="border-b last:border-0">
+                            <tr key={client.name || idx} className="border-b last:border-0">
                               <td className="px-4 py-2.5 font-medium">{client.name}</td>
                               <td className="px-4 py-2.5 text-right font-medium tabular-nums">{fmtAud(client.total)}</td>
                             </tr>
@@ -772,14 +782,14 @@ export default function PayrollReports() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedUtilWorkers.map((w: any) => {
+                        {sortedUtilWorkers.map((w: any, index: number) => {
                           const name = `${w.firstName || ''} ${w.lastName || ''}`.trim() || 'Unknown';
                           const initials = getInitials(w.firstName, w.lastName);
                           const utilPct = w.utilisationPct || 0;
                           const billablePct = w.billablePct || 0;
                           const revenuePerHour = w.hoursWorked > 0 ? (w.revenue || 0) / w.hoursWorked : 0;
                           return (
-                            <tr key={w.id || w.userId} className="border-b last:border-0">
+                            <tr key={w.id || w.userId || `util-worker-${index}`} className="border-b last:border-0">
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-2.5">
                                   <Avatar className="h-7 w-7">

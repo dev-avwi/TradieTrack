@@ -156,7 +156,41 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/autopilot', label: 'Autopilot', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
 
   // More page - all roles
-  { path: '/more', label: 'More', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
+  { path: '/more', label: 'More', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
+
+  // Email Setup - owner/manager (settings-related)
+  { path: '/email-setup', label: 'Email Setup', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // Subscription - owner only (billing-related)
+  { path: '/subscription', label: 'Subscription', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
+
+  // Audit Log - owner/manager (reporting)
+  { path: '/audit-log', label: 'Audit Log', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // Messages redirect - all roles (redirects to /chat)
+  { path: '/messages', label: 'Messages', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
+
+  // Calculators - owner/manager (business tools)
+  { path: '/calculators', label: 'Calculators', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // Admin pages - platform admin only (handled separately in AppLayout, but listed for completeness)
+  { path: '/admin', label: 'Admin', allowedRoles: ['owner'], showInNav: false },
+  { path: '/admin/users', label: 'Admin Users', allowedRoles: ['owner'], showInNav: false },
+  { path: '/admin/activity', label: 'Admin Activity', allowedRoles: ['owner'], showInNav: false },
+  { path: '/admin/health', label: 'Admin Health', allowedRoles: ['owner'], showInNav: false },
+  { path: '/admin/settings', label: 'Admin Settings', allowedRoles: ['owner'], showInNav: false },
+
+  // Service Reminders - owner/manager
+  { path: '/service-reminders', label: 'Service Reminders', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // Rebates - owner/manager
+  { path: '/rebates', label: 'Rebates', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // Team Groups - owner/manager
+  { path: '/team-groups', label: 'Team Groups', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // AI Visualization - owner/manager
+  { path: '/ai-visualization', label: 'AI Visualization', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 ];
 
 // Check if a role can access a specific path
@@ -181,7 +215,7 @@ export function canAccessPath(role: UserRole, path: string): boolean {
   // If no permission defined, deny access by default
   if (!permission) {
     // Allow public routes
-    if (['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/onboarding', '/privacy', '/terms'].some(p => normalizedPath.startsWith(p))) {
+    if (['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/verify-email-pending', '/onboarding', '/privacy', '/terms', '/accept-invite', '/accept-assignment', '/invite', '/open-app', '/portal', '/q/', '/i/', '/r/', '/p/', '/s/', '/pay/', '/job-portal', '/track/', '/receipt/', '/landing', '/auth'].some(p => normalizedPath.startsWith(p))) {
       return true;
     }
     return false;

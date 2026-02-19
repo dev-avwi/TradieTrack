@@ -138,6 +138,7 @@ export default function TeamOwnerDashboard({
   }
   const { data: profitSnapshot, isLoading: profitLoading } = useQuery<ProfitSnapshot>({
     queryKey: ["/api/dashboard/profit-snapshot"],
+    staleTime: 5 * 60 * 1000,
   });
   
   // Fetch team presence for status indicators
@@ -189,11 +190,13 @@ export default function TeamOwnerDashboard({
       if (!response.ok) throw new Error('Failed to fetch unassigned jobs');
       return response.json();
     },
+    staleTime: 60 * 1000,
   });
 
   // Fetch jobs with their assignments
   const { data: allJobs = [] } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
+    staleTime: 60 * 1000,
   });
 
   // Assign job mutation
