@@ -263,11 +263,11 @@ function KanbanBoard({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
 
   return (
     <div className="overflow-x-auto pb-4">
-      <div className="flex gap-3 min-w-[900px]">
+      <div className="flex gap-3">
         {KANBAN_COLUMNS.map(column => {
           const count = columnJobs[column.key]?.length || 0;
           return (
-            <div key={column.key} className="flex-1 min-w-[220px]">
+            <div key={column.key} className="flex-1 min-w-0">
               <div className={`h-[3px] rounded-full mb-2 ${column.color}`} />
               <div className="flex items-center gap-2 mb-2 px-1">
                 <h3 className="text-sm font-semibold">{column.label}</h3>
@@ -382,16 +382,35 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
   }, [jobMarkers, workerMarkers]);
 
   return (
-    <div className="rounded-lg overflow-hidden border">
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapIcon className="h-4 w-4" />
+            Dispatch Map
+          </CardTitle>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {jobMarkers.length} jobs
+            </span>
+            <span className="flex items-center gap-1">
+              <Navigation className="h-3 w-3" />
+              {workerMarkers.length} en route
+            </span>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+      <div className="rounded-b-lg overflow-hidden">
       <MapContainer
         center={center}
         zoom={jobMarkers.length + workerMarkers.length > 0 ? 10 : 4}
-        className="h-[calc(100vh-200px)] w-full"
-        style={{ minHeight: '400px' }}
+        className="h-[500px] w-full"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
         {jobMarkers.map(({ position, job }) => (
           <Marker key={`job-${job.id}`} position={position} icon={jobIcon}>
@@ -422,7 +441,9 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
           </Marker>
         ))}
       </MapContainer>
-    </div>
+      </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1126,55 +1147,26 @@ export default function DispatchBoard() {
         <div className="flex-1">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => viewMode === 'week' ? navigateWeek('prev') : navigateDate('prev')}
-                    data-testid="button-prev-day"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={isToday ? "default" : "outline"}
-                    size="sm"
-                    onClick={goToToday}
-                    data-testid="button-today"
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => viewMode === 'week' ? navigateWeek('next') : navigateDate('next')}
-                    data-testid="button-next-day"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-2 text-center">
                   {viewMode !== 'week' && isToday && (
-                    <span className="relative flex h-2.5 w-2.5">
+                    <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                      <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'hsl(var(--trade))' }} />
                     </span>
                   )}
-                  <div>
-                    <h2 className="text-lg font-bold tracking-tight">
-                      {viewMode === 'week'
-                        ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
-                        : format(currentDate, 'EEEE, MMMM d, yyyy')
-                      }
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {viewMode === 'week'
-                        ? `${Object.values(jobsByDate).reduce((sum, jobs) => sum + jobs.length, 0)} jobs this week`
-                        : `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''} scheduled`
-                      }
-                    </p>
-                  </div>
+                  <h2 className="text-sm font-semibold">
+                    {viewMode === 'week'
+                      ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
+                      : format(currentDate, 'EEEE, MMMM d, yyyy')
+                    }
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    {viewMode === 'week'
+                      ? `${Object.values(jobsByDate).reduce((sum, jobs) => sum + jobs.length, 0)} jobs`
+                      : `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''}`
+                    }
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
@@ -1209,7 +1201,7 @@ export default function DispatchBoard() {
             <CardContent className="p-0">
               {viewMode === 'week' ? (
                 <div className="overflow-x-auto">
-                  <div className="grid grid-cols-7 min-w-[700px]">
+                  <div className="grid grid-cols-7">
                     {weekDays.map(day => {
                       const dateStr = format(day, 'yyyy-MM-dd');
                       const dayJobs = jobsByDate[dateStr] || [];
@@ -1292,39 +1284,34 @@ export default function DispatchBoard() {
                 </div>
               ) : (
               <div className="overflow-x-auto">
-                <div className="min-w-[800px]">
+                <div>
                   <div className="flex border-b bg-muted/30">
-                    <div className="w-16 flex-shrink-0 p-2 text-xs font-medium text-muted-foreground">
+                    <div className="w-12 flex-shrink-0 p-1 text-[10px] font-medium text-muted-foreground">
                       Time
                     </div>
                     {teamMembersWithJobs.map(member => (
                       <div 
                         key={member.id}
-                        className="flex-1 min-w-[180px] p-3 border-l"
+                        className="flex-1 min-w-0 p-1.5 border-l"
                       >
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-6 w-6 flex-shrink-0">
                             <AvatarImage src={member.profileImageUrl} />
-                            <AvatarFallback className="text-xs" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                            <AvatarFallback className="text-[9px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
                               {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {member.firstName} {member.lastName}
+                            <p className="text-xs font-medium truncate">
+                              {member.firstName}
                             </p>
-                            <div className="flex items-center gap-1">
-                              <Timer className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {member.totalHours}h / {member.capacity}h
-                              </span>
-                              {member.totalHours > member.capacity && (
-                                <AlertCircle className="h-3 w-3 text-destructive" />
-                              )}
-                            </div>
+                            <span className="text-[10px] text-muted-foreground">
+                              {member.totalHours}h/{member.capacity}h
+                              {member.totalHours > member.capacity && ' !'}
+                            </span>
                           </div>
                         </div>
-                        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all"
                             style={{ 
@@ -1343,7 +1330,7 @@ export default function DispatchBoard() {
                     <div className="relative">
                       {WORK_HOURS.map(hour => (
                         <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
-                          <div className="w-16 flex-shrink-0 p-2 text-xs text-muted-foreground border-r bg-muted/10">
+                          <div className="w-12 flex-shrink-0 p-1 text-[10px] text-muted-foreground border-r bg-muted/10">
                             {formatTime(hour)}
                           </div>
                           {teamMembersWithJobs.map(member => {
@@ -1354,7 +1341,7 @@ export default function DispatchBoard() {
                             return (
                               <div
                                 key={slotId}
-                                className={`flex-1 min-w-[180px] border-l relative transition-colors ${
+                                className={`flex-1 min-w-0 border-l relative transition-colors ${
                                   isOver ? 'bg-primary/10' : ''
                                 } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
                                 onDragOver={(e) => handleDragOver(e, slotId)}
@@ -1383,7 +1370,9 @@ export default function DispatchBoard() {
                         member.jobs.map(job => {
                           const { top, height } = getJobPosition(job);
                           const statusStyle = getStatusStyle(job.status);
-                          const leftOffset = 64 + memberIndex * 180;
+                          const colCount = teamMembersWithJobs.length;
+                          const leftPercent = (memberIndex / colCount) * 100;
+                          const widthPercent = (1 / colCount) * 100;
                           const isSelected = selectedJob?.job.id === job.id;
 
                           return (
@@ -1396,9 +1385,8 @@ export default function DispatchBoard() {
                               className={`absolute mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
                               style={{
                                 top: top + 1,
-                                left: leftOffset,
-                                width: 'calc(100% / ' + teamMembersWithJobs.length + ' - 12px)',
-                                minWidth: 168,
+                                left: `calc(48px + (100% - 48px) * ${memberIndex} / ${colCount})`,
+                                width: `calc((100% - 48px) / ${colCount} - 8px)`,
                                 height: height - 2,
                                 zIndex: draggedJob?.job.id === job.id ? 50 : 10,
                                 opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
@@ -1449,7 +1437,7 @@ export default function DispatchBoard() {
           </Card>
         </div>
 
-        <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
+        <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
