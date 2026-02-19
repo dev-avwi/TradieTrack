@@ -284,7 +284,7 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   try {
     // Use alphanumeric sender ID for plain SMS when configured (case-sensitive per Twilio)
     // MMS requires a phone number so always fall back to phone number for MMS
-    const fromValue = (!isMMS && alphanumericSenderId) ? alphanumericSenderId : twilioPhoneNumber;
+    const fromValue = twilioPhoneNumber;
 
     const messageOptions: any = {
       body: message,

@@ -8,7 +8,7 @@
 
 import { sendEmail, EmailOptions } from './emailService';
 import { sendSMS as sendTwilioSMS, isTwilioInitialized, initializeTwilio } from './twilioClient';
-import { getAlphanumericSenderId } from './services/smsService';
+
 
 // Real SMS sending via Twilio - NO silent success fallbacks in production
 const sendSMS = async (options: { to: string; message: string; businessOwnerId?: string }): Promise<{ success: boolean; error?: string; simulated?: boolean }> => {
@@ -29,12 +29,9 @@ const sendSMS = async (options: { to: string; message: string; businessOwnerId?:
       }
     }
 
-    const alphanumericSenderId = await getAlphanumericSenderId(options.businessOwnerId);
-    
     const result = await sendTwilioSMS({
       to: options.to,
       message: options.message,
-      alphanumericSenderId
     });
     
     // Return actual result - don't mask failures

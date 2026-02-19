@@ -114,9 +114,7 @@ async function sendSmsPlatform(
 ): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean }> {
   const formattedTo = formatPhoneNumber(to);
   const validMediaUrls = mediaUrls?.slice(0, 10) || [];
-  const alphanumericSenderId = await getAlphanumericSenderId(businessOwnerId);
-  
-  return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined, alphanumericSenderId });
+  return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined });
 }
 
 /**

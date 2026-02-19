@@ -1129,7 +1129,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await sendTwilioSMS({
           to: normalizedPhone,
           message: `Your JobRunner verification code is: ${code}. This code will expire in 10 minutes.`,
-          alphanumericSenderId: 'JobRunner',
         });
         console.log(`✅ Portal verification code SMS sent to ${normalizedPhone}`);
       } catch (smsError: any) {
@@ -1618,7 +1617,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await sendTwilioSMS({
           to: normalizedPhone,
           message: `Your JobRunner verification code is: ${code}. This code will expire in 10 minutes.`,
-          alphanumericSenderId: 'JobRunner',
         });
       } catch (smsError) {
         console.error('Failed to send subcontractor verification SMS:', smsError);
@@ -13382,7 +13380,6 @@ Be specific about materials, colors, and features that would be included.`
       const smsResult = await sendSMS({
         to: client.phone,
         message: message,
-        alphanumericSenderId: (businessName && businessName.length <= 11) ? businessName : 'JobRunner'
       });
 
       // Log activity
@@ -14441,7 +14438,6 @@ Be specific about materials, colors, and features that would be included.`
       const smsResult = await sendSMS({
         to: client.phone,
         message: message,
-        alphanumericSenderId: (businessName && businessName.length <= 11) ? businessName : 'JobRunner'
       });
 
       // Log activity
@@ -15124,7 +15120,6 @@ Be specific about materials, colors, and features that would be included.`
       const smsResult = await sendSMS({
         to: client.phone,
         message: `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${businessName}`,
-        alphanumericSenderId: (businessName && businessName.length <= 11) ? businessName : 'JobRunner',
       });
 
       if (!smsResult.success) {
