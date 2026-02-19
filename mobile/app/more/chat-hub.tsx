@@ -69,9 +69,42 @@ interface TwilioStatus {
   phoneNumber: string | null;
 }
 
+interface DirectMessageConversation {
+  otherUser: {
+    id: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    profileImageUrl?: string | null;
+  };
+  lastMessage?: {
+    id: string;
+    senderId: string;
+    recipientId: string;
+    content: string;
+    createdAt: string;
+  };
+  unreadCount: number;
+}
+
+interface TeamMember {
+  id: string;
+  userId: string;
+  memberId?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  profileImageUrl?: string | null;
+  status?: string;
+  inviteStatus?: string;
+}
+
 interface ConversationItem {
   id: string;
-  type: 'job' | 'team' | 'client' | 'sms';
+  type: 'job' | 'team' | 'client' | 'sms' | 'direct' | 'member';
   title: string;
   subtitle?: string;
   avatarFallback: string;
@@ -84,7 +117,16 @@ interface ConversationItem {
   data: any;
 }
 
-type FilterType = 'all' | 'jobs' | 'customers' | 'team';
+type FilterType = 'jobs' | 'enquiries' | 'team';
+
+const JOB_STATUS_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'scheduled', label: 'Scheduled' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'done', label: 'Done' },
+  { key: 'invoiced', label: 'Invoiced' },
+];
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -146,6 +188,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quickActionButtonSecondary: {
     backgroundColor: colors.muted,
   },
+  quickActionButtonSuccess: {
+    backgroundColor: colors.success || '#22c55e',
+  },
   quickActionText: {
     fontSize: 14,
     fontWeight: '600',
@@ -155,6 +200,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActionTextSecondary: {
     color: colors.foreground,
+  },
+  quickActionTextSuccess: {
+    color: '#FFFFFF',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -190,13 +238,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
     backgroundColor: colors.muted,
     minHeight: 36,
-    alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
@@ -208,6 +258,50 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   filterButtonTextActive: {
     color: colors.primaryForeground,
+  },
+  filterBadge: {
+    backgroundColor: colors.destructive || '#ef4444',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  subFilterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: spacing.xs,
+  },
+  subFilterButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    backgroundColor: 'transparent',
+  },
+  subFilterButtonActive: {
+    backgroundColor: colors.muted,
+  },
+  subFilterText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  subFilterTextActive: {
+    color: colors.foreground,
+    fontWeight: '600',
   },
   sectionHeader: {
     paddingHorizontal: spacing.lg,
@@ -252,6 +346,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   conversationAvatarClient: {
     backgroundColor: colors.successLight,
+  },
+  conversationAvatarDirect: {
+    backgroundColor: '#E9D5FF',
+  },
+  conversationAvatarMember: {
+    backgroundColor: colors.muted,
   },
   conversationAvatarText: {
     fontSize: 16,
@@ -425,13 +525,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomColor: colors.success,
     gap: spacing.sm,
   },
+  twilioConnectedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   twilioConnectedText: {
     fontSize: 13,
     fontWeight: '500',
     color: colors.success,
+    flex: 1,
   },
   smsConversationAvatar: {
     backgroundColor: colors.successLight,
+  },
+  smsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    backgroundColor: colors.successLight,
+  },
+  smsBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.success,
   },
 });
 
@@ -439,7 +562,8 @@ export default function ChatHubScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('jobs');
+  const [jobStatusFilter, setJobStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -449,6 +573,8 @@ export default function ChatHubScreen() {
   const [smsConversations, setSmsConversations] = useState<SmsConversation[]>([]);
   const [twilioStatus, setTwilioStatus] = useState<TwilioStatus | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<UnreadCounts | null>(null);
+  const [dmConversations, setDmConversations] = useState<DirectMessageConversation[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -459,18 +585,22 @@ export default function ChatHubScreen() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes] = await Promise.all([
+      const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes, dmRes, teamRes] = await Promise.all([
         api.get<Job[]>('/api/jobs'),
         api.get<Client[]>('/api/clients'),
         api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] })),
         api.get<TwilioStatus>('/api/sms/status').catch(() => ({ data: null })),
         api.get<UnreadCounts>('/api/chat/unread-counts').catch(() => ({ data: null })),
+        api.get<DirectMessageConversation[]>('/api/direct-messages/conversations').catch(() => ({ data: [] })),
+        api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] })),
       ]);
       setJobs(jobsRes.data || []);
       setClients(clientsRes.data || []);
       setSmsConversations(smsRes.data || []);
       setTwilioStatus(twilioRes.data || null);
       setUnreadCounts(unreadRes.data || null);
+      setDmConversations(dmRes.data || []);
+      setTeamMembers(teamRes.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -507,14 +637,74 @@ export default function ChatHubScreen() {
     }
   };
 
+  const getUserDisplayName = (user: { firstName?: string | null; lastName?: string | null; email?: string | null; name?: string }) => {
+    if (user.firstName || user.lastName) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    }
+    if (user.name) return user.name;
+    return user.email || 'Unknown';
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   const twilioConnected = twilioStatus?.enabled === true && !!twilioStatus?.phoneNumber;
+
+  const jobSmsMap = useMemo(() => {
+    const byJobId = new Map<string, SmsConversation>();
+    const byClientId = new Map<string, SmsConversation>();
+    smsConversations.forEach(sms => {
+      if (sms.jobId) byJobId.set(sms.jobId, sms);
+      if (sms.clientId) byClientId.set(sms.clientId, sms);
+    });
+    return { byJobId, byClientId };
+  }, [smsConversations]);
+
+  const getSmsForJob = (job: Job) => {
+    return jobSmsMap.byJobId.get(job.id) || (job.clientId ? jobSmsMap.byClientId.get(job.clientId) : undefined) || null;
+  };
+
+  const clientsWithJobs = useMemo(() => {
+    const set = new Set<string>();
+    jobs.forEach(job => { if (job.clientId) set.add(job.clientId); });
+    return set;
+  }, [jobs]);
+
+  const jobIdsWithSms = useMemo(() => {
+    const set = new Set<string>();
+    smsConversations.forEach(sms => { if (sms.jobId) set.add(sms.jobId); });
+    return set;
+  }, [smsConversations]);
+
+  const enquiriesUnreadCount = useMemo(() => {
+    return smsConversations
+      .filter(sms => {
+        const hasJob = sms.jobId || (sms.clientId && clientsWithJobs.has(sms.clientId));
+        return !hasJob;
+      })
+      .reduce((sum, sms) => sum + (sms.unreadCount || 0), 0);
+  }, [smsConversations, clientsWithJobs]);
+
+  const isAcceptedMember = (m: TeamMember) => m.inviteStatus === 'accepted' || m.status === 'accepted';
 
   const conversations: ConversationItem[] = useMemo(() => {
     const items: ConversationItem[] = [];
     
-    if (activeFilter === 'all' || activeFilter === 'jobs') {
-      jobs.forEach(job => {
+    if (activeFilter === 'jobs') {
+      let filteredJobs = jobs;
+      if (jobStatusFilter !== 'all') {
+        filteredJobs = jobs.filter(job => job.status === jobStatusFilter);
+      }
+      
+      filteredJobs.forEach(job => {
         const clientName = getClientName(job.clientId);
+        const linkedSms = getSmsForJob(job);
+        const smsUnread = linkedSms?.unreadCount || 0;
         let lastMessage = 'No messages yet';
         if (clientName) {
           lastMessage = `${clientName} - ${(job.status || 'pending').replace('_', ' ')}`;
@@ -526,15 +716,20 @@ export default function ChatHubScreen() {
           subtitle: clientName || job.address || 'No client assigned',
           avatarFallback: job.title.substring(0, 2).toUpperCase(),
           lastMessage,
-          unreadCount: 0,
+          lastMessageTime: linkedSms?.lastMessageAt || undefined,
+          unreadCount: smsUnread,
           status: job.status,
-          data: job,
+          data: { ...job, linkedSms },
         });
       });
     }
     
-    if (activeFilter === 'all' || activeFilter === 'customers') {
-      smsConversations.forEach(sms => {
+    if (activeFilter === 'enquiries') {
+      const unassignedSms = smsConversations.filter(sms => {
+        const hasJob = sms.jobId || (sms.clientId && clientsWithJobs.has(sms.clientId));
+        return !hasJob;
+      });
+      unassignedSms.forEach(sms => {
         const displayName = sms.clientName || sms.clientPhone;
         const lastMsg = sms.messages && sms.messages.length > 0
           ? sms.messages[sms.messages.length - 1]
@@ -546,7 +741,7 @@ export default function ChatHubScreen() {
           id: `sms-${sms.id}`,
           type: 'sms',
           title: displayName,
-          subtitle: sms.jobId ? 'Linked to job' : 'SMS conversation',
+          subtitle: 'New enquiry',
           avatarFallback: displayName.substring(0, 2).toUpperCase(),
           lastMessage: lastMessageText,
           lastMessageTime: lastMsg?.createdAt || sms.lastMessageAt || undefined,
@@ -557,7 +752,7 @@ export default function ChatHubScreen() {
       });
     }
     
-    if (activeFilter === 'all' || activeFilter === 'team') {
+    if (activeFilter === 'team') {
       items.push({
         id: 'team-chat',
         type: 'team',
@@ -568,7 +763,55 @@ export default function ChatHubScreen() {
         unreadCount: (unreadCounts?.teamChat || 0),
         data: null,
       });
+
+      dmConversations.forEach(dm => {
+        const name = getUserDisplayName(dm.otherUser);
+        items.push({
+          id: `dm-${dm.otherUser.id}`,
+          type: 'direct',
+          title: name,
+          subtitle: dm.otherUser.email || undefined,
+          avatarFallback: getInitials(name),
+          lastMessage: dm.lastMessage?.content || 'No messages yet',
+          lastMessageTime: dm.lastMessage?.createdAt || undefined,
+          unreadCount: dm.unreadCount || 0,
+          data: dm,
+        });
+      });
+
+      const existingDmUserIds = new Set(dmConversations.map(dm => dm.otherUser.id));
+      teamMembers.filter(isAcceptedMember).forEach(member => {
+        const memberUserId = member.userId || member.memberId || member.id;
+        if (existingDmUserIds.has(memberUserId)) return;
+        if (existingDmUserIds.has(member.id)) return;
+
+        const name = getUserDisplayName(member);
+        items.push({
+          id: `member-${member.id}`,
+          type: 'member',
+          title: name,
+          subtitle: member.email || member.role || undefined,
+          avatarFallback: getInitials(name),
+          lastMessage: 'Tap to start a conversation',
+          unreadCount: 0,
+          data: member,
+        });
+      });
     }
+
+    items.sort((a, b) => {
+      if (a.type === 'team') return -1;
+      if (b.type === 'team') return 1;
+
+      if (a.type === 'direct' && b.type !== 'direct' && b.type !== 'team') return -1;
+      if (b.type === 'direct' && a.type !== 'direct' && a.type !== 'team') return 1;
+
+      if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
+
+      const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+      const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+      return timeB - timeA;
+    });
     
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -579,7 +822,7 @@ export default function ChatHubScreen() {
     }
     
     return items;
-  }, [jobs, clients, smsConversations, activeFilter, searchQuery, unreadCounts]);
+  }, [jobs, clients, smsConversations, dmConversations, teamMembers, activeFilter, searchQuery, unreadCounts, jobStatusFilter]);
 
   const handleConversationPress = (item: ConversationItem) => {
     if (item.type === 'team') {
@@ -588,9 +831,13 @@ export default function ChatHubScreen() {
       router.push(`/job/chat?jobId=${item.data.id}` as any);
     } else if (item.type === 'sms') {
       router.push(`/more/sms-conversation?id=${item.data.id}&phone=${encodeURIComponent(item.phone || '')}&name=${encodeURIComponent(item.title)}` as any);
+    } else if (item.type === 'direct') {
+      router.push(`/more/direct-messages?userId=${item.data.otherUser.id}` as any);
+    } else if (item.type === 'member') {
+      const memberUserId = item.data.userId || item.data.memberId || item.data.id;
+      router.push(`/more/direct-messages?userId=${memberUserId}` as any);
     }
   };
-
 
   const handleSendSmsToClient = async (phone: string, clientName?: string, clientId?: string) => {
     const message = `Hi${clientName ? ` ${clientName}` : ''}, just reaching out regarding your service.`;
@@ -670,9 +917,23 @@ export default function ChatHubScreen() {
     return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   };
 
+  const getFilterUnreadCount = (filter: FilterType): number => {
+    switch (filter) {
+      case 'jobs':
+        return unreadCounts?.jobChats || 0;
+      case 'team':
+        return (unreadCounts?.teamChat || 0) + (unreadCounts?.directMessages || 0);
+      case 'enquiries':
+        return enquiriesUnreadCount;
+      default:
+        return 0;
+    }
+  };
+
   const renderConversation = (item: ConversationItem) => {
     const statusColor = item.status ? getStatusColor(item.status) : null;
     const client = item.type === 'job' && item.data?.clientId ? getClient(item.data.clientId) : null;
+    const linkedSms = item.type === 'job' ? item.data?.linkedSms : null;
     
     return (
       <TouchableOpacity
@@ -680,7 +941,6 @@ export default function ChatHubScreen() {
         style={styles.conversationCard}
         onPress={() => handleConversationPress(item)}
         activeOpacity={0.7}
-        data-testid={`conversation-${item.id}`}
       >
         <View style={[
           styles.conversationAvatar,
@@ -688,6 +948,8 @@ export default function ChatHubScreen() {
           item.type === 'team' && styles.conversationAvatarTeam,
           item.type === 'client' && styles.conversationAvatarClient,
           item.type === 'sms' && styles.smsConversationAvatar,
+          item.type === 'direct' && styles.conversationAvatarDirect,
+          item.type === 'member' && styles.conversationAvatarMember,
         ]}>
           {item.type === 'job' ? (
             <Feather name="briefcase" size={20} color={colors.primary} />
@@ -695,6 +957,10 @@ export default function ChatHubScreen() {
             <Feather name="users" size={20} color={colors.info} />
           ) : item.type === 'sms' ? (
             <Feather name="smartphone" size={20} color={colors.success} />
+          ) : item.type === 'direct' ? (
+            <Feather name="message-square" size={20} color="#7C3AED" />
+          ) : item.type === 'member' ? (
+            <Feather name="user-plus" size={20} color={colors.mutedForeground} />
           ) : (
             <Text style={[styles.conversationAvatarText, { color: colors.success }]}>
               {item.avatarFallback}
@@ -732,6 +998,12 @@ export default function ChatHubScreen() {
                 </Text>
               </View>
             )}
+            {linkedSms && (
+              <View style={styles.smsBadge}>
+                <Feather name="smartphone" size={10} color={colors.success} />
+                <Text style={styles.smsBadgeText}>SMS</Text>
+              </View>
+            )}
             {item.unreadCount > 0 && (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
@@ -746,7 +1018,6 @@ export default function ChatHubScreen() {
                   <TouchableOpacity 
                     style={styles.contactAction}
                     onPress={() => Linking.openURL(`tel:${client.phone}`)}
-                    data-testid={`button-call-${item.id}`}
                   >
                     <Feather name="phone" size={14} color={colors.success} />
                     <Text style={styles.contactActionText}>Call</Text>
@@ -754,7 +1025,6 @@ export default function ChatHubScreen() {
                   <TouchableOpacity 
                     style={styles.contactAction}
                     onPress={() => handleSendSmsToClient(client.phone!, client.firstName, client.id)}
-                    data-testid={`button-sms-${item.id}`}
                   >
                     <Feather name="message-square" size={14} color={colors.info} />
                     <Text style={styles.contactActionText}>SMS</Text>
@@ -765,7 +1035,6 @@ export default function ChatHubScreen() {
                 <TouchableOpacity 
                   style={styles.contactAction}
                   onPress={() => Linking.openURL(`mailto:${client.email}`)}
-                  data-testid={`button-email-${item.id}`}
                 >
                   <Feather name="mail" size={14} color={colors.primary} />
                   <Text style={styles.contactActionText}>Email</Text>
@@ -778,6 +1047,73 @@ export default function ChatHubScreen() {
         <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={styles.chevronIcon} />
       </TouchableOpacity>
     );
+  };
+
+  const renderTwilioBanner = () => {
+    if (twilioStatus === null) return null;
+
+    if (twilioConnected) {
+      return (
+        <View style={styles.twilioConnectedBanner}>
+          <View style={styles.twilioConnectedIcon}>
+            <Feather name="check" size={16} color="#FFFFFF" />
+          </View>
+          <Text style={styles.twilioConnectedText}>
+            SMS connected: {twilioStatus.phoneNumber}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.twilioSetupBanner}>
+        <View style={styles.twilioSetupIcon}>
+          <Feather name="alert-triangle" size={16} color="#FFFFFF" />
+        </View>
+        <View style={styles.twilioSetupContent}>
+          <Text style={styles.twilioSetupTitle}>SMS Not Connected</Text>
+          <Text style={styles.twilioSetupDescription}>
+            Set up Twilio to send and receive SMS messages
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.twilioSetupButton}
+          onPress={() => router.push('/more/settings' as any)}
+        >
+          <Text style={styles.twilioSetupButtonText}>Set Up</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const getEmptyStateMessage = () => {
+    switch (activeFilter) {
+      case 'enquiries':
+        return {
+          title: 'No enquiries yet',
+          text: 'New SMS conversations that aren\'t linked to a job will appear here.',
+        };
+      case 'team':
+        return {
+          title: 'No team conversations',
+          text: 'Use Team Chat to coordinate with your crew, or start a direct message.',
+        };
+      case 'jobs':
+      default:
+        return {
+          title: 'No job conversations yet',
+          text: 'Create jobs to start job discussions and communicate with clients.',
+        };
+    }
+  };
+
+  const getSectionTitle = () => {
+    switch (activeFilter) {
+      case 'jobs': return 'JOB CONVERSATIONS';
+      case 'enquiries': return 'SMS ENQUIRIES';
+      case 'team': return 'TEAM & DIRECT MESSAGES';
+      default: return 'CONVERSATIONS';
+    }
   };
 
   return (
@@ -794,23 +1130,30 @@ export default function ChatHubScreen() {
             <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
           </View>
         </View>
+
+        {renderTwilioBanner()}
         
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
             onPress={() => router.push('/more/team-chat')}
-            data-testid="button-team-chat"
           >
             <Feather name="users" size={18} color={colors.primaryForeground} />
             <Text style={[styles.quickActionText, styles.quickActionTextPrimary]}>Team Chat</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            style={[styles.quickActionButton, styles.quickActionButtonSuccess]}
+            onPress={() => router.push('/more/new-sms-conversation' as any)}
+          >
+            <Feather name="edit-3" size={18} color="#FFFFFF" />
+            <Text style={[styles.quickActionText, styles.quickActionTextSuccess]}>New SMS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.quickActionButton, styles.quickActionButtonSecondary]}
             onPress={() => router.push('/more/clients')}
-            data-testid="button-view-clients"
           >
             <Feather name="user" size={18} color={colors.foreground} />
-            <Text style={[styles.quickActionText, styles.quickActionTextSecondary]}>View Clients</Text>
+            <Text style={[styles.quickActionText, styles.quickActionTextSecondary]}>Clients</Text>
           </TouchableOpacity>
         </View>
         
@@ -823,28 +1166,65 @@ export default function ChatHubScreen() {
               placeholderTextColor={colors.mutedForeground}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              data-testid="input-search"
             />
           </View>
         </View>
         
         <View style={styles.filterContainer}>
-          {(['all', 'jobs', 'customers', 'team'] as FilterType[]).map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterButton, activeFilter === filter && styles.filterButtonActive]}
-              onPress={() => setActiveFilter(filter)}
-              data-testid={`filter-${filter}`}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                activeFilter === filter && styles.filterButtonTextActive
-              ]}>
-                {filter === 'all' ? 'All' : filter === 'jobs' ? 'Jobs' : filter === 'customers' ? 'Customers' : 'Team'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(['jobs', 'team', 'enquiries'] as FilterType[]).map((filter) => {
+            const count = getFilterUnreadCount(filter);
+            const isActive = activeFilter === filter;
+            return (
+              <TouchableOpacity
+                key={filter}
+                style={[styles.filterButton, isActive && styles.filterButtonActive]}
+                onPress={() => {
+                  setActiveFilter(filter);
+                  if (filter !== 'jobs') setJobStatusFilter('all');
+                }}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  isActive && styles.filterButtonTextActive
+                ]}>
+                  {filter === 'jobs' ? 'Jobs' : filter === 'team' ? 'Team' : 'Enquiries'}
+                </Text>
+                {count > 0 && (
+                  <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
+                    <Text style={styles.filterBadgeText}>{count > 99 ? '99+' : count}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
+
+        {activeFilter === 'jobs' && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.subFilterContainer}
+            contentContainerStyle={{ gap: spacing.xs }}
+          >
+            {JOB_STATUS_FILTERS.map(sf => (
+              <TouchableOpacity
+                key={sf.key}
+                style={[
+                  styles.subFilterButton,
+                  jobStatusFilter === sf.key && styles.subFilterButtonActive,
+                ]}
+                onPress={() => setJobStatusFilter(sf.key)}
+              >
+                <Text style={[
+                  styles.subFilterText,
+                  jobStatusFilter === sf.key && styles.subFilterTextActive,
+                ]}>
+                  {sf.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
         
         <ScrollView
           style={styles.conversationsList}
@@ -863,22 +1243,17 @@ export default function ChatHubScreen() {
                 <Feather name="message-circle" size={28} color={colors.mutedForeground} />
               </View>
               <Text style={styles.emptyStateTitle}>
-                {activeFilter === 'customers' ? 'No customer messages yet' : 'No conversations yet'}
+                {getEmptyStateMessage().title}
               </Text>
               <Text style={styles.emptyStateText}>
-                {activeFilter === 'customers' 
-                  ? 'Send SMS messages to clients from their job pages.'
-                  : 'Create jobs to start job discussions, or use Team Chat to coordinate with your crew.'
-                }
+                {getEmptyStateMessage().text}
               </Text>
             </View>
           ) : (
             <>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>
-                  {activeFilter === 'all' ? 'ALL CONVERSATIONS' : 
-                   activeFilter === 'jobs' ? 'JOB CONVERSATIONS' : 
-                   activeFilter === 'customers' ? 'CUSTOMER SMS' : 'TEAM'}
+                  {getSectionTitle()}
                 </Text>
               </View>
               {conversations.map(renderConversation)}
