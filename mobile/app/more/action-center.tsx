@@ -34,21 +34,24 @@ interface ActionCenterData {
 
 const PRIORITY_CONFIG = {
   fix_now: {
-    label: 'FIX NOW',
+    label: 'Fix Now',
+    shortLabel: 'Fix Now',
     sectionLabel: 'FIX NOW',
     icon: 'alert-triangle' as const,
     color: '#ef4444',
     bgColor: 'rgba(239,68,68,0.12)',
   },
   this_week: {
-    label: 'THIS WEEK',
+    label: 'This Week',
+    shortLabel: 'This Week',
     sectionLabel: 'THIS WEEK',
     icon: 'clock' as const,
     color: '#f59e0b',
     bgColor: 'rgba(245,158,11,0.12)',
   },
   suggestions: {
-    label: 'SUGGESTIONS',
+    label: 'Tips',
+    shortLabel: 'Tips',
     sectionLabel: 'SUGGESTIONS',
     icon: 'zap' as const,
     color: '#22c55e',
@@ -111,37 +114,27 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   statIconContainer: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  trendBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.foreground,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.mutedForeground,
     letterSpacing: 0.5,
-    marginTop: 2,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 12,
@@ -345,17 +338,39 @@ export default function ActionCenterScreen() {
   const handleCTA = (url: string) => {
     if (url.startsWith('http')) {
       Linking.openURL(url);
-    } else if (url.startsWith('/')) {
-      const routeMap: Record<string, string> = {
-        '/work': '/more/work',
-        '/schedule': '/schedule',
-        '/documents': '/more/documents',
-      };
-      const basePath = url.split('?')[0];
-      const mappedRoute = routeMap[basePath];
-      if (mappedRoute) {
-        router.push(mappedRoute as any);
+      return;
+    }
+    if (!url.startsWith('/')) return;
+
+    // Parse the URL to extract path and query params
+    const [basePath, queryString] = url.split('?');
+    const params = new URLSearchParams(queryString || '');
+    const tab = params.get('tab');
+
+    // Map web routes to mobile routes
+    if (basePath === '/documents' || basePath.startsWith('/documents')) {
+      // Documents hub -> route to the specific document type
+      if (tab === 'invoices') {
+        router.push('/more/documents' as any);
+      } else if (tab === 'quotes') {
+        router.push('/more/documents' as any);
+      } else {
+        router.push('/more/documents' as any);
       }
+    } else if (basePath === '/schedule' || basePath.startsWith('/schedule')) {
+      router.push('/(tabs)/schedule' as any);
+    } else if (basePath === '/work' || basePath.startsWith('/work')) {
+      router.push('/(tabs)/work' as any);
+    } else if (basePath.startsWith('/jobs/')) {
+      const jobId = basePath.split('/jobs/')[1];
+      router.push(`/job/${jobId}` as any);
+    } else if (basePath === '/clients' || basePath.startsWith('/clients')) {
+      router.push('/more/clients' as any);
+    } else if (basePath === '/chat' || basePath.startsWith('/chat')) {
+      router.push('/(tabs)/chat' as any);
+    } else {
+      // Fallback: try navigating to work tab
+      router.push('/(tabs)/work' as any);
     }
   };
 
@@ -369,50 +384,29 @@ export default function ActionCenterScreen() {
 
     return (
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <View style={styles.statHeader}>
-            <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.fix_now.bgColor }]}>
-              <Feather name="alert-triangle" size={22} color={PRIORITY_CONFIG.fix_now.color} />
-            </View>
-            {fixNowCount > 0 && (
-              <View style={[styles.trendBadge, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
-                <Feather name="alert-circle" size={12} color="#ef4444" />
-              </View>
-            )}
+        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.fix_now.bgColor }]}>
+            <Feather name="alert-triangle" size={24} color={PRIORITY_CONFIG.fix_now.color} />
           </View>
           <Text style={styles.statValue}>{fixNowCount}</Text>
-          <Text style={styles.statLabel}>FIX NOW</Text>
-        </View>
+          <Text style={styles.statLabel}>{PRIORITY_CONFIG.fix_now.shortLabel}</Text>
+        </TouchableOpacity>
 
-        <View style={styles.statCard}>
-          <View style={styles.statHeader}>
-            <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.this_week.bgColor }]}>
-              <Feather name="clock" size={22} color={PRIORITY_CONFIG.this_week.color} />
-            </View>
-            {thisWeekCount > 0 && (
-              <View style={[styles.trendBadge, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
-                <Feather name="arrow-right" size={12} color="#f59e0b" />
-              </View>
-            )}
+        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.this_week.bgColor }]}>
+            <Feather name="clock" size={24} color={PRIORITY_CONFIG.this_week.color} />
           </View>
           <Text style={styles.statValue}>{thisWeekCount}</Text>
-          <Text style={styles.statLabel}>THIS WEEK</Text>
-        </View>
+          <Text style={styles.statLabel}>{PRIORITY_CONFIG.this_week.shortLabel}</Text>
+        </TouchableOpacity>
 
-        <View style={styles.statCard}>
-          <View style={styles.statHeader}>
-            <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.suggestions.bgColor }]}>
-              <Feather name="zap" size={22} color={PRIORITY_CONFIG.suggestions.color} />
-            </View>
-            {suggestionsCount > 0 && (
-              <View style={[styles.trendBadge, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
-                <Feather name="trending-up" size={12} color="#22c55e" />
-              </View>
-            )}
+        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.suggestions.bgColor }]}>
+            <Feather name="zap" size={24} color={PRIORITY_CONFIG.suggestions.color} />
           </View>
           <Text style={styles.statValue}>{suggestionsCount}</Text>
-          <Text style={styles.statLabel}>SUGGESTIONS</Text>
-        </View>
+          <Text style={styles.statLabel}>{PRIORITY_CONFIG.suggestions.shortLabel}</Text>
+        </TouchableOpacity>
       </View>
     );
   };

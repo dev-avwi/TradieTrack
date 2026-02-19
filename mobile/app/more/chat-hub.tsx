@@ -705,10 +705,15 @@ export default function ChatHubScreen() {
         const clientName = getClientName(job.clientId);
         const linkedSms = getSmsForJob(job);
         const smsUnread = linkedSms?.unreadCount || 0;
+
         let lastMessage = 'No messages yet';
-        if (clientName) {
+        if (linkedSms?.messages && linkedSms.messages.length > 0) {
+          const lastMsg = linkedSms.messages[linkedSms.messages.length - 1];
+          lastMessage = (lastMsg.direction === 'outbound' ? 'You: ' : '') + lastMsg.body;
+        } else if (clientName) {
           lastMessage = `${clientName} - ${(job.status || 'pending').replace('_', ' ')}`;
         }
+
         items.push({
           id: `job-${job.id}`,
           type: 'job',

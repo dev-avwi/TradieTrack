@@ -6,69 +6,27 @@ import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { format } from 'date-fns';
 
-interface Quote {
+interface ComplianceDocument {
   id: string;
-  number?: string;
-  title?: string;
-  clientId: string;
-  total: number;
+  type: string;
+  documentName: string;
   status: string;
-  validUntil?: string;
+  expiryDate?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
-interface Invoice {
+interface Job {
   id: string;
-  number?: string;
   title?: string;
-  clientId: string;
-  total: number;
-  status: string;
-  dueDate?: string;
-  paidAt?: string;
-  createdAt?: string;
-  jobId?: string;
+  status?: string;
 }
 
-interface Receipt {
-  id: string;
-  receiptNumber: string;
-  invoiceId: string;
-  amount: number;
-  paymentMethod: string;
-  paidAt: string;
-  clientId: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
-}
-
-interface RecentDocument {
-  id: string;
-  title: string;
-  type: 'quote' | 'invoice' | 'receipt';
-  clientName: string;
-  amount: number;
-  date: string;
-  routePath: string;
-}
-
-const TYPE_COLORS = {
-  quote: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-  invoice: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  receipt: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-};
-
-const formatCurrency = (amount: number) => {
-  const safeAmount = isNaN(amount) ? 0 : amount;
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeAmount);
+const CATEGORY_COLORS = {
+  photos: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+  voiceNotes: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+  compliance: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  sitePhotos: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
 };
 
 const formatDate = (dateStr?: string) => {
@@ -77,6 +35,23 @@ const formatDate = (dateStr?: string) => {
     return format(new Date(dateStr), 'dd MMM yyyy');
   } catch {
     return '';
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'valid':
+    case 'active':
+    case 'approved':
+      return { color: '#22c55e', bg: 'rgba(34,197,94,0.1)' };
+    case 'expired':
+    case 'rejected':
+      return { color: '#ef4444', bg: 'rgba(239,68,68,0.1)' };
+    case 'pending':
+    case 'expiring_soon':
+      return { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' };
+    default:
+      return { color: '#6b7280', bg: 'rgba(107,114,128,0.1)' };
   }
 };
 
@@ -153,6 +128,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 2,
   },
+  quickAccessSection: {
+    marginBottom: 24,
+  },
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,9 +161,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 13,
     color: colors.mutedForeground,
     marginTop: 2,
-  },
-  quickAccessSection: {
-    marginBottom: 24,
   },
   recentSection: {
     marginBottom: 24,
@@ -233,16 +208,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: 6,
     marginTop: 4,
   },
-  typeBadge: {
+  statusBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  typeBadgeText: {
+  statusBadgeText: {
     fontSize: 10,
     fontWeight: '600',
   },
-  documentClient: {
+  documentType: {
     fontSize: 12,
     color: colors.mutedForeground,
     flex: 1,
@@ -251,12 +226,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'flex-end',
     marginLeft: 8,
   },
-  documentAmount: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
   documentDate: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  documentExpiry: {
     fontSize: 11,
     color: colors.mutedForeground,
     marginTop: 2,
@@ -336,41 +310,24 @@ export default function FilesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
-
-  const getClientName = useCallback((clientId: string) => {
-    return clientMap.get(clientId)?.name || 'Unknown Client';
-  }, [clientMap]);
-
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      const [quotesRes, invoicesRes, receiptsRes, clientsRes] = await Promise.all([
-        api.get<Quote[]>('/api/quotes'),
-        api.get<Invoice[]>('/api/invoices'),
-        api.get<Receipt[]>('/api/receipts').catch(() => ({ data: [] as Receipt[] })),
-        api.get<Client[]>('/api/clients'),
+      const [complianceRes, jobsRes] = await Promise.all([
+        api.get<ComplianceDocument[]>('/api/compliance-documents').catch(() => ({ data: [] as ComplianceDocument[], error: null })),
+        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[], error: null })),
       ]);
 
-      if (quotesRes.error && invoicesRes.error) {
-        setError('Failed to load documents. Pull down to retry.');
-        return;
-      }
-
-      setQuotes(quotesRes.data || []);
-      setInvoices(invoicesRes.data || []);
-      setReceipts(receiptsRes.data || []);
-      setClients(clientsRes.data || []);
+      setComplianceDocs(complianceRes.data || []);
+      setJobs(jobsRes.data || []);
     } catch (err) {
-      setError('Failed to load documents. Pull down to retry.');
+      setError('Failed to load files. Pull down to retry.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -384,56 +341,21 @@ export default function FilesScreen() {
     fetchData();
   }, [fetchData]);
 
-  const recentDocuments = useMemo((): RecentDocument[] => {
-    const items: RecentDocument[] = [];
+  const activeJobs = jobs.filter(j => j.status !== 'cancelled').length;
+  const complianceCount = complianceDocs.length;
 
-    quotes.forEach(q => {
-      items.push({
-        id: `quote-${q.id}`,
-        title: q.title || `Quote ${q.number || q.id}`,
-        type: 'quote',
-        clientName: getClientName(q.clientId),
-        amount: q.total,
-        date: q.createdAt || '',
-        routePath: `/more/quote/${q.id}`,
-      });
-    });
-
-    invoices.forEach(inv => {
-      items.push({
-        id: `invoice-${inv.id}`,
-        title: inv.title || `Invoice ${inv.number || inv.id}`,
-        type: 'invoice',
-        clientName: getClientName(inv.clientId),
-        amount: inv.total,
-        date: inv.createdAt || '',
-        routePath: `/more/invoice/${inv.id}`,
-      });
-    });
-
-    receipts.forEach(r => {
-      items.push({
-        id: `receipt-${r.id}`,
-        title: `Receipt ${r.receiptNumber}`,
-        type: 'receipt',
-        clientName: getClientName(r.clientId),
-        amount: r.amount,
-        date: r.paidAt || '',
-        routePath: `/more/receipt/${r.id}`,
-      });
-    });
-
-    items.sort((a, b) => {
-      if (!a.date && !b.date) return 0;
-      if (!a.date) return 1;
-      if (!b.date) return -1;
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-
-    return items.slice(0, 10);
-  }, [quotes, invoices, receipts, getClientName]);
-
-  const totalDocuments = quotes.length + invoices.length + receipts.length;
+  const recentComplianceDocs = useMemo(() => {
+    return [...complianceDocs]
+      .sort((a, b) => {
+        const dateA = a.updatedAt || a.createdAt || '';
+        const dateB = b.updatedAt || b.createdAt || '';
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      })
+      .slice(0, 8);
+  }, [complianceDocs]);
 
   return (
     <>
@@ -454,14 +376,14 @@ export default function FilesScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Files</Text>
-              <Text style={styles.pageSubtitle}>All your documents in one place</Text>
+              <Text style={styles.pageSubtitle}>Photos, documents & media</Text>
             </View>
           </View>
 
-          {isLoading && totalDocuments === 0 && (
+          {isLoading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Loading documents...</Text>
+              <Text style={styles.loadingText}>Loading files...</Text>
             </View>
           )}
 
@@ -475,53 +397,43 @@ export default function FilesScreen() {
             </View>
           )}
 
-          {!isLoading && !error && totalDocuments === 0 && (
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIconContainer}>
-                <Feather name="folder" size={28} color={colors.mutedForeground} />
-              </View>
-              <Text style={styles.emptyTitle}>No Documents Yet</Text>
-              <Text style={styles.emptyText}>Create a quote or invoice to get started</Text>
-            </View>
-          )}
-
-          {!isLoading && !error && totalDocuments > 0 && (
+          {!isLoading && !error && (
             <>
               <View style={styles.statsRow}>
                 <TouchableOpacity
                   style={styles.statCard}
-                  onPress={() => router.push('/more/documents')}
+                  onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.statIconContainer, { backgroundColor: TYPE_COLORS.quote.bg }]}>
-                    <Feather name="file-text" size={22} color={TYPE_COLORS.quote.color} />
+                  <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
+                    <Feather name="camera" size={22} color={CATEGORY_COLORS.photos.color} />
                   </View>
-                  <Text style={styles.statValue}>{quotes.length}</Text>
-                  <Text style={styles.statLabel}>QUOTES</Text>
+                  <Text style={styles.statValue}>{activeJobs}</Text>
+                  <Text style={styles.statLabel}>JOBS</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.statCard}
-                  onPress={() => router.push('/more/documents')}
+                  onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.statIconContainer, { backgroundColor: TYPE_COLORS.invoice.bg }]}>
-                    <Feather name="file" size={22} color={TYPE_COLORS.invoice.color} />
+                  <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
+                    <Feather name="mic" size={22} color={CATEGORY_COLORS.voiceNotes.color} />
                   </View>
-                  <Text style={styles.statValue}>{invoices.length}</Text>
-                  <Text style={styles.statLabel}>INVOICES</Text>
+                  <Text style={styles.statValue}>{activeJobs}</Text>
+                  <Text style={styles.statLabel}>MEDIA</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.statCard}
-                  onPress={() => router.push('/more/documents')}
+                  onPress={() => router.push('/more/compliance' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.statIconContainer, { backgroundColor: TYPE_COLORS.receipt.bg }]}>
-                    <Feather name="check-square" size={22} color={TYPE_COLORS.receipt.color} />
+                  <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
+                    <Feather name="shield" size={22} color={CATEGORY_COLORS.compliance.color} />
                   </View>
-                  <Text style={styles.statValue}>{receipts.length}</Text>
-                  <Text style={styles.statLabel}>RECEIPTS</Text>
+                  <Text style={styles.statValue}>{complianceCount}</Text>
+                  <Text style={styles.statLabel}>COMPLIANCE</Text>
                 </TouchableOpacity>
               </View>
 
@@ -530,45 +442,60 @@ export default function FilesScreen() {
 
                 <TouchableOpacity
                   style={styles.categoryCard}
-                  onPress={() => router.push('/more/documents')}
+                  onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.categoryIconContainer, { backgroundColor: TYPE_COLORS.quote.bg }]}>
-                    <Feather name="file-text" size={22} color={TYPE_COLORS.quote.color} />
+                  <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
+                    <Feather name="camera" size={22} color={CATEGORY_COLORS.photos.color} />
                   </View>
                   <View style={styles.categoryContent}>
-                    <Text style={styles.categoryTitle}>Quotes</Text>
-                    <Text style={styles.categoryCount}>{quotes.length} documents</Text>
+                    <Text style={styles.categoryTitle}>Job Photos</Text>
+                    <Text style={styles.categoryCount}>View photos across {activeJobs} jobs</Text>
                   </View>
                   <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.categoryCard}
-                  onPress={() => router.push('/more/documents')}
+                  onPress={() => router.push('/more/compliance' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.categoryIconContainer, { backgroundColor: TYPE_COLORS.invoice.bg }]}>
-                    <Feather name="file" size={22} color={TYPE_COLORS.invoice.color} />
+                  <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
+                    <Feather name="shield" size={22} color={CATEGORY_COLORS.compliance.color} />
                   </View>
                   <View style={styles.categoryContent}>
-                    <Text style={styles.categoryTitle}>Invoices</Text>
-                    <Text style={styles.categoryCount}>{invoices.length} documents</Text>
+                    <Text style={styles.categoryTitle}>Compliance Documents</Text>
+                    <Text style={styles.categoryCount}>{complianceCount} documents</Text>
                   </View>
                   <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.categoryCard}
-                  onPress={() => router.push('/more/documents')}
+                  onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.categoryIconContainer, { backgroundColor: TYPE_COLORS.receipt.bg }]}>
-                    <Feather name="check-square" size={22} color={TYPE_COLORS.receipt.color} />
+                  <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
+                    <Feather name="mic" size={22} color={CATEGORY_COLORS.voiceNotes.color} />
                   </View>
                   <View style={styles.categoryContent}>
-                    <Text style={styles.categoryTitle}>Receipts</Text>
-                    <Text style={styles.categoryCount}>{receipts.length} documents</Text>
+                    <Text style={styles.categoryTitle}>Voice Notes</Text>
+                    <Text style={styles.categoryCount}>Attached to jobs</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.categoryCard}
+                  onPress={() => router.push('/(tabs)/work' as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.sitePhotos.bg }]}>
+                    <Feather name="image" size={22} color={CATEGORY_COLORS.sitePhotos.color} />
+                  </View>
+                  <View style={styles.categoryContent}>
+                    <Text style={styles.categoryTitle}>Site Photos</Text>
+                    <Text style={styles.categoryCount}>Before & after shots</Text>
                   </View>
                   <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
@@ -576,50 +503,55 @@ export default function FilesScreen() {
 
               <View style={styles.recentSection}>
                 <View style={styles.recentHeader}>
-                  <Text style={styles.sectionTitle}>RECENT DOCUMENTS</Text>
-                  <TouchableOpacity onPress={() => router.push('/more/documents')} activeOpacity={0.7}>
-                    <Text style={styles.viewAllText}>View All</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.sectionTitle}>RECENT COMPLIANCE DOCUMENTS</Text>
+                  {complianceCount > 0 && (
+                    <TouchableOpacity onPress={() => router.push('/more/compliance' as any)} activeOpacity={0.7}>
+                      <Text style={styles.viewAllText}>View All</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                {recentDocuments.length === 0 ? (
+                {recentComplianceDocs.length === 0 ? (
                   <View style={styles.emptyCard}>
                     <View style={styles.emptyIconContainer}>
                       <Feather name="folder" size={28} color={colors.mutedForeground} />
                     </View>
-                    <Text style={styles.emptyTitle}>No Documents Yet</Text>
-                    <Text style={styles.emptyText}>Create a quote or invoice to get started</Text>
+                    <Text style={styles.emptyTitle}>No Files Yet</Text>
+                    <Text style={styles.emptyText}>Upload compliance documents or take job photos to get started</Text>
                   </View>
                 ) : (
-                  recentDocuments.map((doc) => {
-                    const typeColor = TYPE_COLORS[doc.type];
-                    const typeLabel = doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
+                  recentComplianceDocs.map((doc) => {
+                    const statusStyle = getStatusColor(doc.status);
+                    const statusLabel = doc.status ? doc.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
                     return (
                       <TouchableOpacity
                         key={doc.id}
                         style={styles.documentRow}
-                        onPress={() => router.push(doc.routePath as any)}
+                        onPress={() => router.push('/more/compliance' as any)}
                         activeOpacity={0.7}
                       >
-                        <View style={[styles.documentIcon, { backgroundColor: typeColor.bg }]}>
-                          <Feather
-                            name={doc.type === 'quote' ? 'file-text' : doc.type === 'invoice' ? 'file' : 'check-square'}
-                            size={16}
-                            color={typeColor.color}
-                          />
+                        <View style={[styles.documentIcon, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
+                          <Feather name="file-text" size={16} color={CATEGORY_COLORS.compliance.color} />
                         </View>
                         <View style={styles.documentInfo}>
-                          <Text style={styles.documentTitle} numberOfLines={1}>{doc.title}</Text>
+                          <Text style={styles.documentTitle} numberOfLines={1}>{doc.documentName || doc.type}</Text>
                           <View style={styles.documentMeta}>
-                            <View style={[styles.typeBadge, { backgroundColor: typeColor.bg }]}>
-                              <Text style={[styles.typeBadgeText, { color: typeColor.color }]}>{typeLabel}</Text>
+                            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                              <Text style={[styles.statusBadgeText, { color: statusStyle.color }]}>{statusLabel}</Text>
                             </View>
-                            <Text style={styles.documentClient} numberOfLines={1}>{doc.clientName}</Text>
+                            <Text style={styles.documentType} numberOfLines={1}>{doc.type?.replace(/_/g, ' ')}</Text>
                           </View>
                         </View>
                         <View style={styles.documentRight}>
-                          <Text style={styles.documentAmount}>{formatCurrency(doc.amount)}</Text>
-                          <Text style={styles.documentDate}>{formatDate(doc.date)}</Text>
+                          {doc.expiryDate && (
+                            <>
+                              <Text style={styles.documentDate}>{formatDate(doc.expiryDate)}</Text>
+                              <Text style={styles.documentExpiry}>Expires</Text>
+                            </>
+                          )}
+                          {!doc.expiryDate && doc.createdAt && (
+                            <Text style={styles.documentDate}>{formatDate(doc.createdAt)}</Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     );
