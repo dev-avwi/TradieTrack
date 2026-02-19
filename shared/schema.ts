@@ -3568,12 +3568,24 @@ export const automationSettings = pgTable("automation_settings", {
   invoiceReminderDaysBeforeDue: integer("invoice_reminder_days_before_due").default(3),
   invoiceOverdueReminderDays: integer("invoice_overdue_reminder_days").default(7),
   invoiceReminderType: text("invoice_reminder_type").default('email'),
+  // Message Templates
+  quoteFollowUpMessage: text("quote_follow_up_message"),
+  jobReminderMessage: text("job_reminder_message"),
+  invoiceReminderMessage: text("invoice_reminder_message"),
+  reviewRequestMessage: text("review_request_message"),
+  // Auto-invoice on complete
+  autoInvoiceOnComplete: boolean("auto_invoice_on_complete").default(false),
+  // Auto-review request
+  autoReviewRequest: boolean("auto_review_request").default(false),
+  autoReviewRequestType: text("auto_review_request_type").default('email'), // sms, email, both
   // Photo Requirements
   requirePhotoBeforeStart: boolean("require_photo_before_start").default(false),
   requirePhotoAfterComplete: boolean("require_photo_after_complete").default(false),
+  photoRequirementsEnabled: boolean("photo_requirements_enabled").default(false),
   // GPS Check-in
   autoCheckInOnArrival: boolean("auto_check_in_on_arrival").default(false),
   autoCheckOutOnDeparture: boolean("auto_check_out_on_departure").default(false),
+  gpsAutoCheckInEnabled: boolean("gps_auto_check_in_enabled").default(false),
   // Daily Summary Email
   dailySummaryEnabled: boolean("daily_summary_enabled").default(false),
   dailySummaryTime: text("daily_summary_time").default('18:00'), // HH:mm format
