@@ -3997,3 +3997,28 @@ export const workerRequests = pgTable("worker_requests", {
 export const insertWorkerRequestSchema = createInsertSchema(workerRequests).omit({ id: true, createdAt: true, respondedAt: true });
 export type InsertWorkerRequest = z.infer<typeof insertWorkerRequestSchema>;
 export type WorkerRequest = typeof workerRequests.$inferSelect;
+
+// Compliance Documents - Business files, licences, insurance, white cards
+export const complianceDocuments = pgTable("compliance_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text("type").notNull(), // 'licence', 'insurance', 'white_card', 'vehicle_rego', 'certification', 'other'
+  title: text("title").notNull(),
+  documentNumber: text("document_number"),
+  issuer: text("issuer"),
+  holderName: text("holder_name"), // For white cards - which worker holds this
+  holderUserId: varchar("holder_user_id").references(() => users.id, { onDelete: 'set null' }), // Link to team member
+  expiryDate: timestamp("expiry_date"),
+  coverageAmount: text("coverage_amount"), // For insurance - e.g. "$20,000,000"
+  insurer: text("insurer"), // For insurance
+  vehiclePlate: text("vehicle_plate"), // For vehicle rego
+  attachmentUrl: text("attachment_url"),
+  attachmentType: text("attachment_type"), // 'pdf', 'image'
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertComplianceDocumentSchema = createInsertSchema(complianceDocuments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertComplianceDocument = z.infer<typeof insertComplianceDocumentSchema>;
+export type ComplianceDocument = typeof complianceDocuments.$inferSelect;

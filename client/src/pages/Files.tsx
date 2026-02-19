@@ -1,0 +1,724 @@
+import { useState, useMemo } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Plus,
+  Search,
+  Shield,
+  FileCheck,
+  HardHat,
+  Car,
+  Award,
+  File,
+  Paperclip,
+  MoreVertical,
+  Edit,
+  Trash2,
+  FileText,
+  ExternalLink,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Download,
+} from "lucide-react";
+import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { EmptyState } from "@/components/ui/compact-card";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import type { ComplianceDocument } from "@shared/schema";
+
+const typeConfig: Record<string, { label: string; icon: typeof Shield }> = {
+  licence: { label: "Licence", icon: Shield },
+  insurance: { label: "Insurance", icon: FileCheck },
+  white_card: { label: "White Card", icon: HardHat },
+  vehicle_rego: { label: "Vehicle Rego", icon: Car },
+  certification: { label: "Certification", icon: Award },
+  other: { label: "Other", icon: File },
+};
+
+const filterTabs = [
+  { value: "all", label: "All" },
+  { value: "licence", label: "Licences" },
+  { value: "insurance", label: "Insurance" },
+  { value: "white_card", label: "White Cards" },
+  { value: "vehicle_rego", label: "Vehicle Rego" },
+  { value: "certification", label: "Certifications" },
+  { value: "other", label: "Other" },
+];
+
+function getExpiryStatus(expiryDate: string | Date | null): "current" | "expiring" | "expired" {
+  if (!expiryDate) return "current";
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  if (expiry < now) return "expired";
+  const thirtyDays = new Date();
+  thirtyDays.setDate(thirtyDays.getDate() + 30);
+  if (expiry <= thirtyDays) return "expiring";
+  return "current";
+}
+
+function ExpiryBadge({ expiryDate }: { expiryDate: string | Date | null }) {
+  const status = getExpiryStatus(expiryDate);
+  if (status === "expired") {
+    return <Badge variant="secondary" className="bg-destructive/10 text-destructive">Expired</Badge>;
+  }
+  if (status === "expiring") {
+    return <Badge variant="secondary" className="bg-warning/10 text-warning">Expiring Soon</Badge>;
+  }
+  return <Badge variant="secondary" className="bg-success/10 text-success">Current</Badge>;
+}
+
+const defaultFormData = {
+  type: "licence",
+  title: "",
+  documentNumber: "",
+  issuer: "",
+  holderName: "",
+  expiryDate: "",
+  coverageAmount: "",
+  insurer: "",
+  vehiclePlate: "",
+  attachmentUrl: "",
+  notes: "",
+};
+
+export default function FilesPage() {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ComplianceDocument | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ComplianceDocument | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ComplianceDocument | null>(null);
+  const [formData, setFormData] = useState(defaultFormData);
+
+  const { data: documents = [], isLoading } = useQuery<ComplianceDocument[]>({
+    queryKey: ["/api/compliance-documents"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      await apiRequest("POST", "/api/compliance-documents", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/compliance-documents"] });
+      setDialogOpen(false);
+      setFormData(defaultFormData);
+      toast({ title: "Document added" });
+    },
+    onError: () => {
+      toast({ title: "Failed to add document", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      await apiRequest("PATCH", `/api/compliance-documents/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/compliance-documents"] });
+      setEditingItem(null);
+      setDialogOpen(false);
+      setFormData(defaultFormData);
+      toast({ title: "Document updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update document", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/compliance-documents/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/compliance-documents"] });
+      setSelectedItem(null);
+      setDeleteTarget(null);
+      toast({ title: "Document deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete document", variant: "destructive" });
+    },
+  });
+
+  const kpiData = useMemo(() => {
+    const total = documents.length;
+    let current = 0;
+    let expiring = 0;
+    let expired = 0;
+    documents.forEach((doc) => {
+      const status = getExpiryStatus(doc.expiryDate);
+      if (status === "current") current++;
+      else if (status === "expiring") expiring++;
+      else expired++;
+    });
+    return { total, current, expiring, expired };
+  }, [documents]);
+
+  const filteredDocuments = useMemo(() => {
+    let filtered = documents;
+    if (activeTab !== "all") {
+      filtered = filtered.filter((d) => d.type === activeTab);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (d) =>
+          d.title.toLowerCase().includes(q) ||
+          d.documentNumber?.toLowerCase().includes(q) ||
+          d.holderName?.toLowerCase().includes(q) ||
+          d.issuer?.toLowerCase().includes(q) ||
+          d.vehiclePlate?.toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [documents, activeTab, searchQuery]);
+
+  function openCreate() {
+    setEditingItem(null);
+    setFormData(defaultFormData);
+    setDialogOpen(true);
+  }
+
+  function openEdit(doc: ComplianceDocument) {
+    setEditingItem(doc);
+    setFormData({
+      type: doc.type,
+      title: doc.title,
+      documentNumber: doc.documentNumber || "",
+      issuer: doc.issuer || "",
+      holderName: doc.holderName || "",
+      expiryDate: doc.expiryDate ? format(new Date(doc.expiryDate), "yyyy-MM-dd") : "",
+      coverageAmount: doc.coverageAmount || "",
+      insurer: doc.insurer || "",
+      vehiclePlate: doc.vehiclePlate || "",
+      attachmentUrl: doc.attachmentUrl || "",
+      notes: doc.notes || "",
+    });
+    setDialogOpen(true);
+  }
+
+  function handleSubmit() {
+    if (!formData.title.trim()) {
+      toast({ title: "Title is required", variant: "destructive" });
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      type: formData.type,
+      title: formData.title.trim(),
+      documentNumber: formData.documentNumber.trim() || null,
+      issuer: formData.issuer.trim() || null,
+      holderName: formData.holderName.trim() || null,
+      expiryDate: formData.expiryDate || null,
+      coverageAmount: formData.coverageAmount.trim() || null,
+      insurer: formData.insurer.trim() || null,
+      vehiclePlate: formData.vehiclePlate.trim() || null,
+      attachmentUrl: formData.attachmentUrl.trim() || null,
+      attachmentType: formData.attachmentUrl ? (formData.attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? "image" : "pdf") : null,
+      notes: formData.notes.trim() || null,
+    };
+
+    if (editingItem) {
+      updateMutation.mutate({ id: editingItem.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  }
+
+  function isImageUrl(url: string | null): boolean {
+    if (!url) return false;
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  }
+
+  if (isLoading) {
+    return (
+      <PageShell>
+        <PageHeader title="Files" subtitle="Licences, insurance, certifications & compliance" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-10 w-full" /></CardContent></Card>
+          ))}
+        </div>
+        <div className="space-y-3 mt-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          ))}
+        </div>
+      </PageShell>
+    );
+  }
+
+  return (
+    <PageShell>
+      <PageHeader title="Files" subtitle="Licences, insurance, certifications & compliance" />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <FileText className="h-3.5 w-3.5" />
+              <span>Total Documents</span>
+            </div>
+            <p className="text-xl font-semibold">{kpiData.total}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>Current</span>
+            </div>
+            <p className="text-xl font-semibold">{kpiData.current}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Expiring Soon</span>
+            </div>
+            <p className="text-xl font-semibold">{kpiData.expiring}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <XCircle className="h-3.5 w-3.5" />
+              <span>Expired</span>
+            </div>
+            <p className="text-xl font-semibold">{kpiData.expired}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+          {filterTabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="whitespace-nowrap">
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      <div className="flex items-center gap-3 mt-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search documents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            window.open('/api/compliance-documents/export/pack', '_blank');
+          }}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export Pack
+        </Button>
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Document
+        </Button>
+      </div>
+
+      {filteredDocuments.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No documents found"
+          description={searchQuery || activeTab !== "all" ? "Try adjusting your filters or search." : "Add your first compliance document to get started."}
+          action={
+            !searchQuery && activeTab === "all" ? (
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Document
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-2 mt-4">
+          {filteredDocuments.map((doc) => {
+            const config = typeConfig[doc.type] || typeConfig.other;
+            const TypeIcon = config.icon;
+            return (
+              <Card
+                key={doc.id}
+                className="hover-elevate active-elevate-2 cursor-pointer transition-all overflow-visible"
+                onClick={() => setSelectedItem(doc)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50">
+                      <TypeIcon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium truncate">{doc.title}</p>
+                        <ExpiryBadge expiryDate={doc.expiryDate} />
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                        <span>{config.label}</span>
+                        {doc.documentNumber && <span>#{doc.documentNumber}</span>}
+                        {doc.holderName && <span>{doc.holderName}</span>}
+                        {doc.expiryDate && (
+                          <span>Exp: {format(new Date(doc.expiryDate), "dd MMM yyyy")}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {doc.attachmentUrl && (
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(doc); }}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(doc); }}
+                            className="text-red-600 dark:text-red-400"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingItem ? "Edit Document" : "Add Document"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="licence">Licence</SelectItem>
+                  <SelectItem value="insurance">Insurance</SelectItem>
+                  <SelectItem value="white_card">White Card</SelectItem>
+                  <SelectItem value="vehicle_rego">Vehicle Rego</SelectItem>
+                  <SelectItem value="certification">Certification</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Title *</Label>
+              <Input
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g. QBCC Builder Licence"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Document Number</Label>
+              <Input
+                value={formData.documentNumber}
+                onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Issuer</Label>
+              <Input
+                value={formData.issuer}
+                onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
+                placeholder="e.g. QBCC, SafeWork"
+              />
+            </div>
+            {formData.type === "white_card" && (
+              <div className="space-y-1.5">
+                <Label>Holder Name</Label>
+                <Input
+                  value={formData.holderName}
+                  onChange={(e) => setFormData({ ...formData, holderName: e.target.value })}
+                  placeholder="Name of card holder"
+                />
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Expiry Date</Label>
+              <Input
+                type="date"
+                value={formData.expiryDate}
+                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+              />
+            </div>
+            {formData.type === "insurance" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Coverage Amount</Label>
+                  <Input
+                    value={formData.coverageAmount}
+                    onChange={(e) => setFormData({ ...formData, coverageAmount: e.target.value })}
+                    placeholder="e.g. $20,000,000"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Insurer</Label>
+                  <Input
+                    value={formData.insurer}
+                    onChange={(e) => setFormData({ ...formData, insurer: e.target.value })}
+                    placeholder="e.g. QBE, Allianz"
+                  />
+                </div>
+              </>
+            )}
+            {formData.type === "vehicle_rego" && (
+              <div className="space-y-1.5">
+                <Label>Vehicle Plate</Label>
+                <Input
+                  value={formData.vehiclePlate}
+                  onChange={(e) => setFormData({ ...formData, vehiclePlate: e.target.value })}
+                  placeholder="e.g. ABC 123"
+                />
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Attachment URL</Label>
+              <Input
+                value={formData.attachmentUrl}
+                onChange={(e) => setFormData({ ...formData, attachmentUrl: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                placeholder="Optional notes..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingItem ? "Save Changes" : "Add Document"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Sheet open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+        <SheetContent className="overflow-y-auto">
+          {selectedItem && (() => {
+            const config = typeConfig[selectedItem.type] || typeConfig.other;
+            const TypeIcon = config.icon;
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <TypeIcon className="h-5 w-5" />
+                    {selectedItem.title}
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="space-y-5 mt-6">
+                  <div className="flex items-center gap-2">
+                    <ExpiryBadge expiryDate={selectedItem.expiryDate} />
+                    <Badge variant="secondary">{config.label}</Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    {selectedItem.documentNumber && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Document Number</p>
+                        <p className="text-sm font-medium">{selectedItem.documentNumber}</p>
+                      </div>
+                    )}
+                    {selectedItem.issuer && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Issuer</p>
+                        <p className="text-sm font-medium">{selectedItem.issuer}</p>
+                      </div>
+                    )}
+                    {selectedItem.holderName && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Holder Name</p>
+                        <p className="text-sm font-medium">{selectedItem.holderName}</p>
+                      </div>
+                    )}
+                    {selectedItem.expiryDate && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Expiry Date</p>
+                        <p className="text-sm font-medium">{format(new Date(selectedItem.expiryDate), "dd MMMM yyyy")}</p>
+                      </div>
+                    )}
+                    {selectedItem.coverageAmount && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Coverage Amount</p>
+                        <p className="text-sm font-medium">{selectedItem.coverageAmount}</p>
+                      </div>
+                    )}
+                    {selectedItem.insurer && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Insurer</p>
+                        <p className="text-sm font-medium">{selectedItem.insurer}</p>
+                      </div>
+                    )}
+                    {selectedItem.vehiclePlate && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Vehicle Plate</p>
+                        <p className="text-sm font-medium">{selectedItem.vehiclePlate}</p>
+                      </div>
+                    )}
+                    {selectedItem.notes && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Notes</p>
+                        <p className="text-sm">{selectedItem.notes}</p>
+                      </div>
+                    )}
+                    {selectedItem.createdAt && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Added</p>
+                        <p className="text-sm text-muted-foreground">{format(new Date(selectedItem.createdAt), "dd MMM yyyy")}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedItem.attachmentUrl && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Attachment</p>
+                      {isImageUrl(selectedItem.attachmentUrl) ? (
+                        <img
+                          src={selectedItem.attachmentUrl}
+                          alt="Document attachment"
+                          className="rounded-md max-w-full border"
+                        />
+                      ) : (
+                        <a
+                          href={selectedItem.attachmentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-sm text-primary"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          View Attachment
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedItem(null);
+                        openEdit(selectedItem);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => setDeleteTarget(selectedItem)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageShell>
+  );
+}

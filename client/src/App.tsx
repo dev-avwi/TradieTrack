@@ -102,6 +102,7 @@ import WhatYouMissedModal from "@/components/WhatYouMissedModal";
 import TimeEditAuditLog from "@/pages/TimeEditAuditLog";
 import ProfitabilityReport from "@/pages/ProfitabilityReport";
 import SubcontractorWebView from "@/pages/SubcontractorWebView";
+import FilesPage from "@/pages/Files";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Types for job completion
@@ -615,6 +616,10 @@ function Router({
       
       <Route path="/equipment" component={() => (
         <EquipmentPage />
+      )} />
+      
+      <Route path="/files" component={() => (
+        <FilesPage />
       )} />
       
       <Route path="/rebates" component={() => (

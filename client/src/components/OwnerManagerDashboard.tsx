@@ -34,6 +34,7 @@ import {
   ArrowRight,
   TrendingUp,
   Receipt,
+  ShieldAlert,
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -119,6 +120,25 @@ export default function OwnerManagerDashboard({
   const { data: actionData } = useQuery<ActionCenterData>({
     queryKey: ["/api/bi/action-center"],
     staleTime: 5 * 60 * 1000,
+  });
+
+  interface ComplianceDoc {
+    id: string;
+    type: string;
+    title: string;
+    expiryDate: string | null;
+  }
+  const { data: complianceDocs } = useQuery<ComplianceDoc[]>({
+    queryKey: ["/api/compliance-documents"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const expiringDocs = (complianceDocs || []).filter((doc) => {
+    if (!doc.expiryDate) return false;
+    const expiry = new Date(doc.expiryDate);
+    const now = new Date();
+    const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntil <= 30;
   });
 
   const getGreeting = () => {
@@ -530,6 +550,52 @@ export default function OwnerManagerDashboard({
                         <p className="text-xs text-muted-foreground truncate">{action.impact}</p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {expiringDocs.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4" style={{ color: 'hsl(38 92% 50%)' }} />
+                Compliance Alerts
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/files')} data-testid="button-view-compliance">
+                View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+              </Button>
+            </CardHeader>
+            <CardContent className="pt-0 px-4 pb-4">
+              <div className="space-y-2">
+                {expiringDocs.slice(0, 3).map((doc) => {
+                  const expiry = new Date(doc.expiryDate!);
+                  const now = new Date();
+                  const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  const isExpired = daysUntil <= 0;
+                  const color = isExpired ? 'hsl(0 84.2% 60.2%)' : 'hsl(38 92% 50%)';
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
+                      onClick={() => onNavigate?.('/files')}
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                           style={{ backgroundColor: `${color}15` }}>
+                        <ShieldAlert className="h-4 w-4" style={{ color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{doc.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {isExpired ? `Expired ${Math.abs(daysUntil)} days ago` : `Expires in ${daysUntil} days`}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className={isExpired ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'}>
+                        {isExpired ? 'Expired' : 'Expiring'}
+                      </Badge>
                     </div>
                   );
                 })}

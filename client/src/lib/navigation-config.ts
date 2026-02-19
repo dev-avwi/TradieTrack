@@ -306,6 +306,18 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
+    title: "Files",
+    url: "/files",
+    icon: FileText,
+    description: "Licences, insurance & compliance docs",
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    hideForStaff: false,
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
+  },
+  {
     title: "Communications",
     url: "/communications",
     icon: Send,

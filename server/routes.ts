@@ -34244,6 +34244,306 @@ Respond with JSON in this format:
     }
   });
 
+  // ============================================================
+  // COMPLIANCE DOCUMENTS (Business Files & Licences)
+  // ============================================================
+
+  // GET /api/compliance-documents - List all compliance documents for business
+  app.get("/api/compliance-documents", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      
+      const isStaff = user.role === 'staff_tradie';
+      if (isStaff) {
+        const docs = await storage.getComplianceDocumentsByHolder(userId);
+        return res.json(docs);
+      }
+      
+      const docs = await storage.getComplianceDocuments(businessOwnerId);
+      res.json(docs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/compliance-documents/expiring - Get documents expiring within N days
+  app.get("/api/compliance-documents/expiring", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      const days = parseInt(req.query.days as string) || 30;
+      
+      const docs = await storage.getExpiringComplianceDocuments(businessOwnerId, days);
+      res.json(docs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/compliance-documents/export/pack - Export Compliance Pack PDF
+  app.get("/api/compliance-documents/export/pack", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const isOwner = !user.businessOwnerId || user.businessOwnerId === userId;
+      const isManager = user.role === 'manager';
+      if (!isOwner && !isManager) {
+        return res.status(403).json({ error: "Only owners and managers can export compliance packs" });
+      }
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      const docs = await storage.getComplianceDocuments(businessOwnerId);
+      const businessRaw = await storage.getBusinessSettingsByUserId(businessOwnerId);
+      const businessName = businessRaw?.businessName || 'Business';
+      
+      const now = new Date();
+      const typeLabels: Record<string, string> = {
+        licence: 'Trade Licences',
+        insurance: 'Insurance Certificates',
+        white_card: 'White Cards',
+        vehicle_rego: 'Vehicle Registrations',
+        certification: 'Certifications',
+        other: 'Other Documents',
+      };
+      
+      const grouped: Record<string, typeof docs> = {};
+      for (const doc of docs) {
+        const key = doc.type || 'other';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(doc);
+      }
+      
+      const getStatus = (expiryDate: string | Date | null) => {
+        if (!expiryDate) return { label: 'No Expiry', color: '#6b7280' };
+        const expiry = new Date(expiryDate);
+        const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysUntil <= 0) return { label: 'EXPIRED', color: '#dc2626' };
+        if (daysUntil <= 30) return { label: `Expiring in ${daysUntil}d`, color: '#d97706' };
+        return { label: 'Current', color: '#16a34a' };
+      };
+      
+      let tableRows = '';
+      for (const [type, typeDocs] of Object.entries(grouped)) {
+        const typeLabel = typeLabels[type] || type;
+        tableRows += `<tr><td colspan="5" style="background:#f3f4f6;font-weight:600;padding:8px 12px;font-size:13px;">${typeLabel}</td></tr>`;
+        for (const doc of typeDocs) {
+          const status = getStatus(doc.expiryDate);
+          const expiryStr = doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString('en-AU') : '-';
+          tableRows += `<tr>
+            <td style="padding:6px 12px;font-size:12px;">${doc.title}</td>
+            <td style="padding:6px 12px;font-size:12px;">${doc.documentNumber || '-'}</td>
+            <td style="padding:6px 12px;font-size:12px;">${doc.holderName || doc.issuer || '-'}</td>
+            <td style="padding:6px 12px;font-size:12px;">${expiryStr}</td>
+            <td style="padding:6px 12px;font-size:12px;"><span style="color:${status.color};font-weight:600;">${status.label}</span></td>
+          </tr>`;
+        }
+      }
+      
+      const totalDocs = docs.length;
+      const expiredCount = docs.filter(d => d.expiryDate && new Date(d.expiryDate) < now).length;
+      const expiringCount = docs.filter(d => {
+        if (!d.expiryDate) return false;
+        const daysUntil = Math.ceil((new Date(d.expiryDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntil > 0 && daysUntil <= 30;
+      }).length;
+      const currentCount = totalDocs - expiredCount - expiringCount;
+      
+      const html = `<!DOCTYPE html>
+<html><head><style>
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 32px; color: #1f2937; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #2563eb; padding-bottom: 16px; }
+  .header h1 { font-size: 22px; margin: 0; color: #1e40af; }
+  .header .meta { text-align: right; font-size: 12px; color: #6b7280; }
+  .summary { display: flex; gap: 16px; margin-bottom: 24px; }
+  .summary-card { flex: 1; padding: 12px; border-radius: 6px; text-align: center; }
+  .summary-card .num { font-size: 24px; font-weight: 700; }
+  .summary-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+  td { border-bottom: 1px solid #f3f4f6; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #9ca3af; text-align: center; }
+</style></head><body>
+  <div class="header">
+    <div>
+      <h1>Compliance Pack</h1>
+      <p style="margin:4px 0 0;font-size:14px;color:#4b5563;">${businessName}</p>
+    </div>
+    <div class="meta">
+      <p style="margin:0;">Generated: ${now.toLocaleDateString('en-AU')}</p>
+      <p style="margin:2px 0 0;">${now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</p>
+    </div>
+  </div>
+  
+  <div class="summary">
+    <div class="summary-card" style="background:#eff6ff;">
+      <div class="num" style="color:#2563eb;">${totalDocs}</div>
+      <div class="label" style="color:#3b82f6;">Total</div>
+    </div>
+    <div class="summary-card" style="background:#f0fdf4;">
+      <div class="num" style="color:#16a34a;">${currentCount}</div>
+      <div class="label" style="color:#22c55e;">Current</div>
+    </div>
+    <div class="summary-card" style="background:#fffbeb;">
+      <div class="num" style="color:#d97706;">${expiringCount}</div>
+      <div class="label" style="color:#f59e0b;">Expiring</div>
+    </div>
+    <div class="summary-card" style="background:#fef2f2;">
+      <div class="num" style="color:#dc2626;">${expiredCount}</div>
+      <div class="label" style="color:#ef4444;">Expired</div>
+    </div>
+  </div>
+  
+  <table>
+    <thead><tr>
+      <th>Document</th><th>Number</th><th>Holder/Issuer</th><th>Expiry</th><th>Status</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  
+  <div class="footer">
+    Compliance Pack generated by JobRunner &mdash; ${businessName} &mdash; ${now.toLocaleDateString('en-AU')}
+  </div>
+</body></html>`;
+
+      const { generatePDFBuffer } = await import('./pdfService');
+      const pdfBuffer = await generatePDFBuffer(html);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Compliance-Pack-${now.toISOString().split('T')[0]}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Error generating compliance pack:", error);
+      res.status(500).json({ error: "Failed to generate compliance pack" });
+    }
+  });
+  // GET /api/compliance-documents/:id - Get single compliance document
+  app.get("/api/compliance-documents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      const doc = await storage.getComplianceDocument(req.params.id, businessOwnerId);
+      if (!doc) return res.status(404).json({ error: "Document not found" });
+      
+      // RBAC check: determine user role
+      const isOwner = !user.businessOwnerId || user.businessOwnerId === userId;
+      const isManager = user.role === 'manager';
+      const isOfficeAdmin = user.role === 'office_admin';
+      
+      // Staff tradies can only access their own white card documents
+      if (!isOwner && !isManager && !isOfficeAdmin) {
+        // This is a staff tradie - restrict access
+        if (doc.type !== 'white_card' || doc.holderUserId !== userId) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+      
+      res.json(doc);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/compliance-documents - Create compliance document
+  app.post("/api/compliance-documents", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const isOwner = !user.businessOwnerId || user.businessOwnerId === userId;
+      const isManager = user.role === 'manager';
+      if (!isOwner && !isManager) {
+        return res.status(403).json({ error: "Only owners and managers can add compliance documents" });
+      }
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      const validTypes = ['licence', 'insurance', 'white_card', 'vehicle_rego', 'certification', 'other'];
+      
+      if (!req.body.type || !validTypes.includes(req.body.type)) {
+        return res.status(400).json({ error: "Invalid document type" });
+      }
+      if (!req.body.title) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      
+      const doc = await storage.createComplianceDocument({
+        ...req.body,
+        businessOwnerId,
+        expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
+      });
+      
+      res.status(201).json(doc);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/compliance-documents/:id - Update compliance document
+  app.patch("/api/compliance-documents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const isOwner = !user.businessOwnerId || user.businessOwnerId === userId;
+      const isManager = user.role === 'manager';
+      if (!isOwner && !isManager) {
+        return res.status(403).json({ error: "Only owners and managers can edit compliance documents" });
+      }
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      const updates = { ...req.body };
+      if (updates.expiryDate) {
+        updates.expiryDate = new Date(updates.expiryDate);
+      }
+      if (updates.expiryDate === '') {
+        updates.expiryDate = null;
+      }
+      
+      const doc = await storage.updateComplianceDocument(req.params.id, businessOwnerId, updates);
+      if (!doc) return res.status(404).json({ error: "Document not found" });
+      
+      res.json(doc);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/compliance-documents/:id - Delete compliance document
+  app.delete("/api/compliance-documents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      
+      const isOwner = !user.businessOwnerId || user.businessOwnerId === userId;
+      const isManager = user.role === 'manager';
+      if (!isOwner && !isManager) {
+        return res.status(403).json({ error: "Only owners and managers can delete compliance documents" });
+      }
+      
+      const businessOwnerId = user.businessOwnerId || userId;
+      const deleted = await storage.deleteComplianceDocument(req.params.id, businessOwnerId);
+      if (!deleted) return res.status(404).json({ error: "Document not found" });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     const errorContext = {
       timestamp: new Date().toISOString(),
