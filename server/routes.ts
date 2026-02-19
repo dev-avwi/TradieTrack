@@ -182,6 +182,59 @@ const paymentRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// In-memory user-based rate limiter for chat endpoints (30 messages per minute per user)
+const chatRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function chatRateLimiterMiddleware(req: any, res: any, next: any) {
+  const userId = req.userId;
+  if (!userId) return next();
+  
+  const now = Date.now();
+  const entry = chatRateLimitMap.get(userId);
+  
+  if (entry && now < entry.resetAt) {
+    if (entry.count >= 30) {
+      return res.status(429).json({ error: 'Too many messages. Please slow down.' });
+    }
+    entry.count++;
+  } else {
+    chatRateLimitMap.set(userId, { count: 1, resetAt: now + 60000 });
+  }
+  
+  next();
+}
+
+// In-memory IP-based rate limiter for public portal messages (10 messages per minute per IP)
+const portalIpRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function portalIpRateLimiterMiddleware(req: any, res: any, next: any) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = portalIpRateLimitMap.get(ip);
+  
+  if (entry && now < entry.resetAt) {
+    if (entry.count >= 10) {
+      return res.status(429).json({ error: 'Too many messages. Please try again later.' });
+    }
+    entry.count++;
+  } else {
+    portalIpRateLimitMap.set(ip, { count: 1, resetAt: now + 60000 });
+  }
+  
+  next();
+}
+
+// Periodic cleanup of rate limit maps (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of chatRateLimitMap) {
+    if (now >= entry.resetAt) chatRateLimitMap.delete(key);
+  }
+  for (const [key, entry] of portalIpRateLimitMap) {
+    if (now >= entry.resetAt) portalIpRateLimitMap.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 // Helper function to log activity events for dashboard feed
 type ActivityType = 'job_created' | 'job_status_changed' | 'job_completed' | 'job_scheduled' | 'job_started' |
   'quote_created' | 'quote_sent' | 'quote_accepted' | 'quote_rejected' |
@@ -15685,7 +15738,7 @@ Be specific about materials, colors, and features that would be included.`
   // In-memory rate limiter for portal messages (max 5 per token per hour)
   const portalMessageRateLimit = new Map<string, { count: number; resetAt: number }>();
 
-  app.post("/api/public/job-portal/:token/messages", async (req: any, res) => {
+  app.post("/api/public/job-portal/:token/messages", portalIpRateLimiterMiddleware, async (req: any, res) => {
     try {
       const tokenStr = req.params.token;
 
@@ -15736,7 +15789,7 @@ Be specific about materials, colors, and features that would be included.`
       const client = await storage.getClient(job.clientId, portalToken.userId);
       const clientName = client?.name || 'Portal Client';
 
-      await storage.createNotification({
+      const portalNotification = await storage.createNotification({
         userId: portalToken.userId,
         type: 'client_portal_message',
         title: `Message from ${clientName}`,
@@ -15748,6 +15801,16 @@ Be specific about materials, colors, and features that would be included.`
         priority: 'important',
         actionUrl: `/jobs/${job.id}`,
         actionLabel: 'View Job',
+      });
+
+      const { broadcastChatMessage } = await import('./websocket');
+      broadcastChatMessage(job.userId, {
+        chatType: 'job',
+        messageId: portalNotification.id,
+        jobId: job.id,
+        senderId: 'portal-client',
+        senderName: clientName || 'Client',
+        preview: (sanitizedMessage || '').substring(0, 100),
       });
 
       res.json({ success: true });
@@ -27990,7 +28053,7 @@ Respond with JSON in this format:
   });
   
   // Send a chat message for a job
-  app.post("/api/jobs/:jobId/chat", requireAuth, async (req: any, res) => {
+  app.post("/api/jobs/:jobId/chat", requireAuth, chatRateLimiterMiddleware, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.params.jobId;
@@ -28008,9 +28071,20 @@ Respond with JSON in this format:
       });
       
       const message = await storage.createJobChatMessage(validatedData);
-      
+
       // Enrich with user info
       const user = await storage.getUser(userId);
+
+      const { broadcastChatMessage } = await import('./websocket');
+      const userContext = await getUserContext(userId);
+      broadcastChatMessage(userContext.effectiveUserId, {
+        chatType: 'job',
+        messageId: message.id,
+        jobId: req.params.jobId,
+        senderId: userId,
+        senderName: user?.name || user?.firstName || 'Team member',
+        preview: (req.body.message || '').substring(0, 100),
+      });
       const senderName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown';
       const enrichedMessage = {
         ...message,
@@ -28897,6 +28971,18 @@ Respond with JSON in this format:
       const userId = req.userId!;
       const { recipientId } = req.params;
       
+      // Verify both users are in the same business/team
+      const sender = await storage.getUser(userId);
+      const recipient = await storage.getUser(recipientId);
+      if (!sender || !recipient) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const senderBusiness = sender.businessOwnerId || userId;
+      const recipientBusiness = recipient.businessOwnerId || recipientId;
+      if (senderBusiness !== recipientBusiness) {
+        return res.status(403).json({ error: 'Cannot access messages outside your business' });
+      }
+      
       const messages = await storage.getDirectMessages(userId, recipientId);
       
       // Mark messages as read
@@ -28910,7 +28996,7 @@ Respond with JSON in this format:
   });
 
   // Send a direct message
-  app.post("/api/direct-messages/:recipientId", requireAuth, async (req: any, res) => {
+  app.post("/api/direct-messages/:recipientId", requireAuth, chatRateLimiterMiddleware, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { recipientId } = req.params;
@@ -28920,7 +29006,7 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'Message content or attachment is required' });
       }
       
-      // Verify both users exist and can message each other
+      // Verify both users exist and are in the same business/team
       const sender = await storage.getUser(userId);
       const recipient = await storage.getUser(recipientId);
       
@@ -28929,6 +29015,10 @@ Respond with JSON in this format:
       }
       
       const businessOwnerId = sender.businessOwnerId || userId;
+      const recipientBusiness = recipient.businessOwnerId || recipientId;
+      if (businessOwnerId !== recipientBusiness) {
+        return res.status(403).json({ error: 'Cannot send messages outside your business' });
+      }
       
       const message = await storage.createDirectMessage({
         businessOwnerId,
@@ -28938,7 +29028,17 @@ Respond with JSON in this format:
         attachmentUrl,
         attachmentType,
       });
-      
+
+      const { broadcastDirectChatMessage } = await import('./websocket');
+      broadcastDirectChatMessage([userId, recipientId], {
+        chatType: 'direct',
+        messageId: message.id,
+        senderId: userId,
+        senderName: sender?.name || sender?.firstName || 'User',
+        recipientId,
+        preview: (content || '').substring(0, 100),
+      });
+
       // Enrich with sender info
       const enrichedMessage = {
         ...message,
@@ -29030,7 +29130,7 @@ Respond with JSON in this format:
   });
   
   // Send a team chat message
-  app.post("/api/team-chat", requireAuth, async (req: any, res) => {
+  app.post("/api/team-chat", requireAuth, chatRateLimiterMiddleware, async (req: any, res) => {
     try {
       const userId = req.userId!;
       
@@ -29042,14 +29142,22 @@ Respond with JSON in this format:
       const validatedData = insertTeamChatSchema.parse({
         ...req.body,
         businessOwnerId: context.businessOwnerId,
-        businessOwnerId,
         senderId: userId,
       });
       
       const message = await storage.createTeamChatMessage(validatedData);
-      
+
       // Enrich with user info
       const user = await storage.getUser(userId);
+
+      const { broadcastChatMessage } = await import('./websocket');
+      broadcastChatMessage(context.businessOwnerId, {
+        chatType: 'team',
+        messageId: message.id,
+        senderId: userId,
+        senderName: user?.name || user?.firstName || 'Team member',
+        preview: (req.body.message || '').substring(0, 100),
+      });
       const senderName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown';
       const enrichedMessage = {
         ...message,

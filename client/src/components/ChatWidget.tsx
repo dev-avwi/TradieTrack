@@ -156,7 +156,7 @@ export function ChatWidget({ isOpen, onClose, targetUser, jobId, jobTitle, mode 
     if (!shouldPoll) return;
     
     const refetch = mode === 'direct' ? refetchDirect : refetchJob;
-    const interval = setInterval(() => refetch(), 3000);
+    const interval = setInterval(() => refetch(), 30000);
     return () => clearInterval(interval);
   }, [isOpen, mode, targetUser, jobId, isMinimized, refetchDirect, refetchJob]);
 

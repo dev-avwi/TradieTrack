@@ -460,3 +460,46 @@ export function broadcastFormChange(
   });
   console.log(`[WebSocket] 📋 Form ${action}: ${formDetails.formName || formDetails.formId}`);
 }
+
+/**
+ * Broadcast a new chat message to all connected business users (for team chat and job chat)
+ */
+export function broadcastChatMessage(
+  businessId: string,
+  chatDetails: {
+    chatType: 'team' | 'job' | 'direct';
+    messageId: string;
+    jobId?: string;
+    senderId: string;
+    senderName?: string;
+    preview: string;
+    recipientId?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'chat_message',
+    ...chatDetails,
+    timestamp: Date.now(),
+  });
+}
+
+/**
+ * Broadcast a direct message to specific users (sender + recipient)
+ */
+export function broadcastDirectChatMessage(
+  userIds: string[],
+  chatDetails: {
+    chatType: 'direct';
+    messageId: string;
+    senderId: string;
+    senderName?: string;
+    recipientId: string;
+    preview: string;
+  }
+) {
+  broadcastToUsers(userIds, {
+    type: 'chat_message',
+    ...chatDetails,
+    timestamp: Date.now(),
+  });
+}

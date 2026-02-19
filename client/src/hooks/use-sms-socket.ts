@@ -27,7 +27,7 @@ export function useSmsSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 10;
   const isConnectingRef = useRef(false);
   const onSmsNotificationRef = useRef(onSmsNotification);
 
@@ -123,6 +123,22 @@ export function useSmsSocket({
       disconnect();
     };
   }, [enabled, businessId, connect, disconnect]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && enabled && businessId) {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.log('[SmsSocket] Page visible, reconnecting...');
+          reconnectAttempts.current = 0;
+          connect();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, businessId, connect]);
 
   return {
     isConnected,

@@ -88,6 +88,18 @@ interface FormChangedEvent {
   timestamp: number;
 }
 
+interface ChatMessageEvent {
+  type: 'chat_message';
+  chatType: 'team' | 'job' | 'direct';
+  messageId: string;
+  jobId?: string;
+  senderId: string;
+  senderName?: string;
+  recipientId?: string;
+  preview: string;
+  timestamp: number;
+}
+
 type RealtimeEvent = 
   | JobStatusEvent 
   | TimerEvent 
@@ -97,7 +109,8 @@ type RealtimeEvent =
   | NotificationEvent
   | BusinessSettingsChangedEvent
   | TemplateChangedEvent
-  | FormChangedEvent;
+  | FormChangedEvent
+  | ChatMessageEvent;
 
 interface UseRealtimeUpdatesOptions {
   businessId: string;
@@ -108,6 +121,7 @@ interface UseRealtimeUpdatesOptions {
   onPaymentReceived?: (event: PaymentReceivedEvent) => void;
   onSmsNotification?: (event: SmsNotificationEvent) => void;
   onNotification?: (event: NotificationEvent) => void;
+  onChatMessage?: (event: ChatMessageEvent) => void;
 }
 
 export function useRealtimeUpdates({
@@ -119,6 +133,7 @@ export function useRealtimeUpdates({
   onPaymentReceived,
   onSmsNotification,
   onNotification,
+  onChatMessage,
 }: UseRealtimeUpdatesOptions) {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -126,8 +141,11 @@ export function useRealtimeUpdates({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 10;
   const isConnectingRef = useRef(false);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pongTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const awaitingPongRef = useRef(false);
 
   // Use refs for callbacks to avoid reconnection on callback changes
   const callbacksRef = useRef({
@@ -137,6 +155,7 @@ export function useRealtimeUpdates({
     onPaymentReceived,
     onSmsNotification,
     onNotification,
+    onChatMessage,
   });
 
   useEffect(() => {
@@ -147,8 +166,9 @@ export function useRealtimeUpdates({
       onPaymentReceived,
       onSmsNotification,
       onNotification,
+      onChatMessage,
     };
-  }, [onJobStatusChange, onTimerEvent, onDocumentStatusChange, onPaymentReceived, onSmsNotification, onNotification]);
+  }, [onJobStatusChange, onTimerEvent, onDocumentStatusChange, onPaymentReceived, onSmsNotification, onNotification, onChatMessage]);
 
   const handleMessage = useCallback((event: RealtimeEvent) => {
     const callbacks = callbacksRef.current;
@@ -239,6 +259,28 @@ export function useRealtimeUpdates({
           safeInvalidateQueries({ queryKey: ['/api/safety-forms'] });
         }
         break;
+
+      case 'chat_message':
+        callbacks.onChatMessage?.(event);
+        if (isRemoteChange('/api/chat', event.timestamp)) {
+          safeInvalidateQueries({ queryKey: ['/api/chat/unread-counts'] });
+          safeInvalidateQueries({ queryKey: ['/api/notifications/unified'] });
+          if (event.chatType === 'team') {
+            safeInvalidateQueries({ queryKey: ['/api/team-chat'] });
+          } else if (event.chatType === 'job' && event.jobId) {
+            safeInvalidateQueries({ queryKey: ['/api/jobs', event.jobId, 'chat'] });
+          } else if (event.chatType === 'direct') {
+            safeInvalidateQueries({ queryKey: ['/api/direct-messages'] });
+            safeInvalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
+            if (event.senderId) {
+              safeInvalidateQueries({ queryKey: ['/api/direct-messages', event.senderId] });
+            }
+            if (event.recipientId) {
+              safeInvalidateQueries({ queryKey: ['/api/direct-messages', event.recipientId] });
+            }
+          }
+        }
+        break;
     }
   }, [toast]);
 
@@ -261,12 +303,39 @@ export function useRealtimeUpdates({
       ws.onopen = () => {
         console.log('[RealtimeUpdates] Socket opened, waiting for auth...');
         isConnectingRef.current = false;
+        reconnectAttempts.current = 0;
+
+        if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+        if (pongTimeoutRef.current) clearTimeout(pongTimeoutRef.current);
+        awaitingPongRef.current = false;
+
+        heartbeatIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+            awaitingPongRef.current = true;
+            pongTimeoutRef.current = setTimeout(() => {
+              if (awaitingPongRef.current) {
+                console.log('[RealtimeUpdates] Pong timeout, closing connection');
+                ws.close();
+              }
+            }, 10000);
+          }
+        }, 30000);
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
           
+          if (message.type === 'pong') {
+            awaitingPongRef.current = false;
+            if (pongTimeoutRef.current) {
+              clearTimeout(pongTimeoutRef.current);
+              pongTimeoutRef.current = null;
+            }
+            return;
+          }
+
           // Handle successful authentication - only now are we truly connected
           if (message.type === 'connected') {
             console.log('[RealtimeUpdates] Authenticated successfully');
@@ -285,7 +354,8 @@ export function useRealtimeUpdates({
             'notification',
             'business_settings_changed',
             'template_changed',
-            'form_changed'
+            'form_changed',
+            'chat_message'
           ].includes(message.type)) {
             handleMessage(message as RealtimeEvent);
           }
@@ -328,21 +398,25 @@ export function useRealtimeUpdates({
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+    if (pongTimeoutRef.current) {
+      clearTimeout(pongTimeoutRef.current);
+      pongTimeoutRef.current = null;
+    }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     setIsConnected(false);
     isConnectingRef.current = false;
+    awaitingPongRef.current = false;
     reconnectAttempts.current = maxReconnectAttempts;
   }, []);
 
   useEffect(() => {
-    // Only attempt connection if:
-    // 1. WebSocket is enabled
-    // 2. businessId is provided
-    // 3. Auth check is complete (not loading)
-    // 4. User is authenticated (has valid session)
     if (enabled && businessId && !authLoading && isAuthenticated) {
       reconnectAttempts.current = 0;
       connect();
@@ -351,6 +425,22 @@ export function useRealtimeUpdates({
       disconnect();
     };
   }, [enabled, businessId, authLoading, isAuthenticated, connect, disconnect]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && enabled && businessId && !authLoading && isAuthenticated) {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.log('[RealtimeUpdates] Page visible, reconnecting...');
+          reconnectAttempts.current = 0;
+          connect();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, businessId, authLoading, isAuthenticated, connect]);
 
   return {
     isConnected,

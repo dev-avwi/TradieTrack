@@ -32,7 +32,7 @@ export function useLocationSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 10;
 
   const connect = useCallback(() => {
     if (!enabled || !userId || !businessId) return;
@@ -48,6 +48,7 @@ export function useLocationSocket({
 
       ws.onopen = () => {
         console.log('[LocationSocket] Socket opened, waiting for auth...');
+        reconnectAttempts.current = 0;
       };
 
       ws.onmessage = (event) => {
@@ -149,6 +150,22 @@ export function useLocationSocket({
       disconnect();
     };
   }, [enabled, connect, disconnect]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && enabled && userId && businessId) {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.log('[LocationSocket] Page visible, reconnecting...');
+          reconnectAttempts.current = 0;
+          connect();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, userId, businessId, connect]);
 
   return {
     isConnected,

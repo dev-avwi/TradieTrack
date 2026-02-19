@@ -58,7 +58,7 @@ export function JobChat({ jobId, currentUserId, className }: JobChatProps) {
 
   const { data: messages = [], isLoading } = useQuery<JobChatMessage[]>({
     queryKey: ['/api/jobs', jobId, 'chat'],
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   // Job chat participants - who can see these messages
