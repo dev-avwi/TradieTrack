@@ -251,7 +251,7 @@ export function Header({
           ) : showMenuButton ? (
             <View style={styles.brandContainer}>
               <Image 
-                source={require('../../assets/jobrunner-logo.png')}
+                source={require('../../assets/jobrunner-logo-header.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -364,8 +364,8 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     minWidth: 0,
   },
   logo: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     borderRadius: 6,
   },
   brandName: {
