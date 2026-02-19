@@ -87,6 +87,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Dispatch - owner/manager only
   { path: '/dispatch', label: 'Dispatch', allowedRoles: ['owner', 'manager'], showInNav: true },
+  { path: '/dispatch-board', label: 'Dispatch Board', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Time Tracking - all roles (office admin excluded - no field work)
   { path: '/time-tracking', label: 'Time Tracking', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
@@ -109,6 +110,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Reports - owner/manager only
   { path: '/reports', label: 'Reports', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/reports/profitability', label: 'Profitability', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/reports/payroll', label: 'Payroll', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
   
   // Collect Payment - office admin can collect payments
   { path: '/collect-payment', label: 'Collect Payment', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
