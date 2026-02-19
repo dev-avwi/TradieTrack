@@ -556,26 +556,37 @@ export default function WorkPage({
       ) : filteredJobs.length === 0 ? (
         <EmptyState
           icon={Briefcase}
-          title={searchTerm ? "No jobs found" : "No jobs yet"}
+          title={
+            searchTerm 
+              ? "No jobs found" 
+              : activeFilter !== 'all' && jobs.length > 0
+                ? activeFilter === 'today' ? 'No jobs scheduled for today'
+                  : activeFilter === 'inspection' ? 'No jobs needing inspection'
+                  : activeFilter === 'archived' ? 'No archived jobs'
+                  : `No ${(statusLabels[activeFilter as JobStatus] || activeFilter).toLowerCase()} jobs`
+                : "No jobs yet"
+          }
           description={
             searchTerm 
               ? "Try adjusting your search terms"
-              : "Create your first job to start tracking work and generating invoices."
+              : activeFilter !== 'all' && jobs.length > 0
+                ? "Want to create a new job?"
+                : "Create your first job to start tracking work and generating invoices."
           }
           action={
-            !searchTerm && canCreateJobs && (
+            canCreateJobs && (
               <Button 
                 onClick={onCreateJob}
                 style={{ borderRadius: '12px' }}
                 className="text-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Your First Job
+                {activeFilter !== 'all' && jobs.length > 0 ? "Create a Job" : "Create Your First Job"}
               </Button>
             )
           }
-          tip={!searchTerm ? "Jobs flow: Pending → Scheduled → In Progress → Done → Invoiced" : undefined}
-          encouragement={!searchTerm ? "Track jobs from start to payment" : undefined}
+          tip={activeFilter === 'all' && jobs.length === 0 ? "Jobs flow: Pending → Scheduled → In Progress → Done → Invoiced" : undefined}
+          encouragement={activeFilter === 'all' && jobs.length === 0 ? "Track jobs from start to payment" : undefined}
         />
       ) : viewMode === "table" ? (
         <DataTable
