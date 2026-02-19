@@ -1618,7 +1618,7 @@ export default function ChatHub() {
       <OfflineBanner />
 
       {/* Conversation list with separators */}
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="flex-1 px-1">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
@@ -1692,7 +1692,7 @@ export default function ChatHub() {
                   )}
                   
                   <div
-                    className={`flex items-start gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-colors ${
                       isSelected 
                         ? 'bg-accent' 
                         : hasUnread
@@ -1784,7 +1784,7 @@ export default function ChatHub() {
                       
                       {/* Job status badge */}
                       {item.type === 'job' && item.jobStatus && (
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 flex-wrap mt-1">
                           <Badge 
                             variant="secondary" 
                             className="text-[10px] h-5 px-1.5"
