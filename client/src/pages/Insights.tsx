@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,15 @@ function getMarginColor(margin: number): string {
 
 export default function Insights({ onNavigate }: InsightsProps) {
   const [activeTab, setActiveTab] = useState<TabId>("profit");
+  const searchParams = useSearch();
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    const tabParam = params.get('tab');
+    if (tabParam && tabs.some(t => t.id === tabParam)) {
+      setActiveTab(tabParam as TabId);
+    }
+  }, [searchParams]);
 
   const { data: profit, isLoading: profitLoading } = useQuery<ProfitSnapshot>({
     queryKey: ["/api/dashboard/profit-snapshot"],

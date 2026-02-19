@@ -37,7 +37,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { useJobs, useUpdateJob, useArchiveJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { format, parseISO, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
@@ -82,16 +82,16 @@ export default function WorkPage({
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
   const [location, navigate] = useLocation();
+  const searchParams = useSearch();
 
   useEffect(() => {
-    const searchString = location.split('?')[1] || '';
-    const params = new URLSearchParams(searchString);
+    const params = new URLSearchParams(searchParams);
     const filterParam = params.get('filter');
     const validFilters = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'today', 'archived', 'inspection'];
     if (filterParam && validFilters.includes(filterParam)) {
       setActiveFilter(filterParam);
     }
-  }, [location]);
+  }, [searchParams]);
 
   const showArchived = activeFilter === 'archived';
   const { data: jobs = [], isLoading } = useJobs({ archived: showArchived }) as { data: Job[], isLoading: boolean };

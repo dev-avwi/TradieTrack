@@ -33,7 +33,6 @@ import {
   Calendar,
   ArrowRight,
   TrendingUp,
-  Receipt,
   ShieldAlert,
 } from "lucide-react";
 
@@ -409,7 +408,7 @@ export default function OwnerManagerDashboard({
           </Card>
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/insights')}
+            onClick={() => onNavigate?.('/insights?tab=profit')}
             data-testid="kpi-weekly-earnings"
           >
             <CardContent className="py-1.5 px-2">
@@ -424,17 +423,17 @@ export default function OwnerManagerDashboard({
           </Card>
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/reports')}
-            data-testid="kpi-monthly-earnings"
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=overdue')}
+            data-testid="kpi-overdue-invoices"
           >
             <CardContent className="py-1.5 px-2">
               <div className="flex items-center gap-1">
-                <Receipt className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
-                <p className="text-lg font-bold" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>
-                  {fmtAud(kpis?.monthlyEarnings || 0)}
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" style={{ color: (cashflow?.overdueCount ?? 0) > 0 ? 'hsl(0 84.2% 60.2%)' : undefined }} />
+                <p className="text-lg font-bold" style={{ color: (cashflow?.overdueCount ?? 0) > 0 ? 'hsl(0 84.2% 60.2%)' : undefined }}>
+                  {cashflow?.overdueCount ?? 0}
                 </p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">This Month</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Overdue</p>
             </CardContent>
           </Card>
         </div>
