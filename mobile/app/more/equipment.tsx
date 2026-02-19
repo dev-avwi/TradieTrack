@@ -1,19 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
+import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
-import { useContentWidth, isTablet } from '../../src/lib/device';
 
 type EquipmentStatus = 'active' | 'maintenance' | 'retired' | 'sold';
 type FilterType = 'all' | 'active' | 'maintenance' | 'retired';
@@ -64,17 +54,13 @@ const getStatusConfig = (status: EquipmentStatus) => {
 
 export default function EquipmentScreen() {
   const { colors } = useTheme();
-  const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
-  const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -114,9 +100,12 @@ export default function EquipmentScreen() {
     retired: equipment.filter(e => e.status === 'retired').length,
   }), [equipment]);
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(prev => prev === id ? null : id);
-  };
+  const totalValue = useMemo(() => {
+    return equipment.reduce((sum, e) => {
+      const val = e.currentValue ?? e.purchasePrice ?? 0;
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  }, [equipment]);
 
   const renderFilterChips = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
@@ -153,120 +142,82 @@ export default function EquipmentScreen() {
     </ScrollView>
   );
 
+  const renderSummaryCards = () => (
+    <View style={styles.summaryRow}>
+      <View style={styles.summaryCard}>
+        <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+          <Feather name="check-circle" size={22} color="#22c55e" />
+        </View>
+        <Text style={styles.summaryValue}>{filterCounts.active}</Text>
+        <Text style={styles.summaryLabel}>ACTIVE</Text>
+      </View>
+      <View style={styles.summaryCard}>
+        <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+          <Feather name="tool" size={22} color="#f59e0b" />
+        </View>
+        <Text style={styles.summaryValue}>{filterCounts.maintenance}</Text>
+        <Text style={styles.summaryLabel}>MAINTENANCE</Text>
+      </View>
+      <View style={styles.summaryCard}>
+        <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+          <Feather name="dollar-sign" size={22} color="#3b82f6" />
+        </View>
+        <Text style={styles.summaryValue}>{formatCurrency(totalValue)}</Text>
+        <Text style={styles.summaryLabel}>TOTAL VALUE</Text>
+      </View>
+    </View>
+  );
+
   const renderCard = (item: Equipment) => {
     const statusConfig = getStatusConfig(item.status);
-    const isExpanded = expandedId === item.id;
 
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.card}
-        onPress={() => toggleExpand(item.id)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-              {item.model ? (
-                <Text style={styles.cardSubtitle} numberOfLines={1}>{item.model}</Text>
-              ) : null}
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-              <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-              <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
-            </View>
+      <View key={item.id} style={styles.card}>
+        <View style={styles.cardTopRow}>
+          <View style={styles.cardNameRow}>
+            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+            <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
           </View>
-
-          <View style={styles.cardMeta}>
-            {item.location ? (
-              <View style={styles.metaItem}>
-                <Feather name="map-pin" size={iconSizes.sm} color={colors.mutedForeground} />
-                <Text style={styles.metaText} numberOfLines={1}>{item.location}</Text>
-              </View>
-            ) : null}
-            {item.assignedTo ? (
-              <View style={styles.metaItem}>
-                <Feather name="user" size={iconSizes.sm} color={colors.mutedForeground} />
-                <Text style={styles.metaText} numberOfLines={1}>{item.assignedTo}</Text>
-              </View>
-            ) : null}
-          </View>
+          {item.model ? (
+            <Text style={styles.cardModel} numberOfLines={1}>{item.model}</Text>
+          ) : null}
         </View>
 
-        {isExpanded && (
-          <View style={styles.expandedSection}>
-            <View style={styles.divider} />
-
-            {item.description ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Description</Text>
-                <Text style={styles.detailValue}>{item.description}</Text>
-              </View>
-            ) : null}
-
-            {item.manufacturer ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Manufacturer</Text>
-                <Text style={styles.detailValue}>{item.manufacturer}</Text>
-              </View>
-            ) : null}
-
-            {item.serialNumber ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Serial Number</Text>
-                <Text style={styles.detailValue}>{item.serialNumber}</Text>
-              </View>
-            ) : null}
-
-            {item.purchasePrice != null ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Purchase Price</Text>
-                <Text style={styles.detailValue}>{formatCurrency(item.purchasePrice)}</Text>
-              </View>
-            ) : null}
-
-            {item.currentValue != null ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Current Value</Text>
-                <Text style={styles.detailValue}>{formatCurrency(item.currentValue)}</Text>
-              </View>
-            ) : null}
-
-            {item.purchaseDate ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Purchase Date</Text>
-                <Text style={styles.detailValue}>
-                  {new Date(item.purchaseDate).toLocaleDateString('en-AU')}
-                </Text>
-              </View>
-            ) : null}
-
-            {item.warrantyExpiresAt ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Warranty Expires</Text>
-                <Text style={styles.detailValue}>
-                  {new Date(item.warrantyExpiresAt).toLocaleDateString('en-AU')}
-                </Text>
-              </View>
-            ) : null}
+        {item.location ? (
+          <View style={styles.cardMetaRow}>
+            <Feather name="map-pin" size={13} color={colors.mutedForeground} />
+            <Text style={styles.cardMetaText} numberOfLines={1}>{item.location}</Text>
           </View>
-        )}
+        ) : null}
 
-        <View style={styles.expandIndicator}>
-          <Feather
-            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-            size={iconSizes.md}
-            color={colors.mutedForeground}
-          />
+        {item.serialNumber ? (
+          <View style={styles.cardMetaRow}>
+            <Feather name="hash" size={13} color={colors.mutedForeground} />
+            <Text style={styles.cardMetaText} numberOfLines={1}>SN: {item.serialNumber}</Text>
+          </View>
+        ) : item.manufacturer ? (
+          <View style={styles.cardMetaRow}>
+            <Feather name="box" size={13} color={colors.mutedForeground} />
+            <Text style={styles.cardMetaText} numberOfLines={1}>{item.manufacturer}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.cardFooter}>
+          {item.purchasePrice != null ? (
+            <Text style={styles.cardPrice}>{formatCurrency(item.purchasePrice)}</Text>
+          ) : <View />}
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <View style={[styles.statusBadgeDot, { backgroundColor: statusConfig.color }]} />
+            <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+          </View>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <View style={[styles.emptyIcon, { backgroundColor: colors.muted }]}>
+      <View style={styles.emptyIcon}>
         <Feather name="tool" size={32} color={colors.mutedForeground} />
       </View>
       <Text style={styles.emptyTitle}>No Equipment Found</Text>
@@ -279,290 +230,317 @@ export default function EquipmentScreen() {
   );
 
   const renderError = () => (
-    <View style={styles.emptyState}>
-      <View style={[styles.emptyIcon, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
-        <Feather name="alert-circle" size={32} color="#ef4444" />
-      </View>
-      <Text style={styles.emptyTitle}>Something Went Wrong</Text>
-      <Text style={styles.emptySubtitle}>{error}</Text>
+    <View style={styles.errorContainer}>
+      <Feather name="alert-circle" size={40} color="#ef4444" />
+      <Text style={styles.errorText}>{error}</Text>
       <TouchableOpacity style={styles.retryButton} onPress={handleRefresh} activeOpacity={0.7}>
-        <Feather name="refresh-cw" size={iconSizes.md} color="#fff" />
-        <Text style={styles.retryText}>Retry</Text>
+        <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Stack.Screen options={{
-          title: 'Equipment',
-          headerShown: true,
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.foreground,
-        }} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading Equipment...</Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{
-        title: 'Equipment',
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.foreground,
-      }} />
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.pageTitle}>Equipment</Text>
-            <Text style={styles.pageSubtitle}>{equipment.length} total items</Text>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        {isLoading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading equipment...</Text>
           </View>
-        </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+              />
+            }
+          >
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.pageTitle}>Equipment</Text>
+                <Text style={styles.pageSubtitle}>{equipment.length} total items</Text>
+              </View>
+            </View>
 
-        {renderFilterChips()}
+            {renderFilterChips()}
+            {renderSummaryCards()}
 
-        {error ? renderError() : filteredEquipment.length === 0 ? renderEmptyState() : (
-          <View style={styles.cardList}>
-            {filteredEquipment.map(renderCard)}
-          </View>
+            {error ? renderError() : filteredEquipment.length === 0 ? renderEmptyState() : (
+              <View style={styles.cardList}>
+                {filteredEquipment.map(renderCard)}
+              </View>
+            )}
+          </ScrollView>
         )}
-      </ScrollView>
-    </View>
+      </View>
+    </>
   );
 }
 
-const createStyles = (colors: ThemeColors, contentWidth: number, paddingH: number) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: paddingH,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing['3xl'],
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    loadingText: {
-      ...typography.body,
-      color: colors.mutedForeground,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: spacing.lg,
-    },
-    pageTitle: {
-      ...typography.pageTitle,
-      color: colors.foreground,
-    },
-    pageSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-    filterScroll: {
-      marginBottom: spacing.lg,
-      marginHorizontal: -paddingH,
-    },
-    filterContainer: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      paddingHorizontal: paddingH,
-    },
-    filterChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    activeFilterChip: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    filterText: {
-      ...typography.caption,
-      color: colors.foreground,
-      fontWeight: '500',
-    },
-    activeFilterText: {
-      color: '#fff',
-    },
-    filterBadge: {
-      minWidth: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: colors.muted,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 6,
-    },
-    activeFilterBadge: {
-      backgroundColor: 'rgba(255,255,255,0.25)',
-    },
-    filterBadgeText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.mutedForeground,
-    },
-    activeFilterBadgeText: {
-      color: '#fff',
-    },
-    cardList: {
-      gap: spacing.md,
-    },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-      ...shadows.sm,
-    },
-    cardHeader: {
-      padding: spacing.lg,
-    },
-    cardTitleRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: spacing.sm,
-    },
-    cardTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    cardSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-    statusBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-    },
-    statusDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    statusText: {
-      fontSize: 11,
-      fontWeight: '600',
-    },
-    cardMeta: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.md,
-      marginTop: spacing.sm,
-    },
-    metaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    metaText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    expandedSection: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.md,
-    },
-    divider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginBottom: spacing.md,
-    },
-    detailRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      paddingVertical: spacing.xs,
-    },
-    detailLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      flex: 1,
-    },
-    detailValue: {
-      ...typography.caption,
-      color: colors.foreground,
-      fontWeight: '500',
-      flex: 1,
-      textAlign: 'right',
-    },
-    expandIndicator: {
-      alignItems: 'center',
-      paddingBottom: spacing.sm,
-    },
-    emptyState: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing['4xl'],
-      gap: spacing.md,
-    },
-    emptyIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.sm,
-    },
-    emptyTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    emptySubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-      maxWidth: 260,
-    },
-    retryButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      backgroundColor: colors.primary,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      marginTop: spacing.sm,
-    },
-    retryText: {
-      ...typography.button,
-      color: '#fff',
-    },
-  });
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  filterScroll: {
+    marginBottom: 16,
+    marginHorizontal: -16,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  activeFilterChip: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  activeFilterText: {
+    color: '#fff',
+  },
+  filterBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  activeFilterBadge: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  filterBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  activeFilterBadgeText: {
+    color: '#fff',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  summaryIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  cardList: {
+    gap: 12,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
+  },
+  cardModel: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  cardMetaText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cardPrice: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+    maxWidth: 260,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+  },
+});

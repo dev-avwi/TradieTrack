@@ -1,20 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  StyleSheet,
-  ActivityIndicator,
-  Linking,
-} from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
+import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
-import { useContentWidth, isTablet } from '../../src/lib/device';
 
 interface ActionItem {
   id: string;
@@ -43,33 +32,284 @@ interface ActionCenterData {
   };
 }
 
-const SECTION_CONFIG = {
+const PRIORITY_CONFIG = {
   fix_now: {
-    label: 'Fix Now',
-    icon: 'alert-circle' as const,
+    label: 'FIX NOW',
+    sectionLabel: 'FIX NOW',
+    icon: 'alert-triangle' as const,
     color: '#ef4444',
-    bgColor: 'rgba(239,68,68,0.1)',
+    bgColor: 'rgba(239,68,68,0.12)',
   },
   this_week: {
-    label: 'This Week',
+    label: 'THIS WEEK',
+    sectionLabel: 'THIS WEEK',
     icon: 'clock' as const,
     color: '#f59e0b',
-    bgColor: 'rgba(245,158,11,0.1)',
+    bgColor: 'rgba(245,158,11,0.12)',
   },
   suggestions: {
-    label: 'Suggestions',
-    icon: 'info' as const,
-    color: '#3b82f6',
-    bgColor: 'rgba(59,130,246,0.1)',
+    label: 'SUGGESTIONS',
+    sectionLabel: 'SUGGESTIONS',
+    icon: 'zap' as const,
+    color: '#22c55e',
+    bgColor: 'rgba(34,197,94,0.12)',
   },
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+  scheduling: '#3b82f6',
+  invoicing: '#f59e0b',
+  quoting: '#8b5cf6',
+  clients: '#06b6d4',
+  jobs: '#22c55e',
+  revenue: '#ef4444',
+  default: '#6b7280',
+};
+
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trendBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  actionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  categoryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  priorityText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  actionDescription: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  actionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  metricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  metricText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  ctaText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 12,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.destructive,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+  },
+});
+
 export default function ActionCenterScreen() {
   const { colors } = useTheme();
-  const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
-  const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
+  const styles = createStyles(colors);
 
   const [data, setData] = useState<ActionCenterData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,55 +359,91 @@ export default function ActionCenterScreen() {
     }
   };
 
-  const renderSummaryCards = () => {
+  const getCategoryColor = (category: string) => {
+    return CATEGORY_COLORS[category.toLowerCase()] || CATEGORY_COLORS.default;
+  };
+
+  const renderStatCards = () => {
     if (!data?.summary) return null;
-    const { fixNowCount, thisWeekCount, suggestionsCount, totalCount } = data.summary;
+    const { fixNowCount, thisWeekCount, suggestionsCount } = data.summary;
 
     return (
-      <View style={styles.summaryRow}>
-        <View style={[styles.summaryCard, { borderLeftColor: '#ef4444' }]}>
-          <Text style={[styles.summaryValue, { color: '#ef4444' }]}>{fixNowCount}</Text>
-          <Text style={styles.summaryLabel}>Fix Now</Text>
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <View style={styles.statHeader}>
+            <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.fix_now.bgColor }]}>
+              <Feather name="alert-triangle" size={22} color={PRIORITY_CONFIG.fix_now.color} />
+            </View>
+            {fixNowCount > 0 && (
+              <View style={[styles.trendBadge, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+                <Feather name="alert-circle" size={12} color="#ef4444" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.statValue}>{fixNowCount}</Text>
+          <Text style={styles.statLabel}>FIX NOW</Text>
         </View>
-        <View style={[styles.summaryCard, { borderLeftColor: '#f59e0b' }]}>
-          <Text style={[styles.summaryValue, { color: '#f59e0b' }]}>{thisWeekCount}</Text>
-          <Text style={styles.summaryLabel}>This Week</Text>
+
+        <View style={styles.statCard}>
+          <View style={styles.statHeader}>
+            <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.this_week.bgColor }]}>
+              <Feather name="clock" size={22} color={PRIORITY_CONFIG.this_week.color} />
+            </View>
+            {thisWeekCount > 0 && (
+              <View style={[styles.trendBadge, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
+                <Feather name="arrow-right" size={12} color="#f59e0b" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.statValue}>{thisWeekCount}</Text>
+          <Text style={styles.statLabel}>THIS WEEK</Text>
         </View>
-        <View style={[styles.summaryCard, { borderLeftColor: '#3b82f6' }]}>
-          <Text style={[styles.summaryValue, { color: '#3b82f6' }]}>{suggestionsCount}</Text>
-          <Text style={styles.summaryLabel}>Suggestions</Text>
+
+        <View style={styles.statCard}>
+          <View style={styles.statHeader}>
+            <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.suggestions.bgColor }]}>
+              <Feather name="zap" size={22} color={PRIORITY_CONFIG.suggestions.color} />
+            </View>
+            {suggestionsCount > 0 && (
+              <View style={[styles.trendBadge, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
+                <Feather name="trending-up" size={12} color="#22c55e" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.statValue}>{suggestionsCount}</Text>
+          <Text style={styles.statLabel}>SUGGESTIONS</Text>
         </View>
       </View>
     );
   };
 
   const renderActionCard = (action: ActionItem) => {
-    const config = SECTION_CONFIG[action.priority];
+    const config = PRIORITY_CONFIG[action.priority];
+    const catColor = getCategoryColor(action.category);
 
     return (
       <View key={action.id} style={styles.actionCard}>
-        <View style={styles.actionHeader}>
-          <View style={styles.actionTitleRow}>
-            <Text style={styles.actionTitle} numberOfLines={2}>{action.title}</Text>
+        <View style={styles.actionTopRow}>
+          <View style={styles.categoryBadge}>
+            <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
+            <Text style={styles.categoryText}>{action.category}</Text>
           </View>
-          {action.category ? (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{action.category}</Text>
-            </View>
-          ) : null}
+          <View style={[styles.priorityBadge, { backgroundColor: config.bgColor }]}>
+            <Feather name={config.icon} size={10} color={config.color} />
+            <Text style={[styles.priorityText, { color: config.color }]}>{config.label}</Text>
+          </View>
         </View>
+        <Text style={styles.actionTitle} numberOfLines={2}>{action.title}</Text>
         <Text style={styles.actionDescription} numberOfLines={3}>{action.description}</Text>
-        {action.metric ? (
-          <View style={styles.metricRow}>
-            <Feather name="bar-chart-2" size={iconSizes.sm} color={colors.mutedForeground} />
-            <Text style={styles.metricText}>{action.metric}</Text>
-          </View>
-        ) : null}
         <View style={styles.actionFooter}>
-          <View style={[styles.impactBadge, { backgroundColor: config.bgColor }]}>
-            <Feather name={config.icon} size={12} color={config.color} />
-            <Text style={[styles.impactText, { color: config.color }]}>{action.impact}</Text>
-          </View>
+          {action.metric ? (
+            <View style={styles.metricRow}>
+              <Feather name="bar-chart-2" size={14} color={colors.mutedForeground} />
+              <Text style={styles.metricText}>{action.metric}</Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
           <TouchableOpacity
             style={styles.ctaButton}
             onPress={() => handleCTA(action.ctaUrl)}
@@ -183,19 +459,11 @@ export default function ActionCenterScreen() {
 
   const renderSection = (priority: 'fix_now' | 'this_week' | 'suggestions', actions: ActionItem[]) => {
     if (!actions || actions.length === 0) return null;
-    const config = SECTION_CONFIG[priority];
+    const config = PRIORITY_CONFIG[priority];
 
     return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIconContainer, { backgroundColor: config.bgColor }]}>
-            <Feather name={config.icon} size={iconSizes.md} color={config.color} />
-          </View>
-          <Text style={styles.sectionTitle}>{config.label}</Text>
-          <View style={[styles.sectionCountBadge, { backgroundColor: config.bgColor }]}>
-            <Text style={[styles.sectionCountText, { color: config.color }]}>{actions.length}</Text>
-          </View>
-        </View>
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionTitle}>{config.sectionLabel}</Text>
         {actions.map(renderActionCard)}
       </View>
     );
@@ -204,23 +472,19 @@ export default function ActionCenterScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Feather name="check-circle" size={48} color={colors.primary} />
+        <Feather name="check-circle" size={32} color="#22c55e" />
       </View>
       <Text style={styles.emptyTitle}>All clear!</Text>
-      <Text style={styles.emptySubtitle}>No actions needed right now.</Text>
+      <Text style={styles.emptySubtitle}>No actions needed right now. Keep up the great work.</Text>
     </View>
   );
 
   const renderErrorState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Feather name="alert-triangle" size={48} color={colors.destructive} />
-      </View>
-      <Text style={styles.emptyTitle}>Something went wrong</Text>
-      <Text style={styles.emptySubtitle}>{error}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={fetchData} activeOpacity={0.7}>
-        <Feather name="refresh-cw" size={14} color="#fff" />
-        <Text style={styles.retryText}>Retry</Text>
+    <View style={styles.errorContainer}>
+      <Feather name="alert-circle" size={40} color={colors.destructive} />
+      <Text style={styles.errorText}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+        <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </View>
   );
@@ -228,229 +492,45 @@ export default function ActionCenterScreen() {
   const hasActions = data && data.summary && data.summary.totalCount > 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{
-        title: 'Action Center',
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.foreground,
-      }} />
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading Action Center...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {error ? renderErrorState() : !hasActions ? renderEmptyState() : (
-            <>
-              {renderSummaryCards()}
-              {renderSection('fix_now', data!.sections.fix_now)}
-              {renderSection('this_week', data!.sections.this_week)}
-              {renderSection('suggestions', data!.sections.suggestions)}
-            </>
-          )}
-        </ScrollView>
-      )}
-    </View>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        {isLoading && !data ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading action center...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+              />
+            }
+          >
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.pageTitle}>Action Center</Text>
+                <Text style={styles.pageSubtitle}>Items that need your attention</Text>
+              </View>
+            </View>
+
+            {error ? renderErrorState() : !hasActions ? renderEmptyState() : (
+              <>
+                {renderStatCards()}
+                {renderSection('fix_now', data!.sections.fix_now)}
+                {renderSection('this_week', data!.sections.this_week)}
+                {renderSection('suggestions', data!.sections.suggestions)}
+              </>
+            )}
+          </ScrollView>
+        )}
+      </View>
+    </>
   );
 }
-
-const createStyles = (colors: ThemeColors, contentWidth: number, paddingH: number) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: paddingH,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing['3xl'],
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    loadingText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginBottom: spacing['2xl'],
-    },
-    summaryCard: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.md,
-      borderLeftWidth: 3,
-      ...shadows.sm,
-    },
-    summaryValue: {
-      ...typography.statValue,
-    },
-    summaryLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-    section: {
-      marginBottom: spacing['2xl'],
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    sectionIconContainer: {
-      width: 28,
-      height: 28,
-      borderRadius: radius.sm,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    sectionTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      flex: 1,
-    },
-    sectionCountBadge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: radius.pill,
-    },
-    sectionCountText: {
-      ...typography.badge,
-    },
-    actionCard: {
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      marginBottom: spacing.sm,
-      ...shadows.sm,
-    },
-    actionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: spacing.sm,
-      marginBottom: spacing.xs,
-    },
-    actionTitleRow: {
-      flex: 1,
-    },
-    actionTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    categoryBadge: {
-      backgroundColor: colors.border,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: radius.sm,
-    },
-    categoryText: {
-      ...typography.badge,
-      color: colors.mutedForeground,
-    },
-    actionDescription: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginBottom: spacing.md,
-    },
-    metricRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      marginBottom: spacing.md,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-      alignSelf: 'flex-start',
-    },
-    metricText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontWeight: '600',
-    },
-    actionFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    impactBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-      flex: 1,
-    },
-    impactText: {
-      ...typography.badge,
-      flexShrink: 1,
-    },
-    ctaButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: colors.primary,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-    },
-    ctaText: {
-      ...typography.button,
-      color: '#fff',
-    },
-    emptyContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing['4xl'] * 2,
-      gap: spacing.sm,
-    },
-    emptyIconContainer: {
-      marginBottom: spacing.md,
-    },
-    emptyTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    emptySubtitle: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-    },
-    retryButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      backgroundColor: colors.primary,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      marginTop: spacing.lg,
-    },
-    retryText: {
-      ...typography.button,
-      color: '#fff',
-    },
-  });

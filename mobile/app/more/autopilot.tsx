@@ -1,21 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  StyleSheet,
-  ActivityIndicator,
-  Switch,
-  Alert,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
+import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
-import { useContentWidth, isTablet } from '../../src/lib/device';
 
 interface AutomationTrigger {
   type: string;
@@ -34,14 +22,11 @@ interface AutomationAction {
 
 interface Automation {
   id: string;
-  userId: string;
   name: string;
   description: string;
   isActive: boolean;
   trigger: AutomationTrigger;
   actions: AutomationAction[];
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface AutomationTemplate {
@@ -54,6 +39,22 @@ interface AutomationTemplate {
 }
 
 type TabType = 'automations' | 'templates';
+
+const CATEGORY_COLORS: Record<string, { color: string; bgColor: string }> = {
+  'communication': { color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
+  'scheduling': { color: '#8b5cf6', bgColor: 'rgba(139,92,246,0.1)' },
+  'invoicing': { color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' },
+  'follow-up': { color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' },
+  'status': { color: '#06b6d4', bgColor: 'rgba(6,182,212,0.1)' },
+  'notification': { color: '#ec4899', bgColor: 'rgba(236,72,153,0.1)' },
+  'default': { color: '#6b7280', bgColor: 'rgba(107,114,128,0.1)' },
+};
+
+function getCategoryStyle(category?: string) {
+  if (!category) return CATEGORY_COLORS['default'];
+  const key = category.toLowerCase();
+  return CATEGORY_COLORS[key] || CATEGORY_COLORS['default'];
+}
 
 function getTriggerSummary(trigger: AutomationTrigger): string {
   if (!trigger) return 'No trigger configured';
@@ -85,12 +86,267 @@ function getActionSummary(actions: AutomationAction[]): string {
   }).join(', ');
 }
 
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  activeTab: {
+    backgroundColor: colors.primary + '15',
+  },
+  tabText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  tabBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  tabBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    flex: 1,
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  detailsContainer: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  templateIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryContainer: {
+    marginBottom: 12,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  enableButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  enableButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 12,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.destructive,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primaryForeground || '#fff',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+});
+
 export default function AutopilotScreen() {
   const { colors } = useTheme();
-  const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
-  const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [activeTab, setActiveTab] = useState<TabType>('automations');
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -177,46 +433,6 @@ export default function AutopilotScreen() {
     }
   }, [fetchData]);
 
-  const renderTabs = () => (
-    <View style={styles.tabContainer}>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'automations' && styles.activeTab]}
-        onPress={() => setActiveTab('automations')}
-        activeOpacity={0.7}
-      >
-        <Feather
-          name="zap"
-          size={iconSizes.md}
-          color={activeTab === 'automations' ? colors.primary : colors.mutedForeground}
-        />
-        <Text style={[styles.tabText, activeTab === 'automations' && styles.activeTabText]}>
-          My Automations
-        </Text>
-        <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
-          <Text style={styles.tabBadgeText}>{automations.length}</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'templates' && styles.activeTab]}
-        onPress={() => setActiveTab('templates')}
-        activeOpacity={0.7}
-      >
-        <Feather
-          name="copy"
-          size={iconSizes.md}
-          color={activeTab === 'templates' ? colors.primary : colors.mutedForeground}
-        />
-        <Text style={[styles.tabText, activeTab === 'templates' && styles.activeTabText]}>
-          Templates
-        </Text>
-        <View style={[styles.tabBadge, { backgroundColor: '#6b7280' }]}>
-          <Text style={styles.tabBadgeText}>{templates.length}</Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
   const renderAutomationCard = (automation: Automation) => (
     <View key={automation.id} style={styles.card}>
       <View style={styles.cardHeader}>
@@ -239,11 +455,11 @@ export default function AutopilotScreen() {
 
       <View style={styles.detailsContainer}>
         <View style={styles.detailRow}>
-          <Feather name="play-circle" size={iconSizes.sm} color={colors.mutedForeground} />
+          <Feather name="play-circle" size={14} color={colors.mutedForeground} />
           <Text style={styles.detailText} numberOfLines={1}>{getTriggerSummary(automation.trigger)}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Feather name="arrow-right-circle" size={iconSizes.sm} color={colors.mutedForeground} />
+          <Feather name="arrow-right-circle" size={14} color={colors.mutedForeground} />
           <Text style={styles.detailText} numberOfLines={1}>{getActionSummary(automation.actions)}</Text>
         </View>
       </View>
@@ -260,12 +476,13 @@ export default function AutopilotScreen() {
 
   const renderTemplateCard = (template: AutomationTemplate) => {
     const isEnabling = enablingIds.has(template.id);
+    const catStyle = getCategoryStyle(template.category);
     return (
       <View key={template.id} style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <View style={[styles.templateIcon, { backgroundColor: colors.primary + '15' }]}>
-              <Feather name="zap" size={iconSizes.md} color={colors.primary} />
+            <View style={[styles.templateIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
+              <Feather name="zap" size={18} color={colors.primary} />
             </View>
             <Text style={styles.cardTitle} numberOfLines={1}>{template.name}</Text>
           </View>
@@ -277,25 +494,25 @@ export default function AutopilotScreen() {
 
         <View style={styles.detailsContainer}>
           <View style={styles.detailRow}>
-            <Feather name="play-circle" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Feather name="play-circle" size={14} color={colors.mutedForeground} />
             <Text style={styles.detailText} numberOfLines={1}>{getTriggerSummary(template.trigger)}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Feather name="arrow-right-circle" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Feather name="arrow-right-circle" size={14} color={colors.mutedForeground} />
             <Text style={styles.detailText} numberOfLines={1}>{getActionSummary(template.actions)}</Text>
           </View>
         </View>
 
         {template.category ? (
           <View style={styles.categoryContainer}>
-            <View style={[styles.categoryBadge, { backgroundColor: colors.primary + '15' }]}>
-              <Text style={[styles.categoryText, { color: colors.primary }]}>{template.category}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: catStyle.bgColor }]}>
+              <Text style={[styles.categoryText, { color: catStyle.color }]}>{template.category}</Text>
             </View>
           </View>
         ) : null}
 
         <TouchableOpacity
-          style={[styles.enableButton, { backgroundColor: colors.primary }]}
+          style={styles.enableButton}
           onPress={() => handleEnableTemplate(template)}
           disabled={isEnabling}
           activeOpacity={0.7}
@@ -304,8 +521,8 @@ export default function AutopilotScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Feather name="plus" size={iconSizes.sm} color="#fff" />
-              <Text style={styles.enableButtonText}>Enable Template</Text>
+              <Feather name="plus" size={16} color="#fff" />
+              <Text style={styles.enableButtonText}>Enable</Text>
             </>
           )}
         </TouchableOpacity>
@@ -315,8 +532,8 @@ export default function AutopilotScreen() {
 
   const renderEmptyState = (type: 'automations' | 'templates') => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '15' }]}>
-        <Feather name={type === 'automations' ? 'zap' : 'copy'} size={32} color={colors.primary} />
+      <View style={[styles.emptyIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
+        <Feather name="zap" size={28} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>
         {type === 'automations' ? 'No Automations Yet' : 'No Templates Available'}
@@ -329,297 +546,109 @@ export default function AutopilotScreen() {
     </View>
   );
 
-  const renderErrorState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
-        <Feather name="alert-triangle" size={32} color="#ef4444" />
-      </View>
-      <Text style={styles.emptyTitle}>Something Went Wrong</Text>
-      <Text style={styles.emptyDescription}>{error}</Text>
-      <TouchableOpacity
-        style={[styles.retryButton, { backgroundColor: colors.primary }]}
-        onPress={() => { setIsLoading(true); fetchData(); }}
-        activeOpacity={0.7}
-      >
-        <Feather name="refresh-cw" size={iconSizes.sm} color="#fff" />
-        <Text style={styles.retryButtonText}>Try Again</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading automations...</Text>
-        </View>
-      );
-    }
-
-    if (error && automations.length === 0) {
-      return renderErrorState();
-    }
-
-    if (activeTab === 'automations') {
-      if (automations.length === 0) return renderEmptyState('automations');
-      return automations.map(renderAutomationCard);
-    }
-
-    if (templates.length === 0) return renderEmptyState('templates');
-    return templates.map(renderTemplateCard);
-  };
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{
-        title: 'Autopilot',
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.foreground,
-      }} />
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.pageTitle}>Autopilot</Text>
-            <Text style={styles.pageSubtitle}>
-              Automate your workflow with smart triggers and actions
-            </Text>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.pageTitle}>Autopilot</Text>
+              <Text style={styles.pageSubtitle}>Automate your workflow with smart triggers and actions</Text>
+            </View>
           </View>
-        </View>
 
-        {renderTabs()}
-        {renderContent()}
-      </ScrollView>
-    </View>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'automations' && styles.activeTab]}
+              onPress={() => setActiveTab('automations')}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="zap"
+                size={16}
+                color={activeTab === 'automations' ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[styles.tabText, activeTab === 'automations' && styles.activeTabText]}>
+                My Automations
+              </Text>
+              <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.tabBadgeText}>{automations.length}</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'templates' && styles.activeTab]}
+              onPress={() => setActiveTab('templates')}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="copy"
+                size={16}
+                color={activeTab === 'templates' ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[styles.tabText, activeTab === 'templates' && styles.activeTabText]}>
+                Templates
+              </Text>
+              <View style={[styles.tabBadge, { backgroundColor: '#6b7280' }]}>
+                <Text style={styles.tabBadgeText}>{templates.length}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {error && automations.length === 0 && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={40} color={colors.destructive} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => { setIsLoading(true); fetchData(); }}
+                activeOpacity={0.7}
+              >
+                <Feather name="refresh-cw" size={14} color="#fff" />
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading automations...</Text>
+            </View>
+          )}
+
+          {!isLoading && !error && activeTab === 'automations' && (
+            <>
+              <Text style={styles.sectionTitle}>YOUR AUTOMATIONS</Text>
+              {automations.length === 0
+                ? renderEmptyState('automations')
+                : automations.map(renderAutomationCard)}
+            </>
+          )}
+
+          {!isLoading && activeTab === 'templates' && (
+            <>
+              <Text style={styles.sectionTitle}>AVAILABLE TEMPLATES</Text>
+              {templates.length === 0
+                ? renderEmptyState('templates')
+                : templates.map(renderTemplateCard)}
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </>
   );
 }
-
-const createStyles = (colors: ThemeColors, contentWidth: number, shellPadding: number) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: shellPadding,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing['3xl'],
-    },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: spacing.lg,
-    },
-    pageTitle: {
-      ...typography.pageTitle,
-      color: colors.foreground,
-    },
-    pageSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginTop: spacing.xs,
-    },
-    tabContainer: {
-      flexDirection: 'row',
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.xs,
-      marginBottom: spacing.lg,
-      ...shadows.sm,
-    },
-    tab: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radius.lg,
-      gap: spacing.xs,
-    },
-    activeTab: {
-      backgroundColor: colors.primary + '15',
-    },
-    tabText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      fontWeight: '500',
-    },
-    activeTabText: {
-      color: colors.primary,
-      fontWeight: '600',
-    },
-    tabBadge: {
-      minWidth: 20,
-      height: 20,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: spacing.xs,
-    },
-    tabBadgeText: {
-      ...typography.badge,
-      color: '#fff',
-    },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      ...shadows.sm,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: spacing.sm,
-    },
-    cardTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      flex: 1,
-      marginRight: spacing.sm,
-    },
-    statusDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    cardTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      flex: 1,
-    },
-    cardDescription: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginBottom: spacing.md,
-    },
-    detailsContainer: {
-      gap: spacing.sm,
-      marginBottom: spacing.md,
-    },
-    detailRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    detailText: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      flex: 1,
-    },
-    cardFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    statusBadge: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-    },
-    statusBadgeText: {
-      ...typography.badge,
-    },
-    templateIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    categoryContainer: {
-      marginBottom: spacing.md,
-    },
-    categoryBadge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-    },
-    categoryText: {
-      ...typography.badge,
-    },
-    enableButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.md,
-      borderRadius: radius.lg,
-    },
-    enableButtonText: {
-      ...typography.button,
-      color: '#fff',
-    },
-    loadingContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing['4xl'],
-    },
-    loadingText: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginTop: spacing.md,
-    },
-    emptyContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing['4xl'],
-      paddingHorizontal: spacing.lg,
-    },
-    emptyIconContainer: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.lg,
-    },
-    emptyTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      marginBottom: spacing.sm,
-      textAlign: 'center',
-    },
-    emptyDescription: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-      maxWidth: 280,
-    },
-    retryButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xl,
-      borderRadius: radius.lg,
-      marginTop: spacing.lg,
-    },
-    retryButtonText: {
-      ...typography.button,
-      color: '#fff',
-    },
-  });

@@ -1,20 +1,10 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity,
-  RefreshControl,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
-import { router, Stack } from 'expo-router';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
+import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { format } from 'date-fns';
-import { useContentWidth, isTablet } from '../../src/lib/device';
 
 interface Quote {
   id: string;
@@ -55,16 +45,21 @@ interface Client {
   name: string;
 }
 
-interface FileItem {
+interface RecentDocument {
   id: string;
-  name: string;
+  title: string;
   type: 'quote' | 'invoice' | 'receipt';
-  status: string;
-  date: string;
   clientName: string;
   amount: number;
+  date: string;
   routePath: string;
 }
+
+const TYPE_COLORS = {
+  quote: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+  invoice: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  receipt: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+};
 
 const formatCurrency = (amount: number) => {
   const safeAmount = isNaN(amount) ? 0 : amount;
@@ -76,27 +71,6 @@ const formatCurrency = (amount: number) => {
   }).format(safeAmount);
 };
 
-const getTypeBadgeConfig = (type: 'quote' | 'invoice' | 'receipt') => {
-  switch (type) {
-    case 'quote':
-      return { label: 'Quote', icon: 'file-text' as const, color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' };
-    case 'invoice':
-      return { label: 'Invoice', icon: 'file' as const, color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' };
-    case 'receipt':
-      return { label: 'Receipt', icon: 'credit-card' as const, color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' };
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'draft': return '#6b7280';
-    case 'sent': return '#3b82f6';
-    case 'accepted': case 'paid': return '#22c55e';
-    case 'rejected': case 'overdue': return '#ef4444';
-    default: return '#6b7280';
-  }
-};
-
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '';
   try {
@@ -106,12 +80,261 @@ const formatDate = (dateStr?: string) => {
   }
 };
 
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  categoryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  categoryContent: {
+    flex: 1,
+  },
+  categoryTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  categoryCount: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  quickAccessSection: {
+    marginBottom: 24,
+  },
+  recentSection: {
+    marginBottom: 24,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  documentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  documentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  documentInfo: {
+    flex: 1,
+  },
+  documentTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  documentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  documentClient: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  documentRight: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  documentAmount: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  documentDate: {
+    fontSize: 11,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 12,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.destructive,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primaryForeground,
+  },
+});
+
 export default function FilesScreen() {
   const { colors } = useTheme();
-  const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
-  const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -138,7 +361,7 @@ export default function FilesScreen() {
       ]);
 
       if (quotesRes.error && invoicesRes.error) {
-        setError('Failed to load files. Pull down to retry.');
+        setError('Failed to load documents. Pull down to retry.');
         return;
       }
 
@@ -147,7 +370,7 @@ export default function FilesScreen() {
       setReceipts(receiptsRes.data || []);
       setClients(clientsRes.data || []);
     } catch (err) {
-      setError('Failed to load files. Pull down to retry.');
+      setError('Failed to load documents. Pull down to retry.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -161,18 +384,17 @@ export default function FilesScreen() {
     fetchData();
   }, [fetchData]);
 
-  const allFiles = useMemo((): FileItem[] => {
-    const items: FileItem[] = [];
+  const recentDocuments = useMemo((): RecentDocument[] => {
+    const items: RecentDocument[] = [];
 
     quotes.forEach(q => {
       items.push({
         id: `quote-${q.id}`,
-        name: q.title || `Quote ${q.number || q.id}`,
+        title: q.title || `Quote ${q.number || q.id}`,
         type: 'quote',
-        status: q.status,
-        date: q.createdAt || '',
         clientName: getClientName(q.clientId),
         amount: q.total,
+        date: q.createdAt || '',
         routePath: `/more/quote/${q.id}`,
       });
     });
@@ -180,12 +402,11 @@ export default function FilesScreen() {
     invoices.forEach(inv => {
       items.push({
         id: `invoice-${inv.id}`,
-        name: inv.title || `Invoice ${inv.number || inv.id}`,
+        title: inv.title || `Invoice ${inv.number || inv.id}`,
         type: 'invoice',
-        status: inv.status,
-        date: inv.createdAt || '',
         clientName: getClientName(inv.clientId),
         amount: inv.total,
+        date: inv.createdAt || '',
         routePath: `/more/invoice/${inv.id}`,
       });
     });
@@ -193,12 +414,11 @@ export default function FilesScreen() {
     receipts.forEach(r => {
       items.push({
         id: `receipt-${r.id}`,
-        name: `Receipt ${r.receiptNumber}`,
+        title: `Receipt ${r.receiptNumber}`,
         type: 'receipt',
-        status: 'paid',
-        date: r.paidAt || '',
         clientName: getClientName(r.clientId),
         amount: r.amount,
+        date: r.paidAt || '',
         routePath: `/more/receipt/${r.id}`,
       });
     });
@@ -210,393 +430,206 @@ export default function FilesScreen() {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
 
-    return items;
+    return items.slice(0, 10);
   }, [quotes, invoices, receipts, getClientName]);
 
-  const recentFiles = useMemo(() => allFiles.slice(0, 10), [allFiles]);
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Stack.Screen options={{
-          title: 'Files',
-          headerShown: true,
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.foreground,
-        }} />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading files...</Text>
-      </View>
-    );
-  }
+  const totalDocuments = quotes.length + invoices.length + receipts.length;
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{
-        title: 'Files',
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.foreground,
-      }} />
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {error ? (
-          <View style={styles.errorContainer}>
-            <Feather name="alert-circle" size={48} color={colors.destructive} />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={handleRefresh} activeOpacity={0.7}>
-              <Feather name="refresh-cw" size={16} color="#fff" />
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.pageTitle}>Files</Text>
+              <Text style={styles.pageSubtitle}>All your documents in one place</Text>
+            </View>
           </View>
-        ) : (
-          <>
-            <View style={styles.summaryRow}>
-              <TouchableOpacity
-                style={styles.summaryCard}
-                onPress={() => router.push('/more/documents?tab=quotes')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-                  <Feather name="file-text" size={iconSizes['2xl']} color="#3b82f6" />
-                </View>
-                <Text style={styles.summaryCount}>{quotes.length}</Text>
-                <Text style={styles.summaryLabel}>Quotes</Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.summaryCard}
-                onPress={() => router.push('/more/documents?tab=invoices')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-                  <Feather name="file" size={iconSizes['2xl']} color="#f59e0b" />
-                </View>
-                <Text style={styles.summaryCount}>{invoices.length}</Text>
-                <Text style={styles.summaryLabel}>Invoices</Text>
-              </TouchableOpacity>
+          {isLoading && totalDocuments === 0 && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading documents...</Text>
+            </View>
+          )}
 
-              <TouchableOpacity
-                style={styles.summaryCard}
-                onPress={() => router.push('/more/documents?tab=receipts')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                  <Feather name="credit-card" size={iconSizes['2xl']} color="#22c55e" />
-                </View>
-                <Text style={styles.summaryCount}>{receipts.length}</Text>
-                <Text style={styles.summaryLabel}>Receipts</Text>
+          {error && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={40} color={colors.destructive} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
+          )}
 
-            <View style={styles.categorySection}>
-              <Text style={styles.sectionTitle}>Categories</Text>
-
-              <TouchableOpacity
-                style={styles.categoryRow}
-                onPress={() => router.push('/more/documents?tab=quotes')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.categoryIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-                  <Feather name="file-text" size={iconSizes.xl} color="#3b82f6" />
-                </View>
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryName}>Quotes</Text>
-                  <Text style={styles.categoryDesc}>{quotes.length} documents</Text>
-                </View>
-                <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.categoryRow}
-                onPress={() => router.push('/more/documents?tab=invoices')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.categoryIcon, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-                  <Feather name="file" size={iconSizes.xl} color="#f59e0b" />
-                </View>
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryName}>Invoices</Text>
-                  <Text style={styles.categoryDesc}>{invoices.length} documents</Text>
-                </View>
-                <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.categoryRow}
-                onPress={() => router.push('/more/documents?tab=receipts')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.categoryIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                  <Feather name="credit-card" size={iconSizes.xl} color="#22c55e" />
-                </View>
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryName}>Receipts</Text>
-                  <Text style={styles.categoryDesc}>{receipts.length} documents</Text>
-                </View>
-                <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
+          {!isLoading && !error && totalDocuments === 0 && (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconContainer}>
+                <Feather name="folder" size={28} color={colors.mutedForeground} />
+              </View>
+              <Text style={styles.emptyTitle}>No Documents Yet</Text>
+              <Text style={styles.emptyText}>Create a quote or invoice to get started</Text>
             </View>
+          )}
 
-            <View style={styles.recentSection}>
-              <View style={styles.recentHeader}>
-                <Text style={styles.sectionTitle}>Recent Documents</Text>
-                <TouchableOpacity onPress={() => router.push('/more/documents')} activeOpacity={0.7}>
-                  <Text style={styles.viewAllText}>View All</Text>
+          {!isLoading && !error && totalDocuments > 0 && (
+            <>
+              <View style={styles.statsRow}>
+                <TouchableOpacity
+                  style={styles.statCard}
+                  onPress={() => router.push('/more/documents')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.statIconContainer, { backgroundColor: TYPE_COLORS.quote.bg }]}>
+                    <Feather name="file-text" size={22} color={TYPE_COLORS.quote.color} />
+                  </View>
+                  <Text style={styles.statValue}>{quotes.length}</Text>
+                  <Text style={styles.statLabel}>QUOTES</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.statCard}
+                  onPress={() => router.push('/more/documents')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.statIconContainer, { backgroundColor: TYPE_COLORS.invoice.bg }]}>
+                    <Feather name="file" size={22} color={TYPE_COLORS.invoice.color} />
+                  </View>
+                  <Text style={styles.statValue}>{invoices.length}</Text>
+                  <Text style={styles.statLabel}>INVOICES</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.statCard}
+                  onPress={() => router.push('/more/documents')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.statIconContainer, { backgroundColor: TYPE_COLORS.receipt.bg }]}>
+                    <Feather name="check-square" size={22} color={TYPE_COLORS.receipt.color} />
+                  </View>
+                  <Text style={styles.statValue}>{receipts.length}</Text>
+                  <Text style={styles.statLabel}>RECEIPTS</Text>
                 </TouchableOpacity>
               </View>
 
-              {recentFiles.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Feather name="folder" size={48} color={colors.mutedForeground} />
-                  <Text style={styles.emptyTitle}>No documents yet</Text>
-                  <Text style={styles.emptySubtitle}>Create a quote or invoice to get started</Text>
+              <View style={styles.quickAccessSection}>
+                <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
+
+                <TouchableOpacity
+                  style={styles.categoryCard}
+                  onPress={() => router.push('/more/documents')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.categoryIconContainer, { backgroundColor: TYPE_COLORS.quote.bg }]}>
+                    <Feather name="file-text" size={22} color={TYPE_COLORS.quote.color} />
+                  </View>
+                  <View style={styles.categoryContent}>
+                    <Text style={styles.categoryTitle}>Quotes</Text>
+                    <Text style={styles.categoryCount}>{quotes.length} documents</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.categoryCard}
+                  onPress={() => router.push('/more/documents')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.categoryIconContainer, { backgroundColor: TYPE_COLORS.invoice.bg }]}>
+                    <Feather name="file" size={22} color={TYPE_COLORS.invoice.color} />
+                  </View>
+                  <View style={styles.categoryContent}>
+                    <Text style={styles.categoryTitle}>Invoices</Text>
+                    <Text style={styles.categoryCount}>{invoices.length} documents</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.categoryCard}
+                  onPress={() => router.push('/more/documents')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.categoryIconContainer, { backgroundColor: TYPE_COLORS.receipt.bg }]}>
+                    <Feather name="check-square" size={22} color={TYPE_COLORS.receipt.color} />
+                  </View>
+                  <View style={styles.categoryContent}>
+                    <Text style={styles.categoryTitle}>Receipts</Text>
+                    <Text style={styles.categoryCount}>{receipts.length} documents</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.recentSection}>
+                <View style={styles.recentHeader}>
+                  <Text style={styles.sectionTitle}>RECENT DOCUMENTS</Text>
+                  <TouchableOpacity onPress={() => router.push('/more/documents')} activeOpacity={0.7}>
+                    <Text style={styles.viewAllText}>View All</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                recentFiles.map((file) => {
-                  const badge = getTypeBadgeConfig(file.type);
-                  return (
-                    <TouchableOpacity
-                      key={file.id}
-                      style={styles.fileRow}
-                      onPress={() => router.push(file.routePath as any)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.fileIcon, { backgroundColor: badge.bgColor }]}>
-                        <Feather name={badge.icon} size={iconSizes.lg} color={badge.color} />
-                      </View>
-                      <View style={styles.fileInfo}>
-                        <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
-                        <View style={styles.fileMeta}>
-                          <View style={[styles.typeBadge, { backgroundColor: badge.bgColor }]}>
-                            <Text style={[styles.typeBadgeText, { color: badge.color }]}>{badge.label}</Text>
-                          </View>
-                          <Text style={styles.fileClient} numberOfLines={1}>{file.clientName}</Text>
+
+                {recentDocuments.length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <View style={styles.emptyIconContainer}>
+                      <Feather name="folder" size={28} color={colors.mutedForeground} />
+                    </View>
+                    <Text style={styles.emptyTitle}>No Documents Yet</Text>
+                    <Text style={styles.emptyText}>Create a quote or invoice to get started</Text>
+                  </View>
+                ) : (
+                  recentDocuments.map((doc) => {
+                    const typeColor = TYPE_COLORS[doc.type];
+                    const typeLabel = doc.type.charAt(0).toUpperCase() + doc.type.slice(1);
+                    return (
+                      <TouchableOpacity
+                        key={doc.id}
+                        style={styles.documentRow}
+                        onPress={() => router.push(doc.routePath as any)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.documentIcon, { backgroundColor: typeColor.bg }]}>
+                          <Feather
+                            name={doc.type === 'quote' ? 'file-text' : doc.type === 'invoice' ? 'file' : 'check-square'}
+                            size={16}
+                            color={typeColor.color}
+                          />
                         </View>
-                      </View>
-                      <View style={styles.fileRight}>
-                        <Text style={styles.fileAmount}>{formatCurrency(file.amount)}</Text>
-                        <Text style={styles.fileDate}>{formatDate(file.date)}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-          </>
-        )}
-      </ScrollView>
-    </View>
+                        <View style={styles.documentInfo}>
+                          <Text style={styles.documentTitle} numberOfLines={1}>{doc.title}</Text>
+                          <View style={styles.documentMeta}>
+                            <View style={[styles.typeBadge, { backgroundColor: typeColor.bg }]}>
+                              <Text style={[styles.typeBadgeText, { color: typeColor.color }]}>{typeLabel}</Text>
+                            </View>
+                            <Text style={styles.documentClient} numberOfLines={1}>{doc.clientName}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.documentRight}>
+                          <Text style={styles.documentAmount}>{formatCurrency(doc.amount)}</Text>
+                          <Text style={styles.documentDate}>{formatDate(doc.date)}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </>
   );
 }
-
-const createStyles = (colors: ThemeColors, contentWidth: number, horizontalPadding: number) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: horizontalPadding,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing['3xl'],
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    ...typography.body,
-  },
-  errorContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing['4xl'],
-    gap: spacing.md,
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    marginTop: spacing.sm,
-  },
-  retryButtonText: {
-    ...typography.button,
-    color: '#fff',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing['2xl'],
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
-  },
-  summaryIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryCount: {
-    ...typography.statValue,
-    color: colors.foreground,
-  },
-  summaryLabel: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  categorySection: {
-    marginBottom: spacing['2xl'],
-  },
-  sectionTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-    marginBottom: spacing.md,
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.md,
-  },
-  categoryIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categoryInfo: {
-    flex: 1,
-  },
-  categoryName: {
-    ...typography.bodySemibold,
-    color: colors.foreground,
-  },
-  categoryDesc: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  recentSection: {
-    marginBottom: spacing['2xl'],
-  },
-  recentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  viewAllText: {
-    ...typography.body,
-    color: colors.primary,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing['4xl'],
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm,
-  },
-  emptyTitle: {
-    ...typography.cardTitle,
-    color: colors.foreground,
-  },
-  emptySubtitle: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.md,
-  },
-  fileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fileInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  fileName: {
-    ...typography.bodySemibold,
-    color: colors.foreground,
-  },
-  fileMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  typeBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  typeBadgeText: {
-    ...typography.badge,
-  },
-  fileClient: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    flex: 1,
-  },
-  fileRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  fileAmount: {
-    ...typography.bodySemibold,
-    color: colors.foreground,
-  },
-  fileDate: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-  },
-});

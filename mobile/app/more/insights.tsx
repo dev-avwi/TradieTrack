@@ -10,74 +10,336 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
+import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
-import { useContentWidth, isTablet } from '../../src/lib/device';
 
-const formatCurrency = (amount: number) => {
-  const safeAmount = isNaN(amount) ? 0 : amount;
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeAmount);
-};
-
-const formatPercent = (value: number) => {
-  const safeValue = isNaN(value) ? 0 : value;
-  return `${Math.round(safeValue)}%`;
-};
-
-interface SummaryData {
-  totalJobs?: number;
-  pendingJobs?: number;
-  scheduledJobs?: number;
-  inProgressJobs?: number;
-  completedJobs?: number;
-  invoicedJobs?: number;
-  totalClients?: number;
-  totalQuotes?: number;
-  acceptedQuotes?: number;
-  rejectedQuotes?: number;
-  pendingQuotes?: number;
-  totalInvoices?: number;
-  paidInvoices?: number;
-  overdueInvoices?: number;
-  outstandingInvoices?: number;
-  [key: string]: any;
+interface ProfitSnapshot {
+  revenueToday: number;
+  revenueThisWeek: number;
+  revenueThisMonth: number;
+  labourCostThisMonth: number;
+  materialCostThisMonth: number;
+  grossProfit: number;
+  grossMargin: number;
+  cashCollectedToday: number;
 }
 
-interface RevenueData {
-  totalRevenue?: number;
-  totalOutstanding?: number;
-  totalOverdue?: number;
-  totalPaid?: number;
-  monthlyRevenue?: Array<{ month: string; revenue: number }>;
-  [key: string]: any;
+interface CashflowData {
+  thisMonthCollected: number;
+  lastMonthCollected: number;
+  dueThisWeek: number;
+  overdueTotal: number;
+  overdueCount: number;
+  overdueBreakdown: any[];
+  weeklyCollections: any[];
 }
 
-interface ProfitabilityData {
-  totalRevenue?: number;
-  totalCosts?: number;
-  grossProfit?: number;
-  profitMargin?: number;
-  averageJobValue?: number;
-  averageJobProfit?: number;
-  [key: string]: any;
+interface KPIData {
+  jobsToday: number;
+  unpaidInvoicesCount: number;
+  unpaidInvoicesTotal: number;
+  quotesAwaiting: number;
+  jobsToInvoice: number;
+  weeklyEarnings: number;
+  monthlyEarnings: number;
+}
+
+type TabId = 'profit' | 'cashflow' | 'efficiency' | 'growth';
+
+const TABS: { key: TabId; label: string; icon: string }[] = [
+  { key: 'profit', label: 'Profit', icon: 'dollar-sign' },
+  { key: 'cashflow', label: 'Cashflow', icon: 'bar-chart-2' },
+  { key: 'efficiency', label: 'Efficiency', icon: 'clock' },
+  { key: 'growth', label: 'Growth', icon: 'users' },
+];
+
+const fmtAud = (n: number) =>
+  `$${(isNaN(n) ? 0 : n).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+const getMarginColor = (margin: number): string => {
+  if (margin > 30) return '#22c55e';
+  if (margin >= 15) return '#f59e0b';
+  return '#ef4444';
+};
+
+const getMarginLabel = (margin: number): string => {
+  if (margin > 30) return 'Healthy margin';
+  if (margin >= 15) return 'Room to improve';
+  return 'Needs attention';
+};
+
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  tabButtonInactive: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  tabTextActive: {
+    color: colors.primaryForeground || '#fff',
+  },
+  tabTextInactive: {
+    color: colors.mutedForeground,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
+  statsGrid: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trendBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  statSubValue: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 4,
+  },
+  comparisonCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  comparisonTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
+  comparisonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  comparisonCol: {
+    flex: 1,
+  },
+  comparisonLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  comparisonValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginTop: 2,
+  },
+  comparisonDiffContainer: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  comparisonDiffText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 12,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.destructive,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primaryForeground || '#fff',
+  },
+});
+
+function StatCard({
+  icon,
+  iconBg,
+  iconColor,
+  value,
+  label,
+  subValue,
+  trendUp,
+  trendColor,
+  valueColor,
+  styles,
+  colors,
+}: {
+  icon: string;
+  iconBg: string;
+  iconColor: string;
+  value: string;
+  label: string;
+  subValue?: string;
+  trendUp?: boolean | null;
+  trendColor?: string;
+  valueColor?: string;
+  styles: any;
+  colors: any;
+}) {
+  return (
+    <View style={styles.statCard}>
+      <View style={styles.statHeader}>
+        <View style={[styles.statIconContainer, { backgroundColor: iconBg }]}>
+          <Feather name={icon as any} size={22} color={iconColor} />
+        </View>
+        {trendUp !== null && trendUp !== undefined && (
+          <View
+            style={[
+              styles.trendBadge,
+              {
+                backgroundColor: trendUp
+                  ? (colors.successLight || 'rgba(34,197,94,0.15)')
+                  : (colors.destructiveLight || 'rgba(239,68,68,0.15)'),
+              },
+            ]}
+          >
+            <Feather
+              name={trendUp ? 'trending-up' : 'trending-down'}
+              size={12}
+              color={trendUp ? (colors.success || '#22c55e') : (colors.destructive || '#ef4444')}
+            />
+          </View>
+        )}
+      </View>
+      <Text style={[styles.statValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+      {subValue ? <Text style={styles.statSubValue}>{subValue}</Text> : null}
+    </View>
+  );
 }
 
 export default function InsightsScreen() {
   const { colors } = useTheme();
-  const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
-  const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [revenue, setRevenue] = useState<RevenueData | null>(null);
-  const [profitability, setProfitability] = useState<ProfitabilityData | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('profit');
+  const [profit, setProfit] = useState<ProfitSnapshot | null>(null);
+  const [cashflow, setCashflow] = useState<CashflowData | null>(null);
+  const [kpis, setKpis] = useState<KPIData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,20 +347,20 @@ export default function InsightsScreen() {
   const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const [summaryRes, revenueRes, profitabilityRes] = await Promise.all([
-        api.get<SummaryData>('/api/reports/summary'),
-        api.get<RevenueData>('/api/reports/revenue'),
-        api.get<ProfitabilityData>('/api/reports/profitability'),
+      const [profitRes, cashflowRes, kpisRes] = await Promise.all([
+        api.get<ProfitSnapshot>('/api/dashboard/profit-snapshot'),
+        api.get<CashflowData>('/api/dashboard/cashflow'),
+        api.get<KPIData>('/api/dashboard/kpis'),
       ]);
 
-      if (summaryRes.error && revenueRes.error && profitabilityRes.error) {
-        setError(summaryRes.error || 'Failed to load insights data');
+      if (profitRes.error && cashflowRes.error && kpisRes.error) {
+        setError(profitRes.error || 'Failed to load insights data');
         return;
       }
 
-      setSummary(summaryRes.data || null);
-      setRevenue(revenueRes.data || null);
-      setProfitability(profitabilityRes.data || null);
+      setProfit(profitRes.data || null);
+      setCashflow(cashflowRes.data || null);
+      setKpis(kpisRes.data || null);
     } catch (err) {
       setError('Failed to load insights data. Please try again.');
     } finally {
@@ -116,349 +378,394 @@ export default function InsightsScreen() {
     fetchData();
   }, [fetchData]);
 
-  const handleRetry = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    fetchData();
-  }, [fetchData]);
+  const collectionDiff = (cashflow?.thisMonthCollected ?? 0) - (cashflow?.lastMonthCollected ?? 0);
+  const collectionUp = collectionDiff >= 0;
 
-  const quoteConversionRate = useMemo(() => {
-    if (!summary) return 0;
-    const total = (summary.totalQuotes || 0);
-    if (total === 0) return 0;
-    return ((summary.acceptedQuotes || 0) / total) * 100;
-  }, [summary]);
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <Stack.Screen options={{
-          title: 'Insights',
-          headerShown: true,
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.foreground,
-        }} />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading Insights...</Text>
+  const renderProfitTab = () => (
+    <View style={styles.statsGrid}>
+      <Text style={styles.sectionTitle}>Revenue</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="dollar-sign"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(profit?.revenueToday ?? 0)}
+          label="Revenue Today"
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="trending-up"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={fmtAud(profit?.revenueThisWeek ?? 0)}
+          label="This Week"
+          styles={styles}
+          colors={colors}
+        />
       </View>
-    );
-  }
-
-  if (error && !summary && !revenue && !profitability) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <Stack.Screen options={{
-          title: 'Insights',
-          headerShown: true,
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.foreground,
-        }} />
-        <Feather name="alert-circle" size={48} color={colors.mutedForeground} />
-        <Text style={styles.errorTitle}>Unable to Load Insights</Text>
-        <Text style={styles.errorMessage}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={handleRetry} activeOpacity={0.7}>
-          <Feather name="refresh-cw" size={16} color="#fff" />
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="calendar"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={fmtAud(profit?.revenueThisMonth ?? 0)}
+          label="This Month"
+          trendUp={(profit?.revenueThisMonth ?? 0) > 0 ? true : null}
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="dollar-sign"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(profit?.grossProfit ?? 0)}
+          label="Gross Profit"
+          styles={styles}
+          colors={colors}
+        />
       </View>
-    );
-  }
 
-  const hasNoData = !summary && !revenue && !profitability;
-
-  if (hasNoData) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <Stack.Screen options={{
-          title: 'Insights',
-          headerShown: true,
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.foreground,
-        }} />
-        <Feather name="bar-chart-2" size={48} color={colors.mutedForeground} />
-        <Text style={styles.emptyTitle}>No Data Yet</Text>
-        <Text style={styles.emptyMessage}>Start creating jobs, quotes, and invoices to see your business insights here.</Text>
+      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Margins & Costs</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="percent"
+          iconBg={
+            (profit?.grossMargin ?? 0) > 30
+              ? 'rgba(34,197,94,0.15)'
+              : (profit?.grossMargin ?? 0) >= 15
+                ? 'rgba(245,158,11,0.15)'
+                : 'rgba(239,68,68,0.15)'
+          }
+          iconColor={getMarginColor(profit?.grossMargin ?? 0)}
+          value={`${(profit?.grossMargin ?? 0).toFixed(1)}%`}
+          label="Gross Margin"
+          subValue={getMarginLabel(profit?.grossMargin ?? 0)}
+          valueColor={getMarginColor(profit?.grossMargin ?? 0)}
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="clock"
+          iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
+          iconColor={colors.warning || '#f59e0b'}
+          value={fmtAud(profit?.labourCostThisMonth ?? 0)}
+          label="Labour Cost"
+          subValue="This month"
+          styles={styles}
+          colors={colors}
+        />
       </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <Stack.Screen options={{
-        title: 'Insights',
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.foreground,
-      }} />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.sectionHeader}>
-          <Feather name="dollar-sign" size={iconSizes.lg} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Revenue</Text>
-        </View>
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <View style={[styles.cardIconCircle, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-              <Feather name="trending-up" size={iconSizes.md} color="#22c55e" />
-            </View>
-            <Text style={styles.cardLabel}>Total Revenue</Text>
-            <Text style={[styles.cardValue, { color: '#22c55e' }]}>
-              {formatCurrency(revenue?.totalRevenue || revenue?.totalPaid || 0)}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <View style={[styles.cardIconCircle, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-              <Feather name="clock" size={iconSizes.md} color="#f59e0b" />
-            </View>
-            <Text style={styles.cardLabel}>Outstanding</Text>
-            <Text style={[styles.cardValue, { color: '#f59e0b' }]}>
-              {formatCurrency(revenue?.totalOutstanding || 0)}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <View style={[styles.cardIconCircle, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
-              <Feather name="alert-circle" size={iconSizes.md} color="#ef4444" />
-            </View>
-            <Text style={styles.cardLabel}>Overdue</Text>
-            <Text style={[styles.cardValue, { color: '#ef4444' }]}>
-              {formatCurrency(revenue?.totalOverdue || 0)}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <View style={[styles.cardIconCircle, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-              <Feather name="check-circle" size={iconSizes.md} color="#3b82f6" />
-            </View>
-            <Text style={styles.cardLabel}>Paid</Text>
-            <Text style={[styles.cardValue, { color: '#3b82f6' }]}>
-              {formatCurrency(revenue?.totalPaid || 0)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Feather name="briefcase" size={iconSizes.lg} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Jobs</Text>
-        </View>
-        <View style={styles.card}>
-          <View style={styles.jobStatsGrid}>
-            <JobStatItem label="Total" value={summary?.totalJobs || 0} color="#3b82f6" icon="layers" />
-            <JobStatItem label="Pending" value={summary?.pendingJobs || 0} color="#f59e0b" icon="clock" />
-            <JobStatItem label="Scheduled" value={summary?.scheduledJobs || 0} color="#6366f1" icon="calendar" />
-            <JobStatItem label="In Progress" value={summary?.inProgressJobs || 0} color="#22c55e" icon="play-circle" />
-            <JobStatItem label="Completed" value={summary?.completedJobs || 0} color="#10b981" icon="check-circle" />
-            <JobStatItem label="Invoiced" value={summary?.invoicedJobs || 0} color="#8b5cf6" icon="file-text" />
-          </View>
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Quote Conversion</Text>
-        </View>
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Total Quotes</Text>
-            <Text style={[styles.cardValue, { color: '#3b82f6' }]}>
-              {summary?.totalQuotes || 0}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Conversion Rate</Text>
-            <Text style={[styles.cardValue, { color: '#22c55e' }]}>
-              {formatPercent(quoteConversionRate)}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Accepted</Text>
-            <Text style={[styles.cardValue, { color: '#22c55e' }]}>
-              {summary?.acceptedQuotes || 0}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Pending</Text>
-            <Text style={[styles.cardValue, { color: '#f59e0b' }]}>
-              {summary?.pendingQuotes || 0}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Feather name="pie-chart" size={iconSizes.lg} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Profitability</Text>
-        </View>
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Gross Profit</Text>
-            <Text style={[styles.cardValue, { color: '#22c55e' }]}>
-              {formatCurrency(profitability?.grossProfit || 0)}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Profit Margin</Text>
-            <Text style={[styles.cardValue, { color: profitability?.profitMargin && profitability.profitMargin > 0 ? '#22c55e' : '#ef4444' }]}>
-              {formatPercent(profitability?.profitMargin || 0)}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Avg Job Value</Text>
-            <Text style={[styles.cardValue, { color: '#6366f1' }]}>
-              {formatCurrency(profitability?.averageJobValue || 0)}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Total Costs</Text>
-            <Text style={[styles.cardValue, { color: '#ef4444' }]}>
-              {formatCurrency(profitability?.totalCosts || 0)}
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="package"
+          iconBg="rgba(139,92,246,0.15)"
+          iconColor="#8b5cf6"
+          value={fmtAud(profit?.materialCostThisMonth ?? 0)}
+          label="Material Cost"
+          subValue="This month"
+          styles={styles}
+          colors={colors}
+        />
+        <View style={{ flex: 1 }} />
+      </View>
     </View>
   );
-}
 
-function JobStatItem({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
-  return (
-    <View style={jobStatStyles.item}>
-      <Feather name={icon as any} size={14} color={color} />
-      <Text style={jobStatStyles.value}>{value}</Text>
-      <Text style={jobStatStyles.label}>{label}</Text>
+  const renderCashflowTab = () => (
+    <View style={styles.statsGrid}>
+      <Text style={styles.sectionTitle}>Collections</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="dollar-sign"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(profit?.cashCollectedToday ?? 0)}
+          label="Collected Today"
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="calendar"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={fmtAud(cashflow?.thisMonthCollected ?? 0)}
+          label="This Month"
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="clock"
+          iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
+          iconColor={colors.warning || '#f59e0b'}
+          value={fmtAud(cashflow?.dueThisWeek ?? 0)}
+          label="Due This Week"
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="alert-circle"
+          iconBg={colors.destructiveLight || 'rgba(239,68,68,0.15)'}
+          iconColor={colors.destructive || '#ef4444'}
+          value={fmtAud(cashflow?.overdueTotal ?? 0)}
+          label="Overdue Total"
+          subValue={(cashflow?.overdueCount ?? 0) > 0 ? `${cashflow?.overdueCount} invoice${(cashflow?.overdueCount ?? 0) !== 1 ? 's' : ''} overdue` : 'No overdue'}
+          valueColor={(cashflow?.overdueTotal ?? 0) > 0 ? (colors.destructive || '#ef4444') : undefined}
+          trendUp={(cashflow?.overdueTotal ?? 0) > 0 ? false : null}
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Trend</Text>
+      <View style={styles.comparisonCard}>
+        <Text style={styles.comparisonTitle}>This Month vs Last Month</Text>
+        <View style={styles.comparisonRow}>
+          <View style={styles.comparisonCol}>
+            <Text style={styles.comparisonLabel}>This month</Text>
+            <Text style={styles.comparisonValue}>{fmtAud(cashflow?.thisMonthCollected ?? 0)}</Text>
+          </View>
+          <View style={styles.comparisonDiffContainer}>
+            <Feather
+              name={collectionUp ? 'arrow-up-right' : 'arrow-down-right'}
+              size={20}
+              color={collectionUp ? '#22c55e' : '#ef4444'}
+            />
+            <Text style={[styles.comparisonDiffText, { color: collectionUp ? '#22c55e' : '#ef4444' }]}>
+              {fmtAud(Math.abs(collectionDiff))}
+            </Text>
+          </View>
+          <View style={[styles.comparisonCol, { alignItems: 'flex-end' as const }]}>
+            <Text style={styles.comparisonLabel}>Last month</Text>
+            <Text style={styles.comparisonValue}>{fmtAud(cashflow?.lastMonthCollected ?? 0)}</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
+
+  const renderEfficiencyTab = () => (
+    <View style={styles.statsGrid}>
+      <Text style={styles.sectionTitle}>Activity</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="briefcase"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={String(kpis?.jobsToday ?? 0)}
+          label="Jobs Today"
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="file-text"
+          iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
+          iconColor={colors.warning || '#f59e0b'}
+          value={String(kpis?.jobsToInvoice ?? 0)}
+          label="Jobs to Invoice"
+          subValue={(kpis?.jobsToInvoice ?? 0) > 0 ? 'Completed, not invoiced' : 'All caught up'}
+          valueColor={(kpis?.jobsToInvoice ?? 0) > 0 ? (colors.warning || '#f59e0b') : undefined}
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Quotes</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="send"
+          iconBg="rgba(139,92,246,0.15)"
+          iconColor="#8b5cf6"
+          value={String(kpis?.quotesAwaiting ?? 0)}
+          label="Quotes Awaiting"
+          subValue="Sent, awaiting response"
+          styles={styles}
+          colors={colors}
+        />
+        <View style={{ flex: 1 }} />
+      </View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Earnings</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="trending-up"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(kpis?.weeklyEarnings ?? 0)}
+          label="Weekly Earnings"
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="dollar-sign"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(kpis?.monthlyEarnings ?? 0)}
+          label="Monthly Earnings"
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+    </View>
+  );
+
+  const renderGrowthTab = () => (
+    <View style={styles.statsGrid}>
+      <Text style={styles.sectionTitle}>Outstanding</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="file-minus"
+          iconBg={colors.destructiveLight || 'rgba(239,68,68,0.15)'}
+          iconColor={colors.destructive || '#ef4444'}
+          value={String(kpis?.unpaidInvoicesCount ?? 0)}
+          label="Unpaid Invoices"
+          subValue={`${fmtAud(kpis?.unpaidInvoicesTotal ?? 0)} total`}
+          valueColor={(kpis?.unpaidInvoicesCount ?? 0) > 0 ? (colors.destructive || '#ef4444') : undefined}
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="alert-triangle"
+          iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
+          iconColor={colors.warning || '#f59e0b'}
+          value={fmtAud(cashflow?.overdueTotal ?? 0)}
+          label="Overdue Amount"
+          subValue={`${cashflow?.overdueCount ?? 0} overdue invoices`}
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Revenue Snapshot</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="dollar-sign"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(profit?.revenueThisMonth ?? 0)}
+          label="Revenue This Month"
+          trendUp={(profit?.revenueThisMonth ?? 0) > 0 ? true : null}
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="trending-up"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={fmtAud(profit?.revenueThisWeek ?? 0)}
+          label="Revenue This Week"
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Quick Stats</Text>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="briefcase"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={String(kpis?.jobsToday ?? 0)}
+          label="Jobs Today"
+          styles={styles}
+          colors={colors}
+        />
+        <StatCard
+          icon="send"
+          iconBg="rgba(139,92,246,0.15)"
+          iconColor="#8b5cf6"
+          value={String(kpis?.quotesAwaiting ?? 0)}
+          label="Quotes Pending"
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.pageTitle}>Insights</Text>
+              <Text style={styles.pageSubtitle}>Business analytics and insights</Text>
+            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 20 }}
+            contentContainerStyle={styles.tabContainer}
+          >
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[
+                    styles.tabButton,
+                    isActive ? styles.tabButtonActive : styles.tabButtonInactive,
+                  ]}
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.7}
+                >
+                  <Feather
+                    name={tab.icon as any}
+                    size={14}
+                    color={isActive ? (colors.primaryForeground || '#fff') : colors.mutedForeground}
+                  />
+                  <Text style={[styles.tabText, isActive ? styles.tabTextActive : styles.tabTextInactive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {error && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={40} color={colors.destructive} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => { setIsLoading(true); setError(null); fetchData(); }}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isLoading && !profit && !cashflow && !kpis && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading insights...</Text>
+            </View>
+          )}
+
+          {!isLoading && !error && (
+            <>
+              {activeTab === 'profit' && renderProfitTab()}
+              {activeTab === 'cashflow' && renderCashflowTab()}
+              {activeTab === 'efficiency' && renderEfficiencyTab()}
+              {activeTab === 'growth' && renderGrowthTab()}
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </>
+  );
 }
-
-const jobStatStyles = StyleSheet.create({
-  item: {
-    alignItems: 'center',
-    width: '33%' as any,
-    paddingVertical: spacing.sm,
-  },
-  value: {
-    ...typography.cardTitle,
-    marginTop: 4,
-  },
-  label: {
-    ...typography.caption,
-    marginTop: 2,
-    opacity: 0.7,
-  },
-});
-
-const createStyles = (colors: ThemeColors, contentWidth: number, paddingH: number) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    centered: {
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: spacing['2xl'],
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: paddingH,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing['3xl'],
-    },
-    loadingText: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginTop: spacing.md,
-    },
-    errorTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      marginTop: spacing.lg,
-    },
-    errorMessage: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginTop: spacing.sm,
-      textAlign: 'center',
-    },
-    retryButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      backgroundColor: colors.primary,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      marginTop: spacing.lg,
-    },
-    retryButtonText: {
-      ...typography.button,
-      color: '#fff',
-    },
-    emptyTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-      marginTop: spacing.lg,
-    },
-    emptyMessage: {
-      ...typography.body,
-      color: colors.mutedForeground,
-      marginTop: spacing.sm,
-      textAlign: 'center',
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginTop: spacing['2xl'],
-      marginBottom: spacing.md,
-    },
-    sectionTitle: {
-      ...typography.cardTitle,
-      color: colors.foreground,
-    },
-    cardRow: {
-      flexDirection: 'row',
-      gap: spacing.md,
-      marginBottom: spacing.md,
-    },
-    card: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      ...shadows.sm,
-    },
-    cardIconCircle: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.sm,
-    },
-    cardLabel: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      marginBottom: 4,
-    },
-    cardValue: {
-      ...typography.statValue,
-      color: colors.foreground,
-    },
-    jobStatsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-  });

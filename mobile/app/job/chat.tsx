@@ -806,7 +806,7 @@ export default function JobChatScreen() {
             <Feather name="message-circle" size={20} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Team Discussion</Text>
+            <Text style={styles.headerTitle}>Job Chat</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{job?.title}</Text>
           </View>
           <View style={styles.messageBadge}>
@@ -821,7 +821,7 @@ export default function JobChatScreen() {
             <Feather name="users" size={12} color="#fff" />
           </View>
           <Text style={styles.internalBannerText}>
-            This is an internal team discussion. Messages are not sent to the client.
+            Messages about this job. Your team can see and reply here.
           </Text>
           {client && (
             <TouchableOpacity style={styles.contactClientBtn} onPress={handleContactClient}>
@@ -864,7 +864,7 @@ export default function JobChatScreen() {
             <View style={styles.emptyContainer}>
               <Feather name="message-circle" size={48} color={colors.mutedForeground} style={styles.emptyIcon} />
               <Text style={styles.emptyText}>No messages yet</Text>
-              <Text style={styles.emptySubtext}>Start the internal discussion about this job</Text>
+              <Text style={styles.emptySubtext}>Send a message to get things moving</Text>
             </View>
           ) : (
             messages.map((msg) => {
