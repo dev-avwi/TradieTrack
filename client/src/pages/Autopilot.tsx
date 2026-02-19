@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, type ComponentProps, type ChangeEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -67,6 +67,15 @@ const TEMPLATE_VARIABLES: Record<string, string[]> = {
 
 type AutomationField = "quoteFollowUpEnabled" | "jobReminderEnabled" | "invoiceReminderEnabled" | "photoRequirementsEnabled" | "gpsAutoCheckInEnabled" | "autoInvoiceOnComplete" | "autoReviewRequest";
 
+const ENABLE_DEFAULTS: Partial<Record<AutomationField, Partial<AutomationSettings>>> = {
+  quoteFollowUpEnabled: { quoteFollowUpDays: 3, quoteFollowUpType: "email", quoteFollowUpMessage: DEFAULT_MESSAGES.quoteFollowUpMessage },
+  jobReminderEnabled: { jobReminderHoursBefore: 24, jobReminderType: "sms", jobReminderMessage: DEFAULT_MESSAGES.jobReminderMessage },
+  invoiceReminderEnabled: { invoiceReminderDaysBeforeDue: 3, invoiceOverdueReminderDays: 7, invoiceReminderType: "email", invoiceReminderMessage: DEFAULT_MESSAGES.invoiceReminderMessage },
+  photoRequirementsEnabled: { requirePhotoBeforeStart: true, requirePhotoAfterComplete: true },
+  gpsAutoCheckInEnabled: { autoCheckInOnArrival: true, autoCheckOutOnDeparture: true },
+  autoReviewRequest: { autoReviewRequestType: "email", reviewRequestMessage: DEFAULT_MESSAGES.reviewRequestMessage },
+};
+
 interface AutomationConfig {
   field: AutomationField;
   title: string;
@@ -131,11 +140,11 @@ function DebouncedTextarea({
   value: externalValue,
   onChange,
   ...props
-}: { value: string; onChange: (v: string) => void } & Omit<React.ComponentProps<typeof Textarea>, 'value' | 'onChange'>) {
+}: { value: string; onChange: (v: string) => void } & Omit<ComponentProps<typeof Textarea>, 'value' | 'onChange'>) {
   const [localValue, setLocalValue] = useState(externalValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { setLocalValue(externalValue); }, [externalValue]);
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setLocalValue(v);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -149,11 +158,11 @@ function DebouncedNumberInput({
   value: externalValue,
   onChange,
   ...props
-}: { value: number; onChange: (v: number) => void } & Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange' | 'type'>) {
+}: { value: number; onChange: (v: number) => void } & Omit<ComponentProps<typeof Input>, 'value' | 'onChange' | 'type'>) {
   const [localValue, setLocalValue] = useState(String(externalValue));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { setLocalValue(String(externalValue)); }, [externalValue]);
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setLocalValue(v);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -469,7 +478,10 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
                   </div>
                   <Switch
                     checked={isEnabled}
-                    onCheckedChange={(checked) => handleUpdate({ [item.field]: checked })}
+                    onCheckedChange={(checked) => {
+                      const defaults = checked && ENABLE_DEFAULTS[item.field] ? ENABLE_DEFAULTS[item.field] : {};
+                      handleUpdate({ [item.field]: checked, ...defaults });
+                    }}
                   />
                 </div>
                 {isEnabled && hasInlineSettings && (
