@@ -708,6 +708,13 @@ export interface IStorage {
   createGpsSignalLog(log: InsertGpsSignalLog): Promise<GpsSignalLog>;
   getGpsSignalLogs(businessOwnerId: string, options?: { userId?: string; limit?: number }): Promise<GpsSignalLog[]>;
 
+  // Geofence Alerts
+  createGeofenceAlert(alert: InsertGeofenceAlert): Promise<GeofenceAlert>;
+  getGeofenceAlertsForBusiness(businessOwnerId: string, limit?: number): Promise<GeofenceAlert[]>;
+  getUnreadGeofenceAlertsCount(businessOwnerId: string): Promise<number>;
+  markGeofenceAlertAsRead(alertId: string): Promise<void>;
+  getRecentGeofenceAlerts(userId: string, jobId: string, alertType: string, withinSeconds: number): Promise<any[]>;
+
   // Team-level time tracking methods
   getActiveTimeEntryForJob(jobId: string): Promise<TimeEntry | undefined>;
   getAllActiveTimeEntries(): Promise<TimeEntry[]>;
@@ -4209,6 +4216,18 @@ export class PostgresStorage implements IStorage {
     await db.update(geofenceAlerts)
       .set({ isRead: true })
       .where(eq(geofenceAlerts.id, alertId));
+  }
+
+  async getRecentGeofenceAlerts(userId: string, jobId: string, alertType: string, withinSeconds: number): Promise<GeofenceAlert[]> {
+    const since = new Date(Date.now() - withinSeconds * 1000);
+    return await db.select().from(geofenceAlerts)
+      .where(and(
+        eq(geofenceAlerts.userId, userId),
+        eq(geofenceAlerts.jobId, jobId),
+        eq(geofenceAlerts.alertType, alertType === 'enter' ? 'arrival' : 'departure'),
+        gte(geofenceAlerts.createdAt, since)
+      ))
+      .orderBy(desc(geofenceAlerts.createdAt));
   }
 
   // GPS Signal Loss Logging

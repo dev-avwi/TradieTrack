@@ -26,8 +26,9 @@ Core architectural and design decisions include:
 *   **Financial Reporting**: Recurring invoices and jobs, a unified dashboard with KPIs, per-job profitability reporting, a Profit Snapshot, and enhanced profitability reports (By Job, Client, Worker). Includes a Payroll & Pay Run System, Aged Receivables Report, and Team Utilisation Dashboard.
 *   **Alerts & Summaries**: Job Aging Alerts for jobs stuck in status, a Daily Operations Summary, and Cashflow/Team Performance Dashboards.
 *   **Customization**: Trade-Specific Customization System for 13 priority trades, allowing custom terminology, job stages, fields, material catalogs, and safety checklists.
-*   **Time Tracking**: Enhancements include break/pause, billable/non-billable toggles, job costing widget, categorizable entries, timesheet approvals, and GPS signal logging with geofence notifications.
-*   **Compliance**: A Compliance & Licensing Module manages documents with status tracking, dashboard alerts, and Compliance Pack PDF export.
+*   **Time Tracking**: Enhancements include break/pause, billable/non-billable toggles, job costing widget, categorizable entries, timesheet approvals, and GPS signal logging with geofence notifications. Server-side stale timer detection auto-stops orphaned timers after 12 hours (capped at 8-hour duration) via a 30-minute scheduled sweep (`server/staleTimerService.ts`).
+*   **Compliance**: A Compliance & Licensing Module manages documents with status tracking, dashboard alerts, Compliance Pack PDF export, and automated daily expiry notifications (30-day/7-day/expired tiers).
+*   **Production Hardening**: GPS coordinate validation across 8 location endpoints (Australian bounds, null island rejection, 500m accuracy threshold). Geofence event API includes 60-second idempotency dedupe, 1-minute minimum timer before auto-clock-out, and structured JSON logging. PDF generation has concurrency limits (max 3), 30-second timeouts, and browser close safety.
 *   **Deep-Link Navigation**: KPI widgets and action items deep-link to specific filtered views within the application.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with relationship links.
 *   **Templates Hub**: Focuses on Document Styles with live preview for quotes, invoices, and jobs, including 81 seeded trade-specific templates.

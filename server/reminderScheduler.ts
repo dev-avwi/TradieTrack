@@ -6,7 +6,7 @@ import { processTimeBasedAutomations } from './automationService';
 import { runDailyBillingReminders } from './billingReminderService';
 import { notifyInstallmentDue } from './notifications';
 import { getProductionBaseUrl } from './urlHelper';
-import { jobs, quotes, invoices, smsAutomationRules, smsAutomationLogs, paymentSchedules, paymentInstallments, automationSettings, invoiceReminderLogs } from '@shared/schema';
+import { jobs, quotes, invoices, smsAutomationRules, smsAutomationLogs, paymentSchedules, paymentInstallments, automationSettings, invoiceReminderLogs, complianceDocuments } from '@shared/schema';
 import { and, or, eq, lt, isNull, gte, lte, not } from 'drizzle-orm';
 
 let reminderInterval: NodeJS.Timeout | null = null;
@@ -17,6 +17,7 @@ let archiveInterval: NodeJS.Timeout | null = null;
 let smsAutomationInterval: NodeJS.Timeout | null = null;
 let billingReminderInterval: NodeJS.Timeout | null = null;
 let installmentReminderInterval: NodeJS.Timeout | null = null;
+let complianceExpiryInterval: NodeJS.Timeout | null = null;
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const RECURRING_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -26,6 +27,7 @@ const ARCHIVE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 const SMS_AUTOMATION_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const BILLING_REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 const INSTALLMENT_REMINDER_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours (twice daily)
+const COMPLIANCE_EXPIRY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours (daily)
 
 async function processAllUserReminders(): Promise<void> {
   console.log('[Scheduler] Processing automatic reminders...');
@@ -924,6 +926,125 @@ export function startQuoteFollowUpScheduler(): void {
   console.log(`[Scheduler] Quote follow-up scheduler running every ${QUOTE_FOLLOWUP_INTERVAL_MS / 60000} minutes`);
 }
 
+async function processComplianceExpiry(): Promise<void> {
+  console.log('[Scheduler] Processing compliance document expiry alerts...');
+  
+  try {
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    
+    const expiringDocs = await db.select().from(complianceDocuments)
+      .where(
+        and(
+          lte(complianceDocuments.expiryDate, thirtyDaysFromNow),
+          not(isNull(complianceDocuments.expiryDate))
+        )
+      )
+      .orderBy(complianceDocuments.expiryDate);
+    
+    if (expiringDocs.length === 0) {
+      console.log('[Scheduler] No expiring compliance documents found');
+      return;
+    }
+    
+    const groupedByOwner: Record<string, typeof expiringDocs> = {};
+    for (const doc of expiringDocs) {
+      if (!groupedByOwner[doc.businessOwnerId]) {
+        groupedByOwner[doc.businessOwnerId] = [];
+      }
+      groupedByOwner[doc.businessOwnerId].push(doc);
+    }
+    
+    let notificationsCreated = 0;
+    
+    const typeLabels: Record<string, string> = {
+      licence: 'Trade Licence',
+      insurance: 'Insurance Certificate',
+      white_card: 'White Card',
+      vehicle_rego: 'Vehicle Registration',
+      certification: 'Certification',
+      other: 'Document',
+    };
+    
+    for (const [businessOwnerId, docs] of Object.entries(groupedByOwner)) {
+      for (const doc of docs) {
+        const expiryDate = new Date(doc.expiryDate!);
+        const daysUntil = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const typeLabel = typeLabels[doc.type] || 'Document';
+        
+        const isExpired = daysUntil <= 0;
+        const isUrgent = daysUntil <= 7;
+        const isWarning = daysUntil <= 30;
+        
+        if (!isExpired && !isUrgent && !isWarning) continue;
+        
+        if (isExpired && daysUntil < -30) continue;
+        
+        let title: string;
+        let message: string;
+        let priority: string;
+        
+        if (isExpired) {
+          title = `${typeLabel} EXPIRED: ${doc.title}`;
+          message = `Your ${typeLabel.toLowerCase()} "${doc.title}"${doc.documentNumber ? ` (#${doc.documentNumber})` : ''} expired on ${expiryDate.toLocaleDateString('en-AU')}. Please renew immediately to stay compliant.`;
+          priority = 'urgent';
+        } else if (isUrgent) {
+          title = `${typeLabel} expiring in ${daysUntil} day${daysUntil === 1 ? '' : 's'}: ${doc.title}`;
+          message = `Your ${typeLabel.toLowerCase()} "${doc.title}"${doc.documentNumber ? ` (#${doc.documentNumber})` : ''} expires on ${expiryDate.toLocaleDateString('en-AU')}. Renew soon to avoid compliance issues.`;
+          priority = 'important';
+        } else {
+          title = `${typeLabel} expiring in ${daysUntil} days: ${doc.title}`;
+          message = `Your ${typeLabel.toLowerCase()} "${doc.title}"${doc.documentNumber ? ` (#${doc.documentNumber})` : ''} expires on ${expiryDate.toLocaleDateString('en-AU')}. Consider starting the renewal process.`;
+          priority = 'info';
+        }
+        
+        try {
+          await storage.createNotification({
+            userId: businessOwnerId,
+            type: 'compliance_expiry',
+            title,
+            message,
+            relatedId: doc.id,
+            relatedType: 'compliance_document',
+            priority,
+            actionUrl: '/files',
+            actionLabel: 'View Documents',
+          });
+          notificationsCreated++;
+        } catch (notifError: any) {
+          if (notifError?.message?.includes('duplicate') || notifError?.code === '23505') {
+            continue;
+          }
+          console.error(`[Scheduler] Error creating compliance notification for doc ${doc.id}:`, notifError);
+        }
+      }
+    }
+    
+    if (notificationsCreated > 0) {
+      console.log(`[Scheduler] Created ${notificationsCreated} compliance expiry notifications`);
+    } else {
+      console.log('[Scheduler] No new compliance expiry notifications needed');
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error processing compliance expiry alerts:', error);
+  }
+}
+
+export function startComplianceExpiryScheduler(): void {
+  console.log('[Scheduler] Starting compliance expiry alert scheduler...');
+  
+  if (complianceExpiryInterval) {
+    clearInterval(complianceExpiryInterval);
+  }
+  
+  setTimeout(processComplianceExpiry, 15000);
+  
+  complianceExpiryInterval = setInterval(processComplianceExpiry, COMPLIANCE_EXPIRY_INTERVAL_MS);
+  
+  console.log(`[Scheduler] Compliance expiry scheduler running every ${COMPLIANCE_EXPIRY_INTERVAL_MS / 3600000} hours`);
+}
+
 export function startAllSchedulers(): void {
   startReminderScheduler();
   startRecurringScheduler();
@@ -934,6 +1055,7 @@ export function startAllSchedulers(): void {
   startBillingReminderScheduler();
   startInstallmentReminderScheduler();
   startQuoteFollowUpScheduler();
+  startComplianceExpiryScheduler();
 }
 
 export function stopAllSchedulers(): void {
@@ -980,6 +1102,11 @@ export function stopAllSchedulers(): void {
   if (quoteFollowUpInterval) {
     clearInterval(quoteFollowUpInterval);
     quoteFollowUpInterval = null;
+  }
+  
+  if (complianceExpiryInterval) {
+    clearInterval(complianceExpiryInterval);
+    complianceExpiryInterval = null;
   }
   
   console.log('[Scheduler] All schedulers stopped');

@@ -1,6 +1,20 @@
 import type { Quote, Invoice, QuoteLineItem, InvoiceLineItem, Client, BusinessSettings, DigitalSignature, Job, TimeEntry } from "@shared/schema";
 import { ObjectStorageService, parseObjectPath, objectStorageClient } from './objectStorage';
 
+let activePdfGenerations = 0;
+const MAX_CONCURRENT_PDFS = 3;
+
+async function acquirePdfSlot(): Promise<void> {
+  while (activePdfGenerations >= MAX_CONCURRENT_PDFS) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  activePdfGenerations++;
+}
+
+function releasePdfSlot(): void {
+  activePdfGenerations = Math.max(0, activePdfGenerations - 1);
+}
+
 /**
  * Resolves a logo URL from object storage path to a base64 data URL.
  * This is necessary because Puppeteer can't access /objects/* paths directly.
@@ -3966,243 +3980,234 @@ export const generateJobProofPackPDF = (data: {
 
 // Convert HTML to actual PDF using Puppeteer
 export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
-  const puppeteer = await import('puppeteer');
-  const { execSync } = await import('child_process');
-  
-  console.log('[PDF] Starting PDF generation...');
-  
-  // Find system-installed Chromium executable
-  let chromiumPath: string | undefined;
+  await acquirePdfSlot();
   try {
-    chromiumPath = execSync('which chromium').toString().trim();
-    console.log('[PDF] Found Chromium at:', chromiumPath);
-  } catch {
-    console.log('[PDF] Chromium not found in PATH, using Puppeteer default');
-  }
-  
-  const browser = await puppeteer.default.launch({
-    headless: true,
-    executablePath: chromiumPath,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-software-rasterizer',
-      '--single-process',
-    ],
-    timeout: 60000,
-  });
-  
-  try {
-    console.log('[PDF] Browser launched, creating page...');
-    const page = await browser.newPage();
+    const puppeteer = await import('puppeteer');
+    const { execSync } = await import('child_process');
     
-    // Set longer timeout for content loading
-    page.setDefaultTimeout(30000);
+    console.log('[PDF] Starting PDF generation...');
     
-    console.log('[PDF] Setting page content...');
-    await page.setContent(html, { 
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
+    let chromiumPath: string | undefined;
+    try {
+      chromiumPath = execSync('which chromium').toString().trim();
+      console.log('[PDF] Found Chromium at:', chromiumPath);
+    } catch {
+      console.log('[PDF] Chromium not found in PATH, using Puppeteer default');
+    }
+    
+    const browser = await puppeteer.default.launch({
+      headless: true,
+      executablePath: chromiumPath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--single-process',
+      ],
+      timeout: 60000,
     });
     
-    // Wait a bit for fonts to load
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('[PDF] Generating PDF buffer...');
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: false,
-      margin: {
-        top: '10mm',
-        right: '10mm',
-        bottom: '10mm',
-        left: '10mm',
-      },
-      timeout: 30000,
-    });
-    
-    console.log('[PDF] PDF generated successfully, size:', pdfBuffer.length);
-    return Buffer.from(pdfBuffer);
+    try {
+      console.log('[PDF] Browser launched, creating page...');
+      const page = await browser.newPage();
+      
+      page.setDefaultTimeout(30000);
+      
+      console.log('[PDF] Setting page content...');
+      await page.setContent(html, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('[PDF] Generating PDF buffer...');
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        displayHeaderFooter: false,
+        margin: {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm',
+        },
+        timeout: 30000,
+      });
+      
+      console.log('[PDF] PDF generated successfully, size:', pdfBuffer.length);
+      return Buffer.from(pdfBuffer);
+    } finally {
+      console.log('[PDF] Closing browser...');
+      await browser.close();
+    }
   } catch (error) {
-    console.error('[PDF] Error generating PDF:', error);
-    throw error;
+    console.error('[PDF] Failed to generate PDF buffer:', error instanceof Error ? error.message : error);
+    throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   } finally {
-    console.log('[PDF] Closing browser...');
-    await browser.close();
+    releasePdfSlot();
   }
 };
 
 // Convert PDF buffer to PNG image (first page only) for template analysis
 // Uses pdf.js to render the PDF on a canvas (works in headless Chromium)
 export const convertPdfToImage = async (pdfBuffer: Buffer): Promise<Buffer> => {
-  const puppeteer = await import('puppeteer');
-  const { execSync } = await import('child_process');
-  
-  console.log('[PDF-to-Image] Starting PDF to image conversion using pdf.js...');
-  
-  // Find system-installed Chromium executable
-  let chromiumPath: string | undefined;
+  await acquirePdfSlot();
   try {
-    chromiumPath = execSync('which chromium').toString().trim();
-    console.log('[PDF-to-Image] Found Chromium at:', chromiumPath);
-  } catch {
-    console.log('[PDF-to-Image] Chromium not found in PATH, using Puppeteer default');
-  }
-  
-  const browser = await puppeteer.default.launch({
-    headless: true,
-    executablePath: chromiumPath,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-software-rasterizer',
-      '--single-process',
-    ],
-    timeout: 60000,
-  });
-  
-  try {
-    console.log('[PDF-to-Image] Browser launched, creating page...');
-    const page = await browser.newPage();
+    const puppeteer = await import('puppeteer');
+    const { execSync } = await import('child_process');
     
-    // Set viewport to A4 dimensions with 2x scale for quality
-    await page.setViewport({ width: 1200, height: 1700, deviceScaleFactor: 2 });
+    console.log('[PDF-to-Image] Starting PDF to image conversion using pdf.js...');
     
-    // Convert PDF buffer to base64
-    const base64Pdf = pdfBuffer.toString('base64');
-    
-    console.log('[PDF-to-Image] Loading pdf.js and rendering PDF...');
-    
-    // Create an HTML page that uses pdf.js (from CDN) to render the PDF to a canvas
-    // This works in headless mode because pdf.js renders to canvas, not using native PDF viewer
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            background: white;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 0;
-          }
-          #canvas {
-            display: block;
-          }
-        </style>
-      </head>
-      <body>
-        <canvas id="canvas"></canvas>
-        <script>
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-          
-          async function renderPdf() {
-            try {
-              // Decode base64 PDF
-              const pdfData = atob('${base64Pdf}');
-              const pdfArray = new Uint8Array(pdfData.length);
-              for (let i = 0; i < pdfData.length; i++) {
-                pdfArray[i] = pdfData.charCodeAt(i);
-              }
-              
-              // Load PDF document
-              const pdf = await pdfjsLib.getDocument({ data: pdfArray }).promise;
-              
-              // Get first page
-              const page = await pdf.getPage(1);
-              
-              // Scale to fit 1200px width with good resolution
-              const scale = 2.0;
-              const viewport = page.getViewport({ scale });
-              
-              // Set canvas dimensions
-              const canvas = document.getElementById('canvas');
-              const context = canvas.getContext('2d');
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
-              
-              // Render page to canvas
-              await page.render({
-                canvasContext: context,
-                viewport: viewport
-              }).promise;
-              
-              console.log('PDF rendered successfully');
-              window.pdfRendered = true;
-              window.canvasWidth = canvas.width;
-              window.canvasHeight = canvas.height;
-            } catch (error) {
-              console.error('Error rendering PDF:', error);
-              window.pdfError = error.message;
-            }
-          }
-          
-          renderPdf();
-        </script>
-      </body>
-      </html>
-    `;
-    
-    // Use domcontentloaded instead of networkidle0 to avoid frame detachment issues
-    // The PDF rendering happens client-side, so we just need the DOM ready
-    await page.setContent(html, { 
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    });
-    
-    // Wait for PDF to render (with timeout)
-    console.log('[PDF-to-Image] Waiting for pdf.js to render...');
+    let chromiumPath: string | undefined;
     try {
-      await page.waitForFunction(
-        '() => window.pdfRendered === true || window.pdfError', 
-        { timeout: 30000 }
-      );
-    } catch (e) {
-      console.error('[PDF-to-Image] Timeout waiting for PDF render');
-      throw new Error('PDF rendering timed out');
+      chromiumPath = execSync('which chromium').toString().trim();
+      console.log('[PDF-to-Image] Found Chromium at:', chromiumPath);
+    } catch {
+      console.log('[PDF-to-Image] Chromium not found in PATH, using Puppeteer default');
     }
     
-    // Check for errors
-    const pdfError = await page.evaluate(() => (window as any).pdfError);
-    if (pdfError) {
-      throw new Error(`PDF render error: ${pdfError}`);
-    }
-    
-    // Get canvas dimensions
-    const dimensions = await page.evaluate(() => ({
-      width: (window as any).canvasWidth,
-      height: (window as any).canvasHeight
-    }));
-    
-    console.log('[PDF-to-Image] Canvas dimensions:', dimensions);
-    
-    // Screenshot the canvas
-    const canvasElement = await page.$('#canvas');
-    if (!canvasElement) {
-      throw new Error('Canvas element not found');
-    }
-    
-    console.log('[PDF-to-Image] Taking screenshot of canvas...');
-    const screenshotBuffer = await canvasElement.screenshot({
-      type: 'png'
+    const browser = await puppeteer.default.launch({
+      headless: true,
+      executablePath: chromiumPath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--single-process',
+      ],
+      timeout: 60000,
     });
     
-    console.log('[PDF-to-Image] Screenshot captured, size:', screenshotBuffer.length, 'bytes');
-    return Buffer.from(screenshotBuffer);
+    try {
+      console.log('[PDF-to-Image] Browser launched, creating page...');
+      const page = await browser.newPage();
+      
+      page.setDefaultTimeout(30000);
+      
+      await page.setViewport({ width: 1200, height: 1700, deviceScaleFactor: 2 });
+      
+      const base64Pdf = pdfBuffer.toString('base64');
+      
+      console.log('[PDF-to-Image] Loading pdf.js and rendering PDF...');
+      
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              background: white;
+              display: flex;
+              justify-content: center;
+              align-items: flex-start;
+              min-height: 100vh;
+              padding: 0;
+            }
+            #canvas {
+              display: block;
+            }
+          </style>
+        </head>
+        <body>
+          <canvas id="canvas"></canvas>
+          <script>
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            
+            async function renderPdf() {
+              try {
+                const pdfData = atob('${base64Pdf}');
+                const pdfArray = new Uint8Array(pdfData.length);
+                for (let i = 0; i < pdfData.length; i++) {
+                  pdfArray[i] = pdfData.charCodeAt(i);
+                }
+                
+                const pdf = await pdfjsLib.getDocument({ data: pdfArray }).promise;
+                const page = await pdf.getPage(1);
+                
+                const scale = 2.0;
+                const viewport = page.getViewport({ scale });
+                
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                await page.render({
+                  canvasContext: context,
+                  viewport: viewport
+                }).promise;
+                
+                console.log('PDF rendered successfully');
+                window.pdfRendered = true;
+                window.canvasWidth = canvas.width;
+                window.canvasHeight = canvas.height;
+              } catch (error) {
+                console.error('Error rendering PDF:', error);
+                window.pdfError = error.message;
+              }
+            }
+            
+            renderPdf();
+          </script>
+        </body>
+        </html>
+      `;
+      
+      await page.setContent(html, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+      
+      console.log('[PDF-to-Image] Waiting for pdf.js to render...');
+      try {
+        await page.waitForFunction(
+          '() => window.pdfRendered === true || window.pdfError', 
+          { timeout: 30000 }
+        );
+      } catch (e) {
+        console.error('[PDF-to-Image] Timeout waiting for PDF render');
+        throw new Error('PDF rendering timed out');
+      }
+      
+      const pdfError = await page.evaluate(() => (window as any).pdfError);
+      if (pdfError) {
+        throw new Error(`PDF render error: ${pdfError}`);
+      }
+      
+      const dimensions = await page.evaluate(() => ({
+        width: (window as any).canvasWidth,
+        height: (window as any).canvasHeight
+      }));
+      
+      console.log('[PDF-to-Image] Canvas dimensions:', dimensions);
+      
+      const canvasElement = await page.$('#canvas');
+      if (!canvasElement) {
+        throw new Error('Canvas element not found');
+      }
+      
+      console.log('[PDF-to-Image] Taking screenshot of canvas...');
+      const screenshotBuffer = await canvasElement.screenshot({
+        type: 'png'
+      });
+      
+      console.log('[PDF-to-Image] Screenshot captured, size:', screenshotBuffer.length, 'bytes');
+      return Buffer.from(screenshotBuffer);
+    } finally {
+      console.log('[PDF-to-Image] Closing browser...');
+      await browser.close();
+    }
   } catch (error) {
-    console.error('[PDF-to-Image] Error converting PDF to image:', error);
-    throw error;
+    console.error('[PDF] Failed to generate PDF image:', error instanceof Error ? error.message : error);
+    throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   } finally {
-    console.log('[PDF-to-Image] Closing browser...');
-    await browser.close();
+    releasePdfSlot();
   }
 };

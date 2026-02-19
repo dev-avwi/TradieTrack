@@ -185,6 +185,25 @@ if (process.env.DATABASE_URL) {
     }).catch(error => {
       console.error('Failed to start schedulers:', error);
     });
+
+    // Start stale timer detection scheduler - runs every 30 minutes
+    import('./staleTimerService').then(({ checkAndAutoStopStaleTimers }) => {
+      const STALE_TIMER_INTERVAL = 30 * 60 * 1000; // 30 minutes
+      setInterval(async () => {
+        try {
+          console.log('[Scheduler] Running stale timer detection...');
+          const result = await checkAndAutoStopStaleTimers();
+          if (result.stopped > 0 || result.errors > 0) {
+            console.log(`[Scheduler] Stale timer check: ${result.stopped} stopped, ${result.errors} errors`);
+          }
+        } catch (error) {
+          console.error('[Scheduler] Stale timer check failed:', error);
+        }
+      }, STALE_TIMER_INTERVAL);
+      console.log('✅ Stale timer detection scheduler started (every 30 minutes)');
+    }).catch(error => {
+      console.error('Failed to start stale timer scheduler:', error);
+    });
     
     // Start demo data refresh scheduler to keep team members "alive"
     if (enableDemoData) {

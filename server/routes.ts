@@ -572,6 +572,17 @@ async function verifyInvoiceCalculation(
   return { valid: true };
 }
 
+// Validate GPS coordinates for Australian region
+function validateAustralianCoords(lat: number, lng: number, accuracy?: number): { valid: boolean; reason?: string } {
+  if (isNaN(lat) || isNaN(lng)) return { valid: false, reason: 'Invalid coordinate values' };
+  if (lat === 0 && lng === 0) return { valid: false, reason: 'Null Island coordinates (0,0) rejected' };
+  // Extended Australia bounds (including territories)
+  if (lat < -55 || lat > -8 || lng < 105 || lng > 165) return { valid: false, reason: 'Coordinates outside Australian region' };
+  // Reject wildly inaccurate GPS (>500m accuracy is unreliable for geofencing)
+  if (accuracy !== undefined && accuracy > 500) return { valid: false, reason: `GPS accuracy too low: ${accuracy}m` };
+  return { valid: true };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use((req, res, next) => {
     const start = Date.now();
@@ -1815,6 +1826,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validStatuses = ['en_route', 'arrived', 'working', 'done'];
       if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
+      // Validate GPS coordinates when location is provided (action-triggering endpoint)
+      if (latitude !== undefined && longitude !== undefined) {
+        const validation = validateAustralianCoords(
+          typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+          typeof longitude === 'string' ? parseFloat(longitude) : longitude
+        );
+        if (!validation.valid) {
+          return res.status(400).json({ error: `Invalid coordinates: ${validation.reason}` });
+        }
+      }
+
       const eventTypeMap: Record<string, string> = {
         'en_route': 'SUBBIE_EN_ROUTE',
         'arrived': 'SUBBIE_ARRIVED',
@@ -1938,6 +1960,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { latitude, longitude, accuracyMeters } = req.body;
       if (!latitude || !longitude) return res.status(400).json({ error: 'Location required' });
+
+      // Validate GPS coordinates (action-triggering endpoint - reject invalid coords)
+      const validation = validateAustralianCoords(
+        typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+        typeof longitude === 'string' ? parseFloat(longitude) : longitude,
+        typeof accuracyMeters === 'string' ? parseFloat(accuracyMeters) : accuracyMeters
+      );
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Invalid coordinates: ${validation.reason}` });
+      }
 
       await storage.createSubcontractorLocationPing({
         tokenId: tokenRecord.id,
@@ -13718,6 +13750,16 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: 'latitude and longitude are required' });
       }
       
+      // Validate GPS coordinates (action-triggering endpoint - reject invalid coords)
+      const validation = validateAustralianCoords(
+        typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+        typeof longitude === 'string' ? parseFloat(longitude) : longitude,
+        typeof accuracyMeters === 'string' ? parseFloat(accuracyMeters) : accuracyMeters
+      );
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Invalid coordinates: ${validation.reason}` });
+      }
+      
       const assignment = await storage.getJobAssignment(assignmentId);
       if (!assignment) {
         return res.status(404).json({ error: 'Assignment not found' });
@@ -14715,6 +14757,17 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: 'Invalid worker status' });
       }
       
+      // Validate GPS coordinates when location is provided (action-triggering endpoint)
+      if (latitude !== undefined && longitude !== undefined) {
+        const validation = validateAustralianCoords(
+          typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+          typeof longitude === 'string' ? parseFloat(longitude) : longitude
+        );
+        if (!validation.valid) {
+          return res.status(400).json({ error: `Invalid coordinates: ${validation.reason}` });
+        }
+      }
+      
       const job = await storage.getJob(req.params.id, effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: 'Job not found' });
@@ -14970,6 +15023,15 @@ Be specific about materials, colors, and features that would be included.`
       
       if (latitude == null || longitude == null) {
         return res.status(400).json({ error: 'Missing latitude/longitude' });
+      }
+      
+      // Validate GPS coordinates (action-triggering endpoint - reject invalid coords)
+      const validation = validateAustralianCoords(
+        typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+        typeof longitude === 'string' ? parseFloat(longitude) : longitude
+      );
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Invalid coordinates: ${validation.reason}` });
       }
       
       const job = await storage.getJob(req.params.id, effectiveUserId);
@@ -21811,6 +21873,65 @@ Respond with JSON in this format:
     }
   });
 
+  app.get("/api/time-entries/stale-check", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+
+      if (!userContext.isOwner && !userContext.permissions.includes('manage_team')) {
+        return res.status(403).json({ error: 'Only owners and managers can check stale timers' });
+      }
+
+      const effectiveUserId = userContext.effectiveUserId;
+      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+
+      const staleEntries = await db.select().from(timeEntries)
+        .where(and(
+          eq(timeEntries.userId, effectiveUserId),
+          isNull(timeEntries.endTime),
+          lte(timeEntries.startTime, eightHoursAgo)
+        ))
+        .orderBy(desc(timeEntries.startTime));
+
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      const teamMemberUserIds = teamMembers.map((m: any) => m.memberId).filter(Boolean);
+
+      let teamStaleEntries: any[] = [];
+      if (teamMemberUserIds.length > 0) {
+        teamStaleEntries = await db.select().from(timeEntries)
+          .where(and(
+            inArray(timeEntries.userId, teamMemberUserIds),
+            isNull(timeEntries.endTime),
+            lte(timeEntries.startTime, eightHoursAgo)
+          ))
+          .orderBy(desc(timeEntries.startTime));
+      }
+
+      const allStale = [...staleEntries, ...teamStaleEntries];
+
+      const enriched = await Promise.all(allStale.map(async (entry: any) => {
+        const user = await storage.getUser(entry.userId);
+        const job = entry.jobId ? await storage.getJob(entry.jobId, effectiveUserId) : null;
+        const runningHours = Math.round((Date.now() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60) * 10) / 10;
+        return {
+          ...entry,
+          userName: user?.name || user?.firstName || 'Unknown',
+          jobTitle: job?.title || null,
+          runningHours,
+        };
+      }));
+
+      res.json({
+        staleTimers: enriched,
+        count: enriched.length,
+        threshold: '8 hours',
+      });
+    } catch (error) {
+      console.error('Error checking stale timers:', error);
+      res.status(500).json({ error: 'Failed to check stale timers' });
+    }
+  });
+
   app.post("/api/time-entries/:id/resume", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -21854,6 +21975,86 @@ Respond with JSON in this format:
     } catch (error) {
       console.error('Error resuming time entry:', error);
       res.status(500).json({ error: 'Failed to resume time entry' });
+    }
+  });
+
+  app.patch("/api/time-entries/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const data = insertTimeEntrySchema.partial().parse(req.body);
+      const editReason = req.body.editReason || null;
+      
+      const existingEntry = await storage.getTimeEntry(id, userId);
+      if (!existingEntry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      
+      let canManageEntry = (existingEntry as any).userId === userId;
+      const isEditingSelf = (existingEntry as any).userId === userId;
+      
+      if (!canManageEntry && (existingEntry as any).userId !== userId) {
+        const teamMembers = await storage.getTeamMembers(userId);
+        const isTeamMember = teamMembers.some((member: any) => member.id === (existingEntry as any).userId);
+        canManageEntry = isTeamMember;
+      }
+      
+      if (!canManageEntry) {
+        return res.status(403).json({ error: 'Access denied - not your time entry or team member' });
+      }
+      
+      if (!existingEntry.endTime && data.startTime) {
+        return res.status(400).json({ error: 'Cannot modify start time of active timer' });
+      }
+      
+      const editSource = isEditingSelf ? 'manual' : 'supervisor';
+      const fieldsToTrack = ['startTime', 'endTime', 'duration', 'hourlyRate', 'description', 'isBillable', 'timeCategory', 'isBreak', 'isOvertime', 'jobId'];
+      
+      for (const field of fieldsToTrack) {
+        if ((data as any)[field] !== undefined) {
+          const oldVal = (existingEntry as any)[field];
+          const newVal = (data as any)[field];
+          
+          const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal instanceof Date ? oldVal.toISOString() : oldVal);
+          const newStr = newVal === null || newVal === undefined ? null : String(newVal instanceof Date ? new Date(newVal).toISOString() : newVal);
+          
+          if (oldStr !== newStr) {
+            await storage.createTimeEntryEdit({
+              timeEntryId: id,
+              editedBy: userId,
+              editReason,
+              fieldChanged: field,
+              oldValue: oldStr,
+              newValue: newStr,
+              editSource,
+            });
+          }
+        }
+      }
+      
+      const timeEntry = await storage.updateTimeEntry(id, userId, data);
+      if (!timeEntry) {
+        return res.status(500).json({ error: 'Failed to update time entry' });
+      }
+      
+      res.json(timeEntry);
+    } catch (error) {
+      console.error('Error updating time entry:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid time entry data', details: error.errors });
+      }
+      res.status(500).json({ error: 'Failed to update time entry' });
+    }
+  });
+
+  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const activeEntry = await storage.getActiveTimeEntry(userId);
+      res.json(activeEntry || null);
+    } catch (error) {
+      console.error('Error fetching active time entry:', error);
+      res.status(500).json({ error: 'Failed to fetch active time entry' });
     }
   });
 
@@ -24192,113 +24393,6 @@ Respond with JSON in this format:
     }
   });
 
-  // ===== TIME TRACKING ROUTES =====
-  
-  // Get time entries for a user (with optional filters)
-  app.get("/api/time-entries", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const { jobId, startDate, endDate } = req.query;
-      
-      const entries = await storage.getTimeEntries(userId, {
-        jobId,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
-      });
-      
-      res.json(entries);
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
-      res.status(500).json({ error: 'Failed to fetch time entries' });
-    }
-  });
-  
-  // Create a new time entry (start timer)
-  app.post("/api/time-entries", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const entryData = insertTimeEntrySchema.parse({ ...req.body, userId });
-      
-      const newEntry = await storage.createTimeEntry(entryData);
-      res.json(newEntry);
-    } catch (error) {
-      console.error('Error creating time entry:', error);
-      res.status(500).json({ error: 'Failed to create time entry' });
-    }
-  });
-  
-  // Update time entry (stop timer, edit) - with audit trail
-  app.patch("/api/time-entries/:id", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const entryId = req.params.id;
-      const editReason = req.body.editReason || null;
-      
-      const existingEntry = await storage.getTimeEntry(entryId, userId);
-      if (!existingEntry) {
-        return res.status(404).json({ error: 'Time entry not found' });
-      }
-      
-      const isEditingSelf = (existingEntry as any).userId === userId;
-      const editSource = isEditingSelf ? 'manual' : 'supervisor';
-      const fieldsToTrack = ['startTime', 'endTime', 'duration', 'hourlyRate', 'description', 'isBillable', 'timeCategory', 'isBreak', 'isOvertime', 'jobId'];
-      
-      for (const field of fieldsToTrack) {
-        if (req.body[field] !== undefined) {
-          const oldVal = (existingEntry as any)[field];
-          const newVal = req.body[field];
-          
-          const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal instanceof Date ? oldVal.toISOString() : oldVal);
-          const newStr = newVal === null || newVal === undefined ? null : String(newVal instanceof Date ? new Date(newVal).toISOString() : newVal);
-          
-          if (oldStr !== newStr) {
-            await storage.createTimeEntryEdit({
-              timeEntryId: entryId,
-              editedBy: userId,
-              editReason,
-              fieldChanged: field,
-              oldValue: oldStr,
-              newValue: newStr,
-              editSource,
-            });
-          }
-        }
-      }
-      
-      const updated = await storage.updateTimeEntry(entryId, userId, req.body);
-      res.json(updated);
-    } catch (error) {
-      console.error('Error updating time entry:', error);
-      res.status(500).json({ error: 'Failed to update time entry' });
-    }
-  });
-  
-  // Delete time entry
-  app.delete("/api/time-entries/:id", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const entryId = req.params.id;
-      
-      await storage.deleteTimeEntry(entryId, userId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error deleting time entry:', error);
-      res.status(500).json({ error: 'Failed to delete time entry' });
-    }
-  });
-  
-  // Get active timer (running time entry without end time)
-  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const activeEntry = await storage.getActiveTimeEntry(userId);
-      res.json(activeEntry);
-    } catch (error) {
-      console.error('Error fetching active timer:', error);
-      res.status(500).json({ error: 'Failed to fetch active timer' });
-    }
-  });
-  
   // ===== STAFF SCHEDULING / CALENDAR ROUTES =====
   
   // Get schedules (calendar events)
@@ -25822,6 +25916,16 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'Latitude and longitude required' });
       }
 
+      // Validate GPS coordinates (storage endpoint - log warning but allow)
+      const validation = validateAustralianCoords(
+        typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+        typeof longitude === 'string' ? parseFloat(longitude) : longitude,
+        typeof accuracy === 'string' ? parseFloat(accuracy) : accuracy
+      );
+      if (!validation.valid) {
+        console.warn(`[LocationValidation] team-locations: ${validation.reason} (lat=${latitude}, lng=${longitude}, user=${userId})`);
+      }
+
       const locationTime = new Date(timestamp || Date.now());
 
       // Insert location history record
@@ -25873,6 +25977,7 @@ Respond with JSON in this format:
     try {
       const userId = req.userId!;
       const { identifier, action, timestamp, latitude, longitude, accuracy, address } = req.body;
+      const eventTimestamp = new Date();
       
       // Parse job ID from identifier (format: job_<jobId>)
       const jobId = identifier?.startsWith('job_') ? identifier.substring(4) : null;
@@ -25881,7 +25986,45 @@ Respond with JSON in this format:
         return res.json({ success: true, message: 'No job ID in identifier' });
       }
       
-      console.log(`[Geofence] User ${userId} ${action}ed job site ${jobId}`);
+      // ========== 1. COORDINATE VALIDATION ==========
+      // Validate latitude and longitude are valid numbers within Australia bounds
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      const acc = parseFloat(accuracy);
+      
+      const AUSTRALIA_LAT_MIN = -44;
+      const AUSTRALIA_LAT_MAX = -10;
+      const AUSTRALIA_LNG_MIN = 112;
+      const AUSTRALIA_LNG_MAX = 154;
+      
+      let coordinatesValid = true;
+      const logContext = {
+        timestamp: eventTimestamp.toISOString(),
+        userId,
+        jobId,
+        action,
+        latitude: lat,
+        longitude: lng,
+        accuracy: acc
+      };
+      
+      if (isNaN(lat) || isNaN(lng) || lat === 0 && lng === 0) {
+        coordinatesValid = false;
+        console.warn('[Geofence] Invalid coordinates (NaN or 0,0):', JSON.stringify(logContext));
+      } else if (lat < AUSTRALIA_LAT_MIN || lat > AUSTRALIA_LAT_MAX || lng < AUSTRALIA_LNG_MIN || lng > AUSTRALIA_LNG_MAX) {
+        coordinatesValid = false;
+        console.warn('[Geofence] Coordinates out of Australia bounds:', JSON.stringify(logContext));
+      }
+      
+      if (!isNaN(acc) && acc < 0) {
+        coordinatesValid = false;
+        console.warn('[Geofence] Invalid accuracy (negative):', JSON.stringify(logContext));
+      }
+      
+      console.info('[Geofence] Event received:', JSON.stringify({
+        ...logContext,
+        coordinatesValid
+      }));
       
       // Get job details to check geofence settings
       const userContext = await getUserContext(userId);
@@ -25889,8 +26032,29 @@ Respond with JSON in this format:
       const job = await storage.getJob(jobId, effectiveUserId);
       
       if (!job) {
-        console.log(`[Geofence] Job ${jobId} not found`);
+        console.info('[Geofence] Job not found:', JSON.stringify({
+          timestamp: eventTimestamp.toISOString(),
+          userId,
+          jobId
+        }));
         return res.json({ success: true, message: 'Job not found' });
+      }
+      
+      // ========== 2. DEDUPE/IDEMPOTENCY CHECK ==========
+      // Check for duplicate alert within last 60 seconds for same user+job+action
+      const recentAlerts = await storage.getRecentGeofenceAlerts(userId, jobId, action, 60);
+      if (recentAlerts && recentAlerts.length > 0) {
+        console.info('[Geofence] Duplicate event suppressed (recent alert exists):', JSON.stringify({
+          ...logContext,
+          existingAlertId: recentAlerts[0].id,
+          existingAlertAge: `${Math.round((eventTimestamp.getTime() - new Date(recentAlerts[0].createdAt).getTime()) / 1000)}s`
+        }));
+        return res.json({
+          success: true,
+          alertId: recentAlerts[0].id,
+          isDuplicate: true,
+          message: 'Recent alert already exists for this event'
+        });
       }
       
       // Create geofence alert for owner/manager visibility
@@ -25899,15 +26063,18 @@ Respond with JSON in this format:
         jobId,
         businessOwnerId: effectiveUserId,
         alertType: action === 'enter' ? 'arrival' : 'departure',
-        latitude: latitude?.toString() || job.latitude || '0',
-        longitude: longitude?.toString() || job.longitude || '0',
+        latitude: coordinatesValid ? lat.toString() : (job.latitude || '0'),
+        longitude: coordinatesValid ? lng.toString() : (job.longitude || '0'),
         address: address || job.address || '',
-        distanceFromSite: accuracy?.toString() || null,
+        distanceFromSite: coordinatesValid && !isNaN(acc) ? acc.toString() : null,
         isRead: false,
       };
       
       const alert = await storage.createGeofenceAlert(alertData);
-      console.log(`[Geofence] Created alert ${alert.id} for ${action}`);
+      console.info('[Geofence] Alert created:', JSON.stringify({
+        ...logContext,
+        alertId: alert.id
+      }));
       
       if (action === 'exit') {
         const user = await storage.getUser(userId);
@@ -25940,42 +26107,75 @@ Respond with JSON in this format:
       
       let timeEntryAction = null;
       
+      // ========== 3. AUTO CLOCK-IN WITH ACTIVE TIMER CHECK ==========
       // Handle auto clock-in on arrival
-      if (action === 'enter' && job.geofenceEnabled && job.geofenceAutoClockIn) {
+      if (action === 'enter' && job.geofenceEnabled && job.geofenceAutoClockIn && coordinatesValid) {
         // Check if user already has an active time entry for this job
         const activeEntry = await storage.getActiveTimeEntry(userId);
         
-        if (!activeEntry || activeEntry.jobId !== jobId) {
-          // Stop any existing active timer first
-          if (activeEntry) {
-            await storage.stopTimeEntry(activeEntry.id, userId);
-            console.log(`[Geofence] Stopped existing timer ${activeEntry.id}`);
-          }
-          
-          // Start new time entry for this job
+        if (!activeEntry) {
+          // No active timer, safe to auto-clock-in
           const newEntry = await storage.createTimeEntry({
             userId,
             jobId,
-            startTime: new Date(timestamp || Date.now()),
+            startTime: new Date(timestamp || eventTimestamp),
             description: 'Auto-started by geofence arrival',
             origin: 'geofence',
             geofenceEventId: alert.id,
           });
-          console.log(`[Geofence] Auto clock-in: Created time entry ${newEntry.id}`);
+          console.info('[Geofence] Auto clock-in succeeded:', JSON.stringify({
+            ...logContext,
+            entryId: newEntry.id
+          }));
           timeEntryAction = { type: 'clock_in', entryId: newEntry.id };
+        } else if (activeEntry.jobId === jobId) {
+          // Already on this job, no action needed
+          console.info('[Geofence] Already clocked in to same job:', JSON.stringify({
+            ...logContext,
+            activeJobId: activeEntry.jobId,
+            activeEntryId: activeEntry.id
+          }));
+        } else {
+          // Active timer on DIFFERENT job - don't auto-stop it, just skip auto-clock-in
+          console.warn('[Geofence] Skipping auto-clock-in due to active timer on different job:', JSON.stringify({
+            ...logContext,
+            activeJobId: activeEntry.jobId,
+            activeEntryId: activeEntry.id,
+            targetJobId: jobId,
+            reason: 'Timer on different job - manual intervention required'
+          }));
         }
       }
       
+      // ========== 4. AUTO CLOCK-OUT WITH MINIMUM DURATION CHECK ==========
       // Handle auto clock-out on departure
-      if (action === 'exit' && job.geofenceEnabled && job.geofenceAutoClockOut) {
-        // Find active time entry for this job
+      if (action === 'exit' && job.geofenceEnabled && job.geofenceAutoClockOut && coordinatesValid) {
         const activeEntry = await storage.getActiveTimeEntry(userId);
         
         if (activeEntry && activeEntry.jobId === jobId) {
-          // Stop the timer
-          const stoppedEntry = await storage.stopTimeEntry(activeEntry.id, userId);
-          console.log(`[Geofence] Auto clock-out: Stopped time entry ${activeEntry.id}`);
-          timeEntryAction = { type: 'clock_out', entryId: activeEntry.id, duration: stoppedEntry?.duration };
+          // Check if timer has been running for at least 1 minute
+          const entryStartTime = new Date(activeEntry.startTime);
+          const durationSeconds = (eventTimestamp.getTime() - entryStartTime.getTime()) / 1000;
+          
+          if (durationSeconds >= 60) {
+            // Safe to auto-clock-out
+            const stoppedEntry = await storage.stopTimeEntry(activeEntry.id, userId);
+            console.info('[Geofence] Auto clock-out succeeded:', JSON.stringify({
+              ...logContext,
+              entryId: activeEntry.id,
+              duration: stoppedEntry?.duration
+            }));
+            timeEntryAction = { type: 'clock_out', entryId: activeEntry.id, duration: stoppedEntry?.duration };
+          } else {
+            // Timer too recent, might be GPS signal noise - skip auto-clock-out
+            console.warn('[Geofence] Skipping auto-clock-out due to short duration:', JSON.stringify({
+              ...logContext,
+              entryId: activeEntry.id,
+              durationSeconds,
+              minimumRequired: 60,
+              reason: 'Possible GPS signal noise'
+            }));
+          }
         }
       }
       
@@ -25983,6 +26183,7 @@ Respond with JSON in this format:
         success: true, 
         alertId: alert.id,
         timeEntryAction,
+        coordinatesValid,
         geofenceSettings: {
           enabled: job.geofenceEnabled,
           autoClockIn: job.geofenceAutoClockIn,
@@ -25991,7 +26192,12 @@ Respond with JSON in this format:
         }
       });
     } catch (error: any) {
-      console.error('Error handling geofence event:', error);
+      console.error('[Geofence] Error handling geofence event:', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        userId: req.userId,
+        error: error.message,
+        stack: error.stack
+      }));
       res.status(500).json({ error: 'Failed to process geofence event' });
     }
   });
@@ -28447,6 +28653,16 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'Latitude and longitude are required' });
       }
       
+      // Validate GPS coordinates (storage endpoint - log warning but allow)
+      const validation = validateAustralianCoords(
+        typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+        typeof longitude === 'string' ? parseFloat(longitude) : longitude,
+        typeof accuracy === 'string' ? parseFloat(accuracy) : accuracy
+      );
+      if (!validation.valid) {
+        console.warn(`[LocationValidation] map/update-location: ${validation.reason} (lat=${latitude}, lng=${longitude}, user=${userId})`);
+      }
+      
       // Save location to tracking history
       await storage.createLocationEntry({
         userId,
@@ -30218,6 +30434,12 @@ Respond with JSON in this format:
       
       if (typeof lat !== 'number' || typeof lng !== 'number') {
         return res.status(400).json({ error: 'lat and lng are required as numbers' });
+      }
+      
+      // Validate GPS coordinates (action-triggering endpoint - reject invalid coords)
+      const validation = validateAustralianCoords(lat, lng);
+      if (!validation.valid) {
+        return res.status(400).json({ error: `Invalid coordinates: ${validation.reason}` });
       }
       
       const trackingLink = await storage.getSmsTrackingLinkByToken(token);
@@ -34568,3 +34790,4 @@ Respond with JSON in this format:
   const httpServer = createServer(app);
   return httpServer;
 }
+
