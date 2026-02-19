@@ -601,6 +601,7 @@ function HeroMap({
           </div>
         );
       })()}
+      </div>
     </div>
   );
 }
