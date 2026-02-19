@@ -64,6 +64,9 @@ import {
   Clock,
   XCircle,
   Download,
+  Upload,
+  X,
+  Loader2,
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
@@ -136,6 +139,34 @@ export default function FilesPage() {
   const [selectedItem, setSelectedItem] = useState<ComplianceDocument | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ComplianceDocument | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
+  const handleFileUpload = async (file: globalThis.File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File must be under 10MB", variant: "destructive" });
+      return;
+    }
+    setUploadingFile(true);
+    setSelectedFileName(file.name);
+    try {
+      const res = await apiRequest("POST", "/api/objects/upload");
+      const { uploadURL } = await res.json();
+      await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const objectPath = new URL(uploadURL).pathname;
+      setFormData(prev => ({ ...prev, attachmentUrl: objectPath }));
+      toast({ title: "File uploaded" });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+      setSelectedFileName(null);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
 
   const { data: documents = [], isLoading } = useQuery<ComplianceDocument[]>({
     queryKey: ["/api/compliance-documents"],
@@ -223,6 +254,7 @@ export default function FilesPage() {
   function openCreate() {
     setEditingItem(null);
     setFormData(defaultFormData);
+    setSelectedFileName(null);
     setDialogOpen(true);
   }
 
@@ -241,6 +273,7 @@ export default function FilesPage() {
       attachmentUrl: doc.attachmentUrl || "",
       notes: doc.notes || "",
     });
+    setSelectedFileName(doc.attachmentUrl ? doc.attachmentUrl.split("/").pop() || "Existing file" : null);
     setDialogOpen(true);
   }
 
@@ -544,12 +577,50 @@ export default function FilesPage() {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Attachment URL</Label>
-              <Input
-                value={formData.attachmentUrl}
-                onChange={(e) => setFormData({ ...formData, attachmentUrl: e.target.value })}
-                placeholder="https://..."
-              />
+              <Label>Attachment</Label>
+              {formData.attachmentUrl && selectedFileName ? (
+                <div className="flex items-center gap-2 p-2.5 rounded-md border bg-muted/30">
+                  <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm truncate flex-1">{selectedFileName}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 flex-shrink-0"
+                    onClick={() => {
+                      setFormData({ ...formData, attachmentUrl: "" });
+                      setSelectedFileName(null);
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center gap-2 p-4 rounded-md border-2 border-dashed cursor-pointer hover-elevate transition-colors">
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file);
+                      e.target.value = "";
+                    }}
+                    disabled={uploadingFile}
+                  />
+                  {uploadingFile ? (
+                    <>
+                      <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                      <span className="text-sm text-muted-foreground">Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Tap to upload photo or document</span>
+                    </>
+                  )}
+                </label>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Notes</Label>
@@ -565,7 +636,7 @@ export default function FilesPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={createMutation.isPending || updateMutation.isPending || uploadingFile}
             >
               {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingItem ? "Save Changes" : "Add Document"}
             </Button>
