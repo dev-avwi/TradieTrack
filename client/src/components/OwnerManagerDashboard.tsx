@@ -289,7 +289,7 @@ export default function OwnerManagerDashboard({
       {hasMoneyData && (
         <Card 
           className="mb-3 cursor-pointer hover-elevate"
-          onClick={() => onNavigate?.('/documents?tab=invoices&filter=sent')}
+          onClick={() => onNavigate?.('/documents?tab=invoices&filter=unpaid')}
           data-testid="kpi-money-owed"
         >
           <CardContent className="p-3">
@@ -335,7 +335,7 @@ export default function OwnerManagerDashboard({
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/jobs?filter=in_progress')}
+            onClick={() => onNavigate?.('/work?filter=today')}
             data-testid="kpi-jobs-today"
           >
             <CardContent className="py-1.5 px-2">
@@ -348,7 +348,7 @@ export default function OwnerManagerDashboard({
           </Card>
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/jobs?filter=done')}
+            onClick={() => onNavigate?.('/work?filter=done')}
             data-testid="kpi-jobs-to-invoice"
           >
             <CardContent className="py-1.5 px-2">
@@ -376,7 +376,7 @@ export default function OwnerManagerDashboard({
           </Card>
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/jobs?filter=in_progress')}
+            onClick={() => onNavigate?.('/work?filter=in_progress')}
             data-testid="kpi-active-jobs"
           >
             <CardContent className="py-1.5 px-2">
@@ -389,7 +389,7 @@ export default function OwnerManagerDashboard({
           </Card>
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
+            onClick={() => onNavigate?.('/insights')}
             data-testid="kpi-weekly-earnings"
           >
             <CardContent className="py-1.5 px-2">
@@ -404,7 +404,7 @@ export default function OwnerManagerDashboard({
           </Card>
           <Card 
             className="cursor-pointer hover-elevate"
-            onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
+            onClick={() => onNavigate?.('/reports')}
             data-testid="kpi-monthly-earnings"
           >
             <CardContent className="py-1.5 px-2">

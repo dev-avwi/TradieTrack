@@ -504,12 +504,14 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const [receiptFilter, setReceiptFilter] = useState<ReceiptStatus>(
     initialTab === 'receipts' ? (initialFilter as ReceiptStatus) : "all"
   );
+  const [triggerCreate, setTriggerCreate] = useState(false);
   
   // Update tab and filter when URL params change
   useEffect(() => {
     const urlParams = new URLSearchParams(searchParams);
     const tab = urlParams.get('tab') as DocumentTab;
     const filter = urlParams.get('filter');
+    const action = urlParams.get('action');
     
     if (tab) {
       setActiveTab(tab);
@@ -523,6 +525,11 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         }
       }
     }
+    
+    // Handle create action
+    if (action === 'create') {
+      setTriggerCreate(true);
+    }
   }, [searchParams]);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -532,6 +539,18 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const [deleteQuoteDialogOpen, setDeleteQuoteDialogOpen] = useState(false);
   const [deleteInvoiceDialogOpen, setDeleteInvoiceDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  
+  // Handle create action after state is updated
+  useEffect(() => {
+    if (triggerCreate) {
+      switch (activeTab) {
+        case 'quotes': navigate('/quotes/new'); break;
+        case 'invoices': navigate('/invoices/new'); break;
+        case 'receipts': navigate('/collect-payment'); break;
+      }
+      setTriggerCreate(false);
+    }
+  }, [triggerCreate, activeTab, navigate]);
   
   const { toast } = useToast();
   const { data: businessSettings } = useBusinessSettings();

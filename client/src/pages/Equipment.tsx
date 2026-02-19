@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus,
   Wrench,
@@ -40,6 +41,11 @@ import {
   Clock,
   XCircle,
   Briefcase,
+  BarChart3,
+  Gauge,
+  Route,
+  TrendingUp,
+  ChevronDown,
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
@@ -90,6 +96,354 @@ const defaultMaintenanceForm = {
   scheduledDate: "",
   nextDueDate: "",
 };
+
+function JobAssignmentsSection({ assignments, equipmentId }: { assignments: any[]; equipmentId: string }) {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [usageForm, setUsageForm] = useState({
+    hoursUsed: "",
+    kmTravelled: "",
+    capacityUsed: "",
+    capacityAvailable: "",
+    postJobNotes: "",
+    wasOversized: false,
+  });
+
+  const updateUsageMutation = useMutation({
+    mutationFn: async ({ jobId, assignmentId, data }: { jobId: string; assignmentId: string; data: Record<string, unknown> }) => {
+      await apiRequest("PATCH", `/api/jobs/${jobId}/equipment/${assignmentId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment", equipmentId, "assignments"] });
+      setEditingId(null);
+      toast({ title: "Usage data saved" });
+    },
+    onError: () => {
+      toast({ title: "Failed to save usage data", variant: "destructive" });
+    },
+  });
+
+  function openUsageForm(assignment: any) {
+    setUsageForm({
+      hoursUsed: assignment.hoursUsed || "",
+      kmTravelled: assignment.kmTravelled || "",
+      capacityUsed: assignment.capacityUsed || "",
+      capacityAvailable: assignment.capacityAvailable || "",
+      postJobNotes: assignment.postJobNotes || "",
+      wasOversized: assignment.wasOversized || false,
+    });
+    setEditingId(assignment.id);
+  }
+
+  function handleSaveUsage(assignment: any) {
+    const payload: Record<string, unknown> = {};
+    if (usageForm.hoursUsed) payload.hoursUsed = usageForm.hoursUsed;
+    if (usageForm.kmTravelled) payload.kmTravelled = usageForm.kmTravelled;
+    if (usageForm.capacityUsed) payload.capacityUsed = usageForm.capacityUsed;
+    if (usageForm.capacityAvailable) payload.capacityAvailable = usageForm.capacityAvailable;
+    if (usageForm.postJobNotes) payload.postJobNotes = usageForm.postJobNotes;
+    payload.wasOversized = usageForm.wasOversized;
+
+    updateUsageMutation.mutate({
+      jobId: assignment.jobId,
+      assignmentId: assignment.id,
+      data: payload,
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Assigned to Jobs</h3>
+      {assignments.length > 0 ? (
+        <div className="space-y-2">
+          {assignments.map((assignment: any) => (
+            <div key={assignment.id} className="rounded-lg bg-muted/50 overflow-hidden">
+              <div className="flex items-start gap-3 p-3">
+                <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium truncate">{assignment.jobTitle || 'Job'}</p>
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      {assignment.jobStatus || 'Active'}
+                    </Badge>
+                    {assignment.wasOversized && (
+                      <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Oversized</Badge>
+                    )}
+                  </div>
+                  {(assignment.hoursUsed || assignment.kmTravelled || assignment.capacityUsed) && (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                      {assignment.hoursUsed && <span>{assignment.hoursUsed}h used</span>}
+                      {assignment.kmTravelled && <span>{assignment.kmTravelled}km</span>}
+                      {assignment.capacityUsed && (
+                        <span>Cap: {assignment.capacityUsed}{assignment.capacityAvailable ? ` / ${assignment.capacityAvailable}` : ''}</span>
+                      )}
+                    </div>
+                  )}
+                  {assignment.postJobNotes && (
+                    <p className="text-xs text-muted-foreground mt-1 italic">{assignment.postJobNotes}</p>
+                  )}
+                  {assignment.notes && !assignment.postJobNotes && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{assignment.notes}</p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => editingId === assignment.id ? setEditingId(null) : openUsageForm(assignment)}
+                >
+                  {editingId === assignment.id ? "Cancel" : "Add Usage"}
+                </Button>
+              </div>
+              {editingId === assignment.id && (
+                <div className="px-3 pb-3 space-y-3 border-t pt-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Hours Used</Label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        value={usageForm.hoursUsed}
+                        onChange={(e) => setUsageForm({ ...usageForm, hoursUsed: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">KM Travelled</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={usageForm.kmTravelled}
+                        onChange={(e) => setUsageForm({ ...usageForm, kmTravelled: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Capacity Used</Label>
+                      <Input
+                        value={usageForm.capacityUsed}
+                        onChange={(e) => setUsageForm({ ...usageForm, capacityUsed: e.target.value })}
+                        placeholder="e.g. 80t"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Capacity Available</Label>
+                      <Input
+                        value={usageForm.capacityAvailable}
+                        onChange={(e) => setUsageForm({ ...usageForm, capacityAvailable: e.target.value })}
+                        placeholder="e.g. 120t"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Post-Job Notes</Label>
+                    <Textarea
+                      value={usageForm.postJobNotes}
+                      onChange={(e) => setUsageForm({ ...usageForm, postJobNotes: e.target.value })}
+                      rows={2}
+                      placeholder="Notes about usage..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`oversized-${assignment.id}`}
+                      checked={usageForm.wasOversized}
+                      onCheckedChange={(checked) => setUsageForm({ ...usageForm, wasOversized: !!checked })}
+                    />
+                    <Label htmlFor={`oversized-${assignment.id}`} className="text-xs cursor-pointer">
+                      Was oversized for this job
+                    </Label>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveUsage(assignment)}
+                    disabled={updateUsageMutation.isPending}
+                  >
+                    {updateUsageMutation.isPending ? "Saving..." : "Save Usage"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Not assigned to any jobs</p>
+      )}
+    </div>
+  );
+}
+
+function EquipmentUtilisation() {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/reports/equipment-utilisation"],
+    queryFn: async () => {
+      const res = await fetch("/api/reports/equipment-utilisation", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-10 w-full" /></CardContent></Card>
+          ))}
+        </div>
+        {[1, 2, 3].map((i) => (
+          <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+        ))}
+      </div>
+    );
+  }
+
+  const summary = data?.summary || {};
+  const equipmentItems = data?.equipment || [];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <Wrench className="h-3.5 w-3.5" />
+              <span>Equipment Used</span>
+            </div>
+            <p className="text-xl font-semibold">{summary.totalEquipmentUsed || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <Briefcase className="h-3.5 w-3.5" />
+              <span>Total Jobs</span>
+            </div>
+            <p className="text-xl font-semibold">{summary.totalJobAssignments || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Hours Logged</span>
+            </div>
+            <p className="text-xl font-semibold">{summary.totalHoursLogged || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <Route className="h-3.5 w-3.5" />
+              <span>Total KM</span>
+            </div>
+            <p className="text-xl font-semibold">{summary.totalKmLogged || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Oversized</span>
+            </div>
+            <p className="text-xl font-semibold">{summary.oversizedInstances || 0}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {equipmentItems.length === 0 ? (
+        <EmptyState
+          icon={BarChart3}
+          title="No utilisation data"
+          description="Equipment usage data will appear here once equipment is assigned to jobs."
+        />
+      ) : (
+        <div className="space-y-2">
+          {equipmentItems.map((item: any) => {
+            const isExpanded = expandedId === item.equipmentId;
+            return (
+              <Card key={item.equipmentId}>
+                <CardContent className="p-0">
+                  <div
+                    className="p-4 cursor-pointer hover-elevate"
+                    onClick={() => setExpandedId(isExpanded ? null : item.equipmentId)}
+                  >
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50">
+                          <Wrench className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium truncate">{item.name}</p>
+                            {item.utilizationRate > 80 && (
+                              <Badge variant="secondary" className="bg-warning/10 text-warning text-xs">
+                                <Gauge className="h-3 w-3 mr-0.5" />
+                                High Use
+                              </Badge>
+                            )}
+                            {item.oversizedCount > 0 && (
+                              <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">
+                                Oversized
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                            {item.category && <span>{item.category}</span>}
+                            <span>{item.totalJobs} job{item.totalJobs !== 1 ? 's' : ''}</span>
+                            {item.totalHoursUsed > 0 && <span>{item.totalHoursUsed}h</span>}
+                            {item.totalKmTravelled > 0 && <span>{item.totalKmTravelled}km</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="text-right text-sm">
+                          <p className="font-medium">{item.utilizationRate}%</p>
+                          <p className="text-xs text-muted-foreground">utilisation</p>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </div>
+                    </div>
+                  </div>
+                  {isExpanded && item.assignments && item.assignments.length > 0 && (
+                    <div className="px-4 pb-4 space-y-2 border-t pt-3">
+                      {item.assignments.map((a: any, idx: number) => (
+                        <div key={idx} className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
+                          <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium truncate">{a.jobTitle || 'Job'}</p>
+                              <Badge variant="secondary" className="text-xs">{a.jobStatus || 'Active'}</Badge>
+                              {a.wasOversized && (
+                                <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Oversized</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                              {a.hoursUsed && <span>{a.hoursUsed}h used</span>}
+                              {a.kmTravelled && <span>{a.kmTravelled}km</span>}
+                              {a.capacityUsed && <span>Cap: {a.capacityUsed}{a.capacityAvailable ? ` / ${a.capacityAvailable}` : ''}</span>}
+                              {a.assignedAt && <span>{format(new Date(a.assignedAt), "dd MMM yyyy")}</span>}
+                            </div>
+                            {a.postJobNotes && (
+                              <p className="text-xs text-muted-foreground mt-1 italic">{a.postJobNotes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function EquipmentPage() {
   const { toast } = useToast();
@@ -324,10 +678,13 @@ export default function EquipmentPage() {
             <TabsTrigger value="available">Available</TabsTrigger>
             <TabsTrigger value="in_use">In Use</TabsTrigger>
             <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+            <TabsTrigger value="utilisation">Utilisation</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        {isLoading ? (
+        {activeTab === "utilisation" ? (
+          <EquipmentUtilisation />
+        ) : isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Card key={i}>
@@ -745,29 +1102,10 @@ export default function EquipmentPage() {
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Assigned to Jobs</h3>
-                  {allJobEquipment.length > 0 ? (
-                    <div className="space-y-2">
-                      {allJobEquipment.map((assignment: any) => (
-                        <div key={assignment.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                          <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{assignment.jobTitle || 'Job'}</p>
-                            {assignment.notes && (
-                              <p className="text-xs text-muted-foreground truncate">{assignment.notes}</p>
-                            )}
-                          </div>
-                          <Badge variant="secondary" className="text-xs flex-shrink-0">
-                            {assignment.jobStatus || 'Active'}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Not assigned to any jobs</p>
-                  )}
-                </div>
+                <JobAssignmentsSection
+                  assignments={allJobEquipment}
+                  equipmentId={selectedItem.id}
+                />
               </div>
             </>
           )}

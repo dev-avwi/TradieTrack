@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
@@ -38,7 +38,7 @@ import { useJobs, useUpdateJob, useArchiveJob, useUnarchiveJob, useDeleteJob } f
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useLocation } from "wouter";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 import PasteJobModal from "@/components/PasteJobModal";
@@ -81,7 +81,17 @@ export default function WorkPage({
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+
+  useEffect(() => {
+    const searchString = location.split('?')[1] || '';
+    const params = new URLSearchParams(searchString);
+    const filterParam = params.get('filter');
+    const validFilters = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'today', 'archived', 'inspection'];
+    if (filterParam && validFilters.includes(filterParam)) {
+      setActiveFilter(filterParam);
+    }
+  }, [location]);
 
   const showArchived = activeFilter === 'archived';
   const { data: jobs = [], isLoading } = useJobs({ archived: showArchived }) as { data: Job[], isLoading: boolean };
@@ -122,6 +132,8 @@ export default function WorkPage({
 
       const matchesFilter = activeFilter === 'all' || activeFilter === 'archived'
         ? true
+        : activeFilter === 'today'
+        ? (job.scheduledAt && isToday(parseISO(job.scheduledAt)))
         : activeFilter === 'inspection'
         ? (job.requiresInspection && !job.inspectionCompletedAt)
         : job.status === activeFilter;
@@ -515,6 +527,7 @@ export default function WorkPage({
           { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
           { id: 'done', label: 'Completed', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
           { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
+          { id: 'today', label: 'Today', count: jobs.filter(j => j.scheduledAt && isToday(parseISO(j.scheduledAt))).length, icon: <Calendar className="h-3 w-3" /> },
           { id: 'inspection', label: 'Inspection', count: stats.inspection, icon: <Search className="h-3 w-3" /> },
           { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> },
         ]}

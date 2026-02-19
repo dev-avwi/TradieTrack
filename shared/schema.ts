@@ -3544,6 +3544,13 @@ export const jobEquipment = pgTable("job_equipment", {
   equipmentId: varchar("equipment_id").notNull().references(() => equipment.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   notes: text("notes"),
+  hoursUsed: decimal("hours_used", { precision: 8, scale: 2 }),
+  kmTravelled: decimal("km_travelled", { precision: 10, scale: 2 }),
+  capacityUsed: text("capacity_used"),
+  capacityAvailable: text("capacity_available"),
+  postJobNotes: text("post_job_notes"),
+  wasOversized: boolean("was_oversized").default(false),
+  completedAt: timestamp("completed_at"),
   assignedAt: timestamp("assigned_at").defaultNow(),
 });
 

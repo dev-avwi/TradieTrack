@@ -76,15 +76,17 @@ function MetricCard({
   icon: Icon,
   context,
   valueColor,
+  onClick,
 }: {
   label: string;
   value: string;
   icon?: typeof DollarSign;
   context?: string;
   valueColor?: string;
+  onClick?: () => void;
 }) {
   return (
-    <Card className="hover-elevate">
+    <Card className={`hover-elevate ${onClick ? "cursor-pointer" : ""}`} onClick={onClick}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -101,17 +103,22 @@ function MetricCard({
               <p className="text-xs text-muted-foreground mt-1">{context}</p>
             )}
           </div>
-          {Icon && (
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-            >
-              <Icon
-                className="h-4 w-4"
-                style={{ color: "hsl(var(--trade))" }}
-              />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {Icon && (
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
+              >
+                <Icon
+                  className="h-4 w-4"
+                  style={{ color: "hsl(var(--trade))" }}
+                />
+              </div>
+            )}
+            {onClick && (
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -214,11 +221,13 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 value={fmtAud(profit?.revenueThisMonth ?? 0)}
                 icon={DollarSign}
                 context={`This week: ${fmtAud(profit?.revenueThisWeek ?? 0)}`}
+                onClick={() => onNavigate?.("/documents?tab=invoices&filter=paid")}
               />
               <MetricCard
                 label="Gross Profit"
                 value={fmtAud(profit?.grossProfit ?? 0)}
                 icon={TrendingUp}
+                onClick={() => onNavigate?.("/profitability-report")}
               />
               <MetricCard
                 label="Gross Margin"
@@ -232,18 +241,21 @@ export default function Insights({ onNavigate }: InsightsProps) {
                       ? "Room to improve"
                       : "Needs attention"
                 }
+                onClick={() => onNavigate?.("/profitability-report")}
               />
               <MetricCard
                 label="Labour Cost"
                 value={fmtAud(profit?.labourCostThisMonth ?? 0)}
                 icon={Clock}
                 context="This month"
+                onClick={() => onNavigate?.("/time-tracking")}
               />
               <MetricCard
                 label="Material Cost"
                 value={fmtAud(profit?.materialCostThisMonth ?? 0)}
                 icon={BarChart3}
                 context="This month"
+                onClick={() => onNavigate?.("/work")}
               />
             </div>
           )}
@@ -255,11 +267,13 @@ export default function Insights({ onNavigate }: InsightsProps) {
                   label="Cash Collected Today"
                   value={fmtAud(profit?.cashCollectedToday ?? 0)}
                   icon={DollarSign}
+                  onClick={() => onNavigate?.("/documents?tab=invoices&filter=paid")}
                 />
                 <MetricCard
                   label="Due This Week"
                   value={fmtAud(cashflow?.dueThisWeek ?? 0)}
                   icon={Clock}
+                  onClick={() => onNavigate?.("/documents?tab=invoices&filter=unpaid")}
                 />
                 <div className="relative">
                   <MetricCard
@@ -271,6 +285,7 @@ export default function Insights({ onNavigate }: InsightsProps) {
                         ? "hsl(0 84.2% 60.2%)"
                         : undefined
                     }
+                    onClick={() => onNavigate?.("/documents?tab=invoices&filter=overdue")}
                   />
                   {(cashflow?.overdueCount ?? 0) > 0 && (
                     <div className="absolute top-2 right-2">
@@ -282,7 +297,7 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 </div>
               </div>
 
-              <Card className="hover-elevate">
+              <Card className="cursor-pointer hover-elevate" onClick={() => onNavigate?.("/documents?tab=invoices&filter=paid")}>
                 <CardContent className="p-4">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">
                     This Month vs Last Month
@@ -339,16 +354,19 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 label="Jobs Today"
                 value={String(kpis?.jobsToday ?? 0)}
                 icon={Clock}
+                onClick={() => onNavigate?.("/work")}
               />
               <MetricCard
                 label="Weekly Earnings"
                 value={fmtAud(kpis?.weeklyEarnings ?? 0)}
                 icon={TrendingUp}
+                onClick={() => onNavigate?.("/time-tracking")}
               />
               <MetricCard
                 label="Monthly Earnings"
                 value={fmtAud(kpis?.monthlyEarnings ?? 0)}
                 icon={DollarSign}
+                onClick={() => onNavigate?.("/time-tracking")}
               />
               <MetricCard
                 label="Jobs to Invoice"
@@ -364,6 +382,7 @@ export default function Insights({ onNavigate }: InsightsProps) {
                     ? "Completed, not yet invoiced"
                     : "All caught up"
                 }
+                onClick={() => onNavigate?.("/work")}
               />
             </div>
           )}
@@ -375,6 +394,7 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 value={String(kpis?.quotesAwaiting ?? 0)}
                 icon={Users}
                 context="Sent, awaiting response"
+                onClick={() => onNavigate?.("/documents?tab=quotes")}
               />
               <MetricCard
                 label="Unpaid Invoices"
@@ -386,6 +406,7 @@ export default function Insights({ onNavigate }: InsightsProps) {
                     ? "hsl(0 84.2% 60.2%)"
                     : undefined
                 }
+                onClick={() => onNavigate?.("/documents?tab=invoices&filter=unpaid")}
               />
             </div>
           )}

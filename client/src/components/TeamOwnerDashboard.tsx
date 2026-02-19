@@ -380,7 +380,7 @@ export default function TeamOwnerDashboard({
           <div 
             className="feed-card card-press cursor-pointer border-2"
             style={{ borderColor: 'hsl(var(--destructive) / 0.3)' }}
-            onClick={() => onNavigate?.('/documents?tab=invoices&filter=sent')}
+            onClick={() => onNavigate?.('/documents?tab=invoices&filter=unpaid')}
             data-testid="kpi-money-owed"
           >
             <div className="card-padding">
@@ -482,7 +482,7 @@ export default function TeamOwnerDashboard({
         <div className="grid grid-cols-2 gap-3">
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/jobs?filter=in_progress')}
+            onClick={() => onNavigate?.('/work?filter=today')}
             data-testid="kpi-jobs-today"
           >
             <div className="card-padding">
@@ -503,7 +503,7 @@ export default function TeamOwnerDashboard({
           
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/jobs?filter=done')}
+            onClick={() => onNavigate?.('/work?filter=done')}
             data-testid="kpi-jobs-to-invoice"
           >
             <div className="card-padding">
@@ -548,7 +548,7 @@ export default function TeamOwnerDashboard({
           
           <div 
             className="feed-card card-press cursor-pointer"
-            onClick={() => onNavigate?.('/documents?tab=invoices&filter=paid')}
+            onClick={() => onNavigate?.('/insights')}
             data-testid="kpi-earnings"
           >
             <div className="card-padding">
@@ -780,7 +780,7 @@ export default function TeamOwnerDashboard({
                       <Button
                         variant="ghost"
                         className="flex-shrink-0 h-auto py-3 px-4 rounded-xl"
-                        onClick={() => onNavigate?.('/jobs?filter=unassigned')}
+                        onClick={() => onNavigate?.('/work?filter=pending')}
                       >
                         +{jobsToAssign.length - 8} more
                         <ChevronRight className="h-4 w-4 ml-1" />
