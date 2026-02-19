@@ -16817,6 +16817,31 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.get("/api/jobs/:jobId/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
+      const jobInvoices = allInvoices
+        .filter((inv: any) => inv.jobId === req.params.jobId)
+        .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .map((inv: any) => ({
+          id: inv.id,
+          number: inv.number,
+          title: inv.title,
+          status: inv.status,
+          total: inv.total,
+          createdAt: inv.createdAt,
+          paidAt: inv.paidAt,
+          stripePaymentLink: inv.stripePaymentLink,
+          paymentToken: inv.paymentToken,
+        }));
+      res.json(jobInvoices);
+    } catch (error) {
+      console.error("Error fetching job invoices:", error);
+      res.status(500).json({ error: "Failed to fetch job invoices" });
+    }
+  });
+
   // Create invoice (team-aware)
   app.post("/api/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {

@@ -251,7 +251,7 @@ export const mainMenuItems: NavItem[] = [
     color: "text-success",
     bgColor: "bg-success/10",
     hideForStaff: true,
-    showInSidebar: false,
+    showInSidebar: true,
     showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },

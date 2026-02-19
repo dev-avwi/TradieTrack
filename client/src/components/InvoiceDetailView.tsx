@@ -51,6 +51,7 @@ export default function InvoiceDetailView({
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [showVersionsDialog, setShowVersionsDialog] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
   const [paymentReference, setPaymentReference] = useState('');
@@ -160,6 +161,19 @@ export default function InvoiceDetailView({
   const { data: warrantyTemplate } = useQuery<BusinessTemplate>({
     queryKey: ["/api/business-templates/active/warranty"],
     enabled: !!invoice,
+  });
+
+  const { data: siblingInvoices } = useQuery({
+    queryKey: ['/api/jobs', invoice?.jobId, 'invoices'],
+    queryFn: async () => {
+      const response = await fetch(`/api/jobs/${invoice.jobId}/invoices`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    enabled: !!invoice?.jobId,
   });
 
   // Get related receipt for paid invoices
@@ -822,6 +836,20 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {siblingInvoices && siblingInvoices.length > 1 && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowVersionsDialog(true)}
+                  data-testid="button-previous-versions"
+                >
+                  <Clock className="h-4 w-4 mr-1.5" />
+                  Versions ({siblingInvoices.length})
+                </Button>
+                <div className="hidden sm:block w-px h-6 bg-border" />
+              </>
+            )}
             <Button variant="outline" size="sm" onClick={handlePrint} disabled={isPrinting} data-testid="button-print">
               {isPrinting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Printer className="h-4 w-4 mr-1.5" />}
               Print
@@ -1773,6 +1801,68 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           includeAfterPhotos={includeAfterPhotos}
         />
       )}
+
+      <Dialog open={showVersionsDialog} onOpenChange={setShowVersionsDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Invoice Versions
+            </DialogTitle>
+            <DialogDescription>
+              All invoices created for this job. The current invoice is highlighted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {siblingInvoices?.map((inv: any, index: number) => {
+              const isCurrent = inv.id === invoiceId;
+              return (
+                <div
+                  key={inv.id}
+                  className={`p-3 rounded-lg border ${isCurrent ? 'border-primary bg-primary/5' : 'hover-elevate'}`}
+                  data-testid={`version-invoice-${inv.id}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{inv.number || 'Draft'}</span>
+                        <Badge variant={inv.status === 'paid' ? 'default' : 'secondary'} className={`text-xs capitalize ${inv.status === 'paid' ? 'bg-green-500' : ''}`}>
+                          {inv.status}
+                        </Badge>
+                        {isCurrent && (
+                          <Badge variant="outline" className="text-xs">Current</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium tabular-nums">${parseFloat(inv.total || '0').toFixed(2)}</span>
+                        {inv.createdAt && (
+                          <span>Created {new Date(inv.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        )}
+                        {inv.paidAt && (
+                          <span className="text-green-600">Paid {new Date(inv.paidAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                        )}
+                      </div>
+                    </div>
+                    {!isCurrent && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowVersionsDialog(false);
+                          navigate(`/invoices/${inv.id}`);
+                        }}
+                        data-testid={`button-view-version-${inv.id}`}
+                      >
+                        View
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
