@@ -83,6 +83,7 @@ export function SidebarNav() {
     if (r === 'solo_owner') return 'solo_owner';
     if (r === 'owner') return 'owner';
     if (r === 'manager') return 'manager';
+    if (r === 'office_admin') return 'office_admin';
     // Fallback based on roleInfo.isOwner
     if (roleInfo?.isOwner) return 'owner';
     // Ultimate fallback: if user is authenticated but no role, treat as owner
