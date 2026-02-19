@@ -1,18 +1,15 @@
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   FileText,
   Calendar,
@@ -21,7 +18,6 @@ import {
   MapPin,
   Receipt,
   Star,
-  Info,
 } from "lucide-react";
 
 interface AutopilotProps {
@@ -30,91 +26,362 @@ interface AutopilotProps {
 
 interface AutomationSettings {
   quoteFollowUpEnabled?: boolean;
+  quoteFollowUpDays?: number;
+  quoteFollowUpType?: string;
+  quoteFollowUpMessage?: string;
   jobReminderEnabled?: boolean;
-  overdueInvoiceReminderEnabled?: boolean;
+  jobReminderHoursBefore?: number;
+  jobReminderType?: string;
+  jobReminderMessage?: string;
+  invoiceReminderEnabled?: boolean;
+  invoiceReminderDaysBeforeDue?: number;
+  invoiceOverdueReminderDays?: number;
+  invoiceReminderType?: string;
+  invoiceReminderMessage?: string;
   photoRequirementsEnabled?: boolean;
+  requirePhotoBeforeStart?: boolean;
+  requirePhotoAfterComplete?: boolean;
   gpsAutoCheckInEnabled?: boolean;
+  autoCheckInOnArrival?: boolean;
+  autoCheckOutOnDeparture?: boolean;
   autoInvoiceOnComplete?: boolean;
   autoReviewRequest?: boolean;
-  [key: string]: boolean | undefined;
+  autoReviewRequestType?: string;
+  reviewRequestMessage?: string;
+  [key: string]: boolean | number | string | undefined;
 }
 
-const automations = [
+const DEFAULT_MESSAGES = {
+  quoteFollowUpMessage: "Hi {client}, just following up on quote #{number} for {amount} we sent on {date}. Let us know if you have any questions or would like to go ahead.",
+  jobReminderMessage: "Hi {client}, confirming your {jobType} appointment tomorrow at {time} at {address}. Reply YES to confirm or call us to reschedule.",
+  invoiceReminderMessage: "Hi {client}, invoice #{number} for {amount} was due on {date}. Please arrange payment at your earliest convenience.",
+  reviewRequestMessage: "Hi {client}, thanks for choosing {business}! We'd love to hear how we did. Your feedback helps us improve!",
+};
+
+const TEMPLATE_VARIABLES: Record<string, string[]> = {
+  quoteFollowUpMessage: ["{client}", "{number}", "{amount}", "{date}"],
+  jobReminderMessage: ["{client}", "{jobType}", "{time}", "{address}"],
+  invoiceReminderMessage: ["{client}", "{number}", "{amount}", "{date}"],
+  reviewRequestMessage: ["{client}", "{business}"],
+};
+
+type AutomationField = "quoteFollowUpEnabled" | "jobReminderEnabled" | "invoiceReminderEnabled" | "photoRequirementsEnabled" | "gpsAutoCheckInEnabled" | "autoInvoiceOnComplete" | "autoReviewRequest";
+
+interface AutomationConfig {
+  field: AutomationField;
+  title: string;
+  subtitle: string;
+  icon: typeof FileText;
+  color: string;
+}
+
+const automations: AutomationConfig[] = [
   {
     field: "quoteFollowUpEnabled",
-    title: "Auto-remind quotes after 7 days",
-    description: "Automatically follow up on quotes that haven't been responded to",
+    title: "Quote Follow-up",
+    subtitle: "Sends follow-up after quote is sent with no response",
     icon: FileText,
     color: "210 100% 50%",
-    howItWorks: "When a quote is sent and the client hasn't responded after 7 days, an automatic follow-up email or SMS is sent reminding them about the quote.",
-    example: "Hi [Client], just following up on quote #QT-001 for $2,500 we sent on [date]. Let us know if you have any questions or would like to go ahead.",
-    trigger: "7 days after quote is sent with no response",
   },
   {
     field: "jobReminderEnabled",
-    title: "Auto-confirm jobs 24h before",
-    description: "Send reminder notifications before scheduled jobs",
+    title: "Job Reminder",
+    subtitle: "Sends confirmation before scheduled job start time",
     icon: Calendar,
     color: "142 76% 36%",
-    howItWorks: "24 hours before a scheduled job, an automatic confirmation message is sent to the client with the job details, time, and address.",
-    example: "Hi [Client], just confirming your [job type] appointment tomorrow at [time] at [address]. Reply YES to confirm or call us to reschedule.",
-    trigger: "24 hours before scheduled job start time",
   },
   {
-    field: "overdueInvoiceReminderEnabled",
-    title: "Auto-chase overdue invoices",
-    description: "Send payment reminders when invoices are past due",
+    field: "invoiceReminderEnabled",
+    title: "Invoice Reminders",
+    subtitle: "Sends payment reminders before due and when overdue",
     icon: DollarSign,
     color: "0 84% 60%",
-    howItWorks: "When an invoice passes its due date, automatic payment reminders are sent at increasing intervals until the invoice is paid.",
-    example: "Hi [Client], invoice #INV-001 for $1,200 was due on [date]. Please arrange payment at your earliest convenience. Pay online: [link]",
-    trigger: "When invoice is overdue, repeats at 3, 7, 14 day intervals",
   },
   {
     field: "photoRequirementsEnabled",
-    title: "Require photos on job completion",
-    description: "Prompt workers to take before/after photos when completing jobs",
+    title: "Photo Requirements",
+    subtitle: "Prompts workers for before/after photos on jobs",
     icon: Camera,
     color: "38 92% 50%",
-    howItWorks: "When a worker tries to mark a job as complete, they're prompted to take before and after photos. The job can't be completed without the required photos.",
-    example: "Workers see a photo capture screen with prompts for 'Before' and 'After' shots before the Complete button becomes active.",
-    trigger: "When worker attempts to complete a job",
   },
   {
     field: "gpsAutoCheckInEnabled",
-    title: "GPS auto check-in/out",
-    description: "Automatically start and stop timers when workers arrive at job sites",
+    title: "GPS Auto Check-in",
+    subtitle: "Auto start/stop timers at job sites via GPS",
     icon: MapPin,
     color: "270 70% 60%",
-    howItWorks: "Using GPS geofencing, the system detects when a worker arrives at or leaves a job site and automatically starts or stops their time tracker.",
-    example: "Worker arrives within 100m of job site \u2192 Timer starts automatically. Worker leaves the area \u2192 Timer pauses with a notification.",
-    trigger: "Worker enters or exits job site geofence",
   },
   {
     field: "autoInvoiceOnComplete",
-    title: "Auto-create invoice when job is done",
-    description: "Automatically generate an invoice when a job is marked complete",
+    title: "Auto-invoice on Complete",
+    subtitle: "Creates invoice automatically when job is completed",
     icon: Receipt,
     color: "174 72% 40%",
-    howItWorks: "When a job is marked as complete, an invoice is automatically generated using the quote line items, time tracked, and materials logged on the job.",
-    example: "Job completed \u2192 Invoice #INV-042 created for $3,450 including 12hrs labour + materials. Ready to send to client.",
-    trigger: "When job status changes to 'Completed'",
   },
   {
     field: "autoReviewRequest",
-    title: "Request reviews after payment",
-    description: "Automatically ask clients for a review after they pay an invoice",
+    title: "Review Request",
+    subtitle: "Requests a review after invoice payment is confirmed",
     icon: Star,
     color: "48 96% 53%",
-    howItWorks: "After a client pays an invoice, a friendly review request is automatically sent via email asking them to leave feedback about the work.",
-    example: "Hi [Client], thanks for your payment! We'd love to hear how we did. Leave a quick review: [link]. Your feedback helps us improve!",
-    trigger: "After invoice payment is confirmed",
   },
 ];
 
+function DebouncedTextarea({
+  value: externalValue,
+  onChange,
+  ...props
+}: { value: string; onChange: (v: string) => void } & Omit<React.ComponentProps<typeof Textarea>, 'value' | 'onChange'>) {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { setLocalValue(externalValue); }, [externalValue]);
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const v = e.target.value;
+    setLocalValue(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onChange(v), 800);
+  }, [onChange]);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return <Textarea {...props} value={localValue} onChange={handleChange} />;
+}
+
+function DebouncedNumberInput({
+  value: externalValue,
+  onChange,
+  ...props
+}: { value: number; onChange: (v: number) => void } & Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange' | 'type'>) {
+  const [localValue, setLocalValue] = useState(String(externalValue));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { setLocalValue(String(externalValue)); }, [externalValue]);
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setLocalValue(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onChange(parseInt(v) || 1), 600);
+  }, [onChange]);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return <Input {...props} type="number" value={localValue} onChange={handleChange} />;
+}
+
+function ChannelSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-1">
+      {(["sms", "email", "both"] as const).map((ch) => (
+        <Button
+          key={ch}
+          size="sm"
+          variant={value === ch ? "default" : "outline"}
+          onClick={() => onChange(ch)}
+        >
+          {ch === "sms" ? "SMS" : ch === "email" ? "Email" : "Both"}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function InlineSettings({
+  field,
+  settings,
+  onUpdate,
+}: {
+  field: AutomationField;
+  settings: AutomationSettings;
+  onUpdate: (changes: Partial<AutomationSettings>) => void;
+}) {
+  if (field === "quoteFollowUpEnabled") {
+    const days = settings.quoteFollowUpDays ?? 3;
+    const channel = settings.quoteFollowUpType ?? "email";
+    const message = settings.quoteFollowUpMessage ?? DEFAULT_MESSAGES.quoteFollowUpMessage;
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Follow-up delay (days)</Label>
+          <DebouncedNumberInput
+            min={1}
+            value={days}
+            onChange={(v) => onUpdate({ quoteFollowUpDays: v })}
+            className="w-24"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Channel</Label>
+          <ChannelSelector value={channel} onChange={(v) => onUpdate({ quoteFollowUpType: v })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Message template</Label>
+          <DebouncedTextarea
+            value={message}
+            onChange={(v) => onUpdate({ quoteFollowUpMessage: v })}
+            rows={3}
+            className="text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Variables: {TEMPLATE_VARIABLES.quoteFollowUpMessage.join(", ")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (field === "jobReminderEnabled") {
+    const hours = settings.jobReminderHoursBefore ?? 24;
+    const channel = settings.jobReminderType ?? "sms";
+    const message = settings.jobReminderMessage ?? DEFAULT_MESSAGES.jobReminderMessage;
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Hours before job</Label>
+          <DebouncedNumberInput
+            min={1}
+            value={hours}
+            onChange={(v) => onUpdate({ jobReminderHoursBefore: v })}
+            className="w-24"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Channel</Label>
+          <ChannelSelector value={channel} onChange={(v) => onUpdate({ jobReminderType: v })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Message template</Label>
+          <DebouncedTextarea
+            value={message}
+            onChange={(v) => onUpdate({ jobReminderMessage: v })}
+            rows={3}
+            className="text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Variables: {TEMPLATE_VARIABLES.jobReminderMessage.join(", ")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (field === "invoiceReminderEnabled") {
+    const daysBefore = settings.invoiceReminderDaysBeforeDue ?? 3;
+    const overdueInterval = settings.invoiceOverdueReminderDays ?? 7;
+    const channel = settings.invoiceReminderType ?? "email";
+    const message = settings.invoiceReminderMessage ?? DEFAULT_MESSAGES.invoiceReminderMessage;
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Days before due</Label>
+            <DebouncedNumberInput
+              min={1}
+              value={daysBefore}
+              onChange={(v) => onUpdate({ invoiceReminderDaysBeforeDue: v })}
+              className="w-24"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Overdue repeat interval (days)</Label>
+            <DebouncedNumberInput
+              min={1}
+              value={overdueInterval}
+              onChange={(v) => onUpdate({ invoiceOverdueReminderDays: v })}
+              className="w-24"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Channel</Label>
+          <ChannelSelector value={channel} onChange={(v) => onUpdate({ invoiceReminderType: v })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Message template</Label>
+          <DebouncedTextarea
+            value={message}
+            onChange={(v) => onUpdate({ invoiceReminderMessage: v })}
+            rows={3}
+            className="text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Variables: {TEMPLATE_VARIABLES.invoiceReminderMessage.join(", ")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (field === "photoRequirementsEnabled") {
+    const beforeStart = settings.requirePhotoBeforeStart ?? true;
+    const afterComplete = settings.requirePhotoAfterComplete ?? true;
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm">Require photo before start</Label>
+          <Switch
+            checked={beforeStart}
+            onCheckedChange={(checked) => onUpdate({ requirePhotoBeforeStart: checked })}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm">Require photo after complete</Label>
+          <Switch
+            checked={afterComplete}
+            onCheckedChange={(checked) => onUpdate({ requirePhotoAfterComplete: checked })}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (field === "gpsAutoCheckInEnabled") {
+    const checkIn = settings.autoCheckInOnArrival ?? true;
+    const checkOut = settings.autoCheckOutOnDeparture ?? true;
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm">Auto check-in on arrival</Label>
+          <Switch
+            checked={checkIn}
+            onCheckedChange={(checked) => onUpdate({ autoCheckInOnArrival: checked })}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-sm">Auto check-out on departure</Label>
+          <Switch
+            checked={checkOut}
+            onCheckedChange={(checked) => onUpdate({ autoCheckOutOnDeparture: checked })}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (field === "autoReviewRequest") {
+    const channel = settings.autoReviewRequestType ?? "email";
+    const message = settings.reviewRequestMessage ?? DEFAULT_MESSAGES.reviewRequestMessage;
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Channel</Label>
+          <ChannelSelector value={channel} onChange={(v) => onUpdate({ autoReviewRequestType: v })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Message template</Label>
+          <DebouncedTextarea
+            value={message}
+            onChange={(v) => onUpdate({ reviewRequestMessage: v })}
+            rows={3}
+            className="text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Variables: {TEMPLATE_VARIABLES.reviewRequestMessage.join(", ")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function Autopilot({ onNavigate }: AutopilotProps) {
   const { toast } = useToast();
-  const [selectedAutomation, setSelectedAutomation] = useState<typeof automations[number] | null>(null);
 
   const { data: settings, isLoading } = useQuery<AutomationSettings>({
     queryKey: ["/api/automation-settings"],
@@ -145,8 +412,8 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
     },
   });
 
-  const handleToggle = (field: string, checked: boolean) => {
-    const updated = { ...settings, [field]: checked };
+  const handleUpdate = (changes: Partial<AutomationSettings>) => {
+    const updated = { ...settings, ...changes };
     mutation.mutate(updated);
   };
 
@@ -184,76 +451,41 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
         {automations.map((item) => {
           const Icon = item.icon;
           const isEnabled = !!settings?.[item.field];
+          const hasInlineSettings = item.field !== "autoInvoiceOnComplete";
 
           return (
             <Card key={item.field}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `hsl(${item.color} / 0.1)` }}
-                >
-                  <Icon className="h-5 w-5" style={{ color: `hsl(${item.color})` }} />
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `hsl(${item.color} / 0.1)` }}
+                  >
+                    <Icon className="h-5 w-5" style={{ color: `hsl(${item.color})` }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+                  </div>
+                  <Switch
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => handleUpdate({ [item.field]: checked })}
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
-                </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setSelectedAutomation(item)}
-                >
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </Button>
-                <Switch
-                  checked={isEnabled}
-                  onCheckedChange={(checked) => handleToggle(item.field, checked)}
-                />
+                {isEnabled && hasInlineSettings && (
+                  <div className="mt-3 rounded-md bg-muted/30 p-3">
+                    <InlineSettings
+                      field={item.field}
+                      settings={settings || {}}
+                      onUpdate={handleUpdate}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
         })}
       </div>
-
-      <Dialog open={!!selectedAutomation} onOpenChange={(open) => !open && setSelectedAutomation(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {selectedAutomation && (
-                <>
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `hsl(${selectedAutomation.color} / 0.1)` }}
-                  >
-                    {(() => { const DialogIcon = selectedAutomation.icon; return <DialogIcon className="h-4 w-4" style={{ color: `hsl(${selectedAutomation.color})` }} />; })()}
-                  </div>
-                  {selectedAutomation.title}
-                </>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedAutomation && (
-            <div className="flex flex-col gap-4">
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-1">How it works</h4>
-                <p className="text-sm text-muted-foreground">{selectedAutomation.howItWorks}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-1">Trigger</h4>
-                <p className="text-sm text-muted-foreground">{selectedAutomation.trigger}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-1">Example</h4>
-                <Card>
-                  <CardContent className="p-3">
-                    <p className="text-sm text-muted-foreground italic">{selectedAutomation.example}</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
