@@ -138,6 +138,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Equipment - owner/manager
   { path: '/equipment', label: 'Equipment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+
+  // Files (Compliance & Licensing) - all roles (content filtered by RBAC on backend)
+  { path: '/files', label: 'Files', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
   
   // Integrations - owner only
   { path: '/integrations', label: 'Integrations', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
