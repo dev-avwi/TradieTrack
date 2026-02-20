@@ -166,24 +166,80 @@ export default function WhatYouMissedModal() {
     }
   };
 
-  const getPriorityStyles = (priority?: string) => {
-    switch (priority) {
-      case 'urgent':
+  const getNotificationStyles = (notification: MissedNotification) => {
+    // Priority-based styling takes precedence
+    if (notification.priority === 'urgent') {
+      return {
+        bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+        icon: 'text-emerald-600 dark:text-emerald-400',
+        border: '',
+      };
+    }
+    if (notification.priority === 'important') {
+      return {
+        bg: 'bg-amber-100 dark:bg-amber-900/40',
+        icon: 'text-amber-600 dark:text-amber-400',
+        border: '',
+      };
+    }
+
+    // Type-based styling for info/default notifications
+    switch (notification.type) {
+      case 'payment_received':
+      case 'installment_received':
+      case 'payment_plan_completed':
         return {
-          bg: 'bg-green-100 dark:bg-green-900/40',
-          icon: 'text-green-600 dark:text-green-400',
-          border: 'border-l-4 border-l-green-500',
+          bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+          icon: 'text-emerald-600 dark:text-emerald-400',
+          border: '',
         };
-      case 'important':
+      case 'quote_accepted':
         return {
-          bg: 'bg-amber-100 dark:bg-amber-900/40',
-          icon: 'text-amber-600 dark:text-amber-400',
-          border: 'border-l-4 border-l-amber-500',
+          bg: 'bg-blue-100 dark:bg-blue-900/40',
+          icon: 'text-blue-600 dark:text-blue-400',
+          border: '',
+        };
+      case 'quote_rejected':
+      case 'quote_declined':
+        return {
+          bg: 'bg-red-100 dark:bg-red-900/40',
+          icon: 'text-red-600 dark:text-red-400',
+          border: '',
+        };
+      case 'job_assigned':
+      case 'job_completed':
+      case 'recurring_job_created':
+        return {
+          bg: 'bg-blue-100 dark:bg-blue-900/40',
+          icon: 'text-blue-600 dark:text-blue-400',
+          border: '',
+        };
+      case 'job_reminder':
+      case 'job_scheduled':
+        return {
+          bg: 'bg-purple-100 dark:bg-purple-900/40',
+          icon: 'text-purple-600 dark:text-purple-400',
+          border: '',
+        };
+      case 'team_invite':
+      case 'timesheet_submitted':
+        return {
+          bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+          icon: 'text-indigo-600 dark:text-indigo-400',
+          border: '',
+        };
+      case 'overdue_invoice':
+      case 'payment_failed':
+      case 'installment_due':
+        return {
+          bg: 'bg-red-100 dark:bg-red-900/40',
+          icon: 'text-red-600 dark:text-red-400',
+          border: '',
         };
       default:
         return {
-          bg: 'bg-muted',
-          icon: 'text-muted-foreground',
+          bg: 'bg-sky-100 dark:bg-sky-900/40',
+          icon: 'text-sky-600 dark:text-sky-400',
           border: '',
         };
     }
@@ -250,13 +306,13 @@ export default function WhatYouMissedModal() {
           <div className="py-2">
             {sortedNotifications.map((notification) => {
               const Icon = getIcon(notification);
-              const styles = getPriorityStyles(notification.priority);
+              const styles = getNotificationStyles(notification);
               const priorityBadge = getPriorityBadge(notification.priority);
 
               return (
                 <div
                   key={notification.id}
-                  className={`px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-muted/50 active:bg-muted border-b border-border/50 ${styles.border}`}
+                  className="px-4 py-3 cursor-pointer transition-all duration-200 hover-elevate active-elevate-2 border-b border-border/50"
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex gap-3">
