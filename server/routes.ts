@@ -15915,6 +15915,48 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Get quotes for client (team-aware)
+  app.get("/api/clients/:clientId/quotes", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const allQuotes = await storage.getQuotesByClient(req.params.clientId);
+      const filtered = allQuotes.filter((q: any) => q.userId === userContext.effectiveUserId);
+      res.json(filtered);
+    } catch (error) {
+      console.error("Error fetching quotes for client:", error);
+      res.status(500).json({ error: "Failed to fetch quotes for client" });
+    }
+  });
+
+  // Get invoices for client (team-aware)
+  app.get("/api/clients/:clientId/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const allInvoices = await storage.getInvoicesForClientIds([req.params.clientId]);
+      const filtered = allInvoices.filter((i: any) => i.userId === userContext.effectiveUserId);
+      
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      
+      const enriched = filtered.map((invoice: any) => {
+        let normalizedStatus = invoice.status;
+        if (invoice.status === 'sent' && invoice.dueDate) {
+          const dueDate = new Date(invoice.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          if (dueDate < now) {
+            normalizedStatus = 'overdue';
+          }
+        }
+        return { ...invoice, status: normalizedStatus };
+      });
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching invoices for client:", error);
+      res.status(500).json({ error: "Failed to fetch invoices for client" });
+    }
+  });
+
   // Quotes Routes (team-aware: use effectiveUserId for proper data scoping)
   app.get("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
@@ -20378,6 +20420,35 @@ Be specific about materials, colors, and features that would be included.`
         message: `Payment of $${parseFloat(request.amount).toFixed(2)} received for: ${request.description}`,
         data: { paymentRequestId: request.id },
       });
+      
+      // Broadcast real-time payment notification via WebSocket
+      // This triggers invoice cache invalidation on the frontend
+      try {
+        const { broadcastPaymentReceived } = await import('./websocket');
+        let clientName: string | undefined;
+        let invoiceNumber: string | undefined;
+        if (request.invoiceId) {
+          const invoice = await storage.getInvoice(request.invoiceId, request.userId);
+          if (invoice) {
+            invoiceNumber = invoice.number;
+            if (invoice.clientId) {
+              const client = await storage.getClientById(invoice.clientId);
+              clientName = client?.name || undefined;
+            }
+          }
+        } else if (request.clientId) {
+          const client = await storage.getClientById(request.clientId);
+          clientName = client?.name || undefined;
+        }
+        broadcastPaymentReceived(request.userId, {
+          amount: Math.round(parseFloat(request.amount) * 100),
+          invoiceNumber,
+          clientName,
+          paymentMethod: paymentMethod || 'demo',
+        });
+      } catch (wsError) {
+        console.error('Failed to broadcast payment notification:', wsError);
+      }
       
       // Auto-create receipt for the online payment
       try {

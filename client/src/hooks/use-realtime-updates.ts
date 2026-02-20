@@ -213,6 +213,7 @@ export function useRealtimeUpdates({
         });
         safeInvalidateQueries({ queryKey: ['/api/invoices'] });
         safeInvalidateQueries({ queryKey: ['/api/payments'] });
+        safeInvalidateQueries({ queryKey: ['/api/payment-requests'] });
         safeInvalidateQueries({ queryKey: ['/api/dashboard'] });
         break;
 

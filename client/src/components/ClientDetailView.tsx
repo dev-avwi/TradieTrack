@@ -182,10 +182,9 @@ export default function ClientDetailView({
   const { data: quotes = [] } = useQuery({
     queryKey: ['/api/clients', clientId, 'quotes'],
     queryFn: async () => {
-      const response = await fetch('/api/quotes', { credentials: 'include' });
+      const response = await fetch(`/api/clients/${clientId}/quotes`, { credentials: 'include' });
       if (!response.ok) return [];
-      const allQuotes = await response.json();
-      return allQuotes.filter((q: any) => q.clientId === clientId);
+      return response.json();
     },
     enabled: !!clientId
   });
@@ -193,10 +192,9 @@ export default function ClientDetailView({
   const { data: invoices = [] } = useQuery({
     queryKey: ['/api/clients', clientId, 'invoices'],
     queryFn: async () => {
-      const response = await fetch('/api/invoices', { credentials: 'include' });
+      const response = await fetch(`/api/clients/${clientId}/invoices`, { credentials: 'include' });
       if (!response.ok) return [];
-      const allInvoices = await response.json();
-      return allInvoices.filter((i: any) => i.clientId === clientId);
+      return response.json();
     },
     enabled: !!clientId
   });
