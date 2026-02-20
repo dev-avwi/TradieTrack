@@ -354,8 +354,8 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
         positions={routeCoords}
         pathOptions={{
           color: '#1e40af',
-          weight: 10,
-          opacity: 0.12,
+          weight: 12,
+          opacity: 0.18,
           lineCap: 'round',
           lineJoin: 'round',
         }}
@@ -364,11 +364,11 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
         positions={routeCoords}
         pathOptions={{
           color: '#2563EB',
-          weight: 5,
-          opacity: 0.85,
+          weight: 6,
+          opacity: 0.9,
           lineCap: 'round',
           lineJoin: 'round',
-          dashArray: '12 6',
+          dashArray: '10 8',
         }}
       />
     </>
@@ -470,7 +470,7 @@ function HeroMap({
   if (!hasJobPin && crewWorkers.length === 0 && !hasSingleWorker) {
     return (
       <div className="relative w-full pt-16 pb-4 px-4">
-        <div className="rounded-2xl overflow-hidden shadow-lg" style={{ height: '250px' }}>
+        <div className="rounded-2xl overflow-hidden shadow-lg" style={{ height: '320px' }}>
           <MapContainer
             center={[-33.8688, 151.2093]}
             zoom={12}
@@ -488,7 +488,7 @@ function HeroMap({
 
   return (
     <div className="relative w-full pt-16 pb-4 px-4">
-      <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{ height: '250px' }}>
+      <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{ height: '320px' }}>
         <MapContainer
           center={center}
           zoom={hasJobPin && crewWorkers.length === 0 && !hasSingleWorker ? 15 : 13}
@@ -558,8 +558,110 @@ function HeroMap({
           )}
         </MapContainer>
 
-        {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
+        {isEnRoute && (
           <div className="absolute top-3 left-3 z-[1000]">
+            <div className="bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              LIVE
+            </div>
+          </div>
+        )}
+
+        {(() => {
+          const showOverlay = workerStatus && ['on_my_way', 'arrived', 'in_progress', 'completed'].includes(workerStatus);
+          if (!showOverlay) return null;
+
+          if (workerStatus === 'on_my_way') {
+            return (
+              <div className="absolute bottom-0 left-0 right-0 z-[1000] pointer-events-none">
+                <div className="bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pt-8 pb-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center">
+                          <Navigation className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-black/40 animate-pulse" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold text-sm">Your tradesperson is on the way</p>
+                        <p className="text-white/70 text-xs">Live tracking active</p>
+                      </div>
+                    </div>
+                    {etaMinutes && (
+                      <div className="bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 text-center">
+                        <p className="text-white font-bold text-lg leading-tight">{etaMinutes}</p>
+                        <p className="text-white/70 text-[10px]">min away</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (workerStatus === 'arrived') {
+            return (
+              <div className="absolute bottom-0 left-0 right-0 z-[1000] pointer-events-none">
+                <div className="bg-gradient-to-t from-emerald-900/80 via-emerald-900/40 to-transparent px-4 pt-8 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm">Your tradesperson has arrived</p>
+                      <p className="text-white/70 text-xs">At the job site now</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (workerStatus === 'in_progress') {
+            return (
+              <div className="absolute bottom-0 left-0 right-0 z-[1000] pointer-events-none">
+                <div className="bg-gradient-to-t from-blue-900/80 via-blue-900/40 to-transparent px-4 pt-8 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Timer className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-400 rounded-full border-2 border-blue-900/60 animate-pulse" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm">Work in progress</p>
+                      <p className="text-white/70 text-xs">Your tradesperson is working on the job</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (workerStatus === 'completed') {
+            return (
+              <div className="absolute bottom-0 left-0 right-0 z-[1000] pointer-events-none">
+                <div className="bg-gradient-to-t from-emerald-900/80 via-emerald-900/40 to-transparent px-4 pt-8 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm">Job complete</p>
+                      <p className="text-white/70 text-xs">The work has been finished</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
+
+        {(crewWorkers.length > 0 && subcontractorWorkers.length > 0) && (
+          <div className={cn("absolute z-[1000]", isEnRoute ? "top-3 left-20" : "top-3 left-3")}>
             <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm px-3 py-1.5 flex items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-brand" />
@@ -782,7 +884,7 @@ export default function JobPortal() {
               jobLat={job.latitude}
               jobLng={job.longitude}
               jobAddress={job.address}
-              workerStatus={job.workerStatus}
+              workerStatus={effectiveWorkerStatus}
               assignments={data.assignments}
             />
           )}
