@@ -147,10 +147,13 @@ function getInvoiceStatusColor(status: string): string {
 
 function getJobStatusColor(status: string): string {
   switch (status) {
+    case 'paid': return 'bg-green-100 text-green-800';
     case 'done': case 'completed': return 'bg-green-100 text-green-800';
-    case 'in_progress': return 'bg-blue-100 text-blue-800';
-    case 'scheduled': return 'bg-purple-100 text-purple-800';
+    case 'invoiced': return 'bg-purple-100 text-purple-800';
+    case 'in_progress': return 'bg-orange-100 text-orange-800';
+    case 'scheduled': return 'bg-blue-100 text-blue-800';
     case 'cancelled': return 'bg-red-100 text-red-800';
+    case 'unscheduled': return 'bg-slate-100 text-slate-600';
     default: return 'bg-slate-100 text-slate-700';
   }
 }
@@ -426,6 +429,12 @@ export default function ClientPortalHub() {
   const handleViewQuote = (quote: PortalQuote) => {
     if (quote.acceptanceToken) {
       window.location.href = `/portal/quote/${quote.acceptanceToken}`;
+    }
+  };
+
+  const handleViewInvoice = (invoice: PortalInvoice) => {
+    if (invoice.paymentToken) {
+      window.location.href = `/portal/invoice/${invoice.paymentToken}`;
     }
   };
 
@@ -947,7 +956,7 @@ export default function ClientPortalHub() {
                       return (
                         <div
                           key={invoice.id}
-                          className={`rounded-md overflow-hidden hover-elevate ${
+                          className={`rounded-md overflow-hidden hover-elevate cursor-pointer ${
                             isPayable
                               ? 'bg-brand/5 shadow-xl border-2 border-brand/20'
                               : isPaid
@@ -956,6 +965,7 @@ export default function ClientPortalHub() {
                               ? 'bg-white shadow-lg border border-red-200'
                               : 'bg-white shadow-lg'
                           }`}
+                          onClick={() => handleViewInvoice(invoice)}
                         >
                           <div className="p-5">
                             <div className="flex items-center gap-3 mb-3">
@@ -1090,6 +1100,7 @@ export default function ClientPortalHub() {
                   ) : (
                     filteredJobs?.map((job) => {
                       const isDone = job.status === 'done' || job.status === 'completed';
+                      const isInvoiced = job.status === 'invoiced';
                       const isInProgress = job.status === 'in_progress';
                       const isScheduled = job.status === 'scheduled';
 
@@ -1099,10 +1110,12 @@ export default function ClientPortalHub() {
                           className={`bg-white rounded-md shadow-lg overflow-hidden ${
                             isDone
                               ? 'border border-green-200'
-                              : isInProgress
-                              ? 'border border-blue-200'
-                              : isScheduled
+                              : isInvoiced
                               ? 'border border-purple-200'
+                              : isInProgress
+                              ? 'border border-orange-200'
+                              : isScheduled
+                              ? 'border border-blue-200'
                               : ''
                           }`}
                         >
@@ -1118,19 +1131,23 @@ export default function ClientPortalHub() {
                               <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                                 isDone
                                   ? 'bg-green-100'
-                                  : isInProgress
-                                  ? 'bg-blue-100'
-                                  : isScheduled
+                                  : isInvoiced
                                   ? 'bg-purple-100'
+                                  : isInProgress
+                                  ? 'bg-orange-100'
+                                  : isScheduled
+                                  ? 'bg-blue-100'
                                   : 'bg-slate-100'
                               }`}>
                                 <Briefcase className={`w-5 h-5 ${
                                   isDone
                                     ? 'text-green-600'
-                                    : isInProgress
-                                    ? 'text-blue-600'
-                                    : isScheduled
+                                    : isInvoiced
                                     ? 'text-purple-600'
+                                    : isInProgress
+                                    ? 'text-orange-600'
+                                    : isScheduled
+                                    ? 'text-blue-600'
                                     : 'text-slate-500'
                                 }`} />
                               </div>
@@ -1138,7 +1155,7 @@ export default function ClientPortalHub() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <h3 className="font-semibold text-slate-900 truncate">{job.title}</h3>
                                   <Badge className={getJobStatusColor(job.status)}>
-                                    {job.status === 'done' ? 'Completed' : job.status === 'in_progress' ? 'In Progress' : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                                    {job.status === 'done' ? 'Completed' : job.status === 'in_progress' ? 'In Progress' : job.status === 'invoiced' ? 'Invoiced' : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                                   </Badge>
                                 </div>
                               </div>
