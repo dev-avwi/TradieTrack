@@ -25,7 +25,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { formatHistoryDate } from "@shared/dateUtils";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getSessionToken } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ActivityFeedProps {
@@ -131,7 +131,8 @@ export default function ActivityFeed({
   const { data: activities = [], isLoading } = useQuery<ActivityItem[]>({
     queryKey: ['/api/activity-feed', { limit }],
     queryFn: async () => {
-      const response = await fetch(`/api/activity-feed?limit=${limit}`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/activity-feed?limit=${limit}`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) throw new Error('Failed to fetch activities');
       return response.json();
     },

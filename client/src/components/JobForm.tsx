@@ -17,7 +17,7 @@ import TemplateSelector from "@/components/TemplateSelector";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, getSessionToken } from "@/lib/queryClient";
 import { Plus, User, Phone, Mail, MapPin, Loader2, X, History, Copy, ChevronDown, ChevronUp, Calendar, FileText, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -85,7 +85,8 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const { data: sourceQuote } = useQuery({
     queryKey: ['/api/quotes', urlQuoteId],
     queryFn: async () => {
-      const response = await fetch(`/api/quotes/${urlQuoteId}`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/quotes/${urlQuoteId}`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) return null;
       return response.json();
     },
@@ -96,7 +97,8 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      const authToken = getSessionToken();
+      const res = await fetch('/api/auth/me', { credentials: 'include', headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : undefined });
       if (!res.ok) throw new Error('Not authenticated');
       return res.json();
     },
@@ -222,7 +224,8 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const { data: previousJobs = [] } = useQuery({
     queryKey: ['/api/clients', selectedClientId, 'jobs'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${selectedClientId}/jobs`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${selectedClientId}/jobs`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) return [];
       const jobs = await response.json();
       // Sort by date descending and limit to 5 most recent
@@ -385,9 +388,10 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       // After job is created, update the quote to link to this job
       if (urlQuoteId && result.id) {
         try {
+          const linkToken = getSessionToken();
           await fetch(`/api/quotes/${urlQuoteId}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(linkToken ? { 'Authorization': `Bearer ${linkToken}` } : {}) },
             credentials: 'include',
             body: JSON.stringify({ jobId: result.id }),
           });

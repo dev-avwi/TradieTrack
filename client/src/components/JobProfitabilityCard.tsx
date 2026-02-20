@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { getSessionToken } from "@/lib/queryClient";
 import { DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +58,8 @@ export default function JobProfitabilityCard({ jobId }: { jobId: string }) {
   const { data, isLoading } = useQuery<ProfitabilityData>({
     queryKey: ["/api/jobs", jobId, "profitability"],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/${jobId}/profitability`, { credentials: "include" });
+      const token = getSessionToken();
+      const res = await fetch(`/api/jobs/${jobId}/profitability`, { credentials: "include", headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) throw new Error("Failed to fetch profitability");
       return res.json();
     },

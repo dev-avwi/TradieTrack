@@ -28,7 +28,7 @@ import { useCreateInvoice } from "@/hooks/use-invoices";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, getSessionToken } from "@/lib/queryClient";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import type { StylePreset } from "@shared/schema";
 import { TemplateCustomization, DOCUMENT_TEMPLATES, TemplateId } from "@/lib/document-templates";
@@ -102,7 +102,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch('/api/auth/me', { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) throw new Error('Not authenticated');
       return res.json();
     },
@@ -170,7 +171,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     
     const fetchVariationsForAutoLoad = async (jobId: string, baseItems: any[]) => {
       try {
-        const varRes = await fetch(`/api/jobs/${jobId}/variations`, { credentials: 'include' });
+        const varToken = getSessionToken();
+        const varRes = await fetch(`/api/jobs/${jobId}/variations`, { credentials: 'include', headers: varToken ? { 'Authorization': `Bearer ${varToken}` } : undefined });
         if (varRes.ok) {
           const allVariations = await varRes.json();
           const approved = allVariations.filter((v: any) => v.status === 'approved');
@@ -254,7 +256,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       // Fetch linked documents to get quote line items
       (async () => {
         try {
-          const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
+          const ldToken = getSessionToken();
+          const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include', headers: ldToken ? { 'Authorization': `Bearer ${ldToken}` } : undefined });
           const data = res.ok ? await res.json() : null;
           if (data?.linkedInvoice) {
             setExistingInvoiceData(data.linkedInvoice);
@@ -281,7 +284,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
           } else {
             let timeBasedItems: any[] = [];
             try {
-              const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include' });
+              const teToken = getSessionToken();
+              const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include', headers: teToken ? { 'Authorization': `Bearer ${teToken}` } : undefined });
               if (timeRes.ok) {
                 const timeEntries = await timeRes.json();
                 const completedEntries = Array.isArray(timeEntries) ? timeEntries.filter((e: any) => e.endTime) : [];
@@ -319,7 +323,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         } catch {
           let timeBasedItems: any[] = [];
           try {
-            const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include' });
+            const teToken2 = getSessionToken();
+            const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include', headers: teToken2 ? { 'Authorization': `Bearer ${teToken2}` } : undefined });
             if (timeRes.ok) {
               const timeEntries = await timeRes.json();
               const completedEntries = Array.isArray(timeEntries) ? timeEntries.filter((e: any) => e.endTime) : [];
@@ -418,7 +423,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     
     // Check if job already has an invoice
     try {
-      const linkedRes = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
+      const ldToken2 = getSessionToken();
+      const linkedRes = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include', headers: ldToken2 ? { 'Authorization': `Bearer ${ldToken2}` } : undefined });
       if (linkedRes.ok) {
         const linkedData = await linkedRes.json();
         if (linkedData.linkedInvoice) {
@@ -447,7 +453,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     
     const fetchApprovedVariations = async (jobId: string, baseItems: any[]) => {
       try {
-        const varRes = await fetch(`/api/jobs/${jobId}/variations`, { credentials: 'include' });
+        const varToken2 = getSessionToken();
+        const varRes = await fetch(`/api/jobs/${jobId}/variations`, { credentials: 'include', headers: varToken2 ? { 'Authorization': `Bearer ${varToken2}` } : undefined });
         if (varRes.ok) {
           const allVariations = await varRes.json();
           const approved = allVariations.filter((v: any) => v.status === 'approved');
@@ -490,7 +497,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     } else {
       // Try to fetch linked documents to get quote line items
       try {
-        const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include' });
+        const ldToken3 = getSessionToken();
+        const res = await fetch(`/api/jobs/${job.id}/linked-documents`, { credentials: 'include', headers: ldToken3 ? { 'Authorization': `Bearer ${ldToken3}` } : undefined });
         if (res.ok) {
           const data = await res.json();
           if (data.quote?.lineItems && data.quote.lineItems.length > 0) {
@@ -522,7 +530,8 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       
       let timeBasedItems: any[] = [];
       try {
-        const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include' });
+        const teToken3 = getSessionToken();
+        const timeRes = await fetch(`/api/time-entries?jobId=${job.id}`, { credentials: 'include', headers: teToken3 ? { 'Authorization': `Bearer ${teToken3}` } : undefined });
         if (timeRes.ok) {
           const timeEntries = await timeRes.json();
           const completedEntries = Array.isArray(timeEntries) ? timeEntries.filter((e: any) => e.endTime) : [];
@@ -708,10 +717,11 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
 
       if (result.id && (selectedJobId || urlJobId)) {
         try {
+          const labourToken = getSessionToken();
           const labourRes = await fetch(`/api/invoices/${result.id}/generate-labour-lines`, {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(labourToken ? { 'Authorization': `Bearer ${labourToken}` } : {}) },
           });
           if (labourRes.ok) {
             const labourData = await labourRes.json();

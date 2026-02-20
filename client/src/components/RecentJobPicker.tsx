@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getSessionToken } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,7 +87,8 @@ export default function RecentJobPicker({ type, onSelectJob, selectedJobId }: Re
   const { data: allJobs = [], isLoading } = useQuery<EnrichedJob[]>({
     queryKey: ["/api/jobs/contextual"],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/contextual`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/jobs/contextual`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) throw new Error('Failed to fetch jobs');
       return res.json();
     },

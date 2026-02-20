@@ -8,7 +8,7 @@ import { Loader2, Download, Mail, Printer, CheckCircle2, Receipt, Copy, External
 import { useToast } from "@/hooks/use-toast";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getSessionToken } from "@/lib/queryClient";
 
 interface ReceiptPreviewModalProps {
   open: boolean;
@@ -77,7 +77,8 @@ export default function ReceiptPreviewModal({
     if (!receiptId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/receipts/${receiptId}?_t=${Date.now()}`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/receipts/${receiptId}?_t=${Date.now()}`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (response.ok) {
         const data = await response.json();
         setReceipt(data);
@@ -95,7 +96,8 @@ export default function ReceiptPreviewModal({
     
     try {
       if (receiptId) {
-        const response = await fetch(`/api/receipts/${receiptId}/pdf`, { credentials: 'include' });
+        const pdfToken = getSessionToken();
+        const response = await fetch(`/api/receipts/${receiptId}/pdf`, { credentials: 'include', headers: pdfToken ? { 'Authorization': `Bearer ${pdfToken}` } : undefined });
         if (!response.ok) throw new Error('Failed to download PDF');
         
         const blob = await response.blob();

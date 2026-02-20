@@ -75,7 +75,7 @@ export default function QuickCollectPayment({
       setResultData(data);
       setStep('success');
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
-      queryClient.invalidateQueries({ queryKey: [`/api/jobs/${jobId}/linked-documents`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'linked-documents'] });
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
       toast({

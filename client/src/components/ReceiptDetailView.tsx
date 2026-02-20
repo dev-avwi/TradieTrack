@@ -374,7 +374,7 @@ export default function ReceiptDetailView({ receiptId, onBack }: ReceiptDetailVi
     try {
       const response = await fetch(`/api/receipts/${receiptId}/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email: client.email })
       });

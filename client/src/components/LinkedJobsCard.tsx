@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface LinkedJobsCardProps {
@@ -89,7 +89,8 @@ export default function LinkedJobsCard({ jobId, clientId, clientName }: LinkedJo
   const { data: sourcePhotos = [], isLoading: photosLoading } = useQuery<PhotoItem[]>({
     queryKey: ['/api/jobs', sourceJobId, 'photos'],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/${sourceJobId}/photos`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/jobs/${sourceJobId}/photos`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) throw new Error('Failed');
       return res.json();
     },

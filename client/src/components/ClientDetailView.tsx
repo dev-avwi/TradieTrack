@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getSessionToken } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -163,7 +163,8 @@ export default function ClientDetailView({
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['/api/clients', clientId],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${clientId}`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) throw new Error('Failed to fetch client');
       return response.json();
     }
@@ -172,7 +173,8 @@ export default function ClientDetailView({
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['/api/clients', clientId, 'jobs'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/jobs`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${clientId}/jobs`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) return [];
       return response.json();
     },
@@ -182,7 +184,8 @@ export default function ClientDetailView({
   const { data: quotes = [] } = useQuery({
     queryKey: ['/api/clients', clientId, 'quotes'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/quotes`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${clientId}/quotes`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) return [];
       return response.json();
     },
@@ -192,7 +195,8 @@ export default function ClientDetailView({
   const { data: invoices = [] } = useQuery({
     queryKey: ['/api/clients', clientId, 'invoices'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/invoices`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${clientId}/invoices`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) return [];
       return response.json();
     },
@@ -205,7 +209,8 @@ export default function ClientDetailView({
       const allJobPhotos: any[] = [];
       for (const job of jobs) {
         try {
-          const response = await fetch(`/api/jobs/${job.id}/photos`, { credentials: 'include' });
+          const token = getSessionToken();
+          const response = await fetch(`/api/jobs/${job.id}/photos`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
           if (response.ok) {
             const photos = await response.json();
             allJobPhotos.push(...photos.map((p: any) => ({ ...p, jobId: job.id, jobTitle: job.title })));
@@ -222,7 +227,8 @@ export default function ClientDetailView({
   const { data: clientAssets, isLoading: assetsLoading } = useQuery({
     queryKey: ['/api/clients', clientId, 'assets'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/assets`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${clientId}/assets`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) throw new Error('Failed to fetch assets');
       return response.json();
     },
@@ -238,7 +244,8 @@ export default function ClientDetailView({
   }>({
     queryKey: ['/api/clients', clientId, 'saved-signature'],
     queryFn: async () => {
-      const response = await fetch(`/api/clients/${clientId}/saved-signature`, { credentials: 'include' });
+      const token = getSessionToken();
+      const response = await fetch(`/api/clients/${clientId}/saved-signature`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!response.ok) throw new Error('Failed to fetch saved signature');
       return response.json();
     },

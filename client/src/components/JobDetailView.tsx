@@ -60,7 +60,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { formatHistoryDate } from "@shared/dateUtils";
@@ -329,7 +329,8 @@ export default function JobDetailView({
   const { data: linkedDocuments } = useQuery<LinkedDocumentsResponse>({
     queryKey: ['/api/jobs', jobId, 'linked-documents'],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/${jobId}/linked-documents`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/jobs/${jobId}/linked-documents`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) {
         if (res.status === 401) return { linkedQuote: null, linkedInvoice: null, linkedReceipts: [], quoteCount: 0, invoiceCount: 0, receiptCount: 0 };
         throw new Error('Failed to fetch linked documents');
@@ -390,7 +391,8 @@ export default function JobDetailView({
   const { data: jobAssignments = [] } = useQuery<JobAssignmentData[]>({
     queryKey: ['/api/jobs', jobId, 'assignments'],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/${jobId}/assignments`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/jobs/${jobId}/assignments`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) return [];
       return res.json();
     },
@@ -436,7 +438,8 @@ export default function JobDetailView({
   const { data: timeEntries = [] } = useQuery<TimeEntryForCosting[]>({
     queryKey: ['/api/time-entries', { jobId }],
     queryFn: async () => {
-      const res = await fetch(`/api/time-entries?jobId=${jobId}`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/time-entries?jobId=${jobId}`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) return [];
       return res.json();
     },
@@ -560,7 +563,8 @@ export default function JobDetailView({
   const { data: jobActivities = [], isLoading: activitiesLoading } = useQuery<JobActivityItem[]>({
     queryKey: ['/api/jobs', jobId, 'activity'],
     queryFn: async () => {
-      const res = await fetch(`/api/jobs/${jobId}/activity?limit=10`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/jobs/${jobId}/activity?limit=10`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) return [];
       return res.json();
     },
@@ -1235,8 +1239,10 @@ export default function JobDetailView({
   useEffect(() => {
     if (job?.portalEnabled && jobId && portalFetchedRef.current !== jobId) {
       portalFetchedRef.current = jobId;
+      const token = getSessionToken();
       fetch(`/api/jobs/${jobId}/portal-links`, {
         credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       }).then(res => res.ok ? res.json() : []).then((tokens: any[]) => {
         if (tokens && tokens.length > 0) {
           const activeToken = tokens.find((t: any) => !t.revokedAt);
