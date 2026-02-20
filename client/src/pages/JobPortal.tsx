@@ -1486,7 +1486,7 @@ export default function JobPortal() {
                   <a
                     key={`q-${quote.id}`}
                     href={`/portal/quote/${quote.token}`}
-                    className="block rounded-xl border overflow-hidden hover-elevate active-elevate-2"
+                    className="block rounded-xl border border-slate-200 overflow-hidden hover-elevate active-elevate-2"
                   >
                     <div className="p-4">
                       <div className="flex items-start gap-3">
@@ -1520,7 +1520,7 @@ export default function JobPortal() {
                       className={`block rounded-xl overflow-hidden hover-elevate active-elevate-2 ${
                         isPayable 
                           ? 'bg-brand/5 border-2 border-brand/20' 
-                          : 'border'
+                          : 'border border-slate-200'
                       }`}
                     >
                       <div className="p-4">

@@ -343,7 +343,7 @@ export default function ClientPortal() {
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Client & Document Info */}
             <div className="grid md:grid-cols-2 gap-4">
-              <Card className="bg-white rounded-xl shadow-sm">
+              <Card className="bg-white rounded-xl shadow-sm border-slate-200">
                 <CardContent className="pt-4">
                   <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Bill To</h3>
                   <p className="font-semibold text-foreground">{data.client.name}</p>
@@ -358,7 +358,7 @@ export default function ClientPortal() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-white rounded-xl shadow-sm">
+              <Card className="bg-white rounded-xl shadow-sm border-slate-200">
                 <CardContent className="pt-4">
                   <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Details</h3>
                   <div className="space-y-1 text-sm">
@@ -397,7 +397,7 @@ export default function ClientPortal() {
 
             {/* Job Site */}
             {data.job?.address && data.job.address !== data.client.address && (
-              <Card className="bg-white rounded-xl shadow-sm">
+              <Card className="bg-white rounded-xl shadow-sm border-slate-200">
                 <CardContent className="py-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="w-4 h-4 text-brand" />
@@ -409,7 +409,7 @@ export default function ClientPortal() {
             )}
 
             {data.description && (
-              <Card className="bg-white rounded-xl shadow-sm">
+              <Card className="bg-white rounded-xl shadow-sm border-slate-200">
                 <CardContent className="py-3">
                   <p className="text-sm text-slate-600">{data.description}</p>
                 </CardContent>
@@ -417,7 +417,7 @@ export default function ClientPortal() {
             )}
 
             {/* Line Items Table */}
-            <Card className="bg-white rounded-xl shadow-sm">
+            <Card className="bg-white rounded-xl shadow-sm border-slate-200">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base text-foreground">Items</CardTitle>
               </CardHeader>
