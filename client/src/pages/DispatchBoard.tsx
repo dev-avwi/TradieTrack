@@ -128,6 +128,14 @@ function parseJobTime(timeStr?: string): { hour: number; minute: number } {
   return { hour: h || 9, minute: m || 0 };
 }
 
+function formatScheduledTime(timeStr?: string): string {
+  if (!timeStr) return '';
+  const { hour, minute } = parseJobTime(timeStr);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const h = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${h}:${minute.toString().padStart(2, '0')} ${ampm}`;
+}
+
 interface DraggedJob {
   job: Job;
   originMemberId: string | null;
@@ -1159,7 +1167,7 @@ export default function DispatchBoard() {
       )}
 
       {topView === 'schedule' && (
-      <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex-1">
           <Card>
             <CardHeader className="pb-3">
@@ -1375,7 +1383,7 @@ export default function DispatchBoard() {
                                     {job.scheduledTime && (
                                       <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
                                         <Clock className="h-3 w-3" />
-                                        <span>{job.scheduledTime}</span>
+                                        <span>{formatScheduledTime(job.scheduledTime)}</span>
                                         {job.estimatedDuration && job.estimatedDuration > 60 && (
                                           <span className="text-muted-foreground">({Math.round(job.estimatedDuration / 60)}h)</span>
                                         )}
@@ -1446,8 +1454,8 @@ export default function DispatchBoard() {
                     ))}
                   </div>
 
-                  <ScrollArea className="h-[600px]">
-                    <div className="relative">
+                  <ScrollArea className="h-[700px]">
+                    <div className="relative" style={{ minHeight: WORK_HOURS.length * HOUR_HEIGHT + 80 }}>
                       {WORK_HOURS.map(hour => (
                         <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
                           <div className="w-12 flex-shrink-0 p-1 text-[10px] text-muted-foreground border-r bg-muted/10">
@@ -1557,7 +1565,7 @@ export default function DispatchBoard() {
           </Card>
         </div>
 
-        <div className="w-full lg:w-72 flex-shrink-0 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
