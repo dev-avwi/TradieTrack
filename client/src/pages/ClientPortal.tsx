@@ -285,7 +285,7 @@ export default function ClientPortal() {
                   <img 
                     src={data.business.logoUrl} 
                     alt={data.business.name}
-                    className="w-12 h-12 object-contain rounded-md brightness-0 invert"
+                    className="w-12 h-12 object-contain rounded-md bg-white/15 p-0.5"
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-md bg-white/20 backdrop-blur flex items-center justify-center">
@@ -483,6 +483,44 @@ export default function ClientPortal() {
                       <p className="font-medium text-green-800">Quote Accepted</p>
                       <p className="text-sm text-green-600">
                         Accepted by {data.acceptedBy} on {formatDate(data.acceptedAt)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Quote Declined Status */}
+            {data.status === 'declined' && type === 'quote' && (
+              <Card className="bg-white rounded-xl shadow-sm border border-red-200">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                      <X className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-red-800">Quote Declined</p>
+                      <p className="text-sm text-red-600">
+                        This quote has been declined. Contact {data.business?.name || 'the business'} if you change your mind.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Quote Accepted Status */}
+            {isAccepted && type === 'quote' && (
+              <Card className="bg-white rounded-xl shadow-sm border border-green-200">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-800">Quote Accepted</p>
+                      <p className="text-sm text-green-600">
+                        You accepted this quote{data.acceptedAt ? ` on ${new Date(data.acceptedAt).toLocaleDateString('en-AU')}` : ''}.
                       </p>
                     </div>
                   </div>

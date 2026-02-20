@@ -136,7 +136,7 @@ import {
 } from "./tradieTemplates";
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
-import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted } from "./notifications";
+import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB } from "./notifications";
 import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
@@ -2263,14 +2263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
-        await storage.createNotification({
-          userId: quote.userId,
-          type: 'quote_accepted',
-          title: 'Quote Accepted',
-          message: `Quote ${quote.number} was accepted by ${acceptedBy || 'Client'}`,
-          relatedId: quote.id,
-          relatedType: 'quote'
-        });
+        await notifyQuoteAcceptedDB(storage, quote.userId, quote, acceptedBy || 'Client');
         await notifyQuoteAccepted(quote.userId, quote.number, quote.id, acceptedBy || 'Client');
       } catch (e) {
         console.error('Failed to create accept notification:', e);
@@ -2327,14 +2320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const client = await storage.getClientById(quote.clientId);
         const clientName = client?.name || 'Client';
-        await storage.createNotification({
-          userId: quote.userId,
-          type: 'quote_declined',
-          title: 'Quote Declined',
-          message: `Quote ${quote.number} was declined${reason ? `: ${reason}` : ''}`,
-          relatedId: quote.id,
-          relatedType: 'quote'
-        });
+        await notifyQuoteRejectedDB(storage, quote.userId, quote, clientName);
         await notifyQuoteRejected(quote.userId, quote.number, quote.id, clientName);
       } catch (e) {
         console.error('Failed to create decline notification:', e);
@@ -28117,13 +28103,14 @@ Respond with JSON in this format:
         senderAvatar: user?.profileImageUrl,
       };
       
-      // Send push notifications to other job chat participants
+      // Send push notifications and DB notifications to other job chat participants
       try {
         const messagePreview = req.body.message || '';
         
         // Notify job owner if they didn't send the message
         if (job.userId !== userId) {
           await notifyTeamMessage(job.userId, senderName, messagePreview, 'job');
+          await notifyChatMessage(storage, job.userId, senderName, messagePreview || 'Sent a message', message.id);
           console.log(`[PushNotification] Sent job chat notification to owner ${job.userId}`);
         }
         
@@ -28132,6 +28119,7 @@ Respond with JSON in this format:
         const assigneeUserId = await resolveAssigneeUserId(job.assignedTo, job.userId);
         if (assigneeUserId && assigneeUserId !== userId && assigneeUserId !== job.userId) {
           await notifyTeamMessage(assigneeUserId, senderName, messagePreview, 'job');
+          await notifyChatMessage(storage, assigneeUserId, senderName, messagePreview || 'Sent a message', message.id);
           console.log(`[PushNotification] Sent job chat notification to assignee ${assigneeUserId}`);
         }
       } catch (pushError) {
@@ -29065,11 +29053,18 @@ Respond with JSON in this format:
       });
 
       // Enrich with sender info
+      const dmSenderName = `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'User';
       const enrichedMessage = {
         ...message,
-        senderName: `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email,
+        senderName: dmSenderName,
         senderAvatar: sender.profileImageUrl,
       };
+
+      try {
+        await notifyChatMessage(storage, recipientId, dmSenderName, content?.trim() || 'Sent an attachment', message.id);
+      } catch (e) {
+        console.error('[Notification] Error creating DM notification:', e);
+      }
       
       res.json(enrichedMessage);
     } catch (error: any) {
@@ -29190,7 +29185,7 @@ Respond with JSON in this format:
         senderAvatar: user?.profileImageUrl,
       };
       
-      // Send push notifications to all team members except sender
+      // Send push notifications and DB notifications to all team members except sender
       try {
         const messagePreview = req.body.message || '';
         const teamMembers = await storage.getTeamMembers(context.businessOwnerId);
@@ -29198,6 +29193,7 @@ Respond with JSON in this format:
         // Notify business owner if they didn't send the message
         if (context.businessOwnerId !== userId) {
           await notifyTeamMessage(context.businessOwnerId, senderName, messagePreview, 'team');
+          await notifyChatMessage(storage, context.businessOwnerId, senderName, messagePreview || 'Sent a message', message.id);
           console.log(`[PushNotification] Sent team chat notification to owner ${context.businessOwnerId}`);
         }
         
@@ -29205,6 +29201,7 @@ Respond with JSON in this format:
         for (const member of teamMembers) {
           if (member.memberId !== userId && member.inviteStatus === 'accepted' && member.isActive) {
             await notifyTeamMessage(member.memberId, senderName, messagePreview, 'team');
+            await notifyChatMessage(storage, member.memberId, senderName, messagePreview || 'Sent a message', message.id);
             console.log(`[PushNotification] Sent team chat notification to member ${member.memberId}`);
           }
         }
