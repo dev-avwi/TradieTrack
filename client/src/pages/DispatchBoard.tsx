@@ -739,7 +739,7 @@ export default function DispatchBoard() {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       toast({
         title: "Job unscheduled",
-        description: "The job has been moved back to the unscheduled list",
+        description: "The job has been removed from the schedule",
       });
     },
     onError: (error: any) => {
@@ -995,6 +995,22 @@ export default function DispatchBoard() {
     return map;
   }, [weekDays, jobsWithClients]);
 
+  const threeDayDates = useMemo(() => {
+    return Array.from({ length: 3 }, (_, i) => addDays(currentDate, i));
+  }, [currentDate]);
+
+  const jobsByThreeDay = useMemo(() => {
+    const map: Record<string, typeof jobsWithClients> = {};
+    threeDayDates.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      map[dateStr] = jobsWithClients.filter(job => {
+        if (!job.scheduledAt) return false;
+        return format(parseISO(job.scheduledAt), 'yyyy-MM-dd') === dateStr;
+      });
+    });
+    return map;
+  }, [threeDayDates, jobsWithClients]);
+
   const isToday = isSameDay(currentDate, new Date());
 
   return (
@@ -1035,7 +1051,7 @@ export default function DispatchBoard() {
 
           {topView === 'schedule' && (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => viewMode === 'week' ? navigateWeek('prev') : navigateDate('prev')} data-testid="button-prev-day-bar">
+              <Button variant="outline" size="icon" onClick={() => viewMode === 'week' ? navigateWeek('prev') : viewMode === '3day' ? setCurrentDate(prev => subDays(prev, 3)) : navigateDate('prev')} data-testid="button-prev-day-bar">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button variant={isToday ? "default" : "outline"} size="sm" onClick={goToToday} data-testid="button-today-bar">
@@ -1050,7 +1066,7 @@ export default function DispatchBoard() {
                     </>
                 }
               </span>
-              <Button variant="outline" size="icon" onClick={() => viewMode === 'week' ? navigateWeek('next') : navigateDate('next')} data-testid="button-next-day-bar">
+              <Button variant="outline" size="icon" onClick={() => viewMode === 'week' ? navigateWeek('next') : viewMode === '3day' ? setCurrentDate(prev => addDays(prev, 3)) : navigateDate('next')} data-testid="button-next-day-bar">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -1149,7 +1165,7 @@ export default function DispatchBoard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  {viewMode !== 'week' && isToday && (
+                  {viewMode === 'day' && isToday && (
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
                       <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'hsl(var(--trade))' }} />
@@ -1158,13 +1174,17 @@ export default function DispatchBoard() {
                   <h2 className="text-sm font-semibold">
                     {viewMode === 'week'
                       ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
-                      : format(currentDate, 'EEEE, MMMM d, yyyy')
+                      : viewMode === '3day'
+                        ? `${format(threeDayDates[0], 'MMM d')} - ${format(threeDayDates[2], 'MMM d, yyyy')}`
+                        : format(currentDate, 'EEEE, MMMM d, yyyy')
                     }
                   </h2>
                   <span className="text-xs text-muted-foreground">
                     {viewMode === 'week'
                       ? `${Object.values(jobsByDate).reduce((sum, jobs) => sum + jobs.length, 0)} jobs`
-                      : `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''}`
+                      : viewMode === '3day'
+                        ? `${Object.values(jobsByThreeDay).reduce((sum, jobs) => sum + jobs.length, 0)} jobs`
+                        : `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''}`
                     }
                   </span>
                 </div>
@@ -1201,13 +1221,13 @@ export default function DispatchBoard() {
             <CardContent className="p-0">
               {viewMode === 'week' ? (
                 <div className="overflow-x-auto">
-                  <div className="grid grid-cols-7">
+                  <div className="grid grid-cols-7 min-w-[980px]">
                     {weekDays.map(day => {
                       const dateStr = format(day, 'yyyy-MM-dd');
                       const dayJobs = jobsByDate[dateStr] || [];
                       const isDayToday = isSameDay(day, new Date());
                       return (
-                        <div key={dateStr} className="border-r last:border-r-0 min-h-[400px]">
+                        <div key={dateStr} className="border-r last:border-r-0 min-h-[400px] min-w-[140px]">
                           <div
                             className={`p-2.5 border-b text-center cursor-pointer transition-colors ${
                               isDayToday ? 'bg-muted/50' : 'bg-muted/20 hover:bg-muted/40'
@@ -1272,6 +1292,106 @@ export default function DispatchBoard() {
                               })}
                               {dayJobs.length === 0 && (
                                 <div className="text-center py-6 text-xs text-muted-foreground">
+                                  No jobs
+                                </div>
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : viewMode === '3day' ? (
+                <div className="overflow-x-auto">
+                  <div className="grid grid-cols-3">
+                    {threeDayDates.map(day => {
+                      const dateStr = format(day, 'yyyy-MM-dd');
+                      const dayJobs = jobsByThreeDay[dateStr] || [];
+                      const isDayToday = isSameDay(day, new Date());
+                      return (
+                        <div key={dateStr} className="border-r last:border-r-0 min-h-[400px]">
+                          <div
+                            className={`p-3 border-b text-center cursor-pointer transition-colors ${
+                              isDayToday ? 'bg-muted/50' : 'bg-muted/20 hover:bg-muted/40'
+                            }`}
+                            onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                          >
+                            <p className={`text-xs font-medium ${isDayToday ? '' : 'text-muted-foreground'}`}>
+                              {format(day, 'EEEE')}
+                            </p>
+                            <p className={`text-2xl font-bold tabular-nums`}
+                              style={isDayToday ? { color: 'hsl(var(--trade))' } : undefined}
+                            >
+                              {format(day, 'd')}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{format(day, 'MMM')}</p>
+                            {dayJobs.length > 0 && (
+                              <div className="flex items-center justify-center gap-1 mt-1">
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                                <span className="text-xs text-muted-foreground">{dayJobs.length} job{dayJobs.length !== 1 ? 's' : ''}</span>
+                              </div>
+                            )}
+                          </div>
+                          <ScrollArea className="h-[450px]">
+                            <div className="p-2 space-y-2">
+                              {dayJobs.sort((a: any, b: any) => {
+                                const aTime = a.scheduledTime || '00:00';
+                                const bTime = b.scheduledTime || '00:00';
+                                return aTime.localeCompare(bTime);
+                              }).map(job => {
+                                const statusStyle = getStatusStyle(job.status);
+                                const assignedMember = teamMembersWithJobs.find(m =>
+                                  m.memberId === job.assignedTo || (!job.assignedTo && m.id === 'owner')
+                                );
+                                return (
+                                  <div
+                                    key={job.id}
+                                    draggable
+                                    onDragStart={() => handleDragStart(job, job.assignedTo || 'owner')}
+                                    onDragEnd={() => setDraggedJob(null)}
+                                    onClick={() => handleJobClick(job, 'reassign')}
+                                    className={`p-2.5 rounded-md border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border}`}
+                                    data-testid={`3day-job-${job.id}`}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      {assignedMember && (
+                                        <Avatar className="h-5 w-5 flex-shrink-0 mt-0.5">
+                                          <AvatarImage src={assignedMember.profileImageUrl} />
+                                          <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                            {(assignedMember.firstName?.[0] || '') + (assignedMember.lastName?.[0] || '')}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
+                                          {job.title}
+                                        </h4>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {job.clientName}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {job.scheduledTime && (
+                                      <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{job.scheduledTime}</span>
+                                        {job.estimatedDuration && job.estimatedDuration > 60 && (
+                                          <span className="text-muted-foreground">({Math.round(job.estimatedDuration / 60)}h)</span>
+                                        )}
+                                      </div>
+                                    )}
+                                    {job.address && (
+                                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{job.address}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              {dayJobs.length === 0 && (
+                                <div className="text-center py-8 text-sm text-muted-foreground">
                                   No jobs
                                 </div>
                               )}
