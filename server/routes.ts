@@ -136,7 +136,7 @@ import {
 } from "./tradieTemplates";
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
-import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB } from "./notifications";
+import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB, notifyGeofenceCheckIn, notifyGeofenceCheckOut, notifyRecurringJobCreated, notifyRecurringInvoiceCreated, notifyInvoiceOverdue as notifyInvoiceOverdueDB, notifyQuoteExpiring, notifyPaymentFailed } from "./notifications";
 import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
@@ -12867,6 +12867,20 @@ Be specific about materials, colors, and features that would be included.`
           await notifyJobCompleted(storage, effectiveUserId, job, { firstName: 'You', username: 'You' });
           await logActivity(effectiveUserId, 'job_completed', `Job completed: ${job.title}`, `Client: ${clientName}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
         } else {
+          // Create notification for all other status changes (quoted, booked, invoiced, on_hold, cancelled etc.)
+          try {
+            const statusLabel = (data.status || '').replace(/_/g, ' ');
+            await storage.createNotification({
+              userId: effectiveUserId,
+              type: 'job_status_changed',
+              title: `Job Phase Changed`,
+              message: `"${job.title}" moved to ${statusLabel}`,
+              priority: 'normal',
+              actionUrl: `/jobs/${job.id}`,
+              actionLabel: 'View Job',
+              metadata: { jobId: job.id, oldStatus: existingJob.status, newStatus: data.status }
+            });
+          } catch (e) { console.error('Failed to create job status notification:', e); }
           await logActivity(effectiveUserId, 'job_status_changed', `Job status updated: ${job.title}`, `${existingJob.status} → ${data.status}`, 'job', job.id, { jobTitle: job.title, clientName, oldStatus: existingJob.status, newStatus: data.status });
         }
       }
@@ -13095,6 +13109,21 @@ Be specific about materials, colors, and features that would be included.`
           } catch (emailError) {
             console.error('Failed to send job completion email:', emailError);
           }
+        } else {
+          // Notify for all other status changes
+          try {
+            const statusLabel = (status || '').replace(/_/g, ' ');
+            await storage.createNotification({
+              userId: effectiveUserId,
+              type: 'job_status_changed', 
+              title: 'Job Phase Changed',
+              message: `"${job.title}" moved to ${statusLabel} by ${userName}`,
+              priority: 'normal',
+              actionUrl: `/jobs/${job.id}`,
+              actionLabel: 'View Job',
+              metadata: { jobId: job.id, oldStatus: existingJob.status, newStatus: status, changedBy: userName }
+            });
+          } catch (e) { console.error('Failed to create job status notification:', e); }
         }
         
         // Trigger automation rules for job status change
@@ -26149,6 +26178,17 @@ Respond with JSON in this format:
         ...logContext,
         alertId: alert.id
       }));
+
+      // Create in-app notification for geofence events
+      try {
+        const user = await storage.getUser(userId);
+        const memberName = user?.firstName || user?.username || 'Team member';
+        if (action === 'enter') {
+          await notifyGeofenceCheckIn(storage, effectiveUserId, job, { firstName: memberName });
+        } else {
+          await notifyGeofenceCheckOut(storage, effectiveUserId, job, { firstName: memberName }, '');
+        }
+      } catch (e) { console.error('Failed to create geofence notification:', e); }
       
       if (action === 'exit') {
         const user = await storage.getUser(userId);
@@ -30720,6 +30760,10 @@ Respond with JSON in this format:
         ...req.body,
         userId,
       });
+      try {
+        const client = job.clientId ? await storage.getClient(job.clientId, userId) : null;
+        await notifyRecurringJobCreated(storage, userId, job, client?.name || 'Client');
+      } catch (e) { console.error('Failed to create recurring job notification:', e); }
       res.status(201).json(job);
     } catch (error: any) {
       console.error('Error creating recurring job:', error);
@@ -30736,6 +30780,10 @@ Respond with JSON in this format:
         ...req.body,
         userId,
       });
+      try {
+        const client = invoice.clientId ? await storage.getClientById(invoice.clientId) : null;
+        await notifyRecurringInvoiceCreated(storage, userId, invoice, client?.name || 'Client');
+      } catch (e) { console.error('Failed to create recurring invoice notification:', e); }
       res.status(201).json(invoice);
     } catch (error: any) {
       console.error('Error creating recurring invoice:', error);
