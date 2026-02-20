@@ -81,7 +81,7 @@ function getStatusColor(status: string, type: string): string {
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'declined': return 'bg-red-100 text-red-800';
       case 'sent': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-muted text-foreground';
+      default: return 'bg-slate-100 text-slate-700';
     }
   }
   if (type === 'invoice') {
@@ -89,7 +89,7 @@ function getStatusColor(status: string, type: string): string {
       case 'paid': return 'bg-green-100 text-green-800';
       case 'overdue': return 'bg-red-100 text-red-800';
       case 'sent': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-muted text-foreground';
+      default: return 'bg-slate-100 text-slate-700';
     }
   }
   return 'bg-green-100 text-green-800';

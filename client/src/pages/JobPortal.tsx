@@ -988,7 +988,7 @@ export default function JobPortal() {
               {job.workerStatusUpdatedAt && (
                 <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
                   {effectiveWorkerStatus === 'on_my_way' && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    <span className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                       <Signal className="w-2.5 h-2.5" />
                       Live tracking
                     </span>
@@ -1134,7 +1134,7 @@ export default function JobPortal() {
                   return (
                     <div key={`sub-list-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                           <User className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div>
@@ -1199,7 +1199,7 @@ export default function JobPortal() {
                   return (
                     <div key={`sub-tech-${s.tokenId}`} className="flex items-center justify-between gap-3 py-2 mt-3 border-t border-slate-100">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                           <User className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div>
@@ -1490,8 +1490,8 @@ export default function JobPortal() {
                   >
                     <div className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-muted-foreground" />
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-blue-400" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{quote.title || 'Quote'}</p>
@@ -1526,9 +1526,9 @@ export default function JobPortal() {
                       <div className="p-4">
                         <div className="flex items-start gap-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isPayable ? 'bg-brand/10' : 'bg-muted'
+                            isPayable ? 'bg-brand/10' : 'bg-slate-100'
                           }`}>
-                            <CreditCard className={`w-5 h-5 ${isPayable ? 'text-brand' : 'text-muted-foreground'}`} />
+                            <CreditCard className={`w-5 h-5 ${isPayable ? 'text-brand' : 'text-slate-400'}`} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">Invoice #{invoice.invoiceNumber}</p>
