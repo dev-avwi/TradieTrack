@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen, ArrowLeft, ShieldCheck, Lock, Sparkles } from "lucide-react";
 import { useState, useEffect, useLayoutEffect } from "react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
 import { SignaturePad } from "@/components/ui/signature-pad";
@@ -216,9 +216,15 @@ export default function ClientPortal() {
   };
 
   const handleDeclineQuote = async () => {
+    if (!window.confirm('Are you sure you want to decline this quote? The tradie will be notified.')) {
+      return;
+    }
     setIsDeclining(true);
     try {
       await apiRequest('POST', `/api/public/quote/${token}/decline`, {});
+      queryClient.setQueryData(['/api/public/document', type, token], (old: any) => 
+        old ? { ...old, status: 'declined' } : old
+      );
       toast({
         title: "Quote Declined",
         description: "The tradie has been notified.",
