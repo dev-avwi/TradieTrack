@@ -100,6 +100,7 @@ export default function ClientPortal() {
   const { toast } = useToast();
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
+  const [localDeclined, setLocalDeclined] = useState(false);
   const [acceptedName, setAcceptedName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [showDemoPayment, setShowDemoPayment] = useState(false);
@@ -222,6 +223,7 @@ export default function ClientPortal() {
     setIsDeclining(true);
     try {
       await apiRequest('POST', `/api/public/quote/${token}/decline`, {});
+      setLocalDeclined(true);
       queryClient.setQueryData(['/api/public/document', type, token], (old: any) => 
         old ? { ...old, status: 'declined' } : old
       );
@@ -273,11 +275,12 @@ export default function ClientPortal() {
   }
 
   const docTypeLabel = type === 'quote' ? 'Quote' : type === 'invoice' ? 'Invoice' : 'Receipt';
-  const showAcceptButtons = type === 'quote' && (data.status === 'sent' || data.status === 'draft');
-  const showPayButton = type === 'invoice' && data.status !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
-  const showDemoButton = type === 'invoice' && data.status !== 'paid';
-  const isAccepted = data.status === 'accepted';
-  const isPaid = data.status === 'paid';
+  const effectiveStatus = localDeclined ? 'declined' : data.status;
+  const showAcceptButtons = type === 'quote' && !localDeclined && (data.status === 'sent' || data.status === 'draft');
+  const showPayButton = type === 'invoice' && effectiveStatus !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
+  const showDemoButton = type === 'invoice' && effectiveStatus !== 'paid';
+  const isAccepted = effectiveStatus === 'accepted';
+  const isPaid = effectiveStatus === 'paid';
 
   return (
     <div className="min-h-screen bg-white">
@@ -337,8 +340,8 @@ export default function ClientPortal() {
                   <p className="text-sm text-muted-foreground">{data.title}</p>
                 </div>
               </div>
-              <Badge className={`${getStatusColor(data.status, type || '')} rounded-full px-3 py-1 text-sm font-medium no-default-hover-elevate no-default-active-elevate`}>
-                {data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+              <Badge className={`${getStatusColor(effectiveStatus, type || '')} rounded-full px-3 py-1 text-sm font-medium no-default-hover-elevate no-default-active-elevate`}>
+                {effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)}
               </Badge>
             </div>
           </div>
@@ -497,7 +500,7 @@ export default function ClientPortal() {
             )}
 
             {/* Quote Declined Status */}
-            {data.status === 'declined' && type === 'quote' && (
+            {(effectiveStatus === 'declined') && type === 'quote' && (
               <Card className="bg-white rounded-xl shadow-sm border border-red-200">
                 <CardContent className="py-4">
                   <div className="flex items-center gap-3">
