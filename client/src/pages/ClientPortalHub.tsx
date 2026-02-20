@@ -132,7 +132,7 @@ function getQuoteStatusColor(status: string): string {
     case 'accepted': return 'bg-green-100 text-green-800';
     case 'declined': return 'bg-red-100 text-red-800';
     case 'sent': return 'bg-blue-100 text-blue-800';
-    default: return 'bg-muted text-foreground';
+    default: return 'bg-slate-100 text-slate-700';
   }
 }
 
@@ -141,7 +141,7 @@ function getInvoiceStatusColor(status: string): string {
     case 'paid': return 'bg-green-100 text-green-800';
     case 'overdue': return 'bg-red-100 text-red-800';
     case 'sent': return 'bg-blue-100 text-blue-800';
-    default: return 'bg-muted text-foreground';
+    default: return 'bg-slate-100 text-slate-700';
   }
 }
 
@@ -151,7 +151,7 @@ function getJobStatusColor(status: string): string {
     case 'in_progress': return 'bg-blue-100 text-blue-800';
     case 'scheduled': return 'bg-purple-100 text-purple-800';
     case 'cancelled': return 'bg-red-100 text-red-800';
-    default: return 'bg-muted text-foreground';
+    default: return 'bg-slate-100 text-slate-700';
   }
 }
 
@@ -484,8 +484,8 @@ export default function ClientPortalHub() {
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
-            <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
-            <p className="text-sm text-muted-foreground mt-1">Access your quotes, invoices, and job history</p>
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Access your quotes, invoices, and job history</p>
           </div>
         </div>
 
@@ -495,8 +495,8 @@ export default function ClientPortalHub() {
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto mb-3">
                 <Phone className="w-6 h-6 text-brand" />
               </div>
-              <CardTitle className="text-lg text-foreground">Verify Your Identity</CardTitle>
-              <CardDescription className="text-muted-foreground">
+              <CardTitle className="text-lg text-slate-900">Verify Your Identity</CardTitle>
+              <CardDescription className="text-slate-500">
                 Enter the mobile number associated with your account
               </CardDescription>
             </CardHeader>
@@ -507,7 +507,7 @@ export default function ClientPortalHub() {
                   placeholder="0400 000 000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="text-center text-lg bg-white text-foreground"
+                  className="text-center text-lg bg-white text-slate-900"
                 />
               </div>
               <Button 
@@ -518,7 +518,7 @@ export default function ClientPortalHub() {
               >
                 {isLoading ? 'Sending...' : 'Send Verification Code'}
               </Button>
-              <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1.5">
+              <p className="text-xs text-center text-slate-500 flex items-center justify-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" />
                 We'll send a 6-digit code to verify your identity
               </p>
@@ -528,7 +528,7 @@ export default function ClientPortalHub() {
 
         <div className="text-center py-8 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-sm text-muted-foreground">Powered by <span className="font-semibold text-muted-foreground">JobRunner</span></span>
+          <span className="text-sm text-slate-500">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -541,8 +541,8 @@ export default function ClientPortalHub() {
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
-            <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
-            <p className="text-sm text-muted-foreground mt-1">Secure verification</p>
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Secure verification</p>
           </div>
         </div>
 
@@ -552,8 +552,8 @@ export default function ClientPortalHub() {
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="w-6 h-6 text-brand" />
               </div>
-              <CardTitle className="text-lg text-foreground">Enter Verification Code</CardTitle>
-              <CardDescription className="text-muted-foreground">
+              <CardTitle className="text-lg text-slate-900">Enter Verification Code</CardTitle>
+              <CardDescription className="text-slate-500">
                 We sent a 6-digit code to {phone}
               </CardDescription>
             </CardHeader>
@@ -564,7 +564,7 @@ export default function ClientPortalHub() {
                   placeholder="000000"
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="text-center text-2xl tracking-widest font-mono bg-white text-foreground"
+                  className="text-center text-2xl tracking-widest font-mono bg-white text-slate-900"
                   maxLength={6}
                 />
               </div>
@@ -600,7 +600,7 @@ export default function ClientPortalHub() {
 
         <div className="text-center py-8 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-sm text-muted-foreground">Powered by <span className="font-semibold text-muted-foreground">JobRunner</span></span>
+          <span className="text-sm text-slate-500">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -613,21 +613,21 @@ export default function ClientPortalHub() {
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
-            <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
-            <p className="text-sm text-muted-foreground mt-1">Account lookup</p>
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Account lookup</p>
           </div>
         </div>
 
         <div className="flex-1 flex items-start justify-center px-4 relative">
           <div className="w-full max-w-md text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-              <AlertCircle className="w-8 h-8 text-muted-foreground" />
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8 text-slate-500" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-bold text-foreground">
+              <h2 className="text-lg font-bold text-slate-900">
                 We couldn't find an active client profile for that contact.
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-500">
                 If you think this is a mistake, contact your service provider.
               </p>
             </div>
@@ -652,7 +652,7 @@ export default function ClientPortalHub() {
             </div>
             <Button
               variant="ghost"
-              className="text-muted-foreground"
+              className="text-slate-500"
               onClick={handleLogout}
             >
               Try a different number
@@ -662,7 +662,7 @@ export default function ClientPortalHub() {
 
         <div className="text-center py-8 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-sm text-muted-foreground">Powered by <span className="font-semibold text-muted-foreground">JobRunner</span></span>
+          <span className="text-sm text-slate-500">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -675,8 +675,8 @@ export default function ClientPortalHub() {
         <div className="py-10 px-4 relative">
           <div className="max-w-md mx-auto text-center">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 mx-auto mb-3 object-contain" />
-            <h1 className="text-2xl font-bold text-foreground">Client Portal</h1>
-            <p className="text-sm text-muted-foreground mt-1">Select your account</p>
+            <h1 className="text-2xl font-bold text-slate-900">Client Portal</h1>
+            <p className="text-sm text-slate-500 mt-1">Select your account</p>
           </div>
         </div>
 
@@ -686,8 +686,8 @@ export default function ClientPortalHub() {
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto">
                 <Users className="w-6 h-6 text-brand" />
               </div>
-              <h2 className="text-lg font-bold text-foreground">Which account are you checking?</h2>
-              <p className="text-sm text-muted-foreground">Multiple profiles are linked to this number</p>
+              <h2 className="text-lg font-bold text-slate-900">Which account are you checking?</h2>
+              <p className="text-sm text-slate-500">Multiple profiles are linked to this number</p>
             </div>
             <div className="space-y-3">
               {portalData?.clients.map((client) => (
@@ -704,9 +704,9 @@ export default function ClientPortalHub() {
                       <Building2 className="w-5 h-5 text-brand" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
+                      <h3 className="font-semibold text-slate-900 truncate">{client.name}</h3>
                       {client.email && (
-                        <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                        <p className="text-xs text-slate-500 truncate flex items-center gap-1">
                           <Mail className="w-3 h-3" />
                           {client.email}
                         </p>
@@ -721,7 +721,7 @@ export default function ClientPortalHub() {
 
         <div className="text-center py-8 flex items-center justify-center gap-2">
           <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-          <span className="text-sm text-muted-foreground">Powered by <span className="font-semibold text-muted-foreground">JobRunner</span></span>
+          <span className="text-sm text-slate-500">Powered by <span className="font-semibold text-slate-500">JobRunner</span></span>
         </div>
       </div>
     );
@@ -785,19 +785,19 @@ export default function ClientPortalHub() {
           </div>
         </header>
 
-        <div className="border-b px-4 py-4">
+        <div className="border-b border-slate-200 px-4 py-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-foreground">
+                <h2 className="text-xl font-bold text-slate-900">
                   {clientName ? `Welcome back, ${clientName}` : 'Your Documents'}
                 </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <p className="text-sm text-slate-500 mt-0.5">
                   {portalData?.phone ? `Logged in as ${portalData.phone}` : 'View your quotes, invoices, and jobs'}
                 </p>
               </div>
               {sourceDocument && (
-                <Button variant="outline" size="sm" className="border"
+                <Button variant="outline" size="sm" className="border border-slate-200"
                   onClick={() => setLocation(`/portal/${sourceDocument.type}/${sourceDocument.token}`)}>
                   <ArrowLeft className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">
@@ -820,16 +820,16 @@ export default function ClientPortalHub() {
               </div>
             ) : loadError ? (
               <div className="text-center py-12">
-                <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
-                <h2 className="text-lg font-semibold mb-2 text-foreground">Couldn't load your documents</h2>
-                <p className="text-sm text-muted-foreground mb-4">Something went wrong. Please check your connection and try again.</p>
+                <AlertCircle className="w-12 h-12 mx-auto text-slate-500/40 mb-4" />
+                <h2 className="text-lg font-semibold mb-2 text-slate-900">Couldn't load your documents</h2>
+                <p className="text-sm text-slate-500 mb-4">Something went wrong. Please check your connection and try again.</p>
                 <Button variant="outline" size="sm" onClick={() => sessionToken && fetchPortalData(sessionToken)}>
                   Try again
                 </Button>
               </div>
             ) : (
               <Tabs defaultValue="quotes" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted">
+                <TabsList className="grid w-full grid-cols-4 mb-6 bg-slate-100">
                   <TabsTrigger value="quotes" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Quotes</span>
@@ -862,12 +862,12 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="quotes" className="space-y-4">
                   {filteredQuotes?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                        <FileText className="w-8 h-8 text-muted-foreground" />
+                    <div className="bg-white rounded-md shadow-lg p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <FileText className="w-8 h-8 text-slate-500" />
                       </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">No Quotes Yet</h3>
-                      <p className="text-sm text-muted-foreground">Your quotes will appear here once they're sent</p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-1">No Quotes Yet</h3>
+                      <p className="text-sm text-slate-500">Your quotes will appear here once they're sent</p>
                     </div>
                   ) : (
                     filteredQuotes?.map((quote) => (
@@ -887,7 +887,7 @@ export default function ClientPortalHub() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-semibold text-foreground truncate">Quote #{quote.number}</h3>
+                                <h3 className="font-semibold text-slate-900 truncate">Quote #{quote.number}</h3>
                                 <Badge className={getQuoteStatusColor(quote.status)}>
                                   {quote.status}
                                 </Badge>
@@ -895,23 +895,23 @@ export default function ClientPortalHub() {
                             </div>
                           </div>
                           <div className="ml-13 space-y-1">
-                            <p className="text-sm text-muted-foreground truncate">{quote.title}</p>
+                            <p className="text-sm text-slate-500 truncate">{quote.title}</p>
                             {quote.business?.businessName && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <p className="text-xs text-slate-500 flex items-center gap-1">
                                 <Building2 className="w-3 h-3" />
                                 {quote.business.businessName}
                               </p>
                             )}
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-slate-500">
                               {formatDate(quote.createdAt)}
                               {quote.validUntil && ` · Valid until ${formatDate(quote.validUntil)}`}
                             </p>
                           </div>
-                          <div className="mt-4 pt-4 border-t">
+                          <div className="mt-4 pt-4 border-t border-slate-200">
                             <div className="flex items-center justify-between gap-4">
                               <div>
-                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Amount</p>
-                                <p className="text-xl font-bold text-foreground">{formatCurrency(quote.total)}</p>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount</p>
+                                <p className="text-xl font-bold text-slate-900">{formatCurrency(quote.total)}</p>
                               </div>
                             </div>
                           </div>
@@ -931,12 +931,12 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="invoices" className="space-y-4">
                   {filteredInvoices?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                        <CreditCard className="w-8 h-8 text-muted-foreground" />
+                    <div className="bg-white rounded-md shadow-lg p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <CreditCard className="w-8 h-8 text-slate-500" />
                       </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">No Invoices Yet</h3>
-                      <p className="text-sm text-muted-foreground">Your invoices will appear here once they're created</p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-1">No Invoices Yet</h3>
+                      <p className="text-sm text-slate-500">Your invoices will appear here once they're created</p>
                     </div>
                   ) : (
                     filteredInvoices?.map((invoice) => {
@@ -976,7 +976,7 @@ export default function ClientPortalHub() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="font-semibold text-foreground truncate">Invoice #{invoice.number}</h3>
+                                  <h3 className="font-semibold text-slate-900 truncate">Invoice #{invoice.number}</h3>
                                   <Badge className={getInvoiceStatusColor(invoice.status)}>
                                     {invoice.status}
                                   </Badge>
@@ -984,27 +984,27 @@ export default function ClientPortalHub() {
                               </div>
                             </div>
                             <div className="ml-13 space-y-1">
-                              <p className="text-sm text-muted-foreground truncate">{invoice.title}</p>
+                              <p className="text-sm text-slate-500 truncate">{invoice.title}</p>
                               {invoice.business?.businessName && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <p className="text-xs text-slate-500 flex items-center gap-1">
                                   <Building2 className="w-3 h-3" />
                                   {invoice.business.businessName}
                                 </p>
                               )}
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-slate-500">
                                 {formatDate(invoice.createdAt)}
                                 {invoice.dueDate && invoice.status !== 'paid' && ` · Due ${formatDate(invoice.dueDate)}`}
                                 {invoice.paidAt && ` · Paid ${formatDate(invoice.paidAt)}`}
                               </p>
                             </div>
-                            <div className="mt-4 pt-4 border-t">
+                            <div className="mt-4 pt-4 border-t border-slate-200">
                               <div className="flex items-center justify-between gap-4">
                                 <div>
-                                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                                  <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
                                     {isPaid ? 'Amount Paid' : isOverdue ? 'Amount Overdue' : 'Amount Due'}
                                   </p>
                                   <p className={`text-xl font-bold ${
-                                    isPaid ? 'text-green-700' : isOverdue ? 'text-red-600' : 'text-foreground'
+                                    isPaid ? 'text-green-700' : isOverdue ? 'text-red-600' : 'text-slate-900'
                                   }`}>{formatCurrency(invoice.total)}</p>
                                 </div>
                                 {isPaid && (
@@ -1032,12 +1032,12 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="receipts" className="space-y-4">
                   {filteredReceipts?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
+                    <div className="bg-white rounded-md shadow-lg p-10 text-center">
                       <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                         <Receipt className="w-8 h-8 text-green-300" />
                       </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">No Receipts Yet</h3>
-                      <p className="text-sm text-muted-foreground">Payment receipts will appear here after completed payments</p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-1">No Receipts Yet</h3>
+                      <p className="text-sm text-slate-500">Payment receipts will appear here after completed payments</p>
                     </div>
                   ) : (
                     filteredReceipts?.map((receipt) => (
@@ -1052,8 +1052,8 @@ export default function ClientPortalHub() {
                               <CheckCircle2 className="w-5 h-5 text-green-600" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-foreground truncate">Receipt #{receipt.number}</h3>
-                              <p className="text-xs text-muted-foreground">
+                              <h3 className="font-semibold text-slate-900 truncate">Receipt #{receipt.number}</h3>
+                              <p className="text-xs text-slate-500">
                                 Paid {formatDate(receipt.paymentDate)}
                               </p>
                             </div>
@@ -1061,7 +1061,7 @@ export default function ClientPortalHub() {
                           <div className="mt-4 pt-4 border-t border-green-100">
                             <div className="flex items-center justify-between gap-4">
                               <div>
-                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Amount Paid</p>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount Paid</p>
                                 <p className="text-xl font-bold text-green-700">{formatCurrency(receipt.total)}</p>
                               </div>
                             </div>
@@ -1080,12 +1080,12 @@ export default function ClientPortalHub() {
 
                 <TabsContent value="jobs" className="space-y-4">
                   {filteredJobs?.length === 0 ? (
-                    <div className="bg-card rounded-md shadow-lg p-10 text-center">
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                        <Briefcase className="w-8 h-8 text-muted-foreground" />
+                    <div className="bg-white rounded-md shadow-lg p-10 text-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <Briefcase className="w-8 h-8 text-slate-500" />
                       </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">No Jobs Yet</h3>
-                      <p className="text-sm text-muted-foreground">Your job history will appear here</p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-1">No Jobs Yet</h3>
+                      <p className="text-sm text-slate-500">Your job history will appear here</p>
                     </div>
                   ) : (
                     filteredJobs?.map((job) => {
@@ -1122,7 +1122,7 @@ export default function ClientPortalHub() {
                                   ? 'bg-blue-100'
                                   : isScheduled
                                   ? 'bg-purple-100'
-                                  : 'bg-muted'
+                                  : 'bg-slate-100'
                               }`}>
                                 <Briefcase className={`w-5 h-5 ${
                                   isDone
@@ -1131,12 +1131,12 @@ export default function ClientPortalHub() {
                                     ? 'text-blue-600'
                                     : isScheduled
                                     ? 'text-purple-600'
-                                    : 'text-muted-foreground'
+                                    : 'text-slate-500'
                                 }`} />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="font-semibold text-foreground truncate">{job.title}</h3>
+                                  <h3 className="font-semibold text-slate-900 truncate">{job.title}</h3>
                                   <Badge className={getJobStatusColor(job.status)}>
                                     {job.status === 'done' ? 'Completed' : job.status === 'in_progress' ? 'In Progress' : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                                   </Badge>
@@ -1150,12 +1150,12 @@ export default function ClientPortalHub() {
                             </div>
                             <div className="ml-13 space-y-1">
                               {job.address && (
-                                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <p className="text-sm text-slate-500 flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
                                   {job.address}
                                 </p>
                               )}
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <p className="text-xs text-slate-500 flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
                                 {job.scheduledAt ? `Scheduled: ${formatDate(job.scheduledAt)}` : 'Not scheduled'}
                                 {job.completedAt && ` · Completed: ${formatDate(job.completedAt)}`}
@@ -1164,9 +1164,9 @@ export default function ClientPortalHub() {
                           </div>
                           
                           {job.assignedWorkers && job.assignedWorkers.length > 0 && (
-                            <div className="px-5 pb-4 border-t">
+                            <div className="px-5 pb-4 border-t border-slate-200">
                               <div className="pt-3">
-                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">Assigned Team</p>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Assigned Team</p>
                                 <div className="space-y-2">
                                   {job.assignedWorkers.map((worker) => {
                                     const requestKey = `${worker.id}-${job.id}`;
@@ -1180,7 +1180,7 @@ export default function ClientPortalHub() {
                                             <div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
                                               <UserCircle className="w-4 h-4 text-brand" />
                                             </div>
-                                            <span className="text-sm font-medium text-foreground truncate">{worker.name}</span>
+                                            <span className="text-sm font-medium text-slate-900 truncate">{worker.name}</span>
                                           </div>
                                           {alreadyRequested ? (
                                             <Badge variant="secondary" className="flex-shrink-0">
@@ -1209,10 +1209,10 @@ export default function ClientPortalHub() {
                                         </div>
                                         
                                         {isExpanded && (
-                                          <div className="ml-9 p-3 bg-muted/50 rounded-md space-y-2">
-                                            <p className="text-xs text-muted-foreground">Add a note for the business (optional):</p>
+                                          <div className="ml-9 p-3 bg-slate-50 rounded-md space-y-2">
+                                            <p className="text-xs text-slate-500">Add a note for the business (optional):</p>
                                             <textarea
-                                              className="w-full text-sm border rounded-md p-2 bg-white text-foreground resize-none"
+                                              className="w-full text-sm border border-slate-200 rounded-md p-2 bg-white text-slate-900 resize-none"
                                               rows={2}
                                               placeholder="e.g. Great work last time, would love the same person..."
                                               value={requestMessage}
@@ -1280,12 +1280,12 @@ export default function ClientPortalHub() {
           </div>
         </main>
 
-        <div className="text-center py-8 border-t bg-white/80 backdrop-blur-sm flex flex-col items-center gap-2">
+        <div className="text-center py-8 border-t border-slate-200 bg-white/80 backdrop-blur-sm flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
-            <span className="text-sm text-muted-foreground">Powered by <span className="font-semibold text-foreground">JobRunner</span></span>
+            <span className="text-sm text-slate-500">Powered by <span className="font-semibold text-slate-900">JobRunner</span></span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500/60">
             <Shield className="w-3.5 h-3.5" />
             <span>Secure portal with industry-standard encryption</span>
           </div>
