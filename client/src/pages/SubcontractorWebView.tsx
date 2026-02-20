@@ -670,9 +670,9 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
             <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 {business?.businessLogo ? (
-                  <img src={business.businessLogo} alt={business.companyName} className="w-10 h-10 rounded-md object-contain bg-white p-1" />
+                  <img src={business.businessLogo} alt={business.companyName} className="w-8 h-8 rounded-md object-contain bg-white p-1" />
                 ) : (
-                  <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 object-contain" />
+                  <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
                 )}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base text-white truncate">{business?.companyName}</h1>
