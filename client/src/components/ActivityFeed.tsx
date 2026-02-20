@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatHistoryDate } from "@shared/dateUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ActivityFeedProps {
   limit?: number;
@@ -125,6 +126,7 @@ export default function ActivityFeed({
   showTeamActivity = true
 }: ActivityFeedProps) {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   
   const { data: activities = [], isLoading } = useQuery<ActivityItem[]>({
     queryKey: ['/api/activity-feed', { limit }],
@@ -134,6 +136,7 @@ export default function ActivityFeed({
       return response.json();
     },
     staleTime: 30 * 1000,
+    enabled: !!user,
   });
 
   const markReadMutation = useMutation({

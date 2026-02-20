@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import "leaflet/dist/leaflet.css";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TeamPresenceData {
   userId: string;
@@ -1089,6 +1090,7 @@ export default function TeamDashboard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { isOwner, isManager } = useAppMode();
+  const { user } = useAuth();
   const [myStatus, setMyStatus] = useState<string>("online");
   const [statusBoardOpen, setStatusBoardOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
@@ -1116,10 +1118,12 @@ export default function TeamDashboard() {
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<ActivityFeedItem[]>({
     queryKey: ["/api/activity-feed", { limit: 30 }],
     refetchInterval: 10000,
+    enabled: !!user,
   });
 
   const { data: allJobs = [] } = useQuery<JobData[]>({
     queryKey: ["/api/jobs"],
+    enabled: !!user,
   });
 
   const { data: utilization, isLoading: utilizationLoading } = useQuery<TeamUtilizationData>({

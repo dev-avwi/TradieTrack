@@ -1736,6 +1736,20 @@ export function startDemoDataRefreshScheduler() {
   // Initial refresh immediately
   refreshDemoTeamActivity();
   
+  // On startup, also refresh demo dates and screenshot data so dashboard shows current jobs
+  (async () => {
+    try {
+      const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+      if (demoUser) {
+        await refreshDemoDates(demoUser.id);
+        await refreshDemoDataForScreenshots();
+        console.log('[DemoScheduler] Demo dates and screenshot data refreshed on startup');
+      }
+    } catch (err) {
+      console.warn('[DemoScheduler] Error refreshing demo dates on startup:', err);
+    }
+  })();
+  
   // Then refresh every 5 minutes
   setInterval(() => {
     refreshDemoTeamActivity();

@@ -205,7 +205,14 @@ export async function initializeStripe(): Promise<{ stripe: Stripe | null; webho
     console.log('Syncing Stripe data in background...');
     sync.syncBackfill()
       .then(() => console.log('✅ Stripe data synced'))
-      .catch((err) => console.error('Error syncing Stripe data:', err));
+      .catch((err) => {
+        const errMsg = err?.message || String(err);
+        if (errMsg.includes('No such customer') || errMsg.includes('StripeInvalidRequestError')) {
+          console.warn(`⚠️ Stripe sync skipped invalid customer: ${errMsg}`);
+        } else {
+          console.error('Error syncing Stripe data:', err);
+        }
+      });
 
     stripeInitialized = true;
     return { stripe, webhookUuid: uuid };
