@@ -250,11 +250,19 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
         setError(result.error || 'Login failed');
       }
     } catch (error: any) {
-      // Don't show "session_expired" error on login page - user is already trying to log in
-      const errorMsg = error.message || 'Login failed. Please try again.';
-      if (!errorMsg.includes('session_expired')) {
-        setError(errorMsg);
+      const rawMsg = error.message || '';
+      if (rawMsg.includes('session_expired')) {
+        return;
       }
+      let errorMsg = 'Invalid email or password. Please try again.';
+      try {
+        const jsonPart = rawMsg.substring(rawMsg.indexOf('{'));
+        if (jsonPart) {
+          const parsed = JSON.parse(jsonPart);
+          if (parsed.error) errorMsg = parsed.error;
+        }
+      } catch {}
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -611,6 +619,13 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                           </Button>
                         </div>
                       </div>
+
+                      {error && authMode === 'login' && (
+                        <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                          <span>{error}</span>
+                        </div>
+                      )}
 
                       <Button 
                         type="submit"
