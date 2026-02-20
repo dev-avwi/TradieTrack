@@ -43,7 +43,10 @@ import {
   Info,
   Send,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Search,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
@@ -322,6 +325,11 @@ export default function CollectPayment() {
   const [tapToPayJobId, setTapToPayJobId] = useState("");
   const [tapToPayInvoiceId, setTapToPayInvoiceId] = useState("");
   const [tapToPayRequest, setTapToPayRequest] = useState<PaymentRequest | null>(null);
+
+  const [showAllExpired, setShowAllExpired] = useState(false);
+  const [expiredSearch, setExpiredSearch] = useState("");
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
 
   const { data: paymentRequests, isLoading } = useQuery<PaymentRequest[]>({
     queryKey: ['/api/payment-requests'],
@@ -1071,142 +1079,222 @@ export default function CollectPayment() {
               </div>
             )}
 
-            {(expiredRequests.length > 0 || completedRequests.length > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {expiredRequests.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-3">EXPIRED REQUESTS</h3>
-                    <div className="space-y-2">
-                      {expiredRequests.map((request) => (
-                        <Card key={request.id} className="opacity-75" data-testid={`request-expired-${request.id}`}>
-                          <CardContent className="p-3">
-                            <div className="flex items-start gap-3 mb-2">
-                              <div>
-                                <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                                </p>
-                              </div>
-                              <div className="h-8 w-px bg-border" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <p className="text-sm font-medium truncate">{request.description}</p>
-                                  {getStatusBadge('expired')}
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                                  {request.clientId && getClientName(request.clientId) && (
-                                    <span>{getClientName(request.clientId)}</span>
-                                  )}
-                                  {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
-                                    <>
-                                      {request.clientId && getClientName(request.clientId) && <span>•</span>}
-                                      <span
-                                        className="text-primary cursor-pointer hover:underline"
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
-                                      >
-                                        {getInvoiceNumber(request.invoiceId)}
-                                      </span>
-                                    </>
-                                  )}
-                                  {request.jobId && getJobTitle(request.jobId) && (
-                                    <>
-                                      {(request.clientId || request.invoiceId) && <span>•</span>}
-                                      <span
-                                        className="text-primary cursor-pointer hover:underline"
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
-                                      >
-                                        {getJobTitle(request.jobId)}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRegenerate(request)}
-                                disabled={createMutation.isPending || cancelMutation.isPending}
-                                data-testid={`button-regenerate-${request.id}`}
-                              >
-                                <RefreshCw className={`h-4 w-4 mr-1 ${createMutation.isPending ? 'animate-spin' : ''}`} />
-                                Regenerate
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => cancelMutation.mutate(request.id)}
-                                data-testid={`button-cancel-${request.id}`}
-                              >
-                                <XCircle className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {(expiredRequests.length > 0 || completedRequests.length > 0) && (() => {
+              const filteredExpired = expiredSearch
+                ? expiredRequests.filter(r =>
+                    r.description.toLowerCase().includes(expiredSearch.toLowerCase()) ||
+                    (r.clientId && getClientName(r.clientId)?.toLowerCase().includes(expiredSearch.toLowerCase())) ||
+                    r.amount.includes(expiredSearch)
+                  )
+                : expiredRequests;
+              const visibleExpired = showAllExpired ? filteredExpired : filteredExpired.slice(0, 15);
 
-                {completedRequests.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-3">HISTORY</h3>
-                    <div className="space-y-2">
-                      {completedRequests.slice(0, 10).map((request) => (
-                        <Card
-                          key={request.id}
-                          className="cursor-pointer hover-elevate"
-                          onClick={() => {
-                            if (request.invoiceId) {
-                              navigate(`/invoices/${request.invoiceId}`);
-                            } else if (request.jobId) {
-                              navigate(`/jobs/${request.jobId}`);
-                            }
-                          }}
-                        >
-                          <CardContent className="p-3">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-3">
-                                {request.status === 'paid' ? (
-                                  <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
-                                ) : (
-                                  <XCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                )}
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span className="truncate max-w-[140px]">{request.description}</span>
+              const filteredHistory = historySearch
+                ? completedRequests.filter(r =>
+                    r.description.toLowerCase().includes(historySearch.toLowerCase()) ||
+                    (r.clientId && getClientName(r.clientId)?.toLowerCase().includes(historySearch.toLowerCase())) ||
+                    r.amount.includes(historySearch)
+                  )
+                : completedRequests;
+              const visibleHistory = showAllHistory ? filteredHistory : filteredHistory.slice(0, 15);
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {expiredRequests.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                        <h3 className="text-sm font-medium text-muted-foreground">EXPIRED REQUESTS ({expiredRequests.length})</h3>
+                        {expiredRequests.length > 15 && (
+                          <div className="relative flex-1 max-w-[200px]">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              placeholder="Search..."
+                              value={expiredSearch}
+                              onChange={(e) => setExpiredSearch(e.target.value)}
+                              className="h-7 pl-7 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {visibleExpired.map((request) => (
+                          <Card key={request.id} className="opacity-75" data-testid={`request-expired-${request.id}`}>
+                            <CardContent className="p-3">
+                              <div className="flex items-start gap-3 mb-2">
+                                <div>
+                                  <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                                  </p>
+                                </div>
+                                <div className="h-8 w-px bg-border" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <p className="text-sm font-medium truncate">{request.description}</p>
+                                    {getStatusBadge('expired')}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                     {request.clientId && getClientName(request.clientId) && (
+                                      <span>{getClientName(request.clientId)}</span>
+                                    )}
+                                    {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
                                       <>
-                                        <span>•</span>
-                                        <span className="truncate max-w-[100px]">{getClientName(request.clientId)}</span>
+                                        {request.clientId && getClientName(request.clientId) && <span>•</span>}
+                                        <span
+                                          className="text-primary cursor-pointer hover:underline"
+                                          onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
+                                        >
+                                          {getInvoiceNumber(request.invoiceId)}
+                                        </span>
+                                      </>
+                                    )}
+                                    {request.jobId && getJobTitle(request.jobId) && (
+                                      <>
+                                        {(request.clientId || request.invoiceId) && <span>•</span>}
+                                        <span
+                                          className="text-primary cursor-pointer hover:underline"
+                                          onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
+                                        >
+                                          {getJobTitle(request.jobId)}
+                                        </span>
                                       </>
                                     )}
                                   </div>
                                 </div>
                               </div>
-                              <div className="text-right flex-shrink-0">
-                                {getStatusBadge(request.status)}
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(request.createdAt), 'MMM d')}
-                                </p>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRegenerate(request)}
+                                  disabled={createMutation.isPending || cancelMutation.isPending}
+                                  data-testid={`button-regenerate-${request.id}`}
+                                >
+                                  <RefreshCw className={`h-4 w-4 mr-1 ${createMutation.isPending ? 'animate-spin' : ''}`} />
+                                  Regenerate
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => cancelMutation.mutate(request.id)}
+                                  data-testid={`button-cancel-${request.id}`}
+                                >
+                                  <XCircle className="h-4 w-4 text-muted-foreground" />
+                                </Button>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      {filteredExpired.length > 15 && !showAllExpired && (
+                        <Button
+                          variant="ghost"
+                          className="w-full mt-2"
+                          onClick={() => setShowAllExpired(true)}
+                        >
+                          Show all {filteredExpired.length} expired
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
+                      {showAllExpired && filteredExpired.length > 15 && (
+                        <Button
+                          variant="ghost"
+                          className="w-full mt-2"
+                          onClick={() => setShowAllExpired(false)}
+                        >
+                          Show less
+                          <ChevronUp className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
                     </div>
-                    {completedRequests.length > 10 && (
-                      <Button variant="ghost" className="w-full mt-2" onClick={() => navigate('/reports')}>
-                        View all {completedRequests.length} payments
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+
+                  {completedRequests.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                        <h3 className="text-sm font-medium text-muted-foreground">HISTORY ({completedRequests.length})</h3>
+                        {completedRequests.length > 15 && (
+                          <div className="relative flex-1 max-w-[200px]">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              placeholder="Search..."
+                              value={historySearch}
+                              onChange={(e) => setHistorySearch(e.target.value)}
+                              className="h-7 pl-7 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {visibleHistory.map((request) => (
+                          <Card
+                            key={request.id}
+                            className="cursor-pointer hover-elevate"
+                            onClick={() => {
+                              if (request.invoiceId) {
+                                navigate(`/invoices/${request.invoiceId}`);
+                              } else if (request.jobId) {
+                                navigate(`/jobs/${request.jobId}`);
+                              }
+                            }}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-3">
+                                  {request.status === 'paid' ? (
+                                    <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                                  ) : (
+                                    <XCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <span className="truncate max-w-[140px]">{request.description}</span>
+                                      {request.clientId && getClientName(request.clientId) && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="truncate max-w-[100px]">{getClientName(request.clientId)}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  {getStatusBadge(request.status)}
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(new Date(request.createdAt), 'MMM d')}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      {filteredHistory.length > 15 && !showAllHistory && (
+                        <Button
+                          variant="ghost"
+                          className="w-full mt-2"
+                          onClick={() => setShowAllHistory(true)}
+                        >
+                          Show all {filteredHistory.length} payments
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
+                      {showAllHistory && filteredHistory.length > 15 && (
+                        <Button
+                          variant="ghost"
+                          className="w-full mt-2"
+                          onClick={() => setShowAllHistory(false)}
+                        >
+                          Show less
+                          <ChevronUp className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
