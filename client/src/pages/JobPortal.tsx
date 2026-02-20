@@ -675,7 +675,7 @@ function HeroMap({
           </div>
         )}
 
-        {!isEnRoute && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
+        {!workerStatus && hasJobPin && crewWorkers.length === 0 && !hasSingleWorker && (
           <div className="absolute bottom-3 left-3 z-[1000]">
             <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5 text-brand" />
@@ -855,7 +855,7 @@ export default function JobPortal() {
   }
 
   const { job, business, worker, client, documents } = data;
-  const effectiveWorkerStatus = job.status === 'done' ? 'completed' : job.workerStatus;
+  const effectiveWorkerStatus = (job.status === 'done' || job.status === 'invoiced' || job.status === 'paid') ? 'completed' : job.workerStatus;
   const statusConfig = getStatusConfig(effectiveWorkerStatus);
   const statusIdx = getStatusIndex(effectiveWorkerStatus);
   const hasPhotos = job.photos && job.photos.length > 0;

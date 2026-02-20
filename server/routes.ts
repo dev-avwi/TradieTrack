@@ -12826,7 +12826,7 @@ Be specific about materials, colors, and features that would be included.`
         if (data.status === 'in_progress' && (!existingJob.workerStatus || ['assigned', 'on_my_way', 'arrived'].includes(existingJob.workerStatus))) {
           updateData.workerStatus = 'in_progress';
           updateData.workerStatusUpdatedAt = now;
-        } else if ((data.status === 'done' || data.status === 'invoiced') && existingJob.workerStatus !== 'completed') {
+        } else if ((data.status === 'done' || data.status === 'invoiced' || data.status === 'paid') && existingJob.workerStatus !== 'completed') {
           updateData.workerStatus = 'completed';
           updateData.workerStatusUpdatedAt = now;
         } else if (data.status === 'scheduled' && existingJob.workerStatus && existingJob.workerStatus !== 'assigned') {
@@ -15488,7 +15488,7 @@ Be specific about materials, colors, and features that would be included.`
           latitude: job.latitude,
           longitude: job.longitude,
           status: job.status,
-          workerStatus: job.status === 'done' ? 'completed' : job.workerStatus,
+          workerStatus: (job.status === 'done' || job.status === 'invoiced' || job.status === 'paid') ? 'completed' : job.workerStatus,
           workerStatusUpdatedAt: job.workerStatusUpdatedAt,
           workerEta: dynamicEtaText,
           workerEtaMinutes: dynamicEtaMinutes,
