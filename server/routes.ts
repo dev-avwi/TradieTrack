@@ -12821,6 +12821,21 @@ Be specific about materials, colors, and features that would be included.`
         } else if (data.status === 'done') {
           updateData.invoicedAt = null;
         }
+
+        // Sync workerStatus with main job status so the client portal stays up to date
+        if (data.status === 'in_progress' && (!existingJob.workerStatus || ['assigned', 'on_my_way', 'arrived'].includes(existingJob.workerStatus))) {
+          updateData.workerStatus = 'in_progress';
+          updateData.workerStatusUpdatedAt = now;
+        } else if ((data.status === 'done' || data.status === 'invoiced') && existingJob.workerStatus !== 'completed') {
+          updateData.workerStatus = 'completed';
+          updateData.workerStatusUpdatedAt = now;
+        } else if (data.status === 'scheduled' && existingJob.workerStatus && existingJob.workerStatus !== 'assigned') {
+          updateData.workerStatus = 'assigned';
+          updateData.workerStatusUpdatedAt = now;
+        } else if (data.status === 'pending') {
+          updateData.workerStatus = null;
+          updateData.workerStatusUpdatedAt = null;
+        }
       }
       
       // Debug logging for updateData before saving
