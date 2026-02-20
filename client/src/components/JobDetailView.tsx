@@ -2950,44 +2950,6 @@ export default function JobDetailView({
             </Card>
           )}
 
-          {/* Receipt Display - Shows after payment received */}
-          {linkedReceipts.length > 0 && !isTradie && (
-            <Card data-testid="card-payment-received">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Payment Received
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {linkedReceipts.map((receipt) => (
-                    <div 
-                      key={receipt.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-card border cursor-pointer hover-elevate"
-                      onClick={() => navigate(`/receipts/${receipt.id}`)}
-                      data-testid={`receipt-item-${receipt.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                          <Receipt className="h-4 w-4 text-emerald-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Receipt #{receipt.receiptNumber}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {receipt.paymentMethod || 'Payment'} • {receipt.paidAt ? new Date(receipt.paidAt).toLocaleDateString() : 'Recently'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-emerald-600">${parseFloat(receipt.amount).toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Materials Tracking */}
           <Card data-testid="card-materials">
