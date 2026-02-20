@@ -1071,125 +1071,139 @@ export default function CollectPayment() {
               </div>
             )}
 
-            {expiredRequests.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">EXPIRED REQUESTS</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {expiredRequests.map((request) => (
-                    <Card key={request.id} className="opacity-75" data-testid={`request-expired-${request.id}`}>
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-3 mb-2">
-                          <div>
-                            <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                            </p>
-                          </div>
-                          <div className="h-8 w-px bg-border" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="text-sm font-medium truncate">{request.description}</p>
-                              {getStatusBadge('expired')}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                              {request.clientId && getClientName(request.clientId) && (
-                                <span>{getClientName(request.clientId)}</span>
-                              )}
-                              {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
-                                <>
-                                  {request.clientId && getClientName(request.clientId) && <span>•</span>}
-                                  <span
-                                    className="text-primary cursor-pointer hover:underline"
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
-                                  >
-                                    {getInvoiceNumber(request.invoiceId)}
-                                  </span>
-                                </>
-                              )}
-                              {request.jobId && getJobTitle(request.jobId) && (
-                                <>
-                                  {(request.clientId || request.invoiceId) && <span>•</span>}
-                                  <span
-                                    className="text-primary cursor-pointer hover:underline"
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
-                                  >
-                                    {getJobTitle(request.jobId)}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRegenerate(request)}
-                            disabled={createMutation.isPending || cancelMutation.isPending}
-                            data-testid={`button-regenerate-${request.id}`}
-                          >
-                            <RefreshCw className={`h-4 w-4 mr-1 ${createMutation.isPending ? 'animate-spin' : ''}`} />
-                            Regenerate
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => cancelMutation.mutate(request.id)}
-                            data-testid={`button-cancel-${request.id}`}
-                          >
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {completedRequests.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">HISTORY</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {completedRequests.slice(0, 10).map((request) => (
-                    <Card key={request.id}>
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-3">
-                            {request.status === 'paid' ? (
-                              <CheckCircle className="h-5 w-5 text-emerald-500" />
-                            ) : (
-                              <XCircle className="h-5 w-5 text-muted-foreground" />
-                            )}
-                            <div>
-                              <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="truncate max-w-[120px]">{request.description}</span>
-                                {request.clientId && getClientName(request.clientId) && (
-                                  <>
-                                    <span>•</span>
+            {(expiredRequests.length > 0 || completedRequests.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {expiredRequests.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3">EXPIRED REQUESTS</h3>
+                    <div className="space-y-2">
+                      {expiredRequests.map((request) => (
+                        <Card key={request.id} className="opacity-75" data-testid={`request-expired-${request.id}`}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start gap-3 mb-2">
+                              <div>
+                                <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                                </p>
+                              </div>
+                              <div className="h-8 w-px bg-border" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <p className="text-sm font-medium truncate">{request.description}</p>
+                                  {getStatusBadge('expired')}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                  {request.clientId && getClientName(request.clientId) && (
                                     <span>{getClientName(request.clientId)}</span>
-                                  </>
-                                )}
+                                  )}
+                                  {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
+                                    <>
+                                      {request.clientId && getClientName(request.clientId) && <span>•</span>}
+                                      <span
+                                        className="text-primary cursor-pointer hover:underline"
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
+                                      >
+                                        {getInvoiceNumber(request.invoiceId)}
+                                      </span>
+                                    </>
+                                  )}
+                                  {request.jobId && getJobTitle(request.jobId) && (
+                                    <>
+                                      {(request.clientId || request.invoiceId) && <span>•</span>}
+                                      <span
+                                        className="text-primary cursor-pointer hover:underline"
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
+                                      >
+                                        {getJobTitle(request.jobId)}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            {getStatusBadge(request.status)}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(new Date(request.createdAt), 'MMM d')}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                {completedRequests.length > 10 && (
-                  <Button variant="ghost" className="w-full mt-2" onClick={() => navigate('/reports')}>
-                    View all {completedRequests.length} payments
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRegenerate(request)}
+                                disabled={createMutation.isPending || cancelMutation.isPending}
+                                data-testid={`button-regenerate-${request.id}`}
+                              >
+                                <RefreshCw className={`h-4 w-4 mr-1 ${createMutation.isPending ? 'animate-spin' : ''}`} />
+                                Regenerate
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => cancelMutation.mutate(request.id)}
+                                data-testid={`button-cancel-${request.id}`}
+                              >
+                                <XCircle className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {completedRequests.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3">HISTORY</h3>
+                    <div className="space-y-2">
+                      {completedRequests.slice(0, 10).map((request) => (
+                        <Card
+                          key={request.id}
+                          className="cursor-pointer hover-elevate"
+                          onClick={() => {
+                            if (request.invoiceId) {
+                              navigate(`/invoices/${request.invoiceId}`);
+                            } else if (request.jobId) {
+                              navigate(`/jobs/${request.jobId}`);
+                            }
+                          }}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-3">
+                                {request.status === 'paid' ? (
+                                  <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <XCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span className="truncate max-w-[140px]">{request.description}</span>
+                                    {request.clientId && getClientName(request.clientId) && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="truncate max-w-[100px]">{getClientName(request.clientId)}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                {getStatusBadge(request.status)}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {format(new Date(request.createdAt), 'MMM d')}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    {completedRequests.length > 10 && (
+                      <Button variant="ghost" className="w-full mt-2" onClick={() => navigate('/reports')}>
+                        View all {completedRequests.length} payments
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
