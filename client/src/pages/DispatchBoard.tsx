@@ -122,15 +122,24 @@ function formatTime(hour: number) {
   return `${h}:00 ${ampm}`;
 }
 
-function parseJobTime(timeStr?: string): { hour: number; minute: number } {
-  if (!timeStr) return { hour: 9, minute: 0 };
-  const [h, m] = timeStr.split(':').map(Number);
-  return { hour: h || 9, minute: m || 0 };
+function parseJobTime(timeStr?: string | null, scheduledAt?: string | null): { hour: number; minute: number } {
+  if (timeStr) {
+    const parts = timeStr.split(':').map(Number);
+    const h = isNaN(parts[0]) ? 9 : parts[0];
+    const m = isNaN(parts[1]) ? 0 : parts[1];
+    return { hour: h, minute: m };
+  }
+  if (scheduledAt) {
+    const d = new Date(scheduledAt);
+    if (!isNaN(d.getTime())) {
+      return { hour: d.getHours(), minute: d.getMinutes() };
+    }
+  }
+  return { hour: 9, minute: 0 };
 }
 
-function formatScheduledTime(timeStr?: string): string {
-  if (!timeStr) return '';
-  const { hour, minute } = parseJobTime(timeStr);
+function formatScheduledTime(timeStr?: string | null, scheduledAt?: string | null): string {
+  const { hour, minute } = parseJobTime(timeStr, scheduledAt);
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const h = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
   return `${h}:${minute.toString().padStart(2, '0')} ${ampm}`;
@@ -584,7 +593,7 @@ function detectScheduleConflicts(jobs: Job[]): Set<string> {
   const jobsWithTimes = jobs
     .filter(j => j.scheduledAt && j.scheduledTime)
     .map(j => {
-      const { hour, minute } = parseJobTime(j.scheduledTime);
+      const { hour, minute } = parseJobTime(j.scheduledTime, j.scheduledAt);
       const startMinutes = hour * 60 + minute;
       const duration = j.estimatedDuration || 60;
       const endMinutes = startMinutes + duration;
@@ -874,7 +883,7 @@ export default function DispatchBoard() {
     const newJobEnd = newJobStart + (draggedJob.job.estimatedDuration || 60);
     const hasConflict = existingJobsForMember.some(j => {
       if (!j.scheduledTime) return false;
-      const { hour: jHour, minute: jMin } = parseJobTime(j.scheduledTime);
+      const { hour: jHour, minute: jMin } = parseJobTime(j.scheduledTime, j.scheduledAt);
       const jStart = jHour * 60 + jMin;
       const jEnd = jStart + (j.estimatedDuration || 60);
       return newJobStart < jEnd && newJobEnd > jStart;
@@ -906,7 +915,7 @@ export default function DispatchBoard() {
   const handleJobClick = (job: Job, mode: 'assign' | 'reassign') => {
     setSelectedJob({ job, mode });
     setSelectedMemberId(job.assignedTo || 'owner');
-    const currentHour = job.scheduledTime ? parseJobTime(job.scheduledTime).hour : 9;
+    const currentHour = parseJobTime(job.scheduledTime, job.scheduledAt).hour;
     setSelectedHour(currentHour);
     // Don't open dialog immediately - let user tap a slot or use "Assign with Dialog" button
   };
@@ -964,10 +973,15 @@ export default function DispatchBoard() {
   };
 
   const getJobPosition = (job: Job) => {
-    const { hour, minute } = parseJobTime(job.scheduledTime);
-    const top = (hour - 6) * HOUR_HEIGHT + (minute / 60) * HOUR_HEIGHT;
+    const { hour, minute } = parseJobTime(job.scheduledTime, job.scheduledAt);
+    const startHour = WORK_HOURS[0];
+    const endHour = WORK_HOURS[WORK_HOURS.length - 1];
+    const clampedHour = Math.max(startHour, Math.min(endHour, hour));
+    const clampedMinute = clampedHour === endHour ? 0 : minute;
+    const top = (clampedHour - startHour) * HOUR_HEIGHT + (clampedMinute / 60) * HOUR_HEIGHT;
     const duration = job.estimatedDuration || 60;
-    const height = Math.max((duration / 60) * HOUR_HEIGHT, 40);
+    const maxHeight = (WORK_HOURS.length * HOUR_HEIGHT) - top;
+    const height = Math.min(Math.max((duration / 60) * HOUR_HEIGHT, 40), maxHeight);
     return { top, height };
   };
 
@@ -1289,10 +1303,10 @@ export default function DispatchBoard() {
                                         </p>
                                       </div>
                                     </div>
-                                    {job.scheduledTime && (
+                                    {(job.scheduledTime || job.scheduledAt) && (
                                       <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                                         <Clock className="h-2.5 w-2.5" />
-                                        <span>{job.scheduledTime}</span>
+                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
                                       </div>
                                     )}
                                   </div>
@@ -1380,10 +1394,10 @@ export default function DispatchBoard() {
                                         </p>
                                       </div>
                                     </div>
-                                    {job.scheduledTime && (
+                                    {(job.scheduledTime || job.scheduledAt) && (
                                       <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
                                         <Clock className="h-3 w-3" />
-                                        <span>{formatScheduledTime(job.scheduledTime)}</span>
+                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
                                         {job.estimatedDuration && job.estimatedDuration > 60 && (
                                           <span className="text-muted-foreground">({Math.round(job.estimatedDuration / 60)}h)</span>
                                         )}
@@ -1539,7 +1553,7 @@ export default function DispatchBoard() {
                                 {height > 60 && (
                                   <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
                                     <Clock className="h-3 w-3" />
-                                    <span>{job.scheduledTime || '9:00'}</span>
+                                    <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
                                     {job.estimatedDuration && (
                                       <span>({Math.round(job.estimatedDuration / 60)}h)</span>
                                     )}

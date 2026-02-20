@@ -46,13 +46,16 @@ export const TEST_USERS = [
 
 function getTodayAt(hours: number, minutes: number = 0): Date {
   const today = new Date();
-  today.setHours(hours, minutes, 0, 0);
+  const aestOffset = 10;
+  today.setUTCHours(hours - aestOffset, minutes, 0, 0);
   return today;
 }
 
 function getDaysFromNow(days: number): Date {
   const date = new Date();
-  date.setDate(date.getDate() + days);
+  const aestOffset = 10;
+  date.setUTCHours(9 - aestOffset, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + days);
   return date;
 }
 
