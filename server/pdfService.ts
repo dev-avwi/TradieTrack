@@ -1213,7 +1213,8 @@ ${(business as any).insuranceAmount ? `Coverage: ${(business as any).insuranceAm
 };
 
 export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
-  const { invoice, lineItems, client, business, job, timeEntries, paymentUrl, termsTemplate, warrantyTemplate, labourSummary } = data;
+  const { invoice, lineItems: allLineItems, client, business, job, timeEntries, paymentUrl, termsTemplate, warrantyTemplate, labourSummary } = data;
+  const lineItems = allLineItems.filter(item => item.sourceType !== 'labour');
   
   // Validate required fields with helpful error messages
   if (!invoice) {

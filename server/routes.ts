@@ -2141,7 +2141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const client = await storage.getClientById(invoice.clientId);
         const settings = await storage.getBusinessSettingsByUserId(invoice.userId);
-        const lineItems = await storage.getInvoiceLineItems(invoice.id);
+        const allLineItems = await storage.getInvoiceLineItems(invoice.id);
+        const lineItems = allLineItems.filter(item => item.sourceType !== 'labour');
         let job = null;
         if (invoice.jobId) {
           job = await storage.getJob(invoice.jobId, invoice.userId);
