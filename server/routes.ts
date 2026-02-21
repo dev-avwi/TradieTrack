@@ -12717,6 +12717,16 @@ Be specific about materials, colors, and features that would be included.`
       }
       
       const data = insertJobSchema.partial().parse(body);
+      
+      if (data.scheduledAt && !data.scheduledTime) {
+        const d = new Date(data.scheduledAt as any);
+        if (!isNaN(d.getTime())) {
+          const h = d.getHours().toString().padStart(2, '0');
+          const m = d.getMinutes().toString().padStart(2, '0');
+          data.scheduledTime = `${h}:${m}`;
+        }
+      }
+      
       console.log('[PATCH /api/jobs/:id] Parsed data after validation:', JSON.stringify(data, null, 2));
       
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);

@@ -130,9 +130,16 @@ function parseJobTime(timeStr?: string | null, scheduledAt?: string | null): { h
     return { hour: h, minute: m };
   }
   if (scheduledAt) {
-    const d = new Date(scheduledAt);
-    if (!isNaN(d.getTime())) {
-      return { hour: d.getHours(), minute: d.getMinutes() };
+    try {
+      const d = parseISO(scheduledAt);
+      if (!isNaN(d.getTime())) {
+        return { hour: d.getHours(), minute: d.getMinutes() };
+      }
+    } catch {
+      const d = new Date(scheduledAt);
+      if (!isNaN(d.getTime())) {
+        return { hour: d.getHours(), minute: d.getMinutes() };
+      }
     }
   }
   return { hour: 9, minute: 0 };
@@ -976,11 +983,15 @@ export default function DispatchBoard() {
     const { hour, minute } = parseJobTime(job.scheduledTime, job.scheduledAt);
     const startHour = WORK_HOURS[0];
     const endHour = WORK_HOURS[WORK_HOURS.length - 1];
-    const clampedHour = Math.max(startHour, Math.min(endHour, hour));
-    const clampedMinute = clampedHour === endHour ? 0 : minute;
-    const top = (clampedHour - startHour) * HOUR_HEIGHT + (clampedMinute / 60) * HOUR_HEIGHT;
+    const safeHour = isNaN(hour) ? 9 : hour;
+    const safeMinute = isNaN(minute) ? 0 : minute;
+    const clampedHour = Math.max(startHour, Math.min(endHour, safeHour));
+    const clampedMinute = clampedHour === endHour ? 0 : safeMinute;
+    const totalGridHeight = WORK_HOURS.length * HOUR_HEIGHT;
+    let top = (clampedHour - startHour) * HOUR_HEIGHT + (clampedMinute / 60) * HOUR_HEIGHT;
+    top = Math.max(0, Math.min(top, totalGridHeight - 40));
     const duration = job.estimatedDuration || 60;
-    const maxHeight = (WORK_HOURS.length * HOUR_HEIGHT) - top;
+    const maxHeight = totalGridHeight - top;
     const height = Math.min(Math.max((duration / 60) * HOUR_HEIGHT, 40), maxHeight);
     return { top, height };
   };
@@ -1469,7 +1480,7 @@ export default function DispatchBoard() {
                   </div>
 
                   <ScrollArea className="h-[700px]">
-                    <div className="relative" style={{ minHeight: WORK_HOURS.length * HOUR_HEIGHT + 80 }}>
+                    <div className="relative" style={{ minHeight: WORK_HOURS.length * HOUR_HEIGHT }}>
                       {WORK_HOURS.map(hour => (
                         <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
                           <div className="w-12 flex-shrink-0 p-1 text-[10px] text-muted-foreground border-r bg-muted/10">
