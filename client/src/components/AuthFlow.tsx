@@ -230,12 +230,16 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     setError('');
 
     try {
-      const response = await apiRequest('POST', '/api/auth/login', loginData);
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginData),
+        credentials: 'include',
+      });
       const result = await response.json();
 
-      if (result.success) {
+      if (response.ok && result.success) {
         trackEvent('login_completed', { method: 'email' });
-        // Save session token for Bearer auth (iOS/Safari fallback)
         if (result.sessionToken) {
           setSessionToken(result.sessionToken);
         }
@@ -244,25 +248,12 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
           description: `Signed in as ${result.user.firstName || result.user.username || result.user.email || 'your account'}`
         });
         onLoginSuccess();
-        // Navigate to dashboard
         setLocation('/');
       } else {
-        setError(result.error || 'Login failed');
+        setError(result.error || 'Invalid email or password.');
       }
     } catch (error: any) {
-      const rawMsg = error.message || '';
-      if (rawMsg.includes('session_expired')) {
-        return;
-      }
-      let errorMsg = 'Invalid email or password. Please try again.';
-      try {
-        const jsonPart = rawMsg.substring(rawMsg.indexOf('{'));
-        if (jsonPart) {
-          const parsed = JSON.parse(jsonPart);
-          if (parsed.error) errorMsg = parsed.error;
-        }
-      } catch {}
-      setError(errorMsg);
+      setError('Unable to sign in. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
