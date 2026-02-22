@@ -1860,10 +1860,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // BUSINESS OWNER: Get job requests
   app.get("/api/job-requests", async (req: any, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
     try {
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "User not found" });
+      const effectiveUserId = (user as any).parentUserId || user.id;
       const status = req.query.status as string | undefined;
-      const requests = await storage.getJobRequests(req.user.id, status);
+      const requests = await storage.getJobRequests(effectiveUserId, status);
       res.json(requests);
     } catch (error: any) {
       console.error('Error fetching job requests:', error);
@@ -1873,12 +1877,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // BUSINESS OWNER: Update job request
   app.patch("/api/job-requests/:id", async (req: any, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
     try {
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(401).json({ error: "User not found" });
+      const effectiveUserId = (user as any).parentUserId || user.id;
       const { status, reviewNotes, jobId, title, description, preferredDate, clientNotes } = req.body;
       
       if (!status && (title || description !== undefined || preferredDate !== undefined || clientNotes !== undefined)) {
-        const request = await storage.getJobRequest(req.params.id, req.user.id);
+        const request = await storage.getJobRequest(req.params.id, effectiveUserId);
         if (!request) return res.status(404).json({ error: 'Request not found' });
         if (request.status !== 'pending') return res.status(400).json({ error: 'Only pending requests can be edited' });
         const fieldUpdates: any = {};
@@ -1886,7 +1894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (description !== undefined) fieldUpdates.description = description;
         if (preferredDate !== undefined) fieldUpdates.preferredDate = preferredDate || null;
         if (clientNotes !== undefined) fieldUpdates.clientNotes = clientNotes;
-        const updated = await storage.updateJobRequest(req.params.id, fieldUpdates);
+        const updated = await storage.updateJobRequest(req.params.id, effectiveUserId, fieldUpdates);
         return res.json(updated);
       }
 
@@ -1908,15 +1916,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (status === 'accepted' && !jobId) {
-        const request = await storage.getJobRequest(req.params.id, req.user.id);
+        const request = await storage.getJobRequest(req.params.id, effectiveUserId);
         if (!request) {
           return res.status(404).json({ error: 'Request not found' });
         }
 
         try {
-          const client = await storage.getClient(request.clientId, req.user.id);
+          const client = await storage.getClient(request.clientId, effectiveUserId);
           const newJob = await storage.createJob({
-            userId: req.user.id,
+            userId: effectiveUserId,
             title: request.title,
             description: request.description || '',
             clientId: request.clientId,
@@ -1930,7 +1938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (request.clientNotes) {
             await storage.createJobNote({
               jobId: newJob.id,
-              userId: req.user.id,
+              userId: effectiveUserId,
               content: `Client request notes: ${request.clientNotes}`,
               type: 'note',
             });
@@ -1941,7 +1949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const updated = await storage.updateJobRequest(req.params.id, req.user.id, updates);
+      const updated = await storage.updateJobRequest(req.params.id, effectiveUserId, updates);
       if (!updated) return res.status(404).json({ error: 'Request not found' });
       res.json(updated);
     } catch (error: any) {
