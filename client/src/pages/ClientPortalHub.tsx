@@ -1504,15 +1504,26 @@ export default function ClientPortalHub() {
                             <Select
                               value={jobRequestForm.referenceJobId}
                               onValueChange={(value) => {
-                                const job = previousJobs.find((j: any) => j.id === value);
-                                setSelectedReferenceJob(value === 'none' ? null : (job || null));
-                                setJobRequestForm(prev => ({
-                                  ...prev,
-                                  referenceJobId: value,
-                                  referenceJobTitle: job?.title || '',
-                                  preferredWorkerId: job?.assignedTo || prev.preferredWorkerId,
-                                  preferredWorkerName: job?.workerName || prev.preferredWorkerName,
-                                }));
+                                if (value === 'none') {
+                                  setSelectedReferenceJob(null);
+                                  setJobRequestForm(prev => ({
+                                    ...prev,
+                                    referenceJobId: '',
+                                    referenceJobTitle: '',
+                                    preferredWorkerId: '',
+                                    preferredWorkerName: '',
+                                  }));
+                                } else {
+                                  const job = previousJobs.find((j: any) => j.id === value);
+                                  setSelectedReferenceJob(job || null);
+                                  setJobRequestForm(prev => ({
+                                    ...prev,
+                                    referenceJobId: value,
+                                    referenceJobTitle: job?.title || '',
+                                    preferredWorkerId: job?.assignedTo || prev.preferredWorkerId,
+                                    preferredWorkerName: job?.workerName || prev.preferredWorkerName,
+                                  }));
+                                }
                               }}
                             >
                               <SelectTrigger className="bg-white text-slate-900">
