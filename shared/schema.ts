@@ -4022,3 +4022,25 @@ export const complianceDocuments = pgTable("compliance_documents", {
 export const insertComplianceDocumentSchema = createInsertSchema(complianceDocuments).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertComplianceDocument = z.infer<typeof insertComplianceDocumentSchema>;
 export type ComplianceDocument = typeof complianceDocuments.$inferSelect;
+
+// Job Requests - Client-initiated job requests from portal
+export const jobRequests = pgTable("job_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  title: text("title").notNull(),
+  description: text("description"),
+  preferredDate: timestamp("preferred_date"),
+  urgency: text("urgency").notNull().default('normal'),
+  clientNotes: text("client_notes"),
+  status: text("status").notNull().default('pending'),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobRequestSchema = createInsertSchema(jobRequests).omit({ id: true, createdAt: true, updatedAt: true, reviewedAt: true, jobId: true });
+export type InsertJobRequest = z.infer<typeof insertJobRequestSchema>;
+export type JobRequest = typeof jobRequests.$inferSelect;

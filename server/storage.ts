@@ -325,6 +325,9 @@ import {
   complianceDocuments,
   type ComplianceDocument,
   type InsertComplianceDocument,
+  jobRequests,
+  type JobRequest,
+  type InsertJobRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1013,6 +1016,13 @@ export interface IStorage {
   updateComplianceDocument(id: string, businessOwnerId: string, updates: Partial<InsertComplianceDocument>): Promise<ComplianceDocument | undefined>;
   deleteComplianceDocument(id: string, businessOwnerId: string): Promise<boolean>;
   getExpiringComplianceDocuments(businessOwnerId: string, withinDays: number): Promise<ComplianceDocument[]>;
+
+  // Job Requests (Client Portal)
+  createJobRequest(data: InsertJobRequest): Promise<JobRequest>;
+  getJobRequests(userId: string, status?: string): Promise<JobRequest[]>;
+  getJobRequest(id: string, userId: string): Promise<JobRequest | undefined>;
+  updateJobRequest(id: string, userId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined>;
+  getJobRequestsByClient(clientId: string): Promise<JobRequest[]>;
 }
 
 // Initialize database connection using standard pg driver
@@ -7580,6 +7590,32 @@ Thank you for your prompt attention to this matter.`,
         lte(complianceDocuments.expiryDate, futureDate)
       ))
       .orderBy(complianceDocuments.expiryDate);
+  }
+
+  async createJobRequest(data: InsertJobRequest): Promise<JobRequest> {
+    const [created] = await db.insert(jobRequests).values(data).returning();
+    return created;
+  }
+
+  async getJobRequests(userId: string, status?: string): Promise<JobRequest[]> {
+    if (status) {
+      return await db.select().from(jobRequests).where(and(eq(jobRequests.userId, userId), eq(jobRequests.status, status))).orderBy(desc(jobRequests.createdAt));
+    }
+    return await db.select().from(jobRequests).where(eq(jobRequests.userId, userId)).orderBy(desc(jobRequests.createdAt));
+  }
+
+  async getJobRequest(id: string, userId: string): Promise<JobRequest | undefined> {
+    const [request] = await db.select().from(jobRequests).where(and(eq(jobRequests.id, id), eq(jobRequests.userId, userId)));
+    return request;
+  }
+
+  async updateJobRequest(id: string, userId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined> {
+    const [updated] = await db.update(jobRequests).set({ ...updates, updatedAt: new Date() }).where(and(eq(jobRequests.id, id), eq(jobRequests.userId, userId))).returning();
+    return updated;
+  }
+
+  async getJobRequestsByClient(clientId: string): Promise<JobRequest[]> {
+    return await db.select().from(jobRequests).where(eq(jobRequests.clientId, clientId)).orderBy(desc(jobRequests.createdAt));
   }
 }
 
