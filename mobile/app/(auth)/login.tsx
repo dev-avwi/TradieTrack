@@ -500,31 +500,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 32,
   },
   logoGradientContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    padding: 2,
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    padding: 3,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    // Simulate gradient border with dual color border
-    backgroundColor: '#E8862E', // orange base
+    backgroundColor: '#E8862E',
     borderWidth: 2,
-    borderColor: '#2563eb', // blue accent
+    borderColor: '#2563eb',
   },
   logoInner: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
-    width: 48,
-    height: 48,
+    width: 64,
+    height: 64,
   },
   appNameContainer: {
     flexDirection: 'row',

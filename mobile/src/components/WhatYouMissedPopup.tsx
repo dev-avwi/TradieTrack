@@ -292,7 +292,7 @@ export function WhatYouMissedPopup() {
     if (notification.relatedType && notification.relatedId) {
       switch (notification.relatedType) {
         case 'job':
-          router.push(`/more/job/${notification.relatedId}` as any);
+          router.push(`/job/${notification.relatedId}` as any);
           break;
         case 'quote':
           router.push(`/more/quote/${notification.relatedId}` as any);
