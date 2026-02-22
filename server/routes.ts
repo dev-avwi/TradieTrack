@@ -16942,24 +16942,33 @@ Be specific about materials, colors, and features that would be included.`
       
       if (lineItems && Array.isArray(lineItems) && lineItems.length > 0) {
         // Calculate subtotal from line items - server always recalculates
-        calculatedSubtotal = lineItems.reduce((sum: number, item: any) => {
+        // Use cents-based arithmetic to avoid floating-point precision issues
+        let subtotalCents = 0;
+        for (const item of lineItems) {
           const qty = parseFloat(item.quantity || '1');
           const price = parseFloat(item.unitPrice || '0');
-          return sum + (qty * price);
-        }, 0);
+          subtotalCents += Math.round(qty * price * 100);
+        }
+        calculatedSubtotal = subtotalCents / 100;
         
-        // Calculate GST if enabled
+        // Calculate GST if enabled (round to nearest cent)
         if (gstEnabled) {
-          calculatedGst = calculatedSubtotal * 0.1;
+          calculatedGst = Math.round(subtotalCents * 0.1) / 100;
         }
         
-        // Calculate total
-        calculatedTotal = calculatedSubtotal + calculatedGst;
+        // Calculate total from rounded values
+        calculatedTotal = Math.round((calculatedSubtotal + calculatedGst) * 100) / 100;
       } else {
         // No line items - use provided values or defaults
         calculatedSubtotal = parseFloat(invoiceData.subtotal || '0');
         calculatedGst = parseFloat(invoiceData.gstAmount || '0');
         calculatedTotal = parseFloat(invoiceData.total || '0');
+        
+        // Validate: if GST enabled and totals were provided, verify GST matches
+        if (gstEnabled && calculatedSubtotal > 0 && calculatedGst === 0) {
+          calculatedGst = Math.round(calculatedSubtotal * 10) / 100;
+          calculatedTotal = Math.round((calculatedSubtotal + calculatedGst) * 100) / 100;
+        }
       }
       
       // Update invoice data with calculated totals
@@ -21753,6 +21762,35 @@ Respond with JSON in this format:
       const userId = req.userId!;
       const data = insertTimeEntrySchema.parse(req.body);
       
+      // Validate start time is not in the future (allow 2 min tolerance for clock drift)
+      if (data.startTime) {
+        const startMs = new Date(data.startTime).getTime();
+        if (isNaN(startMs)) {
+          return res.status(400).json({ error: 'Invalid start time' });
+        }
+        if (startMs > Date.now() + 120000) {
+          return res.status(400).json({ error: 'Start time cannot be in the future' });
+        }
+      }
+      
+      // Validate end time is after start time if both provided
+      if (data.startTime && data.endTime) {
+        const startMs = new Date(data.startTime).getTime();
+        const endMs = new Date(data.endTime).getTime();
+        if (endMs <= startMs) {
+          return res.status(400).json({ error: 'End time must be after start time' });
+        }
+        // Reject entries longer than 24 hours
+        if (endMs - startMs > 24 * 60 * 60 * 1000) {
+          return res.status(400).json({ error: 'Time entry cannot exceed 24 hours' });
+        }
+      }
+      
+      // Validate duration is not negative if provided
+      if (data.duration !== undefined && data.duration !== null && Number(data.duration) < 0) {
+        return res.status(400).json({ error: 'Duration cannot be negative' });
+      }
+      
       // Check for existing active timer to prevent overlap (with team context)
       const activeEntry = await storage.getActiveTimeEntry(userId);
       if (activeEntry) {
@@ -22649,6 +22687,265 @@ Respond with JSON in this format:
       res.status(500).json({ error: 'Failed to export timesheet' });
     }
   });
+
+  // ============================================================
+  // DATA EXPORT ENDPOINTS (ToS Section 28 - User Data Export)
+  // ============================================================
+
+  function escapeCsvField(field: any): string {
+    if (field === null || field === undefined) return '';
+    const str = String(field);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function toCsvRow(fields: any[]): string {
+    return fields.map(escapeCsvField).join(',');
+  }
+
+  function formatExportDateAU(date: Date | string | null): string {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  }
+
+  function formatExportTimeAU(date: Date | string | null): string {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  app.get("/api/export/clients", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const allClients = await storage.getClients(effectiveUserId);
+
+      const rows: string[] = [];
+      rows.push('Name,Email,Phone,Company,Address,Notes,Created Date');
+
+      for (const c of allClients) {
+        rows.push(toCsvRow([
+          c.name,
+          c.email,
+          c.phone,
+          c.company,
+          c.address,
+          c.notes,
+          formatExportDateAU(c.createdAt),
+        ]));
+      }
+
+      const csv = rows.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="jobrunner-clients-export.csv"');
+      return res.send(csv);
+    } catch (error) {
+      console.error('Error exporting clients:', error);
+      res.status(500).json({ error: 'Failed to export clients' });
+    }
+  });
+
+  app.get("/api/export/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const [allInvoices, allClients] = await Promise.all([
+        storage.getInvoices(effectiveUserId),
+        storage.getClients(effectiveUserId),
+      ]);
+
+      const clientMap = new Map(allClients.map((c: any) => [c.id, c.name]));
+
+      const rows: string[] = [];
+      rows.push('Invoice Number,Client Name,Title,Status,Subtotal,GST,Total,Due Date,Paid Date,Created Date');
+
+      for (const inv of allInvoices) {
+        const subtotal = parseFloat(String(inv.subtotal || '0')).toFixed(2);
+        const gst = parseFloat(String(inv.gst || '0')).toFixed(2);
+        const total = parseFloat(String(inv.total || '0')).toFixed(2);
+
+        rows.push(toCsvRow([
+          inv.number,
+          clientMap.get(inv.clientId) || '',
+          inv.title,
+          inv.status,
+          subtotal,
+          gst,
+          total,
+          formatExportDateAU(inv.dueDate),
+          formatExportDateAU(inv.paidAt),
+          formatExportDateAU(inv.createdAt),
+        ]));
+      }
+
+      const csv = rows.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="jobrunner-invoices-export.csv"');
+      return res.send(csv);
+    } catch (error) {
+      console.error('Error exporting invoices:', error);
+      res.status(500).json({ error: 'Failed to export invoices' });
+    }
+  });
+
+  app.get("/api/export/quotes", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const [allQuotes, allClients] = await Promise.all([
+        storage.getQuotes(effectiveUserId),
+        storage.getClients(effectiveUserId),
+      ]);
+
+      const clientMap = new Map(allClients.map((c: any) => [c.id, c.name]));
+
+      const rows: string[] = [];
+      rows.push('Quote Number,Client Name,Title,Status,Subtotal,GST,Total,Valid Until,Created Date');
+
+      for (const q of allQuotes) {
+        const subtotal = parseFloat(String(q.subtotal || '0')).toFixed(2);
+        const gst = parseFloat(String(q.gst || '0')).toFixed(2);
+        const total = parseFloat(String(q.total || '0')).toFixed(2);
+
+        rows.push(toCsvRow([
+          q.number,
+          clientMap.get(q.clientId) || '',
+          q.title,
+          q.status,
+          subtotal,
+          gst,
+          total,
+          formatExportDateAU(q.validUntil),
+          formatExportDateAU(q.createdAt),
+        ]));
+      }
+
+      const csv = rows.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="jobrunner-quotes-export.csv"');
+      return res.send(csv);
+    } catch (error) {
+      console.error('Error exporting quotes:', error);
+      res.status(500).json({ error: 'Failed to export quotes' });
+    }
+  });
+
+  app.get("/api/export/jobs", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const [allJobs, allClients] = await Promise.all([
+        storage.getJobs(effectiveUserId),
+        storage.getClients(effectiveUserId),
+      ]);
+
+      const clientMap = new Map(allClients.map((c: any) => [c.id, c.name]));
+
+      const rows: string[] = [];
+      rows.push('Job Title,Client Name,Status,Address,Scheduled Date,Started Date,Completed Date,Created Date');
+
+      for (const j of allJobs) {
+        rows.push(toCsvRow([
+          j.title,
+          clientMap.get(j.clientId) || '',
+          j.status,
+          j.address || j.location,
+          formatExportDateAU(j.scheduledAt),
+          formatExportDateAU(j.startedAt),
+          formatExportDateAU(j.completedAt),
+          formatExportDateAU(j.createdAt),
+        ]));
+      }
+
+      const csv = rows.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="jobrunner-jobs-export.csv"');
+      return res.send(csv);
+    } catch (error) {
+      console.error('Error exporting jobs:', error);
+      res.status(500).json({ error: 'Failed to export jobs' });
+    }
+  });
+
+  app.get("/api/export/time-entries", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const allEntries = await storage.getTimeEntries(effectiveUserId);
+      const allJobs = await storage.getJobs(effectiveUserId);
+      const jobMap = new Map(allJobs.map((j: any) => [j.id, j.title]));
+
+      const rows: string[] = [];
+      rows.push('Date,Job Title,Description,Start Time,End Time,Duration (hours),Hourly Rate,Category,Billable,Overtime');
+
+      for (const e of allEntries) {
+        const start = new Date(e.startTime);
+        const end = e.endTime ? new Date(e.endTime) : null;
+        const durationMin = e.duration || (end ? Math.round((end.getTime() - start.getTime()) / 60000) : 0);
+        const durationHrs = (durationMin / 60).toFixed(2);
+        const rate = e.hourlyRate ? parseFloat(e.hourlyRate).toFixed(2) : '';
+
+        rows.push(toCsvRow([
+          formatExportDateAU(e.startTime),
+          e.jobId ? (jobMap.get(e.jobId) || '') : '',
+          e.description,
+          formatExportTimeAU(e.startTime),
+          formatExportTimeAU(e.endTime),
+          durationHrs,
+          rate,
+          e.timeCategory || '',
+          e.isBillable !== false ? 'Yes' : 'No',
+          e.isOvertime === true ? 'Yes' : 'No',
+        ]));
+      }
+
+      const csv = rows.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="jobrunner-time-entries-export.csv"');
+      return res.send(csv);
+    } catch (error) {
+      console.error('Error exporting time entries:', error);
+      res.status(500).json({ error: 'Failed to export time entries' });
+    }
+  });
+
+  app.get("/api/export/all", requireAuth, async (req: any, res) => {
+    try {
+      const baseUrl = req.protocol + '://' + req.get('host');
+      res.json({
+        message: 'Full data export - download each CSV individually',
+        exports: [
+          { name: 'Clients', url: `${baseUrl}/api/export/clients`, filename: 'jobrunner-clients-export.csv' },
+          { name: 'Invoices', url: `${baseUrl}/api/export/invoices`, filename: 'jobrunner-invoices-export.csv' },
+          { name: 'Quotes', url: `${baseUrl}/api/export/quotes`, filename: 'jobrunner-quotes-export.csv' },
+          { name: 'Jobs', url: `${baseUrl}/api/export/jobs`, filename: 'jobrunner-jobs-export.csv' },
+          { name: 'Time Entries', url: `${baseUrl}/api/export/time-entries`, filename: 'jobrunner-time-entries-export.csv' },
+        ],
+      });
+    } catch (error) {
+      console.error('Error generating export links:', error);
+      res.status(500).json({ error: 'Failed to generate export links' });
+    }
+  });
+
+  // ============================================================
+  // END DATA EXPORT ENDPOINTS
+  // ============================================================
 
   app.get("/api/timesheets/:id", requireAuth, async (req: any, res) => {
     try {

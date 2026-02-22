@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,7 +67,8 @@ import {
   PlayCircle,
   Clock,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1058,6 +1059,17 @@ export default function Settings({
               <span className="hidden sm:inline">Support</span>
               <span className="sm:hidden">Help</span>
             </TabsTrigger>
+            {canAccessBusinessSettings && (
+              <TabsTrigger 
+                value="data" 
+                data-testid="tab-data"
+                className="flex-shrink-0"
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">Data Export</span>
+                <span className="sm:hidden">Export</span>
+              </TabsTrigger>
+            )}
             {import.meta.env.DEV && canAccessBusinessSettings && (
               <TabsTrigger 
                 value="developer" 
@@ -2380,6 +2392,11 @@ export default function Settings({
         {/* Support Tab */}
         <SupportTab />
 
+        {/* Data Export Tab */}
+        {canAccessBusinessSettings && (
+          <DataExportTab />
+        )}
+
         {/* Developer Tab - only in development mode */}
         {import.meta.env.DEV && (
           <TabsContent value="developer" className="space-y-6">
@@ -3313,6 +3330,94 @@ function SupportTab() {
             <p className="text-xs text-muted-foreground">
               Made in Australia for Australian trade professionals
             </p>
+          </div>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+// Data Export Tab Component
+function DataExportTab() {
+  return (
+    <TabsContent value="data" className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Export Your Data</CardTitle>
+          <CardDescription>
+            Download your business data as CSV files. We recommend exporting your data regularly as a backup.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[
+            { key: 'clients', label: 'Clients', description: 'Names, contact details, addresses, and notes', icon: Users },
+            { key: 'jobs', label: 'Jobs', description: 'Job titles, statuses, addresses, and dates', icon: Briefcase },
+            { key: 'quotes', label: 'Quotes', description: 'Quote numbers, amounts, GST, and statuses', icon: FileText },
+            { key: 'invoices', label: 'Invoices', description: 'Invoice numbers, amounts, GST, payment status', icon: Receipt },
+            { key: 'time-entries', label: 'Time Entries', description: 'Hours, rates, jobs, and billing status', icon: Clock },
+          ].map((item) => (
+            <div key={item.key} className="flex items-center justify-between p-3 rounded-md border">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center">
+                  <item.icon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.open(`/api/export/${item.key}`, '_blank');
+                }}
+                data-testid={`button-export-${item.key}`}
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                CSV
+              </Button>
+            </div>
+          ))}
+          
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Export All Data</p>
+                <p className="text-xs text-muted-foreground">Download all categories above in one go</p>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  ['clients', 'jobs', 'quotes', 'invoices', 'time-entries'].forEach((key, i) => {
+                    setTimeout(() => {
+                      window.open(`/api/export/${key}`, '_blank');
+                    }, i * 500);
+                  });
+                }}
+                data-testid="button-export-all"
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                Export All
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Data Responsibility</CardTitle>
+          <CardDescription>
+            Important information about your data
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>You are responsible for maintaining independent backups of your critical business data. We recommend exporting your data at least monthly.</p>
+            <p>Exported CSV files can be opened in Microsoft Excel, Google Sheets, or any spreadsheet application.</p>
+            <p>For accounting purposes, exported data should be verified by a qualified accountant before use in tax returns or BAS statements.</p>
           </div>
         </CardContent>
       </Card>
