@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
+import jobrunnerLogoWhite from "@assets/jobrunner-logo-white.png";
 
 interface PortalClient {
   id: string;
@@ -765,7 +766,7 @@ export default function ClientPortalHub() {
                     className="w-8 h-8 object-contain rounded-md bg-white/10 p-1"
                   />
                 ) : (
-                  <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
+                  <img src={jobrunnerLogoWhite} alt="JobRunner" className="w-8 h-8 object-contain" />
                 )}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base text-white truncate">
