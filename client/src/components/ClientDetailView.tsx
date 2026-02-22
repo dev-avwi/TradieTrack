@@ -165,7 +165,11 @@ export default function ClientDetailView({
   const { data: clientRequests = [] } = useQuery<any[]>({
     queryKey: ['/api/job-requests', 'client', clientId],
     queryFn: async () => {
-      const res = await fetch(`/api/job-requests?clientId=${clientId}`, { credentials: 'include' });
+      const token = getSessionToken();
+      const res = await fetch(`/api/job-requests?clientId=${clientId}`, { 
+        credentials: 'include', 
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined 
+      });
       if (!res.ok) return [];
       return res.json();
     },

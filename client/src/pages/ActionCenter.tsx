@@ -208,99 +208,14 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
         </p>
       </div>
 
-      {pendingRequests.length > 0 && (
-        <div className="mb-6 space-y-3">
-          <div className="flex items-center gap-2 py-1">
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.08)" }}
-            >
-              <ClipboardList
-                className="h-3.5 w-3.5"
-                style={{ color: "hsl(221.2 83.2% 53.3%)" }}
-              />
-            </div>
-            <span className="text-sm font-semibold text-foreground">
-              Client Requests
-            </span>
-            <Badge variant="outline" className="no-default-hover-elevate text-xs">
-              {pendingRequests.length}
-            </Badge>
-          </div>
-
-          <div className="space-y-2">
-            {pendingRequests.map((request) => {
-              const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
-              return (
-                <Card key={request.id}>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <p className="text-sm font-semibold text-foreground">
-                          {request.title}
-                        </p>
-                        <Badge
-                          variant={urgency.variant}
-                          className={`no-default-hover-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
-                        >
-                          {urgency.label}
-                        </Badge>
-                      </div>
-                      {request.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {request.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-                        {request.createdAt && (
-                          <span>{formatRelativeTime(request.createdAt)}</span>
-                        )}
-                        {request.preferredDate && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(request.preferredDate)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          disabled={updateRequestMutation.isPending}
-                          onClick={() => updateRequestMutation.mutate({ id: request.id, status: "accepted" })}
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={updateRequestMutation.isPending}
-                          onClick={() => updateRequestMutation.mutate({ id: request.id, status: "declined" })}
-                        >
-                          <X className="h-3.5 w-3.5 mr-1" />
-                          Decline
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {requestsLoading && pendingRequests.length === 0 && (
+      {(isLoading || requestsLoading) && pendingRequests.length === 0 && (
         <div className="mb-6 space-y-3">
           <div className="h-6 w-40 rounded-md bg-muted animate-pulse" />
           <ActionCardSkeleton />
         </div>
       )}
 
-      {isLoading && <LoadingSkeleton />}
-
-      {isEmpty && (
+      {isEmpty && pendingRequests.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <div
@@ -322,8 +237,91 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
         </Card>
       )}
 
-      {data && !isEmpty && (
+      {(data || pendingRequests.length > 0) && !(isEmpty && pendingRequests.length === 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {pendingRequests.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 py-1">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.08)" }}
+                >
+                  <ClipboardList
+                    className="h-3.5 w-3.5"
+                    style={{ color: "hsl(221.2 83.2% 53.3%)" }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-foreground">
+                  Client Requests
+                </span>
+                <Badge variant="outline" className="no-default-hover-elevate text-xs">
+                  {pendingRequests.length}
+                </Badge>
+              </div>
+
+              <div className="space-y-2">
+                {pendingRequests.map((request) => {
+                  const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
+                  return (
+                    <Card key={request.id}>
+                      <CardContent className="p-4">
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground">
+                              {request.title}
+                            </p>
+                            <Badge
+                              variant={urgency.variant}
+                              className={`no-default-hover-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
+                            >
+                              {urgency.label}
+                            </Badge>
+                          </div>
+                          {request.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {request.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                            {request.createdAt && (
+                              <span>{formatRelativeTime(request.createdAt)}</span>
+                            )}
+                            {request.preferredDate && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(request.preferredDate)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={updateRequestMutation.isPending}
+                              onClick={() => updateRequestMutation.mutate({ id: request.id, status: "accepted" })}
+                            >
+                              <Check className="h-3.5 w-3.5 mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateRequestMutation.isPending}
+                              onClick={() => updateRequestMutation.mutate({ id: request.id, status: "declined" })}
+                            >
+                              <X className="h-3.5 w-3.5 mr-1" />
+                              Decline
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {sectionConfig.map((section) => {
             const items = data.sections[section.key];
             const count = data.summary[section.countKey];
