@@ -344,7 +344,53 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">26. Contact Information</h2>
+                <h2 className="text-xl font-semibold mb-3">26. No Professional Advice</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner is a business management tool only. Nothing in the platform — including compliance tracking, licence expiry alerts, financial reports, profitability calculations, scheduling suggestions, or any other feature — constitutes professional, legal, financial, accounting, tax, or trade advice.
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>Compliance and licensing status indicators (e.g. "valid," "expiring," "expired") are based solely on the dates and information you enter. JobRunner does not independently verify the validity of any licence, certification, or insurance policy</li>
+                  <li>Financial reports, profitability figures, payroll calculations, and aged receivables data are generated from the information you provide and should be verified by a qualified accountant or bookkeeper before being relied upon for business decisions or tax reporting</li>
+                  <li>You should seek independent professional advice from qualified practitioners (accountants, lawyers, licensed trade advisors) for matters relating to your business, tax obligations, workplace health and safety, and regulatory compliance</li>
+                  <li>JobRunner is not liable for any loss, penalty, fine, or damage arising from decisions made based on information displayed in the platform</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">27. Force Majeure</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner shall not be liable for any failure or delay in performing its obligations under these Terms where such failure or delay results from circumstances beyond our reasonable control, including but not limited to:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>Natural disasters, floods, bushfires, earthquakes, storms, or other acts of nature</li>
+                  <li>Epidemics, pandemics, or public health emergencies</li>
+                  <li>Cyber attacks, distributed denial-of-service (DDoS) attacks, ransomware, or other malicious activity targeting our infrastructure or third-party providers</li>
+                  <li>Failures or outages of third-party services we depend on, including cloud hosting, payment processors (Stripe), email providers (SendGrid), and SMS providers (Twilio)</li>
+                  <li>Government actions, sanctions, embargoes, or regulatory changes</li>
+                  <li>Internet or telecommunications infrastructure failures</li>
+                  <li>Power outages or utility failures</li>
+                  <li>War, terrorism, civil unrest, or industrial action</li>
+                </ul>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  In such events, our obligations will be suspended for the duration of the force majeure event. We will make reasonable efforts to notify affected users and restore service as soon as practicable.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">28. Data Export & Backup Responsibility</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  You are solely responsible for maintaining independent backups of your critical business data. While JobRunner implements industry-standard data redundancy and backup measures, no system is immune to data loss.
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>You should regularly export and back up your client records, quotes, invoices, job history, time tracking data, and any other business-critical information stored on the platform</li>
+                  <li>JobRunner provides data export functionality to assist with this obligation. It is your responsibility to use it</li>
+                  <li>In the event of data loss — whether caused by system failure, account termination, security incident, or any other reason — JobRunner's liability is limited to making reasonable efforts to restore data from our most recent available backup</li>
+                  <li>JobRunner does not guarantee that all data can be recovered in every circumstance and shall not be liable for any business losses, missed deadlines, or regulatory penalties resulting from data that cannot be restored</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">29. Contact Information</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   If you have any questions about these Terms of Service, please contact us at:
                 </p>
