@@ -294,13 +294,13 @@ export default function ClientPortal() {
   return (
     <div className="min-h-screen bg-white relative">
       {declineAnimating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-50/95 animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-rose-50/90 animate-in fade-in duration-500">
           <div className="text-center space-y-4 animate-in zoom-in-95 duration-700">
-            <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-              <X className="w-10 h-10 text-red-600" />
+            <div className="w-20 h-20 mx-auto bg-rose-100 rounded-full flex items-center justify-center">
+              <X className="w-10 h-10 text-rose-400" />
             </div>
-            <h2 className="text-2xl font-bold text-red-800">Quote Declined</h2>
-            <p className="text-red-600 text-sm max-w-xs mx-auto">
+            <h2 className="text-2xl font-bold text-rose-600">Quote Declined</h2>
+            <p className="text-rose-500 text-sm max-w-xs mx-auto">
               The tradie has been notified of your decision.
             </p>
           </div>
@@ -309,15 +309,15 @@ export default function ClientPortal() {
       <div className={`min-h-screen flex flex-col ${isQuoteDeclined && !declineAnimating ? 'opacity-100' : ''}`}>
         {/* Declined Banner */}
         {isQuoteDeclined && !declineAnimating && (
-          <div className="bg-red-600 text-white py-3 px-4 text-center">
+          <div className="bg-rose-100 text-rose-600 py-3 px-4 text-center border-b border-rose-200">
             <div className="flex items-center justify-center gap-2">
-              <X className="w-5 h-5" />
-              <span className="font-semibold">This quote has been declined</span>
+              <X className="w-4 h-4" />
+              <span className="font-medium text-sm">This quote has been declined</span>
             </div>
           </div>
         )}
         {/* Teal Branded Header */}
-        <header className={`${isQuoteDeclined && !declineAnimating ? 'bg-red-800' : 'bg-brand'} text-white sticky top-0 z-20`}>
+        <header className="bg-brand text-white sticky top-0 z-20">
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -532,15 +532,15 @@ export default function ClientPortal() {
 
             {/* Quote Declined Status */}
             {isQuoteDeclined && !declineAnimating && (
-              <Card className="bg-red-50 rounded-xl shadow-sm border-2 border-red-300">
+              <Card className="bg-rose-50/60 rounded-xl shadow-sm border border-rose-200">
                 <CardContent className="py-5">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <X className="w-6 h-6 text-red-600" />
+                    <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <X className="w-6 h-6 text-rose-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-red-800 text-base">Quote Declined</p>
-                      <p className="text-sm text-red-600 mt-1">
+                      <p className="font-semibold text-rose-600 text-base">Quote Declined</p>
+                      <p className="text-sm text-rose-500 mt-1">
                         This quote has been declined. Contact {data.business?.name || 'the business'} if you change your mind.
                       </p>
                     </div>
