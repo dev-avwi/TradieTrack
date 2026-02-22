@@ -189,6 +189,52 @@ export default function PaymentHubScreen() {
     }
   }, []);
 
+  const [creatingPaymentLink, setCreatingPaymentLink] = useState<string | null>(null);
+
+  const handleCreatePaymentLink = useCallback(async (invoiceId: string) => {
+    if (!stripeStatus?.connected || !stripeStatus?.chargesEnabled) {
+      Alert.alert('Stripe Not Connected', 'Connect your Stripe account to create payment links.');
+      return;
+    }
+    setCreatingPaymentLink(invoiceId);
+    try {
+      const response = await api.post<{ paymentUrl?: string; url?: string; error?: string }>(
+        `/api/invoices/${invoiceId}/generate-payment-link`
+      );
+      const paymentUrl = response.data?.paymentUrl || response.data?.url;
+      if (paymentUrl) {
+        Alert.alert(
+          'Payment Link Created',
+          'Share this payment link with your client?',
+          [
+            { text: 'Copy Link', onPress: () => {
+              import('expo-clipboard').then(({ setStringAsync }) => {
+                setStringAsync(paymentUrl);
+                Alert.alert('Copied', 'Payment link copied to clipboard.');
+              }).catch(() => {
+                Alert.alert('Link', paymentUrl);
+              });
+            }},
+            { text: 'Share', onPress: async () => {
+              try {
+                const { Share: RNShare } = await import('react-native');
+                await RNShare.share({ message: paymentUrl, title: 'Payment Link' });
+              } catch {}
+            }},
+            { text: 'Close', style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.data?.error || 'Failed to create payment link.');
+      }
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Failed to create payment link.';
+      Alert.alert('Error', message);
+    } finally {
+      setCreatingPaymentLink(null);
+    }
+  }, [stripeStatus]);
+
   const handleOpenStripeDashboard = useCallback(async () => {
     try {
       const response = await api.get<{ url?: string }>('/api/stripe-connect/dashboard');
@@ -442,6 +488,23 @@ export default function PaymentHubScreen() {
             </Text>
           )}
         </View>
+        {invoice.status !== 'paid' && invoice.status !== 'draft' && stripeStatus?.connected && stripeStatus?.chargesEnabled && (
+          <TouchableOpacity
+            style={[styles.paymentLinkButton, creatingPaymentLink === invoice.id && { opacity: 0.5 }]}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              handleCreatePaymentLink(invoice.id);
+            }}
+            activeOpacity={0.7}
+            disabled={creatingPaymentLink === invoice.id}
+          >
+            {creatingPaymentLink === invoice.id ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="link" size={iconSizes.sm} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+        )}
         <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
       </TouchableOpacity>
     );
@@ -1258,6 +1321,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: colors.primaryForeground,
+  },
+  paymentLinkButton: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${colors.primary}15`,
   },
   filterRow: {
     paddingHorizontal: spacing.md,

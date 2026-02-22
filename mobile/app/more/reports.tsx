@@ -19,12 +19,20 @@ import { useTheme } from '../../src/lib/theme';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
+type ReportTab = 'overview' | 'revenue' | 'clients' | 'export';
 
 const PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'week', label: 'This Week' },
   { key: 'month', label: 'This Month' },
   { key: 'quarter', label: 'This Quarter' },
   { key: 'year', label: 'This Year' },
+];
+
+const REPORT_TABS: { key: ReportTab; label: string; icon: string }[] = [
+  { key: 'overview', label: 'Overview', icon: 'bar-chart-2' },
+  { key: 'revenue', label: 'Revenue', icon: 'dollar-sign' },
+  { key: 'clients', label: 'Clients', icon: 'users' },
+  { key: 'export', label: 'Export', icon: 'share' },
 ];
 
 const createStyles = (colors: any) => StyleSheet.create({
@@ -418,6 +426,91 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
   },
+  reportTabContainer: {
+    marginBottom: 16,
+  },
+  reportTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 8,
+    borderRadius: 10,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+  },
+  reportTabActive: {
+    backgroundColor: `${colors.primary}15`,
+    borderColor: colors.primary,
+  },
+  reportTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  reportTabTextActive: {
+    color: colors.primary,
+  },
+  overviewSummarySection: {
+    marginBottom: 24,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  summaryItem: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  revenueBreakdownSection: {
+    marginBottom: 24,
+  },
+  breakdownCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  breakdownDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+  },
+  breakdownLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.foreground,
+  },
+  breakdownValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
 });
 
 export default function ReportsScreen() {
@@ -436,6 +529,7 @@ export default function ReportsScreen() {
   } = useReportsStore();
   
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
+  const [activeReportTab, setActiveReportTab] = useState<ReportTab>('overview');
 
   const refreshData = useCallback(async () => {
     await fetchAllReports();
@@ -698,6 +792,31 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             </View>
           )}
 
+          <View style={styles.reportTabContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {REPORT_TABS.map((tab) => {
+                const isActive = activeReportTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.reportTab, isActive && styles.reportTabActive]}
+                    onPress={() => setActiveReportTab(tab.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name={tab.icon as any}
+                      size={16}
+                      color={isActive ? colors.primary : colors.mutedForeground}
+                    />
+                    <Text style={[styles.reportTabText, isActive && styles.reportTabTextActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {isLoading && !summary && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -705,7 +824,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             </View>
           )}
 
-          {summary && (
+          {activeReportTab === 'overview' && summary && (
             <>
               <Text style={styles.sectionTitle}>KEY METRICS</Text>
               <View style={styles.statsGrid}>
@@ -778,119 +897,207 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   </View>
                 </View>
               </View>
+
+              {summary.jobs.total === 0 && summary.quotes.total === 0 && summary.invoices.total === 0 && (
+                <View style={styles.emptyCard}>
+                  <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+                  <Text style={styles.emptyText}>
+                    No data available for this period.{'\n'}
+                    Create jobs, quotes, and invoices to see your business insights.
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.overviewSummarySection}>
+                <Text style={styles.sectionTitle}>SUMMARY</Text>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Invoices Paid</Text>
+                    <Text style={styles.summaryValue}>{summary.invoices.paid}</Text>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Invoices Unpaid</Text>
+                    <Text style={styles.summaryValue}>{summary.invoices.unpaid}</Text>
+                  </View>
+                </View>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Total Jobs</Text>
+                    <Text style={styles.summaryValue}>{summary.jobs.total}</Text>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryLabel}>Total Quotes</Text>
+                    <Text style={styles.summaryValue}>{summary.quotes.total}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.insightsCard}>
+                <Feather name="zap" size={32} color={colors.primary} />
+                <Text style={styles.insightsTitle}>AI Business Insights</Text>
+                <Text style={styles.insightsText}>
+                  Smart analytics powered by AI will analyze your business trends and provide actionable recommendations.
+                </Text>
+              </View>
             </>
           )}
 
-          {revenueReport && monthlyData.length > 0 && (
-            <View style={styles.chartSection}>
-              <View style={styles.chartHeader}>
-                <Feather name="bar-chart-2" size={20} color={colors.foreground} />
-                <Text style={styles.chartTitle}>Revenue Overview</Text>
-                <Text style={styles.chartSubtitle}>{revenueReport.year}</Text>
-              </View>
-              <View style={styles.chartContainer}>
-                {monthlyData.map((data, index) => (
-                  <View key={index} style={styles.chartBarContainer}>
-                    <View style={styles.chartBarWrapper}>
-                      <View style={[styles.chartBar, { height: `${maxChartValue > 0 ? (data.value / maxChartValue) * 100 : 0}%` }]} />
-                    </View>
-                    <Text style={styles.chartBarLabel}>{data.label}</Text>
-                    <Text style={styles.chartBarAmount}>{data.amount}</Text>
+          {activeReportTab === 'revenue' && (
+            <>
+              {revenueReport && monthlyData.length > 0 ? (
+                <View style={styles.chartSection}>
+                  <View style={styles.chartHeader}>
+                    <Feather name="bar-chart-2" size={20} color={colors.foreground} />
+                    <Text style={styles.chartTitle}>Revenue Overview</Text>
+                    <Text style={styles.chartSubtitle}>{revenueReport.year}</Text>
                   </View>
-                ))}
-              </View>
-              <View style={styles.chartYearTotal}>
-                <Text style={styles.chartYearLabel}>Year Total</Text>
-                <Text style={styles.chartYearValue}>{formatCurrency(revenueReport.yearTotal)}</Text>
-              </View>
-            </View>
-          )}
-
-          {clientReport && clientReport.clients.length > 0 && (
-            <View style={styles.topClientsSection}>
-              <Text style={styles.sectionTitle}>TOP CLIENTS</Text>
-              {clientReport.clients.slice(0, 5).map((client, index) => (
-                <View key={client.id} style={styles.clientCard}>
-                  <View style={styles.clientRank}>
-                    <Text style={styles.clientRankText}>{index + 1}</Text>
+                  <View style={styles.chartContainer}>
+                    {monthlyData.map((data, index) => (
+                      <View key={index} style={styles.chartBarContainer}>
+                        <View style={styles.chartBarWrapper}>
+                          <View style={[styles.chartBar, { height: `${maxChartValue > 0 ? (data.value / maxChartValue) * 100 : 0}%` }]} />
+                        </View>
+                        <Text style={styles.chartBarLabel}>{data.label}</Text>
+                        <Text style={styles.chartBarAmount}>{data.amount}</Text>
+                      </View>
+                    ))}
                   </View>
-                  <View style={styles.clientInfo}>
-                    <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
-                    <Text style={styles.clientMeta}>
-                      {client.jobsCompleted} jobs • {client.invoicesPaid} invoices paid
-                    </Text>
+                  <View style={styles.chartYearTotal}>
+                    <Text style={styles.chartYearLabel}>Year Total</Text>
+                    <Text style={styles.chartYearValue}>{formatCurrency(revenueReport.yearTotal)}</Text>
                   </View>
-                  <Text style={styles.clientRevenue}>{formatCurrency(client.totalRevenue)}</Text>
                 </View>
-              ))}
-            </View>
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+                  <Text style={styles.emptyText}>No revenue data available yet</Text>
+                </View>
+              )}
+
+              {summary && (
+                <View style={styles.revenueBreakdownSection}>
+                  <Text style={styles.sectionTitle}>REVENUE BREAKDOWN</Text>
+                  <View style={styles.breakdownCard}>
+                    <View style={styles.breakdownRow}>
+                      <View style={styles.breakdownDot} />
+                      <Text style={styles.breakdownLabel}>Collected Revenue</Text>
+                      <Text style={[styles.breakdownValue, { color: colors.success }]}>{formatCurrency(summary.revenue.total)}</Text>
+                    </View>
+                    <View style={styles.breakdownRow}>
+                      <View style={[styles.breakdownDot, { backgroundColor: colors.warning }]} />
+                      <Text style={styles.breakdownLabel}>Pending Revenue</Text>
+                      <Text style={[styles.breakdownValue, { color: colors.warning }]}>{formatCurrency(summary.revenue.pending)}</Text>
+                    </View>
+                    <View style={styles.breakdownRow}>
+                      <View style={[styles.breakdownDot, { backgroundColor: colors.destructive }]} />
+                      <Text style={styles.breakdownLabel}>Overdue Revenue</Text>
+                      <Text style={[styles.breakdownValue, { color: colors.destructive }]}>{formatCurrency(summary.revenue.overdue)}</Text>
+                    </View>
+                    {summary.revenue.gstCollected > 0 && (
+                      <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, marginTop: 4 }]}>
+                        <View style={[styles.breakdownDot, { backgroundColor: colors.info }]} />
+                        <Text style={styles.breakdownLabel}>GST Collected</Text>
+                        <Text style={styles.breakdownValue}>{formatCurrency(summary.revenue.gstCollected)}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+            </>
           )}
 
-          <View style={styles.quickReportsSection}>
-            <Text style={styles.sectionTitle}>QUICK REPORTS</Text>
-            
-            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')}>
-              <View style={[styles.reportCardIcon, { backgroundColor: colors.successLight }]}>
-                <Feather name="dollar-sign" size={20} color={colors.success} />
-              </View>
-              <View style={styles.reportCardContent}>
-                <Text style={styles.reportCardTitle}>Income Report</Text>
-                <Text style={styles.reportCardSubtitle}>Detailed breakdown of all income</Text>
-              </View>
-              <Feather name="share" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+          {activeReportTab === 'clients' && (
+            <>
+              {clientReport && clientReport.clients.length > 0 ? (
+                <View style={styles.topClientsSection}>
+                  <Text style={styles.sectionTitle}>TOP CLIENTS BY REVENUE</Text>
+                  {clientReport.clients.slice(0, 10).map((client, index) => (
+                    <View key={client.id} style={styles.clientCard}>
+                      <View style={styles.clientRank}>
+                        <Text style={styles.clientRankText}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.clientInfo}>
+                        <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>
+                        <Text style={styles.clientMeta}>
+                          {client.jobsCompleted} jobs  {client.invoicesPaid} invoices paid
+                        </Text>
+                      </View>
+                      <Text style={styles.clientRevenue}>{formatCurrency(client.totalRevenue)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Feather name="users" size={40} color={colors.mutedForeground} />
+                  <Text style={styles.emptyText}>No client data available yet</Text>
+                </View>
+              )}
+            </>
+          )}
 
-            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('jobs')}>
-              <View style={styles.reportCardIcon}>
-                <Feather name="briefcase" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.reportCardContent}>
-                <Text style={styles.reportCardTitle}>Jobs Report</Text>
-                <Text style={styles.reportCardSubtitle}>Jobs by status and completion rate</Text>
-              </View>
-              <Feather name="share" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('quotes')}>
-              <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
-                <Feather name="file-text" size={20} color={colors.info} />
-              </View>
-              <View style={styles.reportCardContent}>
-                <Text style={styles.reportCardTitle}>Quotes Report</Text>
-                <Text style={styles.reportCardSubtitle}>Quote conversion and acceptance rates</Text>
-              </View>
-              <Feather name="share" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')}>
-              <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
-                <Feather name="percent" size={20} color={colors.warning} />
-              </View>
-              <View style={styles.reportCardContent}>
-                <Text style={styles.reportCardTitle}>Tax Summary</Text>
-                <Text style={styles.reportCardSubtitle}>GST collected and payable</Text>
-              </View>
-              <Feather name="share" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-
-          {summary && summary.jobs.total === 0 && summary.quotes.total === 0 && summary.invoices.total === 0 && (
-            <View style={styles.emptyCard}>
-              <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
-              <Text style={styles.emptyText}>
-                No data available for this period.{'\n'}
-                Create jobs, quotes, and invoices to see your business insights.
+          {activeReportTab === 'export' && (
+            <View style={styles.quickReportsSection}>
+              <Text style={styles.sectionTitle}>EXPORT REPORTS</Text>
+              <Text style={[styles.emptyText, { marginBottom: 16, textAlign: 'left' }]}>
+                Choose a report to share or export as CSV or text.
               </Text>
+              
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')}>
+                <View style={[styles.reportCardIcon, { backgroundColor: colors.successLight }]}>
+                  <Feather name="dollar-sign" size={20} color={colors.success} />
+                </View>
+                <View style={styles.reportCardContent}>
+                  <Text style={styles.reportCardTitle}>Income Report</Text>
+                  <Text style={styles.reportCardSubtitle}>Detailed breakdown of all income</Text>
+                </View>
+                <Feather name="share" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('jobs')}>
+                <View style={styles.reportCardIcon}>
+                  <Feather name="briefcase" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.reportCardContent}>
+                  <Text style={styles.reportCardTitle}>Jobs Report</Text>
+                  <Text style={styles.reportCardSubtitle}>Jobs by status and completion rate</Text>
+                </View>
+                <Feather name="share" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('quotes')}>
+                <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
+                  <Feather name="file-text" size={20} color={colors.info} />
+                </View>
+                <View style={styles.reportCardContent}>
+                  <Text style={styles.reportCardTitle}>Quotes Report</Text>
+                  <Text style={styles.reportCardSubtitle}>Quote conversion and acceptance rates</Text>
+                </View>
+                <Feather name="share" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')}>
+                <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
+                  <Feather name="percent" size={20} color={colors.warning} />
+                </View>
+                <View style={styles.reportCardContent}>
+                  <Text style={styles.reportCardTitle}>Tax Summary</Text>
+                  <Text style={styles.reportCardSubtitle}>GST collected and payable</Text>
+                </View>
+                <Feather name="share" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.reportCard, { marginTop: 8 }]} onPress={handleExport}>
+                <View style={[styles.reportCardIcon, { backgroundColor: `${colors.primary}15` }]}>
+                  <Feather name="share-2" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.reportCardContent}>
+                  <Text style={styles.reportCardTitle}>Full Summary</Text>
+                  <Text style={styles.reportCardSubtitle}>Share complete business summary</Text>
+                </View>
+                <Feather name="share" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
             </View>
           )}
-
-          <View style={styles.insightsCard}>
-            <Feather name="zap" size={32} color={colors.primary} />
-            <Text style={styles.insightsTitle}>AI Business Insights</Text>
-            <Text style={styles.insightsText}>
-              Smart analytics powered by AI will analyze your business trends and provide actionable recommendations.
-            </Text>
-          </View>
         </ScrollView>
       </View>
     </>
