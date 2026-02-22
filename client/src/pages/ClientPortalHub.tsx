@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -192,7 +192,13 @@ export default function ClientPortalHub() {
     preferredDate: '',
     urgency: 'normal',
     clientNotes: '',
+    preferredWorkerId: '',
+    preferredWorkerName: '',
+    referenceJobId: '',
+    referenceJobTitle: '',
   });
+  const [previousJobs, setPreviousJobs] = useState<any[]>([]);
+  const [selectedReferenceJob, setSelectedReferenceJob] = useState<any>(null);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -309,6 +315,7 @@ export default function ClientPortalHub() {
       const data = await res.json();
       setPortalData(data);
       fetchJobRequests(token);
+      fetchJobHistory(token);
       if (data.clients.length === 0) {
         setViewState('not-found');
       } else if (data.clients.length === 1) {
@@ -526,6 +533,35 @@ export default function ClientPortalHub() {
     }
   };
 
+  const fetchJobHistory = async (token: string) => {
+    try {
+      const res = await fetch('/api/portal/job-history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPreviousJobs(data.jobs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching job history:', error);
+    }
+  };
+
+  const uniqueWorkers = useMemo(() => {
+    const workerMap = new Map<string, { id: string; name: string; jobCount: number }>();
+    previousJobs.forEach((job: any) => {
+      if (job.assignedTo && job.workerName) {
+        const existing = workerMap.get(job.assignedTo);
+        if (existing) {
+          existing.jobCount++;
+        } else {
+          workerMap.set(job.assignedTo, { id: job.assignedTo, name: job.workerName, jobCount: 1 });
+        }
+      }
+    });
+    return Array.from(workerMap.values());
+  }, [previousJobs]);
+
   const handleSubmitJobRequest = async () => {
     if (!jobRequestForm.title.trim()) {
       toast({
@@ -546,6 +582,8 @@ export default function ClientPortalHub() {
         },
         body: JSON.stringify({
           ...jobRequestForm,
+          referenceJobId: jobRequestForm.referenceJobId === 'none' ? '' : jobRequestForm.referenceJobId,
+          preferredWorkerId: jobRequestForm.preferredWorkerId === 'none' ? '' : jobRequestForm.preferredWorkerId,
           clientId: selectedClientId || undefined,
         })
       });
@@ -561,7 +599,12 @@ export default function ClientPortalHub() {
           preferredDate: '',
           urgency: 'normal',
           clientNotes: '',
+          preferredWorkerId: '',
+          preferredWorkerName: '',
+          referenceJobId: '',
+          referenceJobTitle: '',
         });
+        setSelectedReferenceJob(null);
         if (sessionToken) {
           fetchJobRequests(sessionToken);
         }
@@ -1453,6 +1496,93 @@ export default function ClientPortalHub() {
                           rows={3}
                         />
                       </div>
+                      {previousJobs.length > 0 && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-900 mb-1">Reference Previous Job</label>
+                            <p className="text-xs text-slate-500 mb-2">Link to a previous job for context</p>
+                            <Select
+                              value={jobRequestForm.referenceJobId}
+                              onValueChange={(value) => {
+                                const job = previousJobs.find((j: any) => j.id === value);
+                                setSelectedReferenceJob(value === 'none' ? null : (job || null));
+                                setJobRequestForm(prev => ({
+                                  ...prev,
+                                  referenceJobId: value,
+                                  referenceJobTitle: job?.title || '',
+                                  preferredWorkerId: job?.assignedTo || prev.preferredWorkerId,
+                                  preferredWorkerName: job?.workerName || prev.preferredWorkerName,
+                                }));
+                              }}
+                            >
+                              <SelectTrigger className="bg-white text-slate-900">
+                                <SelectValue placeholder="Select a previous job (optional)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No reference</SelectItem>
+                                {previousJobs.map((job: any) => (
+                                  <SelectItem key={job.id} value={job.id}>
+                                    {job.title} {job.workerName ? `(${job.workerName})` : ''} - {job.status}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {selectedReferenceJob && (
+                            <Card className="bg-slate-50 rounded-md border-slate-200">
+                              <CardContent className="p-3">
+                                <p className="text-sm font-medium text-slate-900">{selectedReferenceJob.title}</p>
+                                <p className="text-xs text-slate-500 mt-1">{selectedReferenceJob.address || 'No address'}</p>
+                                {selectedReferenceJob.workerName && (
+                                  <p className="text-xs text-slate-600 mt-1">Worker: {selectedReferenceJob.workerName}</p>
+                                )}
+                                {selectedReferenceJob.notes && selectedReferenceJob.notes.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    <p className="text-xs font-medium text-slate-700">Previous Notes:</p>
+                                    {selectedReferenceJob.notes.slice(0, 3).map((note: any, i: number) => (
+                                      <p key={i} className="text-xs text-slate-500 line-clamp-2">
+                                        {note.content}
+                                      </p>
+                                    ))}
+                                    {selectedReferenceJob.notes.length > 3 && (
+                                      <p className="text-xs text-slate-400">+{selectedReferenceJob.notes.length - 3} more notes</p>
+                                    )}
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+                          {uniqueWorkers.length > 0 && (
+                            <div>
+                              <label className="block text-sm font-medium text-slate-900 mb-1">Request Previous Worker</label>
+                              <p className="text-xs text-slate-500 mb-2">Request the same worker from a previous job</p>
+                              <Select
+                                value={jobRequestForm.preferredWorkerId}
+                                onValueChange={(value) => {
+                                  const worker = uniqueWorkers.find((w: any) => w.id === value);
+                                  setJobRequestForm(prev => ({
+                                    ...prev,
+                                    preferredWorkerId: value === 'none' ? '' : value,
+                                    preferredWorkerName: value === 'none' ? '' : (worker?.name || ''),
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="bg-white text-slate-900">
+                                  <SelectValue placeholder="Any available worker" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Any available worker</SelectItem>
+                                  {uniqueWorkers.map((worker: any) => (
+                                    <SelectItem key={worker.id} value={worker.id}>
+                                      {worker.name} ({worker.jobCount} previous job{worker.jobCount > 1 ? 's' : ''})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-slate-900 mb-1">Preferred Date</label>

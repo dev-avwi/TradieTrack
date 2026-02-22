@@ -1634,7 +1634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Session expired' });
       }
 
-      const { title, description, preferredDate, urgency, clientNotes, clientId } = req.body;
+      const { title, description, preferredDate, urgency, clientNotes, clientId, preferredWorkerId, preferredWorkerName, referenceJobId, referenceJobTitle } = req.body;
       if (!title) {
         return res.status(400).json({ error: 'Title is required' });
       }
@@ -1656,6 +1656,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         preferredDate: preferredDate ? new Date(preferredDate) : null,
         urgency: urgency || 'normal',
         clientNotes: clientNotes || null,
+        preferredWorkerId: preferredWorkerId || null,
+        preferredWorkerName: preferredWorkerName || null,
+        referenceJobId: referenceJobId || null,
+        referenceJobTitle: referenceJobTitle || null,
         status: 'pending',
       });
 
@@ -1703,6 +1707,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error fetching job requests:', error);
       res.status(500).json({ error: 'Failed to fetch job requests' });
+    }
+  });
+
+  // CLIENT PORTAL: Get job history with worker info
+  app.get("/api/portal/job-history", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.json({ jobs: [] });
+      }
+
+      const clientIds = allClients.map((c: any) => c.id);
+      const clientJobs = await storage.getJobsForClientIds(clientIds);
+
+      const uniqueUserIds = [...new Set(clientJobs.map((j: any) => j.userId))];
+      const teamMembersMap = new Map<string, any[]>();
+      const businessSettingsMap = new Map<string, any>();
+
+      await Promise.all(uniqueUserIds.map(async (userId) => {
+        const [members, settings] = await Promise.all([
+          storage.getTeamMembers(userId),
+          storage.getBusinessSettings(userId),
+        ]);
+        teamMembersMap.set(userId, members);
+        if (settings) businessSettingsMap.set(userId, settings);
+      }));
+
+      const jobsWithDetails = await Promise.all(clientJobs.map(async (job: any) => {
+        const notes = await storage.getJobNotes(job.id, job.userId);
+        const members = teamMembersMap.get(job.userId) || [];
+        const settings = businessSettingsMap.get(job.userId);
+
+        let workerName = '';
+        if (job.assignedTo) {
+          const member = members.find((m: any) => m.id === job.assignedTo || m.memberId === job.assignedTo);
+          if (member) {
+            workerName = [member.firstName || member.name?.split(' ')[0], member.lastName || member.name?.split(' ').slice(1).join(' ')].filter(Boolean).join(' ');
+          }
+        }
+
+        return {
+          id: job.id,
+          title: job.title,
+          status: job.status,
+          description: job.description,
+          address: job.address,
+          completedAt: job.completedAt,
+          scheduledAt: job.scheduledAt,
+          assignedTo: job.assignedTo,
+          workerName,
+          notes: notes.map((n: any) => ({ content: n.content, type: n.type, createdAt: n.createdAt })),
+          businessName: settings?.businessName || '',
+        };
+      }));
+
+      res.json({ jobs: jobsWithDetails });
+    } catch (error: any) {
+      console.error('Error fetching job history:', error);
+      res.status(500).json({ error: 'Failed to fetch job history' });
     }
   });
 
