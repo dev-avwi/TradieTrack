@@ -292,7 +292,59 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">22. Contact Information</h2>
+                <h2 className="text-xl font-semibold mb-3">22. Dispute Resolution & Arbitration</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  Any dispute arising from or relating to these Terms shall first be attempted to be resolved through good-faith negotiation between the parties for a period of 30 days.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  If negotiation fails, disputes shall be submitted to binding arbitration under the rules of the Australian Centre for International Commercial Arbitration (ACICA). Arbitration shall be conducted in Sydney, New South Wales, Australia.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  The arbitrator's decision shall be final and binding on both parties.
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Nothing in this clause prevents either party from seeking urgent interlocutory relief from a court of competent jurisdiction.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">23. Class Action Waiver</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  You agree to resolve disputes with JobRunner on an individual basis only. You waive any right to participate in class actions, class arbitrations, or representative proceedings.
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  This waiver applies to the maximum extent permitted by Australian law.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">24. AI-Generated Content Disclaimer</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner uses artificial intelligence (including GPT-4o-mini and GPT-4o) to provide suggestions, generate quote descriptions, analyse photos, and assist with business operations.
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>AI-generated content is provided as a suggestion only and should not be relied upon as professional, legal, financial, or trade advice</li>
+                  <li>Users are solely responsible for reviewing, verifying, and approving all AI-generated content before use</li>
+                  <li>JobRunner does not guarantee the accuracy, completeness, or appropriateness of AI-generated content</li>
+                  <li>AI features may use anonymised and aggregated data to improve service quality, but individual business data is not shared with third parties for AI training purposes</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">25. Beta Program & Early Access</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner is currently in beta and features may change, be modified, or be discontinued without notice. Beta users acknowledge that the platform may contain bugs, errors, or incomplete features.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  We appreciate feedback during the beta period and will make reasonable efforts to address issues.
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Beta pricing and feature access are subject to change. Early adopters who are granted free or discounted access will be given reasonable notice before any pricing changes affect them.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">26. Contact Information</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   If you have any questions about these Terms of Service, please contact us at:
                 </p>

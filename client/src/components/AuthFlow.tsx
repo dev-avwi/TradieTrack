@@ -139,6 +139,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [duplicateEmail, setDuplicateEmail] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -274,6 +275,11 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
 
     if (!allRequirementsMet) {
       setError('Please meet all password requirements');
+      return;
+    }
+
+    if (!termsAccepted) {
+      setError('Please accept the Terms of Service and Privacy Policy to continue');
       return;
     }
 
@@ -521,6 +527,13 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                   )}
                 </div>
 
+                <p className="text-[11px] text-gray-500 dark:text-gray-500 text-center mt-2 leading-relaxed">
+                  By continuing, you agree to our{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</a>
+                </p>
+
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t border-gray-200 dark:border-gray-700" />
@@ -765,9 +778,33 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                         )}
                       </div>
 
+                      <div className="flex items-start gap-2 mt-2">
+                        <input 
+                          type="checkbox" 
+                          id="terms-accept"
+                          checked={termsAccepted} 
+                          onChange={(e) => setTermsAccepted(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 accent-primary"
+                          data-testid="checkbox-terms"
+                        />
+                        <label htmlFor="terms-accept" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                          I agree to the{' '}
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Terms of Service</a>
+                          {' '}and{' '}
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Privacy Policy</a>
+                        </label>
+                      </div>
+
+                      {error && authMode === 'register' && (
+                        <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                          <span>{error}</span>
+                        </div>
+                      )}
+
                       <Button 
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || !termsAccepted}
                         className="w-full h-12 text-base font-semibold bg-brand-accent text-white shadow-lg shadow-brand-accent/25"
                         data-testid="button-register"
                       >
@@ -783,10 +820,6 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                           </>
                         )}
                       </Button>
-
-                      <p className="text-xs text-center text-gray-500">
-                        By creating an account, you agree to our Terms of Service
-                      </p>
                     </motion.form>
                   )}
                 </AnimatePresence>

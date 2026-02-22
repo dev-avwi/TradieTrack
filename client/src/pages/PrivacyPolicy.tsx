@@ -169,6 +169,29 @@ export default function PrivacyPolicy() {
               </section>
 
               <section>
+                <h2 className="text-xl font-semibold mb-3">9A. AI & Machine Learning</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  We use OpenAI's GPT models (accessed through Replit AI Integrations) to power AI features such as quote generation, photo analysis, and business suggestions.
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>When you use AI features, relevant context (such as job descriptions, business details, or uploaded photos) may be sent to AI service providers for processing</li>
+                  <li>AI service providers process this data according to their own privacy policies. We use enterprise-grade API access which does not use your data for model training</li>
+                  <li>You can choose not to use AI features, and doing so will not affect your access to core platform functionality</li>
+                  <li>We do not sell, share, or use your business data to train AI models</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">9B. Analytics & Performance Monitoring</h2>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>We use Google Analytics 4 (GA4) to understand how our platform is used and to improve the user experience</li>
+                  <li>Analytics data collected includes page views, feature usage, device type, and general location (country/region level)</li>
+                  <li>Analytics data is aggregated and does not identify you personally</li>
+                  <li>You can opt out of analytics tracking through your browser settings or by using a browser extension that blocks Google Analytics</li>
+                </ul>
+              </section>
+
+              <section>
                 <h2 className="text-xl font-semibold mb-3">10. Changes to This Policy</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   We may update this Privacy Policy from time to time. We will notify you of any material changes 
