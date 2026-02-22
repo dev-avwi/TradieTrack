@@ -498,7 +498,7 @@ export default function ClientPortalHub() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-start justify-center px-4 relative">
+        <div className="flex-1 flex flex-col items-center justify-start px-4 relative">
           <Card className="w-full max-w-md rounded-md shadow-lg bg-white">
             <CardHeader className="text-center pb-2">
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto mb-3">
@@ -562,7 +562,7 @@ export default function ClientPortalHub() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-start justify-center px-4 relative">
+        <div className="flex-1 flex flex-col items-center justify-start px-4 relative">
           <Card className="w-full max-w-md rounded-md shadow-lg bg-white">
             <CardHeader className="text-center pb-2">
               <div className="w-14 h-14 rounded-full bg-brand/10 ring-1 ring-brand/20 flex items-center justify-center mx-auto mb-3">
