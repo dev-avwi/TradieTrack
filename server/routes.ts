@@ -1621,6 +1621,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CLIENT PORTAL: Create job request
+  app.post("/api/portal/job-requests", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const { title, description, preferredDate, urgency, clientNotes, clientId } = req.body;
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      const client = clientId 
+        ? allClients.find((c: any) => c.id === clientId) || allClients[0]
+        : allClients[0];
+
+      const request = await storage.createJobRequest({
+        userId: client.userId,
+        clientId: client.id,
+        title,
+        description: description || null,
+        preferredDate: preferredDate ? new Date(preferredDate) : null,
+        urgency: urgency || 'normal',
+        clientNotes: clientNotes || null,
+        status: 'pending',
+      });
+
+      await storage.createNotification({
+        userId: client.userId,
+        type: 'job_request',
+        title: 'New Job Request',
+        message: `${client.name || 'A client'} has submitted a new job request: ${title}`,
+        relatedId: request.id,
+        relatedType: 'job_request',
+      });
+
+      res.json({ success: true, request });
+    } catch (error: any) {
+      console.error('Error creating job request:', error);
+      res.status(500).json({ error: 'Failed to create job request' });
+    }
+  });
+
+  // CLIENT PORTAL: Get job requests
+  app.get("/api/portal/job-requests", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.json({ requests: [] });
+      }
+
+      const allRequests: any[] = [];
+      for (const client of allClients) {
+        const requests = await storage.getJobRequestsByClient(client.id);
+        allRequests.push(...requests);
+      }
+
+      res.json({ requests: allRequests });
+    } catch (error: any) {
+      console.error('Error fetching job requests:', error);
+      res.status(500).json({ error: 'Failed to fetch job requests' });
+    }
+  });
+
+  // BUSINESS OWNER: Get job requests
+  app.get("/api/job-requests", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const status = req.query.status as string | undefined;
+      const requests = await storage.getJobRequests(req.user.id, status);
+      res.json(requests);
+    } catch (error: any) {
+      console.error('Error fetching job requests:', error);
+      res.status(500).json({ error: 'Failed to fetch job requests' });
+    }
+  });
+
+  // BUSINESS OWNER: Update job request
+  app.patch("/api/job-requests/:id", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const { status, reviewNotes, jobId } = req.body;
+      if (!status || !['accepted', 'declined', 'in_progress'].includes(status)) {
+        return res.status(400).json({ error: 'Status must be one of: accepted, declined, in_progress' });
+      }
+
+      const updates: any = {
+        status,
+        reviewedAt: new Date(),
+      };
+      
+      if (reviewNotes) {
+        updates.reviewNotes = reviewNotes;
+      }
+      
+      if (jobId) {
+        updates.jobId = jobId;
+      }
+
+      const updated = await storage.updateJobRequest(req.params.id, req.user.id, updates);
+      if (!updated) return res.status(404).json({ error: 'Request not found' });
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating job request:', error);
+      res.status(500).json({ error: 'Failed to update job request' });
+    }
+  });
+
   // CLIENT PORTAL: Logout and delete session
   app.post("/api/portal/logout", async (req, res) => {
     try {

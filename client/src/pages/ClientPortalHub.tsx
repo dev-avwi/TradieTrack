@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Phone, 
   FileText, 
@@ -29,7 +31,10 @@ import {
   UserCircle,
   Heart,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  PlusCircle,
+  ClipboardList,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
@@ -178,6 +183,16 @@ export default function ClientPortalHub() {
   const [requestMessage, setRequestMessage] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [submittedRequests, setSubmittedRequests] = useState<Set<string>>(new Set());
+  const [jobRequests, setJobRequests] = useState<any[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [isSubmittingJobRequest, setIsSubmittingJobRequest] = useState(false);
+  const [jobRequestForm, setJobRequestForm] = useState({
+    title: '',
+    description: '',
+    preferredDate: '',
+    urgency: 'normal',
+    clientNotes: '',
+  });
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -293,6 +308,7 @@ export default function ClientPortalHub() {
       
       const data = await res.json();
       setPortalData(data);
+      fetchJobRequests(token);
       if (data.clients.length === 0) {
         setViewState('not-found');
       } else if (data.clients.length === 1) {
@@ -488,6 +504,97 @@ export default function ClientPortalHub() {
       });
     } finally {
       setIsSubmittingRequest(false);
+    }
+  };
+
+  const fetchJobRequests = async (token: string) => {
+    setIsLoadingRequests(true);
+    try {
+      const res = await fetch('/api/portal/job-requests', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJobRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Error fetching job requests:', error);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
+  const handleSubmitJobRequest = async () => {
+    if (!jobRequestForm.title.trim()) {
+      toast({
+        title: "Title Required",
+        description: "Please enter a title for your job request",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmittingJobRequest(true);
+    try {
+      const res = await fetch('/api/portal/job-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`
+        },
+        body: JSON.stringify({
+          ...jobRequestForm,
+          clientId: selectedClientId || undefined,
+        })
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Request Submitted",
+          description: "Your job request has been sent to the business"
+        });
+        setJobRequestForm({
+          title: '',
+          description: '',
+          preferredDate: '',
+          urgency: 'normal',
+          clientNotes: '',
+        });
+        if (sessionToken) {
+          fetchJobRequests(sessionToken);
+        }
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to submit request');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingJobRequest(false);
+    }
+  };
+
+  const getRequestStatusColor = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'accepted': return 'bg-green-100 text-green-800';
+      case 'declined': return 'bg-red-100 text-red-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const getUrgencyColor = (urgency: string): string => {
+    switch (urgency) {
+      case 'emergency': return 'bg-red-100 text-red-700';
+      case 'urgent': return 'bg-orange-100 text-orange-700';
+      default: return 'bg-slate-100 text-slate-600';
     }
   };
 
@@ -850,7 +957,7 @@ export default function ClientPortalHub() {
               </div>
             ) : (
               <Tabs defaultValue="quotes" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-6 bg-slate-100">
+                <TabsList className="grid w-full grid-cols-5 mb-6 bg-slate-100">
                   <TabsTrigger value="quotes" className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     <span className="hidden sm:inline">Quotes</span>
@@ -877,6 +984,13 @@ export default function ClientPortalHub() {
                     <span className="hidden sm:inline">Jobs</span>
                     {filteredJobs?.length ? (
                       <Badge variant="secondary" className="ml-1">{filteredJobs.length}</Badge>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="requests" className="flex items-center gap-2" onClick={() => { if (sessionToken) fetchJobRequests(sessionToken); }}>
+                    <ClipboardList className="w-4 h-4" />
+                    <span className="hidden sm:inline">Requests</span>
+                    {jobRequests.length ? (
+                      <Badge variant="secondary" className="ml-1">{jobRequests.length}</Badge>
                     ) : null}
                   </TabsTrigger>
                 </TabsList>
@@ -1303,6 +1417,168 @@ export default function ClientPortalHub() {
                       );
                     })
                   )}
+                </TabsContent>
+
+                <TabsContent value="requests" className="space-y-6">
+                  <Card className="bg-white rounded-md shadow-lg">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-brand/10 rounded-full flex items-center justify-center">
+                          <PlusCircle className="w-4 h-4 text-brand" />
+                        </div>
+                        <CardTitle className="text-base text-slate-900">Request a Job</CardTitle>
+                      </div>
+                      <CardDescription className="text-slate-500">
+                        Submit a request and the business will get back to you
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-900 mb-1">Title <span className="text-red-500">*</span></label>
+                        <Input
+                          type="text"
+                          placeholder="e.g. Fix leaking tap in kitchen"
+                          value={jobRequestForm.title}
+                          onChange={(e) => setJobRequestForm(prev => ({ ...prev, title: e.target.value }))}
+                          className="bg-white text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-900 mb-1">Description</label>
+                        <Textarea
+                          placeholder="Describe what you need done..."
+                          value={jobRequestForm.description}
+                          onChange={(e) => setJobRequestForm(prev => ({ ...prev, description: e.target.value }))}
+                          className="bg-white text-slate-900 resize-none"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-900 mb-1">Preferred Date</label>
+                          <Input
+                            type="date"
+                            value={jobRequestForm.preferredDate}
+                            onChange={(e) => setJobRequestForm(prev => ({ ...prev, preferredDate: e.target.value }))}
+                            className="bg-white text-slate-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-900 mb-1">Urgency</label>
+                          <Select
+                            value={jobRequestForm.urgency}
+                            onValueChange={(value) => setJobRequestForm(prev => ({ ...prev, urgency: value }))}
+                          >
+                            <SelectTrigger className="bg-white text-slate-900">
+                              <SelectValue placeholder="Select urgency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                              <SelectItem value="emergency">Emergency</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-900 mb-1">Additional Notes</label>
+                        <Textarea
+                          placeholder="Any other details or special instructions..."
+                          value={jobRequestForm.clientNotes}
+                          onChange={(e) => setJobRequestForm(prev => ({ ...prev, clientNotes: e.target.value }))}
+                          className="bg-white text-slate-900 resize-none"
+                          rows={2}
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSubmitJobRequest}
+                        disabled={isSubmittingJobRequest || !jobRequestForm.title.trim()}
+                        className="w-full bg-brand text-white"
+                        size="lg"
+                      >
+                        {isSubmittingJobRequest ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4 mr-2" />
+                        )}
+                        {isSubmittingJobRequest ? 'Submitting...' : 'Submit Request'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                      <ClipboardList className="w-4 h-4 text-brand" />
+                      Your Requests
+                    </h3>
+                    {isLoadingRequests ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-32 w-full" />
+                        <Skeleton className="h-32 w-full" />
+                      </div>
+                    ) : jobRequests.length === 0 ? (
+                      <div className="bg-white rounded-md shadow-lg p-10 text-center">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                          <ClipboardList className="w-8 h-8 text-slate-500" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900 mb-1">No Requests Yet</h3>
+                        <p className="text-sm text-slate-500">Submit a job request above and it will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {jobRequests.map((request) => (
+                          <div key={request.id} className="bg-white rounded-md shadow-lg overflow-hidden">
+                            <div className="p-5">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  request.status === 'accepted' ? 'bg-green-100' :
+                                  request.status === 'declined' ? 'bg-red-100' :
+                                  request.status === 'in_progress' ? 'bg-blue-100' :
+                                  'bg-yellow-100'
+                                }`}>
+                                  <ClipboardList className={`w-5 h-5 ${
+                                    request.status === 'accepted' ? 'text-green-600' :
+                                    request.status === 'declined' ? 'text-red-500' :
+                                    request.status === 'in_progress' ? 'text-blue-600' :
+                                    'text-yellow-600'
+                                  }`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="font-semibold text-slate-900 truncate">{request.title}</h3>
+                                    <Badge className={getRequestStatusColor(request.status)}>
+                                      {request.status === 'in_progress' ? 'In Progress' : request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                    </Badge>
+                                    {request.urgency && request.urgency !== 'normal' && (
+                                      <Badge className={getUrgencyColor(request.urgency)}>
+                                        {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="ml-13 space-y-1">
+                                {request.description && (
+                                  <p className="text-sm text-slate-500">{request.description}</p>
+                                )}
+                                <p className="text-xs text-slate-500 flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Submitted {formatDate(request.createdAt)}
+                                  {request.preferredDate && ` · Preferred: ${formatDate(request.preferredDate)}`}
+                                </p>
+                                {request.reviewNotes && (
+                                  <div className="mt-2 p-2 bg-slate-50 rounded-md border border-slate-100">
+                                    <p className="text-xs font-medium text-slate-600 mb-0.5">Business Response:</p>
+                                    <p className="text-sm text-slate-700">{request.reviewNotes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
               </Tabs>
             )}

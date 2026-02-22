@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { JobRequest } from "@shared/schema";
 import {
   AlertTriangle,
   Clock,
@@ -14,6 +17,9 @@ import {
   Calendar,
   Briefcase,
   ArrowRight,
+  ClipboardList,
+  Check,
+  X,
 } from "lucide-react";
 
 interface ActionItem {
@@ -114,12 +120,64 @@ function LoadingSkeleton() {
   );
 }
 
+function formatRelativeTime(date: string | Date | null | undefined): string {
+  if (!date) return "";
+  const now = new Date();
+  const d = new Date(date);
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString();
+}
+
+function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+const urgencyConfig: Record<string, { variant: "default" | "outline" | "destructive"; label: string }> = {
+  normal: { variant: "outline", label: "Normal" },
+  urgent: { variant: "default", label: "Urgent" },
+  emergency: { variant: "destructive", label: "Emergency" },
+};
+
 export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   const [, setLocation] = useLocation();
   const navigate = onNavigate || setLocation;
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery<ActionCenterData>({
     queryKey: ["/api/bi/action-center"],
+  });
+
+  const { data: pendingRequests = [], isLoading: requestsLoading } = useQuery<JobRequest[]>({
+    queryKey: ["/api/job-requests", { status: "pending" }],
+  });
+
+  const updateRequestMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      await apiRequest("PATCH", `/api/job-requests/${id}`, { status });
+    },
+    onSuccess: (_, variables) => {
+      toast({
+        title: variables.status === "accepted" ? "Request accepted" : "Request declined",
+        description: variables.status === "accepted"
+          ? "The job request has been accepted."
+          : "The job request has been declined.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-requests"], exact: false });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to update request",
+        variant: "destructive",
+      });
+    },
   });
 
   const getCategoryIcon = (category: string) => {
@@ -146,6 +204,96 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           What needs your attention
         </p>
       </div>
+
+      {pendingRequests.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <div className="flex items-center gap-2 py-1">
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.08)" }}
+            >
+              <ClipboardList
+                className="h-3.5 w-3.5"
+                style={{ color: "hsl(221.2 83.2% 53.3%)" }}
+              />
+            </div>
+            <span className="text-sm font-semibold text-foreground">
+              Client Requests
+            </span>
+            <Badge variant="outline" className="no-default-hover-elevate text-xs">
+              {pendingRequests.length}
+            </Badge>
+          </div>
+
+          <div className="space-y-2">
+            {pendingRequests.map((request) => {
+              const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
+              return (
+                <Card key={request.id}>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">
+                          {request.title}
+                        </p>
+                        <Badge
+                          variant={urgency.variant}
+                          className={`no-default-hover-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
+                        >
+                          {urgency.label}
+                        </Badge>
+                      </div>
+                      {request.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {request.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                        {request.createdAt && (
+                          <span>{formatRelativeTime(request.createdAt)}</span>
+                        )}
+                        {request.preferredDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(request.preferredDate)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={updateRequestMutation.isPending}
+                          onClick={() => updateRequestMutation.mutate({ id: request.id, status: "accepted" })}
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" />
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updateRequestMutation.isPending}
+                          onClick={() => updateRequestMutation.mutate({ id: request.id, status: "declined" })}
+                        >
+                          <X className="h-3.5 w-3.5 mr-1" />
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {requestsLoading && pendingRequests.length === 0 && (
+        <div className="mb-6 space-y-3">
+          <div className="h-6 w-40 rounded-md bg-muted animate-pulse" />
+          <ActionCardSkeleton />
+        </div>
+      )}
 
       {isLoading && <LoadingSkeleton />}
 
