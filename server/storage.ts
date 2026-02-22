@@ -1025,6 +1025,7 @@ export interface IStorage {
   updateJobRequestByClient(id: string, clientId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined>;
   deleteJobRequest(id: string, clientId: string): Promise<boolean>;
   getJobRequestsByClient(clientId: string): Promise<JobRequest[]>;
+  getJobRequestsByClientForUser(userId: string, clientId: string): Promise<any[]>;
 }
 
 // Initialize database connection using standard pg driver
@@ -7599,11 +7600,36 @@ Thank you for your prompt attention to this matter.`,
     return created;
   }
 
-  async getJobRequests(userId: string, status?: string): Promise<JobRequest[]> {
+  async getJobRequests(userId: string, status?: string): Promise<any[]> {
+    const baseQuery = db.select({
+      id: jobRequests.id,
+      userId: jobRequests.userId,
+      clientId: jobRequests.clientId,
+      title: jobRequests.title,
+      description: jobRequests.description,
+      preferredDate: jobRequests.preferredDate,
+      urgency: jobRequests.urgency,
+      clientNotes: jobRequests.clientNotes,
+      status: jobRequests.status,
+      reviewedAt: jobRequests.reviewedAt,
+      reviewNotes: jobRequests.reviewNotes,
+      jobId: jobRequests.jobId,
+      createdAt: jobRequests.createdAt,
+      updatedAt: jobRequests.updatedAt,
+      preferredWorkerId: jobRequests.preferredWorkerId,
+      preferredWorkerName: jobRequests.preferredWorkerName,
+      referenceJobId: jobRequests.referenceJobId,
+      referenceJobTitle: jobRequests.referenceJobTitle,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+    })
+    .from(jobRequests)
+    .leftJoin(clients, eq(jobRequests.clientId, clients.id));
+
     if (status) {
-      return await db.select().from(jobRequests).where(and(eq(jobRequests.userId, userId), eq(jobRequests.status, status))).orderBy(desc(jobRequests.createdAt));
+      return await baseQuery.where(and(eq(jobRequests.userId, userId), eq(jobRequests.status, status))).orderBy(desc(jobRequests.createdAt));
     }
-    return await db.select().from(jobRequests).where(eq(jobRequests.userId, userId)).orderBy(desc(jobRequests.createdAt));
+    return await baseQuery.where(eq(jobRequests.userId, userId)).orderBy(desc(jobRequests.createdAt));
   }
 
   async getJobRequest(id: string, userId: string): Promise<JobRequest | undefined> {
@@ -7624,6 +7650,35 @@ Thank you for your prompt attention to this matter.`,
   async deleteJobRequest(id: string, clientId: string): Promise<boolean> {
     const result = await db.delete(jobRequests).where(and(eq(jobRequests.id, id), eq(jobRequests.clientId, clientId), eq(jobRequests.status, 'pending'))).returning();
     return result.length > 0;
+  }
+
+  async getJobRequestsByClientForUser(userId: string, clientId: string): Promise<any[]> {
+    return await db.select({
+      id: jobRequests.id,
+      userId: jobRequests.userId,
+      clientId: jobRequests.clientId,
+      title: jobRequests.title,
+      description: jobRequests.description,
+      preferredDate: jobRequests.preferredDate,
+      urgency: jobRequests.urgency,
+      clientNotes: jobRequests.clientNotes,
+      status: jobRequests.status,
+      reviewedAt: jobRequests.reviewedAt,
+      reviewNotes: jobRequests.reviewNotes,
+      jobId: jobRequests.jobId,
+      createdAt: jobRequests.createdAt,
+      updatedAt: jobRequests.updatedAt,
+      preferredWorkerId: jobRequests.preferredWorkerId,
+      preferredWorkerName: jobRequests.preferredWorkerName,
+      referenceJobId: jobRequests.referenceJobId,
+      referenceJobTitle: jobRequests.referenceJobTitle,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+    })
+    .from(jobRequests)
+    .leftJoin(clients, eq(jobRequests.clientId, clients.id))
+    .where(and(eq(jobRequests.userId, userId), eq(jobRequests.clientId, clientId)))
+    .orderBy(desc(jobRequests.createdAt));
   }
 
   async getJobRequestsByClient(clientId: string): Promise<JobRequest[]> {

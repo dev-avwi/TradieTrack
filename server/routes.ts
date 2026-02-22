@@ -1867,7 +1867,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ error: "User not found" });
       const effectiveUserId = (user as any).parentUserId || user.id;
       const status = req.query.status as string | undefined;
-      const requests = await storage.getJobRequests(effectiveUserId, status);
+      const clientId = req.query.clientId as string | undefined;
+      
+      let requests;
+      if (clientId) {
+        requests = await storage.getJobRequestsByClientForUser(effectiveUserId, clientId);
+      } else {
+        requests = await storage.getJobRequests(effectiveUserId, status);
+      }
       res.json(requests);
     } catch (error: any) {
       console.error('Error fetching job requests:', error);

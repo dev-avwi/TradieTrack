@@ -33,8 +33,10 @@ import {
   X,
   Trash2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  ClipboardList
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -159,6 +161,15 @@ export default function ClientDetailView({
   const handleDeleteClient = () => {
     deleteClientMutation.mutate(deleteAssociatedData);
   };
+
+  const { data: clientRequests = [] } = useQuery<any[]>({
+    queryKey: ['/api/job-requests', 'client', clientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/job-requests?clientId=${clientId}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
 
   const { data: client, isLoading: clientLoading } = useQuery({
     queryKey: ['/api/clients', clientId],
@@ -677,7 +688,54 @@ export default function ClientDetailView({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          {clientRequests.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Job Requests
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{clientRequests.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {clientRequests.map((req: any) => (
+                  <div key={req.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{req.title}</span>
+                        <Badge className={cn(
+                          "text-xs",
+                          req.status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' :
+                          req.status === 'accepted' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        )}>
+                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                        </Badge>
+                      </div>
+                      {req.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{req.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {req.preferredDate && (
+                          <span>Preferred: {new Date(req.preferredDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        )}
+                        {req.urgency && req.urgency !== 'normal' && (
+                          <Badge className={cn(
+                            "text-[10px]",
+                            req.urgency === 'urgent' || req.urgency === 'emergency' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          )}>
+                            {req.urgency.charAt(0).toUpperCase() + req.urgency.slice(1)}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">

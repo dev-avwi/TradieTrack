@@ -52,6 +52,14 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import PasteJobModal from "@/components/PasteJobModal";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
@@ -123,6 +131,8 @@ export default function WorkPage({
   const [declineTarget, setDeclineTarget] = useState<any>(null);
   const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
   const [editRequestForm, setEditRequestForm] = useState({ title: '', description: '', preferredDate: '', clientNotes: '' });
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
 
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status, reviewNotes }: { id: string; status: string; reviewNotes?: string }) => {
@@ -137,6 +147,8 @@ export default function WorkPage({
       } else {
         toast({ title: "Request Declined", description: "The job request has been declined." });
       }
+      setRequestDialogOpen(false);
+      setSelectedRequest(null);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update request", variant: "destructive" });
@@ -152,10 +164,11 @@ export default function WorkPage({
       const res = await apiRequest('PATCH', `/api/job-requests/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/job-requests'] });
       toast({ title: "Request Updated", description: "The job request details have been updated." });
       setEditingRequestId(null);
+      if (data) setSelectedRequest(data);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update request", variant: "destructive" });
@@ -667,137 +680,228 @@ export default function WorkPage({
             {pendingRequests.map((request: any) => (
               <Card
                 key={request.id}
-                className="relative overflow-visible border-amber-200 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/10"
+                className="hover-elevate cursor-pointer relative overflow-visible border-amber-200 dark:border-amber-800/50"
                 style={{ borderRadius: '12px' }}
+                onClick={() => {
+                  setSelectedRequest(request);
+                  setEditingRequestId(null);
+                  setRequestDialogOpen(true);
+                }}
                 data-testid={`request-card-${request.id}`}
               >
                 <CardContent className="p-3">
-                  {editingRequestId === request.id ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={editRequestForm.title}
-                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Job title"
-                        className="text-sm"
-                      />
-                      <Textarea
-                        value={editRequestForm.description}
-                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Description"
-                        rows={2}
-                        className="text-sm"
-                      />
-                      <Input
-                        type="date"
-                        value={editRequestForm.preferredDate}
-                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, preferredDate: e.target.value }))}
-                        className="text-sm"
-                      />
-                      <Textarea
-                        value={editRequestForm.clientNotes}
-                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, clientNotes: e.target.value }))}
-                        placeholder="Notes"
-                        rows={2}
-                        className="text-sm"
-                      />
-                      <div className="flex gap-1.5 justify-end">
-                        <Button variant="outline" size="sm" className="rounded-lg h-7 text-xs" onClick={() => setEditingRequestId(null)}>
-                          Cancel
-                        </Button>
-                        <Button size="sm" className="rounded-lg h-7 text-xs" onClick={handleSaveRequest} disabled={editRequestMutation.isPending}>
-                          {editRequestMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                          Save
-                        </Button>
-                      </div>
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <h4 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">
+                        {request.title}
+                      </h4>
+                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 shrink-0 text-xs no-default-active-elevate">
+                        Request
+                      </Badge>
                     </div>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-1">
-                          <h4 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">
-                            {request.title}
-                          </h4>
-                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 shrink-0 text-xs">
-                            Request
-                          </Badge>
+                    <div className="space-y-0.5">
+                      {request.clientName && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{request.clientName}</span>
                         </div>
-
-                        <div className="space-y-0.5">
-                          {request.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">{request.description}</p>
-                          )}
-                          {request.clientNotes && (
-                            <div className="flex items-start gap-1 text-xs text-muted-foreground">
-                              <MessageSquare className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                              <span className="line-clamp-2">{request.clientNotes}</span>
-                            </div>
-                          )}
-                          {request.preferredDate && (
-                            <div className="flex items-center gap-1 text-xs font-medium text-primary">
-                              <Calendar className="h-3 w-3 flex-shrink-0" />
-                              <span>Preferred: {format(parseISO(request.preferredDate), 'EEE d MMM')}</span>
-                            </div>
-                          )}
-                          {request.preferredWorkerName && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <User className="h-3 w-3 flex-shrink-0" />
-                              <span>Requested: {request.preferredWorkerName}</span>
-                            </div>
-                          )}
-                          {request.urgency && request.urgency !== 'normal' && (
-                            <Badge className={cn(
-                              "text-xs mt-1",
-                              request.urgency === 'emergency' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                              'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                            )}>
-                              {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
-                            </Badge>
-                          )}
-                          <p className="text-xs text-muted-foreground/60 pt-0.5">
-                            {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                          </p>
+                      )}
+                      {request.preferredDate && (
+                        <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                          <span>{format(parseISO(request.preferredDate), 'EEE d MMM')}</span>
                         </div>
-                      </div>
-
-                      <div className="mt-2 pt-2 border-t flex justify-between items-center">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => startEditRequest(request)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <div className="flex gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-lg h-7 text-xs px-2 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50"
-                            onClick={() => handleDeclineRequest(request)}
-                            disabled={decliningId === request.id}
-                          >
-                            {decliningId === request.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <X className="h-3 w-3 mr-1" />}
-                            Decline
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="rounded-lg h-7 text-xs px-2 text-white"
-                            style={{ backgroundColor: 'hsl(var(--trade))' }}
-                            onClick={() => handleAcceptRequest(request)}
-                            disabled={acceptingId === request.id}
-                          >
-                            {acceptingId === request.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
-                            Accept
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                      )}
+                      {request.urgency && request.urgency !== 'normal' && (
+                        <Badge className={cn(
+                          "text-xs mt-1 no-default-active-elevate",
+                          request.urgency === 'emergency' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                          'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                        )}>
+                          {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                        </Badge>
+                      )}
+                      <p className="text-xs text-muted-foreground/60 pt-0.5">
+                        {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
       )}
+
+      {/* Request Detail Dialog */}
+      <Dialog open={requestDialogOpen} onOpenChange={(open) => {
+        setRequestDialogOpen(open);
+        if (!open) {
+          setEditingRequestId(null);
+          setSelectedRequest(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editingRequestId === selectedRequest?.id ? (
+                <span>Edit Request</span>
+              ) : (
+                <span>{selectedRequest?.title}</span>
+              )}
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs no-default-active-elevate">
+                Request
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Job request details
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRequest && (
+            editingRequestId === selectedRequest.id ? (
+              <div className="space-y-3 py-2">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Title</label>
+                  <Input
+                    value={editRequestForm.title}
+                    onChange={(e) => setEditRequestForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Job title"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea
+                    value={editRequestForm.description}
+                    onChange={(e) => setEditRequestForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Description"
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Preferred Date</label>
+                  <Input
+                    type="date"
+                    value={editRequestForm.preferredDate}
+                    onChange={(e) => setEditRequestForm(prev => ({ ...prev, preferredDate: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Client Notes</label>
+                  <Textarea
+                    value={editRequestForm.clientNotes}
+                    onChange={(e) => setEditRequestForm(prev => ({ ...prev, clientNotes: e.target.value }))}
+                    placeholder="Notes from client"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 py-2">
+                {selectedRequest.clientName && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium">{selectedRequest.clientName}</span>
+                  </div>
+                )}
+                {selectedRequest.description && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</p>
+                    <p className="text-sm">{selectedRequest.description}</p>
+                  </div>
+                )}
+                {selectedRequest.clientNotes && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client Notes</p>
+                    <div className="flex items-start gap-2 text-sm">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <span>{selectedRequest.clientNotes}</span>
+                    </div>
+                  </div>
+                )}
+                {selectedRequest.preferredDate && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span>Preferred: {format(parseISO(selectedRequest.preferredDate), 'EEE d MMM yyyy')}</span>
+                  </div>
+                )}
+                {selectedRequest.urgency && selectedRequest.urgency !== 'normal' && (
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <Badge className={cn(
+                      "text-xs no-default-active-elevate",
+                      selectedRequest.urgency === 'emergency' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                    )}>
+                      {selectedRequest.urgency.charAt(0).toUpperCase() + selectedRequest.urgency.slice(1)}
+                    </Badge>
+                  </div>
+                )}
+                {selectedRequest.preferredWorkerName && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span>Preferred Worker: {selectedRequest.preferredWorkerName}</span>
+                  </div>
+                )}
+                {selectedRequest.referenceJobTitle && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span>Reference: {selectedRequest.referenceJobTitle}</span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground/60">
+                  {formatDistanceToNow(new Date(selectedRequest.createdAt), { addSuffix: true })}
+                </p>
+              </div>
+            )
+          )}
+
+          <DialogFooter className="flex-row gap-2">
+            {editingRequestId === selectedRequest?.id ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setEditingRequestId(null)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSaveRequest} disabled={editRequestMutation.isPending}>
+                  {editRequestMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => selectedRequest && startEditRequest(selectedRequest)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <div className="flex-1" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50"
+                  onClick={() => selectedRequest && handleDeclineRequest(selectedRequest)}
+                  disabled={decliningId === selectedRequest?.id}
+                >
+                  {decliningId === selectedRequest?.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <X className="h-3 w-3 mr-1" />}
+                  Decline
+                </Button>
+                <Button
+                  size="sm"
+                  className="text-white"
+                  style={{ backgroundColor: 'hsl(var(--trade))' }}
+                  onClick={() => selectedRequest && handleAcceptRequest(selectedRequest)}
+                  disabled={acceptingId === selectedRequest?.id}
+                >
+                  {acceptingId === selectedRequest?.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                  Accept
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {activeFilter === 'requests' ? (
         isLoadingRequests ? (
