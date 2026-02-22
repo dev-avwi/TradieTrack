@@ -121,7 +121,7 @@ export default function PrivacyPolicy() {
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   If you believe your data may have been compromised, please contact us immediately at 
-                  support@jobrunner.com.au.
+                  admin@avwebinnovation.com.
                 </p>
               </section>
 
@@ -208,7 +208,7 @@ export default function PrivacyPolicy() {
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     <strong>JobRunner Support</strong><br />
-                    Email: support@jobrunner.com.au<br />
+                    Email: admin@avwebinnovation.com<br />
                     Website: jobrunner.com.au
                   </p>
                 </div>

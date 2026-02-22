@@ -1090,7 +1090,7 @@ export default function LandingPage() {
               <ul className="space-y-3 text-sm">
                 <li><a href="#how-it-works" onClick={(e) => scrollToSection(e, "how-it-works")} className="hover:text-white transition-colors" data-testid="link-about">About</a></li>
                 <li><a href="mailto:admin@avwebinnovation.com" className="hover:text-white transition-colors" data-testid="link-contact">Contact</a></li>
-                <li><a href="mailto:support@jobrunner.com.au" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
+                <li><a href="mailto:admin@avwebinnovation.com" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
               </ul>
             </div>
             <div>

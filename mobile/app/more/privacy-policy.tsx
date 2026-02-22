@@ -407,7 +407,7 @@ export default function PrivacyPolicyScreen() {
             If you have any questions about this Privacy Policy, wish to exercise your privacy rights, or have a complaint, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="Email: support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Email: admin@avwebinnovation.com" colors={colors} styles={styles} />
             <BulletItem text="Website: www.jobrunner.com.au/privacy" colors={colors} styles={styles} />
             <BulletItem text="Mail: JobRunner Privacy Officer, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
           </View>

@@ -280,7 +280,7 @@ export default function TermsOfServiceScreen() {
           <View style={styles.bulletList}>
             <BulletItem text="Monthly subscriptions: No refunds for partial months" colors={colors} styles={styles} />
             <BulletItem text="Annual subscriptions: Pro-rata refund within first 14 days" colors={colors} styles={styles} />
-            <BulletItem text="Refund requests should be sent to support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Refund requests should be sent to admin@avwebinnovation.com" colors={colors} styles={styles} />
           </View>
 
           <Text style={styles.subSectionTitle}>Price Changes</Text>
@@ -416,12 +416,12 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Step 1: Direct Resolution</Text>
           <Text style={styles.paragraph}>
-            Contact our support team at support@jobrunner.com.au. We aim to resolve most issues within 10 business days.
+            Contact our support team at admin@avwebinnovation.com. We aim to resolve most issues within 10 business days.
           </Text>
 
           <Text style={styles.subSectionTitle}>Step 2: Formal Complaint</Text>
           <Text style={styles.paragraph}>
-            If not resolved, submit a formal written complaint to support@jobrunner.com.au. We will acknowledge receipt within 5 business days and provide a substantive response within 21 business days.
+            If not resolved, submit a formal written complaint to admin@avwebinnovation.com. We will acknowledge receipt within 5 business days and provide a substantive response within 21 business days.
           </Text>
 
           <Text style={styles.subSectionTitle}>Step 3: Mediation</Text>
@@ -440,7 +440,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Termination by You</Text>
           <Text style={styles.paragraph}>
-            You may cancel your account at any time through the app settings or by contacting support@jobrunner.com.au. Upon cancellation:
+            You may cancel your account at any time through the app settings or by contacting admin@avwebinnovation.com. Upon cancellation:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Your subscription will remain active until the end of the current billing period" colors={colors} styles={styles} />
@@ -517,8 +517,8 @@ export default function TermsOfServiceScreen() {
             If you have any questions about these Terms of Service, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="General enquiries: support@jobrunner.com.au" colors={colors} styles={styles} />
-            <BulletItem text="Phone: 1300 JOBRUN (1300 562 786)" colors={colors} styles={styles} />
+            <BulletItem text="General enquiries: admin@avwebinnovation.com" colors={colors} styles={styles} />
+            <BulletItem text="Phone: 0458 300 051" colors={colors} styles={styles} />
             <BulletItem text="Website: www.jobrunner.com.au" colors={colors} styles={styles} />
             <BulletItem text="Mail: JobRunner Pty Ltd, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
           </View>
