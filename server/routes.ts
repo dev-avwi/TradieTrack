@@ -2282,7 +2282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
       
-      await storage.updateQuote(quote.id, {
+      await storage.updateQuote(quote.id, quote.userId, {
         status: 'accepted',
         acceptedAt: new Date(),
         acceptedBy: acceptedBy || 'Client',
@@ -2338,7 +2338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Quote already declined' });
       }
       
-      await storage.updateQuote(quote.id, {
+      await storage.updateQuote(quote.id, quote.userId, {
         status: 'declined',
         rejectedAt: new Date(),
         declineReason: reason || null

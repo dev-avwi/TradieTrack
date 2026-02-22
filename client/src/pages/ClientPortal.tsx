@@ -101,6 +101,7 @@ export default function ClientPortal() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [localDeclined, setLocalDeclined] = useState(false);
+  const [declineAnimating, setDeclineAnimating] = useState(false);
   const [acceptedName, setAcceptedName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
   const [showDemoPayment, setShowDemoPayment] = useState(false);
@@ -217,27 +218,34 @@ export default function ClientPortal() {
   };
 
   const handleDeclineQuote = async () => {
+    if (localDeclined || isDeclining) return;
     if (!window.confirm('Are you sure you want to decline this quote? The tradie will be notified.')) {
       return;
     }
     setIsDeclining(true);
     try {
       await apiRequest('POST', `/api/public/quote/${token}/decline`, {});
-      setLocalDeclined(true);
+      setDeclineAnimating(true);
       queryClient.setQueryData(['/api/public/document', type, token], (old: any) => 
         old ? { ...old, status: 'declined' } : old
       );
-      toast({
-        title: "Quote Declined",
-        description: "The tradie has been notified.",
-      });
-      refetch();
+      setTimeout(() => {
+        setLocalDeclined(true);
+        setDeclineAnimating(false);
+        refetch();
+      }, 1500);
     } catch (err: any) {
-      toast({
-        title: "Couldn't Decline Quote",
-        description: `Something went wrong. Please try again or contact ${data?.business?.name || 'the business'}.`,
-        variant: "destructive"
-      });
+      const errorMsg = err?.message || '';
+      if (errorMsg.includes('already declined')) {
+        setLocalDeclined(true);
+        refetch();
+      } else {
+        toast({
+          title: "Couldn't Decline Quote",
+          description: `Something went wrong. Please try again or contact ${data?.business?.name || 'the business'}.`,
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsDeclining(false);
     }
@@ -275,18 +283,41 @@ export default function ClientPortal() {
   }
 
   const docTypeLabel = type === 'quote' ? 'Quote' : type === 'invoice' ? 'Invoice' : 'Receipt';
-  const effectiveStatus = localDeclined ? 'declined' : data.status;
-  const showAcceptButtons = type === 'quote' && !localDeclined && (data.status === 'sent' || data.status === 'draft');
+  const effectiveStatus = (localDeclined || declineAnimating) ? 'declined' : data.status;
+  const isQuoteDeclined = effectiveStatus === 'declined' && type === 'quote';
+  const showAcceptButtons = type === 'quote' && !localDeclined && !declineAnimating && (data.status === 'sent' || data.status === 'draft');
   const showPayButton = type === 'invoice' && effectiveStatus !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
   const showDemoButton = type === 'invoice' && effectiveStatus !== 'paid';
   const isAccepted = effectiveStatus === 'accepted';
   const isPaid = effectiveStatus === 'paid';
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-white relative">
+      {declineAnimating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-50/95 animate-in fade-in duration-500">
+          <div className="text-center space-y-4 animate-in zoom-in-95 duration-700">
+            <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+              <X className="w-10 h-10 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-red-800">Quote Declined</h2>
+            <p className="text-red-600 text-sm max-w-xs mx-auto">
+              The tradie has been notified of your decision.
+            </p>
+          </div>
+        </div>
+      )}
+      <div className={`min-h-screen flex flex-col ${isQuoteDeclined && !declineAnimating ? 'opacity-100' : ''}`}>
+        {/* Declined Banner */}
+        {isQuoteDeclined && !declineAnimating && (
+          <div className="bg-red-600 text-white py-3 px-4 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <X className="w-5 h-5" />
+              <span className="font-semibold">This quote has been declined</span>
+            </div>
+          </div>
+        )}
         {/* Teal Branded Header */}
-        <header className="bg-brand text-white sticky top-0 z-20">
+        <header className={`${isQuoteDeclined && !declineAnimating ? 'bg-red-800' : 'bg-brand'} text-white sticky top-0 z-20`}>
           <div className="px-4 py-4">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -500,16 +531,16 @@ export default function ClientPortal() {
             )}
 
             {/* Quote Declined Status */}
-            {(effectiveStatus === 'declined') && type === 'quote' && (
-              <Card className="bg-white rounded-xl shadow-sm border border-red-200">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                      <X className="w-5 h-5 text-red-600" />
+            {isQuoteDeclined && !declineAnimating && (
+              <Card className="bg-red-50 rounded-xl shadow-sm border-2 border-red-300">
+                <CardContent className="py-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <X className="w-6 h-6 text-red-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-red-800">Quote Declined</p>
-                      <p className="text-sm text-red-600">
+                      <p className="font-semibold text-red-800 text-base">Quote Declined</p>
+                      <p className="text-sm text-red-600 mt-1">
                         This quote has been declined. Contact {data.business?.name || 'the business'} if you change your mind.
                       </p>
                     </div>
@@ -519,7 +550,7 @@ export default function ClientPortal() {
             )}
 
             {/* Quote Accepted Status */}
-            {isAccepted && type === 'quote' && (
+            {isAccepted && type === 'quote' && !data.acceptedBy && (
               <Card className="bg-white rounded-xl shadow-sm border border-green-200">
                 <CardContent className="py-4">
                   <div className="flex items-center gap-3">
