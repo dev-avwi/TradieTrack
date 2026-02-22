@@ -766,7 +766,7 @@ export default function ClientPortalHub() {
                     className="w-8 h-8 object-contain rounded-md bg-white/10 p-1"
                   />
                 ) : (
-                  <img src={jobrunnerLogoWhite} alt="JobRunner" className="w-8 h-8 object-contain" />
+                  <img src={jobrunnerLogo} alt="JobRunner" className="w-10 h-10 object-contain brightness-0 invert" />
                 )}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base text-white truncate">
