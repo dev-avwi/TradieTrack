@@ -1875,7 +1875,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/job-requests/:id", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
     try {
-      const { status, reviewNotes, jobId } = req.body;
+      const { status, reviewNotes, jobId, title, description, preferredDate, clientNotes } = req.body;
+      
+      if (!status && (title || description !== undefined || preferredDate !== undefined || clientNotes !== undefined)) {
+        const request = await storage.getJobRequest(req.params.id, req.user.id);
+        if (!request) return res.status(404).json({ error: 'Request not found' });
+        if (request.status !== 'pending') return res.status(400).json({ error: 'Only pending requests can be edited' });
+        const fieldUpdates: any = {};
+        if (title) fieldUpdates.title = title;
+        if (description !== undefined) fieldUpdates.description = description;
+        if (preferredDate !== undefined) fieldUpdates.preferredDate = preferredDate || null;
+        if (clientNotes !== undefined) fieldUpdates.clientNotes = clientNotes;
+        const updated = await storage.updateJobRequest(req.params.id, fieldUpdates);
+        return res.json(updated);
+      }
+
       if (!status || !['accepted', 'declined', 'in_progress'].includes(status)) {
         return res.status(400).json({ error: 'Status must be one of: accepted, declined, in_progress' });
       }

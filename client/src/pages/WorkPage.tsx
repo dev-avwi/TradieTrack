@@ -20,7 +20,13 @@ import {
   Archive,
   RotateCcw,
   Trash2,
-  Search
+  Search,
+  ClipboardList,
+  Check,
+  X,
+  Loader2,
+  MessageSquare,
+  Pencil
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,13 +40,16 @@ import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useJobs, useUpdateJob, useArchiveJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useLocation, useSearch } from "wouter";
-import { format, parseISO, isToday } from "date-fns";
+import { format, parseISO, isToday, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import PasteJobModal from "@/components/PasteJobModal";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
@@ -87,7 +96,7 @@ export default function WorkPage({
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const filterParam = params.get('filter');
-    const validFilters = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'today', 'archived', 'inspection'];
+    const validFilters = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'today', 'archived', 'inspection', 'requests'];
     if (filterParam && validFilters.includes(filterParam)) {
       setActiveFilter(filterParam);
     }
@@ -102,6 +111,89 @@ export default function WorkPage({
   const deleteJobMutation = useDeleteJob();
   const { actionPermissions } = useAppMode();
   const canCreateJobs = actionPermissions.canCreateJobs;
+
+  const { data: jobRequests = [], isLoading: isLoadingRequests } = useQuery<any[]>({
+    queryKey: ['/api/job-requests'],
+  });
+  const pendingRequests = useMemo(() => jobRequests.filter((r: any) => r.status === 'pending'), [jobRequests]);
+
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [decliningId, setDecliningId] = useState<string | null>(null);
+  const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
+  const [declineTarget, setDeclineTarget] = useState<any>(null);
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+  const [editRequestForm, setEditRequestForm] = useState({ title: '', description: '', preferredDate: '', clientNotes: '' });
+
+  const updateRequestMutation = useMutation({
+    mutationFn: async ({ id, status, reviewNotes }: { id: string; status: string; reviewNotes?: string }) => {
+      const res = await apiRequest('PATCH', `/api/job-requests/${id}`, { status, reviewNotes });
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/job-requests'] });
+      if (variables.status === 'accepted') {
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+        toast({ title: "Request Accepted", description: "A new job has been created from this request." });
+      } else {
+        toast({ title: "Request Declined", description: "The job request has been declined." });
+      }
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update request", variant: "destructive" });
+    },
+    onSettled: () => {
+      setAcceptingId(null);
+      setDecliningId(null);
+    },
+  });
+
+  const editRequestMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest('PATCH', `/api/job-requests/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/job-requests'] });
+      toast({ title: "Request Updated", description: "The job request details have been updated." });
+      setEditingRequestId(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update request", variant: "destructive" });
+    },
+  });
+
+  const startEditRequest = (request: any) => {
+    setEditingRequestId(request.id);
+    setEditRequestForm({
+      title: request.title || '',
+      description: request.description || '',
+      preferredDate: request.preferredDate ? new Date(request.preferredDate).toISOString().split('T')[0] : '',
+      clientNotes: request.clientNotes || '',
+    });
+  };
+
+  const handleSaveRequest = () => {
+    if (!editingRequestId || !editRequestForm.title.trim()) return;
+    editRequestMutation.mutate({ id: editingRequestId, data: editRequestForm });
+  };
+
+  const handleAcceptRequest = async (request: any) => {
+    setAcceptingId(request.id);
+    updateRequestMutation.mutate({ id: request.id, status: 'accepted' });
+  };
+
+  const handleDeclineRequest = (request: any) => {
+    setDeclineTarget(request);
+    setDeclineDialogOpen(true);
+  };
+
+  const handleConfirmDecline = async () => {
+    if (!declineTarget) return;
+    setDecliningId(declineTarget.id);
+    updateRequestMutation.mutate({ id: declineTarget.id, status: 'declined' });
+    setDeclineDialogOpen(false);
+    setDeclineTarget(null);
+  };
 
   const statusLabels: Record<JobStatus, string> = {
     pending: 'Pending',
@@ -120,7 +212,8 @@ export default function WorkPage({
     invoiced: jobs.filter(j => j.status === 'invoiced').length,
     inspection: jobs.filter(j => j.requiresInspection && !j.inspectionCompletedAt).length,
     archived: showArchived ? jobs.length : undefined,
-  }), [jobs, showArchived]);
+    requests: pendingRequests.length,
+  }), [jobs, showArchived, pendingRequests]);
 
   const statusPriority: Record<string, number> = {
     in_progress: 0,
@@ -545,6 +638,7 @@ export default function WorkPage({
       <FilterChips 
         chips={[
           { id: 'all', label: 'All', count: stats.total, icon: <Briefcase className="h-3 w-3" /> },
+          { id: 'requests', label: 'Requests', count: stats.requests, icon: <ClipboardList className="h-3 w-3" /> },
           { id: 'pending', label: 'Pending', count: stats.pending, icon: <Hourglass className="h-3 w-3" /> },
           { id: 'scheduled', label: 'Scheduled', count: stats.scheduled, icon: <Calendar className="h-3 w-3" /> },
           { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
@@ -559,7 +653,174 @@ export default function WorkPage({
       />
 
 
-      {isLoading ? (
+      {/* Job Request Cards */}
+      {(activeFilter === 'requests' || (activeFilter === 'all' && pendingRequests.length > 0)) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-semibold">Client Requests</h3>
+            {pendingRequests.length > 0 && (
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">{pendingRequests.length}</Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {pendingRequests.map((request: any) => (
+              <Card
+                key={request.id}
+                className="relative overflow-visible border-amber-200 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/10"
+                style={{ borderRadius: '12px' }}
+                data-testid={`request-card-${request.id}`}
+              >
+                <CardContent className="p-3">
+                  {editingRequestId === request.id ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={editRequestForm.title}
+                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Job title"
+                        className="text-sm"
+                      />
+                      <Textarea
+                        value={editRequestForm.description}
+                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Description"
+                        rows={2}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="date"
+                        value={editRequestForm.preferredDate}
+                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, preferredDate: e.target.value }))}
+                        className="text-sm"
+                      />
+                      <Textarea
+                        value={editRequestForm.clientNotes}
+                        onChange={(e) => setEditRequestForm(prev => ({ ...prev, clientNotes: e.target.value }))}
+                        placeholder="Notes"
+                        rows={2}
+                        className="text-sm"
+                      />
+                      <div className="flex gap-1.5 justify-end">
+                        <Button variant="outline" size="sm" className="rounded-lg h-7 text-xs" onClick={() => setEditingRequestId(null)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="rounded-lg h-7 text-xs" onClick={handleSaveRequest} disabled={editRequestMutation.isPending}>
+                          {editRequestMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-1">
+                          <h4 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">
+                            {request.title}
+                          </h4>
+                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 shrink-0 text-xs">
+                            Request
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          {request.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">{request.description}</p>
+                          )}
+                          {request.clientNotes && (
+                            <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                              <MessageSquare className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                              <span className="line-clamp-2">{request.clientNotes}</span>
+                            </div>
+                          )}
+                          {request.preferredDate && (
+                            <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                              <Calendar className="h-3 w-3 flex-shrink-0" />
+                              <span>Preferred: {format(parseISO(request.preferredDate), 'EEE d MMM')}</span>
+                            </div>
+                          )}
+                          {request.preferredWorkerName && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <User className="h-3 w-3 flex-shrink-0" />
+                              <span>Requested: {request.preferredWorkerName}</span>
+                            </div>
+                          )}
+                          {request.urgency && request.urgency !== 'normal' && (
+                            <Badge className={cn(
+                              "text-xs mt-1",
+                              request.urgency === 'emergency' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                            )}>
+                              {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                            </Badge>
+                          )}
+                          <p className="text-xs text-muted-foreground/60 pt-0.5">
+                            {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => startEditRequest(request)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-lg h-7 text-xs px-2 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50"
+                            onClick={() => handleDeclineRequest(request)}
+                            disabled={decliningId === request.id}
+                          >
+                            {decliningId === request.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <X className="h-3 w-3 mr-1" />}
+                            Decline
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="rounded-lg h-7 text-xs px-2 text-white"
+                            style={{ backgroundColor: 'hsl(var(--trade))' }}
+                            onClick={() => handleAcceptRequest(request)}
+                            disabled={acceptingId === request.id}
+                          >
+                            {acceptingId === request.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                            Accept
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeFilter === 'requests' ? (
+        isLoadingRequests ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <Card key={i} style={{ borderRadius: '12px' }}>
+                <CardContent className="p-4 animate-pulse">
+                  <div className="space-y-3">
+                    <div className="h-5 w-48 bg-muted rounded" />
+                    <div className="h-4 w-32 bg-muted rounded" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : pendingRequests.length === 0 ? (
+          <EmptyState
+            icon={ClipboardList}
+            title="No pending requests"
+            description="When clients submit job requests, they'll appear here for you to review."
+          />
+        ) : null
+      ) : isLoading ? (
         <div className="space-y-3" data-testid="jobs-loading">
           {[1, 2, 3].map((i) => (
             <Card key={i} style={{ borderRadius: '14px' }}>
@@ -693,6 +954,17 @@ export default function WorkPage({
         confirmLabel="Archive"
         onConfirm={handleConfirmArchiveJob}
         isPending={archiveJobMutation.isPending}
+      />
+
+      <ConfirmationDialog
+        open={declineDialogOpen}
+        onOpenChange={setDeclineDialogOpen}
+        title="Decline this request?"
+        description={`Are you sure you want to decline "${declineTarget?.title || 'this request'}"? The client will be notified.`}
+        confirmLabel="Decline"
+        variant="destructive"
+        onConfirm={handleConfirmDecline}
+        isPending={updateRequestMutation.isPending}
       />
     </PageShell>
   );
