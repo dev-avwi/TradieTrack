@@ -1371,10 +1371,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
       
-      const receiptsWithBusiness = receipts.map(r => ({
-        ...r,
-        viewToken: r.viewToken || r.paymentToken || r.id,
-        businessInfo: businessInfoMap.get(r.userId),
+      const receiptsWithBusiness = await Promise.all(receipts.map(async (r) => {
+        let viewToken = r.viewToken;
+        if (!viewToken) {
+          viewToken = nanoid(12);
+          try {
+            await storage.updateReceipt(r.id, r.userId, { viewToken });
+          } catch (e) {}
+        }
+        return {
+          ...r,
+          viewToken,
+          businessInfo: businessInfoMap.get(r.userId),
+        };
       }));
       
       const jobsWithPortalTokens = await Promise.all(jobs.map(async (j) => {
@@ -2201,7 +2210,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (type === 'receipt') {
-        const receipt = await storage.getReceiptByViewToken(token);
+        let receipt = await storage.getReceiptByViewToken(token);
+        if (!receipt) {
+          try {
+            receipt = await storage.getReceiptById(token) as any;
+          } catch (e) {}
+        }
         if (!receipt) {
           return res.status(404).json({ error: 'Receipt not found' });
         }

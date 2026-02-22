@@ -540,6 +540,7 @@ export interface IStorage {
   deleteReceipt(id: string, userId: string): Promise<boolean>;
   generateReceiptNumber(userId: string): Promise<string>;
   getReceiptByViewToken(token: string): Promise<Receipt | undefined>;
+  getReceiptById(id: string): Promise<Receipt | undefined>;
 
   // Document Templates
   getDocumentTemplates(userId: string, type?: string, tradeType?: string): Promise<DocumentTemplate[]>;
@@ -2632,6 +2633,15 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(receipts)
       .where(eq(receipts.viewToken, token))
+      .limit(1);
+    return result[0];
+  }
+
+  async getReceiptById(id: string): Promise<Receipt | undefined> {
+    const result = await db
+      .select()
+      .from(receipts)
+      .where(eq(receipts.id, id))
       .limit(1);
     return result[0];
   }
