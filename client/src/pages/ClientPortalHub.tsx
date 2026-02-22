@@ -34,7 +34,9 @@ import {
   MessageCircle,
   PlusCircle,
   ClipboardList,
-  Send
+  Send,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
@@ -186,6 +188,10 @@ export default function ClientPortalHub() {
   const [jobRequests, setJobRequests] = useState<any[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [isSubmittingJobRequest, setIsSubmittingJobRequest] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', preferredDate: '', urgency: 'normal', clientNotes: '' });
+  const [isUpdatingRequest, setIsUpdatingRequest] = useState(false);
+  const [isDeletingRequest, setIsDeletingRequest] = useState<string | null>(null);
   const [jobRequestForm, setJobRequestForm] = useState({
     title: '',
     description: '',
@@ -638,6 +644,62 @@ export default function ClientPortalHub() {
       case 'emergency': return 'bg-red-100 text-red-700';
       case 'urgent': return 'bg-orange-100 text-orange-700';
       default: return 'bg-slate-100 text-slate-600';
+    }
+  };
+
+  const startEditingRequest = (request: any) => {
+    setEditingRequest(request);
+    setEditForm({
+      title: request.title || '',
+      description: request.description || '',
+      preferredDate: request.preferredDate ? new Date(request.preferredDate).toISOString().split('T')[0] : '',
+      urgency: request.urgency || 'normal',
+      clientNotes: request.clientNotes || '',
+    });
+  };
+
+  const handleUpdateRequest = async () => {
+    if (!editingRequest || !editForm.title.trim()) return;
+    setIsUpdatingRequest(true);
+    try {
+      const res = await fetch(`/api/portal/job-requests/${editingRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        toast({ title: "Request Updated", description: "Your job request has been updated" });
+        setEditingRequest(null);
+        if (sessionToken) fetchJobRequests(sessionToken);
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update');
+      }
+    } catch (error: any) {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUpdatingRequest(false);
+    }
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    setIsDeletingRequest(requestId);
+    try {
+      const res = await fetch(`/api/portal/job-requests/${requestId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      if (res.ok) {
+        toast({ title: "Request Deleted", description: "Your job request has been removed" });
+        if (sessionToken) fetchJobRequests(sessionToken);
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete');
+      }
+    } catch (error: any) {
+      toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDeletingRequest(null);
     }
   };
 
@@ -1670,50 +1732,112 @@ export default function ClientPortalHub() {
                         {jobRequests.map((request) => (
                           <div key={request.id} className="bg-white rounded-md shadow-lg overflow-hidden">
                             <div className="p-5">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  request.status === 'accepted' ? 'bg-green-100' :
-                                  request.status === 'declined' ? 'bg-red-100' :
-                                  request.status === 'in_progress' ? 'bg-blue-100' :
-                                  'bg-yellow-100'
-                                }`}>
-                                  <ClipboardList className={`w-5 h-5 ${
-                                    request.status === 'accepted' ? 'text-green-600' :
-                                    request.status === 'declined' ? 'text-red-500' :
-                                    request.status === 'in_progress' ? 'text-blue-600' :
-                                    'text-yellow-600'
-                                  }`} />
+                              {editingRequest?.id === request.id ? (
+                                <div className="space-y-3">
+                                  <Input
+                                    value={editForm.title}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                                    placeholder="Job title"
+                                  />
+                                  <Textarea
+                                    value={editForm.description}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                                    placeholder="Description"
+                                    rows={2}
+                                  />
+                                  <Input
+                                    type="date"
+                                    value={editForm.preferredDate}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, preferredDate: e.target.value }))}
+                                  />
+                                  <Select value={editForm.urgency} onValueChange={(v) => setEditForm(prev => ({ ...prev, urgency: v }))}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="normal">Normal</SelectItem>
+                                      <SelectItem value="urgent">Urgent</SelectItem>
+                                      <SelectItem value="emergency">Emergency</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Textarea
+                                    value={editForm.clientNotes}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, clientNotes: e.target.value }))}
+                                    placeholder="Additional notes"
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <Button variant="outline" size="sm" onClick={() => setEditingRequest(null)}>Cancel</Button>
+                                    <Button size="sm" onClick={handleUpdateRequest} disabled={isUpdatingRequest}>
+                                      {isUpdatingRequest && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+                                      Save
+                                    </Button>
+                                  </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="font-semibold text-slate-900 truncate">{request.title}</h3>
-                                    <Badge className={getRequestStatusColor(request.status)}>
-                                      {request.status === 'in_progress' ? 'In Progress' : request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                                    </Badge>
-                                    {request.urgency && request.urgency !== 'normal' && (
-                                      <Badge className={getUrgencyColor(request.urgency)}>
-                                        {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
-                                      </Badge>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                      request.status === 'accepted' ? 'bg-green-100' :
+                                      request.status === 'declined' ? 'bg-red-100' :
+                                      request.status === 'in_progress' ? 'bg-blue-100' :
+                                      'bg-yellow-100'
+                                    }`}>
+                                      <ClipboardList className={`w-5 h-5 ${
+                                        request.status === 'accepted' ? 'text-green-600' :
+                                        request.status === 'declined' ? 'text-red-500' :
+                                        request.status === 'in_progress' ? 'text-blue-600' :
+                                        'text-yellow-600'
+                                      }`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="font-semibold text-slate-900 truncate">{request.title}</h3>
+                                        <Badge className={getRequestStatusColor(request.status)}>
+                                          {request.status === 'in_progress' ? 'In Progress' : request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                        </Badge>
+                                        {request.urgency && request.urgency !== 'normal' && (
+                                          <Badge className={getUrgencyColor(request.urgency)}>
+                                            {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {request.status === 'pending' && (
+                                      <div className="flex gap-1 flex-shrink-0">
+                                        <Button size="icon" variant="ghost" onClick={() => startEditingRequest(request)}>
+                                          <Pencil className="w-4 h-4 text-slate-400" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={() => handleDeleteRequest(request.id)}
+                                          disabled={isDeletingRequest === request.id}
+                                        >
+                                          {isDeletingRequest === request.id
+                                            ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                                            : <Trash2 className="w-4 h-4 text-red-400" />
+                                          }
+                                        </Button>
+                                      </div>
                                     )}
                                   </div>
-                                </div>
-                              </div>
-                              <div className="ml-13 space-y-1">
-                                {request.description && (
-                                  <p className="text-sm text-slate-500">{request.description}</p>
-                                )}
-                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  Submitted {formatDate(request.createdAt)}
-                                  {request.preferredDate && ` · Preferred: ${formatDate(request.preferredDate)}`}
-                                </p>
-                                {request.reviewNotes && (
-                                  <div className="mt-2 p-2 bg-slate-50 rounded-md border border-slate-100">
-                                    <p className="text-xs font-medium text-slate-600 mb-0.5">Business Response:</p>
-                                    <p className="text-sm text-slate-700">{request.reviewNotes}</p>
+                                  <div className="ml-13 space-y-1">
+                                    {request.description && (
+                                      <p className="text-sm text-slate-500">{request.description}</p>
+                                    )}
+                                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      Submitted {formatDate(request.createdAt)}
+                                      {request.preferredDate && ` · Preferred: ${formatDate(request.preferredDate)}`}
+                                    </p>
+                                    {request.reviewNotes && (
+                                      <div className="mt-2 p-2 bg-slate-50 rounded-md border border-slate-100">
+                                        <p className="text-xs font-medium text-slate-600 mb-0.5">Business Response:</p>
+                                        <p className="text-sm text-slate-700">{request.reviewNotes}</p>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         ))}

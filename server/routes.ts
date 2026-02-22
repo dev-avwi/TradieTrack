@@ -1710,6 +1710,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CLIENT PORTAL: Update a pending job request
+  app.patch("/api/portal/job-requests/:id", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      const clientIds = allClients.map((c: any) => c.id);
+      const { title, description, preferredDate, urgency, clientNotes } = req.body;
+
+      let updated;
+      for (const clientId of clientIds) {
+        updated = await storage.updateJobRequestByClient(req.params.id, clientId, {
+          ...(title && { title }),
+          ...(description !== undefined && { description }),
+          ...(preferredDate !== undefined && { preferredDate: preferredDate ? new Date(preferredDate) : null }),
+          ...(urgency && { urgency }),
+          ...(clientNotes !== undefined && { clientNotes }),
+        });
+        if (updated) break;
+      }
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Request not found or cannot be edited' });
+      }
+
+      res.json({ success: true, request: updated });
+    } catch (error: any) {
+      console.error('Error updating job request:', error);
+      res.status(500).json({ error: 'Failed to update job request' });
+    }
+  });
+
+  // CLIENT PORTAL: Delete a pending job request
+  app.delete("/api/portal/job-requests/:id", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.slice(7);
+      const session = await storage.getPortalSessionByToken(token);
+      if (!session || new Date(session.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Session expired' });
+      }
+
+      const allClients = await storage.getClientsByPhone(session.phone);
+      if (!allClients || allClients.length === 0) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      let deleted = false;
+      for (const client of allClients) {
+        deleted = await storage.deleteJobRequest(req.params.id, client.id);
+        if (deleted) break;
+      }
+
+      if (!deleted) {
+        return res.status(404).json({ error: 'Request not found or cannot be deleted' });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting job request:', error);
+      res.status(500).json({ error: 'Failed to delete job request' });
+    }
+  });
+
   // CLIENT PORTAL: Get job history with worker info
   app.get("/api/portal/job-history", async (req, res) => {
     try {

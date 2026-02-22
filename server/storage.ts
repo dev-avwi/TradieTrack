@@ -1022,6 +1022,8 @@ export interface IStorage {
   getJobRequests(userId: string, status?: string): Promise<JobRequest[]>;
   getJobRequest(id: string, userId: string): Promise<JobRequest | undefined>;
   updateJobRequest(id: string, userId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined>;
+  updateJobRequestByClient(id: string, clientId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined>;
+  deleteJobRequest(id: string, clientId: string): Promise<boolean>;
   getJobRequestsByClient(clientId: string): Promise<JobRequest[]>;
 }
 
@@ -7612,6 +7614,16 @@ Thank you for your prompt attention to this matter.`,
   async updateJobRequest(id: string, userId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined> {
     const [updated] = await db.update(jobRequests).set({ ...updates, updatedAt: new Date() }).where(and(eq(jobRequests.id, id), eq(jobRequests.userId, userId))).returning();
     return updated;
+  }
+
+  async updateJobRequestByClient(id: string, clientId: string, updates: Partial<JobRequest>): Promise<JobRequest | undefined> {
+    const [updated] = await db.update(jobRequests).set({ ...updates, updatedAt: new Date() }).where(and(eq(jobRequests.id, id), eq(jobRequests.clientId, clientId), eq(jobRequests.status, 'pending'))).returning();
+    return updated;
+  }
+
+  async deleteJobRequest(id: string, clientId: string): Promise<boolean> {
+    const result = await db.delete(jobRequests).where(and(eq(jobRequests.id, id), eq(jobRequests.clientId, clientId), eq(jobRequests.status, 'pending'))).returning();
+    return result.length > 0;
   }
 
   async getJobRequestsByClient(clientId: string): Promise<JobRequest[]> {
