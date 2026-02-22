@@ -122,8 +122,16 @@ export default function WorkPage({
     archived: showArchived ? jobs.length : undefined,
   }), [jobs, showArchived]);
 
+  const statusPriority: Record<string, number> = {
+    in_progress: 0,
+    scheduled: 1,
+    pending: 2,
+    done: 3,
+    invoiced: 4,
+  };
+
   const filteredJobs = useMemo(() => {
-    return jobs.filter(job => {
+    const filtered = jobs.filter(job => {
       const search = searchTerm.toLowerCase();
       const matchesSearch = !searchTerm || 
         (job.title || '').toLowerCase().includes(search) ||
@@ -139,6 +147,21 @@ export default function WorkPage({
         : job.status === activeFilter;
 
       return matchesSearch && matchesFilter;
+    });
+
+    return filtered.sort((a, b) => {
+      const aPriority = statusPriority[a.status] ?? 5;
+      const bPriority = statusPriority[b.status] ?? 5;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+
+      const aDate = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+      const bDate = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+      if (aPriority <= 2) {
+        if (!a.scheduledAt && b.scheduledAt) return 1;
+        if (a.scheduledAt && !b.scheduledAt) return -1;
+        return aDate - bDate;
+      }
+      return bDate - aDate;
     });
   }, [jobs, searchTerm, activeFilter]);
 

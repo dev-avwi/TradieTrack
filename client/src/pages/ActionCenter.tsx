@@ -171,6 +171,9 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           : "The job request has been declined.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/job-requests"], exact: false });
+      if (variables.status === "accepted") {
+        queryClient.invalidateQueries({ queryKey: ["/api/jobs"], exact: false });
+      }
     },
     onError: () => {
       toast({

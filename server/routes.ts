@@ -1814,6 +1814,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.jobId = jobId;
       }
 
+      if (status === 'accepted' && !jobId) {
+        const request = await storage.getJobRequest(req.params.id, req.user.id);
+        if (!request) {
+          return res.status(404).json({ error: 'Request not found' });
+        }
+
+        try {
+          const client = await storage.getClient(request.clientId, req.user.id);
+          const newJob = await storage.createJob({
+            userId: req.user.id,
+            title: request.title,
+            description: request.description || '',
+            clientId: request.clientId,
+            status: 'pending',
+            address: client?.address || '',
+            scheduledAt: request.preferredDate || undefined,
+            assignedTo: request.preferredWorkerId || undefined,
+          });
+          updates.jobId = newJob.id;
+
+          if (request.clientNotes) {
+            await storage.createJobNote({
+              jobId: newJob.id,
+              userId: req.user.id,
+              content: `Client request notes: ${request.clientNotes}`,
+              type: 'note',
+            });
+          }
+        } catch (jobError: any) {
+          console.error('Failed to create job from request:', jobError);
+          return res.status(500).json({ error: 'Failed to create job from request' });
+        }
+      }
+
       const updated = await storage.updateJobRequest(req.params.id, req.user.id, updates);
       if (!updated) return res.status(404).json({ error: 'Request not found' });
       res.json(updated);
