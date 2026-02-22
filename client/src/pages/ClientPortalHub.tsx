@@ -436,12 +436,16 @@ export default function ClientPortalHub() {
   const handleViewInvoice = (invoice: PortalInvoice) => {
     if (invoice.paymentToken) {
       window.location.href = `/portal/invoice/${invoice.paymentToken}`;
+    } else {
+      toast({ title: "Invoice Preview", description: `Invoice #${invoice.number} — ${formatCurrency(invoice.total)}`, variant: "default" });
     }
   };
 
   const handleViewReceipt = (receipt: PortalReceipt) => {
     if (receipt.viewToken) {
       window.location.href = `/portal/receipt/${receipt.viewToken}`;
+    } else {
+      toast({ title: "Receipt", description: `Receipt #${receipt.number} — ${formatCurrency(receipt.total)}`, variant: "default" });
     }
   };
 

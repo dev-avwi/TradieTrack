@@ -1355,13 +1355,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessInfo: businessInfoMap.get(q.userId),
       }));
       
-      const invoicesWithBusiness = invoices.map(i => ({
-        ...i,
-        businessInfo: businessInfoMap.get(i.userId),
+      const { nanoid } = await import('nanoid');
+      const invoicesWithBusiness = await Promise.all(invoices.map(async (i) => {
+        let paymentToken = i.paymentToken;
+        if (!paymentToken) {
+          paymentToken = nanoid(12);
+          try {
+            await storage.updateInvoice(i.id, i.userId, { paymentToken });
+          } catch (e) {}
+        }
+        return {
+          ...i,
+          paymentToken,
+          businessInfo: businessInfoMap.get(i.userId),
+        };
       }));
       
       const receiptsWithBusiness = receipts.map(r => ({
         ...r,
+        viewToken: r.viewToken || r.paymentToken || r.id,
         businessInfo: businessInfoMap.get(r.userId),
       }));
       
