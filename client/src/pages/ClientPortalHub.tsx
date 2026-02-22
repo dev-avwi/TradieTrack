@@ -533,6 +533,13 @@ export default function ClientPortalHub() {
               </p>
             </CardContent>
           </Card>
+
+          <div className="mt-4 text-center">
+            <a href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to JobRunner
+            </a>
+          </div>
         </div>
 
         <div className="text-center py-8 flex items-center justify-center gap-2">
