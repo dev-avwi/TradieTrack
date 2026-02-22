@@ -318,7 +318,11 @@ export async function handleWorkerStatusChange(params: WorkerStatusParams): Prom
       const ownerPhone = business?.phone || 'the office';
       let smsBody = '';
       if (status === 'arrived') {
-        smsBody = `JobRunner — ${businessName}: ${workerName} has arrived at the job site. Call ${ownerPhone} if needed.`;
+        const portalSuffix = portalUrl ? ` Track progress: ${portalUrl}` : '';
+        smsBody = `JobRunner — ${businessName}: ${workerName} has arrived at your job "${job.title}".${portalSuffix} Call ${ownerPhone} if needed.`;
+      } else if (status === 'in_progress') {
+        const portalSuffix = portalUrl ? ` Track progress: ${portalUrl}` : '';
+        smsBody = `JobRunner — ${businessName}: Work has started on your job "${job.title}".${portalSuffix} Call ${ownerPhone} if needed.`;
       } else if (status === 'completed') {
         const portalSuffix = portalUrl ? ` View details: ${portalUrl}` : '';
         smsBody = `JobRunner — ${businessName}: Your job "${job.title}" is now complete!${portalSuffix} Call ${ownerPhone} if you have any questions.`;
