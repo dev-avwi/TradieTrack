@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme } from '../../src/lib/theme';
+import { useTheme, colorWithOpacity } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 
 interface ActionItem {
@@ -32,42 +32,42 @@ interface ActionCenterData {
   };
 }
 
-const PRIORITY_CONFIG = {
+const getPriorityConfig = (colors: any) => ({
   fix_now: {
     label: 'Fix Now',
     shortLabel: 'Fix Now',
     sectionLabel: 'FIX NOW',
     icon: 'alert-triangle' as const,
-    color: '#ef4444',
-    bgColor: 'rgba(239,68,68,0.12)',
+    color: colors.destructive,
+    bgColor: colorWithOpacity(colors.destructive, 0.12),
   },
   this_week: {
     label: 'This Week',
     shortLabel: 'This Week',
     sectionLabel: 'THIS WEEK',
     icon: 'clock' as const,
-    color: '#f59e0b',
-    bgColor: 'rgba(245,158,11,0.12)',
+    color: colors.warning,
+    bgColor: colorWithOpacity(colors.warning, 0.12),
   },
   suggestions: {
     label: 'Tips',
     shortLabel: 'Tips',
     sectionLabel: 'SUGGESTIONS',
     icon: 'zap' as const,
-    color: '#22c55e',
-    bgColor: 'rgba(34,197,94,0.12)',
+    color: colors.success,
+    bgColor: colorWithOpacity(colors.success, 0.12),
   },
-};
+});
 
-const CATEGORY_COLORS: Record<string, string> = {
-  scheduling: '#3b82f6',
-  invoicing: '#f59e0b',
-  quoting: '#8b5cf6',
-  clients: '#06b6d4',
-  jobs: '#22c55e',
-  revenue: '#ef4444',
-  default: '#6b7280',
-};
+const getCategoryColors = (colors: any): Record<string, string> => ({
+  scheduling: colors.info,
+  invoicing: colors.warning,
+  quoting: colors.primary,
+  clients: colors.info,
+  jobs: colors.success,
+  revenue: colors.destructive,
+  default: colors.mutedForeground,
+});
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -225,7 +225,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   ctaText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.primaryForeground,
   },
   sectionContainer: {
     marginBottom: 24,
@@ -254,7 +254,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(34,197,94,0.12)',
+    backgroundColor: colorWithOpacity(colors.success, 0.12),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -296,7 +296,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   retryButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#fff',
+    color: colors.primaryForeground,
   },
 });
 
@@ -347,32 +347,42 @@ export default function ActionCenterScreen() {
     const params = new URLSearchParams(queryString || '');
     const tab = params.get('tab');
 
-    // Map web routes to mobile routes
     if (basePath === '/documents' || basePath.startsWith('/documents')) {
-      // Documents hub -> route to the specific document type
       if (tab === 'invoices') {
-        router.push('/more/documents' as any);
+        router.push('/more/invoices' as any);
       } else if (tab === 'quotes') {
-        router.push('/more/documents' as any);
+        router.push('/more/quotes' as any);
       } else {
         router.push('/more/documents' as any);
       }
     } else if (basePath === '/schedule' || basePath.startsWith('/schedule')) {
-      router.push('/(tabs)/schedule' as any);
+      router.push('/more/calendar' as any);
     } else if (basePath === '/work' || basePath.startsWith('/work')) {
-      router.push('/(tabs)/work' as any);
+      router.push('/(tabs)/jobs' as any);
     } else if (basePath.startsWith('/jobs/')) {
       const jobId = basePath.split('/jobs/')[1];
       router.push(`/job/${jobId}` as any);
     } else if (basePath === '/clients' || basePath.startsWith('/clients')) {
       router.push('/more/clients' as any);
     } else if (basePath === '/chat' || basePath.startsWith('/chat')) {
-      router.push('/(tabs)/chat' as any);
+      router.push('/more/chat-hub' as any);
+    } else if (basePath === '/quotes' || basePath.startsWith('/quotes')) {
+      router.push('/more/quotes' as any);
+    } else if (basePath === '/invoices' || basePath.startsWith('/invoices')) {
+      router.push('/more/invoices' as any);
+    } else if (basePath === '/time-tracking' || basePath.startsWith('/time-tracking')) {
+      router.push('/more/time-tracking' as any);
+    } else if (basePath === '/team' || basePath.startsWith('/team')) {
+      router.push('/more/team-management' as any);
+    } else if (basePath === '/reports' || basePath.startsWith('/reports')) {
+      router.push('/more/reports' as any);
     } else {
-      // Fallback: try navigating to work tab
-      router.push('/(tabs)/work' as any);
+      router.push('/(tabs)/jobs' as any);
     }
   };
+
+  const PRIORITY_CONFIG = getPriorityConfig(colors);
+  const CATEGORY_COLORS = getCategoryColors(colors);
 
   const getCategoryColor = (category: string) => {
     return CATEGORY_COLORS[category.toLowerCase()] || CATEGORY_COLORS.default;
@@ -444,7 +454,7 @@ export default function ActionCenterScreen() {
             activeOpacity={0.7}
           >
             <Text style={styles.ctaText}>{action.cta}</Text>
-            <Feather name="chevron-right" size={14} color="#fff" />
+            <Feather name="chevron-right" size={14} color={colors.primaryForeground} />
           </TouchableOpacity>
         </View>
       </View>
@@ -466,7 +476,7 @@ export default function ActionCenterScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Feather name="check-circle" size={32} color="#22c55e" />
+        <Feather name="check-circle" size={32} color={colors.success} />
       </View>
       <Text style={styles.emptyTitle}>All clear!</Text>
       <Text style={styles.emptySubtitle}>No actions needed right now. Keep up the great work.</Text>
