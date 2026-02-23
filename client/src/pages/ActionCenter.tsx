@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { JobRequest } from "@shared/schema";
@@ -20,6 +21,9 @@ import {
   ClipboardList,
   Check,
   X,
+  User,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 
 interface ActionItem {
@@ -150,6 +154,8 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   const [, setLocation] = useLocation();
   const navigate = onNavigate || setLocation;
   const { toast } = useToast();
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery<ActionCenterData>({
     queryKey: ["/api/bi/action-center"],
@@ -263,7 +269,14 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                 {pendingRequests.map((request) => {
                   const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
                   return (
-                    <Card key={request.id}>
+                    <Card
+                      key={request.id}
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setRequestDialogOpen(true);
+                      }}
+                    >
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-3">
                           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -298,7 +311,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                               size="sm"
                               variant="default"
                               disabled={updateRequestMutation.isPending}
-                              onClick={() => updateRequestMutation.mutate({ id: request.id, status: "accepted" })}
+                              onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "accepted" }); }}
                             >
                               <Check className="h-3.5 w-3.5 mr-1" />
                               Accept
@@ -307,7 +320,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                               size="sm"
                               variant="outline"
                               disabled={updateRequestMutation.isPending}
-                              onClick={() => updateRequestMutation.mutate({ id: request.id, status: "declined" })}
+                              onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "declined" }); }}
                             >
                               <X className="h-3.5 w-3.5 mr-1" />
                               Decline
@@ -409,6 +422,112 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           })}
         </div>
       )}
+
+      <Dialog open={requestDialogOpen} onOpenChange={(open) => {
+        setRequestDialogOpen(open);
+        if (!open) setSelectedRequest(null);
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span>{selectedRequest?.title}</span>
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs no-default-active-elevate">
+                Request
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Job request details
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRequest && (
+            <div className="space-y-4 py-2">
+              {selectedRequest.clientName && (
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{selectedRequest.clientName}</span>
+                </div>
+              )}
+
+              {selectedRequest.description && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <FileText className="h-3 w-3" />
+                    Description
+                  </div>
+                  <p className="text-sm text-foreground">{selectedRequest.description}</p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
+                {selectedRequest.urgency && (
+                  <Badge
+                    className={
+                      selectedRequest.urgency === 'emergency' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 no-default-active-elevate' :
+                      selectedRequest.urgency === 'urgent' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25 no-default-active-elevate' :
+                      selectedRequest.urgency === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 no-default-active-elevate' :
+                      'no-default-active-elevate'
+                    }
+                  >
+                    {(urgencyConfig[selectedRequest.urgency] || urgencyConfig.normal).label}
+                  </Badge>
+                )}
+                {selectedRequest.preferredDate && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {formatDate(selectedRequest.preferredDate)}
+                  </span>
+                )}
+                {selectedRequest.createdAt && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatRelativeTime(selectedRequest.createdAt)}
+                  </span>
+                )}
+              </div>
+
+              {selectedRequest.notes && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <MessageSquare className="h-3 w-3" />
+                    Notes
+                  </div>
+                  <p className="text-sm text-foreground">{selectedRequest.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex items-center gap-2">
+            <Button
+              variant="default"
+              disabled={updateRequestMutation.isPending}
+              onClick={() => {
+                if (selectedRequest) {
+                  updateRequestMutation.mutate({ id: selectedRequest.id, status: "accepted" });
+                  setRequestDialogOpen(false);
+                }
+              }}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Accept
+            </Button>
+            <Button
+              variant="outline"
+              disabled={updateRequestMutation.isPending}
+              onClick={() => {
+                if (selectedRequest) {
+                  updateRequestMutation.mutate({ id: selectedRequest.id, status: "declined" });
+                  setRequestDialogOpen(false);
+                }
+              }}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Decline
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

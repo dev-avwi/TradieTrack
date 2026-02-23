@@ -672,9 +672,7 @@ export default function WorkPage({
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-amber-500" />
             <h3 className="text-sm font-semibold">Client Requests</h3>
-            {pendingRequests.length > 0 && (
-              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">{pendingRequests.length}</Badge>
-            )}
+            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">{pendingRequests.length}</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {pendingRequests.map((request: any) => (
@@ -924,7 +922,16 @@ export default function WorkPage({
             description="When clients submit job requests, they'll appear here for you to review."
           />
         ) : null
-      ) : isLoading ? (
+      ) : (
+      <>
+      {activeFilter !== 'archived' && filteredJobs.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Your Jobs</h3>
+          <Badge variant="secondary">{filteredJobs.length}</Badge>
+        </div>
+      )}
+      {isLoading ? (
         <div className="space-y-3" data-testid="jobs-loading">
           {[1, 2, 3].map((i) => (
             <Card key={i} style={{ borderRadius: '14px' }}>
@@ -992,6 +999,8 @@ export default function WorkPage({
             <JobCardItem key={job.id} job={job} />
           ))}
         </div>
+      )}
+      </>
       )}
 
       <PasteJobModal
