@@ -119,7 +119,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
     paddingTop: spacing.sm,
     gap: spacing.md,
   },
@@ -152,7 +152,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     ...shadows.md,
     alignItems: 'center',
@@ -178,14 +178,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   supportingStatsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   supportingStatCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -218,7 +218,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.lg,
   },
   filterTab: {
     paddingHorizontal: spacing.lg,
@@ -373,7 +373,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
   },
   loadingText: {
     ...typography.caption,
@@ -382,7 +382,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing['4xl'],
+    paddingVertical: spacing['2xl'],
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -426,13 +426,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
   },
   errorText: {
     ...typography.caption,

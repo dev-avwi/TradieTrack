@@ -1239,12 +1239,12 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
-    marginTop: spacing['2xl'],
+    marginTop: spacing.md,
   },
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.xl,
+    padding: spacing.md,
     alignItems: 'center',
     marginTop: spacing.md,
     ...shadows.md,
@@ -1487,7 +1487,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['2xl'],
   },
   emptyIconCircle: {
     width: 80,
@@ -1513,9 +1513,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.card,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -1703,12 +1703,12 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    marginTop: spacing.md,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   statCard: {
-    width: (contentWidth - responsivePadding * 2 - spacing.md) / 2,
-    padding: spacing.lg,
+    width: (contentWidth - responsivePadding * 2 - spacing.sm) / 2,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -1843,7 +1843,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     padding: spacing.lg,
     borderRadius: radius['2xl'],
     alignItems: 'center',
-    marginTop: spacing['2xl'],
+    marginTop: spacing.md,
   },
   submitButtonText: {
     ...typography.button,
@@ -1853,13 +1853,13 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   kpiStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
-    gap: spacing.md,
+    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
   kpiStatItem: {
     flex: 1,
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,

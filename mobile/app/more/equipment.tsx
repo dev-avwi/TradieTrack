@@ -1195,13 +1195,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#fff',
   },
   heroSection: {
-    marginBottom: spacing['2xl'],
-    gap: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.xl,
+    padding: spacing.md,
     alignItems: 'center',
     ...shadows.md,
   },
@@ -1226,13 +1226,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   supportingRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   supportingCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -1336,7 +1336,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['2xl'],
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1381,7 +1381,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -1553,7 +1553,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
   },
   detailSection: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
   },
   detailSectionTitle: {
     ...typography.label,
@@ -1582,7 +1582,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   detailActions: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
   },
   editButton: {
     flex: 1,

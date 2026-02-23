@@ -73,7 +73,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
   },
   headerLeft: {
     flex: 1,
@@ -90,10 +90,10 @@ const createStyles = (colors: any) => StyleSheet.create({
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     ...shadows.md,
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   heroIconContainer: {
     width: 48,
@@ -116,14 +116,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   supportingStatsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   supportingStatCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     alignItems: 'center',
     ...shadows.sm,
     borderWidth: 1,
@@ -152,7 +152,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   quickAccessSection: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.lg,
   },
   categoryCard: {
     flexDirection: 'row',
@@ -186,7 +186,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   recentSection: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.lg,
   },
   recentHeader: {
     ...componentStyles.sectionHeader,
@@ -257,14 +257,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['2xl'],
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.lg,
   },
   emptyIconContainer: {
     width: 80,
@@ -289,7 +289,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
   },
   loadingText: {
     ...typography.caption,
@@ -299,13 +299,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.lg,
   },
   errorText: {
     ...typography.caption,

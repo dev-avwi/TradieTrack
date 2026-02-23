@@ -86,7 +86,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
   headerLeft: {
@@ -104,7 +104,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   tabButton: {
     flexDirection: 'row',
@@ -138,17 +138,17 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   statsGrid: {
-    gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     ...shadows.md,
   },
   heroStatHeader: {
@@ -184,7 +184,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -226,7 +226,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   comparisonCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -265,7 +265,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
   },
   loadingText: {
     ...typography.caption,
@@ -275,12 +275,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
     ...shadows.sm,
   },
   errorText: {
@@ -792,7 +792,7 @@ export default function InsightsScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: spacing.xl }}
+            style={{ marginBottom: spacing.md }}
             contentContainerStyle={styles.tabContainer}
           >
             {TABS.map((tab) => {

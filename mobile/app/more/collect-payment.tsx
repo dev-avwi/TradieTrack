@@ -41,7 +41,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
   pageTitle: {
@@ -56,8 +56,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerBanner: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.promoBorder,
   },
@@ -78,7 +78,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quickLinksRow: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   quickLink: {
     flex: 1,
@@ -106,7 +106,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   amountSection: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   sectionLabel: {
     ...typography.label,
@@ -188,8 +188,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   pendingSection: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   pendingSectionHeader: {
     flexDirection: 'row',
@@ -203,7 +203,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   emptyPending: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -262,7 +262,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   infoCard: {
-    marginTop: spacing['2xl'],
+    marginTop: spacing.md,
   },
   infoCardTitle: {
     ...typography.cardTitle,
@@ -396,18 +396,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   statsGrid: {
-    gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -532,8 +532,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   recentPaymentsSection: {
-    marginTop: spacing['2xl'],
-    marginBottom: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   recentPaymentItem: {
     flexDirection: 'row',
@@ -580,7 +580,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   compactQuickLinksRow: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
   },
   compactQuickLink: {
     flex: 1,
@@ -662,7 +662,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   invoicePickerEmpty: {
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['2xl'],
   },
   invoicePickerEmptyText: {
     ...typography.body,

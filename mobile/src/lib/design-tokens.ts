@@ -30,9 +30,9 @@ export const spacing = {
 // So screens only need internal content padding here
 export const pageShell = {
   paddingHorizontal: spacing.lg, // 16px - web's px-4
-  paddingTop: spacing.lg,        // 16px - internal content padding
-  paddingBottom: spacing['2xl'], // 24px - section gap
-  sectionGap: spacing['2xl'],    // 24px - web's space-y-6
+  paddingTop: spacing.md,        // 12px - tighter internal content padding
+  paddingBottom: spacing.lg,     // 16px - section gap
+  sectionGap: spacing.lg,        // 16px - tighter section spacing
 } as const;
 
 // iPad-responsive page shell hook
@@ -51,11 +51,10 @@ export function usePageShell() {
     
     return {
       paddingHorizontal: horizontalPadding,
-      paddingTop: isPad ? spacing.xl : spacing.lg,
-      paddingBottom: isPad ? spacing['3xl'] : spacing['2xl'],
-      sectionGap: isPad ? spacing['3xl'] : spacing['2xl'],
-      // For card grids on iPad
-      cardGap: isPad ? spacing.lg : spacing.md,
+      paddingTop: isPad ? spacing.lg : spacing.md,
+      paddingBottom: isPad ? spacing.xl : spacing.lg,
+      sectionGap: isPad ? spacing.xl : spacing.lg,
+      cardGap: isPad ? spacing.md : spacing.sm,
       // Whether we should use iPad-optimized layout
       isIPadPortrait,
       isPad,

@@ -104,7 +104,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
   },
   headerLeft: {
     flex: 1,
@@ -120,14 +120,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   heroSection: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing['2xl'],
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   heroCard: {
     flex: 2,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     ...shadows.md,
   },
   heroIconContainer: {
@@ -150,13 +150,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   supportingStatsRow: {
     flex: 1,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   supportingStatCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -181,7 +181,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.xs,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     flexDirection: 'row',
@@ -327,7 +327,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
   },
   loadingText: {
     ...typography.caption,
@@ -337,12 +337,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
     ...shadows.sm,
   },
   errorText: {
@@ -367,13 +367,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['2xl'],
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing['2xl'],
+    marginBottom: spacing.md,
     ...shadows.sm,
   },
   emptyIconContainer: {
