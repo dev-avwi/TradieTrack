@@ -153,7 +153,7 @@ function JobAssignmentsSection({ assignments, equipmentId }: { assignments: any[
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Assigned to Jobs</h3>
+      <p className="ios-label">Assigned to Jobs</p>
       {assignments.length > 0 ? (
         <div className="space-y-2">
           {assignments.map((assignment: any) => (
@@ -291,11 +291,11 @@ function EquipmentUtilisation() {
       <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Card key={i}><CardContent className="p-4"><Skeleton className="h-10 w-full" /></CardContent></Card>
+            <div key={i} className="feed-card p-4"><Skeleton className="h-10 w-full" /></div>
           ))}
         </div>
         {[1, 2, 3].map((i) => (
-          <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          <div key={i} className="feed-card p-4"><Skeleton className="h-16 w-full" /></div>
         ))}
       </div>
     );
@@ -304,81 +304,69 @@ function EquipmentUtilisation() {
   const summary = data?.summary || {};
   const equipmentItems = data?.equipment || [];
 
+  const utilisationStats = [
+    { icon: Wrench, label: "Equipment Used", value: summary.totalEquipmentUsed || 0, color: '--trade', hero: true },
+    { icon: Briefcase, label: "Total Jobs", value: summary.totalJobAssignments || 0, color: '--trade' },
+    { icon: Clock, label: "Hours Logged", value: summary.totalHoursLogged || 0, color: '--info' },
+    { icon: Route, label: "Total KM", value: summary.totalKmLogged || 0, color: '--success' },
+    { icon: AlertTriangle, label: "Oversized", value: summary.oversizedInstances || 0, color: '--warning' },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <Wrench className="h-3.5 w-3.5" />
-              <span>Equipment Used</span>
-            </div>
-            <p className="text-xl font-semibold">{summary.totalEquipmentUsed || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <Briefcase className="h-3.5 w-3.5" />
-              <span>Total Jobs</span>
-            </div>
-            <p className="text-xl font-semibold">{summary.totalJobAssignments || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Hours Logged</span>
-            </div>
-            <p className="text-xl font-semibold">{summary.totalHoursLogged || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <Route className="h-3.5 w-3.5" />
-              <span>Total KM</span>
-            </div>
-            <p className="text-xl font-semibold">{summary.totalKmLogged || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              <span>Oversized</span>
-            </div>
-            <p className="text-xl font-semibold">{summary.oversizedInstances || 0}</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-5">
+      <div>
+        <p className="ios-label mb-3">Utilisation Summary</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {utilisationStats.map((stat, idx) => {
+            const StatIcon = stat.icon;
+            return (
+              <div key={stat.label} className={`feed-card animate-fade-up stagger-delay-${idx + 1} ${stat.hero ? 'col-span-2 sm:col-span-1' : ''}`}>
+                <div className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `hsl(var(${stat.color}) / 0.1)` }}>
+                      <StatIcon className="h-5 w-5" style={{ color: `hsl(var(${stat.color}))` }} />
+                    </div>
+                    <div>
+                      <p className="ios-label">{stat.label}</p>
+                      <p className={`${stat.hero ? 'text-[28px]' : 'text-xl'} font-bold leading-none mt-0.5`}>{stat.value}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {equipmentItems.length === 0 ? (
-        <EmptyState
-          icon={BarChart3}
-          title="No utilisation data"
-          description="Equipment usage data will appear here once equipment is assigned to jobs."
-        />
+        <div className="feed-card text-center py-12 px-6 animate-fade-up">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: 'linear-gradient(135deg, hsl(var(--trade) / 0.1), hsl(var(--trade) / 0.05))' }}>
+            <BarChart3 className="h-10 w-10" style={{ color: 'hsl(var(--trade) / 0.5)' }} />
+          </div>
+          <p className="text-lg font-semibold mb-1">No utilisation data</p>
+          <p className="ios-caption max-w-xs mx-auto">Equipment usage data will appear here once equipment is assigned to jobs.</p>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {equipmentItems.map((item: any) => {
-            const isExpanded = expandedId === item.equipmentId;
-            return (
-              <Card key={item.equipmentId}>
-                <CardContent className="p-0">
+        <div>
+          <p className="ios-label mb-3">Equipment Breakdown</p>
+          <div className="space-y-2">
+            {equipmentItems.map((item: any, index: number) => {
+              const isExpanded = expandedId === item.equipmentId;
+              const staggerClass = index < 8 ? `stagger-delay-${index + 1}` : '';
+              return (
+                <div key={item.equipmentId} className={`feed-card card-press animate-fade-up ${staggerClass}`}>
                   <div
-                    className="p-4 cursor-pointer hover-elevate"
+                    className="p-4 cursor-pointer"
                     onClick={() => setExpandedId(isExpanded ? null : item.equipmentId)}
                   >
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50">
-                          <Wrench className="h-5 w-5 text-muted-foreground" />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                          <Wrench className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium truncate">{item.name}</p>
+                            <p className="font-semibold truncate">{item.name}</p>
                             {item.utilizationRate > 80 && (
                               <Badge variant="secondary" className="bg-warning/10 text-warning text-xs">
                                 <Gauge className="h-3 w-3 mr-0.5" />
@@ -391,7 +379,7 @@ function EquipmentUtilisation() {
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                          <div className="flex items-center gap-3 ios-caption mt-0.5 flex-wrap">
                             {item.category && <span>{item.category}</span>}
                             <span>{item.totalJobs} job{item.totalJobs !== 1 ? 's' : ''}</span>
                             {item.totalHoursUsed > 0 && <span>{item.totalHoursUsed}h</span>}
@@ -401,8 +389,8 @@ function EquipmentUtilisation() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="text-right text-sm">
-                          <p className="font-medium">{item.utilizationRate}%</p>
-                          <p className="text-xs text-muted-foreground">utilisation</p>
+                          <p className="font-semibold">{item.utilizationRate}%</p>
+                          <p className="ios-caption">utilisation</p>
                         </div>
                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </div>
@@ -421,24 +409,24 @@ function EquipmentUtilisation() {
                                 <Badge variant="secondary" className="bg-destructive/10 text-destructive text-xs">Oversized</Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                            <div className="flex items-center gap-3 ios-caption mt-1 flex-wrap">
                               {a.hoursUsed && <span>{a.hoursUsed}h used</span>}
                               {a.kmTravelled && <span>{a.kmTravelled}km</span>}
                               {a.capacityUsed && <span>Cap: {a.capacityUsed}{a.capacityAvailable ? ` / ${a.capacityAvailable}` : ''}</span>}
                               {a.assignedAt && <span>{format(new Date(a.assignedAt), "dd MMM yyyy")}</span>}
                             </div>
                             {a.postJobNotes && (
-                              <p className="text-xs text-muted-foreground mt-1 italic">{a.postJobNotes}</p>
+                              <p className="ios-caption mt-1 italic">{a.postJobNotes}</p>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -646,6 +634,11 @@ export default function EquipmentPage() {
     createMaintenanceMutation.mutate(payload);
   }
 
+  const activeCount = equipmentList.filter(i => i.status === "active" || i.status === "available").length;
+  const inUseCount = equipmentList.filter(i => i.status === "in_use").length;
+  const maintenanceCount = equipmentList.filter(i => i.status === "maintenance").length;
+  const totalCount = equipmentList.length;
+
   return (
     <PageShell>
       <PageHeader
@@ -658,6 +651,66 @@ export default function EquipmentPage() {
           </Button>
         }
       />
+
+      {!isLoading && equipmentList.length > 0 && (
+        <div className="animate-fade-up">
+          <p className="ios-label mb-3">Overview</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="feed-card card-press col-span-2 lg:col-span-1 animate-fade-up stagger-delay-1" onClick={() => setActiveTab("available")}>
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(var(--success) / 0.1)' }}>
+                    <CheckCircle className="h-5 w-5" style={{ color: 'hsl(var(--success))' }} />
+                  </div>
+                  <div>
+                    <p className="ios-label">Available</p>
+                    <p className="text-[28px] font-bold tracking-tight leading-none mt-0.5">{activeCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="feed-card card-press animate-fade-up stagger-delay-2" onClick={() => setActiveTab("in_use")}>
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                    <Briefcase className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                  </div>
+                  <div>
+                    <p className="ios-label">In Use</p>
+                    <p className="text-xl font-bold leading-none mt-0.5">{inUseCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="feed-card card-press animate-fade-up stagger-delay-3" onClick={() => setActiveTab("maintenance")}>
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(var(--warning) / 0.1)' }}>
+                    <AlertTriangle className="h-5 w-5" style={{ color: 'hsl(var(--warning))' }} />
+                  </div>
+                  <div>
+                    <p className="ios-label">Maintenance</p>
+                    <p className="text-xl font-bold leading-none mt-0.5">{maintenanceCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="feed-card card-press animate-fade-up stagger-delay-4" onClick={() => setActiveTab("all")}>
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-muted/50">
+                    <Wrench className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="ios-label">Total</p>
+                    <p className="text-xl font-bold leading-none mt-0.5">{totalCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -672,102 +725,112 @@ export default function EquipmentPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="available">Available</TabsTrigger>
-            <TabsTrigger value="in_use">In Use</TabsTrigger>
-            <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-            <TabsTrigger value="utilisation">Utilisation</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="feed-card overflow-x-auto no-scrollbar">
+          <div className="p-1.5">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full sm:w-auto">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="available">Available</TabsTrigger>
+                <TabsTrigger value="in_use">In Use</TabsTrigger>
+                <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+                <TabsTrigger value="utilisation">Utilisation</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
 
         {activeTab === "utilisation" ? (
           <EquipmentUtilisation />
         ) : isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
+              <div key={i} className="feed-card">
+                <div className="p-4">
                   <div className="flex items-center gap-3">
-                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <Skeleton className="h-10 w-10 rounded-xl" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-40" />
                       <Skeleton className="h-3 w-24" />
                     </div>
                     <Skeleton className="h-6 w-20 rounded-full" />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={Wrench}
-            title={searchQuery ? "No equipment found" : "No equipment yet"}
-            description={searchQuery ? "Try adjusting your search." : "Add your first piece of equipment to start tracking your tools and assets."}
-            action={
-              !searchQuery ? (
-                <Button onClick={openCreate}>
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Add Equipment
-                </Button>
-              ) : undefined
-            }
-          />
+          <div className="feed-card text-center py-12 px-6 animate-fade-up">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: 'linear-gradient(135deg, hsl(var(--trade) / 0.1), hsl(var(--trade) / 0.05))' }}>
+              <Wrench className="h-10 w-10" style={{ color: 'hsl(var(--trade) / 0.5)' }} />
+            </div>
+            <p className="text-lg font-semibold mb-1">{searchQuery ? "No equipment found" : "No equipment yet"}</p>
+            <p className="ios-caption mb-6 max-w-xs mx-auto">
+              {searchQuery ? "Try adjusting your search terms." : "Add your first piece of equipment to start tracking your tools, vehicles, and assets."}
+            </p>
+            {!searchQuery && (
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Equipment
+              </Button>
+            )}
+          </div>
         ) : (
-          <div className="space-y-2">
-            {filtered.map((item) => {
-              const categoryName = getCategoryName(item.categoryId);
-              return (
-                <div
-                  key={item.id}
-                  className="feed-card cursor-pointer hover-elevate"
-                  onClick={() => setSelectedItem(item)}
-                >
-                  <div className="card-padding">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50">
-                          <Wrench className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-0.5">
-                            {categoryName && <span>{categoryName}</span>}
-                            {item.serialNumber && (
-                              <>
-                                {categoryName && <span>·</span>}
-                                <span>SN: {item.serialNumber}</span>
-                              </>
-                            )}
-                            {item.location && (
-                              <>
-                                <span>·</span>
-                                <span>{item.location}</span>
-                              </>
-                            )}
+          <div>
+            <p className="ios-label mb-3">{filtered.length} Item{filtered.length !== 1 ? 's' : ''}</p>
+            <div className="space-y-2">
+              {filtered.map((item, index) => {
+                const categoryName = getCategoryName(item.categoryId);
+                const staggerClass = index < 8 ? `stagger-delay-${index + 1}` : '';
+                return (
+                  <div
+                    key={item.id}
+                    className={`feed-card card-press cursor-pointer animate-fade-up ${staggerClass}`}
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    <div className="card-padding">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                            <Wrench className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate">{item.name}</p>
+                            <div className="flex items-center gap-2 flex-wrap ios-caption mt-0.5">
+                              {categoryName && <span>{categoryName}</span>}
+                              {item.serialNumber && (
+                                <>
+                                  {categoryName && <span>·</span>}
+                                  <span>SN: {item.serialNumber}</span>
+                                </>
+                              )}
+                              {item.location && (
+                                <>
+                                  <span>·</span>
+                                  <span>{item.location}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <StatusBadge status={item.status || "active"} />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(item);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <StatusBadge status={item.status || "active"} />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(item);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -944,7 +1007,7 @@ export default function EquipmentPage() {
               </SheetHeader>
               <div className="space-y-6 mt-6">
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Details</h3>
+                  <p className="ios-label">Details</p>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     {getCategoryName(selectedItem.categoryId) && (
                       <div>
@@ -1030,7 +1093,7 @@ export default function EquipmentPage() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Maintenance History</h3>
+                    <p className="ios-label">Maintenance History</p>
                     <Button size="sm" onClick={() => {
                       setMaintenanceForm(defaultMaintenanceForm);
                       setMaintenanceDialogOpen(true);

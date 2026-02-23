@@ -810,99 +810,102 @@ export default function CollectPayment() {
 
   return (
     <PageShell>
-      <PageHeader
-        title="Collect Payment"
-        subtitle="Get paid on-site or send payment links"
-        leading={<DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
-      />
+      <div className="animate-fade-up">
+        <PageHeader
+          title="Collect Payment"
+          subtitle="Get paid on-site or send payment links"
+          leading={<DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
+        />
+      </div>
 
-      {/* Demo Mode Banner */}
       {!stripeConnected && (
-        <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 mb-6" data-testid="banner-demo-mode">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
+        <div className="feed-card overflow-visible animate-fade-up stagger-delay-1" style={{ borderColor: 'hsl(35 90% 50% / 0.3)' }} data-testid="banner-demo-mode">
+          <div className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Zap className="h-5 w-5 text-orange-600 shrink-0" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-100 dark:bg-amber-900/30">
+                <Zap className="h-5 w-5 text-amber-600" />
+              </div>
               <div>
-                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">Demo Mode</span>
-                <p className="text-xs text-orange-600 dark:text-orange-400">Payment links work for testing. Connect Stripe for real payments.</p>
+                <span className="text-sm font-semibold">Demo Mode</span>
+                <p className="ios-caption">Payment links work for testing. Connect Stripe for real payments.</p>
               </div>
             </div>
             <Button size="sm" variant="outline" onClick={() => navigate('/integrations')} data-testid="button-setup-stripe">
               Connect Stripe
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* KPI Strip */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <Card data-testid="kpi-outstanding">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold" style={{ color: 'hsl(var(--trade))' }}>${totalPending.toFixed(0)}</p>
-            <p className="text-xs text-muted-foreground">Outstanding</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="kpi-pending-count">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{pendingRequests.length}</p>
-            <p className="text-xs text-muted-foreground">Pending</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="kpi-received">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-600">${totalReceived.toFixed(0)}</p>
-            <p className="text-xs text-muted-foreground">Received</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-3 gap-3 animate-fade-up stagger-delay-2">
+        <div className="feed-card card-accent p-4 text-center col-span-1" data-testid="kpi-outstanding">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+            <DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+          </div>
+          <p className="text-2xl font-bold tracking-tight" style={{ color: 'hsl(var(--trade))' }}>${totalPending.toFixed(0)}</p>
+          <p className="ios-label mt-1">Outstanding</p>
+        </div>
+        <div className="feed-card p-4 text-center" data-testid="kpi-pending-count">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 bg-amber-100 dark:bg-amber-900/30">
+            <Clock className="h-5 w-5 text-amber-600" />
+          </div>
+          <p className="text-2xl font-bold tracking-tight">{pendingRequests.length}</p>
+          <p className="ios-label mt-1">Pending</p>
+        </div>
+        <div className="feed-card p-4 text-center" data-testid="kpi-received">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 bg-emerald-100 dark:bg-emerald-900/30">
+            <CheckCircle className="h-5 w-5 text-emerald-600" />
+          </div>
+          <p className="text-2xl font-bold tracking-tight text-emerald-600">${totalReceived.toFixed(0)}</p>
+          <p className="ios-label mt-1">Received</p>
+        </div>
       </div>
 
-      {/* Primary Action - Unified Payment Collection Card */}
-      <Card className="mb-6 border-2" style={{ borderColor: 'hsl(var(--trade))' }} data-testid="card-collect-payment">
-        <CardContent className="p-5">
-          {/* Header with Payment Method Selector */}
-          <div className="flex items-center justify-between mb-5">
+      <div className="card-accent overflow-visible animate-fade-up stagger-delay-3" data-testid="card-collect-payment">
+        <div className="p-5">
+          <div className="flex items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--trade))' }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade))' }}>
                 <CreditCard className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Collect Payment</h3>
-                <p className="text-sm text-muted-foreground">Get paid in-person or remotely</p>
+                <h3 className="font-semibold text-lg tracking-tight">Collect Payment</h3>
+                <p className="ios-caption">Get paid in-person or remotely</p>
               </div>
             </div>
           </div>
 
-          {/* Payment Method Toggle */}
           <Tabs defaultValue="tap" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="tap" className="gap-2" data-testid="tab-tap-to-pay">
-                <Smartphone className="h-4 w-4" />
-                Tap to Pay
-              </TabsTrigger>
-              <TabsTrigger value="qr" className="gap-2" data-testid="tab-qr-code">
-                <QrCode className="h-4 w-4" />
-                QR Code
-              </TabsTrigger>
-              <TabsTrigger value="link" className="gap-2" data-testid="tab-send-link">
-                <Link2 className="h-4 w-4" />
-                Send Link
-              </TabsTrigger>
-            </TabsList>
+            <div className="feed-card p-1 mb-4">
+              <TabsList className="grid w-full grid-cols-3 bg-transparent">
+                <TabsTrigger value="tap" className="gap-2 rounded-xl data-[state=active]:shadow-sm" data-testid="tab-tap-to-pay">
+                  <Smartphone className="h-4 w-4" />
+                  Tap to Pay
+                </TabsTrigger>
+                <TabsTrigger value="qr" className="gap-2 rounded-xl data-[state=active]:shadow-sm" data-testid="tab-qr-code">
+                  <QrCode className="h-4 w-4" />
+                  QR Code
+                </TabsTrigger>
+                <TabsTrigger value="link" className="gap-2 rounded-xl data-[state=active]:shadow-sm" data-testid="tab-send-link">
+                  <Link2 className="h-4 w-4" />
+                  Send Link
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            {/* Tap to Pay Content */}
             <TabsContent value="tap" className="space-y-4">
-              <div className="text-center py-6 bg-muted/30 rounded-lg">
-                <div className="rounded-full p-4 mx-auto w-fit mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-                  <Smartphone className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="text-center py-6 rounded-2xl" style={{ backgroundColor: 'hsl(var(--trade) / 0.05)' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <Smartphone className="h-8 w-8" style={{ color: 'hsl(var(--trade))' }} />
                 </div>
-                <h4 className="font-medium mb-1">Contactless Payment</h4>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                <h4 className="font-semibold mb-1">Contactless Payment</h4>
+                <p className="ios-caption max-w-xs mx-auto">
                   Customer taps their card or phone on your device to pay instantly
                 </p>
               </div>
-              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="info-tap-to-pay-web">
+              <div className="feed-card p-3 flex items-start gap-2" data-testid="info-tap-to-pay-web">
                 <AlertTriangle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-700 dark:text-blue-300">
+                <p className="ios-caption">
                   Tap to Pay is only available on iPhone XS+ with iOS 16.4+. On web, use QR Code or Send Link instead.
                 </p>
               </div>
@@ -917,14 +920,13 @@ export default function CollectPayment() {
               </Button>
             </TabsContent>
 
-            {/* QR Code Content */}
             <TabsContent value="qr" className="space-y-4">
-              <div className="text-center py-6 bg-muted/30 rounded-lg">
-                <div className="rounded-full p-4 mx-auto w-fit mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-                  <QrCode className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="text-center py-6 rounded-2xl" style={{ backgroundColor: 'hsl(var(--trade) / 0.05)' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <QrCode className="h-8 w-8" style={{ color: 'hsl(var(--trade))' }} />
                 </div>
-                <h4 className="font-medium mb-1">QR Code Payment</h4>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                <h4 className="font-semibold mb-1">QR Code Payment</h4>
+                <p className="ios-caption max-w-xs mx-auto">
                   Show a QR code for customer to scan and pay from their phone
                 </p>
               </div>
@@ -939,14 +941,13 @@ export default function CollectPayment() {
               </Button>
             </TabsContent>
 
-            {/* Send Link Content */}
             <TabsContent value="link" className="space-y-4">
-              <div className="text-center py-6 bg-muted/30 rounded-lg">
-                <div className="rounded-full p-4 mx-auto w-fit mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-                  <Link2 className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="text-center py-6 rounded-2xl" style={{ backgroundColor: 'hsl(var(--trade) / 0.05)' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                  <Link2 className="h-8 w-8" style={{ color: 'hsl(var(--trade))' }} />
                 </div>
-                <h4 className="font-medium mb-1">Payment Link</h4>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                <h4 className="font-semibold mb-1">Payment Link</h4>
+                <p className="ios-caption max-w-xs mx-auto">
                   Create a payment link to send via email, SMS, or copy to clipboard
                 </p>
               </div>
@@ -961,74 +962,76 @@ export default function CollectPayment() {
               </Button>
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Secondary Action - Record Manual Payment */}
-      <Card 
-        className="mb-6 hover-elevate cursor-pointer" 
+      <div 
+        className="feed-card card-press overflow-visible cursor-pointer animate-fade-up stagger-delay-4" 
         onClick={() => setShowRecordPaymentDialog(true)}
         data-testid="card-record-payment"
       >
-        <CardContent className="p-4 flex items-center gap-3">
-          <div className="rounded-lg p-2 bg-emerald-100 dark:bg-emerald-900/30">
+        <div className="p-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/30 flex-shrink-0">
             <Banknote className="h-5 w-5 text-emerald-600" />
           </div>
           <div className="flex-1">
-            <p className="font-medium">Record Manual Payment</p>
-            <p className="text-xs text-muted-foreground">Cash, bank transfer, or other payment method</p>
+            <p className="font-semibold">Record Manual Payment</p>
+            <p className="ios-caption">Cash, bank transfer, or other payment method</p>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Active Requests */}
-      <div className="space-y-4">
+      <div className="section-gap">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : pendingRequests.length === 0 && expiredRequests.length === 0 && completedRequests.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="rounded-full bg-muted p-4 mb-4">
-                <QrCode className="h-8 w-8 text-muted-foreground" />
+          <div className="feed-card animate-fade-up stagger-delay-5">
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <QrCode className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No payment requests yet</h3>
-              <p className="text-muted-foreground text-center mb-4 max-w-sm text-sm">
-                Create your first payment request to get started
+              <h3 className="text-lg font-semibold mb-1">No payment requests yet</h3>
+              <p className="ios-caption text-center max-w-sm">
+                Create your first payment request above to start collecting payments from customers
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <>
             {pendingRequests.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">ACTIVE REQUESTS</h3>
-                <div className="space-y-2">
-                  {pendingRequests.map((request) => (
-                    <Card key={request.id} className="hover-elevate" data-testid={`request-${request.id}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <p className="font-bold text-lg">${parseFloat(request.amount).toFixed(2)}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                              </p>
+              <div className="animate-fade-up stagger-delay-5">
+                <p className="ios-label mb-3">ACTIVE REQUESTS</p>
+                <div className="feed-gap">
+                  {pendingRequests.map((request, idx) => (
+                    <div key={request.id} className={`feed-card card-press overflow-visible animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`} data-testid={`request-${request.id}`}>
+                      <div className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                              <DollarSign className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
                             </div>
-                            <div className="h-10 w-px bg-border" />
-                            <div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-lg tracking-tight">${parseFloat(request.amount).toFixed(2)}</p>
                               <p className="text-sm font-medium truncate max-w-[200px]">{request.description}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="ios-caption">
+                                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                                </p>
                                 {request.clientId && getClientName(request.clientId) && (
-                                  <span>{getClientName(request.clientId)}</span>
+                                  <>
+                                    <span className="ios-caption">·</span>
+                                    <span className="ios-caption">{getClientName(request.clientId)}</span>
+                                  </>
                                 )}
                                 {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
                                   <>
-                                    {request.clientId && getClientName(request.clientId) && <span>•</span>}
+                                    <span className="ios-caption">·</span>
                                     <span
-                                      className="text-primary cursor-pointer hover:underline"
+                                      className="text-[13px] cursor-pointer hover:underline"
+                                      style={{ color: 'hsl(var(--trade))' }}
                                       onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
                                     >
                                       {getInvoiceNumber(request.invoiceId)}
@@ -1037,9 +1040,10 @@ export default function CollectPayment() {
                                 )}
                                 {request.jobId && getJobTitle(request.jobId) && (
                                   <>
-                                    {(request.clientId || request.invoiceId) && <span>•</span>}
+                                    <span className="ios-caption">·</span>
                                     <span
-                                      className="text-primary cursor-pointer hover:underline"
+                                      className="text-[13px] cursor-pointer hover:underline"
+                                      style={{ color: 'hsl(var(--trade))' }}
                                       onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
                                     >
                                       {getJobTitle(request.jobId)}
@@ -1049,7 +1053,7 @@ export default function CollectPayment() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <Button
                               size="sm"
                               variant="outline"
@@ -1072,8 +1076,8 @@ export default function CollectPayment() {
                             </Button>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1099,11 +1103,11 @@ export default function CollectPayment() {
               const visibleHistory = showAllHistory ? filteredHistory : filteredHistory.slice(0, 15);
 
               return (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-up stagger-delay-6">
                   {expiredRequests.length > 0 && (
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                        <h3 className="text-sm font-medium text-muted-foreground">EXPIRED REQUESTS ({expiredRequests.length})</h3>
+                        <p className="ios-label">EXPIRED REQUESTS ({expiredRequests.length})</p>
                         {expiredRequests.length > 15 && (
                           <div className="relative flex-1 max-w-[200px]">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -1116,32 +1120,36 @@ export default function CollectPayment() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-2">
+                      <div className="feed-gap">
                         {visibleExpired.map((request) => (
-                          <Card key={request.id} className="opacity-75" data-testid={`request-expired-${request.id}`}>
-                            <CardContent className="p-3">
+                          <div key={request.id} className="feed-card opacity-75" data-testid={`request-expired-${request.id}`}>
+                            <div className="p-3">
                               <div className="flex items-start gap-3 mb-2">
-                                <div>
-                                  <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                                  </p>
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-muted">
+                                  <Clock className="h-5 w-5 text-muted-foreground" />
                                 </div>
-                                <div className="h-8 w-px bg-border" />
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <p className="text-sm font-medium truncate">{request.description}</p>
+                                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                    <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
                                     {getStatusBadge('expired')}
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                  <p className="text-sm font-medium truncate">{request.description}</p>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="ios-caption">
+                                      {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                                    </p>
                                     {request.clientId && getClientName(request.clientId) && (
-                                      <span>{getClientName(request.clientId)}</span>
+                                      <>
+                                        <span className="ios-caption">·</span>
+                                        <span className="ios-caption">{getClientName(request.clientId)}</span>
+                                      </>
                                     )}
                                     {request.invoiceId && getInvoiceNumber(request.invoiceId) && (
                                       <>
-                                        {request.clientId && getClientName(request.clientId) && <span>•</span>}
+                                        <span className="ios-caption">·</span>
                                         <span
-                                          className="text-primary cursor-pointer hover:underline"
+                                          className="text-[13px] cursor-pointer hover:underline"
+                                          style={{ color: 'hsl(var(--trade))' }}
                                           onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${request.invoiceId}`); }}
                                         >
                                           {getInvoiceNumber(request.invoiceId)}
@@ -1150,9 +1158,10 @@ export default function CollectPayment() {
                                     )}
                                     {request.jobId && getJobTitle(request.jobId) && (
                                       <>
-                                        {(request.clientId || request.invoiceId) && <span>•</span>}
+                                        <span className="ios-caption">·</span>
                                         <span
-                                          className="text-primary cursor-pointer hover:underline"
+                                          className="text-[13px] cursor-pointer hover:underline"
+                                          style={{ color: 'hsl(var(--trade))' }}
                                           onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${request.jobId}`); }}
                                         >
                                           {getJobTitle(request.jobId)}
@@ -1182,8 +1191,8 @@ export default function CollectPayment() {
                                   <XCircle className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         ))}
                       </div>
                       {filteredExpired.length > 15 && !showAllExpired && (
@@ -1212,7 +1221,7 @@ export default function CollectPayment() {
                   {completedRequests.length > 0 && (
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                        <h3 className="text-sm font-medium text-muted-foreground">HISTORY ({completedRequests.length})</h3>
+                        <p className="ios-label">HISTORY ({completedRequests.length})</p>
                         {completedRequests.length > 15 && (
                           <div className="relative flex-1 max-w-[200px]">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -1225,11 +1234,11 @@ export default function CollectPayment() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-2">
+                      <div className="feed-gap">
                         {visibleHistory.map((request) => (
-                          <Card
+                          <div
                             key={request.id}
-                            className="cursor-pointer hover-elevate"
+                            className="feed-card card-press overflow-visible cursor-pointer"
                             onClick={() => {
                               if (request.invoiceId) {
                                 navigate(`/invoices/${request.invoiceId}`);
@@ -1238,22 +1247,26 @@ export default function CollectPayment() {
                               }
                             }}
                           >
-                            <CardContent className="p-3">
+                            <div className="p-3">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-3">
-                                  {request.status === 'paid' ? (
-                                    <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0" />
-                                  ) : (
-                                    <XCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                  )}
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                    request.status === 'paid' ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-muted'
+                                  }`}>
+                                    {request.status === 'paid' ? (
+                                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                                    ) : (
+                                      <XCircle className="h-5 w-5 text-muted-foreground" />
+                                    )}
+                                  </div>
                                   <div className="min-w-0">
-                                    <p className="text-sm font-medium">${parseFloat(request.amount).toFixed(2)}</p>
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      <span className="truncate max-w-[140px]">{request.description}</span>
+                                    <p className="font-bold">${parseFloat(request.amount).toFixed(2)}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="ios-caption truncate max-w-[140px]">{request.description}</span>
                                       {request.clientId && getClientName(request.clientId) && (
                                         <>
-                                          <span>•</span>
-                                          <span className="truncate max-w-[100px]">{getClientName(request.clientId)}</span>
+                                          <span className="ios-caption">·</span>
+                                          <span className="ios-caption truncate max-w-[100px]">{getClientName(request.clientId)}</span>
                                         </>
                                       )}
                                     </div>
@@ -1261,13 +1274,13 @@ export default function CollectPayment() {
                                 </div>
                                 <div className="text-right flex-shrink-0">
                                   {getStatusBadge(request.status)}
-                                  <p className="text-xs text-muted-foreground mt-1">
+                                  <p className="ios-caption mt-1">
                                     {format(new Date(request.createdAt), 'MMM d')}
                                   </p>
                                 </div>
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         ))}
                       </div>
                       {filteredHistory.length > 15 && !showAllHistory && (

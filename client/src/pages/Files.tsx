@@ -42,7 +42,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
@@ -313,14 +312,23 @@ export default function FilesPage() {
     return (
       <PageShell>
         <PageHeader title="Files" subtitle="Licences, insurance, certifications & compliance" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}><CardContent className="p-4"><Skeleton className="h-10 w-full" /></CardContent></Card>
-          ))}
+        <div className="space-y-3">
+          <div className="feed-card p-5 animate-fade-up">
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="feed-card p-4 animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
+                <Skeleton className="h-14 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
         </div>
         <div className="space-y-3 mt-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+            <div key={i} className="feed-card p-4 animate-fade-up" style={{ animationDelay: `${(i + 3) * 60}ms` }}>
+              <Skeleton className="h-16 w-full rounded-xl" />
+            </div>
           ))}
         </div>
       </PageShell>
@@ -331,156 +339,208 @@ export default function FilesPage() {
     <PageShell>
       <PageHeader title="Files" subtitle="Licences, insurance, certifications & compliance" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <FileText className="h-3.5 w-3.5" />
-              <span>Total Documents</span>
+      <div className="section-gap">
+        <div className="animate-fade-up">
+          <p className="ios-label mb-3">Overview</p>
+          <div className="feed-card card-press p-5 mb-3 animate-fade-up stagger-delay-1"
+               style={{ background: 'linear-gradient(135deg, hsl(var(--trade) / 0.06) 0%, hsl(var(--card)) 100%)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="ios-label mb-1">Total Documents</p>
+                <p className="text-[36px] font-bold tracking-tight leading-none">{kpiData.total}</p>
+                <p className="ios-caption mt-1">Compliance documents tracked</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                   style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <FileText className="h-6 w-6" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
             </div>
-            <p className="text-xl font-semibold">{kpiData.total}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <CheckCircle className="h-3.5 w-3.5" />
-              <span>Current</span>
-            </div>
-            <p className="text-xl font-semibold">{kpiData.current}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              <span>Expiring Soon</span>
-            </div>
-            <p className="text-xl font-semibold">{kpiData.expiring}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <XCircle className="h-3.5 w-3.5" />
-              <span>Expired</span>
-            </div>
-            <p className="text-xl font-semibold">{kpiData.expired}</p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
-          {filterTabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className="whitespace-nowrap">
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
-      <div className="flex items-center gap-3 mt-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search documents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+          <div className="grid grid-cols-3 gap-3">
+            <div className="feed-card card-press p-4 animate-fade-up stagger-delay-2">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                     style={{ backgroundColor: 'hsl(var(--success) / 0.1)' }}>
+                  <CheckCircle className="h-5 w-5 text-success" />
+                </div>
+              </div>
+              <p className="text-xl font-bold">{kpiData.current}</p>
+              <p className="ios-caption">Current</p>
+            </div>
+            <div className="feed-card card-press p-4 animate-fade-up stagger-delay-3">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                     style={{ backgroundColor: 'hsl(var(--warning) / 0.1)' }}>
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                </div>
+              </div>
+              <p className="text-xl font-bold">{kpiData.expiring}</p>
+              <p className="ios-caption">Expiring</p>
+            </div>
+            <div className="feed-card card-press p-4 animate-fade-up stagger-delay-4">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                     style={{ backgroundColor: 'hsl(var(--destructive) / 0.1)' }}>
+                  <XCircle className="h-5 w-5 text-destructive" />
+                </div>
+              </div>
+              <p className="text-xl font-bold">{kpiData.expired}</p>
+              <p className="ios-caption">Expired</p>
+            </div>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            window.open('/api/compliance-documents/export/pack', '_blank');
-          }}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export Pack
-        </Button>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Document
-        </Button>
-      </div>
 
-      {filteredDocuments.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="No documents found"
-          description={searchQuery || activeTab !== "all" ? "Try adjusting your filters or search." : "Add your first compliance document to get started."}
-          action={
-            !searchQuery && activeTab === "all" ? (
-              <Button onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Document
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <div className="space-y-2 mt-4">
-          {filteredDocuments.map((doc) => {
-            const config = typeConfig[doc.type] || typeConfig.other;
-            const TypeIcon = config.icon;
-            return (
-              <Card
-                key={doc.id}
-                className="hover-elevate active-elevate-2 cursor-pointer transition-all overflow-visible"
-                onClick={() => setSelectedItem(doc)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50">
-                      <TypeIcon className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium truncate">{doc.title}</p>
-                        <ExpiryBadge expiryDate={doc.expiryDate} />
+        <div className="animate-fade-up stagger-delay-4">
+          <div className="feed-card overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 p-1.5">
+              {filterTabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                    activeTab === tab.value
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
+                  }`}
+                  style={activeTab === tab.value ? { backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' } : undefined}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 animate-fade-up stagger-delay-5">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search documents..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              window.open('/api/compliance-documents/export/pack', '_blank');
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Pack
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Document
+          </Button>
+        </div>
+
+        {filteredDocuments.length === 0 ? (
+          <div className="animate-fade-up stagger-delay-6">
+            <div className="feed-card text-center py-12 px-6">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
+                   style={{ background: 'linear-gradient(135deg, hsl(var(--trade) / 0.15), hsl(var(--trade) / 0.05))' }}>
+                <Shield className="h-10 w-10" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
+              <p className="text-lg font-semibold mb-1">
+                {searchQuery || activeTab !== "all" ? "No documents found" : "Start tracking compliance"}
+              </p>
+              <p className="ios-caption mb-6 max-w-xs mx-auto">
+                {searchQuery || activeTab !== "all"
+                  ? "Try adjusting your filters or search terms."
+                  : "Keep all your licences, insurance, and certifications organised and up to date in one place."}
+              </p>
+              {!searchQuery && activeTab === "all" && (
+                <Button onClick={openCreate}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Document
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="ios-label mb-3">
+              Documents {filteredDocuments.length !== documents.length && `(${filteredDocuments.length})`}
+            </p>
+            <div className="feed-gap">
+              {filteredDocuments.map((doc, index) => {
+                const config = typeConfig[doc.type] || typeConfig.other;
+                const TypeIcon = config.icon;
+                const status = getExpiryStatus(doc.expiryDate);
+                const iconBg = status === "expired"
+                  ? 'hsl(var(--destructive) / 0.1)'
+                  : status === "expiring"
+                    ? 'hsl(var(--warning) / 0.1)'
+                    : 'hsl(var(--trade) / 0.1)';
+                const iconColor = status === "expired"
+                  ? 'hsl(var(--destructive))'
+                  : status === "expiring"
+                    ? 'hsl(var(--warning))'
+                    : 'hsl(var(--trade))';
+
+                return (
+                  <div
+                    key={doc.id}
+                    className={`feed-card card-press cursor-pointer animate-fade-up stagger-delay-${Math.min(index + 1, 8)}`}
+                    onClick={() => setSelectedItem(doc)}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                             style={{ backgroundColor: iconBg }}>
+                          <TypeIcon className="h-5 w-5" style={{ color: iconColor }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-[15px] truncate">{doc.title}</p>
+                            <ExpiryBadge expiryDate={doc.expiryDate} />
+                          </div>
+                          <div className="flex items-center gap-3 ios-caption mt-0.5 flex-wrap">
+                            <span>{config.label}</span>
+                            {doc.documentNumber && <span>#{doc.documentNumber}</span>}
+                            {doc.holderName && <span>{doc.holderName}</span>}
+                            {doc.expiryDate && (
+                              <span>Exp: {format(new Date(doc.expiryDate), "dd MMM yyyy")}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {doc.attachmentUrl && (
+                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(doc); }}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); setDeleteTarget(doc); }}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                        <span>{config.label}</span>
-                        {doc.documentNumber && <span>#{doc.documentNumber}</span>}
-                        {doc.holderName && <span>{doc.holderName}</span>}
-                        {doc.expiryDate && (
-                          <span>Exp: {format(new Date(doc.expiryDate), "dd MMM yyyy")}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {doc.attachmentUrl && (
-                        <Paperclip className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(doc); }}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(doc); }}
-                            className="text-red-600 dark:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -586,7 +646,6 @@ export default function FilesPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 flex-shrink-0"
                     onClick={() => {
                       setFormData({ ...formData, attachmentUrl: "" });
                       setSelectedFileName(null);

@@ -1497,16 +1497,22 @@ export default function ChatHub() {
   
   const renderConversationList = () => (
     <div className="flex flex-col h-full bg-muted/30" data-testid="conversation-list">
-      {/* Clean header with personalized title */}
-      <div className="shrink-0 px-4 py-3 bg-background border-b">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div>
-            <h1 className="text-lg font-semibold">
-              {isTradie ? `Hey ${firstName}` : 'Messages'}
-            </h1>
-            {isTradie && (
-              <p className="text-xs text-muted-foreground">Your jobs & team chat</p>
-            )}
+      {/* Premium header with ios-title */}
+      <div className="shrink-0 px-4 pt-4 pb-3 bg-background border-b animate-fade-up">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                 style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+              <MessageCircle className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+            </div>
+            <div>
+              <h1 className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight">
+                {isTradie ? `Hey ${firstName}` : 'Job Communications'}
+              </h1>
+              <p className="ios-caption mt-0.5">
+                {isTradie ? 'Your jobs & team chat' : 'Messages, SMS & team chat'}
+              </p>
+            </div>
           </div>
           {!isTradie && (
             <Button
@@ -1520,69 +1526,78 @@ export default function ChatHub() {
           )}
         </div>
 
-        {/* Search */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-8 text-sm bg-muted/50 border-0"
-            data-testid="input-search"
-          />
+        {/* Search with feed-card container */}
+        <div className="feed-card mb-3 animate-fade-up stagger-delay-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-9 text-sm border-0 bg-transparent focus-visible:ring-0"
+              data-testid="input-search"
+            />
+          </div>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-0.5">
-          <Button
-            variant={filter === 'jobs' ? 'default' : 'ghost'}
-            size="sm"
+        {/* Pill-shaped filter tabs */}
+        <div className="feed-card p-1 flex gap-1 animate-fade-up stagger-delay-2">
+          <button
             onClick={() => setFilter('jobs')}
-            className="text-xs h-7 px-2.5 gap-1"
+            className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-all ${
+              filter === 'jobs'
+                ? 'bg-background shadow-sm'
+                : 'text-muted-foreground'
+            }`}
             data-testid="filter-jobs"
           >
-            <Briefcase className="h-3 w-3" />
+            <Briefcase className="h-3.5 w-3.5" />
             {isTradie ? 'My Jobs' : 'Jobs'}
             {jobSmsUnreadCount > 0 && (
-              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+              <span className="min-w-[16px] h-4 rounded-full text-[10px] font-bold flex items-center justify-center px-1"
+                    style={{ backgroundColor: 'hsl(var(--trade) / 0.15)', color: 'hsl(var(--trade))' }}>
                 {jobSmsUnreadCount}
-              </Badge>
+              </span>
             )}
-          </Button>
-          <Button
-            variant={filter === 'enquiries' ? 'default' : 'ghost'}
-            size="sm"
+          </button>
+          <button
             onClick={() => setFilter('enquiries')}
-            className="text-xs h-7 px-2.5 gap-1"
+            className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-all ${
+              filter === 'enquiries'
+                ? 'bg-background shadow-sm'
+                : 'text-muted-foreground'
+            }`}
             data-testid="filter-enquiries"
           >
-            <MessageCircle className="h-3 w-3" />
+            <MessageCircle className="h-3.5 w-3.5" />
             Enquiries
             {enquiryCount > 0 && (
-              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+              <span className="min-w-[16px] h-4 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px] font-bold flex items-center justify-center px-1">
                 {enquiryCount}
-              </Badge>
+              </span>
             )}
-          </Button>
-          <Button
-            variant={filter === 'team' ? 'default' : 'ghost'}
-            size="sm"
+          </button>
+          <button
             onClick={() => setFilter('team')}
-            className="text-xs h-7 px-2.5 gap-1"
+            className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-all ${
+              filter === 'team'
+                ? 'bg-background shadow-sm'
+                : 'text-muted-foreground'
+            }`}
             data-testid="filter-team"
           >
-            <Users className="h-3 w-3" />
+            <Users className="h-3.5 w-3.5" />
             Team
             {(unreadCounts.teamChat + unreadCounts.directMessages) > 0 && (
-              <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+              <span className="min-w-[16px] h-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center px-1">
                 {unreadCounts.teamChat + unreadCounts.directMessages}
-              </Badge>
+              </span>
             )}
-          </Button>
+          </button>
         </div>
-        {/* Job status sub-filter */}
+        {/* Job status sub-filter pills */}
         {filter === 'jobs' && (
-          <div className="flex gap-1 mt-2 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar animate-fade-up stagger-delay-3">
             {[
               { value: 'all', label: 'All' },
               { value: 'scheduled', label: 'Scheduled' },
@@ -1591,25 +1606,27 @@ export default function ChatHub() {
               { value: 'invoiced', label: 'Invoiced' },
               { value: 'pending', label: 'Pending' },
             ].map(status => (
-              <Button
+              <button
                 key={status.value}
-                variant={jobStatusFilter === status.value ? 'secondary' : 'ghost'}
-                size="sm"
                 onClick={() => setJobStatusFilter(status.value)}
-                className="text-[10px] h-6 px-2 shrink-0"
+                className={`text-[11px] font-medium px-3 py-1 rounded-full shrink-0 transition-all flex items-center gap-1.5 ${
+                  jobStatusFilter === status.value
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted text-muted-foreground'
+                }`}
                 data-testid={`filter-status-${status.value}`}
               >
                 {status.value !== 'all' && (
                   <Circle 
-                    className="h-2 w-2 mr-1" 
+                    className="h-2 w-2" 
                     style={{ 
-                      fill: STATUS_COLORS[status.value] || '#6B7280',
-                      color: STATUS_COLORS[status.value] || '#6B7280'
+                      fill: jobStatusFilter === status.value ? 'currentColor' : (STATUS_COLORS[status.value] || '#6B7280'),
+                      color: jobStatusFilter === status.value ? 'currentColor' : (STATUS_COLORS[status.value] || '#6B7280')
                     }} 
                   />
                 )}
                 {status.label}
-              </Button>
+              </button>
             ))}
           </div>
         )}
@@ -1617,21 +1634,22 @@ export default function ChatHub() {
 
       <OfflineBanner />
 
-      {/* Conversation list with separators */}
-      <ScrollArea className="flex-1 px-1">
+      {/* Conversation list */}
+      <ScrollArea className="flex-1 px-2">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="flex flex-col items-center justify-center py-20 px-6 animate-fade-up">
             {filter === 'jobs' ? (
               <>
-                <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
-                  <Briefcase className="h-7 w-7 text-blue-500/50" />
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                     style={{ backgroundColor: 'hsl(var(--trade) / 0.08)' }}>
+                  <Briefcase className="h-10 w-10" style={{ color: 'hsl(var(--trade) / 0.4)' }} />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  {jobStatusFilter !== 'all' ? `No ${STATUS_LABELS[jobStatusFilter]?.toLowerCase() || jobStatusFilter} jobs` : (isTradie ? 'No jobs assigned' : 'No jobs yet')}
+                <p className="text-[15px] font-semibold mb-1">
+                  {jobStatusFilter !== 'all' ? `No ${STATUS_LABELS[jobStatusFilter]?.toLowerCase() || jobStatusFilter} jobs` : (isTradie ? 'No jobs assigned yet' : 'No jobs yet')}
                 </p>
-                <p className="text-xs text-muted-foreground/70 text-center mb-3">
+                <p className="ios-caption text-center max-w-[240px] mb-4">
                   {jobStatusFilter !== 'all' 
                     ? 'Try changing the filter to see other jobs'
                     : (isTradie 
@@ -1640,7 +1658,7 @@ export default function ChatHub() {
                 </p>
                 {!isTradie && jobStatusFilter === 'all' && (
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     size="sm" 
                     className="gap-1.5"
                     onClick={() => setLocation('/jobs')}
@@ -1652,68 +1670,70 @@ export default function ChatHub() {
               </>
             ) : filter === 'enquiries' ? (
               <>
-                <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
-                  <MessageCircle className="h-7 w-7 text-orange-500/50" />
+                <div className="w-20 h-20 rounded-full bg-orange-500/8 flex items-center justify-center mb-4">
+                  <MessageCircle className="h-10 w-10 text-orange-500/40" />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">No new enquiries</p>
-                <p className="text-xs text-muted-foreground/70 text-center">
+                <p className="text-[15px] font-semibold mb-1">No new enquiries</p>
+                <p className="ios-caption text-center max-w-[240px]">
                   When clients text your business number, they'll appear here
                 </p>
               </>
             ) : (
               <>
-                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Users className="h-7 w-7 text-muted-foreground/50" />
+                <div className="w-20 h-20 rounded-full bg-primary/8 flex items-center justify-center mb-4">
+                  <Users className="h-10 w-10 text-primary/40" />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Team chat is ready</p>
-                <p className="text-xs text-muted-foreground/70 text-center">
+                <p className="text-[15px] font-semibold mb-1">Team chat is ready</p>
+                <p className="ios-caption text-center max-w-[240px]">
                   {isTradie ? 'Chat with your team and the boss' : 'Start chatting with your team'}
                 </p>
               </>
             )}
           </div>
         ) : (
-          <div className="py-1">
+          <div className="py-2 space-y-1.5">
             {conversationList.map((item, index) => {
               const isSelected = selectedConversation?.id === item.id;
               const hasUnread = item.unreadCount > 0;
               const prevItem = index > 0 ? conversationList[index - 1] : null;
               const showSectionHeader = !prevItem || prevItem.type !== item.type;
+              const staggerClass = index < 8 ? `stagger-delay-${index + 1}` : '';
               
               return (
                 <div key={item.id}>
-                  {/* Section header for type changes */}
                   {showSectionHeader && filter === 'all' && (
-                    <div className="px-4 py-2 mt-2 first:mt-0">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    <div className="px-3 py-2 mt-2 first:mt-0">
+                      <span className="ios-label">
                         {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'Direct Messages' : item.type === 'job' ? 'Jobs' : 'New Enquiries'}
                       </span>
                     </div>
                   )}
                   
                   <div
-                    className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                    className={`feed-card card-press flex items-start gap-3 p-3 cursor-pointer animate-fade-up ${staggerClass} ${
                       isSelected 
-                        ? 'bg-accent' 
+                        ? 'ring-2'
                         : hasUnread
-                        ? 'bg-primary/5 hover-elevate'
-                        : 'hover-elevate'
+                        ? ''
+                        : ''
                     }`}
+                    style={isSelected ? { borderColor: 'hsl(var(--trade) / 0.3)', boxShadow: '0 0 0 1px hsl(var(--trade) / 0.15)' } : undefined}
                     onClick={() => handleConversationClick(item)}
                     data-testid={`conversation-${item.id}`}
                   >
                     {/* Avatar/Icon */}
                     <div className="relative shrink-0 mt-0.5">
                       {item.type === 'team' ? (
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-primary" />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                             style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                          <Users className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
                         </div>
                       ) : item.type === 'job' ? (
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                           <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                       ) : item.type === 'unassigned' ? (
-                        <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
                           <MessageCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                         </div>
                       ) : (
@@ -1730,39 +1750,41 @@ export default function ChatHub() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                        <span className={`text-sm truncate ${hasUnread ? 'font-bold' : 'font-semibold'}`}>
                           {item.title}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {item.lastMessageTime && (
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="ios-caption text-[10px]">
                               {formatTime(item.lastMessageTime)}
                             </span>
                           )}
                           {hasUnread && (
-                            <span className="min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                            <span className="min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 text-white"
+                                  style={{ backgroundColor: 'hsl(var(--trade))' }}>
                               {item.unreadCount > 99 ? '99+' : item.unreadCount}
                             </span>
                           )}
                         </div>
                       </div>
                       
-                      {/* Job cards: show client name + assigned worker + address */}
+                      {/* Job cards: client name + assigned worker + address */}
                       {item.type === 'job' && item.clientName && (
-                        <p className="text-xs truncate mt-0.5">
-                          <User className="h-3 w-3 inline mr-1 text-muted-foreground" />
-                          {item.clientName}
+                        <p className="text-xs truncate mt-0.5 flex items-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate">{item.clientName}</span>
                         </p>
                       )}
                       {item.type === 'job' && item.assignedWorkerName && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                        <p className="ios-caption text-[11px] truncate mt-0.5 flex items-center gap-1">
                           <Wrench className="h-2.5 w-2.5 shrink-0" />
                           <span className="truncate">{item.assignedWorkerName}</span>
                           {item.assignedWorkerPhone && (
                             <a 
                               href={`tel:${item.assignedWorkerPhone}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="shrink-0 text-primary hover:underline"
+                              className="shrink-0"
+                              style={{ color: 'hsl(var(--trade))' }}
                             >
                               <Phone className="h-2.5 w-2.5" />
                             </a>
@@ -1770,26 +1792,27 @@ export default function ChatHub() {
                         </p>
                       )}
                       {item.type === 'job' && item.subtitle && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                          {item.subtitle}
+                        <p className="ios-caption text-[11px] truncate mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{item.subtitle}</span>
                         </p>
                       )}
                       
                       {/* Non-job items: standard subtitle */}
                       {item.type !== 'job' && item.subtitle && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        <p className="ios-caption truncate mt-0.5">
                           {item.subtitle}
                         </p>
                       )}
                       
-                      {/* Job status badge */}
+                      {/* Job status badge + SMS indicator */}
                       {item.type === 'job' && item.jobStatus && (
-                        <div className="flex items-center gap-2 flex-wrap mt-1">
+                        <div className="flex items-center gap-2 flex-wrap mt-1.5">
                           <Badge 
                             variant="secondary" 
                             className="text-[10px] h-5 px-1.5"
                             style={{ 
-                              backgroundColor: `${STATUS_COLORS[item.jobStatus]}20`,
+                              backgroundColor: `${STATUS_COLORS[item.jobStatus]}15`,
                               color: STATUS_COLORS[item.jobStatus]
                             }}
                           >
@@ -1806,7 +1829,7 @@ export default function ChatHub() {
                       
                       {/* Unassigned: show phone number */}
                       {item.type === 'unassigned' && item.clientPhone && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
+                        <p className="ios-caption text-[10px] mt-1">
                           {item.clientPhone}
                         </p>
                       )}

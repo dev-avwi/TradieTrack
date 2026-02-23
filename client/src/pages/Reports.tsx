@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -219,52 +218,49 @@ const getBASQuarter = () => {
 
 function KPICardSkeleton() {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-32" />
-          </div>
-          <Skeleton className="h-10 w-10 rounded-full" />
+    <div className="feed-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-7 w-28" />
         </div>
-        <Skeleton className="h-3 w-28 mt-2" />
-      </CardContent>
-    </Card>
+        <Skeleton className="h-10 w-10 rounded-xl" />
+      </div>
+      <Skeleton className="h-3 w-24 mt-2" />
+    </div>
+  );
+}
+
+function HeroMetricSkeleton() {
+  return (
+    <div className="feed-card p-5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-10 w-40" />
+        </div>
+        <Skeleton className="h-12 w-12 rounded-xl" />
+      </div>
+      <Skeleton className="h-3 w-32 mt-3" />
+    </div>
   );
 }
 
 function ExecutiveSummarySkeleton() {
   return (
-    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
+    <div className="card-accent p-5 space-y-4">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-12 w-12 rounded-xl" />
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-6 w-40" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActionableInsightsSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-32" />
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-      </CardContent>
-    </Card>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-6 w-40" />
+      </div>
+    </div>
   );
 }
 
@@ -274,6 +270,7 @@ export default function Reports() {
   const [dateRange, setDateRange] = useState<'ytd' | 'month' | 'quarter' | 'year'>('ytd');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [activeTab, setActiveTab] = useState<'revenue' | 'payments' | 'jobs' | 'clients' | 'team'>('revenue');
 
   const getDateRange = () => {
     const now = new Date();
@@ -449,459 +446,459 @@ export default function Reports() {
     }
   };
 
-  const clientsWithOutstanding = clientData?.clients.filter(c => c.outstandingBalance > 0) || [];
+  const tabs = [
+    { id: 'revenue' as const, label: 'Revenue', testId: 'tab-revenue' },
+    { id: 'payments' as const, label: 'Payments', testId: 'tab-payments' },
+    { id: 'jobs' as const, label: 'Jobs', testId: 'tab-jobs' },
+    { id: 'clients' as const, label: 'Clients', testId: 'tab-clients' },
+    ...(teamData !== null ? [{ id: 'team' as const, label: 'Team', testId: 'tab-team' }] : []),
+  ];
 
   return (
     <PageShell>
       <PageHeader
         title="Reports"
         subtitle="Your business at a glance"
-        leading={<BarChart3 className="h-6 w-6" />}
+        leading={<BarChart3 className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
       />
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-          <div className="flex items-center gap-4">
-            <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
-              <SelectTrigger className="w-[180px]" data-testid="select-date-range">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="quarter">This Quarter</SelectItem>
-                <SelectItem value="ytd">Year to Date</SelectItem>
-                <SelectItem value="year">Last 12 Months</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">Updated</span> {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleRefreshAll}
-                data-testid="button-refresh-all"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+
+      <div className="section-gap">
+        <div className="feed-card p-3 animate-fade-up">
+          <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+            <div className="flex items-center gap-3 flex-wrap">
+              <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+                <SelectTrigger className="w-[180px]" data-testid="select-date-range">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="quarter">This Quarter</SelectItem>
+                  <SelectItem value="ytd">Year to Date</SelectItem>
+                  <SelectItem value="year">Last 12 Months</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span className="hidden sm:inline">Updated</span> {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleRefreshAll}
+                  data-testid="button-refresh-all"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+            
+            <Button 
+              variant="outline" 
+              data-testid="button-export-report"
+              disabled={!revenueData?.months || revenueData.months.length === 0}
+              onClick={handleExportRevenue}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Revenue
+            </Button>
           </div>
-          
-          <Button 
-            variant="outline" 
-            data-testid="button-export-report"
-            disabled={!revenueData?.months || revenueData.months.length === 0}
-            onClick={handleExportRevenue}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export Revenue
-          </Button>
         </div>
 
         {summaryLoading ? (
           <ExecutiveSummarySkeleton />
         ) : summary && (
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold" data-testid="text-executive-summary">
-                      You've banked {formatCurrency(summary.revenue.total)} {getDateRangeLabel()}
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {summary.jobs.completed} jobs completed, {summary.invoices.paid} invoices paid
-                    </p>
-                  </div>
+          <div className="card-accent p-5 animate-fade-up stagger-delay-1">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                  <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge 
-                    variant="outline" 
-                    className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
-                    data-testid="badge-gst-status"
-                  >
-                    <Receipt className="h-3 w-3 mr-1" />
-                    GST collected: {formatCurrency(summary.revenue.gstCollected)}
-                  </Badge>
-                  <Badge 
-                    variant="outline" 
-                    className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
-                    data-testid="badge-bas-quarter"
-                  >
-                    <FileCheck className="h-3 w-3 mr-1" />
-                    BAS: {getBASQuarter()}
-                  </Badge>
+                <div>
+                  <h2 className="text-xl font-bold" data-testid="text-executive-summary">
+                    You've banked {formatCurrency(summary.revenue.total)} {getDateRangeLabel()}
+                  </h2>
+                  <p className="ios-caption mt-0.5">
+                    {summary.jobs.completed} jobs completed, {summary.invoices.paid} invoices paid
+                  </p>
                 </div>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge 
+                  variant="outline" 
+                  className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
+                  data-testid="badge-gst-status"
+                >
+                  <Receipt className="h-3 w-3 mr-1" />
+                  GST collected: {formatCurrency(summary.revenue.gstCollected)}
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                  data-testid="badge-bas-quarter"
+                >
+                  <FileCheck className="h-3 w-3 mr-1" />
+                  BAS: {getBASQuarter()}
+                </Badge>
+              </div>
+            </div>
 
-              {(summary.invoices.overdue > 0 || summary.quotes.pending > 0) && (
-                <div className="mt-4 pt-4 border-t border-primary/20 space-y-2">
-                  {summary.invoices.overdue > 0 && (
-                    <div 
-                      className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg cursor-pointer hover-elevate"
-                      onClick={() => navigate('/invoices?status=overdue')}
-                      data-testid="action-chase-overdue"
-                    >
-                      <div className="flex items-center gap-3">
+            {(summary.invoices.overdue > 0 || summary.quotes.pending > 0) && (
+              <div className="mt-4 pt-4 border-t border-border/30 space-y-2">
+                {summary.invoices.overdue > 0 && (
+                  <div 
+                    className="feed-card card-press flex items-center justify-between gap-3 p-3 bg-red-50 dark:bg-red-900/20 cursor-pointer"
+                    onClick={() => navigate('/invoices?status=overdue')}
+                    data-testid="action-chase-overdue"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
                         <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        <div>
-                          <p className="font-medium text-red-700 dark:text-red-300">
-                            Chase {summary.invoices.overdue} overdue invoice{summary.invoices.overdue !== 1 ? 's' : ''} worth {formatCurrency(summary.revenue.overdue)}
-                          </p>
-                          <p className="text-sm text-red-600/80 dark:text-red-400/80">
-                            Get on the blower and chase that cash today
-                          </p>
-                        </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <div>
+                        <p className="font-medium text-red-700 dark:text-red-300">
+                          Chase {summary.invoices.overdue} overdue invoice{summary.invoices.overdue !== 1 ? 's' : ''} worth {formatCurrency(summary.revenue.overdue)}
+                        </p>
+                        <p className="ios-caption text-red-600/80 dark:text-red-400/80">
+                          Get on the blower and chase that cash today
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  
-                  {summary.quotes.pending > 0 && (
-                    <div 
-                      className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg cursor-pointer hover-elevate"
-                      onClick={() => navigate('/quotes?status=pending')}
-                      data-testid="action-follow-quotes"
-                    >
-                      <div className="flex items-center gap-3">
+                    <ChevronRight className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  </div>
+                )}
+                
+                {summary.quotes.pending > 0 && (
+                  <div 
+                    className="feed-card card-press flex items-center justify-between gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 cursor-pointer"
+                    onClick={() => navigate('/quotes?status=pending')}
+                    data-testid="action-follow-quotes"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center flex-shrink-0">
                         <FileText className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                        <div>
-                          <p className="font-medium text-yellow-700 dark:text-yellow-300">
-                            Follow up on {summary.quotes.pending} pending quote{summary.quotes.pending !== 1 ? 's' : ''}
-                          </p>
-                          <p className="text-sm text-yellow-600/80 dark:text-yellow-400/80">
-                            Give them a nudge before they go cold
-                          </p>
-                        </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                      <div>
+                        <p className="font-medium text-yellow-700 dark:text-yellow-300">
+                          Follow up on {summary.quotes.pending} pending quote{summary.quotes.pending !== 1 ? 's' : ''}
+                        </p>
+                        <p className="ios-caption text-yellow-600/80 dark:text-yellow-400/80">
+                          Give them a nudge before they go cold
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <ChevronRight className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {summaryLoading ? (
-            <>
-              <KPICardSkeleton />
-              <KPICardSkeleton />
-              <KPICardSkeleton />
-              <KPICardSkeleton />
-            </>
-          ) : (
-            <>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
+        <div>
+          <SectionTitle>Key Metrics</SectionTitle>
+          <div className="mt-3">
+            {summaryLoading ? (
+              <div className="space-y-3">
+                <HeroMetricSkeleton />
+                <div className="grid grid-cols-2 gap-3">
+                  <KPICardSkeleton />
+                  <KPICardSkeleton />
+                  <KPICardSkeleton />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="feed-card card-press p-5 animate-fade-up stagger-delay-2">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold" data-testid="text-total-revenue">
+                      <p className="ios-label">Total Revenue</p>
+                      <p className="text-[32px] font-bold tracking-tight leading-tight mt-1" data-testid="text-total-revenue">
                         {formatCurrency(summary?.revenue.total || 0)}
                       </p>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                      <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                         style={{ backgroundColor: 'hsl(var(--success) / 0.1)' }}>
+                      <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="ios-caption mt-2">
                     Incl. GST: {formatCurrency(summary?.revenue.gstCollected || 0)}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pending</p>
-                      <p className="text-2xl font-bold" data-testid="text-pending-revenue">
-                        {formatCurrency(summary?.revenue.pending || 0)}
-                      </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="feed-card card-press p-4 animate-fade-up stagger-delay-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="ios-label">Pending</p>
+                        <p className="text-xl font-bold mt-1" data-testid="text-pending-revenue">
+                          {formatCurrency(summary?.revenue.pending || 0)}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
+                        <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                      </div>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                      <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                    </div>
+                    <p className="ios-caption mt-1">
+                      {summary?.invoices.unpaid || 0} unpaid invoices
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {summary?.invoices.unpaid || 0} unpaid invoices
-                  </p>
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Overdue</p>
-                      <p className="text-2xl font-bold text-red-600" data-testid="text-overdue-revenue">
-                        {formatCurrency(summary?.revenue.overdue || 0)}
-                      </p>
+                  <div className="feed-card card-press p-4 animate-fade-up stagger-delay-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="ios-label">Overdue</p>
+                        <p className="text-xl font-bold text-red-600 mt-1" data-testid="text-overdue-revenue">
+                          {formatCurrency(summary?.revenue.overdue || 0)}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      </div>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    </div>
+                    <p className="ios-caption mt-1">
+                      {summary?.invoices.overdue || 0} overdue invoices
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {summary?.invoices.overdue || 0} overdue invoices
-                  </p>
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Quote Conversion</p>
-                      <p className="text-2xl font-bold" data-testid="text-conversion-rate">
-                        {`${(summary?.quotes.conversionRate || 0).toFixed(0)}%`}
-                      </p>
+                  <div className="feed-card card-press p-4 animate-fade-up stagger-delay-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="ios-label">Quote Conversion</p>
+                        <p className="text-xl font-bold mt-1" data-testid="text-conversion-rate">
+                          {`${(summary?.quotes.conversionRate || 0).toFixed(0)}%`}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                        <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
+                    <p className="ios-caption mt-1">
+                      {summary?.quotes.accepted || 0} of {summary?.quotes.total || 0} quotes
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {summary?.quotes.accepted || 0} of {summary?.quotes.total || 0} quotes
-                  </p>
-                </CardContent>
-              </Card>
-            </>
-          )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <Tabs defaultValue="revenue" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 max-w-xl">
-            <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
-            <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
-            <TabsTrigger value="jobs" data-testid="tab-jobs">Jobs</TabsTrigger>
-            <TabsTrigger value="clients" data-testid="tab-clients">Clients</TabsTrigger>
-            {teamData !== null && <TabsTrigger value="team" data-testid="tab-team">Team</TabsTrigger>}
-          </TabsList>
+        <div>
+          <div className="feed-card p-1 animate-fade-up stagger-delay-6">
+            <div className="flex overflow-x-auto no-scrollbar">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  data-testid={tab.testId}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 min-w-0 px-4 py-2.5 text-sm font-medium rounded-xl whitespace-nowrap transition-colors ${
+                    activeTab === tab.id
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
+                  }`}
+                  style={activeTab === tab.id ? { backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' } : undefined}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <TabsContent value="revenue" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle>Monthly Revenue</CardTitle>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-[100px]" data-testid="select-year">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2025">2025</SelectItem>
-                    <SelectItem value="2024">2024</SelectItem>
-                    <SelectItem value="2023">2023</SelectItem>
-                  </SelectContent>
-                </Select>
-              </CardHeader>
-              <CardContent>
-                {revenueLoading ? (
-                  <div className="h-[300px] flex items-center justify-center">
-                    <div className="space-y-4 w-full">
-                      <Skeleton className="h-[250px] w-full" />
-                      <div className="flex gap-8 justify-center">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-4 w-32" />
+          {activeTab === 'revenue' && (
+            <div className="mt-4 animate-fade-up">
+              <div className="feed-card">
+                <div className="flex flex-row items-center justify-between gap-2 p-4 pb-0">
+                  <h3 className="ios-card-title">Monthly Revenue</h3>
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-[100px]" data-testid="select-year">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2025">2025</SelectItem>
+                      <SelectItem value="2024">2024</SelectItem>
+                      <SelectItem value="2023">2023</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="p-4">
+                  {revenueLoading ? (
+                    <div className="h-[300px] flex items-center justify-center">
+                      <div className="space-y-4 w-full">
+                        <Skeleton className="h-[250px] w-full" />
+                        <div className="flex gap-8 justify-center">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={revenueData?.months || []}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis 
-                            dataKey="month" 
-                            className="text-xs"
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          />
-                          <YAxis 
-                            className="text-xs"
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                            tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
-                          />
-                          <Tooltip 
-                            formatter={(value: number) => formatCurrency(value)}
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px'
-                            }}
-                          />
-                          <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 flex gap-8 justify-center text-sm text-muted-foreground">
-                      <div>
-                        <span className="font-medium text-foreground">Total: </span>
-                        {formatCurrency(revenueData?.yearTotal || 0)}
+                  ) : (
+                    <>
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={revenueData?.months || []}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis 
+                              dataKey="month" 
+                              className="text-xs"
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <YAxis 
+                              className="text-xs"
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                              tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                            />
+                            <Tooltip 
+                              formatter={(value: number) => formatCurrency(value)}
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '12px'
+                              }}
+                            />
+                            <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div>
-                        <span className="font-medium text-foreground">GST: </span>
-                        {formatCurrency(revenueData?.yearGst || 0)}
+                      <div className="mt-4 pt-4 border-t flex gap-6 justify-center">
+                        <div className="text-center">
+                          <p className="ios-label">Total</p>
+                          <p className="font-semibold mt-0.5">{formatCurrency(revenueData?.yearTotal || 0)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="ios-label">GST</p>
+                          <p className="font-semibold mt-0.5">{formatCurrency(revenueData?.yearGst || 0)}</p>
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-          <TabsContent value="payments" className="mt-6">
-            <div className="space-y-6">
+          {activeTab === 'payments' && (
+            <div className="mt-4 space-y-4 animate-fade-up">
               {stripeLoading ? (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <KPICardSkeleton />
                     <KPICardSkeleton />
                     <KPICardSkeleton />
                     <KPICardSkeleton />
                   </div>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <Skeleton className="h-5 w-32" />
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <Skeleton className="h-5 w-32" />
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                      </CardContent>
-                    </Card>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="feed-card p-4 space-y-3">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                    <div className="feed-card p-4 space-y-3">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
                   </div>
                 </div>
               ) : !stripeData?.available ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="rounded-full bg-muted p-4 mb-4">
-                      <CreditCard className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">Stripe Not Connected</h3>
-                    <p className="text-muted-foreground text-center mb-4 max-w-sm">
-                      {stripeData?.message || 'Connect your Stripe account to see payment data'}
-                    </p>
-                    <Button onClick={() => navigate('/integrations')} data-testid="button-connect-stripe">
-                      Connect Stripe
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="feed-card p-8 flex flex-col items-center justify-center">
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                       style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}>
+                    <CreditCard className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="ios-card-title mb-1">Stripe Not Connected</h3>
+                  <p className="ios-caption text-center mb-4 max-w-sm">
+                    {stripeData?.message || 'Connect your Stripe account to see payment data'}
+                  </p>
+                  <Button onClick={() => navigate('/integrations')} data-testid="button-connect-stripe">
+                    Connect Stripe
+                  </Button>
+                </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Available</p>
-                            <p className="text-2xl font-bold text-green-600" data-testid="text-stripe-available">
-                              {formatCurrency(stripeData?.balance?.available || 0)}
-                            </p>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                            <Wallet className="h-5 w-5 text-green-600 dark:text-green-400" />
-                          </div>
+                  <SectionTitle>Stripe Balance</SectionTitle>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Available</p>
+                          <p className="text-xl font-bold text-green-600 mt-1" data-testid="text-stripe-available">
+                            {formatCurrency(stripeData?.balance?.available || 0)}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Ready to transfer to bank
-                        </p>
-                      </CardContent>
-                    </Card>
+                        <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+                          <Wallet className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                      </div>
+                      <p className="ios-caption mt-1">Ready to transfer to bank</p>
+                    </div>
 
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Pending</p>
-                            <p className="text-2xl font-bold" data-testid="text-stripe-pending">
-                              {formatCurrency(stripeData?.balance?.pending || 0)}
-                            </p>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                            <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                          </div>
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Pending</p>
+                          <p className="text-xl font-bold mt-1" data-testid="text-stripe-pending">
+                            {formatCurrency(stripeData?.balance?.pending || 0)}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Being processed
-                        </p>
-                      </CardContent>
-                    </Card>
+                        <div className="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
+                          <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                      </div>
+                      <p className="ios-caption mt-1">Being processed</p>
+                    </div>
 
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Net Revenue</p>
-                            <p className="text-2xl font-bold" data-testid="text-stripe-net">
-                              {formatCurrency(stripeData?.totals?.totalNet || 0)}
-                            </p>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                            <Banknote className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          </div>
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Net Revenue</p>
+                          <p className="text-xl font-bold mt-1" data-testid="text-stripe-net">
+                            {formatCurrency(stripeData?.totals?.totalNet || 0)}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          After Stripe fees
-                        </p>
-                      </CardContent>
-                    </Card>
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                          <Banknote className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      </div>
+                      <p className="ios-caption mt-1">After Stripe fees</p>
+                    </div>
 
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Payments</p>
-                            <p className="text-2xl font-bold" data-testid="text-stripe-count">
-                              {stripeData?.totals?.paymentCount || 0}
-                            </p>
-                          </div>
-                          <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                          </div>
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Payments</p>
+                          <p className="text-xl font-bold mt-1" data-testid="text-stripe-count">
+                            {stripeData?.totals?.paymentCount || 0}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Total: {formatCurrency(stripeData?.totals?.totalRevenue || 0)}
-                        </p>
-                      </CardContent>
-                    </Card>
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+                          <CreditCard className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                      </div>
+                      <p className="ios-caption mt-1">Total: {formatCurrency(stripeData?.totals?.totalRevenue || 0)}</p>
+                    </div>
                   </div>
 
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between gap-2">
-                        <CardTitle>Recent Payments</CardTitle>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="feed-card animate-fade-up stagger-delay-5">
+                      <div className="flex flex-row items-center justify-between gap-2 p-4 pb-2">
+                        <h3 className="ios-card-title">Recent Payments</h3>
                         <Button variant="ghost" size="icon" onClick={() => refetchStripe()} data-testid="button-refresh-payments">
                           <RefreshCw className="h-4 w-4" />
                         </Button>
-                      </CardHeader>
-                      <CardContent>
+                      </div>
+                      <div className="p-4 pt-0">
                         {stripeData?.payments?.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-6">No payments in this period</p>
+                          <p className="ios-caption text-center py-6">No payments in this period</p>
                         ) : (
-                          <div className="space-y-3">
-                            {stripeData?.payments?.slice(0, 5).map((payment) => (
-                              <div key={payment.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="space-y-2">
+                            {stripeData?.payments?.slice(0, 5).map((payment, idx) => (
+                              <div key={payment.id} className={`feed-card card-press flex items-center justify-between gap-3 p-3 animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}>
                                 <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                                  <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
                                     <DollarSign className="h-5 w-5 text-green-600" />
                                   </div>
                                   <div>
-                                    <p className="font-medium">{payment.customer || 'Customer'}</p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="font-medium text-sm">{payment.customer || 'Customer'}</p>
+                                    <p className="ios-caption">
                                       {format(new Date(payment.created), 'MMM d, yyyy h:mm a')}
                                     </p>
                                   </div>
@@ -927,34 +924,34 @@ export default function Reports() {
                             ))}
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Recent Payouts</CardTitle>
-                      </CardHeader>
-                      <CardContent>
+                    <div className="feed-card animate-fade-up stagger-delay-6">
+                      <div className="p-4 pb-2">
+                        <h3 className="ios-card-title">Recent Payouts</h3>
+                      </div>
+                      <div className="p-4 pt-0">
                         {stripeData?.payouts?.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-6">No payouts yet</p>
+                          <p className="ios-caption text-center py-6">No payouts yet</p>
                         ) : (
-                          <div className="space-y-3">
-                            {stripeData?.payouts?.slice(0, 5).map((payout) => (
-                              <div key={payout.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="space-y-2">
+                            {stripeData?.payouts?.slice(0, 5).map((payout, idx) => (
+                              <div key={payout.id} className={`feed-card card-press flex items-center justify-between gap-3 p-3 animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}>
                                 <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
                                     <ArrowUpRight className="h-5 w-5 text-blue-600" />
                                   </div>
                                   <div>
-                                    <p className="font-medium">Bank Transfer</p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="font-medium text-sm">Bank Transfer</p>
+                                    <p className="ios-caption">
                                       {payout.destination ? `To ${payout.destination}` : 'To bank account'}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="font-semibold">{formatCurrency(payout.amount)}</p>
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="ios-caption">
                                     {payout.arrivalDate 
                                       ? format(new Date(payout.arrivalDate), 'MMM d, yyyy') 
                                       : payout.status}
@@ -964,34 +961,32 @@ export default function Reports() {
                             ))}
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   </div>
 
                   {stripeData?.totals && stripeData.totals.totalFees > 0 && (
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Processing Fees (2.5% platform + Stripe)</span>
-                          <span className="font-medium text-yellow-600">
-                            -{formatCurrency(stripeData.totals.totalFees)}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="feed-card p-4 animate-fade-up stagger-delay-7">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="ios-caption">Processing Fees (2.5% platform + Stripe)</span>
+                        <span className="font-medium text-yellow-600">
+                          -{formatCurrency(stripeData.totals.totalFees)}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </>
               )}
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="jobs" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Job Status</CardTitle>
-                </CardHeader>
-                <CardContent>
+          {activeTab === 'jobs' && (
+            <div className="mt-4 grid gap-4 md:grid-cols-2 animate-fade-up">
+              <div className="feed-card">
+                <div className="p-4 pb-2">
+                  <h3 className="ios-card-title">Job Status</h3>
+                </div>
+                <div className="p-4">
                   {summaryLoading ? (
                     <div className="h-[250px] flex items-center justify-center">
                       <Skeleton className="h-[200px] w-[200px] rounded-full" />
@@ -1018,20 +1013,20 @@ export default function Reports() {
                               contentStyle={{
                                 backgroundColor: 'hsl(var(--card))',
                                 border: '1px solid hsl(var(--border))',
-                                borderRadius: '8px'
+                                borderRadius: '12px'
                               }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="flex justify-center gap-6 mt-4">
+                      <div className="flex justify-center gap-6 mt-4 flex-wrap">
                         {jobPieData.map((item, index) => (
                           <div key={item.name} className="flex items-center gap-2">
                             <div 
                               className="h-3 w-3 rounded-full" 
                               style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                             />
-                            <span className="text-sm text-muted-foreground">
+                            <span className="ios-caption">
                               {item.name}: {item.value}
                             </span>
                           </div>
@@ -1039,307 +1034,276 @@ export default function Reports() {
                       </div>
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Job Metrics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <div className="feed-card">
+                <div className="p-4 pb-2">
+                  <h3 className="ios-card-title">Job Metrics</h3>
+                </div>
+                <div className="p-4 space-y-2">
                   {summaryLoading ? (
                     <>
-                      <Skeleton className="h-16 w-full" />
-                      <Skeleton className="h-16 w-full" />
-                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-16 w-full rounded-xl" />
+                      <Skeleton className="h-16 w-full rounded-xl" />
+                      <Skeleton className="h-16 w-full rounded-xl" />
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div className="feed-card card-press flex items-center justify-between gap-3 p-4 animate-fade-up stagger-delay-1">
                         <div className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                          <span>Jobs Completed</span>
+                          <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          </div>
+                          <span className="font-medium">Jobs Completed</span>
                         </div>
-                        <span className="text-xl font-semibold" data-testid="text-jobs-completed">
+                        <span className="text-xl font-bold" data-testid="text-jobs-completed">
                           {summary?.jobs.completed || 0}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div className="feed-card card-press flex items-center justify-between gap-3 p-4 animate-fade-up stagger-delay-2">
                         <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-blue-600" />
-                          <span>In Progress</span>
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <span className="font-medium">In Progress</span>
                         </div>
-                        <span className="text-xl font-semibold" data-testid="text-jobs-in-progress">
+                        <span className="text-xl font-bold" data-testid="text-jobs-in-progress">
                           {summary?.jobs.inProgress || 0}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div className="feed-card card-press flex items-center justify-between gap-3 p-4 animate-fade-up stagger-delay-3">
                         <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-purple-600" />
-                          <span>Total Jobs</span>
+                          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+                            <FileText className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <span className="font-medium">Total Jobs</span>
                         </div>
-                        <span className="text-xl font-semibold" data-testid="text-jobs-total">
+                        <span className="text-xl font-bold" data-testid="text-jobs-total">
                           {summary?.jobs.total || 0}
                         </span>
                       </div>
                     </>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="clients" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle>Top Clients by Revenue</CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  data-testid="button-export-clients"
-                  disabled={!clientData?.clients || clientData.clients.length === 0}
-                  onClick={handleExportClients}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Export
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {clientsLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Client</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Revenue</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">Outstanding</th>
-                            <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Jobs</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {clientData?.clients.map((client) => (
-                            <tr 
-                              key={client.id} 
-                              className="border-b hover-elevate cursor-pointer" 
-                              onClick={() => navigate(`/clients/${client.id}`)}
-                              data-testid={`row-client-${client.id}`}
-                            >
-                              <td className="py-3 px-2">
-                                <div>
-                                  <p className="font-medium text-primary hover:underline">{client.name}</p>
-                                  <p className="text-xs text-muted-foreground">{client.email}</p>
-                                </div>
-                              </td>
-                              <td className="text-right py-3 px-2 font-medium text-green-600">
-                                {formatCurrency(client.totalRevenue)}
-                              </td>
-                              <td className="text-right py-3 px-2 hidden sm:table-cell">
-                                {client.outstandingBalance > 0 ? (
-                                  <span className="text-yellow-600">{formatCurrency(client.outstandingBalance)}</span>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </td>
-                              <td className="text-right py-3 px-2 hidden md:table-cell">
-                                {client.jobsCompleted}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+          {activeTab === 'clients' && (
+            <div className="mt-4 animate-fade-up">
+              <div className="feed-card">
+                <div className="flex flex-row items-center justify-between gap-2 p-4 pb-2">
+                  <h3 className="ios-card-title">Top Clients by Revenue</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    data-testid="button-export-clients"
+                    disabled={!clientData?.clients || clientData.clients.length === 0}
+                    onClick={handleExportClients}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Export
+                  </Button>
+                </div>
+                <div className="p-4 pt-0">
+                  {clientsLoading ? (
+                    <div className="space-y-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                      ))}
                     </div>
-                    {clientData && (
-                      <div className="mt-4 pt-4 border-t flex gap-8 justify-end text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Total Revenue: </span>
-                          <span className="font-semibold text-green-600">
-                            {formatCurrency(clientData.totals.totalRevenue)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Total Outstanding: </span>
-                          <span className="font-semibold text-yellow-600">
-                            {formatCurrency(clientData.totals.totalOutstanding)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {teamData && (
-            <TabsContent value="team" className="mt-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {teamLoading ? (
-                    <>
-                      <KPICardSkeleton />
-                      <KPICardSkeleton />
-                      <KPICardSkeleton />
-                      <KPICardSkeleton />
-                    </>
                   ) : (
                     <>
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Team Members</p>
-                              <p className="text-2xl font-bold" data-testid="text-team-members">
-                                {teamData.totals.totalMembers}
-                              </p>
+                      <div className="space-y-2">
+                        {clientData?.clients.map((client, idx) => (
+                          <div 
+                            key={client.id} 
+                            className={`feed-card card-press flex items-center justify-between gap-3 p-3 cursor-pointer animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}
+                            onClick={() => navigate(`/clients/${client.id}`)}
+                            data-testid={`row-client-${client.id}`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate">{client.name}</p>
+                              <p className="ios-caption truncate">{client.email}</p>
                             </div>
-                            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-semibold text-green-600 text-sm">{formatCurrency(client.totalRevenue)}</p>
+                              {client.outstandingBalance > 0 && (
+                                <p className="ios-caption text-yellow-600">{formatCurrency(client.outstandingBalance)} due</p>
+                              )}
                             </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Jobs Completed</p>
-                              <p className="text-2xl font-bold text-green-600" data-testid="text-team-jobs-completed">
-                                {teamData.totals.totalJobsCompleted}
-                              </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                            </div>
+                        ))}
+                      </div>
+                      {clientData && (
+                        <div className="mt-4 pt-4 border-t flex gap-6 justify-end flex-wrap">
+                          <div className="text-right">
+                            <p className="ios-label">Total Revenue</p>
+                            <p className="font-semibold text-green-600">
+                              {formatCurrency(clientData.totals.totalRevenue)}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {teamData.totals.totalJobsAssigned} assigned
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Hours Worked</p>
-                              <p className="text-2xl font-bold" data-testid="text-team-hours">
-                                {teamData.totals.totalHoursWorked}
-                              </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                              <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                            </div>
+                          <div className="text-right">
+                            <p className="ios-label">Outstanding</p>
+                            <p className="font-semibold text-yellow-600">
+                              {formatCurrency(clientData.totals.totalOutstanding)}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Total tracked hours
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Avg Jobs/Member</p>
-                              <p className="text-2xl font-bold" data-testid="text-team-avg-jobs">
-                                {teamData.totals.avgJobsPerMember}
-                              </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-                              <BarChart3 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Team Performance</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {teamLoading ? (
-                      <div className="space-y-3">
-                        <Skeleton className="h-12 w-full" />
-                        <Skeleton className="h-12 w-full" />
-                        <Skeleton className="h-12 w-full" />
-                      </div>
-                    ) : (
-                      <>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left py-3 px-2 font-medium text-muted-foreground">Team Member</th>
-                                <th className="text-center py-3 px-2 font-medium text-muted-foreground">Role</th>
-                                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Completed</th>
-                                <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden sm:table-cell">In Progress</th>
-                                <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden md:table-cell">Hours</th>
-                                <th className="text-right py-3 px-2 font-medium text-muted-foreground hidden lg:table-cell">Avg Hrs/Job</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {teamData.members.map((member) => (
-                                <tr 
-                                  key={member.id} 
-                                  className="border-b"
-                                  data-testid={`row-team-member-${member.id}`}
-                                >
-                                  <td className="py-3 px-2">
-                                    <div>
-                                      <p className="font-medium">{member.name}</p>
-                                      <p className="text-xs text-muted-foreground">{member.email}</p>
-                                    </div>
-                                  </td>
-                                  <td className="text-center py-3 px-2">
-                                    <Badge variant={member.role === 'OWNER' ? 'default' : member.role === 'ADMIN' ? 'secondary' : 'outline'}>
-                                      {member.role}
-                                    </Badge>
-                                  </td>
-                                  <td className="text-right py-3 px-2 font-medium text-green-600">
-                                    {member.jobsCompleted}
-                                  </td>
-                                  <td className="text-right py-3 px-2 hidden sm:table-cell text-blue-600">
-                                    {member.jobsInProgress}
-                                  </td>
-                                  <td className="text-right py-3 px-2 hidden md:table-cell">
-                                    {member.hoursWorked}h
-                                  </td>
-                                  <td className="text-right py-3 px-2 hidden lg:table-cell text-muted-foreground">
-                                    {member.avgHoursPerJob}h
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        {teamData.members.length === 0 && (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No team members yet</p>
-                            <p className="text-sm">Add team members to see performance data</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
               </div>
-            </TabsContent>
+            </div>
           )}
-        </Tabs>
+
+          {activeTab === 'team' && teamData && (
+            <div className="mt-4 space-y-4 animate-fade-up">
+              <SectionTitle>Team Overview</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                {teamLoading ? (
+                  <>
+                    <KPICardSkeleton />
+                    <KPICardSkeleton />
+                    <KPICardSkeleton />
+                    <KPICardSkeleton />
+                  </>
+                ) : (
+                  <>
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Team Members</p>
+                          <p className="text-xl font-bold mt-1" data-testid="text-team-members">
+                            {teamData.totals.totalMembers}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Jobs Completed</p>
+                          <p className="text-xl font-bold text-green-600 mt-1" data-testid="text-team-jobs-completed">
+                            {teamData.totals.totalJobsCompleted}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                      </div>
+                      <p className="ios-caption mt-1">{teamData.totals.totalJobsAssigned} assigned</p>
+                    </div>
+
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Hours Worked</p>
+                          <p className="text-xl font-bold mt-1" data-testid="text-team-hours">
+                            {teamData.totals.totalHoursWorked}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+                          <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                      </div>
+                      <p className="ios-caption mt-1">Total tracked hours</p>
+                    </div>
+
+                    <div className="feed-card card-press p-4 animate-fade-up stagger-delay-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="ios-label">Avg Jobs/Member</p>
+                          <p className="text-xl font-bold mt-1" data-testid="text-team-avg-jobs">
+                            {teamData.totals.avgJobsPerMember}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
+                          <BarChart3 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="feed-card animate-fade-up stagger-delay-5">
+                <div className="p-4 pb-2">
+                  <h3 className="ios-card-title">Team Performance</h3>
+                </div>
+                <div className="p-4 pt-0">
+                  {teamLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-14 w-full rounded-xl" />
+                      <Skeleton className="h-14 w-full rounded-xl" />
+                      <Skeleton className="h-14 w-full rounded-xl" />
+                    </div>
+                  ) : teamData.members.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
+                           style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}>
+                        <Users className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <p className="ios-card-title mb-1">No team members yet</p>
+                      <p className="ios-caption">Add team members to see performance data</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {teamData.members.map((member, idx) => (
+                        <div 
+                          key={member.id}
+                          className={`feed-card card-press p-3 animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}
+                          data-testid={`row-team-member-${member.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                   style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                                <Users className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm truncate">{member.name}</p>
+                                <p className="ios-caption truncate">{member.email}</p>
+                              </div>
+                            </div>
+                            <Badge variant={member.role === 'OWNER' ? 'default' : member.role === 'ADMIN' ? 'secondary' : 'outline'}>
+                              {member.role}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-4 mt-2 pl-13">
+                            <div className="text-center">
+                              <p className="ios-label">Done</p>
+                              <p className="font-semibold text-green-600 text-sm">{member.jobsCompleted}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="ios-label">Active</p>
+                              <p className="font-semibold text-blue-600 text-sm">{member.jobsInProgress}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="ios-label">Hours</p>
+                              <p className="font-semibold text-sm">{member.hoursWorked}h</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="ios-label">Avg</p>
+                              <p className="font-semibold text-muted-foreground text-sm">{member.avgHoursPerJob}h</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </PageShell>
   );

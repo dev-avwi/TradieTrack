@@ -389,52 +389,44 @@ function LiveOpsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 sm:gap-4 p-4 border-b">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 flex-1">
-          <Card>
-            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold">{acceptedMembers.length}</p>
-                <p className="text-xs text-muted-foreground truncate">Team Members</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
-                <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 fill-green-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold">{onlineCount}</p>
-                <p className="text-xs text-muted-foreground truncate">Online Now</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-                <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
-                <p className="text-xs text-muted-foreground truncate">On Job</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg shrink-0">
-                <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold">{unassignedJobs.length}</p>
-                <p className="text-xs text-muted-foreground truncate">Unassigned</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex items-center gap-3 p-4 sm:p-5">
+        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-1">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+              <Users className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{acceptedMembers.length}</p>
+              <p className="ios-caption truncate">Team</p>
+            </div>
+          </div>
+          <div className="feed-card card-accent p-4 flex items-center gap-3 sm:col-span-1 animate-fade-up stagger-delay-2">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-green-100 dark:bg-green-900/30">
+              <Circle className="h-5 w-5 text-green-600 fill-green-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{onlineCount}</p>
+              <p className="ios-caption truncate">Online</p>
+            </div>
+          </div>
+          <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-900/30">
+              <Wrench className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
+              <p className="ios-caption truncate">On Job</p>
+            </div>
+          </div>
+          <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-100 dark:bg-orange-900/30">
+              <Briefcase className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-bold">{unassignedJobs.length}</p>
+              <p className="ios-caption truncate">Unassigned</p>
+            </div>
+          </div>
         </div>
         <Button onClick={() => setInviteDialogOpen(true)} className="shrink-0" data-testid="button-add-team-member">
           <UserPlus className="h-4 w-4 mr-2" />
@@ -443,103 +435,115 @@ function LiveOpsTab() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        {/* Desktop: 2-column layout with Team Status + Map on left, Activity on right */}
-        {/* Mobile: stacked layout */}
+      <div className="flex-1 overflow-auto p-4 sm:p-5 pt-0 sm:pt-0 section-gap">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {/* Left column: Team Status + Map */}
           <div className="space-y-4">
             <Collapsible open={statusBoardOpen} onOpenChange={setStatusBoardOpen}>
-              <Card>
+              <div className="feed-card">
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover-elevate py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Team Status
-                    </CardTitle>
-                    {statusBoardOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                <div className="cursor-pointer hover-elevate py-3 px-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <p className="ios-label">Team Status</p>
+                    <Badge variant="secondary" className="text-xs">{sortedAcceptedMembers.length}</Badge>
                   </div>
-                </CardHeader>
+                  {statusBoardOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <CardContent className="pt-0">
+                <div className="px-4 pb-4">
                   <ScrollArea className="h-[300px]">
-                    <div className="space-y-2">
-                      {sortedAcceptedMembers.map((member) => {
+                    <div className="space-y-1">
+                      {sortedAcceptedMembers.map((member, index) => {
                         const memberPresence = presence.find(p => p.userId === member.userId);
                         const status = memberPresence?.status || 'offline';
                         const statusDisplay = getStatusDisplay(status);
                         const StatusIcon = statusDisplay.icon;
+                        const lastSeen = memberPresence?.lastSeenAt
+                          ? formatDistanceToNow(new Date(memberPresence.lastSeenAt), { addSuffix: true })
+                          : null;
 
                         return (
                           <div
                             key={member.id}
-                            className="flex items-center gap-3 p-2 rounded-lg hover-elevate cursor-pointer"
+                            className={`feed-card card-press flex items-center gap-3 p-3 cursor-pointer animate-fade-up stagger-delay-${Math.min(index + 1, 8)}`}
                             onClick={() => handleMemberClick(member)}
                             data-testid={`member-status-${member.id}`}
                           >
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={member.profileImageUrl} />
-                              <AvatarFallback style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>
-                                {getInitials(member.firstName, member.lastName, member.email)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={member.profileImageUrl} />
+                                <AvatarFallback style={member.themeColor ? { backgroundColor: member.themeColor, color: 'white' } : undefined}>
+                                  {getInitials(member.firstName, member.lastName, member.email)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {(status === 'online' || status === 'on_job') && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card" />
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
+                              <p className="font-semibold text-sm truncate">
                                 {member.firstName} {member.lastName}
                               </p>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1.5">
                                 <StatusIcon className={`h-3 w-3 ${statusDisplay.text} ${status === 'online' || status === 'on_job' ? 'fill-current' : ''}`} />
                                 <span className={`text-xs ${statusDisplay.text}`}>
                                   {statusDisplay.label}
                                 </span>
+                                {status === 'offline' && lastSeen && (
+                                  <span className="ios-caption">{lastSeen}</span>
+                                )}
                               </div>
                             </div>
-                            {memberPresence?.currentJob && (
-                              <Badge variant="secondary" className="text-xs truncate max-w-[100px]">
-                                {memberPresence.currentJob.title}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {member.roleName && (
+                                <Badge variant="secondary" className="text-xs">{member.roleName}</Badge>
+                              )}
+                              {memberPresence?.currentJob && (
+                                <Badge variant="secondary" className="text-xs truncate max-w-[100px]">
+                                  {memberPresence.currentJob.title}
+                                </Badge>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); }}>
+                                <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}
                       {sortedAcceptedMembers.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          No team members yet
-                        </p>
+                        <div className="text-center py-12">
+                          <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                            <Users className="h-10 w-10" style={{ color: 'hsl(var(--trade) / 0.4)' }} />
+                          </div>
+                          <p className="font-medium mb-1">No team members yet</p>
+                          <p className="ios-caption">Invite your first team member to get started</p>
+                        </div>
                       )}
                     </div>
                   </ScrollArea>
-                </CardContent>
+                </div>
               </CollapsibleContent>
-            </Card>
+            </div>
           </Collapsible>
 
-            {/* Team Map - shows team member locations */}
             <Collapsible open={mapOpen} onOpenChange={setMapOpen}>
-              <Card>
+              <div className="feed-card">
                 <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover-elevate py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Team Map
-                      </CardTitle>
-                      {mapOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </div>
-                  </CardHeader>
+                  <div className="cursor-pointer hover-elevate py-3 px-4 flex items-center justify-between gap-2">
+                    <p className="ios-label">Team Map</p>
+                    {mapOpen ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <CardContent className="pt-0">
+                  <div className="px-4 pb-4">
                     <div className="h-[300px] rounded-lg overflow-hidden border" data-testid="team-map-container">
                       {presence.some(p => p.lastLocationLat && p.lastLocationLng) ? (
                         <MapContainer
@@ -716,79 +720,80 @@ function LiveOpsTab() {
                         </div>
                       )}
                     </div>
-                  </CardContent>
+                  </div>
                 </CollapsibleContent>
-              </Card>
+              </div>
             </Collapsible>
           </div>
 
-          {/* Right column: Activity Feed */}
           <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
-            <Card className="h-full">
+            <div className="feed-card h-full">
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover-elevate py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      Recent Activity
-                    </CardTitle>
-                    {activityOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                <div className="cursor-pointer hover-elevate py-3 px-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <p className="ios-label">Recent Activity</p>
+                    <Badge variant="secondary" className="text-xs">{activities.length}</Badge>
                   </div>
-                </CardHeader>
+                  {activityOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <CardContent className="pt-0">
+                <div className="px-4 pb-4">
                   <ScrollArea className="h-[300px]">
-                    <div className="space-y-3">
-                      {activities.slice(0, 15).map((activity) => (
+                    <div className="space-y-1">
+                      {activities.slice(0, 15).map((activity, index) => (
                         <div
                           key={activity.id}
-                          className={`flex items-start gap-3 p-2 rounded-lg ${
+                          className={`flex items-start gap-3 p-2.5 rounded-xl animate-fade-up stagger-delay-${Math.min(index + 1, 8)} ${
                             activity.isImportant ? 'bg-primary/5' : ''
                           }`}
                           data-testid={`activity-${activity.id}`}
                         >
-                          <div className="flex-shrink-0 mt-1">
-                            <div className={`p-1.5 rounded-full ${
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                               activity.activityType === 'job_completed' ? 'bg-green-100 dark:bg-green-900/30' :
                               activity.activityType === 'invoice_sent' ? 'bg-blue-100 dark:bg-blue-900/30' :
                               'bg-muted'
                             }`}>
                               {activity.activityType === 'job_completed' ? (
-                                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
                               ) : activity.activityType === 'invoice_sent' ? (
-                                <Send className="h-3 w-3 text-blue-600" />
+                                <Send className="h-4 w-4 text-blue-600" />
                               ) : (
-                                <Activity className="h-3 w-3 text-muted-foreground" />
+                                <Activity className="h-4 w-4 text-muted-foreground" />
                               )}
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm">
-                              <span className="font-medium">{activity.actorName || 'System'}</span>
+                              <span className="font-semibold">{activity.actorName || 'System'}</span>
                               {' '}
                               <span className="text-muted-foreground">{activity.description}</span>
                             </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="ios-caption mt-0.5">
                               {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                             </p>
                           </div>
                         </div>
                       ))}
                       {activities.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          No recent activity
-                        </p>
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center bg-muted">
+                            <Activity className="h-7 w-7 text-muted-foreground" />
+                          </div>
+                          <p className="font-medium mb-1">No recent activity</p>
+                          <p className="ios-caption">Activity will appear here as your team works</p>
+                        </div>
                       )}
                     </div>
                   </ScrollArea>
-                </CardContent>
+                </div>
               </CollapsibleContent>
-            </Card>
+            </div>
           </Collapsible>
         </div>
       </div>
@@ -1342,52 +1347,44 @@ function TeamAdminTab() {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
-              <UserCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{activeCount}</p>
-              <p className="text-xs text-muted-foreground truncate">Active</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
-              <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{pendingCount}</p>
-              <p className="text-xs text-muted-foreground truncate">Pending</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-              <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">{onJobCount}</p>
-              <p className="text-xs text-muted-foreground truncate">On Job Today</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 flex items-center gap-2">
-            <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg shrink-0">
-              <DollarSign className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold">${totalHourlyCost.toFixed(0)}</p>
-              <p className="text-xs text-muted-foreground truncate">$/hr Total</p>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="p-4 sm:p-5 section-gap">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-1">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-green-100 dark:bg-green-900/30">
+            <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">{activeCount}</p>
+            <p className="ios-caption truncate">Active</p>
+          </div>
+        </div>
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-2">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-amber-100 dark:bg-amber-900/30">
+            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">{pendingCount}</p>
+            <p className="ios-caption truncate">Pending</p>
+          </div>
+        </div>
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-900/30">
+            <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">{onJobCount}</p>
+            <p className="ios-caption truncate">On Job Today</p>
+          </div>
+        </div>
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-4">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-purple-100 dark:bg-purple-900/30">
+            <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold">${totalHourlyCost.toFixed(0)}</p>
+            <p className="ios-caption truncate">$/hr Total</p>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -1424,18 +1421,19 @@ function TeamAdminTab() {
         </div>
       </div>
 
+      <p className="ios-label">Members ({filteredMembers.length})</p>
       <div className="grid gap-3">
-        {filteredMembers.map((member) => {
+        {filteredMembers.map((member, index) => {
           const role = roles?.find(r => r.id === member.roleId);
           const isPending = member.inviteStatus === 'pending' || member.inviteStatus === 'invited';
           const currentJob = member.userId ? getMemberCurrentJob(member.userId) : null;
           return (
-            <Card 
+            <div 
               key={member.id} 
               data-testid={`member-card-${member.id}`}
-              className={isPending ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20' : ''}
+              className={`feed-card card-press animate-fade-up stagger-delay-${Math.min(index + 1, 8)} ${isPending ? 'border-amber-200 dark:border-amber-800' : ''}`}
             >
-              <CardContent className="p-4">
+              <div className="p-4">
                 {isPending && (
                   <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-amber-200 dark:border-amber-800">
                     <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
@@ -1545,22 +1543,27 @@ function TeamAdminTab() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
 
         {filteredMembers.length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery || statusFilter !== 'all'
-                  ? 'No team members match your filters'
-                  : 'No team members yet. Invite your first team member!'}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="feed-card p-8 text-center">
+            <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+              <Users className="h-10 w-10" style={{ color: 'hsl(var(--trade) / 0.4)' }} />
+            </div>
+            <p className="font-medium mb-1">
+              {searchQuery || statusFilter !== 'all'
+                ? 'No team members match your filters'
+                : 'No team members yet'}
+            </p>
+            <p className="ios-caption">
+              {searchQuery || statusFilter !== 'all'
+                ? 'Try adjusting your search or filters'
+                : 'Invite your first team member to get started!'}
+            </p>
+          </div>
         )}
       </div>
 
@@ -3237,19 +3240,19 @@ function PerformanceTab() {
   };
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 sm:p-5 section-gap">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+          <h2 className="ios-section-title flex items-center gap-2">
             Team Performance
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Track productivity and job completion metrics</p>
+          <p className="ios-caption mt-0.5">Track productivity and job completion metrics</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="feed-card p-1 flex">
           <Button
             variant={period === 'week' ? 'default' : 'ghost'}
             size="sm"
+            className="rounded-xl"
             onClick={() => setPeriod('week')}
           >
             This Week
@@ -3257,6 +3260,7 @@ function PerformanceTab() {
           <Button
             variant={period === 'month' ? 'default' : 'ghost'}
             size="sm"
+            className="rounded-xl"
             onClick={() => setPeriod('month')}
           >
             This Month
@@ -3264,6 +3268,7 @@ function PerformanceTab() {
           <Button
             variant={period === 'all' ? 'default' : 'ghost'}
             size="sm"
+            className="rounded-xl"
             onClick={() => setPeriod('all')}
           >
             All Time
@@ -3271,65 +3276,58 @@ function PerformanceTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
-              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{totalCompleted}</p>
-              <p className="text-xs text-muted-foreground truncate">Jobs Done</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{totalInProgress}</p>
-              <p className="text-xs text-muted-foreground truncate">Active</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{totalHours.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground truncate">Hours Tracked</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg shrink-0">
-              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{formatRevenue(totalRevenue)}</p>
-              <p className="text-xs text-muted-foreground truncate">Revenue</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="feed-card card-accent p-4 flex items-center gap-3 animate-fade-up stagger-delay-1">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-green-100 dark:bg-green-900/30">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{totalCompleted}</p>
+            <p className="ios-caption truncate">Jobs Done</p>
+          </div>
+        </div>
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-2">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-900/30">
+            <Briefcase className="h-5 w-5 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl sm:text-2xl font-bold">{totalInProgress}</p>
+            <p className="ios-caption truncate">Active</p>
+          </div>
+        </div>
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+            <Clock className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl sm:text-2xl font-bold">{totalHours.toFixed(1)}</p>
+            <p className="ios-caption truncate">Hours Tracked</p>
+          </div>
+        </div>
+        <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-4">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-yellow-100 dark:bg-yellow-900/30">
+            <DollarSign className="h-5 w-5 text-yellow-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl sm:text-2xl font-bold">{formatRevenue(totalRevenue)}</p>
+            <p className="ios-caption truncate">Revenue</p>
+          </div>
+        </div>
       </div>
 
       <div>
-        <h3 className="text-sm sm:text-base font-semibold mb-3">Individual Performance</h3>
+        <p className="ios-label mb-3">Individual Performance</p>
         <div className="space-y-3">
-          {memberStats.map((member) => {
+          {memberStats.map((member, index) => {
             const jobShare = totalCompleted > 0 ? (member.completedJobs / totalCompleted) * 100 : 0;
 
             return (
-              <Card
+              <div
                 key={member.id}
                 data-testid={`performance-${member.id}`}
+                className={`feed-card card-press animate-fade-up stagger-delay-${Math.min(index + 1, 8)}`}
               >
-                <CardContent className="p-3 sm:p-4">
+                <div className="p-4">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                       <AvatarImage src={member.profileImageUrl} />
@@ -3383,15 +3381,18 @@ function PerformanceTab() {
                       {Math.round(jobShare)}%
                     </span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
 
           {memberStats.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No team members to display performance for</p>
+            <div className="feed-card p-8 text-center">
+              <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <BarChart3 className="h-10 w-10" style={{ color: 'hsl(var(--trade) / 0.4)' }} />
+              </div>
+              <p className="font-medium mb-1">No performance data yet</p>
+              <p className="ios-caption">Team member stats will appear here as jobs are completed</p>
             </div>
           )}
         </div>
@@ -3407,10 +3408,10 @@ export default function TeamOperations() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 border-b bg-background">
+      <header className="flex items-center justify-between gap-4 px-4 sm:px-5 pt-5 pb-4">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold truncate">Team Operations</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Manage your team, schedules, and performance</p>
+          <h1 className="ios-title">Team Operations</h1>
+          <p className="ios-caption mt-0.5">Manage your team, schedules, and performance</p>
         </div>
         <Button
           variant="ghost"
@@ -3427,31 +3428,33 @@ export default function TeamOperations() {
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="border-b px-2 sm:px-4 overflow-x-auto">
-          <TabsList className="h-10 sm:h-12">
-            <TabsTrigger value="live" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-live-ops">
-              <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Live Ops</span>
-              <span className="sm:hidden">Live</span>
-            </TabsTrigger>
-            {canManageTeam && (
-              <TabsTrigger value="admin" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-team-admin">
-                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Team Admin</span>
-                <span className="sm:hidden">Admin</span>
+        <div className="px-4 sm:px-5 pb-3">
+          <div className="feed-card p-1 flex overflow-x-auto no-scrollbar">
+            <TabsList className="h-auto bg-transparent p-0 w-full">
+              <TabsTrigger value="live" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-live-ops">
+                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Live Ops</span>
+                <span className="sm:hidden">Live</span>
               </TabsTrigger>
-            )}
-            <TabsTrigger value="scheduling" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-scheduling">
-              <CalendarDays className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Scheduling</span>
-              <span className="sm:hidden">Schedule</span>
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-performance">
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Performance</span>
-              <span className="sm:hidden">Stats</span>
-            </TabsTrigger>
-          </TabsList>
+              {canManageTeam && (
+                <TabsTrigger value="admin" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-team-admin">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Team Admin</span>
+                  <span className="sm:hidden">Admin</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="scheduling" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-scheduling">
+                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Scheduling</span>
+                <span className="sm:hidden">Schedule</span>
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-performance">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Performance</span>
+                <span className="sm:hidden">Stats</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         <TabsContent value="live" className="flex-1 m-0">

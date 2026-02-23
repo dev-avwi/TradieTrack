@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import type { JobRequest } from "@shared/schema";
 import {
   AlertTriangle,
   Clock,
   Lightbulb,
   CheckCircle,
-  ChevronRight,
   DollarSign,
   Calendar,
   Briefcase,
@@ -24,6 +23,7 @@ import {
   User,
   FileText,
   MessageSquare,
+  Zap,
 } from "lucide-react";
 
 interface ActionItem {
@@ -57,43 +57,46 @@ interface ActionCenterProps {
   onNavigate?: (path: string) => void;
 }
 
-const categoryConfig: Record<string, { icon: typeof DollarSign; color: string }> = {
-  revenue: { icon: DollarSign, color: "hsl(142.1 76.2% 36.3%)" },
-  schedule: { icon: Calendar, color: "hsl(221.2 83.2% 53.3%)" },
-  operations: { icon: Briefcase, color: "hsl(262.1 83.3% 57.8%)" },
+const categoryConfig: Record<string, { icon: typeof DollarSign; color: string; tint: string }> = {
+  revenue: { icon: DollarSign, color: "hsl(142.1 76.2% 36.3%)", tint: "hsl(142.1 76.2% 36.3% / 0.04)" },
+  schedule: { icon: Calendar, color: "hsl(221.2 83.2% 53.3%)", tint: "hsl(221.2 83.2% 53.3% / 0.04)" },
+  operations: { icon: Briefcase, color: "hsl(262.1 83.3% 57.8%)", tint: "hsl(262.1 83.3% 57.8% / 0.04)" },
 };
 
 const sectionConfig = [
   {
     key: "fix_now" as const,
-    label: "Fix Now",
+    label: "FIX NOW",
     countKey: "fixNowCount" as const,
     icon: AlertTriangle,
     dotColor: "hsl(var(--destructive))",
-    bgColor: "hsl(var(--destructive) / 0.08)",
+    bgColor: "hsl(var(--destructive) / 0.1)",
+    accentColor: "hsl(var(--destructive))",
   },
   {
     key: "this_week" as const,
-    label: "This Week",
+    label: "THIS WEEK",
     countKey: "thisWeekCount" as const,
     icon: Clock,
     dotColor: "hsl(38 92% 50%)",
-    bgColor: "hsl(38 92% 50% / 0.08)",
+    bgColor: "hsl(38 92% 50% / 0.1)",
+    accentColor: "hsl(38 92% 50%)",
   },
   {
     key: "suggestions" as const,
-    label: "Suggestions",
+    label: "SUGGESTIONS",
     countKey: "suggestionsCount" as const,
     icon: Lightbulb,
     dotColor: "hsl(142.1 76.2% 36.3%)",
-    bgColor: "hsl(142.1 76.2% 36.3% / 0.08)",
+    bgColor: "hsl(142.1 76.2% 36.3% / 0.1)",
+    accentColor: "hsl(142.1 76.2% 36.3%)",
   },
 ];
 
 function ActionCardSkeleton() {
   return (
-    <Card className="animate-pulse">
-      <CardContent className="p-4">
+    <div className="feed-card animate-pulse">
+      <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 space-y-3">
             <div className="h-4 w-16 rounded-md bg-muted" />
@@ -103,21 +106,30 @@ function ActionCardSkeleton() {
           </div>
           <div className="h-9 w-28 rounded-md bg-muted flex-shrink-0" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="h-6 w-32 rounded-md bg-muted animate-pulse" />
+    <div className="section-gap">
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="feed-card animate-pulse p-4 space-y-2">
+            <div className="h-10 w-10 rounded-xl bg-muted" />
+            <div className="h-8 w-12 rounded bg-muted" />
+            <div className="h-3 w-16 rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-3">
+        <div className="h-4 w-24 rounded bg-muted animate-pulse" />
         <ActionCardSkeleton />
         <ActionCardSkeleton />
       </div>
-      <div className="space-y-2">
-        <div className="h-6 w-32 rounded-md bg-muted animate-pulse" />
+      <div className="space-y-3">
+        <div className="h-4 w-24 rounded bg-muted animate-pulse" />
         <ActionCardSkeleton />
       </div>
     </div>
@@ -201,219 +213,265 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     return config.color;
   };
 
+  const getCategoryTint = (category: string) => {
+    const config = categoryConfig[category];
+    if (!config) return "transparent";
+    return config.tint;
+  };
+
   const isEmpty = data && data.summary.totalCount === 0;
 
   return (
-    <div className="w-full px-4 sm:px-6 py-4 pb-28">
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Action Center
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          What needs your attention
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Action Center"
+        subtitle="What needs your attention"
+        leading={<Zap className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
+      />
 
       {(isLoading || requestsLoading) && pendingRequests.length === 0 && (
-        <div className="mb-6 space-y-3">
-          <div className="h-6 w-40 rounded-md bg-muted animate-pulse" />
-          <ActionCardSkeleton />
-        </div>
+        <LoadingSkeleton />
       )}
 
       {isEmpty && pendingRequests.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: "hsl(142.1 76.2% 36.3% / 0.1)" }}
-            >
-              <CheckCircle
-                className="h-6 w-6"
-                style={{ color: "hsl(142.1 76.2% 36.3%)" }}
-              />
+        <div className="animate-fade-up">
+          <div className="feed-card">
+            <div className="py-16 text-center">
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ background: "linear-gradient(135deg, hsl(142.1 76.2% 36.3% / 0.12), hsl(142.1 76.2% 36.3% / 0.06))" }}
+              >
+                <CheckCircle
+                  className="h-10 w-10"
+                  style={{ color: "hsl(142.1 76.2% 36.3%)" }}
+                />
+              </div>
+              <p className="text-lg font-semibold text-foreground mb-1">
+                You're all caught up!
+              </p>
+              <p className="ios-caption max-w-xs mx-auto">
+                No actions needed right now. We'll notify you when something needs your attention.
+              </p>
             </div>
-            <p className="text-base font-medium text-foreground mb-1">
-              You're all caught up!
-            </p>
-            <p className="text-sm text-muted-foreground">
-              No actions needed right now.
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {(data || pendingRequests.length > 0) && !(isEmpty && pendingRequests.length === 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {pendingRequests.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 py-1">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.08)" }}
-                >
-                  <ClipboardList
-                    className="h-3.5 w-3.5"
-                    style={{ color: "hsl(221.2 83.2% 53.3%)" }}
-                  />
-                </div>
-                <span className="text-sm font-semibold text-foreground">
-                  Client Requests
-                </span>
-                <Badge variant="outline" className="no-default-hover-elevate text-xs">
-                  {pendingRequests.length}
-                </Badge>
-              </div>
-
-              <div className="space-y-2">
-                {pendingRequests.map((request) => {
-                  const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
+        <div className="section-gap">
+          {data && (
+            <div className="animate-fade-up">
+              <div className="grid grid-cols-3 gap-3">
+                {sectionConfig.map((section, idx) => {
+                  const count = data.summary[section.countKey];
+                  const SectionIcon = section.icon;
+                  const isHero = section.key === "fix_now";
                   return (
-                    <Card
-                      key={request.id}
-                      className="hover-elevate cursor-pointer"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setRequestDialogOpen(true);
-                      }}
+                    <div
+                      key={section.key}
+                      className={`feed-card card-press p-4 animate-fade-up stagger-delay-${idx + 1} ${isHero ? "col-span-3 sm:col-span-1" : ""}`}
+                      style={isHero && count > 0 ? { background: `linear-gradient(135deg, ${section.bgColor}, hsl(var(--card)))` } : undefined}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-start justify-between gap-3 flex-wrap">
-                            <p className="text-sm font-semibold text-foreground">
-                              {request.title}
-                            </p>
-                            <Badge
-                              variant={urgency.variant}
-                              className={`no-default-hover-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
-                            >
-                              {urgency.label}
-                            </Badge>
-                          </div>
-                          {request.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {request.description}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-                            {request.createdAt && (
-                              <span>{formatRelativeTime(request.createdAt)}</span>
-                            )}
-                            {request.preferredDate && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(request.preferredDate)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Button
-                              size="sm"
-                              variant="default"
-                              disabled={updateRequestMutation.isPending}
-                              onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "accepted" }); }}
-                            >
-                              <Check className="h-3.5 w-3.5 mr-1" />
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={updateRequestMutation.isPending}
-                              onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "declined" }); }}
-                            >
-                              <X className="h-3.5 w-3.5 mr-1" />
-                              Decline
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                        style={{ backgroundColor: section.bgColor }}
+                      >
+                        <SectionIcon className="h-5 w-5" style={{ color: section.dotColor }} />
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">{count}</p>
+                      <p className="ios-label mt-1">{section.label}</p>
+                    </div>
                   );
                 })}
               </div>
             </div>
           )}
 
-          {data && sectionConfig.map((section) => {
+          {pendingRequests.length > 0 && (
+            <div className="animate-fade-up stagger-delay-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: "hsl(221.2 83.2% 53.3%)" }}
+                />
+                <p className="ios-label">CLIENT REQUESTS</p>
+                <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
+                  {pendingRequests.length}
+                </Badge>
+              </div>
+
+              <div className="feed-gap">
+                {pendingRequests.map((request, idx) => {
+                  const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
+                  return (
+                    <div
+                      key={request.id}
+                      className={`animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}
+                    >
+                      <div className="flex rounded-2xl overflow-hidden">
+                        <div className="w-1 flex-shrink-0" style={{ backgroundColor: "hsl(221.2 83.2% 53.3%)" }} />
+                        <div
+                          className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setRequestDialogOpen(true);
+                          }}
+                        >
+                          <div className="p-4">
+                            <div className="flex flex-col gap-3">
+                              <div className="flex items-start justify-between gap-3 flex-wrap">
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                    style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.1)" }}
+                                  >
+                                    <ClipboardList className="h-4 w-4" style={{ color: "hsl(221.2 83.2% 53.3%)" }} />
+                                  </div>
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {request.title}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant={urgency.variant}
+                                  className={`no-default-hover-elevate no-default-active-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
+                                >
+                                  {urgency.label}
+                                </Badge>
+                              </div>
+                              {request.description && (
+                                <p className="ios-caption line-clamp-2">
+                                  {request.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-3 flex-wrap ios-caption">
+                                {request.createdAt && (
+                                  <span>{formatRelativeTime(request.createdAt)}</span>
+                                )}
+                                {request.preferredDate && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {formatDate(request.preferredDate)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={updateRequestMutation.isPending}
+                                  onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "accepted" }); }}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" />
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={updateRequestMutation.isPending}
+                                  onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "declined" }); }}
+                                >
+                                  <X className="h-3.5 w-3.5 mr-1" />
+                                  Decline
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {data && sectionConfig.map((section, sectionIdx) => {
             const items = data.sections[section.key];
             const count = data.summary[section.countKey];
             if (!items || items.length === 0) return null;
 
-            const SectionIcon = section.icon;
-
             return (
-              <div key={section.key} className="space-y-3">
-                <div className="flex items-center gap-2 py-1">
+              <div key={section.key} className={`animate-fade-up stagger-delay-${Math.min(sectionIdx + 5, 8)}`}>
+                <div className="flex items-center gap-2.5 mb-3">
                   <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: section.bgColor }}
-                  >
-                    <SectionIcon
-                      className="h-3.5 w-3.5"
-                      style={{ color: section.dotColor }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    {section.label}
-                  </span>
-                  <Badge variant="outline" className="no-default-hover-elevate text-xs">
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: section.dotColor }}
+                  />
+                  <p className="ios-label">{section.label}</p>
+                  <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
                     {count}
                   </Badge>
                 </div>
 
-                <div className="space-y-2">
-                  {items.map((action) => {
+                <div className="feed-gap">
+                  {items.map((action, idx) => {
                     const CategoryIcon = getCategoryIcon(action.category);
                     return (
-                      <Card key={action.id} className="hover-elevate cursor-pointer" onClick={() => navigate(action.ctaUrl)}>
-                        <CardContent className="p-4">
-                          <div className="flex flex-col gap-3">
-                            <div className="flex items-start justify-between gap-3 flex-wrap">
-                              <Badge variant="outline" className="no-default-hover-elevate text-xs gap-1">
-                                <CategoryIcon
-                                  className="h-3 w-3"
-                                  style={{ color: getCategoryColor(action.category) }}
-                                />
-                                {action.category}
-                              </Badge>
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                {action.title}
-                              </p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {action.description}
-                              </p>
-                            </div>
-                            {action.impact && (
-                              <p className="text-xs text-muted-foreground">
-                                {action.metric && (
-                                  <span
-                                    className="font-semibold text-foreground"
+                      <div
+                        key={action.id}
+                        className={`animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}
+                      >
+                        <div className="flex rounded-2xl overflow-hidden">
+                          <div className="w-1 flex-shrink-0" style={{ backgroundColor: section.accentColor }} />
+                          <div
+                            className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
+                            style={{ backgroundColor: getCategoryTint(action.category) }}
+                            onClick={() => navigate(action.ctaUrl)}
+                          >
+                            <div className="p-4">
+                              <div className="flex flex-col gap-2.5">
+                                <div className="flex items-start justify-between gap-3 flex-wrap">
+                                  <div className="flex items-center gap-2.5">
+                                    <div
+                                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                      style={{ backgroundColor: `${getCategoryColor(action.category)}1a` }}
+                                    >
+                                      <CategoryIcon
+                                        className="h-4 w-4"
+                                        style={{ color: getCategoryColor(action.category) }}
+                                      />
+                                    </div>
+                                    <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs capitalize">
+                                      {action.category}
+                                    </Badge>
+                                  </div>
+                                  {action.metric && (
+                                    <Badge variant="secondary" className="no-default-hover-elevate no-default-active-elevate text-xs font-semibold">
+                                      {action.metric}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {action.title}
+                                  </p>
+                                  <p className="ios-caption mt-0.5">
+                                    {action.description}
+                                  </p>
+                                </div>
+                                {action.impact && (
+                                  <p className="ios-caption">
+                                    {action.impact}
+                                  </p>
+                                )}
+                                <div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(action.ctaUrl);
+                                    }}
                                   >
-                                    {action.metric}
-                                  </span>
-                                )}{" "}
-                                {action.impact}
-                              </p>
-                            )}
-                            <div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(action.ctaUrl);
-                                }}
-                              >
-                                {action.cta}
-                                <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                              </Button>
+                                    {action.cta}
+                                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -463,7 +521,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
               {selectedRequest.description && (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <div className="flex items-center gap-2 ios-label">
                     <FileText className="h-3 w-3" />
                     Description
                   </div>
@@ -500,7 +558,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
               {selectedRequest.notes && (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <div className="flex items-center gap-2 ios-label">
                     <MessageSquare className="h-3 w-3" />
                     Notes
                   </div>
@@ -540,6 +598,6 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

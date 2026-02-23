@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect, type ComponentProps, type ChangeEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell";
 import {
   FileText,
   Calendar,
@@ -18,6 +18,10 @@ import {
   MapPin,
   Receipt,
   Star,
+  Zap,
+  Plus,
+  Settings,
+  TrendingUp,
 } from "lucide-react";
 
 interface AutopilotProps {
@@ -82,6 +86,7 @@ interface AutomationConfig {
   subtitle: string;
   icon: typeof FileText;
   color: string;
+  category: "communications" | "fieldwork" | "billing";
 }
 
 const automations: AutomationConfig[] = [
@@ -91,6 +96,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Sends follow-up after quote is sent with no response",
     icon: FileText,
     color: "210 100% 50%",
+    category: "communications",
   },
   {
     field: "jobReminderEnabled",
@@ -98,6 +104,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Sends confirmation before scheduled job start time",
     icon: Calendar,
     color: "142 76% 36%",
+    category: "communications",
   },
   {
     field: "invoiceReminderEnabled",
@@ -105,6 +112,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Sends payment reminders before due and when overdue",
     icon: DollarSign,
     color: "0 84% 60%",
+    category: "billing",
   },
   {
     field: "photoRequirementsEnabled",
@@ -112,6 +120,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Prompts workers for before/after photos on jobs",
     icon: Camera,
     color: "38 92% 50%",
+    category: "fieldwork",
   },
   {
     field: "gpsAutoCheckInEnabled",
@@ -119,6 +128,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Auto start/stop timers at job sites via GPS",
     icon: MapPin,
     color: "270 70% 60%",
+    category: "fieldwork",
   },
   {
     field: "autoInvoiceOnComplete",
@@ -126,6 +136,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Creates invoice automatically when job is completed",
     icon: Receipt,
     color: "174 72% 40%",
+    category: "billing",
   },
   {
     field: "autoReviewRequest",
@@ -133,6 +144,7 @@ const automations: AutomationConfig[] = [
     subtitle: "Requests a review after invoice payment is confirmed",
     icon: Star,
     color: "48 96% 53%",
+    category: "communications",
   },
 ];
 
@@ -389,8 +401,15 @@ function InlineSettings({
   return null;
 }
 
+const categoryLabels: Record<string, { label: string; icon: typeof Settings }> = {
+  communications: { label: "Communications", icon: FileText },
+  fieldwork: { label: "Fieldwork", icon: MapPin },
+  billing: { label: "Billing", icon: DollarSign },
+};
+
 export default function Autopilot({ onNavigate }: AutopilotProps) {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"all" | "communications" | "fieldwork" | "billing">("all");
 
   const { data: settings, isLoading } = useQuery<AutomationSettings>({
     queryKey: ["/api/automation-settings"],
@@ -430,74 +449,190 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
     ? automations.filter((a) => settings[a.field]).length
     : 0;
 
+  const filteredAutomations = activeTab === "all"
+    ? automations
+    : automations.filter((a) => a.category === activeTab);
+
+  const tabs = [
+    { key: "all" as const, label: "All" },
+    { key: "communications" as const, label: "Comms" },
+    { key: "fieldwork" as const, label: "Fieldwork" },
+    { key: "billing" as const, label: "Billing" },
+  ];
+
   if (isLoading) {
     return (
-      <div className="w-full px-4 sm:px-6 py-4">
-        <div className="mb-5">
-          <Skeleton className="h-8 w-32 mb-2" />
-          <Skeleton className="h-4 w-64" />
+      <PageShell>
+        <div className="animate-fade-up">
+          <Skeleton className="h-10 w-40 mb-2" />
+          <Skeleton className="h-4 w-64 mb-6" />
         </div>
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-2xl" />
           ))}
         </div>
-      </div>
+        <Skeleton className="h-10 w-full rounded-2xl mb-4" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          ))}
+        </div>
+      </PageShell>
     );
   }
 
+  const hasAnyActive = activeCount > 0;
+
   return (
-    <div className="w-full px-4 sm:px-6 py-4">
-      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Autopilot</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Automations that kill admin work</p>
-        </div>
-        <Badge variant="secondary">{activeCount} active</Badge>
+    <PageShell>
+      <div className="animate-fade-up">
+        <PageHeader
+          title="Autopilot"
+          subtitle="Automations that kill admin work"
+          leading={<Zap className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
+          action={
+            <Badge variant="secondary" className="text-xs">
+              {activeCount}/{automations.length} active
+            </Badge>
+          }
+        />
       </div>
 
-      <div className="flex flex-col gap-3">
-        {automations.map((item) => {
-          const Icon = item.icon;
-          const isEnabled = !!settings?.[item.field];
-          const hasInlineSettings = item.field !== "autoInvoiceOnComplete";
+      <div className="animate-fade-up stagger-delay-1">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="feed-card p-4 animate-fade-up stagger-delay-1">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                   style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <Zap className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
+            </div>
+            <p className="text-[22px] font-bold tracking-tight">{activeCount}</p>
+            <p className="ios-caption">Active</p>
+          </div>
+          <div className="feed-card p-4 animate-fade-up stagger-delay-2">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                   style={{ backgroundColor: 'hsl(142 76% 36% / 0.1)' }}>
+                <TrendingUp className="h-5 w-5" style={{ color: 'hsl(142 76% 36%)' }} />
+              </div>
+            </div>
+            <p className="text-[22px] font-bold tracking-tight">{automations.length - activeCount}</p>
+            <p className="ios-caption">Available</p>
+          </div>
+          <div className="feed-card p-4 animate-fade-up stagger-delay-3">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                   style={{ backgroundColor: 'hsl(270 70% 60% / 0.1)' }}>
+                <Settings className="h-5 w-5" style={{ color: 'hsl(270 70% 60%)' }} />
+              </div>
+            </div>
+            <p className="text-[22px] font-bold tracking-tight">{automations.length}</p>
+            <p className="ios-caption">Total</p>
+          </div>
+        </div>
+      </div>
 
-          return (
-            <Card key={item.field}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `hsl(${item.color} / 0.1)` }}
-                  >
-                    <Icon className="h-5 w-5" style={{ color: `hsl(${item.color})` }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.subtitle}</p>
-                  </div>
-                  <Switch
-                    checked={isEnabled}
-                    onCheckedChange={(checked) => {
-                      const defaults = checked && ENABLE_DEFAULTS[item.field] ? ENABLE_DEFAULTS[item.field] : {};
-                      handleUpdate({ [item.field]: checked, ...defaults });
-                    }}
-                  />
-                </div>
-                {isEnabled && hasInlineSettings && (
-                  <div className="mt-3 rounded-md bg-muted/30 p-3">
-                    <InlineSettings
-                      field={item.field}
-                      settings={settings || {}}
-                      onUpdate={handleUpdate}
+      <div className="animate-fade-up stagger-delay-2">
+        <div className="feed-card p-1.5">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 min-w-0 px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                  activeTab === tab.key
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {!hasAnyActive && activeTab === "all" && (
+        <div className="animate-fade-up stagger-delay-3">
+          <div className="card-accent p-8 flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                 style={{
+                   background: `linear-gradient(135deg, hsl(var(--trade) / 0.15), hsl(var(--trade) / 0.05))`,
+                 }}>
+              <Zap className="h-10 w-10 animate-pulse-soft" style={{ color: 'hsl(var(--trade))' }} />
+            </div>
+            <h3 className="text-[17px] font-semibold tracking-tight mb-1">Put your business on autopilot</h3>
+            <p className="ios-caption max-w-xs mb-5">
+              Automate follow-ups, reminders, invoicing and more. Save hours every week and never miss a beat.
+            </p>
+            <Button onClick={() => setActiveTab("all")}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Enable your first automation
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <SectionTitle className="mb-3">
+          {activeTab === "all" ? "All Automations" : categoryLabels[activeTab]?.label || "Automations"}
+        </SectionTitle>
+
+        <div className="space-y-3">
+          {filteredAutomations.map((item, index) => {
+            const Icon = item.icon;
+            const isEnabled = !!settings?.[item.field];
+            const hasInlineSettings = item.field !== "autoInvoiceOnComplete";
+
+            return (
+              <div
+                key={item.field}
+                className={`feed-card card-press animate-fade-up stagger-delay-${Math.min(index + 1, 8)}`}
+              >
+                <div className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `hsl(${item.color} / 0.1)` }}
+                    >
+                      <Icon className="h-5 w-5" style={{ color: `hsl(${item.color})` }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="ios-card-title">{item.title}</p>
+                        {isEnabled && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            ON
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="ios-caption mt-0.5">{item.subtitle}</p>
+                    </div>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => {
+                        const defaults = checked && ENABLE_DEFAULTS[item.field] ? ENABLE_DEFAULTS[item.field] : {};
+                        handleUpdate({ [item.field]: checked, ...defaults });
+                      }}
                     />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  {isEnabled && hasInlineSettings && (
+                    <div className="mt-3 rounded-xl bg-muted/30 p-3">
+                      <InlineSettings
+                        field={item.field}
+                        settings={settings || {}}
+                        onUpdate={handleUpdate}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
