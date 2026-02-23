@@ -335,7 +335,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
             </div>
           )}
 
-          {sectionConfig.map((section) => {
+          {data && sectionConfig.map((section) => {
             const items = data.sections[section.key];
             const count = data.summary[section.countKey];
             if (!items || items.length === 0) return null;

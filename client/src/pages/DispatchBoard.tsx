@@ -818,6 +818,7 @@ export default function DispatchBoard() {
     return allMembers.map(member => {
       const memberJobs = scheduledJobsForDate.filter(job => 
         job.assignedTo === member.memberId || 
+        job.assignedTo === member.id ||
         (!job.assignedTo && member.id === 'owner')
       );
 
@@ -883,7 +884,7 @@ export default function DispatchBoard() {
     console.log('[DispatchBoard] handleDrop - full mutation payload:', mutationPayload);
 
     const existingJobsForMember = scheduledJobsForDate.filter(j => 
-      (j.assignedTo === (memberId === 'owner' ? null : memberId) || (!j.assignedTo && memberId === 'owner')) &&
+      ((memberId === 'owner' ? !j.assignedTo : (j.assignedTo === memberId)) || (!j.assignedTo && memberId === 'owner')) &&
       j.id !== draggedJob.job.id
     );
     const newJobStart = hour * 60;
@@ -1287,7 +1288,7 @@ export default function DispatchBoard() {
                               {dayJobs.map(job => {
                                 const statusStyle = getStatusStyle(job.status);
                                 const assignedMember = teamMembersWithJobs.find(m =>
-                                  m.memberId === job.assignedTo || (!job.assignedTo && m.id === 'owner')
+                                  m.memberId === job.assignedTo || m.id === job.assignedTo || (!job.assignedTo && m.id === 'owner')
                                 );
                                 return (
                                   <div
@@ -1375,7 +1376,7 @@ export default function DispatchBoard() {
                               }).map(job => {
                                 const statusStyle = getStatusStyle(job.status);
                                 const assignedMember = teamMembersWithJobs.find(m =>
-                                  m.memberId === job.assignedTo || (!job.assignedTo && m.id === 'owner')
+                                  m.memberId === job.assignedTo || m.id === job.assignedTo || (!job.assignedTo && m.id === 'owner')
                                 );
                                 return (
                                   <div
