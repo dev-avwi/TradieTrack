@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { format } from 'date-fns';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 interface ComplianceDocument {
   id: string;
@@ -64,115 +65,134 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: spacing['2xl'],
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
+  heroCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    ...shadows.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: spacing.md,
   },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  heroIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
+  },
+  heroValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+    color: colors.foreground,
+  },
+  heroLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  supportingStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
+  },
+  supportingStatCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    alignItems: 'center',
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginTop: 2,
+    marginTop: spacing.xs,
+  },
+  sectionTitle: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
   },
   quickAccessSection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   categoryIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   categoryContent: {
     flex: 1,
   },
   categoryTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   categoryCount: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   recentSection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    ...componentStyles.sectionHeader,
   },
   viewAllText: {
-    fontSize: 14,
+    ...typography.body,
     color: colors.primary,
     fontWeight: '500',
   },
@@ -180,128 +200,128 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   documentIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   documentInfo: {
     flex: 1,
   },
   documentTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   documentMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   statusBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: radius.pill,
   },
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '600',
   },
   documentType: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
     flex: 1,
   },
   documentRight: {
     alignItems: 'flex-end',
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   documentDate: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
   },
   documentExpiry: {
-    fontSize: 11,
+    ...typography.label,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   emptyText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
   },
   errorText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.destructive,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.md,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.primaryForeground,
   },
 });
@@ -343,6 +363,7 @@ export default function FilesScreen() {
 
   const activeJobs = jobs.filter(j => j.status !== 'cancelled').length;
   const complianceCount = complianceDocs.length;
+  const totalFiles = activeJobs + complianceCount;
 
   const recentComplianceDocs = useMemo(() => {
     return [...complianceDocs]
@@ -391,7 +412,7 @@ export default function FilesScreen() {
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={40} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRefresh} activeOpacity={0.7}>
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
@@ -399,41 +420,53 @@ export default function FilesScreen() {
 
           {!isLoading && !error && (
             <>
-              <View style={styles.statsRow}>
+              <TouchableOpacity
+                style={styles.heroCard}
+                onPress={() => router.push('/(tabs)/work' as any)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.heroIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
+                  <Feather name="folder" size={24} color={CATEGORY_COLORS.photos.color} />
+                </View>
+                <Text style={styles.heroValue}>{totalFiles}</Text>
+                <Text style={styles.heroLabel}>TOTAL FILES</Text>
+              </TouchableOpacity>
+
+              <View style={styles.supportingStatsRow}>
                 <TouchableOpacity
-                  style={styles.statCard}
+                  style={styles.supportingStatCard}
                   onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
-                    <Feather name="camera" size={22} color={CATEGORY_COLORS.photos.color} />
+                    <Feather name="camera" size={iconSizes.xl} color={CATEGORY_COLORS.photos.color} />
                   </View>
                   <Text style={styles.statValue}>{activeJobs}</Text>
                   <Text style={styles.statLabel}>JOBS</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.statCard}
+                  style={styles.supportingStatCard}
                   onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
-                    <Feather name="mic" size={22} color={CATEGORY_COLORS.voiceNotes.color} />
+                    <Feather name="mic" size={iconSizes.xl} color={CATEGORY_COLORS.voiceNotes.color} />
                   </View>
                   <Text style={styles.statValue}>{activeJobs}</Text>
                   <Text style={styles.statLabel}>MEDIA</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.statCard}
+                  style={styles.supportingStatCard}
                   onPress={() => router.push('/more/compliance' as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
-                    <Feather name="shield" size={22} color={CATEGORY_COLORS.compliance.color} />
+                    <Feather name="shield" size={iconSizes.xl} color={CATEGORY_COLORS.compliance.color} />
                   </View>
                   <Text style={styles.statValue}>{complianceCount}</Text>
-                  <Text style={styles.statLabel}>COMPLIANCE</Text>
+                  <Text style={styles.statLabel}>DOCS</Text>
                 </TouchableOpacity>
               </View>
 
@@ -446,13 +479,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
-                    <Feather name="camera" size={22} color={CATEGORY_COLORS.photos.color} />
+                    <Feather name="camera" size={iconSizes.xl} color={CATEGORY_COLORS.photos.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Job Photos</Text>
                     <Text style={styles.categoryCount}>View photos across {activeJobs} jobs</Text>
                   </View>
-                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -461,13 +494,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
-                    <Feather name="shield" size={22} color={CATEGORY_COLORS.compliance.color} />
+                    <Feather name="shield" size={iconSizes.xl} color={CATEGORY_COLORS.compliance.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Compliance Documents</Text>
                     <Text style={styles.categoryCount}>{complianceCount} documents</Text>
                   </View>
-                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -476,13 +509,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
-                    <Feather name="mic" size={22} color={CATEGORY_COLORS.voiceNotes.color} />
+                    <Feather name="mic" size={iconSizes.xl} color={CATEGORY_COLORS.voiceNotes.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Voice Notes</Text>
                     <Text style={styles.categoryCount}>Attached to jobs</Text>
                   </View>
-                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -491,13 +524,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.sitePhotos.bg }]}>
-                    <Feather name="image" size={22} color={CATEGORY_COLORS.sitePhotos.color} />
+                    <Feather name="image" size={iconSizes.xl} color={CATEGORY_COLORS.sitePhotos.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Site Photos</Text>
                     <Text style={styles.categoryCount}>Before & after shots</Text>
                   </View>
-                  <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
 
@@ -514,7 +547,7 @@ export default function FilesScreen() {
                 {recentComplianceDocs.length === 0 ? (
                   <View style={styles.emptyCard}>
                     <View style={styles.emptyIconContainer}>
-                      <Feather name="folder" size={28} color={colors.mutedForeground} />
+                      <Feather name="folder" size={40} color={colors.mutedForeground} />
                     </View>
                     <Text style={styles.emptyTitle}>No Files Yet</Text>
                     <Text style={styles.emptyText}>Upload compliance documents or take job photos to get started</Text>
@@ -531,7 +564,7 @@ export default function FilesScreen() {
                         activeOpacity={0.7}
                       >
                         <View style={[styles.documentIcon, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
-                          <Feather name="file-text" size={16} color={CATEGORY_COLORS.compliance.color} />
+                          <Feather name="file-text" size={iconSizes.xl} color={CATEGORY_COLORS.compliance.color} />
                         </View>
                         <View style={styles.documentInfo}>
                           <Text style={styles.documentTitle} numberOfLines={1}>{doc.documentName || doc.type}</Text>

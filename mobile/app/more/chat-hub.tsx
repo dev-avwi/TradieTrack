@@ -14,7 +14,7 @@ import {
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 
 interface Client {
@@ -134,53 +134,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   headerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  headerContent: {
-    flex: 1,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   headerSubtitle: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   quickActionsContainer: {
     flexDirection: 'row',
-    padding: spacing.md,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingBottom: spacing.lg,
     gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.card,
   },
   quickActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.md,
-    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
     gap: spacing.sm,
-    minHeight: 44,
+    minHeight: sizes.quickActionBtn,
   },
   quickActionButtonPrimary: {
     backgroundColor: colors.primary,
@@ -192,8 +175,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.success || '#22c55e',
   },
   quickActionText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.button,
   },
   quickActionTextPrimary: {
     color: colors.primaryForeground,
@@ -205,55 +187,47 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: '#FFFFFF',
   },
   searchContainer: {
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingBottom: spacing.md,
+  },
+  searchInput: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.muted,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    height: 40,
+    borderRadius: radius['2xl'],
+    height: sizes.searchBarHeight,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   searchTextInput: {
     flex: 1,
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.xs,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
-    minHeight: 32,
+    minHeight: sizes.filterChipHeight,
     justifyContent: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
   },
   filterButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.mutedForeground,
   },
   filterButtonTextActive: {
@@ -261,9 +235,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   filterBadge: {
     backgroundColor: colors.destructive || '#ef4444',
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: sizes.filterCountMin,
+    height: sizes.filterCountMin,
+    borderRadius: sizes.filterCountMin / 2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -278,24 +252,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   subFilterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.xs,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   subFilterButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
     backgroundColor: 'transparent',
   },
   subFilterButtonActive: {
     backgroundColor: colors.muted,
   },
   subFilterText: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
@@ -304,16 +275,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
   sectionHeader: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   conversationsList: {
     flex: 1,
@@ -321,19 +289,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   conversationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+    padding: spacing.lg,
+    marginHorizontal: pageShell.paddingHorizontal,
+    marginBottom: spacing.md,
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   conversationAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -354,8 +322,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.muted,
   },
   conversationAvatarText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
   },
   conversationContent: {
     flex: 1,
@@ -365,55 +332,52 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 2,
+    gap: spacing.sm,
   },
   conversationTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
     flex: 1,
   },
   conversationTime: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
-    marginLeft: spacing.sm,
   },
   conversationSubtitle: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   conversationLastMessage: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
   },
   conversationBadges: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
   },
   statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+    ...typography.badge,
     textTransform: 'uppercase',
   },
   unreadBadge: {
     backgroundColor: colors.primary,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: sizes.filterCountMin,
+    height: sizes.filterCountMin,
+    borderRadius: sizes.filterCountMin / 2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
   unreadBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...typography.badge,
     color: colors.primaryForeground,
   },
   contactActionsRow: {
@@ -425,14 +389,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   contactAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
-    gap: 4,
+    gap: spacing.xs,
   },
   contactActionText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -442,27 +406,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['4xl'],
     paddingHorizontal: spacing.xl,
   },
   emptyStateIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.muted,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   emptyStateTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   emptyStateText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
     lineHeight: 20,
@@ -471,22 +434,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['4xl'],
   },
   twilioSetupBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.warningLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.warning,
-    gap: spacing.sm,
+    marginHorizontal: pageShell.paddingHorizontal,
+    marginBottom: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius['2xl'],
+    gap: spacing.md,
+    ...shadows.sm,
   },
   twilioSetupIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     backgroundColor: colors.warning,
     alignItems: 'center',
     justifyContent: 'center',
@@ -495,46 +459,45 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   twilioSetupTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   twilioSetupDescription: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   twilioSetupButton: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     backgroundColor: colors.warning,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
   },
   twilioSetupButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.button,
     color: '#FFFFFF',
   },
   twilioConnectedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.successLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.success,
-    gap: spacing.sm,
+    marginHorizontal: pageShell.paddingHorizontal,
+    marginBottom: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius['2xl'],
+    gap: spacing.md,
+    ...shadows.sm,
   },
   twilioConnectedIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
   twilioConnectedText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.success,
     flex: 1,
@@ -548,12 +511,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 4,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
     backgroundColor: colors.successLight,
   },
   smsBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+    ...typography.badge,
     color: colors.success,
   },
 });
@@ -1127,13 +1089,8 @@ export default function ChatHubScreen() {
       
       <View style={styles.container}>
         <View style={styles.headerCard}>
-          <View style={styles.headerIconContainer}>
-            <Feather name="message-circle" size={22} color={colors.primary} />
-          </View>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Job Communications</Text>
-            <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
-          </View>
+          <Text style={styles.headerTitle}>Chat Hub</Text>
+          <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
         </View>
 
         {renderTwilioBanner()}
@@ -1245,7 +1202,7 @@ export default function ChatHubScreen() {
           ) : conversations.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
-                <Feather name="message-circle" size={28} color={colors.mutedForeground} />
+                <Feather name="message-circle" size={40} color={colors.primary} />
               </View>
               <Text style={styles.emptyStateTitle}>
                 {getEmptyStateMessage().title}
@@ -1262,7 +1219,7 @@ export default function ChatHubScreen() {
                 </Text>
               </View>
               {conversations.map(renderConversation)}
-              <View style={{ height: 100 }} />
+              <View style={{ height: 100, paddingBottom: 100 }} />
             </>
           )}
         </ScrollView>

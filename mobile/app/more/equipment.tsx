@@ -17,6 +17,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 type EquipmentStatus = 'active' | 'maintenance' | 'retired' | 'sold' | 'in_use' | 'available';
 type FilterType = 'all' | 'active' | 'maintenance' | 'retired';
@@ -411,7 +412,7 @@ export default function EquipmentScreen() {
               {config && (
                 <Feather
                   name={config.icon}
-                  size={14}
+                  size={iconSizes.sm}
                   color={isActive ? '#fff' : config.color}
                 />
               )}
@@ -431,27 +432,29 @@ export default function EquipmentScreen() {
   );
 
   const renderSummaryCards = () => (
-    <View style={styles.summaryRow}>
-      <View style={styles.summaryCard}>
-        <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-          <Feather name="check-circle" size={22} color="#22c55e" />
+    <View style={styles.heroSection}>
+      <View style={styles.heroCard}>
+        <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+          <Feather name="check-circle" size={iconSizes.xl} color="#22c55e" />
         </View>
-        <Text style={styles.summaryValue}>{filterCounts.active}</Text>
-        <Text style={styles.summaryLabel}>ACTIVE</Text>
+        <Text style={styles.heroValue}>{filterCounts.active}</Text>
+        <Text style={styles.heroLabel}>ACTIVE</Text>
       </View>
-      <View style={styles.summaryCard}>
-        <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-          <Feather name="tool" size={22} color="#f59e0b" />
+      <View style={styles.supportingRow}>
+        <View style={styles.supportingCard}>
+          <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+            <Feather name="tool" size={iconSizes.xl} color="#f59e0b" />
+          </View>
+          <Text style={styles.summaryValue}>{filterCounts.maintenance}</Text>
+          <Text style={styles.summaryLabel}>MAINTENANCE</Text>
         </View>
-        <Text style={styles.summaryValue}>{filterCounts.maintenance}</Text>
-        <Text style={styles.summaryLabel}>MAINTENANCE</Text>
-      </View>
-      <View style={styles.summaryCard}>
-        <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-          <Feather name="dollar-sign" size={22} color="#3b82f6" />
+        <View style={styles.supportingCard}>
+          <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+            <Feather name="dollar-sign" size={iconSizes.xl} color="#3b82f6" />
+          </View>
+          <Text style={styles.summaryValue}>{formatCurrency(totalValue)}</Text>
+          <Text style={styles.summaryLabel}>TOTAL VALUE</Text>
         </View>
-        <Text style={styles.summaryValue}>{formatCurrency(totalValue)}</Text>
-        <Text style={styles.summaryLabel}>TOTAL VALUE</Text>
       </View>
     </View>
   );
@@ -519,7 +522,7 @@ export default function EquipmentScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIcon}>
-        <Feather name="tool" size={32} color={colors.mutedForeground} />
+        <Feather name="tool" size={40} color={colors.mutedForeground} />
       </View>
       <Text style={styles.emptyTitle}>No Equipment Found</Text>
       <Text style={styles.emptySubtitle}>
@@ -529,7 +532,7 @@ export default function EquipmentScreen() {
       </Text>
       {activeFilter === 'all' && (
         <TouchableOpacity style={styles.emptyButton} onPress={openCreate} activeOpacity={0.7}>
-          <Feather name="plus" size={16} color="#fff" />
+          <Feather name="plus" size={iconSizes.md} color="#fff" />
           <Text style={styles.emptyButtonText}>Add Equipment</Text>
         </TouchableOpacity>
       )}
@@ -1069,8 +1072,11 @@ export default function EquipmentScreen() {
             {renderSummaryCards()}
 
             {error ? renderError() : filteredEquipment.length === 0 ? renderEmptyState() : (
-              <View style={styles.cardList}>
-                {filteredEquipment.map(renderCard)}
+              <View>
+                <Text style={styles.sectionLabel}>EQUIPMENT LIST</Text>
+                <View style={styles.cardList}>
+                  {filteredEquipment.map(renderCard)}
+                </View>
               </View>
             )}
           </ScrollView>
@@ -1093,182 +1099,212 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
   },
   addButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
+    ...typography.button,
+    color: colors.primaryForeground,
   },
   filterScroll: {
-    marginBottom: 16,
-    marginHorizontal: -16,
+    marginBottom: spacing.lg,
+    marginHorizontal: -pageShell.paddingHorizontal,
   },
   filterContainer: {
     flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
+    gap: spacing.sm,
+    paddingHorizontal: pageShell.paddingHorizontal,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    height: sizes.filterChipHeight,
+    borderRadius: radius.pill,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   activeFilterChip: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
   activeFilterText: {
-    color: '#fff',
+    color: colors.primaryForeground,
   },
   filterBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: sizes.filterCountMin,
+    height: sizes.filterCountMin,
+    borderRadius: sizes.filterCountMin / 2,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.sm,
   },
   activeFilterBadge: {
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   filterBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
     color: colors.mutedForeground,
   },
   activeFilterBadgeText: {
     color: '#fff',
   },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+  heroSection: {
+    marginBottom: spacing['2xl'],
+    gap: spacing.md,
   },
-  summaryCard: {
-    flex: 1,
+  heroCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
+    alignItems: 'center',
+    ...shadows.md,
   },
-  summaryIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  heroIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
+  },
+  heroValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+    color: colors.foreground,
+  },
+  heroLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  supportingRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  supportingCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  summaryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
   summaryValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
   },
   summaryLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginTop: 2,
+    marginTop: spacing.xs,
+  },
+  sectionLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
   },
   cardList: {
-    gap: 12,
+    gap: spacing.md,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   cardNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
     flex: 1,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: sizes.dotSm,
+    height: sizes.dotSm,
+    borderRadius: sizes.dotSm / 2,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
     flex: 1,
   },
   cardModel: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
   },
   cardMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   cardMetaText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
     flex: 1,
   },
@@ -1276,20 +1312,19 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   cardPrice: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodySemibold,
     color: colors.foreground,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
   },
   statusBadgeDot: {
     width: 6,
@@ -1297,81 +1332,78 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 3,
   },
   statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
+    marginTop: spacing.sm,
     maxWidth: 260,
   },
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 16,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
+    marginTop: spacing.lg,
   },
   emptyButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
+    ...typography.button,
+    color: colors.primaryForeground,
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   errorText: {
-    fontSize: 14,
+    ...typography.body,
     color: '#ef4444',
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.xl,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
+    ...typography.button,
+    color: colors.primaryForeground,
   },
   modalContainer: {
     flex: 1,
@@ -1381,45 +1413,43 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    paddingTop: Platform.OS === 'ios' ? 56 : 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
+    gap: spacing.md,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
     flex: 1,
     textAlign: 'center',
-    marginHorizontal: 12,
   },
   modalSaveText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodySemibold,
     color: colors.primary,
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: spacing.lg,
   },
   fieldLabel: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '600',
     color: colors.mutedForeground,
-    marginBottom: 6,
-    marginTop: 16,
+    marginBottom: spacing.sm,
+    marginTop: spacing.lg,
   },
   textInput: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...typography.body,
     color: colors.foreground,
   },
   textArea: {
@@ -1428,20 +1458,20 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   fieldRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   fieldHalf: {
     flex: 1,
   },
   categoryRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
     alignItems: 'center',
   },
   addCategoryBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: sizes.inputHeight,
+    height: sizes.inputHeight,
+    borderRadius: radius.lg,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1455,45 +1485,45 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   pickerTriggerText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
   },
   pickerPlaceholder: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.mutedForeground,
   },
   pickerOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    padding: 24,
+    padding: spacing['2xl'],
   },
   pickerContainer: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
+    ...shadows.md,
   },
   pickerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
     textAlign: 'center',
   },
   pickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   pickerOptionActive: {
-    backgroundColor: 'rgba(59,130,246,0.05)',
+    backgroundColor: colors.primaryLight,
   },
   pickerOptionText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
   },
   pickerOptionTextActive: {
@@ -1501,12 +1531,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
   pickerCancel: {
-    marginTop: 16,
+    marginTop: spacing.lg,
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
   },
   pickerCancelText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
@@ -1514,7 +1544,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: spacing.xl,
+    gap: spacing.md,
   },
   detailPrice: {
     fontSize: 20,
@@ -1522,46 +1553,45 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
   },
   detailSection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   detailSectionTitle: {
-    fontSize: 11,
+    ...typography.label,
     fontWeight: '700',
     color: colors.mutedForeground,
-    letterSpacing: 1,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   detailGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.md,
   },
   detailItem: {
     width: '47%',
   },
   detailItemLabel: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
     marginBottom: 2,
   },
   detailItemValue: {
-    fontSize: 14,
+    ...typography.body,
     fontWeight: '500',
     color: colors.foreground,
   },
   detailActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
   },
   editButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
@@ -1571,133 +1601,133 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.3)',
     backgroundColor: 'rgba(239,68,68,0.05)',
   },
   editButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.button,
   },
   maintenanceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
   },
   addMaintenanceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
   },
   addMaintenanceBtnText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.primaryForeground,
   },
   noMaintenanceContainer: {
-    paddingVertical: 20,
+    paddingVertical: spacing.xl,
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 8,
+    borderColor: colors.cardBorder,
+    marginTop: spacing.sm,
   },
   noMaintenanceText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
   },
   maintenanceCard: {
     backgroundColor: colors.card,
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   maintenanceCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
   },
   maintenanceCardTitle: {
-    fontSize: 14,
+    ...typography.body,
     fontWeight: '600',
     color: colors.foreground,
     flex: 1,
   },
   maintenanceTypeBadge: {
     backgroundColor: colors.muted,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   maintenanceTypeBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
     color: colors.mutedForeground,
   },
   maintenanceDescription: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   maintenanceMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 8,
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
   maintenanceMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   maintenanceMetaText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
   },
   maintenanceNextDue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
+    gap: spacing.xs,
+    marginTop: spacing.sm,
   },
   maintenanceNextDueText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: '#f59e0b',
     fontWeight: '500',
   },
   categoryModalActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
   categoryModalCancel: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
   },
   categoryModalSave: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
   categoryModalSaveText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
+    ...typography.bodySemibold,
+    color: colors.primaryForeground,
   },
 });

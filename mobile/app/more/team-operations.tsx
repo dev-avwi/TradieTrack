@@ -17,7 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import MapView, { Marker, Region, PROVIDER_DEFAULT, MapStyleElement } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes, iconSizes, usePageShell } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, sizes, iconSizes, usePageShell, pageShell, componentStyles } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow, format, isAfter } from 'date-fns';
@@ -450,44 +450,26 @@ export default function TeamOperationsScreen() {
   const tabIconSize = isTabletDevice ? 18 : 16;
   
   const renderTabs = () => (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
-      <TouchableOpacity
-        style={[styles.tabButton, activeTab === 'live' && styles.tabButtonActive]}
-        onPress={() => setActiveTab('live')}
-        activeOpacity={0.7}
-      >
-        <Feather name="activity" size={tabIconSize} color={activeTab === 'live' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'live' && styles.tabButtonTextActive]}>Live Ops</Text>
-      </TouchableOpacity>
-
-      {isOwnerOrManager && (
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'admin' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('admin')}
-          activeOpacity={0.7}
-        >
-          <Feather name="users" size={tabIconSize} color={activeTab === 'admin' ? colors.primary : colors.mutedForeground} />
-          <Text style={[styles.tabButtonText, activeTab === 'admin' && styles.tabButtonTextActive]}>Team Admin</Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity
-        style={[styles.tabButton, activeTab === 'scheduling' && styles.tabButtonActive]}
-        onPress={() => setActiveTab('scheduling')}
-        activeOpacity={0.7}
-      >
-        <Feather name="calendar" size={tabIconSize} color={activeTab === 'scheduling' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'scheduling' && styles.tabButtonTextActive]}>Scheduling</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.tabButton, activeTab === 'performance' && styles.tabButtonActive]}
-        onPress={() => setActiveTab('performance')}
-        activeOpacity={0.7}
-      >
-        <Feather name="trending-up" size={tabIconSize} color={activeTab === 'performance' ? colors.primary : colors.mutedForeground} />
-        <Text style={[styles.tabButtonText, activeTab === 'performance' && styles.tabButtonTextActive]}>Performance</Text>
-      </TouchableOpacity>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
+      {[
+        { key: 'live' as TabType, icon: 'activity' as const, label: 'Live Ops' },
+        ...(isOwnerOrManager ? [{ key: 'admin' as TabType, icon: 'users' as const, label: 'Team Admin' }] : []),
+        { key: 'scheduling' as TabType, icon: 'calendar' as const, label: 'Scheduling' },
+        { key: 'performance' as TabType, icon: 'trending-up' as const, label: 'Performance' },
+      ].map(tab => {
+        const isActive = activeTab === tab.key;
+        return (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tabButton, isActive && styles.tabButtonActive]}
+            onPress={() => setActiveTab(tab.key)}
+            activeOpacity={0.7}
+          >
+            <Feather name={tab.icon} size={tabIconSize} color={isActive ? '#ffffff' : colors.mutedForeground} />
+            <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>{tab.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </ScrollView>
   );
 
@@ -541,8 +523,8 @@ export default function TeamOperationsScreen() {
           <View style={styles.memberNameRow}>
             <Text style={styles.memberName}>{member.firstName} {member.lastName}</Text>
             {member.roleName && (
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>{member.roleName}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: `${statusConfig.color}15` }]}>
+                <Text style={[styles.roleBadgeText, { color: statusConfig.color }]}>{member.roleName}</Text>
               </View>
             )}
           </View>
@@ -674,31 +656,32 @@ export default function TeamOperationsScreen() {
         style={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <View style={styles.heroCard}>
+          <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+            <Feather name="circle" size={20} color="#22c55e" />
+          </View>
+          <Text style={styles.heroValue}>{onlineCount}</Text>
+          <Text style={styles.heroLabel}>Online Now</Text>
+        </View>
+
         <View style={styles.kpiStatsRow}>
           <View style={styles.kpiStatItem}>
             <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-              <Feather name="users" size={16} color="#3b82f6" />
+              <Feather name="users" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.kpiStatValue}>{acceptedMembers.length}</Text>
             <Text style={styles.kpiStatLabel}>Team</Text>
           </View>
           <View style={styles.kpiStatItem}>
-            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-              <Feather name="circle" size={16} color="#22c55e" />
-            </View>
-            <Text style={styles.kpiStatValue}>{onlineCount}</Text>
-            <Text style={styles.kpiStatLabel}>Online</Text>
-          </View>
-          <View style={styles.kpiStatItem}>
             <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-              <Feather name="tool" size={16} color="#3b82f6" />
+              <Feather name="tool" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.kpiStatValue}>{onJobCount}</Text>
             <Text style={styles.kpiStatLabel}>On Job</Text>
           </View>
           <View style={styles.kpiStatItem}>
             <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
-              <Feather name="briefcase" size={16} color="#E8862E" />
+              <Feather name="briefcase" size={20} color="#E8862E" />
             </View>
             <Text style={styles.kpiStatValue}>{unassignedJobs.length}</Text>
             <Text style={styles.kpiStatLabel}>Unassigned</Text>
@@ -719,8 +702,11 @@ export default function TeamOperationsScreen() {
             <Text style={styles.sectionTitle}>Recent Activity</Text>
             {activityFeed.length === 0 ? (
               <View style={styles.emptyState}>
-                <Feather name="clock" size={32} color={colors.mutedForeground} />
-                <Text style={styles.emptyStateText}>No recent activity</Text>
+                <View style={styles.emptyIconCircle}>
+                  <Feather name="clock" size={40} color={colors.mutedForeground} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No Recent Activity</Text>
+                <Text style={styles.emptyStateText}>Team activity will appear here as your team works</Text>
               </View>
             ) : (
               activityFeed.slice(0, 20).map(renderActivityItem)
@@ -852,8 +838,11 @@ export default function TeamOperationsScreen() {
           )
         ) : (
           <View style={styles.emptyState}>
-            <Feather name="calendar" size={32} color={colors.mutedForeground} />
-            <Text style={styles.emptyStateText}>Select a team member to view availability</Text>
+            <View style={styles.emptyIconCircle}>
+              <Feather name="calendar" size={40} color={colors.mutedForeground} />
+            </View>
+            <Text style={styles.emptyStateTitle}>View Availability</Text>
+            <Text style={styles.emptyStateText}>Select a team member to view their availability</Text>
           </View>
         )}
       </View>
@@ -888,14 +877,14 @@ export default function TeamOperationsScreen() {
                 {isOwnerOrManager && (
                   <View style={styles.timeOffActions}>
                     <TouchableOpacity
-                      style={[styles.timeOffButton, { backgroundColor: '#22c55e' }]}
+                      style={[styles.timeOffButton, { backgroundColor: colors.success }]}
                       onPress={() => handleApproveTimeOff(request.id, 'approved')}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.timeOffButtonText}>Approve</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.timeOffButton, { backgroundColor: '#ef4444' }]}
+                      style={[styles.timeOffButton, { backgroundColor: colors.destructive }]}
                       onPress={() => handleApproveTimeOff(request.id, 'rejected')}
                       activeOpacity={0.7}
                     >
@@ -908,8 +897,11 @@ export default function TeamOperationsScreen() {
           })
         ) : (
           <View style={styles.emptyState}>
-            <Feather name="calendar" size={24} color={colors.mutedForeground} />
-            <Text style={styles.emptyStateText}>No pending requests</Text>
+            <View style={styles.emptyIconCircle}>
+              <Feather name="calendar" size={40} color={colors.mutedForeground} />
+            </View>
+            <Text style={styles.emptyStateTitle}>No Pending Requests</Text>
+            <Text style={styles.emptyStateText}>Time off requests will appear here</Text>
           </View>
         )}
       </View>
@@ -975,8 +967,11 @@ export default function TeamOperationsScreen() {
 
       {memberStats.length === 0 && (
         <View style={styles.emptyState}>
-          <Feather name="bar-chart-2" size={32} color={colors.mutedForeground} />
-          <Text style={styles.emptyStateText}>No team members to display</Text>
+          <View style={styles.emptyIconCircle}>
+            <Feather name="bar-chart-2" size={40} color={colors.mutedForeground} />
+          </View>
+          <Text style={styles.emptyStateTitle}>No Performance Data</Text>
+          <Text style={styles.emptyStateText}>Team performance metrics will appear here</Text>
         </View>
       )}
     </ScrollView>
@@ -1008,7 +1003,10 @@ export default function TeamOperationsScreen() {
       <View style={[styles.container, { paddingTop: isTabletDevice ? spacing.xs : 0 }]}>
         {isTabletDevice && (
           <View style={styles.tabletHeader}>
-            <Text style={styles.tabletTitle}>Team Operations</Text>
+            <View>
+              <Text style={styles.tabletTitle}>Team Operations</Text>
+              <Text style={styles.tabletSubtitle}>{acceptedMembers.length} team members</Text>
+            </View>
             <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
               <Feather name="refresh-cw" size={20} color={colors.foreground} />
             </TouchableOpacity>
@@ -1142,21 +1140,29 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: responsivePadding,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   tabletTitle: {
-    fontSize: isTabletDevice ? 24 : 20,
+    ...typography.largeTitle,
     color: colors.foreground,
-    fontWeight: '600',
+  },
+  tabletSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
   },
   refreshButton: {
-    padding: spacing.sm,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
   },
   loadingContainer: {
     flex: 1,
@@ -1167,44 +1173,44 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   tabBar: {
     flexGrow: 0,
     flexShrink: 0,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: isTabletDevice ? radius.md : 0,
-    paddingHorizontal: isTabletDevice ? spacing.xs : 2,
-    marginBottom: spacing.xs,
-    alignSelf: isTabletDevice ? 'flex-start' : 'stretch',
+    marginBottom: spacing.md,
+    paddingHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
+  },
+  tabBarContent: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingVertical: isTabletDevice ? 6 : spacing.xs,
-    paddingHorizontal: isTabletDevice ? spacing.sm : spacing.xs,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    marginRight: 2,
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.muted,
+    height: sizes.filterChipHeight,
   },
   tabButtonActive: {
-    borderBottomColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   tabButtonText: {
-    fontSize: isTabletDevice ? 12 : 11,
+    ...typography.caption,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
   tabButtonTextActive: {
-    color: colors.primary,
+    color: '#ffffff',
     fontWeight: '600',
   },
   scrollContent: {
     flex: 1,
-    paddingHorizontal: isTabletDevice ? spacing.sm : spacing.lg,
+    paddingHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
   },
   liveViewToggle: {
     flexDirection: 'row',
     backgroundColor: colors.muted,
-    borderRadius: radius.lg,
+    borderRadius: radius['2xl'],
     padding: spacing.xs,
     marginVertical: spacing.md,
   },
@@ -1215,10 +1221,11 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
   },
   liveViewButtonActive: {
     backgroundColor: colors.card,
+    ...shadows.sm,
   },
   liveViewText: {
     ...typography.caption,
@@ -1232,25 +1239,53 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing['2xl'],
+  },
+  heroCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    ...shadows.md,
+  },
+  heroIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+    color: colors.foreground,
+  },
+  heroLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
   },
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    marginBottom: spacing.sm,
+    borderRadius: radius['2xl'],
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   avatarContainer: {
     position: 'relative',
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: sizes.avatarMd,
+    height: sizes.avatarMd,
+    borderRadius: sizes.avatarMd / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1280,13 +1315,13 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexWrap: 'wrap',
   },
   memberName: {
-    ...typography.subtitle,
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   roleBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
   },
   roleBadgeText: {
@@ -1300,27 +1335,28 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginTop: 2,
   },
   messageButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.muted,
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    marginBottom: spacing.sm,
+    borderRadius: radius['2xl'],
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1329,9 +1365,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginLeft: spacing.md,
   },
   activityTitle: {
-    ...typography.body,
+    ...typography.cardTitle,
     color: colors.foreground,
-    fontWeight: '500',
   },
   activityDescription: {
     ...typography.caption,
@@ -1346,7 +1381,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   importantBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
     backgroundColor: 'rgba(245,158,11,0.1)',
   },
   importantBadgeText: {
@@ -1373,22 +1408,21 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     right: spacing.xl,
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius['2xl'],
     padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    ...shadows.md,
   },
   mapEmptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
   mapEmptyTitle: {
-    ...typography.subheading,
+    ...typography.cardTitle,
     color: colors.foreground,
     marginBottom: spacing.xs,
   },
@@ -1397,7 +1431,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.mutedForeground,
     textAlign: 'center',
   },
-  // Life360-style team marker styles
   teamMarkerOuter: {
     width: 36,
     height: 36,
@@ -1440,14 +1473,10 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     backgroundColor: colors.card,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: radius.md,
     minWidth: 64,
     alignItems: 'center' as const,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1.5,
-    elevation: 2,
+    ...shadows.sm,
   },
   nameLabelText: {
     fontSize: 10,
@@ -1458,13 +1487,28 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing['3xl'],
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyStateTitle: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
   },
   emptyStateText: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     textAlign: 'center',
+    paddingHorizontal: spacing.xl,
   },
   statsRow: {
     flexDirection: 'row',
@@ -1472,23 +1516,24 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     paddingVertical: spacing.lg,
     backgroundColor: colors.card,
     marginTop: spacing.md,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   statItem: {
     alignItems: 'center',
   },
   statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
   statValue: {
-    ...typography.subtitle,
+    ...typography.statValue,
     color: colors.foreground,
   },
   statLabel: {
@@ -1503,23 +1548,25 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   actionButtonText: {
-    ...typography.subtitle,
+    ...typography.cardTitle,
     color: colors.primary,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
     marginTop: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1528,14 +1575,14 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginBottom: spacing.md,
   },
   cardTitle: {
-    ...typography.subtitle,
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   selectContainer: {
     marginBottom: spacing.md,
   },
   selectLabel: {
-    ...typography.caption,
+    ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.sm,
   },
@@ -1544,10 +1591,13 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     gap: spacing.sm,
   },
   memberChip: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
+    height: sizes.filterChipHeight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   memberChipActive: {
     backgroundColor: colors.primary,
@@ -1590,18 +1640,18 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.mutedForeground,
   },
   addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   timeOffCard: {
-    padding: spacing.md,
-    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderRadius: radius['2xl'],
     backgroundColor: colors.muted,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   timeOffHeader: {
     flexDirection: 'row',
@@ -1610,13 +1660,13 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginBottom: spacing.xs,
   },
   timeOffName: {
-    ...typography.subtitle,
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   pendingBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
     backgroundColor: 'rgba(245,158,11,0.1)',
   },
   pendingBadgeText: {
@@ -1642,7 +1692,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   timeOffButton: {
     flex: 1,
     paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     alignItems: 'center',
   },
   timeOffButtonText: {
@@ -1653,75 +1703,79 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.md,
     marginTop: spacing.md,
   },
   statCard: {
-    width: (contentWidth - responsivePadding * 2 - spacing.sm) / 2,
-    padding: spacing.md,
+    width: (contentWidth - responsivePadding * 2 - spacing.md) / 2,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
+    ...shadows.sm,
   },
   statCardIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   statCardValue: {
-    ...typography.headline,
+    ...typography.statValue,
     color: colors.foreground,
   },
   statCardLabel: {
-    ...typography.captionSmall,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
+    marginTop: spacing.xs,
   },
   performanceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    marginBottom: spacing.sm,
+    borderRadius: radius['2xl'],
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   performanceRank: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
   performanceRankText: {
-    ...typography.captionSmall,
+    ...typography.caption,
     color: colors.mutedForeground,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   performanceInfo: {
     flex: 1,
     marginLeft: spacing.sm,
   },
   performanceName: {
-    ...typography.subtitle,
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   performanceStats: {
     ...typography.caption,
     color: colors.mutedForeground,
+    marginTop: 2,
   },
   performanceRate: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
   },
   performanceRateText: {
@@ -1741,7 +1795,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     borderBottomColor: colors.border,
   },
   modalTitle: {
-    ...typography.pageTitle,
+    ...typography.sectionTitle,
     color: colors.foreground,
   },
   modalContent: {
@@ -1749,16 +1803,17 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   inputLabel: {
     ...typography.label,
-    color: colors.foreground,
+    color: colors.mutedForeground,
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
   textInput: {
     backgroundColor: colors.muted,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.md,
     color: colors.foreground,
     ...typography.body,
+    height: sizes.inputHeight,
   },
   reasonChips: {
     flexDirection: 'row',
@@ -1766,9 +1821,9 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     gap: spacing.sm,
   },
   reasonChip: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
   },
   reasonChipActive: {
@@ -1786,65 +1841,67 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   submitButton: {
     backgroundColor: colors.primary,
     padding: spacing.lg,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     alignItems: 'center',
     marginTop: spacing['2xl'],
   },
   submitButtonText: {
-    ...typography.subtitle,
+    ...typography.button,
     color: '#ffffff',
     fontWeight: '600',
   },
   kpiStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    gap: isTabletDevice ? spacing.sm : spacing.xs,
+    marginTop: spacing.md,
+    gap: spacing.md,
   },
   kpiStatItem: {
     flex: 1,
     alignItems: 'center',
-    padding: isTabletDevice ? spacing.md : spacing.sm,
+    padding: spacing.lg,
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   kpiStatIcon: {
-    width: isTabletDevice ? 36 : 32,
-    height: isTabletDevice ? 36 : 32,
-    borderRadius: isTabletDevice ? 18 : 16,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   kpiStatValue: {
-    fontSize: isTabletDevice ? 22 : 18,
-    fontWeight: '600',
+    ...typography.statValue,
     color: colors.foreground,
   },
   kpiStatLabel: {
-    fontSize: isTabletDevice ? 13 : 11,
+    ...typography.caption,
     color: colors.mutedForeground,
+    marginTop: spacing.xs,
   },
   upgradeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    marginHorizontal: isTabletDevice ? spacing.sm : spacing.md,
+    padding: spacing.lg,
+    marginHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
     marginVertical: spacing.sm,
-    borderRadius: radius.lg,
-    gap: spacing.sm,
+    borderRadius: radius['2xl'],
+    gap: spacing.md,
   },
   upgradeBannerContent: {
     flex: 1,
   },
   upgradeBannerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.cardTitle,
+    color: colors.foreground,
   },
   upgradeBannerText: {
-    fontSize: 12,
+    ...typography.caption,
+    color: colors.mutedForeground,
     marginTop: 2,
   },
 });

@@ -12,6 +12,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 interface ProfitSnapshot {
   revenueToday: number;
@@ -77,41 +78,41 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   tabContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
+    paddingHorizontal: spacing.lg,
+    height: sizes.filterChipHeight,
+    borderRadius: radius.pill,
+    gap: spacing.sm,
   },
   tabButtonActive: {
     backgroundColor: colors.primary,
@@ -119,11 +120,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabButtonInactive: {
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '500',
+    ...typography.caption,
+    fontWeight: '600',
   },
   tabTextActive: {
     color: colors.primaryForeground || '#fff',
@@ -132,39 +133,72 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    textTransform: 'uppercase',
+    marginBottom: spacing.md,
   },
   statsGrid: {
-    gap: 12,
-    marginBottom: 24,
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
+  },
+  heroCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    ...shadows.md,
+  },
+  heroStatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  heroIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroStatValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+    color: colors.foreground,
+  },
+  heroStatLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  heroSubValue: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   statHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -176,104 +210,154 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginTop: 2,
-    textTransform: 'uppercase',
+    marginTop: spacing.xs,
   },
   statSubValue: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   comparisonCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   comparisonTitle: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    textTransform: 'uppercase',
+    marginBottom: spacing.md,
   },
   comparisonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   comparisonCol: {
     flex: 1,
   },
   comparisonLabel: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
   },
   comparisonValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   comparisonDiffContainer: {
     alignItems: 'center',
-    gap: 2,
+    gap: spacing.xs,
   },
   comparisonDiffText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
+    ...shadows.sm,
   },
   errorText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.destructive,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.md,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.primaryForeground || '#fff',
   },
 });
+
+function HeroCard({
+  icon,
+  iconBg,
+  iconColor,
+  value,
+  label,
+  subValue,
+  trendUp,
+  trendColor,
+  valueColor,
+  styles,
+  colors,
+}: {
+  icon: string;
+  iconBg: string;
+  iconColor: string;
+  value: string;
+  label: string;
+  subValue?: string;
+  trendUp?: boolean | null;
+  trendColor?: string;
+  valueColor?: string;
+  styles: any;
+  colors: any;
+}) {
+  return (
+    <View style={styles.heroCard}>
+      <View style={styles.heroStatHeader}>
+        <View style={[styles.heroIconContainer, { backgroundColor: iconBg }]}>
+          <Feather name={icon as any} size={20} color={iconColor} />
+        </View>
+        {trendUp !== null && trendUp !== undefined && (
+          <View
+            style={[
+              styles.trendBadge,
+              {
+                backgroundColor: trendUp
+                  ? (colors.successLight || 'rgba(34,197,94,0.15)')
+                  : (colors.destructiveLight || 'rgba(239,68,68,0.15)'),
+              },
+            ]}
+          >
+            <Feather
+              name={trendUp ? 'trending-up' : 'trending-down'}
+              size={12}
+              color={trendUp ? (colors.success || '#22c55e') : (colors.destructive || '#ef4444')}
+            />
+          </View>
+        )}
+      </View>
+      <Text style={[styles.heroStatValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
+      <Text style={styles.heroStatLabel}>{label}</Text>
+      {subValue ? <Text style={styles.heroSubValue}>{subValue}</Text> : null}
+    </View>
+  );
+}
 
 function StatCard({
   icon,
@@ -304,7 +388,7 @@ function StatCard({
     <View style={styles.statCard}>
       <View style={styles.statHeader}>
         <View style={[styles.statIconContainer, { backgroundColor: iconBg }]}>
-          <Feather name={icon as any} size={22} color={iconColor} />
+          <Feather name={icon as any} size={20} color={iconColor} />
         </View>
         {trendUp !== null && trendUp !== undefined && (
           <View
@@ -383,7 +467,18 @@ export default function InsightsScreen() {
 
   const renderProfitTab = () => (
     <View style={styles.statsGrid}>
-      <Text style={styles.sectionTitle}>Revenue</Text>
+      <HeroCard
+        icon="dollar-sign"
+        iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+        iconColor={colors.success || '#22c55e'}
+        value={fmtAud(profit?.revenueThisMonth ?? 0)}
+        label="Revenue This Month"
+        trendUp={(profit?.revenueThisMonth ?? 0) > 0 ? true : null}
+        styles={styles}
+        colors={colors}
+      />
+
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Revenue Breakdown</Text>
       <View style={styles.statsRow}>
         <StatCard
           icon="dollar-sign"
@@ -404,29 +499,8 @@ export default function InsightsScreen() {
           colors={colors}
         />
       </View>
-      <View style={styles.statsRow}>
-        <StatCard
-          icon="calendar"
-          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
-          iconColor={colors.primary || '#3b82f6'}
-          value={fmtAud(profit?.revenueThisMonth ?? 0)}
-          label="This Month"
-          trendUp={(profit?.revenueThisMonth ?? 0) > 0 ? true : null}
-          styles={styles}
-          colors={colors}
-        />
-        <StatCard
-          icon="dollar-sign"
-          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
-          iconColor={colors.success || '#22c55e'}
-          value={fmtAud(profit?.grossProfit ?? 0)}
-          label="Gross Profit"
-          styles={styles}
-          colors={colors}
-        />
-      </View>
 
-      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Margins & Costs</Text>
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Margins & Costs</Text>
       <View style={styles.statsRow}>
         <StatCard
           icon="percent"
@@ -446,6 +520,17 @@ export default function InsightsScreen() {
           colors={colors}
         />
         <StatCard
+          icon="dollar-sign"
+          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+          iconColor={colors.success || '#22c55e'}
+          value={fmtAud(profit?.grossProfit ?? 0)}
+          label="Gross Profit"
+          styles={styles}
+          colors={colors}
+        />
+      </View>
+      <View style={styles.statsRow}>
+        <StatCard
           icon="clock"
           iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
           iconColor={colors.warning || '#f59e0b'}
@@ -455,8 +540,6 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
-      </View>
-      <View style={styles.statsRow}>
         <StatCard
           icon="package"
           iconBg="rgba(139,92,246,0.15)"
@@ -467,14 +550,24 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
-        <View style={{ flex: 1 }} />
       </View>
     </View>
   );
 
   const renderCashflowTab = () => (
     <View style={styles.statsGrid}>
-      <Text style={styles.sectionTitle}>Collections</Text>
+      <HeroCard
+        icon="dollar-sign"
+        iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+        iconColor={colors.success || '#22c55e'}
+        value={fmtAud(cashflow?.thisMonthCollected ?? 0)}
+        label="Collected This Month"
+        trendUp={collectionUp ? true : false}
+        styles={styles}
+        colors={colors}
+      />
+
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Collections</Text>
       <View style={styles.statsRow}>
         <StatCard
           icon="dollar-sign"
@@ -486,17 +579,6 @@ export default function InsightsScreen() {
           colors={colors}
         />
         <StatCard
-          icon="calendar"
-          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
-          iconColor={colors.primary || '#3b82f6'}
-          value={fmtAud(cashflow?.thisMonthCollected ?? 0)}
-          label="This Month"
-          styles={styles}
-          colors={colors}
-        />
-      </View>
-      <View style={styles.statsRow}>
-        <StatCard
           icon="clock"
           iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
           iconColor={colors.warning || '#f59e0b'}
@@ -505,6 +587,8 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
+      </View>
+      <View style={styles.statsRow}>
         <StatCard
           icon="alert-circle"
           iconBg={colors.destructiveLight || 'rgba(239,68,68,0.15)'}
@@ -517,9 +601,10 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
+        <View style={{ flex: 1 }} />
       </View>
 
-      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Trend</Text>
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Trend</Text>
       <View style={styles.comparisonCard}>
         <Text style={styles.comparisonTitle}>This Month vs Last Month</Text>
         <View style={styles.comparisonRow}>
@@ -548,17 +633,18 @@ export default function InsightsScreen() {
 
   const renderEfficiencyTab = () => (
     <View style={styles.statsGrid}>
-      <Text style={styles.sectionTitle}>Activity</Text>
+      <HeroCard
+        icon="briefcase"
+        iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+        iconColor={colors.primary || '#3b82f6'}
+        value={String(kpis?.jobsToday ?? 0)}
+        label="Jobs Today"
+        styles={styles}
+        colors={colors}
+      />
+
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Activity</Text>
       <View style={styles.statsRow}>
-        <StatCard
-          icon="briefcase"
-          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
-          iconColor={colors.primary || '#3b82f6'}
-          value={String(kpis?.jobsToday ?? 0)}
-          label="Jobs Today"
-          styles={styles}
-          colors={colors}
-        />
         <StatCard
           icon="file-text"
           iconBg={colors.warningLight || 'rgba(245,158,11,0.15)'}
@@ -570,10 +656,6 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
-      </View>
-
-      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Quotes</Text>
-      <View style={styles.statsRow}>
         <StatCard
           icon="send"
           iconBg="rgba(139,92,246,0.15)"
@@ -584,10 +666,9 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
-        <View style={{ flex: 1 }} />
       </View>
 
-      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Earnings</Text>
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Earnings</Text>
       <View style={styles.statsRow}>
         <StatCard
           icon="trending-up"
@@ -613,7 +694,18 @@ export default function InsightsScreen() {
 
   const renderGrowthTab = () => (
     <View style={styles.statsGrid}>
-      <Text style={styles.sectionTitle}>Outstanding</Text>
+      <HeroCard
+        icon="dollar-sign"
+        iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
+        iconColor={colors.success || '#22c55e'}
+        value={fmtAud(profit?.revenueThisMonth ?? 0)}
+        label="Revenue This Month"
+        trendUp={(profit?.revenueThisMonth ?? 0) > 0 ? true : null}
+        styles={styles}
+        colors={colors}
+      />
+
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Outstanding</Text>
       <View style={styles.statsRow}>
         <StatCard
           icon="file-minus"
@@ -638,37 +730,14 @@ export default function InsightsScreen() {
         />
       </View>
 
-      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Revenue Snapshot</Text>
+      <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Quick Stats</Text>
       <View style={styles.statsRow}>
-        <StatCard
-          icon="dollar-sign"
-          iconBg={colors.successLight || 'rgba(34,197,94,0.15)'}
-          iconColor={colors.success || '#22c55e'}
-          value={fmtAud(profit?.revenueThisMonth ?? 0)}
-          label="Revenue This Month"
-          trendUp={(profit?.revenueThisMonth ?? 0) > 0 ? true : null}
-          styles={styles}
-          colors={colors}
-        />
         <StatCard
           icon="trending-up"
           iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
           iconColor={colors.primary || '#3b82f6'}
           value={fmtAud(profit?.revenueThisWeek ?? 0)}
           label="Revenue This Week"
-          styles={styles}
-          colors={colors}
-        />
-      </View>
-
-      <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Quick Stats</Text>
-      <View style={styles.statsRow}>
-        <StatCard
-          icon="briefcase"
-          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
-          iconColor={colors.primary || '#3b82f6'}
-          value={String(kpis?.jobsToday ?? 0)}
-          label="Jobs Today"
           styles={styles}
           colors={colors}
         />
@@ -681,6 +750,18 @@ export default function InsightsScreen() {
           styles={styles}
           colors={colors}
         />
+      </View>
+      <View style={styles.statsRow}>
+        <StatCard
+          icon="briefcase"
+          iconBg={colors.primaryLight || 'rgba(59,130,246,0.15)'}
+          iconColor={colors.primary || '#3b82f6'}
+          value={String(kpis?.jobsToday ?? 0)}
+          label="Jobs Today"
+          styles={styles}
+          colors={colors}
+        />
+        <View style={{ flex: 1 }} />
       </View>
     </View>
   );
@@ -711,7 +792,7 @@ export default function InsightsScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: 20 }}
+            style={{ marginBottom: spacing.xl }}
             contentContainerStyle={styles.tabContainer}
           >
             {TABS.map((tab) => {
@@ -728,7 +809,7 @@ export default function InsightsScreen() {
                 >
                   <Feather
                     name={tab.icon as any}
-                    size={14}
+                    size={iconSizes.sm}
                     color={isActive ? (colors.primaryForeground || '#fff') : colors.mutedForeground}
                   />
                   <Text style={[styles.tabText, isActive ? styles.tabTextActive : styles.tabTextInactive]}>
@@ -743,7 +824,7 @@ export default function InsightsScreen() {
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={40} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => { setIsLoading(true); setError(null); fetchData(); }}>
+              <TouchableOpacity style={styles.retryButton} onPress={() => { setIsLoading(true); setError(null); fetchData(); }} activeOpacity={0.7}>
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>

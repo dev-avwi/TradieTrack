@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../src/lib/theme';
 import { api, API_URL } from '../../src/lib/api';
 import { format } from 'date-fns';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 interface ComplianceDocument {
   id: string;
@@ -110,108 +111,141 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: spacing['2xl'],
+    paddingTop: spacing.sm,
+    gap: spacing.md,
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   addButton: {
     backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.button,
+  },
+  heroCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.md,
+    alignItems: 'center',
+  },
+  heroIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  heroLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+  },
+  supportingStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
+  },
+  supportingStatCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  statValue: {
+    ...typography.statValue,
+    color: colors.foreground,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  statLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+  },
+  sectionHeader: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
   },
   filterRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing['2xl'],
   },
   filterTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingHorizontal: spacing.lg,
+    height: sizes.filterChipHeight,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterTabActive: {
     backgroundColor: colors.primary,
   },
   filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.button,
     color: colors.mutedForeground,
   },
   filterTabTextActive: {
     color: '#fff',
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.foreground,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
   documentCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   documentCardExpanded: {
     borderColor: colors.primary,
@@ -219,12 +253,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   documentTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   documentIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -232,57 +266,55 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   documentName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
     flexWrap: 'wrap',
   },
   typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
   },
   typeBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
     color: colors.mutedForeground,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: radius.pill,
   },
   statusBadgeText: {
-    fontSize: 11,
+    ...typography.badge,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   expiryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
+    gap: spacing.xs,
+    marginTop: spacing.sm,
   },
   expiryText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
   },
   detailsContainer: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -290,22 +322,22 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   detailLabel: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
   },
   detailValue: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -314,112 +346,109 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
   editButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.button,
     color: '#fff',
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.xl,
     backgroundColor: 'rgba(239,68,68,0.12)',
   },
   deleteButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.button,
     color: '#ef4444',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(107,114,128,0.12)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(107,114,128,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
   },
   emptyAddButton: {
-    marginTop: 16,
+    marginTop: spacing.lg,
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.xs,
   },
   emptyAddButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.button,
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+    marginBottom: spacing['2xl'],
   },
   errorText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.destructive,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.xl,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: '#fff',
   },
   modalOverlay: {
@@ -429,45 +458,46 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   modalContent: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
     maxHeight: '92%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: spacing.md,
   },
   modalTitle: {
-    fontSize: 18,
+    ...typography.cardTitle,
     fontWeight: '700',
     color: colors.foreground,
   },
   modalCloseButton: {
-    padding: 4,
+    padding: spacing.xs,
   },
   modalBody: {
-    padding: 16,
+    padding: spacing.lg,
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   formLabel: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   formInput: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    ...typography.body,
     color: colors.foreground,
   },
   formInputMultiline: {
@@ -477,12 +507,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   typeSelector: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   typeOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
@@ -492,7 +522,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: `${colors.primary}18`,
   },
   typeOptionText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
@@ -504,41 +534,41 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 10,
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     borderStyle: 'dashed',
     backgroundColor: colors.card,
   },
   uploadButtonText: {
-    fontSize: 14,
+    ...typography.body,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
   uploadedIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.xl,
     backgroundColor: 'rgba(34,197,94,0.12)',
   },
   uploadedText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: '#22c55e',
     flex: 1,
   },
   removeUploadButton: {
-    padding: 4,
+    padding: spacing.xs,
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 10,
-    padding: 16,
+    gap: spacing.md,
+    padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -546,13 +576,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
   },
   cancelButtonText: {
-    fontSize: 15,
+    ...typography.body,
     fontWeight: '600',
     color: colors.mutedForeground,
   },
@@ -560,15 +590,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   saveButtonText: {
-    fontSize: 15,
+    ...typography.body,
     fontWeight: '700',
     color: '#fff',
   },
@@ -656,6 +686,7 @@ export default function ComplianceScreen() {
   const validCount = documentsWithStatus.filter(d => d.computedStatus === 'valid').length;
   const expiringSoonCount = documentsWithStatus.filter(d => d.computedStatus === 'expiring_soon').length;
   const expiredCount = documentsWithStatus.filter(d => d.computedStatus === 'expired').length;
+  const totalCount = documents.length;
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
@@ -853,36 +884,53 @@ export default function ComplianceScreen() {
     );
   };
 
-  const renderStatCards = () => (
-    <View style={styles.statsRow}>
-      <View style={styles.statCard}>
-        <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.valid.bgColor }]}>
-          <Feather name="check-circle" size={22} color={STATUS_CONFIG.valid.color} />
-        </View>
-        <Text style={styles.statValue}>{validCount}</Text>
-        <Text style={styles.statLabel}>Valid</Text>
-      </View>
+  const renderHeroSection = () => {
+    const heroStat = validCount > 0 ? validCount : totalCount;
+    const heroLabel = validCount > 0 ? 'VALID' : 'DOCUMENTS';
+    const heroColor = validCount > 0 ? STATUS_CONFIG.valid.color : colors.primary;
+    const heroBg = validCount > 0 ? STATUS_CONFIG.valid.bgColor : `${colors.primary}18`;
 
-      <View style={styles.statCard}>
-        <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expiring_soon.bgColor }]}>
-          <Feather name="clock" size={22} color={STATUS_CONFIG.expiring_soon.color} />
+    return (
+      <View>
+        <View style={styles.heroCard}>
+          <View style={[styles.heroIconContainer, { backgroundColor: heroBg }]}>
+            <Feather name="shield" size={24} color={heroColor} />
+          </View>
+          <Text style={[styles.heroValue, { color: heroColor }]}>{heroStat}</Text>
+          <Text style={styles.heroLabel}>{heroLabel}</Text>
         </View>
-        <Text style={styles.statValue}>{expiringSoonCount}</Text>
-        <Text style={styles.statLabel}>Expiring</Text>
-      </View>
 
-      <View style={styles.statCard}>
-        <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expired.bgColor }]}>
-          <Feather name="alert-circle" size={22} color={STATUS_CONFIG.expired.color} />
+        <View style={styles.supportingStatsRow}>
+          <View style={styles.supportingStatCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.valid.bgColor }]}>
+              <Feather name="check-circle" size={20} color={STATUS_CONFIG.valid.color} />
+            </View>
+            <Text style={styles.statValue}>{validCount}</Text>
+            <Text style={styles.statLabel}>Valid</Text>
+          </View>
+
+          <View style={styles.supportingStatCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expiring_soon.bgColor }]}>
+              <Feather name="clock" size={20} color={STATUS_CONFIG.expiring_soon.color} />
+            </View>
+            <Text style={styles.statValue}>{expiringSoonCount}</Text>
+            <Text style={styles.statLabel}>Expiring</Text>
+          </View>
+
+          <View style={styles.supportingStatCard}>
+            <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expired.bgColor }]}>
+              <Feather name="alert-circle" size={20} color={STATUS_CONFIG.expired.color} />
+            </View>
+            <Text style={styles.statValue}>{expiredCount}</Text>
+            <Text style={styles.statLabel}>Expired</Text>
+          </View>
         </View>
-        <Text style={styles.statValue}>{expiredCount}</Text>
-        <Text style={styles.statLabel}>Expired</Text>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderFilterTabs = () => (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
       <View style={styles.filterRow}>
         {FILTER_TABS.map(tab => (
           <TouchableOpacity
@@ -915,7 +963,7 @@ export default function ComplianceScreen() {
       >
         <View style={styles.documentTopRow}>
           <View style={[styles.documentIconContainer, { backgroundColor: `${typeConfig.color}18` }]}>
-            <Feather name={typeConfig.icon} size={22} color={typeConfig.color} />
+            <Feather name={typeConfig.icon} size={20} color={typeConfig.color} />
           </View>
           <View style={styles.documentInfo}>
             <Text style={styles.documentName} numberOfLines={2}>{getDocName(doc)}</Text>
@@ -983,14 +1031,14 @@ export default function ComplianceScreen() {
             {doc.attachmentUrl && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Attachment</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   <Feather name="paperclip" size={12} color={colors.primary} />
                   <Text style={[styles.detailValue, { color: colors.primary }]}>Uploaded</Text>
                 </View>
               </View>
             )}
             {doc.notes && (
-              <View style={[styles.detailRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+              <View style={[styles.detailRow, { flexDirection: 'column', alignItems: 'flex-start', gap: spacing.xs }]}>
                 <Text style={styles.detailLabel}>Notes</Text>
                 <Text style={[styles.detailValue, { fontWeight: '400' }]}>{doc.notes}</Text>
               </View>
@@ -1022,7 +1070,7 @@ export default function ComplianceScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Feather name="shield" size={32} color="#6b7280" />
+        <Feather name="shield" size={40} color="#6b7280" />
       </View>
       <Text style={styles.emptyTitle}>No Documents</Text>
       <Text style={styles.emptySubtitle}>
@@ -1289,7 +1337,8 @@ export default function ComplianceScreen() {
 
             {error ? renderErrorState() : documents.length === 0 && activeFilter === 'all' ? renderEmptyState() : (
               <>
-                {renderStatCards()}
+                {renderHeroSection()}
+                <Text style={styles.sectionHeader}>DOCUMENTS</Text>
                 {renderFilterTabs()}
                 {filteredDocuments.length === 0 ? renderEmptyState() : filteredDocuments.map(renderDocumentCard)}
               </>

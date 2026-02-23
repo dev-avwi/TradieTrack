@@ -25,7 +25,7 @@ import { Card, CardContent } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -36,22 +36,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.lg,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing['2xl'],
     paddingTop: spacing.sm,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   headerBanner: {
     backgroundColor: colors.primaryLight,
@@ -67,14 +67,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   headerBannerTitle: {
+    ...typography.cardTitle,
     color: colors.foreground,
-    fontWeight: '600',
-    fontSize: 18,
     marginLeft: spacing.sm,
   },
   headerBannerSubtitle: {
+    ...typography.caption,
     color: colors.mutedForeground,
-    fontSize: 14,
   },
   quickLinksRow: {
     flexDirection: 'row',
@@ -86,11 +85,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius['2xl'],
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     gap: spacing.sm,
+    ...shadows.sm,
   },
   quickLinkIconContainer: {
     width: 32,
@@ -101,7 +101,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   quickLinkText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -109,9 +109,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionLabel: {
-    color: colors.foreground,
-    fontWeight: '600',
-    fontSize: 16,
+    ...typography.label,
+    color: colors.mutedForeground,
     marginBottom: spacing.md,
   },
   amountInputContainer: {
@@ -149,13 +148,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   paymentMethodCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
     marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   paymentMethodCardDisabled: {
     opacity: 0.5,
@@ -175,16 +175,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   paymentMethodHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   paymentMethodTitle: {
+    ...typography.cardTitle,
     color: colors.foreground,
-    fontWeight: '600',
-    fontSize: 16,
   },
   paymentMethodDescription: {
+    ...typography.caption,
     color: colors.mutedForeground,
-    fontSize: 14,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   pendingSection: {
     marginTop: spacing.xl,
@@ -197,20 +198,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   pendingSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
+    ...typography.label,
+    color: colors.mutedForeground,
   },
   emptyPending: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing['2xl'],
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   emptyPendingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: spacing.sm,
   },
@@ -219,22 +220,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   pendingItemContent: {
     flex: 1,
   },
   pendingItemTitle: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   pendingItemClient: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
@@ -243,8 +244,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   pendingItemAmount: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodySemibold,
     color: colors.foreground,
   },
   collectButton: {
@@ -262,20 +262,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   infoCard: {
-    marginTop: spacing.lg,
+    marginTop: spacing['2xl'],
   },
   infoCardTitle: {
+    ...typography.cardTitle,
     color: colors.foreground,
-    fontWeight: '600',
     marginBottom: spacing.sm,
   },
   infoCardText: {
+    ...typography.caption,
     color: colors.mutedForeground,
-    fontSize: 14,
   },
   infoCardFees: {
+    ...typography.captionSmall,
     color: colors.mutedForeground,
-    fontSize: 12,
     marginTop: spacing.sm,
   },
   warningCard: {
@@ -397,7 +397,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statsGrid: {
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing['2xl'],
   },
   statsRow: {
     flexDirection: 'row',
@@ -406,14 +406,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   statIconContainer: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
@@ -421,15 +422,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
   },
   statTitle: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
     marginTop: 2,
   },
   demoModeBanner: {
@@ -534,7 +532,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   recentPaymentsSection: {
-    marginTop: spacing.xl,
+    marginTop: spacing['2xl'],
     marginBottom: spacing.lg,
   },
   recentPaymentItem: {
@@ -542,11 +540,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   recentPaymentLeft: {
     flexDirection: 'row',
@@ -557,7 +556,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   recentPaymentIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -566,38 +565,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   recentPaymentClient: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   recentPaymentMeta: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   recentPaymentAmount: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodySemibold,
     color: colors.success,
   },
   compactQuickLinksRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
   },
   compactQuickLink: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.muted,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   compactQuickLinkText: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -613,11 +613,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   invoicePickerItemContent: {
     flex: 1,
@@ -628,41 +629,43 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   invoicePickerItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   invoicePickerItemClient: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   invoicePickerItemAmount: {
+    ...typography.bodySemibold,
     fontSize: 18,
-    fontWeight: '600',
     color: colors.foreground,
   },
   customAmountButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.muted,
-    borderRadius: radius.xl,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
     padding: spacing.lg,
     marginTop: spacing.md,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   customAmountButtonText: {
-    fontSize: 16,
+    ...typography.body,
     fontWeight: '500',
     color: colors.foreground,
   },
   invoicePickerEmpty: {
     alignItems: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing['3xl'],
   },
   invoicePickerEmptyText: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.mutedForeground,
     marginTop: spacing.md,
     textAlign: 'center',
@@ -706,7 +709,7 @@ function PaymentMethodCard({
         <View style={styles.paymentMethodHeader}>
           <Text style={styles.paymentMethodTitle}>{title}</Text>
           {badge && (
-            <Badge variant={badgeVariant} style={{ marginLeft: 8 }}>
+            <Badge variant={badgeVariant}>
               {badge}
             </Badge>
           )}

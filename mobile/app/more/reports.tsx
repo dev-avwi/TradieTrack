@@ -15,6 +15,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useReportsStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -44,74 +45,77 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   exportButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
+    borderColor: colors.cardBorder,
+    gap: spacing.sm,
+    ...shadows.sm,
   },
   exportButtonText: {
-    color: colors.foreground,
-    fontSize: 14,
+    ...typography.body,
     fontWeight: '500',
+    color: colors.foreground,
   },
   periodSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16,
-    gap: 8,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+    ...shadows.sm,
   },
   periodSelectorText: {
     flex: 1,
-    fontSize: 15,
+    ...typography.body,
     fontWeight: '500',
     color: colors.foreground,
   },
   periodPicker: {
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
+    ...shadows.sm,
   },
   periodOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -119,7 +123,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   periodOptionText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
   },
   periodOptionTextActive: {
@@ -127,38 +131,66 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   statsGrid: {
-    gap: 12,
-    marginBottom: 24,
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
+  },
+  heroCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    ...shadows.md,
+    marginBottom: spacing.md,
+  },
+  heroStatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  heroStatValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+    color: colors.foreground,
+  },
+  heroStatTitle: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  heroStatSub: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   statHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -178,43 +210,40 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.destructiveLight,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
   },
   statTitle: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
   statSubValue: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   chartSection: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
+    marginBottom: spacing['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   chartHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 20,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   chartSubtitle: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginLeft: 'auto',
   },
@@ -232,55 +261,58 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 24,
     height: 100,
     backgroundColor: colors.muted,
-    borderRadius: 4,
+    borderRadius: radius.xs,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   chartBar: {
     width: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 4,
+    borderRadius: radius.xs,
   },
   chartBarLabel: {
-    fontSize: 11,
+    ...typography.label,
     color: colors.mutedForeground,
-    marginTop: 8,
+    marginTop: spacing.sm,
+    textTransform: 'none',
+    letterSpacing: 0,
+    fontSize: 11,
   },
   chartBarAmount: {
     fontSize: 10,
-    color: colors.foreground,
     fontWeight: '500',
+    color: colors.foreground,
     marginTop: 2,
   },
   chartYearTotal: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   chartYearLabel: {
-    fontSize: 14,
+    ...typography.body,
     color: colors.mutedForeground,
   },
   chartYearValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   topClientsSection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   clientCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   clientRank: {
     width: 28,
@@ -289,10 +321,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   clientRankText: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '600',
     color: colors.primary,
   },
@@ -300,200 +332,222 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   clientName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   clientMeta: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   clientRevenue: {
-    fontSize: 15,
+    ...typography.body,
     fontWeight: '600',
     color: colors.success,
   },
   quickReportsSection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   reportCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   reportCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   reportCardContent: {
     flex: 1,
   },
   reportCardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   reportCardSubtitle: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
   },
   insightsCard: {
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['2xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  insightsIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   insightsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   insightsText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
     lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
+    ...shadows.sm,
   },
   errorText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.destructive,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius['2xl'],
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.primaryForeground,
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
+    ...shadows.sm,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+    marginTop: spacing.md,
   },
   emptyText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.sm,
   },
   reportTabContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   reportTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginRight: 8,
-    borderRadius: 10,
+    paddingHorizontal: spacing.lg,
+    height: sizes.filterChipHeight,
+    marginRight: spacing.sm,
+    borderRadius: radius.pill,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
+    borderColor: colors.cardBorder,
+    gap: spacing.sm,
   },
   reportTabActive: {
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   reportTabText: {
-    fontSize: 14,
+    ...typography.body,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
   reportTabTextActive: {
-    color: colors.primary,
+    color: colors.primaryForeground,
   },
   overviewSummarySection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   summaryRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 8,
+    gap: spacing.md,
+    marginBottom: spacing.sm,
   },
   summaryItem: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   summaryLabel: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   summaryValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...typography.statValue,
     color: colors.foreground,
   },
   revenueBreakdownSection: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
   },
   breakdownCard: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
     borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
+    borderColor: colors.cardBorder,
+    gap: spacing.md,
+    ...shadows.sm,
   },
   breakdownRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.sm,
   },
   breakdownDot: {
     width: 8,
@@ -503,11 +557,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   breakdownLabel: {
     flex: 1,
-    fontSize: 14,
+    ...typography.body,
     color: colors.foreground,
   },
   breakdownValue: {
-    fontSize: 15,
+    ...typography.body,
     fontWeight: '600',
     color: colors.foreground,
   },
@@ -736,14 +790,15 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Reports</Text>
-              <Text style={styles.pageSubtitle}>Business analytics and insights</Text>
+              <Text style={styles.pageSubtitle}>Business analytics & insights</Text>
             </View>
             <TouchableOpacity 
               style={styles.exportButton} 
               onPress={handleExport}
               disabled={!summary}
+              activeOpacity={0.7}
             >
-              <Feather name="share" size={18} color={summary ? colors.foreground : colors.mutedForeground} />
+              <Feather name="share" size={iconSizes.lg} color={summary ? colors.foreground : colors.mutedForeground} />
               <Text style={[styles.exportButtonText, !summary && { color: colors.mutedForeground }]}>Share</Text>
             </TouchableOpacity>
           </View>
@@ -751,12 +806,13 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
           <TouchableOpacity
             style={styles.periodSelector}
             onPress={() => setShowPeriodPicker(!showPeriodPicker)}
+            activeOpacity={0.7}
           >
-            <Feather name="calendar" size={18} color={colors.primary} />
+            <Feather name="calendar" size={iconSizes.lg} color={colors.primary} />
             <Text style={styles.periodSelectorText}>
               {PERIODS.find(p => p.key === period)?.label}
             </Text>
-            <Feather name={showPeriodPicker ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+            <Feather name={showPeriodPicker ? "chevron-up" : "chevron-down"} size={iconSizes.lg} color={colors.mutedForeground} />
           </TouchableOpacity>
 
           {showPeriodPicker && (
@@ -770,6 +826,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                     index === PERIODS.length - 1 && { borderBottomWidth: 0 }
                   ]}
                   onPress={() => handlePeriodChange(p.key)}
+                  activeOpacity={0.7}
                 >
                   <Text style={[
                     styles.periodOptionText,
@@ -786,7 +843,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={40} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={refreshData}>
+              <TouchableOpacity style={styles.retryButton} onPress={refreshData} activeOpacity={0.7}>
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
@@ -805,8 +862,8 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   >
                     <Feather
                       name={tab.icon as any}
-                      size={16}
-                      color={isActive ? colors.primary : colors.mutedForeground}
+                      size={iconSizes.md}
+                      color={isActive ? colors.primaryForeground : colors.mutedForeground}
                     />
                     <Text style={[styles.reportTabText, isActive && styles.reportTabTextActive]}>
                       {tab.label}
@@ -828,28 +885,29 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             <>
               <Text style={styles.sectionTitle}>KEY METRICS</Text>
               <View style={styles.statsGrid}>
+                <View style={styles.heroCard}>
+                  <View style={styles.heroStatHeader}>
+                    <View style={[styles.statIconContainer, { backgroundColor: colors.successLight }]}>
+                      <Feather name="dollar-sign" size={20} color={colors.success} />
+                    </View>
+                    {summary.revenue.total > 0 && (
+                      <View style={[styles.trendBadge, styles.trendBadgeUp]}>
+                        <Feather name="trending-up" size={12} color={colors.success} />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.heroStatValue}>{formatCurrency(summary.revenue.total)}</Text>
+                  <Text style={styles.heroStatTitle}>TOTAL REVENUE</Text>
+                  {summary.revenue.gstCollected > 0 && (
+                    <Text style={styles.heroStatSub}>GST: {formatCurrency(summary.revenue.gstCollected)}</Text>
+                  )}
+                </View>
+
                 <View style={styles.statsRow}>
                   <View style={styles.statCard}>
                     <View style={styles.statHeader}>
-                      <View style={[styles.statIconContainer, { backgroundColor: colors.successLight }]}>
-                        <Feather name="dollar-sign" size={22} color={colors.success} />
-                      </View>
-                      {summary.revenue.total > 0 && (
-                        <View style={[styles.trendBadge, styles.trendBadgeUp]}>
-                          <Feather name="trending-up" size={12} color={colors.success} />
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.statValue}>{formatCurrency(summary.revenue.total)}</Text>
-                    <Text style={styles.statTitle}>TOTAL REVENUE</Text>
-                    {summary.revenue.gstCollected > 0 && (
-                      <Text style={styles.statSubValue}>GST: {formatCurrency(summary.revenue.gstCollected)}</Text>
-                    )}
-                  </View>
-                  <View style={styles.statCard}>
-                    <View style={styles.statHeader}>
                       <View style={[styles.statIconContainer, { backgroundColor: colors.warningLight }]}>
-                        <Feather name="clock" size={22} color={colors.warning} />
+                        <Feather name="clock" size={20} color={colors.warning} />
                       </View>
                       {summary.revenue.overdue > 0 && (
                         <View style={[styles.trendBadge, styles.trendBadgeDown]}>
@@ -863,12 +921,10 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                       <Text style={styles.statSubValue}>{summary.invoices.overdue} overdue</Text>
                     )}
                   </View>
-                </View>
-                <View style={styles.statsRow}>
                   <View style={styles.statCard}>
                     <View style={styles.statHeader}>
                       <View style={styles.statIconContainer}>
-                        <Feather name="briefcase" size={22} color={colors.primary} />
+                        <Feather name="briefcase" size={20} color={colors.primary} />
                       </View>
                       <View style={[styles.trendBadge, summary.jobs.completed > 0 ? styles.trendBadgeUp : {}]}>
                         <Feather name="check" size={12} color={summary.jobs.completed > 0 ? colors.success : colors.mutedForeground} />
@@ -878,10 +934,12 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                     <Text style={styles.statTitle}>JOBS COMPLETED</Text>
                     <Text style={styles.statSubValue}>{summary.jobs.inProgress} in progress</Text>
                   </View>
+                </View>
+                <View style={styles.statsRow}>
                   <View style={styles.statCard}>
                     <View style={styles.statHeader}>
                       <View style={[styles.statIconContainer, { backgroundColor: colors.infoLight }]}>
-                        <Feather name="file-text" size={22} color={colors.info} />
+                        <Feather name="file-text" size={20} color={colors.info} />
                       </View>
                       <View style={[styles.trendBadge, conversionRate >= 50 ? styles.trendBadgeUp : conversionRate > 0 ? styles.trendBadgeDown : {}]}>
                         <Feather 
@@ -900,9 +958,11 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
 
               {summary.jobs.total === 0 && summary.quotes.total === 0 && summary.invoices.total === 0 && (
                 <View style={styles.emptyCard}>
-                  <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Data Available</Text>
                   <Text style={styles.emptyText}>
-                    No data available for this period.{'\n'}
                     Create jobs, quotes, and invoices to see your business insights.
                   </Text>
                 </View>
@@ -933,7 +993,9 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               </View>
 
               <View style={styles.insightsCard}>
-                <Feather name="zap" size={32} color={colors.primary} />
+                <View style={styles.insightsIconContainer}>
+                  <Feather name="zap" size={40} color={colors.primary} />
+                </View>
                 <Text style={styles.insightsTitle}>AI Business Insights</Text>
                 <Text style={styles.insightsText}>
                   Smart analytics powered by AI will analyze your business trends and provide actionable recommendations.
@@ -947,7 +1009,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               {revenueReport && monthlyData.length > 0 ? (
                 <View style={styles.chartSection}>
                   <View style={styles.chartHeader}>
-                    <Feather name="bar-chart-2" size={20} color={colors.foreground} />
+                    <Feather name="bar-chart-2" size={iconSizes.xl} color={colors.foreground} />
                     <Text style={styles.chartTitle}>Revenue Overview</Text>
                     <Text style={styles.chartSubtitle}>{revenueReport.year}</Text>
                   </View>
@@ -969,7 +1031,10 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                 </View>
               ) : (
                 <View style={styles.emptyCard}>
-                  <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Revenue Data</Text>
                   <Text style={styles.emptyText}>No revenue data available yet</Text>
                 </View>
               )}
@@ -994,7 +1059,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                       <Text style={[styles.breakdownValue, { color: colors.destructive }]}>{formatCurrency(summary.revenue.overdue)}</Text>
                     </View>
                     {summary.revenue.gstCollected > 0 && (
-                      <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, marginTop: 4 }]}>
+                      <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md, marginTop: spacing.xs }]}>
                         <View style={[styles.breakdownDot, { backgroundColor: colors.info }]} />
                         <Text style={styles.breakdownLabel}>GST Collected</Text>
                         <Text style={styles.breakdownValue}>{formatCurrency(summary.revenue.gstCollected)}</Text>
@@ -1028,7 +1093,10 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                 </View>
               ) : (
                 <View style={styles.emptyCard}>
-                  <Feather name="users" size={40} color={colors.mutedForeground} />
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="users" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Client Data</Text>
                   <Text style={styles.emptyText}>No client data available yet</Text>
                 </View>
               )}
@@ -1038,11 +1106,11 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
           {activeReportTab === 'export' && (
             <View style={styles.quickReportsSection}>
               <Text style={styles.sectionTitle}>EXPORT REPORTS</Text>
-              <Text style={[styles.emptyText, { marginBottom: 16, textAlign: 'left' }]}>
+              <Text style={[styles.emptyText, { marginBottom: spacing.lg, textAlign: 'left' }]}>
                 Choose a report to share or export as CSV or text.
               </Text>
               
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')}>
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')} activeOpacity={0.7}>
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.successLight }]}>
                   <Feather name="dollar-sign" size={20} color={colors.success} />
                 </View>
@@ -1050,10 +1118,10 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardTitle}>Income Report</Text>
                   <Text style={styles.reportCardSubtitle}>Detailed breakdown of all income</Text>
                 </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
+                <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('jobs')}>
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('jobs')} activeOpacity={0.7}>
                 <View style={styles.reportCardIcon}>
                   <Feather name="briefcase" size={20} color={colors.primary} />
                 </View>
@@ -1061,10 +1129,10 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardTitle}>Jobs Report</Text>
                   <Text style={styles.reportCardSubtitle}>Jobs by status and completion rate</Text>
                 </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
+                <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('quotes')}>
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('quotes')} activeOpacity={0.7}>
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
                   <Feather name="file-text" size={20} color={colors.info} />
                 </View>
@@ -1072,10 +1140,10 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardTitle}>Quotes Report</Text>
                   <Text style={styles.reportCardSubtitle}>Quote conversion and acceptance rates</Text>
                 </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
+                <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')}>
+              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')} activeOpacity={0.7}>
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
                   <Feather name="percent" size={20} color={colors.warning} />
                 </View>
@@ -1083,18 +1151,18 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardTitle}>Tax Summary</Text>
                   <Text style={styles.reportCardSubtitle}>GST collected and payable</Text>
                 </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
+                <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.reportCard, { marginTop: 8 }]} onPress={handleExport}>
-                <View style={[styles.reportCardIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <TouchableOpacity style={[styles.reportCard, { marginTop: spacing.sm }]} onPress={handleExport} activeOpacity={0.7}>
+                <View style={[styles.reportCardIcon, { backgroundColor: colors.primaryLight }]}>
                   <Feather name="share-2" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.reportCardContent}>
                   <Text style={styles.reportCardTitle}>Full Summary</Text>
                   <Text style={styles.reportCardSubtitle}>Share complete business summary</Text>
                 </View>
-                <Feather name="share" size={18} color={colors.mutedForeground} />
+                <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
           )}

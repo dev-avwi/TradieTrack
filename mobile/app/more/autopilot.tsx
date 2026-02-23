@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 interface AutomationTrigger {
   type: string;
@@ -95,53 +96,111 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: spacing['2xl'],
   },
   headerLeft: {
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
+  },
+  heroSection: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
+  },
+  heroCard: {
+    flex: 2,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    ...shadows.md,
+  },
+  heroIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
+  },
+  heroLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  supportingStatsRow: {
+    flex: 1,
+    gap: spacing.md,
+  },
+  supportingStatCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  supportingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  supportingValue: {
+    ...typography.statValue,
+  },
+  supportingLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
   },
   tabContainer: {
-    flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
+    borderRadius: radius['2xl'],
+    padding: spacing.xs,
+    marginBottom: spacing['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    flexDirection: 'row',
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    gap: 6,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.xl,
+    gap: spacing.sm,
   },
   activeTab: {
     backgroundColor: colors.primary + '15',
   },
   tabText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
@@ -150,74 +209,73 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
   tabBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: sizes.filterCountMin,
+    height: sizes.filterCountMin,
+    borderRadius: sizes.filterCountMin / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.sm,
   },
   tabBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
     color: '#fff',
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
     flex: 1,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  automationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
     flex: 1,
   },
   cardDescription: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginBottom: 12,
+    marginBottom: spacing.md,
     lineHeight: 18,
   },
   detailsContainer: {
-    gap: 8,
-    marginBottom: 12,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   detailText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
     flex: 1,
   },
@@ -226,121 +284,136 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
   },
   statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
   },
   templateIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
   categoryContainer: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
   },
   categoryText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...typography.badge,
   },
   enableButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
   enableButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
+    ...typography.button,
+    color: colors.primaryForeground || '#fff',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
+    ...shadows.sm,
   },
   errorText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.destructive,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.primaryForeground || '#fff',
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing['2xl'],
+    ...shadows.sm,
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptyDescription: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
+    marginBottom: spacing.lg,
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing['2xl'],
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary,
+  },
+  emptyCtaText: {
+    ...typography.button,
+    color: colors.primaryForeground || '#fff',
+  },
+  templateGrid: {
+    gap: spacing.md,
   },
 });
 
@@ -356,6 +429,10 @@ export default function AutopilotScreen() {
   const [error, setError] = useState<string | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [enablingIds, setEnablingIds] = useState<Set<string>>(new Set());
+
+  const activeCount = useMemo(() => automations.filter(a => a.isActive).length, [automations]);
+  const totalCount = automations.length;
+  const availableCount = templates.length;
 
   const fetchData = useCallback(async () => {
     try {
@@ -433,46 +510,79 @@ export default function AutopilotScreen() {
     }
   }, [fetchData]);
 
-  const renderAutomationCard = (automation: Automation) => (
-    <View key={automation.id} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleRow}>
-          <View style={[styles.statusDot, { backgroundColor: automation.isActive ? '#22c55e' : '#6b7280' }]} />
-          <Text style={styles.cardTitle} numberOfLines={1}>{automation.name}</Text>
+  const renderHeroSection = () => (
+    <View style={styles.heroSection}>
+      <View style={styles.heroCard}>
+        <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+          <Feather name="zap" size={iconSizes.xl} color="#22c55e" />
         </View>
-        <Switch
-          value={automation.isActive}
-          onValueChange={() => handleToggle(automation)}
-          disabled={togglingIds.has(automation.id)}
-          trackColor={{ false: colors.border, true: colors.primary + '80' }}
-          thumbColor={automation.isActive ? colors.primary : colors.mutedForeground}
-        />
+        <Text style={[styles.heroValue, { color: '#22c55e' }]}>{activeCount}</Text>
+        <Text style={styles.heroLabel}>Active</Text>
       </View>
-
-      {automation.description ? (
-        <Text style={styles.cardDescription} numberOfLines={2}>{automation.description}</Text>
-      ) : null}
-
-      <View style={styles.detailsContainer}>
-        <View style={styles.detailRow}>
-          <Feather name="play-circle" size={14} color={colors.mutedForeground} />
-          <Text style={styles.detailText} numberOfLines={1}>{getTriggerSummary(automation.trigger)}</Text>
+      <View style={styles.supportingStatsRow}>
+        <View style={styles.supportingStatCard}>
+          <View style={[styles.supportingIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+            <Feather name="copy" size={iconSizes.xl} color="#3b82f6" />
+          </View>
+          <Text style={[styles.supportingValue, { color: colors.foreground }]}>{availableCount}</Text>
+          <Text style={styles.supportingLabel}>Available</Text>
         </View>
-        <View style={styles.detailRow}>
-          <Feather name="arrow-right-circle" size={14} color={colors.mutedForeground} />
-          <Text style={styles.detailText} numberOfLines={1}>{getActionSummary(automation.actions)}</Text>
-        </View>
-      </View>
-
-      <View style={styles.cardFooter}>
-        <View style={[styles.statusBadge, { backgroundColor: automation.isActive ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)' }]}>
-          <Text style={[styles.statusBadgeText, { color: automation.isActive ? '#22c55e' : '#6b7280' }]}>
-            {automation.isActive ? 'Active' : 'Inactive'}
-          </Text>
+        <View style={styles.supportingStatCard}>
+          <View style={[styles.supportingIconContainer, { backgroundColor: 'rgba(107,114,128,0.1)' }]}>
+            <Feather name="layers" size={iconSizes.xl} color="#6b7280" />
+          </View>
+          <Text style={[styles.supportingValue, { color: colors.foreground }]}>{totalCount}</Text>
+          <Text style={styles.supportingLabel}>Total</Text>
         </View>
       </View>
     </View>
   );
+
+  const renderAutomationCard = (automation: Automation) => {
+    const isActive = automation.isActive;
+    return (
+      <View key={automation.id} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleRow}>
+            <View style={[styles.automationIconContainer, { backgroundColor: isActive ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)' }]}>
+              <Feather name="zap" size={iconSizes.xl} color={isActive ? '#22c55e' : '#6b7280'} />
+            </View>
+            <Text style={styles.cardTitle} numberOfLines={1}>{automation.name}</Text>
+          </View>
+          <Switch
+            value={automation.isActive}
+            onValueChange={() => handleToggle(automation)}
+            disabled={togglingIds.has(automation.id)}
+            trackColor={{ false: colors.border, true: colors.primary + '80' }}
+            thumbColor={automation.isActive ? colors.primary : colors.mutedForeground}
+          />
+        </View>
+
+        {automation.description ? (
+          <Text style={styles.cardDescription} numberOfLines={2}>{automation.description}</Text>
+        ) : null}
+
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailRow}>
+            <Feather name="play-circle" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Text style={styles.detailText} numberOfLines={1}>{getTriggerSummary(automation.trigger)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Feather name="arrow-right-circle" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Text style={styles.detailText} numberOfLines={1}>{getActionSummary(automation.actions)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <View style={[styles.statusBadge, { backgroundColor: isActive ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)' }]}>
+            <Text style={[styles.statusBadgeText, { color: isActive ? '#22c55e' : '#6b7280' }]}>
+              {isActive ? 'Active' : 'Inactive'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   const renderTemplateCard = (template: AutomationTemplate) => {
     const isEnabling = enablingIds.has(template.id);
@@ -481,8 +591,8 @@ export default function AutopilotScreen() {
       <View key={template.id} style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <View style={[styles.templateIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
-              <Feather name="zap" size={18} color={colors.primary} />
+            <View style={[styles.templateIconContainer, { backgroundColor: catStyle.bgColor }]}>
+              <Feather name="zap" size={iconSizes.xl} color={catStyle.color} />
             </View>
             <Text style={styles.cardTitle} numberOfLines={1}>{template.name}</Text>
           </View>
@@ -494,11 +604,11 @@ export default function AutopilotScreen() {
 
         <View style={styles.detailsContainer}>
           <View style={styles.detailRow}>
-            <Feather name="play-circle" size={14} color={colors.mutedForeground} />
+            <Feather name="play-circle" size={iconSizes.sm} color={colors.mutedForeground} />
             <Text style={styles.detailText} numberOfLines={1}>{getTriggerSummary(template.trigger)}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Feather name="arrow-right-circle" size={14} color={colors.mutedForeground} />
+            <Feather name="arrow-right-circle" size={iconSizes.sm} color={colors.mutedForeground} />
             <Text style={styles.detailText} numberOfLines={1}>{getActionSummary(template.actions)}</Text>
           </View>
         </View>
@@ -518,10 +628,10 @@ export default function AutopilotScreen() {
           activeOpacity={0.7}
         >
           {isEnabling ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.primaryForeground || '#fff'} />
           ) : (
             <>
-              <Feather name="plus" size={16} color="#fff" />
+              <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
               <Text style={styles.enableButtonText}>Enable</Text>
             </>
           )}
@@ -533,16 +643,26 @@ export default function AutopilotScreen() {
   const renderEmptyState = (type: 'automations' | 'templates') => (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
-        <Feather name="zap" size={28} color={colors.primary} />
+        <Feather name="zap" size={40} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>
-        {type === 'automations' ? 'No Automations Yet' : 'No Templates Available'}
+        {type === 'automations' ? 'Put Your Business on Autopilot' : 'No Templates Available'}
       </Text>
       <Text style={styles.emptyDescription}>
         {type === 'automations'
-          ? 'Create automations to streamline your workflow. Check out templates to get started.'
-          : 'Templates will appear here when available.'}
+          ? 'Create automations to streamline your workflow. Let smart triggers handle the repetitive tasks so you can focus on what matters.'
+          : 'Templates will appear here when available. Check back soon for ready-made automations.'}
       </Text>
+      {type === 'automations' && (
+        <TouchableOpacity
+          style={styles.emptyCta}
+          onPress={() => setActiveTab('templates')}
+          activeOpacity={0.7}
+        >
+          <Feather name="copy" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
+          <Text style={styles.emptyCtaText}>Browse Templates</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -566,9 +686,11 @@ export default function AutopilotScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Autopilot</Text>
-              <Text style={styles.pageSubtitle}>Automate your workflow with smart triggers and actions</Text>
+              <Text style={styles.pageSubtitle}>Automate your workflow with smart triggers</Text>
             </View>
           </View>
+
+          {!isLoading && renderHeroSection()}
 
           <View style={styles.tabContainer}>
             <TouchableOpacity
@@ -578,7 +700,7 @@ export default function AutopilotScreen() {
             >
               <Feather
                 name="zap"
-                size={16}
+                size={iconSizes.md}
                 color={activeTab === 'automations' ? colors.primary : colors.mutedForeground}
               />
               <Text style={[styles.tabText, activeTab === 'automations' && styles.activeTabText]}>
@@ -596,7 +718,7 @@ export default function AutopilotScreen() {
             >
               <Feather
                 name="copy"
-                size={16}
+                size={iconSizes.md}
                 color={activeTab === 'templates' ? colors.primary : colors.mutedForeground}
               />
               <Text style={[styles.tabText, activeTab === 'templates' && styles.activeTabText]}>
@@ -617,7 +739,7 @@ export default function AutopilotScreen() {
                 onPress={() => { setIsLoading(true); fetchData(); }}
                 activeOpacity={0.7}
               >
-                <Feather name="refresh-cw" size={14} color="#fff" />
+                <Feather name="refresh-cw" size={iconSizes.sm} color={colors.primaryForeground || '#fff'} />
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
@@ -642,9 +764,11 @@ export default function AutopilotScreen() {
           {!isLoading && activeTab === 'templates' && (
             <>
               <Text style={styles.sectionTitle}>AVAILABLE TEMPLATES</Text>
-              {templates.length === 0
-                ? renderEmptyState('templates')
-                : templates.map(renderTemplateCard)}
+              <View style={styles.templateGrid}>
+                {templates.length === 0
+                  ? renderEmptyState('templates')
+                  : templates.map(renderTemplateCard)}
+              </View>
             </>
           )}
         </ScrollView>

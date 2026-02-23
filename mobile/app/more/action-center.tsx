@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, A
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, colorWithOpacity } from '../../src/lib/theme';
+import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 
 interface ActionItem {
@@ -69,6 +70,18 @@ const getCategoryColors = (colors: any): Record<string, string> => ({
   default: colors.mutedForeground,
 });
 
+const getCategoryIcon = (category: string): string => {
+  const iconMap: Record<string, string> = {
+    scheduling: 'calendar',
+    invoicing: 'file-text',
+    quoting: 'send',
+    clients: 'users',
+    jobs: 'briefcase',
+    revenue: 'dollar-sign',
+  };
+  return iconMap[category.toLowerCase()] || 'activity';
+};
+
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
@@ -78,107 +91,134 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-    paddingTop: 8,
-  },
-  headerLeft: {
-    flex: 1,
+    marginBottom: spacing['2xl'],
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.largeTitle,
     color: colors.foreground,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: spacing.xs,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
+  heroCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.md,
   },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  heroIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  heroValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
     color: colors.foreground,
-    textAlign: 'center',
-    marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  heroLabel: {
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  supportingStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing['2xl'],
+  },
+  supportingStatCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  supportingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  supportingValue: {
+    ...typography.statValue,
+    color: colors.foreground,
+  },
+  supportingLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  sectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.mutedForeground,
-    letterSpacing: 0.5,
-    marginBottom: 12,
+  },
+  sectionContainer: {
+    marginBottom: spacing['2xl'],
   },
   actionCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius['2xl'],
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+  },
+  actionAccentBar: {
+    width: 4,
+  },
+  actionCardContent: {
+    flex: 1,
+    padding: spacing.lg,
   },
   actionTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
-  categoryBadge: {
-    flexDirection: 'row',
+  categoryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
-    gap: 6,
-  },
-  categoryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
+    justifyContent: 'center',
   },
   priorityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
   },
   priorityText: {
     fontSize: 10,
@@ -186,16 +226,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     letterSpacing: 0.3,
   },
   actionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   actionDescription: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    lineHeight: 18,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   actionFooter: {
     flexDirection: 'row',
@@ -205,97 +243,93 @@ const createStyles = (colors: any) => StyleSheet.create({
   metricRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     flex: 1,
   },
   metricText: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.caption,
     color: colors.mutedForeground,
+    fontWeight: '500',
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
   },
   ctaText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.button,
     color: colors.primaryForeground,
-  },
-  sectionContainer: {
-    marginBottom: 24,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 20,
+    paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colorWithOpacity(colors.success, 0.12),
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colorWithOpacity(colors.success, 0.1),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
   },
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: spacing['4xl'],
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 24,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+    marginBottom: spacing['2xl'],
   },
   errorText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.destructive,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.md,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.button,
     color: colors.primaryForeground,
   },
 });
@@ -342,7 +376,6 @@ export default function ActionCenterScreen() {
     }
     if (!url.startsWith('/')) return;
 
-    // Parse the URL to extract path and query params
     const [basePath, queryString] = url.split('?');
     const params = new URLSearchParams(queryString || '');
     const tab = params.get('tab');
@@ -393,69 +426,74 @@ export default function ActionCenterScreen() {
     const { fixNowCount, thisWeekCount, suggestionsCount } = data.summary;
 
     return (
-      <View style={styles.statsRow}>
-        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
-          <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.fix_now.bgColor }]}>
-            <Feather name="alert-triangle" size={24} color={PRIORITY_CONFIG.fix_now.color} />
+      <>
+        <TouchableOpacity style={[styles.heroCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.06) }]} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.heroIconContainer, { backgroundColor: colorWithOpacity(colors.destructive, 0.1) }]}>
+            <Feather name="alert-triangle" size={iconSizes.xl} color={colors.destructive} />
           </View>
-          <Text style={styles.statValue}>{fixNowCount}</Text>
-          <Text style={styles.statLabel}>{PRIORITY_CONFIG.fix_now.shortLabel}</Text>
+          <Text style={[styles.heroValue, { color: colors.destructive }]}>{fixNowCount}</Text>
+          <Text style={styles.heroLabel}>{PRIORITY_CONFIG.fix_now.shortLabel}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
-          <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.this_week.bgColor }]}>
-            <Feather name="clock" size={24} color={PRIORITY_CONFIG.this_week.color} />
-          </View>
-          <Text style={styles.statValue}>{thisWeekCount}</Text>
-          <Text style={styles.statLabel}>{PRIORITY_CONFIG.this_week.shortLabel}</Text>
-        </TouchableOpacity>
+        <View style={styles.supportingStatsRow}>
+          <TouchableOpacity style={styles.supportingStatCard} onPress={() => {}} activeOpacity={0.7}>
+            <View style={[styles.supportingIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
+              <Feather name="clock" size={iconSizes.xl} color={colors.warning} />
+            </View>
+            <Text style={styles.supportingValue}>{thisWeekCount}</Text>
+            <Text style={styles.supportingLabel}>{PRIORITY_CONFIG.this_week.shortLabel}</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
-          <View style={[styles.statIconContainer, { backgroundColor: PRIORITY_CONFIG.suggestions.bgColor }]}>
-            <Feather name="zap" size={24} color={PRIORITY_CONFIG.suggestions.color} />
-          </View>
-          <Text style={styles.statValue}>{suggestionsCount}</Text>
-          <Text style={styles.statLabel}>{PRIORITY_CONFIG.suggestions.shortLabel}</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.supportingStatCard} onPress={() => {}} activeOpacity={0.7}>
+            <View style={[styles.supportingIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+              <Feather name="zap" size={iconSizes.xl} color={colors.success} />
+            </View>
+            <Text style={styles.supportingValue}>{suggestionsCount}</Text>
+            <Text style={styles.supportingLabel}>{PRIORITY_CONFIG.suggestions.shortLabel}</Text>
+          </TouchableOpacity>
+        </View>
+      </>
     );
   };
 
   const renderActionCard = (action: ActionItem) => {
     const config = PRIORITY_CONFIG[action.priority];
     const catColor = getCategoryColor(action.category);
+    const catIcon = getCategoryIcon(action.category);
 
     return (
       <View key={action.id} style={styles.actionCard}>
-        <View style={styles.actionTopRow}>
-          <View style={styles.categoryBadge}>
-            <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
-            <Text style={styles.categoryText}>{action.category}</Text>
-          </View>
-          <View style={[styles.priorityBadge, { backgroundColor: config.bgColor }]}>
-            <Feather name={config.icon} size={10} color={config.color} />
-            <Text style={[styles.priorityText, { color: config.color }]}>{config.label}</Text>
-          </View>
-        </View>
-        <Text style={styles.actionTitle} numberOfLines={2}>{action.title}</Text>
-        <Text style={styles.actionDescription} numberOfLines={3}>{action.description}</Text>
-        <View style={styles.actionFooter}>
-          {action.metric ? (
-            <View style={styles.metricRow}>
-              <Feather name="bar-chart-2" size={14} color={colors.mutedForeground} />
-              <Text style={styles.metricText}>{action.metric}</Text>
+        <View style={[styles.actionAccentBar, { backgroundColor: config.color }]} />
+        <View style={styles.actionCardContent}>
+          <View style={styles.actionTopRow}>
+            <View style={[styles.categoryIconContainer, { backgroundColor: colorWithOpacity(catColor, 0.1) }]}>
+              <Feather name={catIcon as any} size={iconSizes.xl} color={catColor} />
             </View>
-          ) : (
-            <View style={{ flex: 1 }} />
-          )}
-          <TouchableOpacity
-            style={styles.ctaButton}
-            onPress={() => handleCTA(action.ctaUrl)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.ctaText}>{action.cta}</Text>
-            <Feather name="chevron-right" size={14} color={colors.primaryForeground} />
-          </TouchableOpacity>
+            <View style={[styles.priorityBadge, { backgroundColor: config.bgColor }]}>
+              <Feather name={config.icon} size={10} color={config.color} />
+              <Text style={[styles.priorityText, { color: config.color }]}>{config.label}</Text>
+            </View>
+          </View>
+          <Text style={styles.actionTitle} numberOfLines={2}>{action.title}</Text>
+          <Text style={styles.actionDescription} numberOfLines={3}>{action.description}</Text>
+          <View style={styles.actionFooter}>
+            {action.metric ? (
+              <View style={styles.metricRow}>
+                <Feather name="bar-chart-2" size={iconSizes.sm} color={colors.mutedForeground} />
+                <Text style={styles.metricText}>{action.metric}</Text>
+              </View>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+            <TouchableOpacity
+              style={styles.ctaButton}
+              onPress={() => handleCTA(action.ctaUrl)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.ctaText}>{action.cta}</Text>
+              <Feather name="chevron-right" size={iconSizes.sm} color={colors.primaryForeground} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -467,7 +505,10 @@ export default function ActionCenterScreen() {
 
     return (
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>{config.sectionLabel}</Text>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionDot, { backgroundColor: config.color }]} />
+          <Text style={styles.sectionTitle}>{config.sectionLabel}</Text>
+        </View>
         {actions.map(renderActionCard)}
       </View>
     );
@@ -476,7 +517,7 @@ export default function ActionCenterScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Feather name="check-circle" size={32} color={colors.success} />
+        <Feather name="check-circle" size={40} color={colors.success} />
       </View>
       <Text style={styles.emptyTitle}>All clear!</Text>
       <Text style={styles.emptySubtitle}>No actions needed right now. Keep up the great work.</Text>
@@ -518,10 +559,8 @@ export default function ActionCenterScreen() {
             }
           >
             <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.pageTitle}>Action Center</Text>
-                <Text style={styles.pageSubtitle}>Items that need your attention</Text>
-              </View>
+              <Text style={styles.pageTitle}>Action Center</Text>
+              <Text style={styles.pageSubtitle}>Items that need your attention</Text>
             </View>
 
             {error ? renderErrorState() : !hasActions ? renderEmptyState() : (
