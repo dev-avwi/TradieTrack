@@ -799,7 +799,19 @@ export default function WorkPage({
                 {selectedRequest.clientName && (
                   <div className="flex items-center gap-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium">{selectedRequest.clientName}</span>
+                    {selectedRequest.clientId ? (
+                      <button
+                        className="font-medium text-primary hover:underline text-left"
+                        onClick={() => {
+                          setRequestDialogOpen(false);
+                          navigate(`/clients/${selectedRequest.clientId}`);
+                        }}
+                      >
+                        {selectedRequest.clientName}
+                      </button>
+                    ) : (
+                      <span className="font-medium">{selectedRequest.clientName}</span>
+                    )}
                   </div>
                 )}
                 {selectedRequest.description && (
