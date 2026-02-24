@@ -99,7 +99,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -150,22 +151,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.infoLight,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     gap: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   internalBannerIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: colors.info,
     alignItems: 'center',
     justifyContent: 'center',
   },
   internalBannerText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.info,
     fontWeight: '500',
   },
@@ -174,12 +175,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: radius.sm,
     gap: 4,
   },
   contactClientText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.primaryForeground,
   },
@@ -795,6 +796,17 @@ export default function JobChatScreen() {
 
   const isOwnMessage = (msg: JobChatMessage) => msg.userId === user?.id;
 
+  const formatMessageText = (text: string): string => {
+    return text.replace(/(https?:\/\/[^\s]{40,})/g, (url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.hostname + '/...';
+      } catch {
+        return url.substring(0, 40) + '...';
+      }
+    });
+  };
+
   const allMessages = useMemo(() => {
     const combined: Array<{
       id: string;
@@ -935,26 +947,6 @@ export default function JobChatScreen() {
           )}
         </View>
 
-        {participants.length > 0 && (
-          <View style={styles.participantsBanner}>
-            <View style={styles.participantsHeader}>
-              <Feather name="eye" size={14} color={colors.info} />
-              <Text style={styles.participantsTitle}>Who can see these messages:</Text>
-            </View>
-            <View style={styles.participantsList}>
-              {participants.map((p) => (
-                <View key={p.id} style={styles.participantChip}>
-                  <View style={styles.participantAvatar}>
-                    <Text style={styles.participantInitials}>{getInitials(p.name)}</Text>
-                  </View>
-                  <Text style={styles.participantName}>{p.name.split(' ')[0]}</Text>
-                  <Text style={styles.participantRole}>({p.role})</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
         <ScrollView
           ref={scrollRef}
           style={styles.messagesContainer}
@@ -990,7 +982,7 @@ export default function JobChatScreen() {
                   {!own && <Text style={styles.messageSender}>{msg.senderName}</Text>}
                   <View style={[styles.messageBubble, bubbleStyle]}>
                     <Text style={[styles.messageText, own ? styles.messageTextOwn : styles.messageTextOther]}>
-                      {msg.message}
+                      {isSms ? formatMessageText(msg.message) : msg.message}
                     </Text>
                     {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: own ? 'flex-end' : 'flex-start', gap: 4 }}>

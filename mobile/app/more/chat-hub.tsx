@@ -254,8 +254,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   subFilterContainer: {
     flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.xs,
-    marginBottom: spacing.xs,
+    paddingBottom: 0,
+    marginBottom: 0,
     gap: spacing.sm,
   },
   subFilterButton: {
@@ -292,18 +292,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    marginHorizontal: pageShell.paddingHorizontal,
-    marginBottom: spacing.xs,
-    backgroundColor: colors.card,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
+    paddingHorizontal: pageShell.paddingHorizontal,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   conversationAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.xl,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -982,37 +979,6 @@ export default function ChatHubScreen() {
             )}
           </View>
           
-          {client && (client.phone || client.email) && (
-            <View style={styles.contactActionsRow}>
-              {client.phone && (
-                <>
-                  <TouchableOpacity 
-                    style={styles.contactAction}
-                    onPress={() => Linking.openURL(`tel:${client.phone}`)}
-                  >
-                    <Feather name="phone" size={14} color={colors.success} />
-                    <Text style={styles.contactActionText}>Call</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.contactAction}
-                    onPress={() => handleSendSmsToClient(client.phone!, client.firstName, client.id)}
-                  >
-                    <Feather name="message-square" size={14} color={colors.info} />
-                    <Text style={styles.contactActionText}>SMS</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              {client.email && (
-                <TouchableOpacity 
-                  style={styles.contactAction}
-                  onPress={() => Linking.openURL(`mailto:${client.email}`)}
-                >
-                  <Feather name="mail" size={14} color={colors.primary} />
-                  <Text style={styles.contactActionText}>Email</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
         </View>
         
         <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={styles.chevronIcon} />
@@ -1217,11 +1183,6 @@ export default function ChatHubScreen() {
             </View>
           ) : (
             <>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
-                  {getSectionTitle()}
-                </Text>
-              </View>
               {conversations.map(renderConversation)}
               <View style={{ height: 100, paddingBottom: 100 }} />
             </>
