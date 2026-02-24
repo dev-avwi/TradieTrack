@@ -1270,7 +1270,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     marginBottom: spacing.md,
@@ -1344,7 +1344,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   activityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     marginBottom: spacing.md,
@@ -1547,7 +1547,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -1561,7 +1561,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   card: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginTop: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -1647,7 +1647,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     justifyContent: 'center',
   },
   timeOffCard: {
-    padding: spacing.lg,
+    padding: spacing.md,
     borderRadius: radius['2xl'],
     backgroundColor: colors.muted,
     marginBottom: spacing.md,
@@ -1736,7 +1736,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   performanceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     marginBottom: spacing.md,
@@ -1839,7 +1839,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   submitButton: {
     backgroundColor: colors.primary,
-    padding: spacing.lg,
+    padding: spacing.md,
     borderRadius: radius['2xl'],
     alignItems: 'center',
     marginTop: spacing.md,
@@ -1885,7 +1885,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   upgradeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     marginHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
     marginVertical: spacing.sm,
     borderRadius: radius['2xl'],

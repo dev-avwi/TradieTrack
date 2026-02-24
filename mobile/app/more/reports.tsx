@@ -142,7 +142,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.lg,
+    gap: spacing.sm,
   },
   heroCard: {
     backgroundColor: colors.card,
@@ -228,7 +228,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   chartSection: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -384,7 +384,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   insightsCard: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -418,7 +418,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   loadingText: {
     ...typography.caption,
@@ -428,7 +428,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -455,7 +455,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],

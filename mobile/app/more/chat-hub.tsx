@@ -188,7 +188,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
   },
   searchInput: {
     flexDirection: 'row',
@@ -210,7 +210,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
   filterButton: {
@@ -253,7 +253,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   subFilterContainer: {
     flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.xs,
+    marginBottom: spacing.xs,
     gap: spacing.sm,
   },
   subFilterButton: {
@@ -767,11 +768,11 @@ export default function ChatHubScreen() {
     }
 
     items.sort((a, b) => {
-      if (a.type === 'team') return -1;
-      if (b.type === 'team') return 1;
+      if ((a.type as string) === 'team') return -1;
+      if ((b.type as string) === 'team') return 1;
 
-      if (a.type === 'direct' && b.type !== 'direct' && b.type !== 'team') return -1;
-      if (b.type === 'direct' && a.type !== 'direct' && a.type !== 'team') return 1;
+      if ((a.type as string) === 'direct' && (b.type as string) !== 'direct' && (b.type as string) !== 'team') return -1;
+      if ((b.type as string) === 'direct' && (a.type as string) !== 'direct' && (a.type as string) !== 'team') return 1;
 
       if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
 

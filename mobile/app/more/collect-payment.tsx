@@ -149,7 +149,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   paymentMethodCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,7 +203,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   emptyPending: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -221,7 +221,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -280,7 +280,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   warningCard: {
     marginTop: spacing.md,
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.warningLight,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -303,7 +303,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.lg,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.isDark ? colors.borderLight : colors.border,
   },
@@ -345,8 +345,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: -0.5,
   },
   acceptedMethodsCard: {
-    marginTop: 32,
-    padding: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -391,7 +391,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: 'bold',
   },
   modalFooter: {
-    padding: spacing.lg,
+    padding: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.isDark ? colors.borderLight : colors.border,
     backgroundColor: colors.background,
@@ -434,7 +434,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   demoModeBanner: {
     backgroundColor: colors.infoLight || colors.primaryLight,
     borderRadius: radius.xl,
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.info || colors.primary,
@@ -542,7 +542,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -606,7 +606,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   invoicePickerContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
     paddingBottom: 100,
   },
   invoicePickerItem: {
@@ -615,7 +615,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -649,7 +649,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginTop: spacing.md,
     gap: spacing.sm,
     borderWidth: 1,
@@ -663,7 +663,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   invoicePickerEmpty: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
   },
   invoicePickerEmptyText: {
     ...typography.body,

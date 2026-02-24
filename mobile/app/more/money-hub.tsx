@@ -125,18 +125,24 @@ export default function MoneyHubScreen() {
     return new Map(clients.map(c => [c.id, c]));
   }, [clients]);
 
+  const responsiveContentStyle = useMemo(() => ({
+    paddingHorizontal: responsiveShell.paddingHorizontal,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing['2xl'],
+  }), [responsiveShell]);
+
   const fetchStripeData = useCallback(async () => {
     try {
       const statusRes = await api.get('/api/stripe-connect/status');
-      setStripeStatus(statusRes.data);
+      setStripeStatus(statusRes.data as StripeConnectStatus);
       
-      if (statusRes.data?.connected && statusRes.data?.chargesEnabled) {
+      if ((statusRes.data as StripeConnectStatus)?.connected && (statusRes.data as StripeConnectStatus)?.chargesEnabled) {
         const [balanceRes, payoutsRes] = await Promise.all([
           api.get('/api/stripe-connect/balance').catch(() => ({ data: null })),
           api.get('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] } })),
         ]);
-        setStripeBalance(balanceRes.data);
-        setStripePayouts(payoutsRes.data?.payouts || []);
+        setStripeBalance(balanceRes.data as StripeBalance);
+        setStripePayouts((payoutsRes.data as any)?.payouts || []);
       }
     } catch (error) {
       console.error('Failed to fetch Stripe data:', error);
@@ -153,11 +159,11 @@ export default function MoneyHubScreen() {
         api.get('/api/clients'),
         api.get('/api/expenses').catch(() => ({ data: [] })),
       ]);
-      setInvoices(invoicesRes.data || []);
-      setQuotes(quotesRes.data || []);
-      setClients(clientsRes.data || []);
+      setInvoices((invoicesRes.data || []) as Invoice[]);
+      setQuotes((quotesRes.data || []) as Quote[]);
+      setClients((clientsRes.data || []) as Client[]);
       
-      const expenses = expensesRes.data || [];
+      const expenses = (expensesRes.data || []) as any[];
       const now = new Date();
       const thisMonth = now.getMonth();
       const thisYear = now.getFullYear();
@@ -219,7 +225,8 @@ export default function MoneyHubScreen() {
     setIsConnecting(true);
     try {
       const response = await api.post('/api/stripe-connect/onboard');
-      const url = response.data?.onboardingUrl || response.data?.url;
+      const resData = response.data as any;
+      const url = resData?.onboardingUrl || resData?.url;
       
       if (url) {
         wasConnecting.current = true;
@@ -237,8 +244,8 @@ export default function MoneyHubScreen() {
             wasConnecting.current = false;
           }
         }
-      } else if (response.data?.error) {
-        Alert.alert('Error', response.data.error);
+      } else if (resData?.error) {
+        Alert.alert('Error', resData.error);
       } else {
         Alert.alert('Error', 'Could not start Stripe onboarding. Please try again.');
       }
@@ -255,16 +262,17 @@ export default function MoneyHubScreen() {
   const handleOpenStripeDashboard = useCallback(async () => {
     try {
       const response = await api.get('/api/stripe-connect/dashboard');
-      const url = response.data?.url;
+      const dashData = response.data as any;
+      const url = dashData?.url;
       
       if (url) {
-        if (response.data?.isOnboarding) {
+        if (dashData?.isOnboarding) {
           wasConnecting.current = true;
         }
         
         try {
           await WebBrowser.openBrowserAsync(url);
-          if (response.data?.isOnboarding) {
+          if (dashData?.isOnboarding) {
             setStripeLoading(true);
             fetchStripeData();
           }
@@ -277,8 +285,8 @@ export default function MoneyHubScreen() {
             Alert.alert('Error', 'Unable to open Stripe dashboard. Please check your browser settings.');
           }
         }
-      } else if (response.data?.error) {
-        Alert.alert('Error', response.data.error);
+      } else if (dashData?.error) {
+        Alert.alert('Error', dashData.error);
       } else {
         Alert.alert('Error', 'Could not open Stripe dashboard. Please try again.');
       }
@@ -858,11 +866,11 @@ export default function MoneyHubScreen() {
     <View style={styles.listContainer}>
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('All', 'all', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Overdue', 'overdue', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Paid', 'paid', invoiceFilter, setInvoiceFilter)}
-          {renderFilterChip('Drafts', 'draft', invoiceFilter, setInvoiceFilter)}
+          {renderFilterChip('All', 'all', invoiceFilter, (v: string) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Outstanding', 'outstanding', invoiceFilter, (v: string) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Overdue', 'overdue', invoiceFilter, (v: string) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Paid', 'paid', invoiceFilter, (v: string) => setInvoiceFilter(v as InvoiceFilterType))}
+          {renderFilterChip('Drafts', 'draft', invoiceFilter, (v: string) => setInvoiceFilter(v as InvoiceFilterType))}
         </ScrollView>
       </View>
       <View style={styles.sectionContent}>
@@ -909,10 +917,10 @@ export default function MoneyHubScreen() {
     <View style={styles.listContainer}>
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('7d', '7d', timeRange, setTimeRange)}
-          {renderFilterChip('30d', '30d', timeRange, setTimeRange)}
-          {renderFilterChip('90d', '90d', timeRange, setTimeRange)}
-          {renderFilterChip('All', 'all', timeRange, setTimeRange)}
+          {renderFilterChip('7d', '7d', timeRange, (v: string) => setTimeRange(v as TimeRangeType))}
+          {renderFilterChip('30d', '30d', timeRange, (v: string) => setTimeRange(v as TimeRangeType))}
+          {renderFilterChip('90d', '90d', timeRange, (v: string) => setTimeRange(v as TimeRangeType))}
+          {renderFilterChip('All', 'all', timeRange, (v: string) => setTimeRange(v as TimeRangeType))}
         </ScrollView>
       </View>
 
@@ -960,13 +968,6 @@ export default function MoneyHubScreen() {
       </View>
     );
   }
-
-  // Dynamic content container style for iPad-responsive padding
-  const responsiveContentStyle = useMemo(() => ({
-    paddingHorizontal: responsiveShell.paddingHorizontal,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing['2xl'],
-  }), [responsiveShell]);
 
   return (
     <View style={styles.container}>

@@ -376,7 +376,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: 'rgba(107,114,128,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     ...typography.cardTitle,
@@ -389,7 +389,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
   },
   emptyAddButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     backgroundColor: colors.primary,
     borderRadius: radius.xl,
     paddingHorizontal: spacing.xl,
@@ -421,7 +421,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
@@ -463,7 +463,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: spacing.lg,
   },
   formGroup: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   formLabel: {
     ...typography.caption,

@@ -1201,7 +1201,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.sm,
+    padding: spacing.md,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -1231,7 +1231,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   cardList: {
     gap: spacing.md,
@@ -1239,7 +1239,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -1310,7 +1310,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1346,7 +1346,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.xl,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   emptyButtonText: {
     ...typography.button,
@@ -1369,7 +1369,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: colors.primary,
@@ -1505,7 +1505,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
   pickerCancel: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
@@ -1683,7 +1683,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   categoryModalActions: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   categoryModalCancel: {
     flex: 1,
