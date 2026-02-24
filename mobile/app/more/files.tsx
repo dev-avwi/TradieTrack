@@ -293,7 +293,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: colors.primary,

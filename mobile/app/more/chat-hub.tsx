@@ -152,7 +152,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quickActionsContainer: {
     flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
   quickActionButton: {
@@ -190,6 +190,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   searchContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   searchInput: {
     flexDirection: 'row',
@@ -212,6 +213,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingBottom: spacing.sm,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   filterButton: {
@@ -256,6 +258,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingBottom: 0,
     marginBottom: 0,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   subFilterButton: {
@@ -405,8 +408,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   emptyStateIcon: {
     width: 32,
@@ -441,11 +444,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.warningLight,
     marginHorizontal: pageShell.paddingHorizontal,
     marginBottom: spacing.sm,
+    marginTop: spacing.sm,
     padding: spacing.md,
     borderRadius: radius['2xl'],
     gap: spacing.sm,
     ...shadows.sm,
-    marginTop: spacing.sm,
   },
   twilioSetupIcon: {
     width: 32,

@@ -322,7 +322,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     fontSize: 18,
     fontWeight: '600',
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
   },
   modalStepSubtitle: {
     color: colors.mutedForeground,

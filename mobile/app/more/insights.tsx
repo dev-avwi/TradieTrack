@@ -265,7 +265,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
   },
   loadingText: {
     ...typography.caption,
@@ -275,7 +275,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,

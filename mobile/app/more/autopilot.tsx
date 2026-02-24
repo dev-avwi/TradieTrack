@@ -121,7 +121,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statCard: {
     flex: 1,
@@ -156,7 +156,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.xs,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     flexDirection: 'row',
@@ -198,6 +199,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
+    marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   card: {
@@ -243,6 +245,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   detailsContainer: {
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   detailRow: {
     flexDirection: 'row',
@@ -257,6 +260,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: spacing.sm,
   },
   statusBadge: {
     paddingHorizontal: spacing.md,
@@ -275,6 +279,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   categoryContainer: {
     marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
@@ -291,6 +296,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
     borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
@@ -318,6 +324,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
     ...shadows.sm,
   },
   errorText: {
@@ -349,6 +356,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
     ...shadows.sm,
   },
   emptyIconContainer: {

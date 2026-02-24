@@ -1415,7 +1415,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     color: colors.mutedForeground,
     marginBottom: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   textInput: {
     backgroundColor: colors.card,

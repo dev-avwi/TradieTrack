@@ -146,6 +146,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   sectionDot: {
     width: 8,

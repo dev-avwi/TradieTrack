@@ -1844,7 +1844,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     padding: spacing.md,
     borderRadius: radius['2xl'],
     alignItems: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   submitButtonText: {
     ...typography.button,
