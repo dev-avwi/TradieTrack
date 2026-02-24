@@ -1498,18 +1498,18 @@ export default function ChatHub() {
   const renderConversationList = () => (
     <div className="flex flex-col h-full bg-muted/30" data-testid="conversation-list">
       {/* Premium header with ios-title */}
-      <div className="shrink-0 px-4 pt-4 pb-3 bg-background border-b animate-fade-up">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+      <div className="shrink-0 px-3 pt-3 pb-2 bg-background border-b animate-fade-up">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                  style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <MessageCircle className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              <MessageCircle className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
             </div>
             <div>
-              <h1 className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight">
+              <h1 className="text-base font-bold tracking-tight leading-tight">
                 {isTradie ? `Hey ${firstName}` : 'Job Communications'}
               </h1>
-              <p className="ios-caption mt-0.5">
+              <p className="ios-caption text-[11px] mt-0">
                 {isTradie ? 'Your jobs & team chat' : 'Messages, SMS & team chat'}
               </p>
             </div>
@@ -1526,35 +1526,33 @@ export default function ChatHub() {
           )}
         </div>
 
-        {/* Search with feed-card container */}
-        <div className="feed-card mb-3 animate-fade-up stagger-delay-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search conversations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-sm border-0 bg-transparent focus-visible:ring-0"
-              data-testid="input-search"
-            />
-          </div>
+        {/* Search */}
+        <div className="relative mb-2 animate-fade-up stagger-delay-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search conversations..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 h-8 text-xs border bg-muted/50 focus-visible:ring-1 rounded-lg"
+            data-testid="input-search"
+          />
         </div>
 
         {/* Pill-shaped filter tabs */}
-        <div className="feed-card p-1 flex gap-1 animate-fade-up stagger-delay-2">
+        <div className="bg-muted/60 rounded-lg p-0.5 flex gap-0.5 animate-fade-up stagger-delay-2">
           <button
             onClick={() => setFilter('jobs')}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium py-1.5 rounded-md transition-all ${
               filter === 'jobs'
                 ? 'bg-background shadow-sm'
                 : 'text-muted-foreground'
             }`}
             data-testid="filter-jobs"
           >
-            <Briefcase className="h-3.5 w-3.5" />
+            <Briefcase className="h-3 w-3" />
             {isTradie ? 'My Jobs' : 'Jobs'}
             {jobSmsUnreadCount > 0 && (
-              <span className="min-w-[16px] h-4 rounded-full text-[10px] font-bold flex items-center justify-center px-1"
+              <span className="min-w-[14px] h-3.5 rounded-full text-[9px] font-bold flex items-center justify-center px-0.5"
                     style={{ backgroundColor: 'hsl(var(--trade) / 0.15)', color: 'hsl(var(--trade))' }}>
                 {jobSmsUnreadCount}
               </span>
@@ -1562,34 +1560,34 @@ export default function ChatHub() {
           </button>
           <button
             onClick={() => setFilter('enquiries')}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium py-1.5 rounded-md transition-all ${
               filter === 'enquiries'
                 ? 'bg-background shadow-sm'
                 : 'text-muted-foreground'
             }`}
             data-testid="filter-enquiries"
           >
-            <MessageCircle className="h-3.5 w-3.5" />
+            <MessageCircle className="h-3 w-3" />
             Enquiries
             {enquiryCount > 0 && (
-              <span className="min-w-[16px] h-4 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px] font-bold flex items-center justify-center px-1">
+              <span className="min-w-[14px] h-3.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[9px] font-bold flex items-center justify-center px-0.5">
                 {enquiryCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setFilter('team')}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-xl transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium py-1.5 rounded-md transition-all ${
               filter === 'team'
                 ? 'bg-background shadow-sm'
                 : 'text-muted-foreground'
             }`}
             data-testid="filter-team"
           >
-            <Users className="h-3.5 w-3.5" />
+            <Users className="h-3 w-3" />
             Team
             {(unreadCounts.teamChat + unreadCounts.directMessages) > 0 && (
-              <span className="min-w-[16px] h-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center px-1">
+              <span className="min-w-[14px] h-3.5 rounded-full bg-primary/15 text-primary text-[9px] font-bold flex items-center justify-center px-0.5">
                 {unreadCounts.teamChat + unreadCounts.directMessages}
               </span>
             )}
@@ -1597,7 +1595,7 @@ export default function ChatHub() {
         </div>
         {/* Job status sub-filter pills */}
         {filter === 'jobs' && (
-          <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar animate-fade-up stagger-delay-3">
+          <div className="flex gap-1 mt-2 overflow-x-auto no-scrollbar animate-fade-up stagger-delay-3">
             {[
               { value: 'all', label: 'All' },
               { value: 'scheduled', label: 'Scheduled' },
@@ -1635,7 +1633,7 @@ export default function ChatHub() {
       <OfflineBanner />
 
       {/* Conversation list */}
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="flex-1 px-1">
         {isLoading ? (
           <ConversationSkeleton />
         ) : conversationList.length === 0 ? (
@@ -1691,7 +1689,7 @@ export default function ChatHub() {
             )}
           </div>
         ) : (
-          <div className="py-2 space-y-1.5">
+          <div className="py-1">
             {conversationList.map((item, index) => {
               const isSelected = selectedConversation?.id === item.id;
               const hasUnread = item.unreadCount > 0;
@@ -1702,42 +1700,40 @@ export default function ChatHub() {
               return (
                 <div key={item.id}>
                   {showSectionHeader && filter === 'all' && (
-                    <div className="px-3 py-2 mt-2 first:mt-0">
-                      <span className="ios-label">
+                    <div className="px-2 py-1.5 mt-1 first:mt-0">
+                      <span className="ios-label text-[10px]">
                         {item.type === 'team' ? 'Team' : item.type === 'direct' ? 'Direct Messages' : item.type === 'job' ? 'Jobs' : 'New Enquiries'}
                       </span>
                     </div>
                   )}
                   
                   <div
-                    className={`feed-card card-press flex items-start gap-3 p-3 cursor-pointer animate-fade-up ${staggerClass} ${
+                    className={`flex items-start gap-2.5 px-2.5 py-2 cursor-pointer rounded-lg transition-colors animate-fade-up ${staggerClass} ${
                       isSelected 
-                        ? 'ring-2'
-                        : hasUnread
-                        ? ''
-                        : ''
+                        ? 'bg-accent'
+                        : 'hover:bg-muted/60'
                     }`}
-                    style={isSelected ? { borderColor: 'hsl(var(--trade) / 0.3)', boxShadow: '0 0 0 1px hsl(var(--trade) / 0.15)' } : undefined}
+                    style={isSelected ? { boxShadow: 'inset 3px 0 0 hsl(var(--trade))' } : undefined}
                     onClick={() => handleConversationClick(item)}
                     data-testid={`conversation-${item.id}`}
                   >
                     {/* Avatar/Icon */}
                     <div className="relative shrink-0 mt-0.5">
                       {item.type === 'team' ? (
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center"
                              style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-                          <Users className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                          <Users className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                         </div>
                       ) : item.type === 'job' ? (
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                          <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
                       ) : item.type === 'unassigned' ? (
-                        <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                          <MessageCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                          <MessageCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         </div>
                       ) : (
-                        <Avatar className="h-10 w-10">
+                        <Avatar className="h-9 w-9">
                           <AvatarImage src={item.avatar || undefined} />
                           <AvatarFallback className="text-xs" style={item.themeColor ? { backgroundColor: item.themeColor, color: 'white' } : undefined}>{item.avatarFallback}</AvatarFallback>
                         </Avatar>
