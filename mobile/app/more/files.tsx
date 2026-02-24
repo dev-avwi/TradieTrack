@@ -73,7 +73,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   headerLeft: {
     flex: 1,
@@ -87,39 +87,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
   },
-  heroCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius['2xl'],
-    padding: spacing.md,
-    ...shadows.md,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: colors.foreground,
-  },
-  heroLabel: {
-    ...typography.label,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
-  },
-  supportingStatsRow: {
+  statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  supportingStatCard: {
+  statCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -130,21 +103,24 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.cardBorder,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   statValue: {
-    ...typography.statValue,
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: colors.foreground,
   },
   statLabel: {
-    ...typography.label,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 2,
+    fontSize: 11,
   },
   sectionTitle: {
     ...typography.label,
@@ -152,7 +128,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   quickAccessSection: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   categoryCard: {
     flexDirection: 'row',
@@ -186,7 +162,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   recentSection: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   recentHeader: {
     ...componentStyles.sectionHeader,
@@ -257,14 +233,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyIconContainer: {
     width: 80,
@@ -289,7 +265,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
   },
   loadingText: {
     ...typography.caption,
@@ -299,13 +275,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   errorText: {
     ...typography.caption,
@@ -420,50 +396,50 @@ export default function FilesScreen() {
 
           {!isLoading && !error && (
             <>
-              <TouchableOpacity
-                style={styles.heroCard}
-                onPress={() => router.push('/(tabs)/work' as any)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.heroIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
-                  <Feather name="folder" size={24} color={CATEGORY_COLORS.photos.color} />
-                </View>
-                <Text style={styles.heroValue}>{totalFiles}</Text>
-                <Text style={styles.heroLabel}>TOTAL FILES</Text>
-              </TouchableOpacity>
-
-              <View style={styles.supportingStatsRow}>
+              <View style={styles.statsRow}>
                 <TouchableOpacity
-                  style={styles.supportingStatCard}
+                  style={styles.statCard}
                   onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
-                    <Feather name="camera" size={iconSizes.xl} color={CATEGORY_COLORS.photos.color} />
+                    <Feather name="folder" size={16} color={CATEGORY_COLORS.photos.color} />
+                  </View>
+                  <Text style={styles.statValue}>{totalFiles}</Text>
+                  <Text style={styles.statLabel}>TOTAL</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.statCard}
+                  onPress={() => router.push('/(tabs)/work' as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
+                    <Feather name="camera" size={16} color={CATEGORY_COLORS.photos.color} />
                   </View>
                   <Text style={styles.statValue}>{activeJobs}</Text>
                   <Text style={styles.statLabel}>JOBS</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.supportingStatCard}
+                  style={styles.statCard}
                   onPress={() => router.push('/(tabs)/work' as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
-                    <Feather name="mic" size={iconSizes.xl} color={CATEGORY_COLORS.voiceNotes.color} />
+                    <Feather name="mic" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
                   </View>
                   <Text style={styles.statValue}>{activeJobs}</Text>
                   <Text style={styles.statLabel}>MEDIA</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.supportingStatCard}
+                  style={styles.statCard}
                   onPress={() => router.push('/more/compliance' as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
-                    <Feather name="shield" size={iconSizes.xl} color={CATEGORY_COLORS.compliance.color} />
+                    <Feather name="shield" size={16} color={CATEGORY_COLORS.compliance.color} />
                   </View>
                   <Text style={styles.statValue}>{complianceCount}</Text>
                   <Text style={styles.statLabel}>DOCS</Text>
@@ -479,13 +455,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
-                    <Feather name="camera" size={iconSizes.xl} color={CATEGORY_COLORS.photos.color} />
+                    <Feather name="camera" size={16} color={CATEGORY_COLORS.photos.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Job Photos</Text>
                     <Text style={styles.categoryCount}>View photos across {activeJobs} jobs</Text>
                   </View>
-                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -494,13 +470,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
-                    <Feather name="shield" size={iconSizes.xl} color={CATEGORY_COLORS.compliance.color} />
+                    <Feather name="shield" size={16} color={CATEGORY_COLORS.compliance.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Compliance Documents</Text>
                     <Text style={styles.categoryCount}>{complianceCount} documents</Text>
                   </View>
-                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -509,13 +485,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
-                    <Feather name="mic" size={iconSizes.xl} color={CATEGORY_COLORS.voiceNotes.color} />
+                    <Feather name="mic" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Voice Notes</Text>
                     <Text style={styles.categoryCount}>Attached to jobs</Text>
                   </View>
-                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -524,13 +500,13 @@ export default function FilesScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.sitePhotos.bg }]}>
-                    <Feather name="image" size={iconSizes.xl} color={CATEGORY_COLORS.sitePhotos.color} />
+                    <Feather name="image" size={16} color={CATEGORY_COLORS.sitePhotos.color} />
                   </View>
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryTitle}>Site Photos</Text>
                     <Text style={styles.categoryCount}>Before & after shots</Text>
                   </View>
-                  <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
 
@@ -564,7 +540,7 @@ export default function FilesScreen() {
                         activeOpacity={0.7}
                       >
                         <View style={[styles.documentIcon, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
-                          <Feather name="file-text" size={iconSizes.xl} color={CATEGORY_COLORS.compliance.color} />
+                          <Feather name="file-text" size={16} color={CATEGORY_COLORS.compliance.color} />
                         </View>
                         <View style={styles.documentInfo}>
                           <Text style={styles.documentTitle} numberOfLines={1}>{doc.documentName || doc.type}</Text>

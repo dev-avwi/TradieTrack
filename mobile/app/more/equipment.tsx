@@ -432,29 +432,27 @@ export default function EquipmentScreen() {
   );
 
   const renderSummaryCards = () => (
-    <View style={styles.heroSection}>
-      <View style={styles.heroCard}>
-        <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-          <Feather name="check-circle" size={iconSizes.xl} color="#22c55e" />
+    <View style={styles.statsRow}>
+      <View style={styles.statCard}>
+        <View style={[styles.statIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+          <Feather name="check-circle" size={16} color="#22c55e" />
         </View>
-        <Text style={styles.heroValue}>{filterCounts.active}</Text>
-        <Text style={styles.heroLabel}>ACTIVE</Text>
+        <Text style={styles.statValue}>{filterCounts.active}</Text>
+        <Text style={styles.statLabel}>ACTIVE</Text>
       </View>
-      <View style={styles.supportingRow}>
-        <View style={styles.supportingCard}>
-          <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-            <Feather name="tool" size={iconSizes.xl} color="#f59e0b" />
-          </View>
-          <Text style={styles.summaryValue}>{filterCounts.maintenance}</Text>
-          <Text style={styles.summaryLabel}>MAINTENANCE</Text>
+      <View style={styles.statCard}>
+        <View style={[styles.statIconContainer, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+          <Feather name="tool" size={16} color="#f59e0b" />
         </View>
-        <View style={styles.supportingCard}>
-          <View style={[styles.summaryIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-            <Feather name="dollar-sign" size={iconSizes.xl} color="#3b82f6" />
-          </View>
-          <Text style={styles.summaryValue}>{formatCurrency(totalValue)}</Text>
-          <Text style={styles.summaryLabel}>TOTAL VALUE</Text>
+        <Text style={styles.statValue}>{filterCounts.maintenance}</Text>
+        <Text style={styles.statLabel}>MAINTENANCE</Text>
+      </View>
+      <View style={styles.statCard}>
+        <View style={[styles.statIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+          <Feather name="dollar-sign" size={16} color="#3b82f6" />
         </View>
+        <Text style={styles.statValue}>{formatCurrency(totalValue)}</Text>
+        <Text style={styles.statLabel}>TOTAL VALUE</Text>
       </View>
     </View>
   );
@@ -1107,7 +1105,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    padding: spacing['2xl'],
   },
   loadingText: {
     ...typography.caption,
@@ -1194,70 +1192,46 @@ const createStyles = (colors: any) => StyleSheet.create({
   activeFilterBadgeText: {
     color: '#fff',
   },
-  heroSection: {
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  heroCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius['2xl'],
-    padding: spacing.md,
-    alignItems: 'center',
-    ...shadows.md,
-  },
-  heroIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  heroValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: colors.foreground,
-  },
-  heroLabel: {
-    ...typography.label,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
-  },
-  supportingRow: {
+  statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  supportingCard: {
+  statCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.md,
+    padding: spacing.sm,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  summaryIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
-  summaryValue: {
-    ...typography.statValue,
+  statValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: colors.foreground,
   },
-  summaryLabel: {
-    ...typography.label,
+  statLabel: {
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 2,
+    fontSize: 11,
   },
   sectionLabel: {
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   cardList: {
     gap: spacing.md,
@@ -1336,7 +1310,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1381,7 +1355,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -1440,7 +1414,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     color: colors.mutedForeground,
     marginBottom: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   textInput: {
     backgroundColor: colors.card,
@@ -1496,7 +1470,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
   },
   pickerContainer: {
     backgroundColor: colors.card,
@@ -1564,7 +1538,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   detailGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   detailItem: {
     width: '47%',

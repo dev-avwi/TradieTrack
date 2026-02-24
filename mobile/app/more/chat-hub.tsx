@@ -299,8 +299,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   conversationAvatar: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
@@ -406,17 +406,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
   },
   emptyStateIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyStateTitle: {
     ...typography.cardTitle,
@@ -434,7 +434,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
   },
   twilioSetupBanner: {
     flexDirection: 'row',
@@ -448,8 +448,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   twilioSetupIcon: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     backgroundColor: colors.warning,
     alignItems: 'center',
@@ -489,8 +489,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   twilioConnectedIcon: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     backgroundColor: colors.success,
     alignItems: 'center',
@@ -1202,7 +1202,7 @@ export default function ChatHubScreen() {
           ) : conversations.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
-                <Feather name="message-circle" size={40} color={colors.primary} />
+                <Feather name="message-circle" size={16} color={colors.primary} />
               </View>
               <Text style={styles.emptyStateTitle}>
                 {getEmptyStateMessage().title}

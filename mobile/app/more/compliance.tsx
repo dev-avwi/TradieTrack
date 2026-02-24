@@ -149,39 +149,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#fff',
     ...typography.button,
   },
-  heroCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius['2xl'],
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.md,
-    alignItems: 'center',
-  },
-  heroIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: colors.foreground,
-    marginBottom: spacing.xs,
-  },
-  heroLabel: {
-    ...typography.label,
-    color: colors.mutedForeground,
-  },
-  supportingStatsRow: {
+  statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  supportingStatCard: {
+  statCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -192,15 +165,17 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   statValue: {
-    ...typography.statValue,
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: colors.foreground,
     textAlign: 'center',
     marginBottom: spacing.xs,
@@ -214,11 +189,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   filterRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   filterTab: {
     paddingHorizontal: spacing.lg,
@@ -241,7 +217,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   documentCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -256,9 +232,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: spacing.md,
   },
   documentIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -317,6 +293,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    gap: spacing.sm,
   },
   detailRow: {
     flexDirection: 'row',
@@ -340,6 +317,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    justifyContent: 'space-between',
   },
   editButton: {
     flex: 1,
@@ -374,6 +352,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing['2xl'],
+    paddingBottom: 100,
   },
   loadingText: {
     ...typography.caption,
@@ -382,7 +361,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -433,6 +412,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.cardBorder,
     ...shadows.sm,
     marginBottom: spacing.md,
+    paddingBottom: 100,
   },
   errorText: {
     ...typography.caption,
@@ -885,45 +865,30 @@ export default function ComplianceScreen() {
   };
 
   const renderHeroSection = () => {
-    const heroStat = validCount > 0 ? validCount : totalCount;
-    const heroLabel = validCount > 0 ? 'VALID' : 'DOCUMENTS';
-    const heroColor = validCount > 0 ? STATUS_CONFIG.valid.color : colors.primary;
-    const heroBg = validCount > 0 ? STATUS_CONFIG.valid.bgColor : `${colors.primary}18`;
-
     return (
-      <View>
-        <View style={styles.heroCard}>
-          <View style={[styles.heroIconContainer, { backgroundColor: heroBg }]}>
-            <Feather name="shield" size={24} color={heroColor} />
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.valid.bgColor }]}>
+            <Feather name="check-circle" size={16} color={STATUS_CONFIG.valid.color} />
           </View>
-          <Text style={[styles.heroValue, { color: heroColor }]}>{heroStat}</Text>
-          <Text style={styles.heroLabel}>{heroLabel}</Text>
+          <Text style={[styles.statValue, { color: STATUS_CONFIG.valid.color }]}>{validCount}</Text>
+          <Text style={styles.statLabel}>Valid</Text>
         </View>
 
-        <View style={styles.supportingStatsRow}>
-          <View style={styles.supportingStatCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.valid.bgColor }]}>
-              <Feather name="check-circle" size={20} color={STATUS_CONFIG.valid.color} />
-            </View>
-            <Text style={styles.statValue}>{validCount}</Text>
-            <Text style={styles.statLabel}>Valid</Text>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expiring_soon.bgColor }]}>
+            <Feather name="clock" size={16} color={STATUS_CONFIG.expiring_soon.color} />
           </View>
+          <Text style={[styles.statValue, { color: STATUS_CONFIG.expiring_soon.color }]}>{expiringSoonCount}</Text>
+          <Text style={styles.statLabel}>Expiring</Text>
+        </View>
 
-          <View style={styles.supportingStatCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expiring_soon.bgColor }]}>
-              <Feather name="clock" size={20} color={STATUS_CONFIG.expiring_soon.color} />
-            </View>
-            <Text style={styles.statValue}>{expiringSoonCount}</Text>
-            <Text style={styles.statLabel}>Expiring</Text>
+        <View style={styles.statCard}>
+          <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expired.bgColor }]}>
+            <Feather name="alert-circle" size={16} color={STATUS_CONFIG.expired.color} />
           </View>
-
-          <View style={styles.supportingStatCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expired.bgColor }]}>
-              <Feather name="alert-circle" size={20} color={STATUS_CONFIG.expired.color} />
-            </View>
-            <Text style={styles.statValue}>{expiredCount}</Text>
-            <Text style={styles.statLabel}>Expired</Text>
-          </View>
+          <Text style={[styles.statValue, { color: STATUS_CONFIG.expired.color }]}>{expiredCount}</Text>
+          <Text style={styles.statLabel}>Expired</Text>
         </View>
       </View>
     );

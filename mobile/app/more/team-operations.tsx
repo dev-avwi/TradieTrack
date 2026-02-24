@@ -656,35 +656,34 @@ export default function TeamOperationsScreen() {
         style={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.heroCard}>
-          <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-            <Feather name="circle" size={20} color="#22c55e" />
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+              <Feather name="circle" size={20} color="#22c55e" />
+            </View>
+            <Text style={styles.statCardValue}>{onlineCount}</Text>
+            <Text style={styles.statCardLabel}>Online Now</Text>
           </View>
-          <Text style={styles.heroValue}>{onlineCount}</Text>
-          <Text style={styles.heroLabel}>Online Now</Text>
-        </View>
-
-        <View style={styles.kpiStatsRow}>
-          <View style={styles.kpiStatItem}>
-            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
               <Feather name="users" size={20} color="#3b82f6" />
             </View>
-            <Text style={styles.kpiStatValue}>{acceptedMembers.length}</Text>
-            <Text style={styles.kpiStatLabel}>Team</Text>
+            <Text style={styles.statCardValue}>{acceptedMembers.length}</Text>
+            <Text style={styles.statCardLabel}>Team</Text>
           </View>
-          <View style={styles.kpiStatItem}>
-            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
               <Feather name="tool" size={20} color="#3b82f6" />
             </View>
-            <Text style={styles.kpiStatValue}>{onJobCount}</Text>
-            <Text style={styles.kpiStatLabel}>On Job</Text>
+            <Text style={styles.statCardValue}>{onJobCount}</Text>
+            <Text style={styles.statCardLabel}>On Job</Text>
           </View>
-          <View style={styles.kpiStatItem}>
-            <View style={[styles.kpiStatIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
+          <View style={styles.statCard}>
+            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
               <Feather name="briefcase" size={20} color="#E8862E" />
             </View>
-            <Text style={styles.kpiStatValue}>{unassignedJobs.length}</Text>
-            <Text style={styles.kpiStatLabel}>Unassigned</Text>
+            <Text style={styles.statCardValue}>{unassignedJobs.length}</Text>
+            <Text style={styles.statCardLabel}>Unassigned</Text>
           </View>
         </View>
 
@@ -1055,7 +1054,7 @@ export default function TeamOperationsScreen() {
           </View>
           <ScrollView style={styles.modalContent}>
             <Text style={styles.inputLabel}>Team Member</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.lg }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
               <View style={styles.memberChips}>
                 {acceptedMembers.map(member => (
                   <TouchableOpacity
@@ -1250,17 +1249,17 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     ...shadows.md,
   },
   heroIconContainer: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   heroValue: {
-    fontSize: 36,
+    fontSize: 22,
     fontWeight: '700',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
     color: colors.foreground,
   },
   heroLabel: {
@@ -1409,7 +1408,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.xl,
+    padding: spacing['2xl'],
     ...shadows.md,
   },
   mapEmptyIcon: {
@@ -1487,7 +1486,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
   },
   emptyIconCircle: {
     width: 80,

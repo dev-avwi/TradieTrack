@@ -158,14 +158,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   heroIconContainer: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroStatValue: {
-    fontSize: 36,
+    fontSize: 22,
     fontWeight: '700',
     letterSpacing: -1,
     color: colors.foreground,
@@ -290,7 +290,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: colors.primary,

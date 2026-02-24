@@ -279,7 +279,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.sm,
   },
   warningCard: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     padding: spacing.lg,
     backgroundColor: colors.warningLight,
     borderRadius: radius.xl,
@@ -336,12 +336,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   amountDisplay: {
     color: colors.foreground,
-    fontSize: 36,
+    fontSize: 22,
     fontWeight: 'bold',
+    letterSpacing: -0.5,
   },
   acceptedMethodsCard: {
     marginTop: 32,
@@ -363,7 +364,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   successTitle: {
     color: colors.success,
@@ -382,7 +383,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.destructiveLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   errorTitle: {
     color: colors.destructive,
@@ -413,8 +414,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
@@ -434,7 +435,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.infoLight || colors.primaryLight,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.info || colors.primary,
     flexDirection: 'row',
@@ -472,7 +473,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
     padding: spacing.sm,
   },
   qrCodeWrapper: {
@@ -503,7 +504,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.muted,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
@@ -517,12 +518,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   qrActionButtons: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
     width: '100%',
   },
   paymentLinkInputContainer: {
     width: '100%',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     gap: spacing.md,
   },
   paymentLinkLabel: {
@@ -554,8 +555,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.md,
   },
   recentPaymentIconContainer: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     backgroundColor: colors.successLight,
     alignItems: 'center',
@@ -662,7 +663,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   invoicePickerEmpty: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
   },
   invoicePickerEmptyText: {
     ...typography.body,
@@ -2039,7 +2040,7 @@ export default function CollectScreen() {
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
-          <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+          <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
             <View style={styles.readyIcon}>
               <Feather name="link" size={64} color={colors.primary} />
             </View>
@@ -2109,7 +2110,7 @@ export default function CollectScreen() {
               </Text>
             </View>
 
-            <View style={{ marginTop: spacing.lg }}>
+            <View style={{ marginTop: spacing.md }}>
               <Text style={styles.paymentLinkLabel}>Or share manually</Text>
               <TouchableOpacity 
                 style={styles.qrUrlContainer}
@@ -2175,7 +2176,7 @@ export default function CollectScreen() {
           </View>
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
-            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+            <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
               <View style={styles.readyIcon}>
                 <Feather name="link" size={64} color={colors.primary} />
               </View>
@@ -2241,7 +2242,7 @@ export default function CollectScreen() {
               </View>
 
               {hasSent && (
-                <View style={{ marginTop: spacing.lg, padding: spacing.md, backgroundColor: colors.muted, borderRadius: 8 }}>
+                <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.muted, borderRadius: 8 }}>
                   <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: spacing.xs }}>
                     Previously sent:
                   </Text>
@@ -3088,11 +3089,11 @@ export default function CollectScreen() {
           </View>
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
-            <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
+            <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
               <View style={[styles.readyIcon, { backgroundColor: colors.warningLight }]}>
                 <Feather name="message-circle" size={48} color={colors.warning} />
               </View>
-              <Text style={[styles.successTitle, { marginTop: spacing.lg }]}>
+              <Text style={[styles.successTitle, { marginTop: spacing.md }]}>
                 SMS Not Configured
               </Text>
               <Text style={[styles.modalStepSubtitle, { textAlign: 'center', marginTop: spacing.sm }]}>
@@ -3142,7 +3143,7 @@ export default function CollectScreen() {
               backgroundColor: colors.infoLight, 
               borderRadius: radius.lg, 
               padding: spacing.lg,
-              marginTop: spacing.lg
+              marginTop: spacing.md
             }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
                 <Feather name="info" size={16} color={colors.info} />

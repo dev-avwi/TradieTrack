@@ -118,64 +118,39 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
   },
-  heroSection: {
+  statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
-  heroCard: {
-    flex: 2,
+  statCard: {
+    flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.md,
-    ...shadows.md,
-  },
-  heroIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+    padding: spacing.sm,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1,
-  },
-  heroLabel: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
-  },
-  supportingStatsRow: {
-    flex: 1,
-    gap: spacing.sm,
-  },
-  supportingStatCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: radius['2xl'],
-    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  supportingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  supportingValue: {
-    ...typography.statValue,
+  statValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
-  supportingLabel: {
+  statLabel: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 2,
+    fontSize: 11,
   },
   tabContainer: {
     backgroundColor: colors.card,
@@ -352,7 +327,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: colors.primary,
@@ -367,7 +342,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -382,7 +357,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     ...typography.cardTitle,
@@ -396,7 +371,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyCta: {
     flexDirection: 'row',
@@ -510,30 +485,28 @@ export default function AutopilotScreen() {
     }
   }, [fetchData]);
 
-  const renderHeroSection = () => (
-    <View style={styles.heroSection}>
-      <View style={styles.heroCard}>
-        <View style={[styles.heroIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-          <Feather name="zap" size={iconSizes.xl} color="#22c55e" />
+  const renderStatsRow = () => (
+    <View style={styles.statsRow}>
+      <View style={styles.statCard}>
+        <View style={[styles.statIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+          <Feather name="zap" size={16} color="#22c55e" />
         </View>
-        <Text style={[styles.heroValue, { color: '#22c55e' }]}>{activeCount}</Text>
-        <Text style={styles.heroLabel}>Active</Text>
+        <Text style={[styles.statValue, { color: '#22c55e' }]}>{activeCount}</Text>
+        <Text style={styles.statLabel}>Active</Text>
       </View>
-      <View style={styles.supportingStatsRow}>
-        <View style={styles.supportingStatCard}>
-          <View style={[styles.supportingIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-            <Feather name="copy" size={iconSizes.xl} color="#3b82f6" />
-          </View>
-          <Text style={[styles.supportingValue, { color: colors.foreground }]}>{availableCount}</Text>
-          <Text style={styles.supportingLabel}>Available</Text>
+      <View style={styles.statCard}>
+        <View style={[styles.statIconContainer, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+          <Feather name="copy" size={16} color="#3b82f6" />
         </View>
-        <View style={styles.supportingStatCard}>
-          <View style={[styles.supportingIconContainer, { backgroundColor: 'rgba(107,114,128,0.1)' }]}>
-            <Feather name="layers" size={iconSizes.xl} color="#6b7280" />
-          </View>
-          <Text style={[styles.supportingValue, { color: colors.foreground }]}>{totalCount}</Text>
-          <Text style={styles.supportingLabel}>Total</Text>
+        <Text style={[styles.statValue, { color: colors.foreground }]}>{availableCount}</Text>
+        <Text style={styles.statLabel}>Available</Text>
+      </View>
+      <View style={styles.statCard}>
+        <View style={[styles.statIconContainer, { backgroundColor: 'rgba(107,114,128,0.1)' }]}>
+          <Feather name="layers" size={16} color="#6b7280" />
         </View>
+        <Text style={[styles.statValue, { color: colors.foreground }]}>{totalCount}</Text>
+        <Text style={styles.statLabel}>Total</Text>
       </View>
     </View>
   );
@@ -690,7 +663,7 @@ export default function AutopilotScreen() {
             </View>
           </View>
 
-          {!isLoading && renderHeroSection()}
+          {!isLoading && renderStatsRow()}
 
           <View style={styles.tabContainer}>
             <TouchableOpacity

@@ -107,62 +107,39 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
   },
-  heroCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius['2xl'],
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.md,
-  },
-  heroIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: colors.foreground,
-  },
-  heroLabel: {
-    ...typography.label,
-    color: colors.mutedForeground,
-    marginTop: spacing.xs,
-  },
-  supportingStatsRow: {
+  statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  supportingStatCard: {
+  statCard: {
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.md,
+    padding: spacing.sm,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
-  supportingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.xl,
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  supportingValue: {
-    ...typography.statValue,
-    color: colors.foreground,
+  statValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
-  supportingLabel: {
-    ...typography.label,
+  statLabel: {
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 2,
+    fontSize: 11,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -180,7 +157,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   sectionContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   actionCard: {
     backgroundColor: colors.card,
@@ -268,7 +245,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.md,
   },
   loadingText: {
     ...typography.caption,
@@ -277,7 +254,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -292,7 +269,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colorWithOpacity(colors.success, 0.1),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     ...typography.cardTitle,
@@ -322,7 +299,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
@@ -426,33 +403,31 @@ export default function ActionCenterScreen() {
     const { fixNowCount, thisWeekCount, suggestionsCount } = data.summary;
 
     return (
-      <>
-        <TouchableOpacity style={[styles.heroCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.06) }]} onPress={() => {}} activeOpacity={0.7}>
-          <View style={[styles.heroIconContainer, { backgroundColor: colorWithOpacity(colors.destructive, 0.1) }]}>
-            <Feather name="alert-triangle" size={iconSizes.xl} color={colors.destructive} />
+      <View style={styles.statsRow}>
+        <TouchableOpacity style={[styles.statCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.04) }]} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.destructive, 0.12) }]}>
+            <Feather name="alert-triangle" size={16} color={colors.destructive} />
           </View>
-          <Text style={[styles.heroValue, { color: colors.destructive }]}>{fixNowCount}</Text>
-          <Text style={styles.heroLabel}>{PRIORITY_CONFIG.fix_now.shortLabel}</Text>
+          <Text style={[styles.statValue, { color: colors.destructive }]}>{fixNowCount}</Text>
+          <Text style={styles.statLabel}>Fix Now</Text>
         </TouchableOpacity>
 
-        <View style={styles.supportingStatsRow}>
-          <TouchableOpacity style={styles.supportingStatCard} onPress={() => {}} activeOpacity={0.7}>
-            <View style={[styles.supportingIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
-              <Feather name="clock" size={iconSizes.xl} color={colors.warning} />
-            </View>
-            <Text style={styles.supportingValue}>{thisWeekCount}</Text>
-            <Text style={styles.supportingLabel}>{PRIORITY_CONFIG.this_week.shortLabel}</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.12) }]}>
+            <Feather name="clock" size={16} color={colors.warning} />
+          </View>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>{thisWeekCount}</Text>
+          <Text style={styles.statLabel}>This Week</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity style={styles.supportingStatCard} onPress={() => {}} activeOpacity={0.7}>
-            <View style={[styles.supportingIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-              <Feather name="zap" size={iconSizes.xl} color={colors.success} />
-            </View>
-            <Text style={styles.supportingValue}>{suggestionsCount}</Text>
-            <Text style={styles.supportingLabel}>{PRIORITY_CONFIG.suggestions.shortLabel}</Text>
-          </TouchableOpacity>
-        </View>
-      </>
+        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+            <Feather name="zap" size={16} color={colors.success} />
+          </View>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>{suggestionsCount}</Text>
+          <Text style={styles.statLabel}>Tips</Text>
+        </TouchableOpacity>
+      </View>
     );
   };
 

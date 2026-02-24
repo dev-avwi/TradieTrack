@@ -53,7 +53,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
   headerLeft: {
@@ -94,7 +94,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     gap: spacing.sm,
     ...shadows.sm,
   },
@@ -109,7 +109,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     overflow: 'hidden',
     ...shadows.sm,
   },
@@ -134,6 +134,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   statsGrid: {
     gap: spacing.sm,
@@ -141,14 +142,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.lg,
   },
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.md,
     ...shadows.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   heroStatHeader: {
     flexDirection: 'row',
@@ -157,7 +158,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   heroStatValue: {
-    fontSize: 36,
+    fontSize: 22,
     fontWeight: '700',
     letterSpacing: -1,
     color: colors.foreground,
@@ -180,6 +181,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
+    marginBottom: spacing.md,
   },
   statHeader: {
     flexDirection: 'row',
@@ -188,8 +190,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
@@ -227,7 +229,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -388,6 +390,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
     ...shadows.sm,
   },
   insightsIconContainer: {
@@ -414,7 +418,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
   },
   loadingText: {
     ...typography.caption,
@@ -424,7 +428,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    padding: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -451,7 +455,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -480,7 +484,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.sm,
   },
   reportTabContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   reportTab: {
     flexDirection: 'row',
@@ -508,6 +512,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   overviewSummarySection: {
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -534,6 +539,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   revenueBreakdownSection: {
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   breakdownCard: {
     backgroundColor: colors.card,
@@ -1009,7 +1015,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               {revenueReport && monthlyData.length > 0 ? (
                 <View style={styles.chartSection}>
                   <View style={styles.chartHeader}>
-                    <Feather name="bar-chart-2" size={iconSizes.xl} color={colors.foreground} />
+                    <Feather name="bar-chart-2" size={16} color={colors.foreground} />
                     <Text style={styles.chartTitle}>Revenue Overview</Text>
                     <Text style={styles.chartSubtitle}>{revenueReport.year}</Text>
                   </View>
