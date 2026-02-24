@@ -269,7 +269,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                   return (
                     <div
                       key={section.key}
-                      className={`feed-card card-press p-4 animate-fade-up stagger-delay-${idx + 1} ${isHero ? "col-span-3 sm:col-span-1" : ""}`}
+                      className={`feed-card card-press p-4 animate-fade-up stagger-delay-${idx + 1}`}
                       style={isHero && count > 0 ? { background: `linear-gradient(135deg, ${section.bgColor}, hsl(var(--card)))` } : undefined}
                     >
                       <div
