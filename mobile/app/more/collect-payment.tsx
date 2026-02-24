@@ -77,7 +77,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickLinksRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.md,
   },
   quickLink: {
@@ -440,7 +440,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.info || colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   demoModeText: {
     flex: 1,
@@ -517,14 +517,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   qrActionButtons: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginTop: spacing.md,
     width: '100%',
   },
   paymentLinkInputContainer: {
     width: '100%',
     marginTop: spacing.md,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   paymentLinkLabel: {
     fontSize: 14,
@@ -552,7 +552,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   recentPaymentIconContainer: {
     width: 32,
@@ -580,7 +580,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   compactQuickLinksRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.md,
   },
   compactQuickLink: {
@@ -592,7 +592,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius['2xl'],
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    gap: spacing.xs,
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -2304,9 +2304,9 @@ export default function CollectScreen() {
               </Text>
               
               {recordClientId && (
-                <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.md }}>
+                <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.sm }}>
                   <Text style={styles.sectionLabel}>Send Receipt</Text>
-                  <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                     <Button 
                       variant="outline" 
                       onPress={() => handleSendRecordedReceipt('email')}
@@ -2361,7 +2361,7 @@ export default function CollectScreen() {
                           borderColor: recordPaymentMethod === method.id ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
                           backgroundColor: recordPaymentMethod === method.id ? colors.primaryLight : (colors.isDark ? colors.muted : colors.card),
                           alignItems: 'center',
-                          gap: spacing.xs,
+                          gap: spacing.sm,
                         }}
                         activeOpacity={0.7}
                       >
@@ -3198,7 +3198,7 @@ export default function CollectScreen() {
               </Text>
             )}
 
-            <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.md }}>
+            <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.sm }}>
               <View>
                 <TouchableOpacity
                   style={[

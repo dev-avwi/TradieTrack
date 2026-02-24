@@ -652,7 +652,7 @@ function PaymentRequestView({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
-  const [demoProcessing, setDemoProcessing] = useState(false);
+
 
   const createPaymentIntentMutation = useMutation({
     mutationFn: async () => {
@@ -695,33 +695,8 @@ function PaymentRequestView({
     },
   });
 
-  const [demoError, setDemoError] = useState<string | null>(null);
-
-  const handleDemoPayment = async () => {
-    if (!requestData) return;
-    setDemoProcessing(true);
-    setDemoError(null);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    try {
-      const response = await fetch(`/api/public/payment-request/${token}/confirm-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId: 'demo_pi_' + Date.now(), paymentMethod: 'demo' }),
-      });
-      if (response.ok) {
-        setPaymentSuccess(true);
-      } else {
-        const data = await response.json();
-        setDemoError(data.error || 'Demo payment failed');
-      }
-    } catch (e) {
-      setDemoError('Unable to process demo payment. Please try again.');
-    }
-    setDemoProcessing(false);
-  };
-
   useEffect(() => {
-    if (requestData && requestData.status === 'pending' && !requestData.isDemoMode) {
+    if (requestData && requestData.status === 'pending') {
       createPaymentIntentMutation.mutate();
     }
   }, [requestData]);
@@ -877,64 +852,8 @@ function PaymentRequestView({
             </div>
           </div>
 
-          {/* Demo Payment Card */}
-          {requestData.isDemoMode && (
-            <div className="bg-white rounded-md shadow-lg border border-orange-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-orange-100 bg-orange-50">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-orange-600" />
-                  <span className="font-semibold text-lg text-slate-900">Demo Payment</span>
-                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">Demo</span>
-                </div>
-                <p className="text-sm text-orange-600 mt-1">
-                  This simulates what your customer would see. Connect Stripe for real payments.
-                </p>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Card Number</span>
-                    <span className="text-slate-400 font-mono">4242 **** **** 4242</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Expiry</span>
-                    <span className="text-slate-400 font-mono">12/29</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">CVC</span>
-                    <span className="text-slate-400 font-mono">123</span>
-                  </div>
-                </div>
-                <Button
-                  className="w-full bg-[#2563EB] text-white"
-                  size="lg"
-                  onClick={handleDemoPayment}
-                  disabled={demoProcessing}
-                >
-                  {demoProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing Demo Payment...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Pay ${amount.toFixed(2)} (Demo)
-                    </>
-                  )}
-                </Button>
-                {demoError && (
-                  <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-2">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    <span>{demoError}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Real Payment Card */}
-          {!requestData.isDemoMode && clientSecret && stripePromise && (
+          {/* Payment Card */}
+          {clientSecret && stripePromise && (
             <div className="bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -986,14 +905,14 @@ function PaymentRequestView({
             </div>
           )}
 
-          {!requestData.isDemoMode && createPaymentIntentMutation.isPending && (
+          {createPaymentIntentMutation.isPending && (
             <div className="bg-white rounded-md shadow-lg border border-slate-200 p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
               <p className="text-slate-600">Setting up secure payment...</p>
             </div>
           )}
 
-          {!requestData.isDemoMode && createPaymentIntentMutation.isError && (
+          {createPaymentIntentMutation.isError && (
             <div className="bg-white rounded-md shadow-lg border border-red-100 p-8 text-center">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="h-6 w-6 text-red-600" />

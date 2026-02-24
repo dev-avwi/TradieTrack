@@ -153,6 +153,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   statCard: {
     flex: 1,
@@ -195,6 +196,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   filterTab: {
     paddingHorizontal: spacing.lg,

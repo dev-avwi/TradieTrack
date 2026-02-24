@@ -138,6 +138,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingTop: pageShell.paddingTop,
     paddingBottom: spacing.md,
     backgroundColor: colors.background,
+    marginBottom: spacing.sm,
   },
   headerTitle: {
     ...typography.largeTitle,
@@ -277,7 +278,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sectionHeader: {
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingTop: spacing.md,
+    marginTop: spacing.md,
     paddingBottom: spacing.sm,
   },
   sectionTitle: {
@@ -292,7 +293,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     padding: spacing.md,
     marginHorizontal: pageShell.paddingHorizontal,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -408,7 +409,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   emptyStateIcon: {
     width: 32,
@@ -435,7 +436,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
   },
   twilioSetupBanner: {
     flexDirection: 'row',
@@ -447,6 +448,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius['2xl'],
     gap: spacing.sm,
     ...shadows.sm,
+    marginTop: spacing.sm,
   },
   twilioSetupIcon: {
     width: 32,
@@ -484,6 +486,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.successLight,
     marginHorizontal: pageShell.paddingHorizontal,
     marginBottom: spacing.sm,
+    marginTop: spacing.sm,
     padding: spacing.md,
     borderRadius: radius['2xl'],
     gap: spacing.sm,

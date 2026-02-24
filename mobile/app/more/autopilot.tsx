@@ -388,7 +388,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primaryForeground || '#fff',
   },
   templateGrid: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
 });
 

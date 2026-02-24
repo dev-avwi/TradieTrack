@@ -37,6 +37,17 @@ interface JobChatMessage {
   senderAvatar?: string | null;
 }
 
+interface SmsMessage {
+  id: string;
+  conversationId: string;
+  direction: 'inbound' | 'outbound';
+  body: string;
+  status: string;
+  createdAt: string;
+  clientPhone?: string;
+  clientName?: string;
+}
+
 interface Participant {
   id: string;
   name: string;
@@ -334,6 +345,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  smsBubbleOwn: {
+    backgroundColor: colors.success,
+    borderBottomRightRadius: 4,
+  },
+  smsBubbleOther: {
+    backgroundColor: colors.infoLight,
+    borderBottomLeftRadius: 4,
+  },
+  smsIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  smsIndicatorText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
   composerContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -482,16 +512,21 @@ export default function JobChatScreen() {
   const [jobPhotos, setJobPhotos] = useState<JobPhoto[]>([]);
   const [jobQuotes, setJobQuotes] = useState<Quote[]>([]);
   const [jobInvoices, setJobInvoices] = useState<Invoice[]>([]);
+  const [smsMessages, setSmsMessages] = useState<SmsMessage[]>([]);
+  const [smsConversation, setSmsConversation] = useState<any>(null);
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadMessages, 5000);
+    const interval = setInterval(() => {
+      loadMessages();
+      loadSmsMessages();
+    }, 5000);
     return () => clearInterval(interval);
   }, [jobId]);
 
   const loadData = async () => {
     setIsLoading(true);
-    await Promise.all([loadJob(), loadMessages(), loadParticipants()]);
+    await Promise.all([loadJob(), loadMessages(), loadParticipants(), loadSmsMessages()]);
     setIsLoading(false);
   };
 
@@ -545,6 +580,27 @@ export default function JobChatScreen() {
     }
   };
 
+  const loadSmsMessages = async () => {
+    try {
+      const convosResponse = await api.get<any[]>('/api/sms/conversations');
+      if (convosResponse.data) {
+        const matchingConvo = convosResponse.data.find((c: any) => String(c.jobId) === String(jobId));
+        if (matchingConvo) {
+          setSmsConversation(matchingConvo);
+          const msgsResponse = await api.get<any[]>(`/api/sms/conversations/${matchingConvo.id}/messages`);
+          if (msgsResponse.data) {
+            setSmsMessages(msgsResponse.data);
+          }
+        } else {
+          setSmsConversation(null);
+          setSmsMessages([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading SMS messages:', error);
+    }
+  };
+
   const loadJobDocuments = async (type: 'photos' | 'quotes' | 'invoices') => {
     try {
       if (type === 'photos') {
@@ -564,7 +620,7 @@ export default function JobChatScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadMessages();
+    await Promise.all([loadMessages(), loadSmsMessages()]);
     setRefreshing(false);
   };
 
@@ -739,6 +795,54 @@ export default function JobChatScreen() {
 
   const isOwnMessage = (msg: JobChatMessage) => msg.userId === user?.id;
 
+  const allMessages = useMemo(() => {
+    const combined: Array<{
+      id: string;
+      type: 'chat' | 'sms';
+      message: string;
+      senderName: string;
+      createdAt: string;
+      isOwn: boolean;
+      isSystem?: boolean;
+      direction?: 'inbound' | 'outbound';
+      attachmentName?: string | null;
+      attachmentUrl?: string | null;
+      messageType?: string;
+      originalMessage: any;
+    }> = [];
+
+    messages.forEach(msg => {
+      combined.push({
+        id: msg.id,
+        type: 'chat',
+        message: msg.message,
+        senderName: msg.senderName,
+        createdAt: msg.createdAt,
+        isOwn: msg.userId === user?.id,
+        isSystem: msg.isSystemMessage,
+        attachmentName: msg.attachmentName,
+        attachmentUrl: msg.attachmentUrl,
+        messageType: msg.messageType,
+        originalMessage: msg,
+      });
+    });
+
+    smsMessages.forEach(sms => {
+      combined.push({
+        id: `sms-${sms.id}`,
+        type: 'sms',
+        message: sms.body,
+        senderName: sms.direction === 'inbound' ? (smsConversation?.clientName || smsConversation?.clientPhone || 'Client') : 'You (SMS)',
+        createdAt: sms.createdAt,
+        isOwn: sms.direction === 'outbound',
+        direction: sms.direction,
+        originalMessage: sms,
+      });
+    });
+
+    return combined.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [messages, smsMessages, user?.id, smsConversation]);
+
   const renderAttachment = (msg: JobChatMessage) => {
     if (!msg.attachmentName && !msg.attachmentUrl) return null;
     
@@ -811,7 +915,7 @@ export default function JobChatScreen() {
           </View>
           <View style={styles.messageBadge}>
             <Text style={styles.messageBadgeText}>
-              {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+              {allMessages.length} {allMessages.length === 1 ? 'message' : 'messages'}
             </Text>
           </View>
         </View>
@@ -821,7 +925,7 @@ export default function JobChatScreen() {
             <Feather name="users" size={12} color="#fff" />
           </View>
           <Text style={styles.internalBannerText}>
-            Messages about this job. Your team can see and reply here.
+            Messages about this job. Your team can see and reply here.{smsMessages.length > 0 ? ' SMS messages with the client are shown here too.' : ''}
           </Text>
           {client && (
             <TouchableOpacity style={styles.contactClientBtn} onPress={handleContactClient}>
@@ -860,15 +964,15 @@ export default function JobChatScreen() {
           }
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {messages.length === 0 ? (
+          {allMessages.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Feather name="message-circle" size={48} color={colors.mutedForeground} style={styles.emptyIcon} />
               <Text style={styles.emptyText}>No messages yet</Text>
               <Text style={styles.emptySubtext}>Send a message to get things moving</Text>
             </View>
           ) : (
-            messages.map((msg) => {
-              if (msg.isSystemMessage) {
+            allMessages.map((msg) => {
+              if (msg.isSystem) {
                 return (
                   <View key={msg.id} style={styles.systemMessage}>
                     <Text style={styles.systemMessageText}>{msg.message}</Text>
@@ -876,18 +980,30 @@ export default function JobChatScreen() {
                 );
               }
 
-              const own = isOwnMessage(msg);
+              const own = msg.isOwn;
+              const isSms = msg.type === 'sms';
+              const bubbleStyle = isSms
+                ? (own ? styles.smsBubbleOwn : styles.smsBubbleOther)
+                : (own ? styles.messageBubbleOwn : styles.messageBubbleOther);
               return (
                 <View key={msg.id} style={[styles.messageRow, own ? styles.messageRowOwn : styles.messageRowOther]}>
                   {!own && <Text style={styles.messageSender}>{msg.senderName}</Text>}
-                  <View style={[styles.messageBubble, own ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
+                  <View style={[styles.messageBubble, bubbleStyle]}>
                     <Text style={[styles.messageText, own ? styles.messageTextOwn : styles.messageTextOther]}>
                       {msg.message}
                     </Text>
-                    {renderAttachment(msg)}
-                    <Text style={[styles.messageTime, own ? styles.messageTimeOwn : styles.messageTimeOther]}>
-                      {formatTime(msg.createdAt)}
-                    </Text>
+                    {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: own ? 'flex-end' : 'flex-start', gap: 4 }}>
+                      <Text style={[styles.messageTime, own ? styles.messageTimeOwn : styles.messageTimeOther]}>
+                        {formatTime(msg.createdAt)}
+                      </Text>
+                      {isSms && (
+                        <View style={styles.smsIndicator}>
+                          <Feather name="smartphone" size={10} color={own ? colors.primaryForeground + '80' : colors.mutedForeground} />
+                          <Text style={[styles.smsIndicatorText, own ? { color: colors.primaryForeground + '80' } : {}]}>SMS</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
               );

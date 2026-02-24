@@ -1140,8 +1140,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: responsivePadding,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   tabletTitle: {
     ...typography.largeTitle,
@@ -1172,7 +1172,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   tabBar: {
     flexGrow: 0,
     flexShrink: 0,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     paddingHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
   },
   tabBarContent: {
@@ -1211,7 +1211,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     backgroundColor: colors.muted,
     borderRadius: radius['2xl'],
     padding: spacing.xs,
-    marginVertical: spacing.md,
+    marginVertical: spacing.sm,
   },
   liveViewButton: {
     flex: 1,
@@ -1245,7 +1245,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     borderRadius: radius['2xl'],
     padding: spacing.md,
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     ...shadows.md,
   },
   heroIconContainer: {
@@ -1276,6 +1276,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    gap: spacing.sm,
     ...shadows.sm,
   },
   avatarContainer: {
@@ -1403,8 +1404,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   mapEmptyState: {
     position: 'absolute',
     top: '40%',
-    left: spacing.xl,
-    right: spacing.xl,
+    left: spacing.md,
+    right: spacing.md,
     alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1487,6 +1488,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.lg,
+    paddingHorizontal: spacing['2xl'],
   },
   emptyIconCircle: {
     width: 80,
@@ -1514,7 +1516,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     justifyContent: 'space-around',
     paddingVertical: spacing.md,
     backgroundColor: colors.card,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -1540,7 +1542,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.mutedForeground,
   },
   actionRow: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   actionButton: {
     flexDirection: 'row',
@@ -1610,7 +1612,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     fontWeight: '600',
   },
   availabilityList: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   availabilityRow: {
     flexDirection: 'row',
@@ -1656,7 +1658,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   timeOffName: {
     ...typography.cardTitle,
@@ -1686,7 +1688,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   timeOffActions: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   timeOffButton: {
     flex: 1,
@@ -1703,7 +1705,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   statCard: {
     width: (contentWidth - responsivePadding * 2 - spacing.sm) / 2,
@@ -1804,7 +1806,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   textInput: {
     backgroundColor: colors.muted,
@@ -1842,7 +1844,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     padding: spacing.md,
     borderRadius: radius['2xl'],
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   submitButtonText: {
     ...typography.button,
@@ -1852,7 +1854,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   kpiStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     gap: spacing.sm,
   },
   kpiStatItem: {
@@ -1887,7 +1889,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     padding: spacing.md,
     marginHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
-    marginVertical: spacing.sm,
+    marginVertical: spacing.xs,
     borderRadius: radius['2xl'],
     gap: spacing.md,
   },

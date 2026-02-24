@@ -90,6 +90,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+    marginTop: spacing.sm,
     marginBottom: spacing.md,
   },
   statCard: {
@@ -128,6 +129,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   quickAccessSection: {
+    marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   categoryCard: {
@@ -162,6 +164,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   recentSection: {
+    marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   recentHeader: {
@@ -233,7 +236,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],

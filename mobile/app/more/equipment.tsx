@@ -855,7 +855,7 @@ export default function EquipmentScreen() {
                   <Text style={styles.noMaintenanceText}>No maintenance records yet</Text>
                 </View>
               ) : (
-                <View style={{ gap: 8, marginTop: 8 }}>
+                <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
                   {maintenanceRecords.map((record) => (
                     <View key={record.id} style={styles.maintenanceCard}>
                       <View style={styles.maintenanceCardHeader}>
@@ -1116,7 +1116,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     gap: spacing.md,
   },
   pageTitle: {
@@ -1142,7 +1142,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   filterScroll: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     marginHorizontal: -pageShell.paddingHorizontal,
   },
   filterContainer: {
@@ -1196,6 +1196,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   statCard: {
     flex: 1,
@@ -1231,7 +1232,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.label,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   cardList: {
     gap: spacing.md,
@@ -1310,8 +1311,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -1325,7 +1326,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     ...typography.cardTitle,
@@ -1414,7 +1415,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     color: colors.mutedForeground,
     marginBottom: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   textInput: {
     backgroundColor: colors.card,
@@ -1481,14 +1482,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   pickerTitle: {
     ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   pickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -1518,7 +1519,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
     gap: spacing.md,
   },
   detailPrice: {
@@ -1528,12 +1529,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   detailSection: {
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   detailSectionTitle: {
     ...typography.label,
     fontWeight: '700',
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   detailGrid: {
     flexDirection: 'row',
@@ -1606,7 +1608,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   noMaintenanceContainer: {
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -1621,7 +1623,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   maintenanceCard: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -1630,7 +1632,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   maintenanceCardTitle: {
@@ -1657,7 +1659,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   maintenanceMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginTop: spacing.sm,
   },
   maintenanceMetaItem: {

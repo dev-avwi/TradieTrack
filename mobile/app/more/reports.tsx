@@ -287,8 +287,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   chartYearTotal: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     flexDirection: 'row',
@@ -405,7 +405,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   insightsTitle: {
     ...typography.cardTitle,
     color: colors.foreground,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   insightsText: {
     ...typography.caption,
@@ -443,7 +443,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
@@ -475,7 +475,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   emptyTitle: {
     ...typography.cardTitle,
     color: colors.foreground,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   emptyText: {
     ...typography.caption,
@@ -516,7 +516,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   summaryRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
   summaryItem: {
@@ -547,7 +547,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: spacing.md,
+    gap: spacing.sm,
     ...shadows.sm,
   },
   breakdownRow: {

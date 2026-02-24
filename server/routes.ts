@@ -19583,7 +19583,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       const businessForStripeCheck = await storage.getBusinessSettings(req.userId);
       const canAcceptPayments = !!(businessForStripeCheck?.stripeConnectAccountId && businessForStripeCheck?.connectChargesEnabled);
-      const isDemoMode = !canAcceptPayments;
+      const isDemoMode = false;
 
       const { amount, description, reference, invoiceId, jobId, clientId, expiresInHours = 24 } = req.body;
       
@@ -20692,7 +20692,7 @@ Be specific about materials, colors, and features that would be included.`
         businessName: settings?.businessName || 'Business',
         businessLogo: settings?.logoUrl,
         brandColor: settings?.brandColor || '#dc2626',
-        isDemoMode: !canAcceptPayments,
+        isDemoMode: false,
       });
     } catch (error) {
       console.error("Error fetching public payment request:", error);
