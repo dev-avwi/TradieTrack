@@ -291,7 +291,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   errorText: {
     ...typography.caption,

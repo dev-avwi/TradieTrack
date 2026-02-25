@@ -164,8 +164,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   recentSection: {
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   recentHeader: {
     ...componentStyles.sectionHeader,

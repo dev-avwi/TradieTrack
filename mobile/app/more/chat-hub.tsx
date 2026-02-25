@@ -136,7 +136,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerCard: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.background,
     marginBottom: spacing.sm,
   },

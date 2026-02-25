@@ -1231,8 +1231,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionLabel: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   cardList: {
     gap: spacing.sm,
@@ -1471,7 +1471,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   pickerContainer: {
     backgroundColor: colors.card,

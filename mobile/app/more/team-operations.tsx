@@ -1741,7 +1741,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -1854,7 +1854,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   kpiStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   kpiStatItem: {

@@ -86,7 +86,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     paddingTop: spacing.sm,
   },
   headerLeft: {
@@ -104,7 +104,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   tabButton: {
     flexDirection: 'row',

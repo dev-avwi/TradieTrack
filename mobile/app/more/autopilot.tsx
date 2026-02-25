@@ -355,8 +355,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
     ...shadows.sm,
   },
   emptyIconContainer: {

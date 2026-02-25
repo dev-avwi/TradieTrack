@@ -119,9 +119,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     paddingTop: spacing.sm,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   headerLeft: {
     flex: 1,
