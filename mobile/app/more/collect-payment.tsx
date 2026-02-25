@@ -2329,7 +2329,7 @@ export default function CollectScreen() {
             </View>
           ) : (
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
-              <View style={{ gap: spacing.lg }}>
+              <View style={{ gap: spacing.md }}>
                 <View>
                   <Text style={styles.paymentLinkLabel}>Amount *</Text>
                   <View style={styles.amountInputContainer}>

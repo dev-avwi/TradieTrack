@@ -24,6 +24,7 @@ import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes, useP
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
+import { QuickActionSheet, type QuickAction } from '../../src/components/QuickActionSheet';
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -46,11 +47,13 @@ function JobListRow({
   onPress,
   onDelete,
   onQuickAction,
+  onShowActionSheet,
 }: { 
   job: any;
   onPress: () => void;
   onDelete: (jobId: string) => void;
   onQuickAction?: (action: string, jobId: string) => void;
+  onShowActionSheet?: (job: any) => void;
 }) {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
@@ -84,35 +87,7 @@ function JobListRow({
   };
 
   const handleMorePress = () => {
-    const actions: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [];
-    
-    actions.push({ text: 'View Details', onPress: () => router.push(`/job/${job.id}`) });
-    
-    if (job.status === 'pending') {
-      actions.push({ text: 'Schedule Job', onPress: () => onQuickAction?.('schedule', job.id) });
-    }
-    if (job.status === 'scheduled') {
-      actions.push({ text: 'Start Job', onPress: () => onQuickAction?.('start', job.id) });
-    }
-    if (job.status === 'in_progress') {
-      actions.push({ text: 'Complete Job', onPress: () => onQuickAction?.('complete', job.id) });
-    }
-    if (job.status !== 'invoiced') {
-      actions.push({ text: 'Create Quote', onPress: () => router.push(`/more/quote/new?jobId=${job.id}`) });
-    }
-    if (job.status === 'done') {
-      actions.push({ text: 'Create Invoice', onPress: () => router.push(`/more/invoice/new?jobId=${job.id}`) });
-    }
-    
-    actions.push({ 
-      text: 'Delete Job', 
-      style: 'destructive',
-      onPress: handleDelete
-    });
-    
-    actions.push({ text: 'Cancel', style: 'cancel' });
-    
-    Alert.alert('Job Actions', job.title || 'Untitled Job', actions);
+    onShowActionSheet?.(job);
   };
 
   return (
@@ -153,11 +128,13 @@ function JobListRow({
 function JobCard({ 
   job, 
   onPress,
-  onQuickAction
+  onQuickAction,
+  onShowActionSheet,
 }: { 
   job: any;
   onPress: () => void;
   onQuickAction?: (action: string, jobId: string) => void;
+  onShowActionSheet?: (job: any) => void;
 }) {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
@@ -204,29 +181,7 @@ function JobCard({
   const urgency = getJobUrgency(job.scheduledAt, job.status);
 
   const handleMorePress = () => {
-    const actions: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [];
-    
-    actions.push({ text: 'View Details', onPress: () => router.push(`/job/${job.id}`) });
-    
-    if (job.status === 'pending') {
-      actions.push({ text: 'Schedule Job', onPress: () => onQuickAction?.('schedule', job.id) });
-    }
-    if (job.status === 'scheduled') {
-      actions.push({ text: 'Start Job', onPress: () => onQuickAction?.('start', job.id) });
-    }
-    if (job.status === 'in_progress') {
-      actions.push({ text: 'Complete Job', onPress: () => onQuickAction?.('complete', job.id) });
-    }
-    if (job.status !== 'invoiced') {
-      actions.push({ text: 'Create Quote', onPress: () => router.push(`/more/quote/new?jobId=${job.id}`) });
-    }
-    if (job.status === 'done') {
-      actions.push({ text: 'Create Invoice', onPress: () => router.push(`/more/invoice/new?jobId=${job.id}`) });
-    }
-    
-    actions.push({ text: 'Cancel', style: 'cancel' });
-    
-    Alert.alert('Job Actions', job.title || 'Untitled Job', actions);
+    onShowActionSheet?.(job);
   };
 
   return (
@@ -336,6 +291,7 @@ export default function JobsScreen() {
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [actionSheetJob, setActionSheetJob] = useState<any>(null);
 
   const handleSortChange = useCallback((field: SortField) => {
     if (sortField === field) {
@@ -403,6 +359,40 @@ export default function JobsScreen() {
       Alert.alert('Error', 'Failed to delete job. Please try again.');
     }
   }, [refreshData]);
+
+  const buildJobActions = useCallback((job: any): QuickAction[] => {
+    const acts: QuickAction[] = [];
+    acts.push({ icon: 'eye', label: 'View Details', primary: true, onPress: () => router.push(`/job/${job.id}`) });
+    if (job.status === 'pending') {
+      acts.push({ icon: 'calendar', label: 'Schedule Job', onPress: () => handleQuickAction('schedule', job.id) });
+    }
+    if (job.status === 'scheduled') {
+      acts.push({ icon: 'play', label: 'Start Job', onPress: () => handleQuickAction('start', job.id) });
+    }
+    if (job.status === 'in_progress') {
+      acts.push({ icon: 'check-circle', label: 'Complete Job', onPress: () => handleQuickAction('complete', job.id) });
+    }
+    if (job.status !== 'invoiced') {
+      acts.push({ icon: 'file-text', label: 'Create Quote', onPress: () => router.push(`/more/quote/new?jobId=${job.id}`) });
+    }
+    if (job.status === 'done') {
+      acts.push({ icon: 'file', label: 'Create Invoice', onPress: () => router.push(`/more/invoice/new?jobId=${job.id}`) });
+    }
+    acts.push({
+      icon: 'trash-2',
+      label: 'Delete Job',
+      destructive: true,
+      onPress: () => Alert.alert(
+        'Delete Job',
+        `Delete "${job.title || 'Untitled Job'}"? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteJob(job.id) },
+        ]
+      ),
+    });
+    return acts;
+  }, [handleQuickAction, handleDeleteJob]);
 
   useEffect(() => {
     refreshData();
@@ -737,6 +727,7 @@ export default function JobsScreen() {
                   job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
                   onPress={() => router.push(`/job/${job.id}`)}
                   onQuickAction={handleQuickAction}
+                  onShowActionSheet={setActionSheetJob}
                 />
               ))}
             </View>
@@ -775,12 +766,21 @@ export default function JobsScreen() {
                   onPress={() => router.push(`/job/${job.id}`)}
                   onDelete={handleDeleteJob}
                   onQuickAction={handleQuickAction}
+                  onShowActionSheet={setActionSheetJob}
                 />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
+
+      <QuickActionSheet
+        visible={actionSheetJob !== null}
+        onClose={() => setActionSheetJob(null)}
+        title={actionSheetJob?.title || 'Untitled Job'}
+        subtitle={actionSheetJob?.address?.split(',')[0]}
+        actions={actionSheetJob ? buildJobActions(actionSheetJob) : []}
+      />
     </View>
   );
 }
