@@ -239,7 +239,7 @@ export const mainMenuItems: NavItem[] = [
     requiresOwnerOrManager: true,
     hideForStaff: true,
     hideInSimpleMode: true,
-    showInSidebar: false,
+    showInSidebar: true,
     showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },

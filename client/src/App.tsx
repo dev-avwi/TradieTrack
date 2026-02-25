@@ -1167,8 +1167,8 @@ function AppLayout() {
 
   // Custom sidebar width for JobRunner
   const style = {
-    "--sidebar-width": "20rem",       // 320px for better content
-    "--sidebar-width-icon": "4rem",   // default icon width
+    "--sidebar-width": "16rem",       // 256px - compact for laptop screens
+    "--sidebar-width-icon": "3.5rem",
   };
 
   const getPageTitle = () => {

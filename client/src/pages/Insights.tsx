@@ -17,7 +17,25 @@ import {
   ChevronRight,
   FileBarChart,
   PieChart,
+  LineChart as LineChartIcon,
+  ArrowRight,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  RadialBarChart,
+  RadialBar,
+} from "recharts";
 
 interface InsightsProps {
   onNavigate?: (path: string) => void;
@@ -54,6 +72,13 @@ interface KPIData {
   monthlyEarnings: number;
 }
 
+interface MonthlyRevenue {
+  year: number;
+  months: Array<{ month: string; revenue: number; gst: number; invoicesPaid: number }>;
+  yearTotal: number;
+  yearGst: number;
+}
+
 const tabs = [
   { id: "profit", label: "Profit & Margin", icon: DollarSign },
   { id: "cashflow", label: "Cashflow", icon: BarChart3 },
@@ -64,28 +89,24 @@ const tabs = [
 type TabId = (typeof tabs)[number]["id"];
 
 const fmtAud = (n: number) =>
-  "$" +
-  n.toLocaleString("en-AU", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
+  "$" + n.toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const fmtAudK = (n: number) => {
+  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
+  return `$${n.toFixed(0)}`;
+};
+
+function getMarginColor(margin: number): string {
+  if (margin > 30) return "hsl(142.1 76.2% 36.3%)";
+  if (margin >= 15) return "hsl(38 92% 50%)";
+  return "hsl(0 84.2% 60.2%)";
+}
 
 function HeroMetricCard({
-  label,
-  value,
-  icon: Icon,
-  context,
-  valueColor,
-  onClick,
-  animClass,
+  label, value, icon: Icon, context, valueColor, onClick, animClass,
 }: {
-  label: string;
-  value: string;
-  icon?: typeof DollarSign;
-  context?: string;
-  valueColor?: string;
-  onClick?: () => void;
-  animClass?: string;
+  label: string; value: string; icon?: typeof DollarSign; context?: string;
+  valueColor?: string; onClick?: () => void; animClass?: string;
 }) {
   return (
     <div
@@ -97,31 +118,20 @@ function HeroMetricCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="ios-label">{label}</p>
-            <p
-              className="text-[32px] sm:text-[36px] font-bold tracking-tight mt-1.5 leading-none"
-              style={valueColor ? { color: valueColor } : undefined}
-            >
+            <p className="text-[32px] sm:text-[36px] font-bold tracking-tight mt-1.5 leading-none"
+              style={valueColor ? { color: valueColor } : undefined}>
               {value}
             </p>
-            {context && (
-              <p className="ios-caption mt-2">{context}</p>
-            )}
+            {context && <p className="ios-caption mt-2">{context}</p>}
           </div>
           <div className="flex items-center gap-2">
             {Icon && (
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-              >
-                <Icon
-                  className="h-5 w-5"
-                  style={{ color: "hsl(var(--trade))" }}
-                />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}>
+                <Icon className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
               </div>
             )}
-            {onClick && (
-              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            )}
+            {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
           </div>
         </div>
       </div>
@@ -130,25 +140,10 @@ function HeroMetricCard({
 }
 
 function MetricCard({
-  label,
-  value,
-  icon: Icon,
-  context,
-  valueColor,
-  onClick,
-  animClass,
-  iconBg,
-  iconColor,
+  label, value, icon: Icon, context, valueColor, onClick, animClass, iconBg, iconColor,
 }: {
-  label: string;
-  value: string;
-  icon?: typeof DollarSign;
-  context?: string;
-  valueColor?: string;
-  onClick?: () => void;
-  animClass?: string;
-  iconBg?: string;
-  iconColor?: string;
+  label: string; value: string; icon?: typeof DollarSign; context?: string;
+  valueColor?: string; onClick?: () => void; animClass?: string; iconBg?: string; iconColor?: string;
 }) {
   return (
     <div
@@ -160,31 +155,210 @@ function MetricCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="ios-label">{label}</p>
-            <p
-              className="text-2xl font-bold mt-1"
-              style={valueColor ? { color: valueColor } : undefined}
-            >
+            <p className="text-2xl font-bold mt-1" style={valueColor ? { color: valueColor } : undefined}>
               {value}
             </p>
-            {context && (
-              <p className="ios-caption mt-1">{context}</p>
-            )}
+            {context && <p className="ios-caption mt-1">{context}</p>}
           </div>
           <div className="flex items-center gap-2">
             {Icon && (
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: iconBg || "hsl(var(--trade) / 0.1)" }}
-              >
-                <Icon
-                  className="h-5 w-5"
-                  style={{ color: iconColor || "hsl(var(--trade))" }}
-                />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: iconBg || "hsl(var(--trade) / 0.1)" }}>
+                <Icon className="h-5 w-5" style={{ color: iconColor || "hsl(var(--trade))" }} />
               </div>
             )}
-            {onClick && (
-              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            )}
+            {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChartTooltipContent({ active, payload, label, formatter }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-border bg-popover px-3 py-2 shadow-sm text-xs">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }} className="font-semibold">
+          {formatter ? formatter(p.value) : p.value}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function MarginArc({ margin }: { margin: number }) {
+  const color = getMarginColor(margin);
+  const capped = Math.min(margin, 100);
+  const data = [
+    { value: capped, fill: color },
+    { value: Math.max(0, 100 - capped), fill: "hsl(var(--muted))" },
+  ];
+  return (
+    <div className="feed-card p-4 animate-fade-up stagger-delay-2" style={{ opacity: 0 }}>
+      <div className="flex items-center gap-4">
+        <div className="relative flex-shrink-0" style={{ width: 80, height: 80 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPie>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                startAngle={180}
+                endAngle={0}
+                innerRadius={28}
+                outerRadius={38}
+                dataKey="value"
+                strokeWidth={0}
+              >
+                {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              </Pie>
+            </RechartsPie>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ marginTop: 12 }}>
+            <span className="text-sm font-bold" style={{ color }}>{margin.toFixed(0)}%</span>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="ios-label">GROSS MARGIN</p>
+          <p className="text-2xl font-bold mt-0.5" style={{ color }}>{margin.toFixed(1)}%</p>
+          <p className="ios-caption mt-1">
+            {margin > 30 ? "Healthy margin" : margin >= 15 ? "Room to improve" : "Needs attention"}
+          </p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      </div>
+    </div>
+  );
+}
+
+function CostBreakdownBar({
+  revenue, grossProfit, labourCost, materialCost,
+}: {
+  revenue: number; grossProfit: number; labourCost: number; materialCost: number;
+}) {
+  const data = [
+    { name: "Revenue", value: revenue },
+    { name: "Gross Profit", value: grossProfit },
+    { name: "Labour", value: labourCost },
+    { name: "Materials", value: materialCost },
+  ];
+
+  const colors = [
+    "hsl(var(--trade))",
+    "hsl(142.1 76.2% 36.3%)",
+    "hsl(38 92% 50%)",
+    "hsl(262 83% 58%)",
+  ];
+
+  return (
+    <div className="feed-card p-4 animate-fade-up stagger-delay-4" style={{ opacity: 0 }}>
+      <p className="ios-label mb-3">COST BREAKDOWN</p>
+      <ResponsiveContainer width="100%" height={110}>
+        <BarChart data={data} barSize={28} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={fmtAudK} />
+          <Tooltip content={<ChartTooltipContent formatter={fmtAud} />} cursor={{ fill: "hsl(var(--muted) / 0.4)" }} />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {data.map((_, i) => <Cell key={i} fill={colors[i]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RevenueChart({ months }: { months: Array<{ month: string; revenue: number }> }) {
+  const recent = months.slice(-6);
+  return (
+    <div className="feed-card p-4 animate-fade-up stagger-delay-3" style={{ opacity: 0 }}>
+      <p className="ios-label mb-3">REVENUE TREND (6 MONTHS)</p>
+      <ResponsiveContainer width="100%" height={120}>
+        <BarChart data={recent} barSize={20} margin={{ top: 0, right: 0, left: -24, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={fmtAudK} />
+          <Tooltip content={<ChartTooltipContent formatter={fmtAud} />} cursor={{ fill: "hsl(var(--muted) / 0.4)" }} />
+          <Bar dataKey="revenue" fill="hsl(var(--trade))" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function CashflowComparisonChart({
+  thisMonth, lastMonth, dueThisWeek, overdueTotal,
+}: {
+  thisMonth: number; lastMonth: number; dueThisWeek: number; overdueTotal: number;
+}) {
+  const data = [
+    { name: "Last Month", value: lastMonth, fill: "hsl(var(--muted-foreground) / 0.5)" },
+    { name: "This Month", value: thisMonth, fill: "hsl(var(--trade))" },
+    { name: "Due This Week", value: dueThisWeek, fill: "hsl(38 92% 50%)" },
+    { name: "Overdue", value: overdueTotal, fill: "hsl(0 84.2% 60.2%)" },
+  ];
+
+  return (
+    <div className="feed-card p-4 animate-fade-up stagger-delay-3" style={{ opacity: 0 }}>
+      <p className="ios-label mb-3">CASHFLOW OVERVIEW</p>
+      <ResponsiveContainer width="100%" height={130}>
+        <BarChart data={data} barSize={32} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={fmtAudK} />
+          <Tooltip content={<ChartTooltipContent formatter={fmtAud} />} cursor={{ fill: "hsl(var(--muted) / 0.4)" }} />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function QuoteConversionDonut({ awaiting, total }: { awaiting: number; total: number }) {
+  const responded = Math.max(0, total - awaiting);
+  const data = [
+    { name: "Responded", value: responded, fill: "hsl(var(--trade))" },
+    { name: "Awaiting", value: awaiting, fill: "hsl(38 92% 50%)" },
+  ];
+  const rate = total > 0 ? Math.round((responded / total) * 100) : 0;
+
+  return (
+    <div className="feed-card p-4 animate-fade-up stagger-delay-3" style={{ opacity: 0 }}>
+      <p className="ios-label mb-3">QUOTE PIPELINE</p>
+      <div className="flex items-center gap-4">
+        <div className="relative flex-shrink-0" style={{ width: 90, height: 90 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPie>
+              <Pie data={total > 0 ? data : [{ name: "None", value: 1, fill: "hsl(var(--muted))" }]}
+                cx="50%" cy="50%" innerRadius={28} outerRadius={40} dataKey="value" strokeWidth={0}>
+                {(total > 0 ? data : []).map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              </Pie>
+            </RechartsPie>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-sm font-bold text-foreground">{rate}%</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: "hsl(var(--trade))" }} />
+            <span className="text-muted-foreground">Responded</span>
+            <span className="font-semibold ml-auto">{responded}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: "hsl(38 92% 50%)" }} />
+            <span className="text-muted-foreground">Awaiting</span>
+            <span className="font-semibold ml-auto">{awaiting}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-muted" />
+            <span className="text-muted-foreground">Total Sent</span>
+            <span className="font-semibold ml-auto">{total}</span>
           </div>
         </div>
       </div>
@@ -205,18 +379,15 @@ function SkeletonGrid() {
           <div key={i} className="feed-card p-4">
             <Skeleton className="h-3 w-20 mb-2" />
             <Skeleton className="h-7 w-16 mb-1" />
-            <Skeleton className="h-3 w-24" />
           </div>
         ))}
       </div>
+      <div className="feed-card p-4">
+        <Skeleton className="h-3 w-28 mb-3" />
+        <Skeleton className="h-28 w-full rounded-lg" />
+      </div>
     </div>
   );
-}
-
-function getMarginColor(margin: number): string {
-  if (margin > 30) return "hsl(142.1 76.2% 36.3%)";
-  if (margin >= 15) return "hsl(38 92% 50%)";
-  return "hsl(0 84.2% 60.2%)";
 }
 
 export default function Insights({ onNavigate }: InsightsProps) {
@@ -235,23 +406,38 @@ export default function Insights({ onNavigate }: InsightsProps) {
     queryKey: ["/api/dashboard/profit-snapshot"],
   });
 
-  const { data: cashflow, isLoading: cashflowLoading } =
-    useQuery<CashflowData>({
-      queryKey: ["/api/dashboard/cashflow"],
-    });
+  const { data: cashflow, isLoading: cashflowLoading } = useQuery<CashflowData>({
+    queryKey: ["/api/dashboard/cashflow"],
+  });
 
   const { data: kpis, isLoading: kpisLoading } = useQuery<KPIData>({
     queryKey: ["/api/dashboard/kpis"],
   });
 
+  const { data: revenueData } = useQuery<MonthlyRevenue>({
+    queryKey: ['/api/reports/revenue', new Date().getFullYear().toString()],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/revenue?year=${new Date().getFullYear()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch revenue');
+      return res.json();
+    },
+  });
+
+  const { data: quotesData } = useQuery<any>({
+    queryKey: ["/api/quotes"],
+  });
+
   const isLoading = profitLoading || cashflowLoading || kpisLoading;
 
-  const collectionDiff =
-    (cashflow?.thisMonthCollected ?? 0) - (cashflow?.lastMonthCollected ?? 0);
+  const collectionDiff = (cashflow?.thisMonthCollected ?? 0) - (cashflow?.lastMonthCollected ?? 0);
   const collectionUp = collectionDiff >= 0;
 
+  const totalQuotesSent = Array.isArray(quotesData)
+    ? quotesData.filter((q: any) => q.status !== 'draft').length
+    : 0;
+
   return (
-    <div className="w-full px-4 sm:px-5 md:px-6 lg:px-8 py-5 sm:py-6 section-gap pb-28 md:pb-6">
+    <div className="w-full px-4 sm:px-5 md:px-6 py-5 sm:py-6 section-gap pb-28 md:pb-6">
       <div className="space-y-1">
         <h1 className="ios-title">Insights</h1>
         <p className="ios-caption mt-0.5">Business health at a glance</p>
@@ -262,24 +448,14 @@ export default function Insights({ onNavigate }: InsightsProps) {
           const isActive = activeTab === tab.id;
           const TabIcon = tab.icon;
           return isActive ? (
-            <Button
-              key={tab.id}
-              size="sm"
-              className="text-white font-medium flex-shrink-0"
+            <Button key={tab.id} size="sm" className="text-white font-medium flex-shrink-0"
               style={{ backgroundColor: "hsl(var(--trade))", borderColor: "hsl(var(--trade))" }}
-              onClick={() => setActiveTab(tab.id)}
-            >
+              onClick={() => setActiveTab(tab.id)}>
               <TabIcon className="h-3.5 w-3.5 mr-1.5" />
               {tab.label}
             </Button>
           ) : (
-            <Button
-              key={tab.id}
-              variant="ghost"
-              size="sm"
-              className="flex-shrink-0"
-              onClick={() => setActiveTab(tab.id)}
-            >
+            <Button key={tab.id} variant="ghost" size="sm" className="flex-shrink-0" onClick={() => setActiveTab(tab.id)}>
               <TabIcon className="h-3.5 w-3.5 mr-1.5" />
               {tab.label}
             </Button>
@@ -302,43 +478,34 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 animClass="animate-fade-up stagger-delay-1"
               />
 
+              <MetricCard
+                label="GROSS PROFIT"
+                value={fmtAud(profit?.grossProfit ?? 0)}
+                icon={TrendingUp}
+                valueColor="hsl(142.1 76.2% 36.3%)"
+                context={`After labour & materials`}
+                onClick={() => onNavigate?.("/profitability-report")}
+                animClass="animate-fade-up stagger-delay-2"
+                iconBg="hsl(142.1 76.2% 36.3% / 0.1)"
+                iconColor="hsl(142.1 76.2% 36.3%)"
+              />
+
+              <MarginArc margin={profit?.grossMargin ?? 0} />
+
+              {revenueData?.months && revenueData.months.length > 0 && (
+                <RevenueChart months={revenueData.months} />
+              )}
+
               <div>
-                <p className="ios-label mb-3">MARGINS & COSTS</p>
+                <p className="ios-label mb-3">COSTS THIS MONTH</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <MetricCard
-                    label="GROSS PROFIT"
-                    value={fmtAud(profit?.grossProfit ?? 0)}
-                    icon={TrendingUp}
-                    valueColor="hsl(142.1 76.2% 36.3%)"
-                    onClick={() => onNavigate?.("/profitability-report")}
-                    animClass="animate-fade-up stagger-delay-2"
-                    iconBg="hsl(142.1 76.2% 36.3% / 0.1)"
-                    iconColor="hsl(142.1 76.2% 36.3%)"
-                  />
-                  <MetricCard
-                    label="GROSS MARGIN"
-                    value={`${(profit?.grossMargin ?? 0).toFixed(1)}%`}
-                    icon={Percent}
-                    valueColor={getMarginColor(profit?.grossMargin ?? 0)}
-                    context={
-                      (profit?.grossMargin ?? 0) > 30
-                        ? "Healthy margin"
-                        : (profit?.grossMargin ?? 0) >= 15
-                          ? "Room to improve"
-                          : "Needs attention"
-                    }
-                    onClick={() => onNavigate?.("/profitability-report")}
-                    animClass="animate-fade-up stagger-delay-3"
-                    iconBg={`${getMarginColor(profit?.grossMargin ?? 0).replace(")", " / 0.1)")}`}
-                    iconColor={getMarginColor(profit?.grossMargin ?? 0)}
-                  />
                   <MetricCard
                     label="LABOUR COST"
                     value={fmtAud(profit?.labourCostThisMonth ?? 0)}
                     icon={Clock}
                     context="This month"
                     onClick={() => onNavigate?.("/time-tracking")}
-                    animClass="animate-fade-up stagger-delay-4"
+                    animClass="animate-fade-up stagger-delay-5"
                     iconBg="hsl(38 92% 50% / 0.1)"
                     iconColor="hsl(38 92% 50%)"
                   />
@@ -348,12 +515,19 @@ export default function Insights({ onNavigate }: InsightsProps) {
                     icon={BarChart3}
                     context="This month"
                     onClick={() => onNavigate?.("/work")}
-                    animClass="animate-fade-up stagger-delay-5"
-                    iconBg="hsl(38 92% 50% / 0.1)"
-                    iconColor="hsl(38 92% 50%)"
+                    animClass="animate-fade-up stagger-delay-6"
+                    iconBg="hsl(262 83% 58% / 0.1)"
+                    iconColor="hsl(262 83% 58%)"
                   />
                 </div>
               </div>
+
+              <CostBreakdownBar
+                revenue={profit?.revenueThisMonth ?? 0}
+                grossProfit={profit?.grossProfit ?? 0}
+                labourCost={profit?.labourCostThisMonth ?? 0}
+                materialCost={profit?.materialCostThisMonth ?? 0}
+              />
             </div>
           )}
 
@@ -367,6 +541,36 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 animClass="animate-fade-up stagger-delay-1"
               />
 
+              <div
+                className="feed-card card-press cursor-pointer animate-fade-up stagger-delay-2"
+                style={{ opacity: 0 }}
+                onClick={() => onNavigate?.("/documents?tab=invoices&filter=paid")}
+              >
+                <div className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <p className="ios-label mb-1">THIS MONTH COLLECTED</p>
+                      <p className="text-xl font-bold">{fmtAud(cashflow?.thisMonthCollected ?? 0)}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {collectionUp
+                        ? <ArrowUpRight className="h-5 w-5" style={{ color: "hsl(142.1 76.2% 36.3%)" }} />
+                        : <ArrowDownRight className="h-5 w-5" style={{ color: "hsl(0 84.2% 60.2%)" }} />}
+                      <span className="text-sm font-semibold" style={{ color: collectionUp ? "hsl(142.1 76.2% 36.3%)" : "hsl(0 84.2% 60.2%)" }}>
+                        {fmtAud(Math.abs(collectionDiff))} vs last month
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <CashflowComparisonChart
+                thisMonth={cashflow?.thisMonthCollected ?? 0}
+                lastMonth={cashflow?.lastMonthCollected ?? 0}
+                dueThisWeek={cashflow?.dueThisWeek ?? 0}
+                overdueTotal={cashflow?.overdueTotal ?? 0}
+              />
+
               <div>
                 <p className="ios-label mb-3">OUTSTANDING</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -375,7 +579,7 @@ export default function Insights({ onNavigate }: InsightsProps) {
                     value={fmtAud(cashflow?.dueThisWeek ?? 0)}
                     icon={Clock}
                     onClick={() => onNavigate?.("/documents?tab=invoices&filter=unpaid")}
-                    animClass="animate-fade-up stagger-delay-2"
+                    animClass="animate-fade-up stagger-delay-4"
                     iconBg="hsl(38 92% 50% / 0.1)"
                     iconColor="hsl(38 92% 50%)"
                   />
@@ -384,72 +588,19 @@ export default function Insights({ onNavigate }: InsightsProps) {
                       label="OVERDUE TOTAL"
                       value={fmtAud(cashflow?.overdueTotal ?? 0)}
                       icon={TrendingDown}
-                      valueColor={
-                        (cashflow?.overdueTotal ?? 0) > 0
-                          ? "hsl(0 84.2% 60.2%)"
-                          : undefined
-                      }
+                      valueColor={(cashflow?.overdueTotal ?? 0) > 0 ? "hsl(0 84.2% 60.2%)" : undefined}
                       onClick={() => onNavigate?.("/documents?tab=invoices&filter=overdue")}
-                      animClass="animate-fade-up stagger-delay-3"
+                      animClass="animate-fade-up stagger-delay-5"
                       iconBg="hsl(0 84.2% 60.2% / 0.1)"
                       iconColor="hsl(0 84.2% 60.2%)"
                     />
                     {(cashflow?.overdueCount ?? 0) > 0 && (
                       <div className="absolute top-3 right-3">
-                        <Badge className="bg-red-500/10 text-red-600 border-red-500/20 text-xs">
+                        <Badge className="bg-red-500/10 text-red-600 border-red-500/20 text-xs no-default-hover-elevate no-default-active-elevate">
                           {cashflow?.overdueCount} overdue
                         </Badge>
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="ios-label mb-3">MONTH COMPARISON</p>
-                <div
-                  className="feed-card card-press cursor-pointer animate-fade-up stagger-delay-4"
-                  style={{ opacity: 0 }}
-                  onClick={() => onNavigate?.("/documents?tab=invoices&filter=paid")}
-                >
-                  <div className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="ios-label mb-1">THIS MONTH</p>
-                        <p className="text-xl font-bold">
-                          {fmtAud(cashflow?.thisMonthCollected ?? 0)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {collectionUp ? (
-                          <ArrowUpRight
-                            className="h-5 w-5"
-                            style={{ color: "hsl(142.1 76.2% 36.3%)" }}
-                          />
-                        ) : (
-                          <ArrowDownRight
-                            className="h-5 w-5"
-                            style={{ color: "hsl(0 84.2% 60.2%)" }}
-                          />
-                        )}
-                        <span
-                          className="text-sm font-semibold"
-                          style={{
-                            color: collectionUp
-                              ? "hsl(142.1 76.2% 36.3%)"
-                              : "hsl(0 84.2% 60.2%)",
-                          }}
-                        >
-                          {fmtAud(Math.abs(collectionDiff))}
-                        </span>
-                      </div>
-                      <div className="flex-1 text-right">
-                        <p className="ios-label mb-1">LAST MONTH</p>
-                        <p className="text-xl font-bold">
-                          {fmtAud(cashflow?.lastMonthCollected ?? 0)}
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -489,23 +640,30 @@ export default function Insights({ onNavigate }: InsightsProps) {
                     label="JOBS TO INVOICE"
                     value={String(kpis?.jobsToInvoice ?? 0)}
                     icon={BarChart3}
-                    valueColor={
-                      (kpis?.jobsToInvoice ?? 0) > 0
-                        ? "hsl(38 92% 50%)"
-                        : undefined
-                    }
-                    context={
-                      (kpis?.jobsToInvoice ?? 0) > 0
-                        ? "Completed, not yet invoiced"
-                        : "All caught up"
-                    }
+                    valueColor={(kpis?.jobsToInvoice ?? 0) > 0 ? "hsl(38 92% 50%)" : undefined}
+                    context={(kpis?.jobsToInvoice ?? 0) > 0 ? "Completed, not yet invoiced" : "All caught up"}
                     onClick={() => onNavigate?.("/work")}
                     animClass="animate-fade-up stagger-delay-4"
                     iconBg="hsl(38 92% 50% / 0.1)"
                     iconColor="hsl(38 92% 50%)"
                   />
+                  <MetricCard
+                    label="UNPAID INVOICES"
+                    value={String(kpis?.unpaidInvoicesCount ?? 0)}
+                    icon={DollarSign}
+                    context={fmtAud(kpis?.unpaidInvoicesTotal ?? 0) + " total"}
+                    valueColor={(kpis?.unpaidInvoicesCount ?? 0) > 0 ? "hsl(0 84.2% 60.2%)" : undefined}
+                    onClick={() => onNavigate?.("/documents?tab=invoices&filter=unpaid")}
+                    animClass="animate-fade-up stagger-delay-5"
+                    iconBg="hsl(0 84.2% 60.2% / 0.1)"
+                    iconColor="hsl(0 84.2% 60.2%)"
+                  />
                 </div>
               </div>
+
+              {revenueData?.months && revenueData.months.length > 0 && (
+                <RevenueChart months={revenueData.months} />
+              )}
             </div>
           )}
 
@@ -520,6 +678,11 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 animClass="animate-fade-up stagger-delay-1"
               />
 
+              <QuoteConversionDonut
+                awaiting={kpis?.quotesAwaiting ?? 0}
+                total={totalQuotesSent}
+              />
+
               <div>
                 <p className="ios-label mb-3">RECEIVABLES</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -528,15 +691,22 @@ export default function Insights({ onNavigate }: InsightsProps) {
                     value={String(kpis?.unpaidInvoicesCount ?? 0)}
                     icon={DollarSign}
                     context={fmtAud(kpis?.unpaidInvoicesTotal ?? 0) + " total"}
-                    valueColor={
-                      (kpis?.unpaidInvoicesCount ?? 0) > 0
-                        ? "hsl(0 84.2% 60.2%)"
-                        : undefined
-                    }
+                    valueColor={(kpis?.unpaidInvoicesCount ?? 0) > 0 ? "hsl(0 84.2% 60.2%)" : undefined}
                     onClick={() => onNavigate?.("/documents?tab=invoices&filter=unpaid")}
-                    animClass="animate-fade-up stagger-delay-2"
+                    animClass="animate-fade-up stagger-delay-4"
                     iconBg="hsl(0 84.2% 60.2% / 0.1)"
                     iconColor="hsl(0 84.2% 60.2%)"
+                  />
+                  <MetricCard
+                    label="JOBS TO INVOICE"
+                    value={String(kpis?.jobsToInvoice ?? 0)}
+                    icon={BarChart3}
+                    valueColor={(kpis?.jobsToInvoice ?? 0) > 0 ? "hsl(38 92% 50%)" : undefined}
+                    context={(kpis?.jobsToInvoice ?? 0) > 0 ? "Needs invoicing" : "All caught up"}
+                    onClick={() => onNavigate?.("/work")}
+                    animClass="animate-fade-up stagger-delay-5"
+                    iconBg="hsl(38 92% 50% / 0.1)"
+                    iconColor="hsl(38 92% 50%)"
                   />
                 </div>
               </div>
@@ -551,43 +721,45 @@ export default function Insights({ onNavigate }: InsightsProps) {
           <div
             className="feed-card card-press cursor-pointer animate-fade-up stagger-delay-6"
             style={{ opacity: 0 }}
-            onClick={() => onNavigate?.("/reports/profitability")}
-          >
-            <div className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-                  >
-                    <PieChart className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Profitability Report</p>
-                    <p className="ios-caption">By job, client, and worker</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              </div>
-            </div>
-          </div>
-          <div
-            className="feed-card card-press cursor-pointer animate-fade-up stagger-delay-7"
-            style={{ opacity: 0 }}
             onClick={() => onNavigate?.("/reports")}
           >
             <div className="p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}
-                  >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}>
                     <FileBarChart className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">All Reports</p>
-                    <p className="ios-caption">Financials, activity, and exports</p>
+                    <p className="text-sm font-semibold">Reports</p>
+                    <p className="ios-caption">Full financials, charts, and exports</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate">
+                    Full view
+                  </Badge>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="feed-card card-press cursor-pointer animate-fade-up stagger-delay-7"
+            style={{ opacity: 0 }}
+            onClick={() => onNavigate?.("/reports/profitability")}
+          >
+            <div className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: "hsl(142.1 76.2% 36.3% / 0.1)" }}>
+                    <PieChart className="h-5 w-5" style={{ color: "hsl(142.1 76.2% 36.3%)" }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Profitability Report</p>
+                    <p className="ios-caption">By job, client, and worker</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
