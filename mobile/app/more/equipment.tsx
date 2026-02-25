@@ -1476,7 +1476,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   pickerContainer: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.xl,
+    padding: spacing.md,
     ...shadows.md,
   },
   pickerTitle: {

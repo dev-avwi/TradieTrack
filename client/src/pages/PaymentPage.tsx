@@ -127,7 +127,12 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+      <PaymentElement options={{
+        layout: {
+          type: 'tabs',
+          defaultCollapsed: false,
+        },
+      }} />
       
       {errorMessage && (
         <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
@@ -215,7 +220,7 @@ function InvoicePaymentView({
 
   if (isLoading) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
           <p className="text-slate-600">Loading invoice...</p>
@@ -230,7 +235,7 @@ function InvoicePaymentView({
 
   if (invoiceData.paid || invoiceData.status === 'paid' || paymentSuccess) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-md shadow-xl border border-green-100 overflow-hidden">
           {/* Success header with gradient */}
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-6 px-6 text-center">
@@ -284,7 +289,7 @@ function InvoicePaymentView({
     const hasBankDetails = invoiceData.business.bankBsb || invoiceData.business.bankAccountNumber || invoiceData.business.bankAccountName;
     
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center p-4">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-slate-200 overflow-hidden">
           {/* Header */}
           <div className="p-6 text-center border-b border-slate-100">
@@ -405,7 +410,7 @@ function InvoicePaymentView({
   const total = parseFloat(invoiceData.total);
 
   return (
-    <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 py-8 px-4">
+    <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Branded header with gradient accent */}
         <div className="text-center mb-8">
@@ -703,7 +708,7 @@ function PaymentRequestView({
 
   if (isLoading) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
           <p className="text-slate-600">Loading payment details...</p>
@@ -718,7 +723,7 @@ function PaymentRequestView({
 
   if (requestData.status === 'paid' || paymentSuccess) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-md shadow-xl border border-green-100 overflow-hidden">
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-6 px-6 text-center">
             {requestData.businessLogo && (
@@ -760,7 +765,7 @@ function PaymentRequestView({
 
   if (requestData.status === 'cancelled') {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-red-50 flex items-center justify-center p-4">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-red-100 p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-red-600" />
@@ -776,7 +781,7 @@ function PaymentRequestView({
 
   if (requestData.status === 'expired') {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center p-4">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-amber-100 p-8 text-center">
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Clock className="h-8 w-8 text-amber-600" />
@@ -794,7 +799,7 @@ function PaymentRequestView({
   const gstAmount = parseFloat(requestData.gstAmount);
 
   return (
-    <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#2563EB]/5 py-8 px-4">
+    <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white py-8 px-4">
       <div className="max-w-lg mx-auto">
         {/* Branded header with logo */}
         <div className="text-center mb-8">
@@ -976,7 +981,7 @@ export default function PaymentPage() {
 
   if (!token) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-red-50 flex items-center justify-center p-4">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-red-100 p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-red-600" />
@@ -992,7 +997,7 @@ export default function PaymentPage() {
 
   if (invoiceLoading) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
           <p className="text-slate-600">Loading payment details...</p>
@@ -1014,7 +1019,7 @@ export default function PaymentPage() {
 
   if (requestLoading) {
     return (
-      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-[#2563EB]/5 flex items-center justify-center">
+      <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#2563EB]" />
           <p className="text-slate-600">Loading payment details...</p>
@@ -1035,7 +1040,7 @@ export default function PaymentPage() {
   }
 
   return (
-    <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-gradient-to-br from-slate-50 to-amber-50 flex items-center justify-center p-4">
+    <div data-theme="light" style={{ colorScheme: 'light' }} className="light min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-md shadow-lg border border-amber-100 p-8 text-center">
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="h-8 w-8 text-amber-600" />
