@@ -268,7 +268,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   loadingText: {
     ...typography.caption,
@@ -278,7 +278,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     ...shadows.sm,

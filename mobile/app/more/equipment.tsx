@@ -1235,7 +1235,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.md,
   },
   cardList: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   card: {
     backgroundColor: colors.card,
@@ -1311,7 +1311,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing['2xl'],
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1356,7 +1356,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,

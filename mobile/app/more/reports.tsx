@@ -1112,7 +1112,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
           {activeReportTab === 'export' && (
             <View style={styles.quickReportsSection}>
               <Text style={styles.sectionTitle}>EXPORT REPORTS</Text>
-              <Text style={[styles.emptyText, { marginBottom: spacing.lg, textAlign: 'left' }]}>
+              <Text style={[styles.emptyText, { marginBottom: spacing.md, textAlign: 'left' }]}>
                 Choose a report to share or export as CSV or text.
               </Text>
               

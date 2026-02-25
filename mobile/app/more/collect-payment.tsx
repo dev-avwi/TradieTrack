@@ -1963,7 +1963,7 @@ export default function CollectScreen() {
                 </Text>
               )}
               
-              <View style={[styles.qrCodeContainer, { marginTop: spacing.xl }]}>
+              <View style={[styles.qrCodeContainer, { marginTop: spacing.md }]}>
                 <View style={styles.qrCodeWrapper}>
                   <Image
                     source={{ 
@@ -2304,7 +2304,7 @@ export default function CollectScreen() {
               </Text>
               
               {recordClientId && (
-                <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.sm }}>
+                <View style={{ marginTop: spacing.md, width: '100%', gap: spacing.sm }}>
                   <Text style={styles.sectionLabel}>Send Receipt</Text>
                   <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                     <Button 
@@ -2680,7 +2680,7 @@ export default function CollectScreen() {
             Minimum amount: $5.00
           </Text>
           
-          <Text style={[styles.sectionLabel, { marginTop: spacing.xl }]}>Description (Optional)</Text>
+          <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>Description (Optional)</Text>
           <TextInput
             style={styles.descriptionInput}
             value={customAmountDescription}
@@ -3198,7 +3198,7 @@ export default function CollectScreen() {
               </Text>
             )}
 
-            <View style={{ marginTop: spacing.xl, width: '100%', gap: spacing.sm }}>
+            <View style={{ marginTop: spacing.md, width: '100%', gap: spacing.sm }}>
               <View>
                 <TouchableOpacity
                   style={[
