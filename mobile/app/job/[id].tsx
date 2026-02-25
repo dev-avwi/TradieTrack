@@ -42,7 +42,7 @@ import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../.
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
-import { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
+import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard, ScheduleNotificationCard, SmsContactCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
@@ -95,6 +95,34 @@ interface LinkedReceipt {
   amount: number;
   paymentMethod?: string;
   createdAt?: string;
+}
+
+interface JobMaterial {
+  id: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  supplier?: string;
+  category?: string;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  email?: string;
+  role?: string;
+  memberId?: string;
+}
+
+interface JobChatMessage {
+  id: string;
+  message: string;
+  createdAt: string;
+  senderName?: string;
+  userId?: string;
+  chatType?: string;
 }
 
 interface Client {
@@ -1429,12 +1457,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.lg,
-    gap: spacing.xs,
+    gap: 2,
     minHeight: 44,
   },
   tabActive: {
@@ -1447,7 +1475,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   tabLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
@@ -1759,7 +1787,23 @@ export default function JobDetailScreen() {
   // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
   // This eliminates duplicate API calls
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat'>('overview');
+
+  const [materials, setMaterials] = useState<JobMaterial[]>([]);
+  const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
+  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState<JobMaterial | null>(null);
+  const [materialForm, setMaterialForm] = useState({ name: '', quantity: '1', unitCost: '', supplier: '', description: '' });
+  const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  const [jobMessages, setJobMessages] = useState<JobChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [isCompletingJob, setIsCompletingJob] = useState(false);
@@ -1897,6 +1941,137 @@ export default function JobDetailScreen() {
       setSmartActions(actions);
     }
   }, [job?.status, client?.email, client?.phone, quote?.id, invoice?.id]);
+
+  const loadMaterials = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingMaterials(true);
+    try {
+      const res = await api.get<JobMaterial[]>(`/api/jobs/${id}/materials`);
+      setMaterials(res.data || []);
+    } catch (e) {
+      console.error('Error loading materials:', e);
+    } finally {
+      setIsLoadingMaterials(false);
+    }
+  }, [id]);
+
+  const loadTeamMembers = useCallback(async () => {
+    try {
+      const res = await api.get<TeamMember[]>('/api/team/members');
+      setTeamMembers(res.data || []);
+    } catch (e) {
+      console.error('Error loading team members:', e);
+    }
+  }, []);
+
+  const loadJobMessages = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingMessages(true);
+    try {
+      const res = await api.get<JobChatMessage[]>(`/api/jobs/${id}/chat`);
+      setJobMessages(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error loading job chat:', e);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadMaterials();
+      loadTeamMembers();
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (activeTab === 'chat' && id) {
+      loadJobMessages();
+    }
+    if (activeTab === 'materials' && id) {
+      loadMaterials();
+    }
+  }, [activeTab, id]);
+
+  const handleSendJobMessage = async () => {
+    if (!newMessage.trim() || !id) return;
+    setIsSendingMessage(true);
+    try {
+      const res = await api.post<JobChatMessage>(`/api/jobs/${id}/chat`, { message: newMessage.trim() });
+      if (res.data) {
+        const newMsg = res.data as JobChatMessage;
+        setJobMessages(prev => [...prev, newMsg]);
+      }
+      setNewMessage('');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const handleSaveMaterial = async () => {
+    if (!materialForm.name.trim() || !id) return;
+    setIsSavingMaterial(true);
+    try {
+      const payload = {
+        name: materialForm.name.trim(),
+        description: materialForm.description.trim() || undefined,
+        quantity: parseFloat(materialForm.quantity) || 1,
+        unitCost: parseFloat(materialForm.unitCost) || 0,
+        supplier: materialForm.supplier.trim() || undefined,
+      };
+      if (editingMaterial) {
+        await api.patch(`/api/materials/${editingMaterial.id}`, payload);
+      } else {
+        await api.post(`/api/jobs/${id}/materials`, payload);
+      }
+      await loadMaterials();
+      setShowAddMaterialModal(false);
+      setEditingMaterial(null);
+      setMaterialForm({ name: '', quantity: '1', unitCost: '', supplier: '', description: '' });
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save material');
+    } finally {
+      setIsSavingMaterial(false);
+    }
+  };
+
+  const handleDeleteMaterial = (material: JobMaterial) => {
+    Alert.alert(
+      'Delete Material',
+      `Remove "${material.name}" from this job?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/materials/${material.id}`);
+              await loadMaterials();
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete material');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAssignWorker = async (memberId: string | null) => {
+    if (!id) return;
+    setIsAssigning(true);
+    try {
+      await api.patch(`/api/jobs/${id}`, { assignedTo: memberId });
+      await loadJob();
+      setShowAssignModal(false);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to assign worker');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   // Fetch client's saved signature when client changes
   useEffect(() => {
@@ -3700,14 +3875,33 @@ export default function JobDetailScreen() {
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
   const TAB_CONFIG = [
-    { id: 'overview' as const, label: 'Overview', icon: 'briefcase' as const },
+    { id: 'overview' as const, label: 'Info', icon: 'briefcase' as const },
     { id: 'documents' as const, label: 'Docs', icon: 'file-text' as const },
+    { id: 'materials' as const, label: 'Stock', icon: 'package' as const },
     { id: 'photos' as const, label: 'Photos', icon: 'camera' as const },
     { id: 'notes' as const, label: 'Notes', icon: 'file' as const },
+    { id: 'chat' as const, label: 'Chat', icon: 'message-circle' as const },
   ];
 
   const renderOverviewTab = () => (
     <>
+      {/* Smart Actions Panel */}
+      {smartActions.length > 0 && (
+        <View style={{ marginBottom: spacing.sm }}>
+          <SmartActionsPanel
+            title="Suggested Actions"
+            subtitle="AI-recommended next steps for this job"
+            actions={smartActions}
+            onActionToggle={handleSmartActionToggle}
+            onActionExecute={handleSmartActionExecute}
+            onExecuteAll={handleExecuteAllActions}
+            onSkipAll={handleSkipAllActions}
+            isExecuting={isExecutingActions}
+            entityType="job"
+          />
+        </View>
+      )}
+
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
 
@@ -3901,6 +4095,75 @@ export default function JobDetailScreen() {
                 <Text style={[styles.clientActionText, { color: colors.primary }]}>Send</Text>
               </TouchableOpacity>
             )}
+          </View>
+        </View>
+      )}
+
+      {/* Assign Worker Card */}
+      {(roleInfo?.isOwner || roleInfo?.roleName === 'admin') && (
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => setShowAssignModal(true)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="user-check" size={iconSizes.xl} color={colors.primary} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Assigned Worker</Text>
+            <Text style={styles.cardValue}>
+              {job.assignedTo
+                ? (teamMembers.find(m => m.id === job.assignedTo || m.memberId === job.assignedTo)?.name || 'Worker assigned')
+                : 'Tap to assign a worker'}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+
+      {/* Materials Summary Card */}
+      {materials.length > 0 && (
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => setActiveTab('materials')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.warning}15` }]}>
+            <Feather name="package" size={iconSizes.xl} color={colors.warning} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Materials</Text>
+            <Text style={styles.cardValue}>
+              {materials.length} item{materials.length !== 1 ? 's' : ''} · ${materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0).toFixed(2)}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+
+      {/* Job Profitability Card */}
+      {(job.estimatedCost !== undefined || materials.length > 0) && (
+        <View style={styles.card}>
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.success}15` }]}>
+            <Feather name="trending-up" size={iconSizes.xl} color={colors.success} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Job Value</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+              {job.estimatedCost !== undefined && (
+                <Text style={styles.cardValue}>Est. ${Number(job.estimatedCost).toFixed(2)}</Text>
+              )}
+              {materials.length > 0 && (
+                <Text style={[styles.cardValue, { color: colors.mutedForeground }]}>
+                  · Materials ${materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0).toFixed(2)}
+                </Text>
+              )}
+              {invoice && (
+                <Text style={[styles.cardValue, { color: colors.success }]}>
+                  · Invoice ${Number(invoice.total).toFixed(2)}
+                </Text>
+              )}
+            </View>
           </View>
         </View>
       )}
@@ -4440,6 +4703,253 @@ export default function JobDetailScreen() {
       </View>
     </>
   );
+
+  const renderMaterialsTab = () => {
+    const totalCost = materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0);
+    return (
+      <>
+        {/* Materials Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+          <View>
+            <Text style={styles.tabSectionTitle}>JOB MATERIALS</Text>
+            {materials.length > 0 && (
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>
+                {materials.length} item{materials.length !== 1 ? 's' : ''} · Total ${totalCost.toFixed(2)}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setEditingMaterial(null);
+              setMaterialForm({ name: '', quantity: '1', unitCost: '', supplier: '', description: '' });
+              setShowAddMaterialModal(true);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.xs,
+              backgroundColor: colors.primary,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm,
+              borderRadius: radius.lg,
+            }}
+            activeOpacity={0.7}
+          >
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
+            <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Add</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isLoadingMaterials ? (
+          <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : materials.length === 0 ? (
+          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl }]}>
+            <Feather name="package" size={32} color={colors.mutedForeground} />
+            <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
+              No materials added yet
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+              Track parts, materials and supplies used on this job
+            </Text>
+          </View>
+        ) : (
+          <>
+            {materials.map((material) => (
+              <View key={material.id} style={[styles.card, { paddingVertical: spacing.sm }]}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                      {material.name}
+                    </Text>
+                    <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '700', marginLeft: spacing.sm }}>
+                      ${Number(material.totalCost || 0).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 2 }}>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                      Qty: {material.quantity} × ${Number(material.unitCost || 0).toFixed(2)}
+                    </Text>
+                    {material.supplier && (
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                        · {material.supplier}
+                      </Text>
+                    )}
+                  </View>
+                  {material.description && (
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }} numberOfLines={2}>
+                      {material.description}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', gap: spacing.xs, marginLeft: spacing.sm }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditingMaterial(material);
+                      setMaterialForm({
+                        name: material.name,
+                        quantity: String(material.quantity),
+                        unitCost: String(material.unitCost),
+                        supplier: material.supplier || '',
+                        description: material.description || '',
+                      });
+                      setShowAddMaterialModal(true);
+                    }}
+                    style={{ padding: spacing.xs }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteMaterial(material)}
+                    style={{ padding: spacing.xs }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="trash-2" size={16} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+
+            {/* Cost Summary */}
+            <View style={[styles.card, { backgroundColor: `${colors.primary}08` }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>MATERIALS TOTAL</Text>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: colors.foreground, marginTop: 2 }}>
+                  ${totalCost.toFixed(2)}
+                </Text>
+              </View>
+              {invoice && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Invoice</Text>
+                  <Text style={{ ...typography.body, color: colors.success, fontWeight: '600' }}>
+                    ${Number(invoice.total).toFixed(2)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </>
+        )}
+      </>
+    );
+  };
+
+  const renderChatTab = () => {
+    const currentUserId = user?.id;
+    return (
+      <>
+        {/* Chat Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15`, marginRight: spacing.sm }]}>
+            <Feather name="message-circle" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.tabSectionTitle}>JOB CHAT</Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+              Team discussion for this job
+            </Text>
+          </View>
+        </View>
+
+        {isLoadingMessages ? (
+          <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : jobMessages.length === 0 ? (
+          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, marginBottom: spacing.md }]}>
+            <Feather name="message-circle" size={32} color={colors.mutedForeground} />
+            <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
+              No messages yet
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+              Start a conversation with your team about this job
+            </Text>
+          </View>
+        ) : (
+          <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
+            {jobMessages.map((msg) => {
+              const isMe = msg.userId === currentUserId;
+              return (
+                <View
+                  key={msg.id}
+                  style={{
+                    alignSelf: isMe ? 'flex-end' : 'flex-start',
+                    maxWidth: '80%',
+                    backgroundColor: isMe ? colors.primary : colors.card,
+                    borderRadius: radius.xl,
+                    borderWidth: isMe ? 0 : 1,
+                    borderColor: colors.cardBorder,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm,
+                  }}
+                >
+                  {!isMe && msg.senderName && (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+                      {msg.senderName}
+                    </Text>
+                  )}
+                  <Text style={{ ...typography.body, color: isMe ? colors.primaryForeground : colors.foreground }}>
+                    {msg.message}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: isMe ? `${colors.primaryForeground}99` : colors.mutedForeground, marginTop: 2, textAlign: isMe ? 'right' : 'left' }}>
+                    {new Date(msg.createdAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Message Input */}
+        <View style={{
+          flexDirection: 'row',
+          gap: spacing.sm,
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          padding: spacing.sm,
+          alignItems: 'flex-end',
+          marginBottom: spacing.md,
+        }}>
+          <TextInput
+            style={{
+              flex: 1,
+              ...typography.body,
+              color: colors.foreground,
+              paddingHorizontal: spacing.sm,
+              paddingVertical: spacing.xs,
+              maxHeight: 100,
+            }}
+            placeholder="Message your team..."
+            placeholderTextColor={colors.mutedForeground}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            multiline
+          />
+          <TouchableOpacity
+            onPress={handleSendJobMessage}
+            disabled={!newMessage.trim() || isSendingMessage}
+            style={{
+              backgroundColor: newMessage.trim() ? colors.primary : colors.muted,
+              borderRadius: radius.lg,
+              padding: spacing.sm,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            activeOpacity={0.7}
+          >
+            {isSendingMessage ? (
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+            ) : (
+              <Feather name="send" size={16} color={newMessage.trim() ? colors.primaryForeground : colors.mutedForeground} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  };
 
   const renderDocumentsTab = () => (
     <>
@@ -5406,10 +5916,163 @@ export default function JobDetailScreen() {
       >
         {activeTab === 'overview' && renderOverviewTab()}
         {activeTab === 'documents' && renderDocumentsTab()}
+        {activeTab === 'materials' && renderMaterialsTab()}
         {activeTab === 'photos' && renderPhotosTab()}
         {activeTab === 'notes' && renderNotesTab()}
+        {activeTab === 'chat' && renderChatTab()}
       </ScrollView>
       </View>
+
+      {/* Add/Edit Material Modal */}
+      <Modal visible={showAddMaterialModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{editingMaterial ? 'Edit Material' : 'Add Material'}</Text>
+                <TouchableOpacity onPress={() => { setShowAddMaterialModal(false); setEditingMaterial(null); }}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Name *</Text>
+                <TextInput
+                  style={[styles.notesInput, { height: 44, textAlignVertical: 'center', marginBottom: spacing.md }]}
+                  value={materialForm.name}
+                  onChangeText={v => setMaterialForm(f => ({ ...f, name: v }))}
+                  placeholder="e.g. Copper pipe 25mm"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+                <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Quantity</Text>
+                    <TextInput
+                      style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                      value={materialForm.quantity}
+                      onChangeText={v => setMaterialForm(f => ({ ...f, quantity: v }))}
+                      keyboardType="decimal-pad"
+                      placeholder="1"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Unit Cost ($)</Text>
+                    <TextInput
+                      style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                      value={materialForm.unitCost}
+                      onChangeText={v => setMaterialForm(f => ({ ...f, unitCost: v }))}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                </View>
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Supplier</Text>
+                <TextInput
+                  style={[styles.notesInput, { height: 44, textAlignVertical: 'center', marginBottom: spacing.md }]}
+                  value={materialForm.supplier}
+                  onChangeText={v => setMaterialForm(f => ({ ...f, supplier: v }))}
+                  placeholder="e.g. Reece Plumbing"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Notes</Text>
+                <TextInput
+                  style={[styles.notesInput, { marginBottom: spacing.md }]}
+                  value={materialForm.description}
+                  onChangeText={v => setMaterialForm(f => ({ ...f, description: v }))}
+                  placeholder="Optional notes..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  numberOfLines={2}
+                />
+                {materialForm.quantity && materialForm.unitCost && (
+                  <View style={{ backgroundColor: `${colors.primary}10`, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md }}>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Total Cost</Text>
+                    <Text style={{ fontSize: 22, fontWeight: '700', color: colors.primary }}>
+                      ${(parseFloat(materialForm.quantity || '0') * parseFloat(materialForm.unitCost || '0')).toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <Button variant="outline" onPress={() => { setShowAddMaterialModal(false); setEditingMaterial(null); }} style={{ flex: 1, marginRight: 8 }}>
+                  Cancel
+                </Button>
+                <Button onPress={handleSaveMaterial} disabled={isSavingMaterial || !materialForm.name.trim()} style={{ flex: 1 }}>
+                  {isSavingMaterial ? 'Saving...' : editingMaterial ? 'Update' : 'Add Material'}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Assign Worker Modal */}
+      <Modal visible={showAssignModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '70%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign Worker</Text>
+              <TouchableOpacity onPress={() => setShowAssignModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {/* Unassign option */}
+              <TouchableOpacity
+                style={[styles.card, { marginBottom: spacing.xs }]}
+                onPress={() => handleAssignWorker(null)}
+                activeOpacity={0.7}
+                disabled={isAssigning}
+              >
+                <View style={[styles.cardIconContainer, { backgroundColor: `${colors.muted}30` }]}>
+                  <Feather name="user-x" size={iconSizes.lg} color={colors.mutedForeground} />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardLabel}>Unassigned</Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Remove worker assignment</Text>
+                </View>
+                {!job.assignedTo && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
+              </TouchableOpacity>
+              {teamMembers.map((member) => {
+                const isAssigned = job.assignedTo && (job.assignedTo === member.id || job.assignedTo === member.memberId);
+                return (
+                  <TouchableOpacity
+                    key={member.id}
+                    style={[styles.card, { marginBottom: spacing.xs }]}
+                    onPress={() => handleAssignWorker(member.memberId || member.id)}
+                    activeOpacity={0.7}
+                    disabled={isAssigning}
+                  >
+                    <View style={[styles.clientAvatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18 }]}>
+                      <Text style={[styles.clientAvatarText, { fontSize: 14 }]}>
+                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardLabel}>{member.name}</Text>
+                      {member.role && <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{member.role}</Text>}
+                    </View>
+                    {isAssigned && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+              {teamMembers.length === 0 && (
+                <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
+                    No team members found. Add team members in Settings.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <Button variant="outline" onPress={() => setShowAssignModal(false)} style={{ flex: 1 }}>
+                {isAssigning ? 'Assigning...' : 'Close'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Rename Job Modal */}
       <Modal visible={showRenameModal} animationType="fade" transparent>
