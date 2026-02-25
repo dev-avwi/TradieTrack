@@ -96,7 +96,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   pageTitle: {
     ...typography.largeTitle,
@@ -110,7 +110,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statCard: {
     flex: 1,
@@ -145,8 +145,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   sectionDot: {
     width: 8,
@@ -158,12 +158,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   sectionContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   actionCard: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     overflow: 'hidden',
     flexDirection: 'row',
     ...shadows.sm,

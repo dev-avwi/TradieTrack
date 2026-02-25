@@ -91,7 +91,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statCard: {
     flex: 1,
@@ -126,11 +126,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   quickAccessSection: {
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   categoryCard: {
     flexDirection: 'row',

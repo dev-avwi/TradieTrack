@@ -133,12 +133,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   statsGrid: {
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',
@@ -149,13 +149,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     padding: spacing.md,
     ...shadows.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   heroStatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   heroStatValue: {
     fontSize: 22,
@@ -181,13 +181,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statIconContainer: {
     width: 32,
@@ -229,7 +229,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -238,7 +238,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   chartTitle: {
     ...typography.cardTitle,
@@ -303,7 +303,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.foreground,
   },
   topClientsSection: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   clientCard: {
     flexDirection: 'row',
@@ -348,7 +348,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.success,
   },
   quickReportsSection: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   reportCard: {
     flexDirection: 'row',

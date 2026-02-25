@@ -152,7 +152,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
   statCard: {
@@ -189,14 +189,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionHeader: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   filterRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   filterTab: {
     paddingHorizontal: spacing.lg,

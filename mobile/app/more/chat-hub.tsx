@@ -277,7 +277,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sectionHeader: {
     paddingHorizontal: pageShell.paddingHorizontal,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     paddingBottom: spacing.sm,
   },
   sectionTitle: {

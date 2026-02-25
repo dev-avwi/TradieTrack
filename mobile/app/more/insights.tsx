@@ -135,11 +135,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statsGrid: {
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',
@@ -155,7 +155,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   heroIconContainer: {
     width: 32,
@@ -193,7 +193,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statIconContainer: {
     width: 40,
@@ -234,7 +234,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   comparisonTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   comparisonRow: {
     flexDirection: 'row',
@@ -280,7 +280,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     ...shadows.sm,
   },
   errorText: {

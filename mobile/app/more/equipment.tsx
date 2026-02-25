@@ -1116,7 +1116,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     gap: spacing.md,
   },
   pageTitle: {
@@ -1142,7 +1142,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   filterScroll: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     marginHorizontal: -pageShell.paddingHorizontal,
   },
   filterContainer: {
@@ -1195,7 +1195,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
   statCard: {

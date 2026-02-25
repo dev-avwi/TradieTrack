@@ -41,7 +41,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     paddingTop: spacing.sm,
   },
   pageTitle: {
@@ -57,7 +57,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primaryLight,
     borderRadius: radius.xl,
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.promoBorder,
   },
@@ -78,7 +78,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quickLinksRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   quickLink: {
     flex: 1,
@@ -106,12 +106,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   amountSection: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   sectionLabel: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   amountInputContainer: {
     flexDirection: 'row',
@@ -136,7 +136,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   descriptionInput: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     backgroundColor: colors.isDark ? colors.muted : colors.card,
     borderRadius: radius.xl,
     paddingHorizontal: spacing.lg,
@@ -150,7 +150,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
@@ -188,14 +188,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   pendingSection: {
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   pendingSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   pendingSectionTitle: {
     ...typography.label,
@@ -222,7 +222,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -262,7 +262,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   infoCard: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   infoCardTitle: {
     ...typography.cardTitle,
@@ -279,7 +279,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.sm,
   },
   warningCard: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     padding: spacing.md,
     backgroundColor: colors.warningLight,
     borderRadius: radius.xl,
@@ -345,7 +345,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: -0.5,
   },
   acceptedMethodsCard: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -398,7 +398,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statsGrid: {
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',
