@@ -20746,8 +20746,8 @@ Be specific about materials, colors, and features that would be included.`
         },
       };
       
-      // If tradie has Stripe Connect account, use destination charges
-      if (settings?.stripeConnectAccountId) {
+      // If tradie has Stripe Connect account with charges enabled, use destination charges
+      if (settings?.stripeConnectAccountId && settings?.connectChargesEnabled) {
         // Calculate platform fee (2.5%)
         const platformFee = Math.round(amountInCents * 0.025);
         paymentIntentParams.transfer_data = {

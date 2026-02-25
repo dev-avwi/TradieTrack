@@ -361,7 +361,7 @@ export default function CollectPayment() {
           ? invoice.total.toFixed(2) 
           : String(invoice.total || '0.00');
         setNewAmount(totalStr);
-        setNewDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setNewDescription(`Payment for ${[invoice.number, invoice.title].filter(Boolean).join(': ') || 'Invoice'}`);
         setNewReference(invoice.number);
         setSelectedClientId(invoice.clientId);
         if (invoice.jobId && !selectedJobId) setSelectedJobId(invoice.jobId);
@@ -391,7 +391,7 @@ export default function CollectPayment() {
           ? invoice.total.toFixed(2) 
           : String(invoice.total || '0.00');
         setReceiptAmount(totalStr);
-        setReceiptDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setReceiptDescription(`Payment for ${[invoice.number, invoice.title].filter(Boolean).join(': ') || 'Invoice'}`);
         setReceiptReference(invoice.number);
         setReceiptClientId(invoice.clientId);
         if (invoice.jobId && !receiptJobId) setReceiptJobId(invoice.jobId);
@@ -408,7 +408,7 @@ export default function CollectPayment() {
           ? invoice.total.toFixed(2) 
           : String(invoice.total || '0.00');
         setTapToPayAmount(totalStr);
-        setTapToPayDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setTapToPayDescription(`Payment for ${[invoice.number, invoice.title].filter(Boolean).join(': ') || 'Invoice'}`);
         setTapToPayClientId(invoice.clientId);
         if (invoice.jobId) setTapToPayJobId(invoice.jobId);
       }
@@ -433,7 +433,7 @@ export default function CollectPayment() {
         
         // Pre-fill data for tap to pay
         setTapToPayAmount(totalStr);
-        setTapToPayDescription(`Payment for ${invoice.number}: ${invoice.title}`);
+        setTapToPayDescription(`Payment for ${[invoice.number, invoice.title].filter(Boolean).join(': ') || 'Invoice'}`);
         setTapToPayInvoiceId(invoiceId);
         setTapToPayClientId(invoice.clientId);
         if (jobId) setTapToPayJobId(jobId);

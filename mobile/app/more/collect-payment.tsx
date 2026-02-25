@@ -935,7 +935,7 @@ export default function CollectScreen() {
         });
         
         setAmount(invoiceAmountDue.toFixed(2));
-        setDescription(`Payment for ${invoice.invoiceNumber}`);
+        setDescription(`Payment for ${invoice.invoiceNumber || 'Invoice'}`);
         hasAutoSelectedInvoice.current = true;
       }
     } else if (!invoiceId) {
@@ -975,7 +975,7 @@ export default function CollectScreen() {
     
     // Pre-fill the amount and description
     setAmount(amountDue.toFixed(2));
-    setDescription(`Payment for ${invoice.invoiceNumber}`);
+    setDescription(`Payment for ${invoice.invoiceNumber || 'Invoice'}`);
   };
 
   // Clear invoice selection
@@ -1542,7 +1542,7 @@ export default function CollectScreen() {
     // Pre-fill from selected invoice if available
     if (selectedInvoice) {
       setRecordAmount(selectedInvoice.amountDue.toFixed(2));
-      setRecordDescription(`Payment for ${selectedInvoice.invoiceNumber}`);
+      setRecordDescription(`Payment for ${selectedInvoice.invoiceNumber || 'Invoice'}`);
       setRecordClientId(selectedInvoice.clientId);
       setRecordInvoiceId(selectedInvoice.id);
     } else if (amount) {
@@ -1690,7 +1690,7 @@ export default function CollectScreen() {
     });
     
     setAmount(amountDue.toFixed(2));
-    setDescription(`Payment for ${invoice.invoiceNumber}`);
+    setDescription(`Payment for ${invoice.invoiceNumber || 'Invoice'}`);
     
     setShowInvoicePickerModal(false);
     
@@ -2489,7 +2489,7 @@ export default function CollectScreen() {
                             onPress={() => {
                               setRecordInvoiceId(invoice.id);
                               setRecordAmount(amountDue.toFixed(2));
-                              setRecordDescription(`Payment for ${invoice.invoiceNumber}`);
+                              setRecordDescription(`Payment for ${invoice.invoiceNumber || 'Invoice'}`);
                             }}
                             style={{
                               paddingVertical: spacing.sm,
