@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Sparkles, Mic, Camera, CheckCircle2, AlertCircle, ImagePlus, X, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Sparkles, Mic, MicOff, Camera, CheckCircle2, AlertCircle, ImagePlus, X, Check, RotateCcw, Wrench, Package, Truck, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -39,6 +37,13 @@ interface JobPhoto {
   signedUrl?: string;
 }
 
+interface EditableLineItem extends QuoteLineItem {
+  id: string;
+  included: boolean;
+  editingQty: string;
+  editingPrice: string;
+}
+
 interface AIQuoteGeneratorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,22 +51,50 @@ interface AIQuoteGeneratorProps {
   onApplyItems: (items: QuoteLineItem[], title?: string, description?: string) => void;
 }
 
+type Step = 'input' | 'generating' | 'review';
+
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
+const CATEGORY_CONFIG = {
+  labour: { label: 'Labour', icon: Wrench, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  materials: { label: 'Materials', icon: Package, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  equipment: { label: 'Equipment', icon: Truck, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  other: { label: 'Other', icon: HelpCircle, color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400' },
+};
+
 export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyItems }: AIQuoteGeneratorProps) {
   const { toast } = useToast();
-  const [jobDescription, setJobDescription] = useState("");
-  const [voiceTranscription, setVoiceTranscription] = useState("");
-  const [result, setResult] = useState<AIQuoteResult | null>(null);
+
+  const [step, setStep] = useState<Step>('input');
+  const [description, setDescription] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [lineItems, setLineItems] = useState<EditableLineItem[]>([]);
+  const [suggestedTitle, setSuggestedTitle] = useState("");
+  const [confidence, setConfidence] = useState<'high' | 'medium' | 'low'>('medium');
+  const [aiNotes, setAiNotes] = useState<string[]>([]);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<number>>(new Set());
   const [uploadedPhotos, setUploadedPhotos] = useState<Array<{ file: File; preview: string }>>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photosExpanded, setPhotosExpanded] = useState(false);
 
-  const { data: jobPhotos = [], isLoading: photosLoading } = useQuery<JobPhoto[]>({
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const transcriptRef = useRef("");
+
+  const { data: jobPhotos = [] } = useQuery<JobPhoto[]>({
     queryKey: ['/api/jobs', jobId, 'photos'],
     queryFn: async () => {
       if (!jobId) return [];
-      const response = await fetch(`/api/jobs/${jobId}/photos`);
-      if (!response.ok) return [];
-      return response.json();
+      const res = await fetch(`/api/jobs/${jobId}/photos`);
+      if (!res.ok) return [];
+      return res.json();
     },
     enabled: !!jobId && open,
   });
@@ -69,419 +102,492 @@ export default function AIQuoteGenerator({ open, onOpenChange, jobId, onApplyIte
   const imagePhotos = jobPhotos.filter(p => p.mimeType?.startsWith('image/'));
 
   useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setSpeechSupported(!!SR);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      stopRecording();
+      setStep('input');
+      setDescription("");
+      setLineItems([]);
+      setSuggestedTitle("");
+      setAiNotes([]);
+      setSelectedPhotoIds(new Set());
+      setUploadedPhotos([]);
+      setPhotosExpanded(false);
+      setRecordingSeconds(0);
+      transcriptRef.current = "";
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (open && imagePhotos.length > 0 && selectedPhotoIds.size === 0) {
       setSelectedPhotoIds(new Set(imagePhotos.map(p => p.id)));
     }
   }, [open, imagePhotos.length]);
 
-  useEffect(() => {
-    if (!open) {
-      setResult(null);
-      setJobDescription("");
-      setVoiceTranscription("");
-      setSelectedPhotoIds(new Set());
-      setUploadedPhotos([]);
+  const stopRecording = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
     }
-  }, [open]);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsRecording(false);
+  }, []);
 
-  const togglePhotoSelection = (photoId: number) => {
-    const newSet = new Set(selectedPhotoIds);
-    if (newSet.has(photoId)) {
-      newSet.delete(photoId);
+  const startRecording = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    const recognition = new SR();
+    recognition.lang = 'en-AU';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    const baseText = description;
+    transcriptRef.current = baseText;
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      let final = baseText;
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          final += (final ? ' ' : '') + event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      transcriptRef.current = final;
+      setDescription(final + (interim ? ' ' + interim : ''));
+    };
+
+    recognition.onend = () => {
+      setDescription(transcriptRef.current);
+      setIsRecording(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+
+    recognition.onerror = () => {
+      stopRecording();
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    setRecordingSeconds(0);
+    timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
+  }, [description, stopRecording]);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
     } else {
-      newSet.add(photoId);
+      startRecording();
     }
-    setSelectedPhotoIds(newSet);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
-    const newPhotos: Array<{ file: File; preview: string }> = [];
-    Array.from(files).forEach(file => {
-      if (file.type.startsWith('image/')) {
-        newPhotos.push({
-          file,
-          preview: URL.createObjectURL(file),
-        });
-      }
-    });
+    const newPhotos = Array.from(files)
+      .filter(f => f.type.startsWith('image/'))
+      .map(file => ({ file, preview: URL.createObjectURL(file) }));
     setUploadedPhotos(prev => [...prev, ...newPhotos]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const removeUploadedPhoto = (index: number) => {
-    setUploadedPhotos(prev => {
-      const updated = [...prev];
-      URL.revokeObjectURL(updated[index].preview);
-      updated.splice(index, 1);
-      return updated;
-    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const generateMutation = useMutation({
     mutationFn: async () => {
+      setStep('generating');
       const selectedPhotos = imagePhotos.filter(p => selectedPhotoIds.has(p.id));
       const photoUrls = selectedPhotos.map(p => p.signedUrl).filter(Boolean) as string[];
-
-      if (uploadedPhotos.length > 0) {
-        for (const { file } of uploadedPhotos) {
-          const base64 = await fileToBase64(file);
-          photoUrls.push(base64);
-        }
+      for (const { file } of uploadedPhotos) {
+        const b64 = await fileToBase64(file);
+        photoUrls.push(b64);
       }
-
-      const response = await apiRequest('POST', '/api/ai/generate-quote', {
+      const res = await apiRequest('POST', '/api/ai/generate-quote', {
         jobId,
         photoUrls,
-        jobDescription: jobDescription.trim() || undefined,
-        voiceTranscription: voiceTranscription.trim() || undefined,
+        jobDescription: description.trim() || undefined,
       });
-      return await response.json() as AIQuoteResult;
+      return await res.json() as AIQuoteResult;
     },
     onSuccess: (data) => {
-      setResult(data);
-      if (!data.success) {
+      if (!data.success || data.lineItems.length === 0) {
+        setStep('input');
         toast({
-          title: "Could not generate quote",
-          description: data.notes[0] || "Please try again with more details",
+          title: "Couldn't generate a quote",
+          description: data.notes[0] || "Add more detail about the job and try again.",
           variant: "destructive",
         });
+        return;
       }
+      const items: EditableLineItem[] = data.lineItems.map((item, i) => ({
+        ...item,
+        id: `item-${i}`,
+        included: true,
+        editingQty: item.quantity.toString(),
+        editingPrice: item.unitPrice.toFixed(2),
+      }));
+      setLineItems(items);
+      setSuggestedTitle(data.suggestedTitle);
+      setConfidence(data.confidence);
+      setAiNotes(data.notes);
+      setStep('review');
     },
     onError: () => {
+      setStep('input');
       toast({
         title: "Error",
-        description: "Failed to generate quote. Please try again.",
+        description: "Failed to generate quote. Check your connection and try again.",
         variant: "destructive",
       });
     },
   });
 
+  const updateItem = (id: string, field: 'editingQty' | 'editingPrice' | 'description' | 'included', value: string | boolean) => {
+    setLineItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const updated = { ...item, [field]: value };
+      if (field === 'editingQty' || field === 'editingPrice') {
+        const qty = parseFloat(field === 'editingQty' ? value as string : updated.editingQty) || 0;
+        const price = parseFloat(field === 'editingPrice' ? value as string : updated.editingPrice) || 0;
+        updated.quantity = qty;
+        updated.unitPrice = price;
+        updated.total = qty * price;
+      }
+      return updated;
+    }));
+  };
+
+  const includedItems = lineItems.filter(i => i.included);
+  const subtotal = includedItems.reduce((sum, i) => sum + i.total, 0);
+  const gst = subtotal * 0.1;
+  const grandTotal = subtotal + gst;
+
   const handleApply = () => {
-    if (result && result.lineItems.length > 0) {
-      onApplyItems(result.lineItems, result.suggestedTitle, result.description);
-      onOpenChange(false);
-    }
+    const toApply = includedItems.map(({ description, quantity, unitPrice, total, category }) => ({
+      description, quantity, unitPrice, total, category,
+    }));
+    onApplyItems(toApply, suggestedTitle);
+    onOpenChange(false);
   };
 
-  const getConfidenceBadge = (confidence: 'high' | 'medium' | 'low') => {
-    switch (confidence) {
-      case 'high':
-        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">High Confidence</Badge>;
-      case 'medium':
-        return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Medium Confidence</Badge>;
-      case 'low':
-        return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Low Confidence</Badge>;
-    }
-  };
+  const hasInput = description.trim() || selectedPhotoIds.size > 0 || uploadedPhotos.length > 0;
+  const totalPhotos = selectedPhotoIds.size + uploadedPhotos.length;
 
-  const getCategoryBadge = (category: string) => {
-    const colors: Record<string, string> = {
-      labour: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      materials: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-      equipment: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-      other: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
-    };
-    return <Badge className={colors[category] || colors.other}>{category}</Badge>;
-  };
-
-  const totalPhotosSelected = selectedPhotoIds.size + uploadedPhotos.length;
-  const hasInput = jobDescription.trim() || voiceTranscription.trim() || totalPhotosSelected > 0;
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+      <DialogContent className="max-w-lg max-h-[92vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-5 pt-5 pb-3 shrink-0 border-b">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-primary" />
             AI Quote Generator
+            {step === 'review' && (
+              <Badge
+                className={
+                  confidence === 'high' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 ml-auto' :
+                  confidence === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 ml-auto' :
+                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 ml-auto'
+                }
+              >
+                {confidence === 'high' ? 'High confidence' : confidence === 'medium' ? 'Review prices' : 'Low confidence — edit carefully'}
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        {!result ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Add photos, describe the job, or use voice notes - I'll generate quote line items with realistic Australian pricing.
-            </p>
+        <div className="flex-1 overflow-y-auto">
+          {step === 'input' && (
+            <div className="px-5 py-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Describe the job — speak or type. The more detail, the better the quote.
+              </p>
 
-            {(imagePhotos.length > 0 || uploadedPhotos.length > 0) && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Camera className="h-4 w-4" />
-                  Photos for Analysis
-                  {totalPhotosSelected > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {totalPhotosSelected} selected
-                    </Badge>
-                  )}
-                </Label>
-                
-                <ScrollArea className="w-full">
-                  <div className="flex gap-2 pb-2">
-                    {imagePhotos.map((photo) => {
-                      const isSelected = selectedPhotoIds.has(photo.id);
-                      return (
-                        <div
-                          key={photo.id}
-                          className={`relative shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                            isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-transparent hover:border-muted-foreground/30'
-                          }`}
-                          onClick={() => togglePhotoSelection(photo.id)}
-                        >
-                          <img
-                            src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
-                            alt={photo.filename}
-                            className="w-full h-full object-cover"
-                          />
-                          {isSelected && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                                <Check className="h-4 w-4 text-primary-foreground" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    
-                    {uploadedPhotos.map((photo, index) => (
-                      <div
-                        key={`uploaded-${index}`}
-                        className="relative shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-primary ring-2 ring-primary/30"
-                      >
-                        <img
-                          src={photo.preview}
-                          alt={`Upload ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          onClick={() => removeUploadedPhoto(index)}
-                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center pointer-events-none">
-                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="h-4 w-4 text-primary-foreground" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="shrink-0 w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-colors"
-                    >
-                      <ImagePlus className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">Add</span>
-                    </button>
-                  </div>
-                </ScrollArea>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-
-                {imagePhotos.length > 0 && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => setSelectedPhotoIds(new Set(imagePhotos.map(p => p.id)))}
-                    >
-                      Select all
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => setSelectedPhotoIds(new Set())}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {imagePhotos.length === 0 && uploadedPhotos.length === 0 && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Camera className="h-4 w-4" />
-                  Photos (optional)
-                </Label>
+              <div className="flex flex-col items-center gap-3 py-2">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                  onClick={toggleRecording}
+                  disabled={!speechSupported}
+                  className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    isRecording
+                      ? 'bg-red-500 text-white shadow-lg scale-105'
+                      : speechSupported
+                      ? 'bg-primary text-primary-foreground shadow-md hover-elevate active-elevate-2'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed'
+                  }`}
                 >
-                  <ImagePlus className="h-6 w-6 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Upload photos for AI analysis</span>
+                  {isRecording ? (
+                    <>
+                      <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
+                      <MicOff className="h-7 w-7 relative" />
+                    </>
+                  ) : (
+                    <Mic className="h-7 w-7" />
+                  )}
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-              </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="job-description">Job Description</Label>
+                <p className="text-xs text-muted-foreground text-center">
+                  {!speechSupported
+                    ? 'Voice not supported in this browser — type below'
+                    : isRecording
+                    ? <span className="text-red-500 font-medium">Recording {formatTime(recordingSeconds)} — tap to stop</span>
+                    : 'Tap to speak'}
+                </p>
+              </div>
+
               <Textarea
-                id="job-description"
-                placeholder="e.g., Replace hot water system in bathroom. Old unit is 25 litres, needs upgrading to 50L. Access through laundry..."
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                rows={3}
+                placeholder="e.g., Replace hot water system, Rinnai 26L continuous flow, run new gas line 3 metres, 4 hours labour, plus two 15amp power points in garage..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="resize-none text-sm"
                 data-testid="input-ai-job-description"
               />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="voice-notes" className="flex items-center gap-2">
-                <Mic className="h-4 w-4" />
-                Voice Notes (optional)
-              </Label>
-              <Textarea
-                id="voice-notes"
-                placeholder="Paste transcription from voice recording..."
-                value={voiceTranscription}
-                onChange={(e) => setVoiceTranscription(e.target.value)}
-                rows={2}
-                data-testid="input-ai-voice-notes"
-              />
-            </div>
+              <div>
+                <button
+                  onClick={() => setPhotosExpanded(!photosExpanded)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Camera className="h-4 w-4" />
+                  {photosExpanded ? 'Hide photos' : `Add photos for analysis${totalPhotos > 0 ? ` (${totalPhotos} selected)` : ''}`}
+                </button>
 
-            {totalPhotosSelected > 0 && (
-              <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 rounded-md p-2">
-                <Camera className="h-4 w-4" />
-                <span>AI will analyse {totalPhotosSelected} photo{totalPhotosSelected !== 1 ? 's' : ''} to suggest accurate line items</span>
+                {photosExpanded && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {imagePhotos.map((photo) => {
+                        const selected = selectedPhotoIds.has(photo.id);
+                        return (
+                          <div
+                            key={photo.id}
+                            onClick={() => {
+                              const next = new Set(selectedPhotoIds);
+                              selected ? next.delete(photo.id) : next.add(photo.id);
+                              setSelectedPhotoIds(next);
+                            }}
+                            className={`relative w-16 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                              selected ? 'border-primary' : 'border-transparent opacity-60'
+                            }`}
+                          >
+                            <img
+                              src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                              alt={photo.filename}
+                              className="w-full h-full object-cover"
+                            />
+                            {selected && (
+                              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                  <Check className="h-3 w-3 text-primary-foreground" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {uploadedPhotos.map((photo, i) => (
+                        <div key={`up-${i}`} className="relative w-16 h-16 rounded-lg overflow-hidden border-2 border-primary">
+                          <img src={photo.preview} className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => setUploadedPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-16 h-16 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-colors"
+                      >
+                        <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">Add</span>
+                      </button>
+                    </div>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h3 className="font-medium">{result.suggestedTitle}</h3>
-              {getConfidenceBadge(result.confidence)}
             </div>
+          )}
 
-            {result.description && (
-              <p className="text-sm text-muted-foreground">{result.description}</p>
-            )}
+          {step === 'generating' && (
+            <div className="flex flex-col items-center justify-center py-16 px-5 gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="h-7 w-7 text-primary animate-pulse" />
+                </div>
+                <Loader2 className="absolute -top-1 -right-1 h-6 w-6 text-primary animate-spin" />
+              </div>
+              <div className="text-center">
+                <p className="font-medium">Analysing your job...</p>
+                <p className="text-sm text-muted-foreground mt-1">Generating Australian-priced line items</p>
+              </div>
+            </div>
+          )}
 
-            <div className="space-y-2">
-              <Label>Generated Line Items</Label>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {result.lineItems.map((item, index) => (
-                  <Card key={index} className="overflow-hidden">
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between gap-2">
+          {step === 'review' && (
+            <div className="px-5 py-4 space-y-3">
+              {suggestedTitle && (
+                <p className="text-sm font-semibold text-foreground">{suggestedTitle}</p>
+              )}
+
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {includedItems.length} of {lineItems.length} items selected
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => setLineItems(prev => prev.map(i => ({ ...i, included: true })))} className="text-xs text-primary">
+                    All
+                  </button>
+                  <span className="text-xs text-muted-foreground">·</span>
+                  <button onClick={() => setLineItems(prev => prev.map(i => ({ ...i, included: false })))} className="text-xs text-muted-foreground">
+                    None
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {lineItems.map((item) => {
+                  const cat = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
+                  const Icon = cat.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`border rounded-lg p-3 space-y-2 transition-all ${
+                        item.included ? 'border-border bg-card' : 'border-border/50 bg-muted/30 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <button
+                          onClick={() => updateItem(item.id, 'included', !item.included)}
+                          className={`mt-0.5 shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            item.included ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                          }`}
+                        >
+                          {item.included && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </button>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{item.description}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {getCategoryBadge(item.category)}
-                            <span className="text-xs text-muted-foreground">
-                              {item.quantity} × ${item.unitPrice.toFixed(2)}
-                            </span>
+                          <p className="text-sm font-medium leading-tight">{item.description}</p>
+                          <span className={`inline-flex items-center gap-1 mt-1 text-xs px-1.5 py-0.5 rounded-md ${cat.color}`}>
+                            <Icon className="h-3 w-3" />
+                            {cat.label}
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold shrink-0 tabular-nums">
+                          ${item.total.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {item.included && (
+                        <div className="flex items-center gap-2 pl-7">
+                          <div className="flex items-center gap-1 flex-1">
+                            <span className="text-xs text-muted-foreground w-5 shrink-0">Qty</span>
+                            <Input
+                              type="number"
+                              value={item.editingQty}
+                              onChange={(e) => updateItem(item.id, 'editingQty', e.target.value)}
+                              className="h-7 text-xs w-16 text-center"
+                              min="0"
+                              step="0.5"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1 flex-1">
+                            <span className="text-xs text-muted-foreground shrink-0">$</span>
+                            <Input
+                              type="number"
+                              value={item.editingPrice}
+                              onChange={(e) => updateItem(item.id, 'editingPrice', e.target.value)}
+                              className="h-7 text-xs w-24"
+                              min="0"
+                              step="0.01"
+                            />
                           </div>
                         </div>
-                        <span className="font-medium shrink-0">${item.total.toFixed(2)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {aiNotes.length > 0 && (
+                <div className="flex gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>{aiNotes[0]}</span>
+                </div>
+              )}
+
+              <div className="border-t pt-3 space-y-1.5">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>GST (10%)</span>
+                  <span>${gst.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <span>Total (inc. GST)</span>
+                  <span>${grandTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="border-t pt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal</span>
-                <span>${result.totalEstimate.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>GST (10%)</span>
-                <span>${result.gstAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>Total (inc. GST)</span>
-                <span>${result.grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {result.notes.length > 0 && (
-              <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
-                <p className="font-medium flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  Notes
-                </p>
-                {result.notes.map((note, i) => (
-                  <p key={i} className="text-muted-foreground">• {note}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <DialogFooter className="flex gap-2">
-          {!result ? (
+        <div className="px-5 py-4 border-t shrink-0 flex gap-2">
+          {step === 'input' && (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-ai-quote">
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button 
-                onClick={() => generateMutation.mutate()} 
-                disabled={generateMutation.isPending || !hasInput}
+              <Button
+                className="flex-1"
+                onClick={() => generateMutation.mutate()}
+                disabled={!hasInput || generateMutation.isPending}
                 data-testid="button-generate-ai-quote"
               >
-                {generateMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analysing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Generate Quote
-                  </>
-                )}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setResult(null);
-                }}
-                data-testid="button-regenerate-ai-quote"
-              >
-                Try Again
-              </Button>
-              <Button 
-                onClick={handleApply}
-                disabled={!result.success || result.lineItems.length === 0}
-                data-testid="button-apply-ai-quote"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Apply to Quote
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Quote
               </Button>
             </>
           )}
-        </DialogFooter>
+
+          {step === 'generating' && (
+            <Button variant="outline" className="flex-1" onClick={() => { generateMutation.reset(); setStep('input'); }}>
+              Cancel
+            </Button>
+          )}
+
+          {step === 'review' && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setStep('input')}
+                data-testid="button-regenerate-ai-quote"
+              >
+                <RotateCcw className="h-4 w-4 mr-1.5" />
+                Redo
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleApply}
+                disabled={includedItems.length === 0}
+                data-testid="button-apply-ai-quote"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Add {includedItems.length} item{includedItems.length !== 1 ? 's' : ''} to Quote
+              </Button>
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
