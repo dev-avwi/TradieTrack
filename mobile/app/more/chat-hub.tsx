@@ -254,12 +254,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: '#FFFFFF',
   },
   subFilterContainer: {
-    flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: 0,
-    marginBottom: 0,
     marginTop: spacing.sm,
-    gap: spacing.sm,
   },
   subFilterButton: {
     paddingHorizontal: spacing.md,
