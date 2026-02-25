@@ -1105,7 +1105,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['2xl'],
+    paddingVertical: spacing.md,
   },
   loadingText: {
     ...typography.caption,

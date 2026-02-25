@@ -1481,7 +1481,7 @@ export default function DispatchBoard() {
                   </div>
 
                   <ScrollArea className="h-[700px]">
-                    <div className="relative" style={{ minHeight: WORK_HOURS.length * HOUR_HEIGHT }}>
+                    <div className="relative overflow-hidden" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
                       {WORK_HOURS.map(hour => (
                         <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
                           <div className="w-12 flex-shrink-0 p-1 text-[10px] text-muted-foreground border-r bg-muted/10">

@@ -1409,7 +1409,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing['2xl'],
+    padding: spacing.md,
     ...shadows.md,
   },
   mapEmptyIcon: {
@@ -1487,7 +1487,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing['2xl'],
   },
   emptyIconCircle: {
