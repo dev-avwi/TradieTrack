@@ -1135,7 +1135,7 @@ export default function ChatHubScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.subFilterContainer}
-            contentContainerStyle={{ gap: spacing.xs }}
+            contentContainerStyle={{ gap: spacing.xs, flexDirection: 'row', alignItems: 'center' }}
           >
             {JOB_STATUS_FILTERS.map(sf => (
               <TouchableOpacity
