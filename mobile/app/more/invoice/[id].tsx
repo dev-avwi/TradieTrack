@@ -80,6 +80,7 @@ export default function InvoiceDetailScreen() {
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [jobPhotos, setJobPhotos] = useState<any[]>([]);
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
   const [paymentReference, setPaymentReference] = useState('');
@@ -145,6 +146,23 @@ export default function InvoiceDetailScreen() {
       setTimeout(() => setShowEmailCompose(true), 300);
     }
   }, [autoEmail, invoice, isLoading]);
+
+  // Fetch job photos when preview opens and invoice has a jobId
+  useEffect(() => {
+    if (!showPreview || !invoice?.jobId) {
+      setJobPhotos([]);
+      return;
+    }
+    const fetchPhotos = async () => {
+      try {
+        const response = await api.get<any[]>(`/api/jobs/${invoice.jobId}/photos`);
+        if (response.data) setJobPhotos(response.data);
+      } catch (e) {
+        setJobPhotos([]);
+      }
+    };
+    fetchPhotos();
+  }, [showPreview, invoice?.jobId]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -1857,60 +1875,6 @@ ${businessName}`;
             </TouchableOpacity>
           </View>
 
-          {/* PDF Options */}
-          {(invoice.jobId || invoice.notes) && (
-            <View style={styles.pdfOptionsCard}>
-              <Text style={styles.pdfOptionsTitle}>PDF Options</Text>
-              <View style={styles.pdfOptionsRow}>
-                {invoice.jobId && (
-                  <TouchableOpacity 
-                    style={[styles.pdfOption, includeBeforePhotos && styles.pdfOptionActive]}
-                    onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
-                  >
-                    <Feather 
-                      name={includeBeforePhotos ? "check-square" : "square"} 
-                      size={18} 
-                      color={includeBeforePhotos ? colors.primary : colors.mutedForeground} 
-                    />
-                    <Text style={[styles.pdfOptionText, includeBeforePhotos && { color: colors.primary }]}>
-                      Before photos
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {invoice.jobId && (
-                  <TouchableOpacity 
-                    style={[styles.pdfOption, includeAfterPhotos && styles.pdfOptionActive]}
-                    onPress={() => setIncludeAfterPhotos(!includeAfterPhotos)}
-                  >
-                    <Feather 
-                      name={includeAfterPhotos ? "check-square" : "square"} 
-                      size={18} 
-                      color={includeAfterPhotos ? colors.primary : colors.mutedForeground} 
-                    />
-                    <Text style={[styles.pdfOptionText, includeAfterPhotos && { color: colors.primary }]}>
-                      After photos
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {invoice.notes && (
-                  <TouchableOpacity 
-                    style={[styles.pdfOption, includeNotes && styles.pdfOptionActive]}
-                    onPress={() => setIncludeNotes(!includeNotes)}
-                  >
-                    <Feather 
-                      name={includeNotes ? "check-square" : "square"} 
-                      size={18} 
-                      color={includeNotes ? colors.primary : colors.mutedForeground} 
-                    />
-                    <Text style={[styles.pdfOptionText, includeNotes && { color: colors.primary }]}>
-                      Notes
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          )}
-
           {/* Payment Options - Only show if not paid - MOVED TO TOP for tradie visibility */}
           {invoice.status !== 'paid' && (
             <>
@@ -2711,6 +2675,37 @@ ${businessName}`;
               </TouchableOpacity>
             </View>
           </View>
+          {(invoice.jobId || invoice.notes) && (
+            <View style={styles.previewOptionsRow}>
+              {invoice.jobId && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, includeBeforePhotos && styles.previewOptionChipActive]}
+                  onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
+                >
+                  <Feather name={includeBeforePhotos ? "check-square" : "square"} size={14} color={includeBeforePhotos ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, includeBeforePhotos && { color: colors.primary }]}>Before</Text>
+                </TouchableOpacity>
+              )}
+              {invoice.jobId && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, includeAfterPhotos && styles.previewOptionChipActive]}
+                  onPress={() => setIncludeAfterPhotos(!includeAfterPhotos)}
+                >
+                  <Feather name={includeAfterPhotos ? "check-square" : "square"} size={14} color={includeAfterPhotos ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, includeAfterPhotos && { color: colors.primary }]}>After</Text>
+                </TouchableOpacity>
+              )}
+              {invoice.notes && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, includeNotes && styles.previewOptionChipActive]}
+                  onPress={() => setIncludeNotes(!includeNotes)}
+                >
+                  <Feather name={includeNotes ? "check-square" : "square"} size={14} color={includeNotes ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, includeNotes && { color: colors.primary }]}>Notes</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           <LiveDocumentPreview
             type="invoice"
             documentNumber={invoice.invoiceNumber}
@@ -2749,6 +2744,11 @@ ${businessName}`;
               signedAt: sig.signedAt || new Date().toISOString(),
               documentType: sig.documentType,
             }))}
+            serverSubtotal={invoice.subtotal}
+            serverGstAmount={invoice.gstAmount}
+            serverTotal={invoice.total}
+            beforePhotos={includeBeforePhotos ? jobPhotos.filter((p: any) => p.category === 'before') : []}
+            afterPhotos={includeAfterPhotos ? jobPhotos.filter((p: any) => p.category === 'after') : []}
           />
         </View>
       </Modal>
@@ -3251,6 +3251,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pdfOptionText: {
     fontSize: 14,
     color: colors.mutedForeground,
+  },
+  previewOptionsRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  previewOptionChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  previewOptionChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}10`,
+  },
+  previewOptionChipText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    fontWeight: '500' as const,
   },
   overdueAlert: {
     flexDirection: 'row',

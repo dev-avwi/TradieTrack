@@ -202,6 +202,9 @@ export default function TeamOperationsScreen() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningToMember, setAssigningToMember] = useState<MemberWithDetails | null>(null);
+  const [isAssigningJob, setIsAssigningJob] = useState(false);
   const [showTimeOffModal, setShowTimeOffModal] = useState(false);
   const [timeOffStart, setTimeOffStart] = useState('');
   const [timeOffEnd, setTimeOffEnd] = useState('');
@@ -209,6 +212,22 @@ export default function TeamOperationsScreen() {
   const [timeOffNotes, setTimeOffNotes] = useState('');
 
   const isOwnerOrManager = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'manager';
+
+  const handleAssignJob = async (job: JobData) => {
+    if (!assigningToMember || isAssigningJob) return;
+    setIsAssigningJob(true);
+    try {
+      await api.patch(`/api/jobs/${job.id}`, { assignedTo: assigningToMember.userId });
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, assignedTo: assigningToMember.userId } : j));
+      setShowAssignModal(false);
+      setAssigningToMember(null);
+      Alert.alert('Assigned', `${job.title} assigned to ${assigningToMember.firstName} ${assigningToMember.lastName}`);
+    } catch {
+      Alert.alert('Error', 'Failed to assign job. Please try again.');
+    } finally {
+      setIsAssigningJob(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -351,7 +370,7 @@ export default function TeamOperationsScreen() {
   }, [teamPresence]);
 
   const unassignedJobs = useMemo(() => {
-    return jobs.filter(j => !j.assignedTo && (j.status === 'pending' || j.status === 'scheduled'));
+    return jobs.filter(j => !j.assignedTo && (j.status === 'pending' || j.status === 'scheduled' || j.status === 'in_progress'));
   }, [jobs]);
 
   const handleUpdateAvailability = async (dayOfWeek: number, isAvailable: boolean, startTime?: string, endTime?: string) => {
@@ -532,13 +551,24 @@ export default function TeamOperationsScreen() {
             {statusConfig.label} · {formatLastSeen(member.presence?.lastSeenAt)}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.messageButton}
-          onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)}
-          activeOpacity={0.7}
-        >
-          <Feather name="message-circle" size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        <View style={styles.memberCardActions}>
+          {isOwnerOrManager && unassignedJobs.length > 0 && (
+            <TouchableOpacity
+              style={styles.assignButton}
+              onPress={() => { setAssigningToMember(member); setShowAssignModal(true); }}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus-circle" size={16} color={colors.primary} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.messageButton}
+            onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)}
+            activeOpacity={0.7}
+          >
+            <Feather name="message-circle" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -1125,6 +1155,73 @@ export default function TeamOperationsScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Assign Job Modal */}
+      <Modal
+        visible={showAssignModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => { setShowAssignModal(false); setAssigningToMember(null); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Assign a Job</Text>
+                {assigningToMember && (
+                  <Text style={styles.modalSubtitle}>
+                    To {assigningToMember.firstName} {assigningToMember.lastName}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => { setShowAssignModal(false); setAssigningToMember(null); }}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.assignJobList} showsVerticalScrollIndicator={false}>
+              {unassignedJobs.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Feather name="check-circle" size={40} color={colors.mutedForeground} />
+                  <Text style={styles.emptyStateTitle}>No Unassigned Jobs</Text>
+                  <Text style={styles.emptyStateText}>All current jobs have been assigned.</Text>
+                </View>
+              ) : (
+                unassignedJobs.map((job: JobData) => (
+                  <TouchableOpacity
+                    key={job.id}
+                    style={styles.assignJobRow}
+                    onPress={() => handleAssignJob(job)}
+                    disabled={isAssigningJob}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.assignJobInfo}>
+                      <Text style={styles.assignJobTitle} numberOfLines={1}>{job.title}</Text>
+                      {job.clientName && (
+                        <Text style={styles.assignJobClient} numberOfLines={1}>{job.clientName}</Text>
+                      )}
+                      {job.scheduledDate && (
+                        <Text style={styles.assignJobDate}>
+                          {format(new Date(job.scheduledDate), 'EEE d MMM')}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: job.status === 'in_progress' ? '#3b82f620' : '#f59e0b20' }]}>
+                      <Text style={[styles.statusBadgeText, { color: job.status === 'in_progress' ? '#3b82f6' : '#f59e0b' }]}>
+                        {job.status === 'in_progress' ? 'In Progress' : 'Scheduled'}
+                      </Text>
+                    </View>
+                    {isAssigningJob ? (
+                      <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />
+                    ) : (
+                      <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: 8 }} />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -1334,6 +1431,19 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.mutedForeground,
     marginTop: 2,
   },
+  memberCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  assignButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.xl,
+    backgroundColor: `${colors.primary}15`,
+  },
   messageButton: {
     width: 40,
     height: 40,
@@ -1341,6 +1451,53 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     justifyContent: 'center',
     borderRadius: radius.xl,
     backgroundColor: colors.muted,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  assignJobList: {
+    maxHeight: 400,
+    paddingHorizontal: spacing.md,
+  },
+  assignJobRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  assignJobInfo: {
+    flex: 1,
+  },
+  assignJobTitle: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+  },
+  assignJobClient: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  assignJobDate: {
+    ...typography.caption,
+    color: colors.primary,
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.xl,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   activityItem: {
     flexDirection: 'row',

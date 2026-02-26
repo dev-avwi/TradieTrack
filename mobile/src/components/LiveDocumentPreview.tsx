@@ -91,6 +91,9 @@ interface LiveDocumentPreviewProps {
   bottomPadding?: number;
   beforePhotos?: PhotoItem[];
   afterPhotos?: PhotoItem[];
+  serverSubtotal?: number;
+  serverGstAmount?: number;
+  serverTotal?: number;
 }
 
 function formatCurrency(amount: number): string {
@@ -140,6 +143,9 @@ export default function LiveDocumentPreview({
   bottomPadding = 0,
   beforePhotos = [],
   afterPhotos = [],
+  serverSubtotal,
+  serverGstAmount,
+  serverTotal,
 }: LiveDocumentPreviewProps) {
   const { colors: themeColors } = useTheme();
   
@@ -953,19 +959,19 @@ export default function LiveDocumentPreview({
             <View style={styles.totalsBox}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
-                <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
+                <Text style={styles.totalValue}>{formatCurrency(serverSubtotal ?? subtotal)}</Text>
               </View>
               {gstEnabled && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>GST (10%)</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(gst)}</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(serverGstAmount ?? gst)}</Text>
                 </View>
               )}
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>
                   {isPaid ? 'Amount Paid' : `Total${gstEnabled ? ' (incl. GST)' : ''}`}
                 </Text>
-                <Text style={styles.grandTotalValue}>{formatCurrency(total)}</Text>
+                <Text style={styles.grandTotalValue}>{formatCurrency(serverTotal ?? total)}</Text>
               </View>
               {gstEnabled && (
                 <Text style={styles.gstNote}>GST included in total</Text>

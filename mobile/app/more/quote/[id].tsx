@@ -84,10 +84,13 @@ export default function QuoteDetailScreen() {
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
+  const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [jobPhotos, setJobPhotos] = useState<any[]>([]);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isMarkingSent, setIsMarkingSent] = useState(false);
+  const [isMarkingAccepted, setIsMarkingAccepted] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
@@ -132,6 +135,23 @@ export default function QuoteDetailScreen() {
       setTimeout(() => setShowEmailCompose(true), 300);
     }
   }, [autoEmail, quote, isLoading]);
+
+  // Fetch job photos when preview opens and quote has a jobId
+  useEffect(() => {
+    if (!showPreview || !quote?.jobId) {
+      setJobPhotos([]);
+      return;
+    }
+    const fetchPhotos = async () => {
+      try {
+        const response = await api.get<any[]>(`/api/jobs/${quote.jobId}/photos`);
+        if (response.data) setJobPhotos(response.data);
+      } catch (e) {
+        setJobPhotos([]);
+      }
+    };
+    fetchPhotos();
+  }, [showPreview, quote?.jobId]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -662,6 +682,7 @@ ${businessName}`;
   };
 
   const handleAccept = async () => {
+    if (isMarkingAccepted) return;
     Alert.alert(
       'Accept Quote',
       'Mark this quote as accepted by the client?',
@@ -670,10 +691,15 @@ ${businessName}`;
         {
           text: 'Accept',
           onPress: async () => {
-            const success = await updateQuoteStatus(id!, 'accepted');
-            if (success) {
-              await loadData();
-              Alert.alert('Success', 'Quote marked as accepted');
+            setIsMarkingAccepted(true);
+            try {
+              const success = await updateQuoteStatus(id!, 'accepted');
+              if (success) {
+                await loadData();
+                Alert.alert('Success', 'Quote marked as accepted');
+              }
+            } finally {
+              setIsMarkingAccepted(false);
             }
           }
         }
@@ -833,6 +859,7 @@ ${businessName}`;
     const fileUri = `${FileSystem.cacheDirectory}${quote.quoteNumber || 'quote'}_${Date.now()}.pdf`;
     const params = new URLSearchParams();
     if (includeBeforePhotos) params.set('includeBeforePhotos', 'true');
+    if (includeAfterPhotos) params.set('includeAfterPhotos', 'true');
     if (!includeNotes) params.set('excludeNotes', 'true');
     const queryString = params.toString();
     const pdfUrl = `${API_URL}/api/quotes/${id}/pdf${queryString ? `?${queryString}` : ''}`;
@@ -1169,45 +1196,6 @@ ${businessName}`;
               )}
               <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
             </TouchableOpacity>
-          </View>
-          
-          {/* PDF Options */}
-          <View style={styles.pdfOptionsCard}>
-            <Text style={styles.pdfOptionsTitle}>PDF Options</Text>
-            <View style={styles.pdfOptionsRow}>
-              <TouchableOpacity 
-                style={[styles.pdfOption, includeBeforePhotos && !!quote.jobId && styles.pdfOptionActive]}
-                onPress={() => quote.jobId && setIncludeBeforePhotos(!includeBeforePhotos)}
-                activeOpacity={quote.jobId ? 0.7 : 1}
-              >
-                <Feather 
-                  name={includeBeforePhotos && quote.jobId ? "check-square" : "square"} 
-                  size={18} 
-                  color={quote.jobId ? (includeBeforePhotos ? colors.primary : colors.mutedForeground) : `${colors.mutedForeground}40`} 
-                />
-                <Text style={[
-                  styles.pdfOptionText, 
-                  includeBeforePhotos && quote.jobId && { color: colors.primary },
-                  !quote.jobId && { color: `${colors.mutedForeground}40` }
-                ]}>
-                  Photos
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.pdfOption, includeNotes && !!quote.notes && styles.pdfOptionActive]}
-                onPress={() => quote.notes && setIncludeNotes(!includeNotes)}
-                activeOpacity={quote.notes ? 0.7 : 1}
-              >
-                <Feather 
-                  name={includeNotes && quote.notes ? "check-square" : "square"} 
-                  size={18} 
-                  color={!quote.notes ? `${colors.mutedForeground}40` : (includeNotes ? colors.primary : colors.mutedForeground)} 
-                />
-                <Text style={[styles.pdfOptionText, includeNotes && !!quote.notes && { color: colors.primary }, !quote.notes && { color: `${colors.mutedForeground}40` }]}>
-                  Notes
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
           
           {/* Quick Actions Row 2 - Draft status: Mark as Sent */}
@@ -1578,9 +1566,19 @@ ${businessName}`;
           )}
           
           {quote.status === 'sent' && (
-            <TouchableOpacity style={styles.successButton} onPress={handleAccept}>
-              <Feather name="check-circle" size={20} color={colors.white} />
-              <Text style={styles.primaryButtonText}>Mark as Accepted</Text>
+            <TouchableOpacity 
+              style={[styles.successButton, isMarkingAccepted && { opacity: 0.6 }]} 
+              onPress={handleAccept}
+              disabled={isMarkingAccepted}
+            >
+              {isMarkingAccepted ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Feather name="check-circle" size={20} color={colors.white} />
+              )}
+              <Text style={styles.primaryButtonText}>
+                {isMarkingAccepted ? 'Updating...' : 'Mark as Accepted'}
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -1658,6 +1656,37 @@ ${businessName}`;
               </TouchableOpacity>
             </View>
           </View>
+          {(quote.jobId || quote.notes) && (
+            <View style={styles.previewOptionsRow}>
+              {quote.jobId && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, includeBeforePhotos && styles.previewOptionChipActive]}
+                  onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
+                >
+                  <Feather name={includeBeforePhotos ? "check-square" : "square"} size={14} color={includeBeforePhotos ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, includeBeforePhotos && { color: colors.primary }]}>Before</Text>
+                </TouchableOpacity>
+              )}
+              {quote.jobId && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, includeAfterPhotos && styles.previewOptionChipActive]}
+                  onPress={() => setIncludeAfterPhotos(!includeAfterPhotos)}
+                >
+                  <Feather name={includeAfterPhotos ? "check-square" : "square"} size={14} color={includeAfterPhotos ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, includeAfterPhotos && { color: colors.primary }]}>After</Text>
+                </TouchableOpacity>
+              )}
+              {quote.notes && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, includeNotes && styles.previewOptionChipActive]}
+                  onPress={() => setIncludeNotes(!includeNotes)}
+                >
+                  <Feather name={includeNotes ? "check-square" : "square"} size={14} color={includeNotes ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, includeNotes && { color: colors.primary }]}>Notes</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           <LiveDocumentPreview
             type="quote"
             documentNumber={quote.quoteNumber}
@@ -1701,6 +1730,11 @@ ${businessName}`;
             acceptedAt={quote.acceptedAt}
             acceptedBy={quote.acceptedBy}
             clientSignatureData={client?.savedSignatureData}
+            serverSubtotal={quote.subtotal}
+            serverGstAmount={quote.gstAmount}
+            serverTotal={quote.total}
+            beforePhotos={includeBeforePhotos ? jobPhotos.filter((p: any) => p.category === 'before') : []}
+            afterPhotos={includeAfterPhotos ? jobPhotos.filter((p: any) => p.category === 'after') : []}
           />
         </View>
       </Modal>
@@ -2489,6 +2523,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.mutedForeground,
+  },
+  previewOptionsRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  previewOptionChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  previewOptionChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}10`,
+  },
+  previewOptionChipText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    fontWeight: '500' as const,
   },
   pdfOptionsCard: {
     backgroundColor: colors.card,
