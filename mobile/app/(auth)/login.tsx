@@ -522,8 +522,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 88,
-    height: 88,
+    width: 110,
+    height: 110,
   },
   appNameContainer: {
     flexDirection: 'row',
