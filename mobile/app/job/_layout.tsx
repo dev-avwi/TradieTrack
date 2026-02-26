@@ -30,7 +30,7 @@ export default function JobLayout() {
         freezeOnBlur: true,
       }}
     >
-      {/* iOS: Show native header with IOSBackButton, Android: Hide header and use custom back button */}
+      <Stack.Screen name="[id]" options={{ headerShown: isIOS }} />
       <Stack.Screen name="chat" options={{ headerShown: isIOS }} />
     </Stack>
   );
