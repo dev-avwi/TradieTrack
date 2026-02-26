@@ -500,9 +500,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 32,
   },
   logoGradientContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
+    width: 110,
+    height: 110,
+    borderRadius: 26,
     padding: 3,
     marginBottom: 16,
     shadowColor: '#000',
@@ -517,14 +517,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoInner: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 18,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
   },
   appNameContainer: {
     flexDirection: 'row',
