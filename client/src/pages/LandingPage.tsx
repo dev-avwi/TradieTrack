@@ -452,62 +452,13 @@ export default function LandingPage() {
                   {/* Dynamic Island */}
                   <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
                   
-                  {/* Screen - HTML Mockup */}
-                  <div className="relative bg-white rounded-[2.25rem] overflow-hidden" style={{ fontSize: '10px' }}>
-                    <div className="pt-8 px-3 pb-3">
-                      {/* Status bar spacer */}
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <div className="flex items-center gap-1">
-                          <img src={jobrunnerLogo} alt="JobRunner" className="w-6 h-6 object-contain" />
-                          <span className="text-[9px] font-bold text-brand">Job</span>
-                          <span className="text-[9px] font-bold text-brand-accent">Runner</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-brand text-white text-[7px] font-semibold flex items-center justify-center">MT</div>
-                        </div>
-                      </div>
-                      {/* Greeting */}
-                      <div className="mb-3 px-1">
-                        <p className="text-[12px] font-bold text-brand-dark">Good evening, Mike</p>
-                        <p className="text-[8px] text-gray-500">You have 1 job scheduled today</p>
-                      </div>
-                      {/* Quick Stats */}
-                      <p className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 px-1">Quick Stats</p>
-                      <div className="grid grid-cols-2 gap-1.5 mb-3">
-                        {[{n:'1',l:'JOBS TODAY',c:'text-brand'},{n:'3',l:'OVERDUE',c:'text-red-500'},{n:'1',l:'QUOTES PENDING',c:'text-brand'},{n:'$0',l:'REVENUE',c:'text-brand-accent'}].map((s,i) => (
-                          <div key={i} className="bg-gray-50 rounded-lg p-2 text-center">
-                            <p className={`text-[14px] font-bold ${s.c}`}>{s.n}</p>
-                            <p className="text-[6px] text-gray-400 font-medium">{s.l}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {/* Today section */}
-                      <div className="flex items-center justify-between mb-1.5 px-1">
-                        <p className="text-[9px] font-semibold text-brand-dark">Today</p>
-                        <p className="text-[7px] text-brand">View All</p>
-                      </div>
-                      <div className="bg-brand rounded-lg p-2 mb-1.5">
-                        <p className="text-white text-[8px] font-semibold">Start Route (1 stop)</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-[7px] text-gray-400">11:30 pm · Scheduled</p>
-                            <p className="text-[9px] font-semibold text-brand-dark">Toilet Installation</p>
-                            <p className="text-[7px] text-gray-500">Mason Brown</p>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Bottom nav */}
-                      <div className="flex items-center justify-around mt-3 pt-2 border-t border-gray-100">
-                        {['Dashboard','Work','Chat','More'].map((t,i) => (
-                          <div key={i} className={`text-center ${i===0?'text-brand':'text-gray-400'}`}>
-                            <div className="w-4 h-4 mx-auto mb-0.5 rounded bg-current opacity-20"></div>
-                            <p className="text-[6px] font-medium">{t}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  {/* Screen - Dashboard Screenshot */}
+                  <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
+                    <img 
+                      src={dashboardScreenshot} 
+                      alt="JobRunner Dashboard"
+                      className="w-full h-auto"
+                    />
                   </div>
                 </div>
 
@@ -590,8 +541,12 @@ export default function LandingPage() {
                   : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
               }`}
             >
-              <div className="relative max-w-sm mx-auto flex justify-center">
-                <PhoneMockup screenshot={dashboardScreenshot} />
+              <div className="relative max-w-2xl mx-auto">
+                <img 
+                  src={iphoneMockup} 
+                  alt="JobRunner mobile app on construction site" 
+                  className="w-full h-auto rounded-2xl shadow-2xl"
+                />
               </div>
               {/* Feature badges */}
               <div className="flex flex-wrap justify-center gap-2 mt-8">
