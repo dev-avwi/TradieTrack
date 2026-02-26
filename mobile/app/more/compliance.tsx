@@ -448,10 +448,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   modalTitle: {
     ...typography.cardTitle,
@@ -462,7 +462,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: spacing.xs,
   },
   modalBody: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   formGroup: {
     marginBottom: spacing.md,
@@ -549,8 +549,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.lg,
+    gap: spacing.sm,
+    padding: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },

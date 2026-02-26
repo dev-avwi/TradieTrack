@@ -239,7 +239,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   comparisonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   comparisonCol: {
     flex: 1,

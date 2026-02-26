@@ -255,7 +255,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -285,7 +285,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   errorContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,

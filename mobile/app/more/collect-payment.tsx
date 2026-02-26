@@ -2039,7 +2039,7 @@ export default function CollectScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
           <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
             <View style={styles.readyIcon}>
               <Feather name="link" size={64} color={colors.primary} />
@@ -2175,7 +2175,7 @@ export default function CollectScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
             <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
               <View style={styles.readyIcon}>
                 <Feather name="link" size={64} color={colors.primary} />
@@ -2328,7 +2328,7 @@ export default function CollectScreen() {
               )}
             </View>
           ) : (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
               <View style={{ gap: spacing.md }}>
                 <View>
                   <Text style={styles.paymentLinkLabel}>Amount *</Text>
@@ -2662,7 +2662,7 @@ export default function CollectScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={{ flex: 1, padding: spacing.lg }}>
+        <View style={{ flex: 1, padding: spacing.md }}>
           <Text style={styles.sectionLabel}>Payment Amount</Text>
           <View style={styles.amountInputContainer}>
             <Text style={styles.currencySymbol}>$</Text>
@@ -3088,7 +3088,7 @@ export default function CollectScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
             <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
               <View style={[styles.readyIcon, { backgroundColor: colors.warningLight }]}>
                 <Feather name="message-circle" size={48} color={colors.warning} />
@@ -3104,7 +3104,7 @@ export default function CollectScreen() {
             <View style={{ 
               backgroundColor: colors.card, 
               borderRadius: radius.lg, 
-              padding: spacing.lg,
+              padding: spacing.md,
               borderWidth: 1,
               borderColor: colors.border
             }}>
@@ -3142,7 +3142,7 @@ export default function CollectScreen() {
             <View style={{ 
               backgroundColor: colors.infoLight, 
               borderRadius: radius.lg, 
-              padding: spacing.lg,
+              padding: spacing.md,
               marginTop: spacing.md
             }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>

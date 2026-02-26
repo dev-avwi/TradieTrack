@@ -1791,7 +1791,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.lg,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -1800,7 +1800,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.foreground,
   },
   modalContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   inputLabel: {
     ...typography.label,
@@ -1891,7 +1891,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginHorizontal: isTabletDevice ? spacing.sm : responsivePadding,
     marginVertical: spacing.xs,
     borderRadius: radius['2xl'],
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   upgradeBannerContent: {
     flex: 1,

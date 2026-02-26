@@ -236,14 +236,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   emptyIconContainer: {
     width: 80,
@@ -252,7 +252,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   emptyTitle: {
     ...typography.cardTitle,
@@ -284,7 +284,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...shadows.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   errorText: {
     ...typography.caption,

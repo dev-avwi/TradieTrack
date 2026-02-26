@@ -1389,12 +1389,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg,
+    paddingVertical: spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 56 : spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   modalTitle: {
     ...typography.cardTitle,
@@ -1408,7 +1408,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   fieldLabel: {
     ...typography.caption,
@@ -1433,7 +1433,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   fieldRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   fieldHalf: {
     flex: 1,
@@ -1520,7 +1520,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   detailPrice: {
     fontSize: 20,
@@ -1557,7 +1557,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   detailActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.md,
   },
   editButton: {
@@ -1591,7 +1591,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   addMaintenanceBtn: {
     flexDirection: 'row',
@@ -1684,7 +1684,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   categoryModalActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
   categoryModalCancel: {
