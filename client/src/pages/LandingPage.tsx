@@ -377,7 +377,7 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <section className="pt-24 lg:pt-28 pb-16 lg:pb-24 px-5 lg:px-8">
+      <section className="pt-20 lg:pt-24 pb-16 lg:pb-24 px-5 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left: Content */}
@@ -436,7 +436,7 @@ export default function LandingPage() {
             </div>
 
             {/* Right: Phone Mockup */}
-            <div className="relative flex justify-center lg:justify-end animate-fade-in-up">
+            <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:mt-8">
               <div className="relative w-[280px] sm:w-[300px] animate-float">
                 {/* Mobile App Label */}
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
