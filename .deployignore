@@ -1,0 +1,6 @@
+mobile/
+.local/
+attached_assets/
+*.md
+.agents/
+/tmp/

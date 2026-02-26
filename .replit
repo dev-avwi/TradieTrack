@@ -10,6 +10,7 @@ packages = ["jq", "glib", "nss", "nspr", "at-spi2-atk", "cups", "libdrm", "libxk
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
+publicDir = "dist/public"
 
 [env]
 PORT = "5000"
