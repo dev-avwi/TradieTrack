@@ -55,6 +55,13 @@ interface JobSignature {
   documentType?: string;
 }
 
+interface PhotoItem {
+  id: number | string;
+  signedUrl?: string;
+  caption?: string | null;
+  category?: string;
+}
+
 interface LiveDocumentPreviewProps {
   type: 'quote' | 'invoice';
   documentNumber?: string;
@@ -82,6 +89,8 @@ interface LiveDocumentPreviewProps {
   acceptedBy?: string | null;
   clientSignatureData?: string | null;
   bottomPadding?: number;
+  beforePhotos?: PhotoItem[];
+  afterPhotos?: PhotoItem[];
 }
 
 function formatCurrency(amount: number): string {
@@ -129,6 +138,8 @@ export default function LiveDocumentPreview({
   acceptedBy,
   clientSignatureData,
   bottomPadding = 0,
+  beforePhotos = [],
+  afterPhotos = [],
 }: LiveDocumentPreviewProps) {
   const { colors: themeColors } = useTheme();
   
@@ -493,6 +504,37 @@ export default function LiveDocumentPreview({
       fontSize: 10,
       color: colors.textMuted,
       lineHeight: 16,
+    },
+    photosSection: {
+      marginBottom: 20,
+      padding: 12,
+    },
+    photosSectionTitle: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: 10,
+      letterSpacing: 0.3,
+    },
+    photosGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    photoItem: {
+      width: '48%',
+    },
+    photoImage: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: 4,
+      backgroundColor: '#f0f0f0',
+    },
+    photoCaption: {
+      fontSize: 8,
+      color: colors.textMuted,
+      marginTop: 3,
+      textAlign: 'center',
     },
     termsSection: {
       marginBottom: 24,
@@ -950,6 +992,52 @@ export default function LiveDocumentPreview({
             <View style={[styles.notesSection, noteStyle]}>
               <Text style={styles.notesSectionTitle}>Additional Notes</Text>
               <Text style={styles.notesText}>{notes}</Text>
+            </View>
+          )}
+
+          {/* Before Photos Section */}
+          {beforePhotos.length > 0 && (
+            <View style={styles.photosSection}>
+              <Text style={styles.photosSectionTitle}>Before Photos</Text>
+              <View style={styles.photosGrid}>
+                {beforePhotos.map((photo) => (
+                  photo.signedUrl ? (
+                    <View key={photo.id} style={styles.photoItem}>
+                      <Image
+                        source={{ uri: photo.signedUrl }}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                      />
+                      {photo.caption ? (
+                        <Text style={styles.photoCaption}>{photo.caption}</Text>
+                      ) : null}
+                    </View>
+                  ) : null
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* After Photos Section */}
+          {afterPhotos.length > 0 && (
+            <View style={styles.photosSection}>
+              <Text style={styles.photosSectionTitle}>After Photos</Text>
+              <View style={styles.photosGrid}>
+                {afterPhotos.map((photo) => (
+                  photo.signedUrl ? (
+                    <View key={photo.id} style={styles.photoItem}>
+                      <Image
+                        source={{ uri: photo.signedUrl }}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                      />
+                      {photo.caption ? (
+                        <Text style={styles.photoCaption}>{photo.caption}</Text>
+                      ) : null}
+                    </View>
+                  ) : null
+                ))}
+              </View>
             </View>
           )}
 
