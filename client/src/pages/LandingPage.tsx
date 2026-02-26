@@ -396,7 +396,7 @@ export default function LandingPage() {
 
               {/* Subheadline */}
               <p className="text-lg lg:text-xl text-gray-600 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-                Keep a clear record of what was known, done, and agreed — so you don't wear someone else's mistake. Jobs, quotes, invoices, and payments all in one place.
+                Jobs, quotes, invoices, and payments — all in one place. Track progress, get paid faster, and keep your whole team on the same page from quote to completion.
               </p>
 
               {/* CTA Buttons */}
@@ -590,12 +590,8 @@ export default function LandingPage() {
                   : 'opacity-0 translate-y-4 absolute inset-0 pointer-events-none'
               }`}
             >
-              <div className="relative max-w-2xl mx-auto">
-                <img 
-                  src={iphoneMockup} 
-                  alt="JobRunner mobile app on construction site" 
-                  className="w-full h-auto rounded-2xl shadow-2xl"
-                />
+              <div className="relative max-w-sm mx-auto flex justify-center">
+                <PhoneMockup screenshot={dashboardScreenshot} />
               </div>
               {/* Feature badges */}
               <div className="flex flex-wrap justify-center gap-2 mt-8">
@@ -1037,7 +1033,7 @@ export default function LandingPage() {
                 </span>
               </button>
               <p className="text-sm leading-relaxed">
-                Built for how jobs actually run. Keep a clear record of what was known, done, and agreed.
+                Built for how jobs actually run. Jobs, quotes, invoices, and payments — all in one place.
               </p>
             </div>
             <div>
