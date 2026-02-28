@@ -91,6 +91,7 @@ export default function QuoteDetailScreen() {
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isMarkingSent, setIsMarkingSent] = useState(false);
   const [isMarkingAccepted, setIsMarkingAccepted] = useState(false);
+  const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   
@@ -312,7 +313,7 @@ export default function QuoteDetailScreen() {
   };
   
   const handleSendViaJobRunner = async () => {
-    if (!quote) return;
+    if (!quote || isSendingQuote) return;
     
     const client = getClient(quote.clientId);
     const recipientEmail = client?.email;
@@ -326,7 +327,7 @@ export default function QuoteDetailScreen() {
       return;
     }
     
-    setIsDownloadingPdf(true);
+    setIsSendingQuote(true);
     try {
       const authToken = await api.getToken();
       const response = await fetch(`${API_URL}/api/quotes/${id}/send`, {
@@ -352,7 +353,7 @@ export default function QuoteDetailScreen() {
       console.log('Error sending quote:', error);
       Alert.alert('Error', 'Failed to send quote. Please try again.');
     } finally {
-      setIsDownloadingPdf(false);
+      setIsSendingQuote(false);
     }
   };
   
@@ -1202,18 +1203,24 @@ ${businessName}`;
           {quote.status === 'draft' && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
               <TouchableOpacity 
-                style={[styles.quickAction, styles.quickActionPrimary]}
+                style={[styles.quickAction, styles.quickActionPrimary, isSendingQuote && { opacity: 0.6 }]}
                 onPress={handleSend}
-                disabled={isMarkingSent}
+                disabled={isSendingQuote || isMarkingSent}
                 data-testid="button-send-to-client"
               >
-                <Feather name="send" size={20} color={colors.white} />
-                <Text style={[styles.quickActionText, { color: colors.white }]}>Send to Client</Text>
+                {isSendingQuote ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="send" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isSendingQuote ? 'Sending...' : 'Send to Client'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.quickAction, { backgroundColor: colors.info }]}
+                style={[styles.quickAction, { backgroundColor: colors.info }, isMarkingSent && { opacity: 0.6 }]}
                 onPress={handleMarkAsSent}
-                disabled={isMarkingSent}
+                disabled={isMarkingSent || isSendingQuote}
                 data-testid="button-mark-as-sent"
               >
                 {isMarkingSent ? (
@@ -1539,18 +1546,24 @@ ${businessName}`;
           {quote.status === 'draft' && (
             <View style={styles.actionButtonsContainer}>
               <TouchableOpacity 
-                style={styles.primaryButton} 
+                style={[styles.primaryButton, isSendingQuote && { opacity: 0.6 }]} 
                 onPress={handleSend}
-                disabled={isMarkingSent}
+                disabled={isSendingQuote || isMarkingSent}
                 data-testid="button-send-quote-bottom"
               >
-                <Feather name="send" size={20} color={colors.white} />
-                <Text style={styles.primaryButtonText}>Send to Client</Text>
+                {isSendingQuote ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="send" size={20} color={colors.white} />
+                )}
+                <Text style={styles.primaryButtonText}>
+                  {isSendingQuote ? 'Sending...' : 'Send to Client'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.secondaryButton, { marginTop: 12 }]} 
+                style={[styles.secondaryButton, { marginTop: 12 }, isMarkingSent && { opacity: 0.6 }]} 
                 onPress={handleMarkAsSent}
-                disabled={isMarkingSent}
+                disabled={isMarkingSent || isSendingQuote}
                 data-testid="button-mark-sent-bottom"
               >
                 {isMarkingSent ? (

@@ -287,8 +287,104 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
             </div>
           )}
 
+          {data && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start animate-fade-up stagger-delay-4">
+              {sectionConfig.map((section, sectionIdx) => {
+                const items = data.sections[section.key];
+                const count = data.summary[section.countKey];
+                if (!items || items.length === 0) return null;
+
+                return (
+                  <div key={section.key} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: section.dotColor }}
+                      />
+                      <p className="ios-label">{section.label}</p>
+                      <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
+                        {count}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {items.map((action, idx) => {
+                        const CategoryIcon = getCategoryIcon(action.category);
+                        return (
+                          <div
+                            key={action.id}
+                            className="flex rounded-2xl overflow-hidden"
+                          >
+                            <div className="w-1 flex-shrink-0" style={{ backgroundColor: section.accentColor }} />
+                            <div
+                              className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
+                              style={{ backgroundColor: getCategoryTint(action.category) }}
+                              onClick={() => navigate(action.ctaUrl)}
+                            >
+                              <div className="p-3">
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                        style={{ backgroundColor: `${getCategoryColor(action.category)}1a` }}
+                                      >
+                                        <CategoryIcon
+                                          className="h-3.5 w-3.5"
+                                          style={{ color: getCategoryColor(action.category) }}
+                                        />
+                                      </div>
+                                      <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs capitalize">
+                                        {action.category}
+                                      </Badge>
+                                    </div>
+                                    {action.metric && (
+                                      <Badge variant="secondary" className="no-default-hover-elevate no-default-active-elevate text-xs font-semibold">
+                                        {action.metric}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-foreground leading-snug">
+                                      {action.title}
+                                    </p>
+                                    <p className="ios-caption mt-0.5 line-clamp-2">
+                                      {action.description}
+                                    </p>
+                                  </div>
+                                  {action.impact && (
+                                    <p className="ios-caption line-clamp-1">
+                                      {action.impact}
+                                    </p>
+                                  )}
+                                  <div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(action.ctaUrl);
+                                      }}
+                                    >
+                                      {action.cta}
+                                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {pendingRequests.length > 0 && (
-            <div className="animate-fade-up stagger-delay-4">
+            <div className="animate-fade-up stagger-delay-5">
               <div className="flex items-center gap-2.5 mb-3">
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
@@ -382,102 +478,6 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {data && (
-            <div className="grid grid-cols-3 gap-3 items-start animate-fade-up stagger-delay-5">
-              {sectionConfig.map((section, sectionIdx) => {
-                const items = data.sections[section.key];
-                const count = data.summary[section.countKey];
-                if (!items || items.length === 0) return null;
-
-                return (
-                  <div key={section.key} className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: section.dotColor }}
-                      />
-                      <p className="ios-label">{section.label}</p>
-                      <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
-                        {count}
-                      </Badge>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      {items.map((action, idx) => {
-                        const CategoryIcon = getCategoryIcon(action.category);
-                        return (
-                          <div
-                            key={action.id}
-                            className="flex rounded-2xl overflow-hidden"
-                          >
-                            <div className="w-1 flex-shrink-0" style={{ backgroundColor: section.accentColor }} />
-                            <div
-                              className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
-                              style={{ backgroundColor: getCategoryTint(action.category) }}
-                              onClick={() => navigate(action.ctaUrl)}
-                            >
-                              <div className="p-3">
-                                <div className="flex flex-col gap-2">
-                                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                                        style={{ backgroundColor: `${getCategoryColor(action.category)}1a` }}
-                                      >
-                                        <CategoryIcon
-                                          className="h-3.5 w-3.5"
-                                          style={{ color: getCategoryColor(action.category) }}
-                                        />
-                                      </div>
-                                      <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs capitalize">
-                                        {action.category}
-                                      </Badge>
-                                    </div>
-                                    {action.metric && (
-                                      <Badge variant="secondary" className="no-default-hover-elevate no-default-active-elevate text-xs font-semibold">
-                                        {action.metric}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-semibold text-foreground leading-snug">
-                                      {action.title}
-                                    </p>
-                                    <p className="ios-caption mt-0.5 line-clamp-2">
-                                      {action.description}
-                                    </p>
-                                  </div>
-                                  {action.impact && (
-                                    <p className="ios-caption line-clamp-1">
-                                      {action.impact}
-                                    </p>
-                                  )}
-                                  <div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(action.ctaUrl);
-                                      }}
-                                    >
-                                      {action.cta}
-                                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
         </div>
