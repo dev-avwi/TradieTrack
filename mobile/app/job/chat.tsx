@@ -797,12 +797,18 @@ export default function JobChatScreen() {
   const isOwnMessage = (msg: JobChatMessage) => msg.userId === user?.id;
 
   const formatMessageText = (text: string): string => {
-    return text.replace(/(https?:\/\/[^\s]{40,})/g, (url) => {
+    return text.replace(/(https?:\/\/[^\s]+)/g, (url) => {
       try {
         const parsed = new URL(url);
-        return parsed.hostname + '/...';
+        const host = parsed.hostname;
+        if (host.includes('.replit.dev') || host.includes('.repl.co')) {
+          return '[tracking link]';
+        }
+        const short = host.replace(/^www\./, '');
+        if (short.length > 30) return short.substring(0, 25) + '.../';
+        return short + parsed.pathname.substring(0, 15) + (parsed.pathname.length > 15 ? '...' : '');
       } catch {
-        return url.substring(0, 40) + '...';
+        return url.length > 40 ? url.substring(0, 35) + '...' : url;
       }
     });
   };
@@ -901,7 +907,7 @@ export default function JobChatScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: isIOS }} />
+      <Stack.Screen options={{ headerShown: isIOS, headerBackTitle: 'Back' }} />
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -934,7 +940,7 @@ export default function JobChatScreen() {
 
         <View style={styles.internalBanner}>
           <View style={styles.internalBannerIcon}>
-            <Feather name="users" size={12} color="#fff" />
+            <Feather name="users" size={12} color={colors.primaryForeground} />
           </View>
           <Text style={styles.internalBannerText}>
             Messages about this job. Your team can see and reply here.{smsMessages.length > 0 ? ' SMS messages with the client are shown here too.' : ''}

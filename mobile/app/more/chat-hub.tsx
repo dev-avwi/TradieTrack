@@ -256,6 +256,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   subFilterContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     marginTop: spacing.sm,
+    maxHeight: 44,
   },
   subFilterButton: {
     paddingHorizontal: spacing.md,
@@ -314,7 +315,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.successLight,
   },
   conversationAvatarDirect: {
-    backgroundColor: '#E9D5FF',
+    backgroundColor: colors.accentLight || '#E9D5FF',
   },
   conversationAvatarMember: {
     backgroundColor: colors.muted,
@@ -925,7 +926,7 @@ export default function ChatHubScreen() {
           ) : item.type === 'sms' ? (
             <Feather name="smartphone" size={20} color={colors.success} />
           ) : item.type === 'direct' ? (
-            <Feather name="message-square" size={20} color="#7C3AED" />
+            <Feather name="message-square" size={20} color={colors.accent || '#7C3AED'} />
           ) : item.type === 'member' ? (
             <Feather name="user-plus" size={20} color={colors.mutedForeground} />
           ) : (
