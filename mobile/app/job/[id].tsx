@@ -206,6 +206,19 @@ interface JobExpense {
   isBillable: boolean;
 }
 
+interface SubcontractorToken {
+  id: string;
+  jobId: string;
+  token: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  permissions: string[];
+  status: string;
+  expiresAt?: string;
+  createdAt?: string;
+}
+
 const STATUS_ACTIONS = {
   pending: { next: 'scheduled', label: 'Schedule Job', icon: 'calendar' as const, iconSize: 20 },
   scheduled: { next: 'in_progress', label: 'Start Job', icon: 'play' as const, iconSize: 20 },
@@ -1774,6 +1787,20 @@ export default function JobDetailScreen() {
     requirePhotoAfterComplete: boolean;
   } | null>(null);
 
+  const [subcontractorTokens, setSubcontractorTokens] = useState<SubcontractorToken[]>([]);
+  const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
+  const [isLoadingSubcontractors, setIsLoadingSubcontractors] = useState(false);
+  const [isSavingSubcontractor, setIsSavingSubcontractor] = useState(false);
+  const [subcontractorForm, setSubcontractorForm] = useState({
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+    sendViaSms: true,
+    sendViaEmail: true,
+    permissions: ['view_job', 'add_notes', 'add_photos', 'update_status'] as string[],
+    expiryDays: '30',
+  });
+
   const isSafetyForm = (form: any) => {
     const name = (form.name || '').toLowerCase();
     return name.includes('swms') || name.includes('jsa') || name.includes('safety') || name.includes('compliance');
@@ -1895,6 +1922,7 @@ export default function JobDetailScreen() {
     loadActivityLog();
     loadJobExpenses();
     loadAutomationSettings();
+    loadSubcontractorTokens();
     // Forms data is loaded by JobForms component via callbacks
     
     // Auto-refresh when app comes to foreground
@@ -1965,6 +1993,101 @@ export default function JobDetailScreen() {
       console.error('Error loading team members:', e);
     }
   }, []);
+
+  const loadSubcontractorTokens = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingSubcontractors(true);
+    try {
+      const res = await api.get<SubcontractorToken[]>(`/api/jobs/${id}/subcontractor-tokens`);
+      setSubcontractorTokens(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error loading subcontractor tokens:', e);
+    } finally {
+      setIsLoadingSubcontractors(false);
+    }
+  }, [id]);
+
+  const handleInviteSubcontractor = async () => {
+    if (!id) return;
+    if (!subcontractorForm.contactName.trim()) {
+      Alert.alert('Error', 'Please enter a name');
+      return;
+    }
+    if (!subcontractorForm.contactPhone.trim() && !subcontractorForm.contactEmail.trim()) {
+      Alert.alert('Error', 'Please enter a phone number or email');
+      return;
+    }
+
+    setIsSavingSubcontractor(true);
+    try {
+      const expiryDays = parseInt(subcontractorForm.expiryDays);
+      const expiresAt = expiryDays > 0
+        ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
+      const res = await api.post(`/api/jobs/${id}/subcontractor-token`, {
+        contactName: subcontractorForm.contactName.trim(),
+        contactPhone: subcontractorForm.contactPhone.trim() || null,
+        contactEmail: subcontractorForm.contactEmail.trim() || null,
+        sendViaSms: subcontractorForm.sendViaSms && !!subcontractorForm.contactPhone.trim(),
+        sendViaEmail: subcontractorForm.sendViaEmail && !!subcontractorForm.contactEmail.trim(),
+        permissions: subcontractorForm.permissions,
+        expiresAt,
+      });
+
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        Alert.alert('Success', 'Subcontractor invite sent successfully');
+        setShowSubcontractorModal(false);
+        setSubcontractorForm({
+          contactName: '',
+          contactPhone: '',
+          contactEmail: '',
+          sendViaSms: true,
+          sendViaEmail: true,
+          permissions: ['view_job', 'add_notes', 'add_photos', 'update_status'],
+          expiryDays: '30',
+        });
+        loadSubcontractorTokens();
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send invite');
+    } finally {
+      setIsSavingSubcontractor(false);
+    }
+  };
+
+  const handleRevokeSubcontractor = (tokenId: string, name?: string) => {
+    Alert.alert(
+      'Revoke Access',
+      `Remove access for ${name || 'this subcontractor'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Revoke',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/jobs/${id}/subcontractor-tokens/${tokenId}`);
+              loadSubcontractorTokens();
+            } catch (e) {
+              Alert.alert('Error', 'Failed to revoke access');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleSubcontractorPermission = (perm: string) => {
+    setSubcontractorForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(perm)
+        ? prev.permissions.filter(p => p !== perm)
+        : [...prev.permissions, perm],
+    }));
+  };
 
   const loadJobMessages = useCallback(async () => {
     if (!id) return;
@@ -2741,6 +2864,7 @@ export default function JobDetailScreen() {
       loadTimeEntries(),
       loadActivityLog(),
       loadJobExpenses(),
+      loadSubcontractorTokens(),
       // Forms data is refreshed by JobForms component
     ]);
     setRefreshing(false);
@@ -4625,6 +4749,111 @@ export default function JobDetailScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+      )}
+
+      {/* Subcontractor Invites Section */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
+              <Feather name="user-plus" size={iconSizes.lg} color={colors.invoiced} />
+            </View>
+            <Text style={styles.costingTitle}>Subcontractors</Text>
+            {subcontractorTokens.filter(t => t.status === 'pending' || t.status === 'active').length > 0 && (
+              <View style={{ backgroundColor: `${colors.invoiced}15`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.md, marginLeft: 'auto' }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.invoiced }}>
+                  {subcontractorTokens.filter(t => t.status === 'pending' || t.status === 'active').length}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {isLoadingSubcontractors ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
+          ) : (
+            <>
+              {subcontractorTokens.filter(t => t.status !== 'revoked').length > 0 ? (
+                <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+                  {subcontractorTokens.filter(t => t.status !== 'revoked').map((token) => (
+                    <View
+                      key={token.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: colors.muted,
+                        borderRadius: radius.lg,
+                        padding: spacing.md,
+                        gap: spacing.md,
+                      }}
+                    >
+                      <View style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: token.status === 'active' ? `${colors.success}20` : `${colors.warning}20`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Feather
+                          name={token.status === 'active' ? 'check-circle' : 'clock'}
+                          size={16}
+                          color={token.status === 'active' ? colors.success : colors.warning}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                          {token.contactName || 'Subcontractor'}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                          {token.contactPhone || token.contactEmail || 'No contact'}
+                          {' \u2022 '}
+                          {token.status === 'active' ? 'Active' : token.status === 'pending' ? 'Pending' : token.status}
+                        </Text>
+                        {token.expiresAt && (
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                            Expires {new Date(token.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </Text>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleRevokeSubcontractor(token.id, token.contactName)}
+                        style={{ padding: spacing.sm }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="x" size={16} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
+                    No subcontractors invited yet
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  backgroundColor: colors.invoiced,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                }}
+                onPress={() => setShowSubcontractorModal(true)}
+                activeOpacity={0.8}
+              >
+                <Feather name="user-plus" size={16} color={colors.primaryForeground} />
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                  Invite Subcontractor
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
 
@@ -6997,6 +7226,200 @@ export default function JobDetailScreen() {
         defaultTab={sendModalDefaultTab}
         onSendSuccess={() => setShowSendModal(false)}
       />
+
+      {/* Subcontractor Invite Modal */}
+      <Modal
+        visible={showSubcontractorModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSubcontractorModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Invite Subcontractor</Text>
+                <TouchableOpacity onPress={() => setShowSubcontractorModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  Contact Details
+                </Text>
+                <TextInput
+                  style={[styles.notesInput, { minHeight: 44, marginBottom: spacing.md }]}
+                  placeholder="Name *"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={subcontractorForm.contactName}
+                  onChangeText={(t) => setSubcontractorForm(prev => ({ ...prev, contactName: t }))}
+                />
+                <TextInput
+                  style={[styles.notesInput, { minHeight: 44, marginBottom: spacing.md }]}
+                  placeholder="Phone number"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="phone-pad"
+                  value={subcontractorForm.contactPhone}
+                  onChangeText={(t) => setSubcontractorForm(prev => ({ ...prev, contactPhone: t }))}
+                />
+                <TextInput
+                  style={[styles.notesInput, { minHeight: 44, marginBottom: spacing.lg }]}
+                  placeholder="Email address"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={subcontractorForm.contactEmail}
+                  onChangeText={(t) => setSubcontractorForm(prev => ({ ...prev, contactEmail: t }))}
+                />
+
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  Send Via
+                </Text>
+                <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: colors.muted,
+                      padding: spacing.md,
+                      borderRadius: radius.lg,
+                      gap: spacing.md,
+                    }}
+                    onPress={() => setSubcontractorForm(prev => ({ ...prev, sendViaSms: !prev.sendViaSms }))}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                      <Feather name="message-square" size={16} color={colors.foreground} />
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>SMS</Text>
+                    </View>
+                    <Switch
+                      value={subcontractorForm.sendViaSms}
+                      onValueChange={(v) => setSubcontractorForm(prev => ({ ...prev, sendViaSms: v }))}
+                      trackColor={{ false: colors.muted, true: colors.primary + '60' }}
+                      thumbColor={subcontractorForm.sendViaSms ? colors.primary : colors.mutedForeground}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: colors.muted,
+                      padding: spacing.md,
+                      borderRadius: radius.lg,
+                      gap: spacing.md,
+                    }}
+                    onPress={() => setSubcontractorForm(prev => ({ ...prev, sendViaEmail: !prev.sendViaEmail }))}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                      <Feather name="mail" size={16} color={colors.foreground} />
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>Email</Text>
+                    </View>
+                    <Switch
+                      value={subcontractorForm.sendViaEmail}
+                      onValueChange={(v) => setSubcontractorForm(prev => ({ ...prev, sendViaEmail: v }))}
+                      trackColor={{ false: colors.muted, true: colors.primary + '60' }}
+                      thumbColor={subcontractorForm.sendViaEmail ? colors.primary : colors.mutedForeground}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  Permissions
+                </Text>
+                <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
+                  {[
+                    { key: 'view_job', label: 'View Job Details', icon: 'eye' as const },
+                    { key: 'add_notes', label: 'Add Notes', icon: 'edit-3' as const },
+                    { key: 'add_photos', label: 'Add Photos', icon: 'camera' as const },
+                    { key: 'update_status', label: 'Update Status', icon: 'refresh-cw' as const },
+                    { key: 'view_client', label: 'View Client Info', icon: 'user' as const },
+                  ].map((perm) => (
+                    <TouchableOpacity
+                      key={perm.key}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: colors.muted,
+                        padding: spacing.md,
+                        borderRadius: radius.lg,
+                        gap: spacing.md,
+                      }}
+                      onPress={() => toggleSubcontractorPermission(perm.key)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                        <Feather name={perm.icon} size={16} color={colors.foreground} />
+                        <Text style={{ fontSize: 14, color: colors.foreground }}>{perm.label}</Text>
+                      </View>
+                      <Switch
+                        value={subcontractorForm.permissions.includes(perm.key)}
+                        onValueChange={() => toggleSubcontractorPermission(perm.key)}
+                        trackColor={{ false: colors.muted, true: colors.primary + '60' }}
+                        thumbColor={subcontractorForm.permissions.includes(perm.key) ? colors.primary : colors.mutedForeground}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  Expires After
+                </Text>
+                <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xl }}>
+                  {[
+                    { value: '7', label: '7 days' },
+                    { value: '30', label: '30 days' },
+                    { value: '0', label: 'Never' },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={{
+                        flex: 1,
+                        paddingVertical: spacing.md,
+                        borderRadius: radius.lg,
+                        alignItems: 'center',
+                        backgroundColor: subcontractorForm.expiryDays === option.value ? colors.primary : colors.muted,
+                        borderWidth: 1,
+                        borderColor: subcontractorForm.expiryDays === option.value ? colors.primary : colors.border,
+                      }}
+                      onPress={() => setSubcontractorForm(prev => ({ ...prev, expiryDays: option.value }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{
+                        fontSize: 13,
+                        fontWeight: '600',
+                        color: subcontractorForm.expiryDays === option.value ? colors.primaryForeground : colors.foreground,
+                      }}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.saveButton, { opacity: isSavingSubcontractor ? 0.6 : 1 }]}
+                  onPress={handleInviteSubcontractor}
+                  disabled={isSavingSubcontractor}
+                  activeOpacity={0.8}
+                >
+                  {isSavingSubcontractor ? (
+                    <ActivityIndicator color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Send Invite</Text>
+                  )}
+                </TouchableOpacity>
+                <View style={{ height: spacing.xl }} />
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }

@@ -917,6 +917,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     overflow: 'hidden',
     height: 220,
   },
+  saveCustomizationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md + 2,
+    marginTop: spacing.lg,
+  },
+  saveCustomizationButtonDisabled: {
+    backgroundColor: colors.muted,
+  },
+  saveCustomizationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryForeground,
+  },
+  saveCustomizationButtonTextDisabled: {
+    color: colors.mutedForeground,
+  },
   sectionDivider: {
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -1045,8 +1066,11 @@ export default function TemplatesScreen() {
     bodyWeight: '600',
     headingWeight: '700',
     accentColor: DOCUMENT_ACCENT_COLOR,
+    fontStyle: 'default',
   });
   const [isUpdatingPreset, setIsUpdatingPreset] = useState(false);
+  const [isSavingCustomization, setIsSavingCustomization] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [newTemplate, setNewTemplate] = useState<NewTemplate>({
     name: '',
     type: 'quote',
@@ -1131,19 +1155,40 @@ export default function TemplatesScreen() {
     }
   }, [(businessSettings as any)?.documentTemplate]);
 
-  // Sync customization when template style changes
+  // Load saved customization from server on mount
+  useEffect(() => {
+    const serverSettings = (businessSettings as any)?.documentTemplateSettings;
+    if (serverSettings) {
+      setTemplateCustomization(prev => ({
+        ...prev,
+        tableStyle: serverSettings.tableStyle || prev.tableStyle,
+        noteStyle: serverSettings.noteStyle || prev.noteStyle,
+        headerBorderWidth: serverSettings.headerBorderWidth ?? prev.headerBorderWidth,
+        showHeaderDivider: serverSettings.showHeaderDivider ?? prev.showHeaderDivider,
+        bodyWeight: serverSettings.bodyWeight || prev.bodyWeight,
+        headingWeight: serverSettings.headingWeight || prev.headingWeight,
+        accentColor: serverSettings.accentColor || prev.accentColor,
+        fontStyle: serverSettings.fontStyle || prev.fontStyle,
+      }));
+    }
+  }, [(businessSettings as any)?.documentTemplateSettings]);
+
+  // Sync customization when template style changes (only reset if no server settings)
   useEffect(() => {
     const template = DOCUMENT_TEMPLATES[selectedTemplateStyle];
     if (template) {
-      setTemplateCustomization(prev => ({
-        ...prev,
-        tableStyle: template.tableStyle,
-        noteStyle: template.noteStyle,
-        headerBorderWidth: template.headerBorderWidth,
-        showHeaderDivider: template.showHeaderDivider,
-        bodyWeight: template.bodyWeight,
-        headingWeight: template.headingWeight,
-      }));
+      const serverSettings = (businessSettings as any)?.documentTemplateSettings;
+      if (!serverSettings) {
+        setTemplateCustomization(prev => ({
+          ...prev,
+          tableStyle: template.tableStyle,
+          noteStyle: template.noteStyle,
+          headerBorderWidth: template.headerBorderWidth,
+          showHeaderDivider: template.showHeaderDivider,
+          bodyWeight: template.bodyWeight,
+          headingWeight: template.headingWeight,
+        }));
+      }
     }
   }, [selectedTemplateStyle]);
 
@@ -1209,7 +1254,32 @@ export default function TemplatesScreen() {
 
   const updateCustomization = useCallback((updates: Partial<TemplateCustomization>) => {
     setTemplateCustomization(prev => ({ ...prev, ...updates }));
+    setHasUnsavedChanges(true);
   }, []);
+
+  const saveCustomization = useCallback(async () => {
+    setIsSavingCustomization(true);
+    try {
+      await fetch(`${API_URL}/api/business-settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          documentTemplate: selectedTemplateStyle,
+          documentTemplateSettings: templateCustomization,
+        }),
+      });
+      await fetchBusinessSettings();
+      setHasUnsavedChanges(false);
+      Alert.alert('Saved', 'Document style customizations saved successfully.');
+    } catch (error) {
+      console.error('Failed to save customization:', error);
+      Alert.alert('Error', 'Failed to save customizations. Please try again.');
+    }
+    setIsSavingCustomization(false);
+  }, [token, selectedTemplateStyle, templateCustomization, fetchBusinessSettings]);
 
   const resetForm = () => {
     setNewTemplate({
@@ -2195,6 +2265,58 @@ export default function TemplatesScreen() {
                   </View>
                 </View>
               </View>
+
+              {/* Font Style */}
+              <View style={styles.customizeOptionRow}>
+                <Text style={styles.customizeOptionLabel}>Font Style</Text>
+                <View style={styles.customizePickerRow}>
+                  {([
+                    { value: 'default', label: 'Sans-Serif' },
+                    { value: 'serif', label: 'Serif' },
+                    { value: 'mono', label: 'Monospace' },
+                  ] as const).map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.customizePickerOption,
+                        (templateCustomization.fontStyle || 'default') === option.value && styles.customizePickerOptionActive
+                      ]}
+                      onPress={() => updateCustomization({ fontStyle: option.value })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.customizePickerOptionText,
+                        (templateCustomization.fontStyle || 'default') === option.value && styles.customizePickerOptionTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Save Customizations Button */}
+              <TouchableOpacity
+                style={[
+                  styles.saveCustomizationButton,
+                  !hasUnsavedChanges && styles.saveCustomizationButtonDisabled
+                ]}
+                onPress={saveCustomization}
+                disabled={isSavingCustomization || !hasUnsavedChanges}
+                activeOpacity={0.7}
+              >
+                {isSavingCustomization ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Feather name="save" size={16} color={hasUnsavedChanges ? colors.primaryForeground : colors.mutedForeground} />
+                )}
+                <Text style={[
+                  styles.saveCustomizationButtonText,
+                  !hasUnsavedChanges && styles.saveCustomizationButtonTextDisabled
+                ]}>
+                  {isSavingCustomization ? 'Saving...' : hasUnsavedChanges ? 'Save Customizations' : 'All Changes Saved'}
+                </Text>
+              </TouchableOpacity>
 
               {/* Live Preview */}
               <View style={styles.customizePreviewContainer}>

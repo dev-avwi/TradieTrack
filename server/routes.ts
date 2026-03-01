@@ -8716,6 +8716,26 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // MYOB Integration Routes
+  app.post("/api/integrations/myob/mobile-connect", requireAuth, async (req: any, res) => {
+    try {
+      if (!myobService.isMyobConfigured()) {
+        return res.status(400).json({ 
+          error: "MYOB integration not configured. Please add MYOB_CLIENT_ID and MYOB_CLIENT_SECRET environment variables." 
+        });
+      }
+      const state = `mobile_${req.userId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
+      mobileOAuthStates.set(state, {
+        userId: req.userId,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+      });
+      const authUrl = myobService.getAuthUrl(state);
+      res.json({ authUrl, state });
+    } catch (error: any) {
+      console.error("Error getting MYOB mobile auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate MYOB auth URL" });
+    }
+  });
+
   app.post("/api/integrations/myob/connect", requireAuth, async (req: any, res) => {
     try {
       if (!myobService.isMyobConfigured()) {
@@ -8896,6 +8916,26 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // QuickBooks Integration Routes
+  app.post("/api/integrations/quickbooks/mobile-connect", requireAuth, async (req: any, res) => {
+    try {
+      if (!quickbooksService.isQuickbooksConfigured()) {
+        return res.status(400).json({ 
+          error: "QuickBooks integration not configured. Please add QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET environment variables." 
+        });
+      }
+      const state = `mobile_${req.userId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
+      mobileOAuthStates.set(state, {
+        userId: req.userId,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+      });
+      const authUrl = await quickbooksService.getAuthUrl(state);
+      res.json({ authUrl, state });
+    } catch (error: any) {
+      console.error("Error getting QuickBooks mobile auth URL:", error);
+      res.status(500).json({ error: error.message || "Failed to generate QuickBooks auth URL" });
+    }
+  });
+
   app.post("/api/integrations/quickbooks/connect", requireAuth, async (req: any, res) => {
     try {
       if (!quickbooksService.isQuickbooksConfigured()) {

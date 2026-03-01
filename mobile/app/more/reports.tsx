@@ -20,7 +20,7 @@ import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, comp
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
-type ReportTab = 'overview' | 'revenue' | 'clients' | 'profitability' | 'export';
+type ReportTab = 'overview' | 'revenue' | 'clients' | 'profitability' | 'aged' | 'payroll' | 'utilisation' | 'export';
 
 const PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'week', label: 'This Week' },
@@ -34,6 +34,9 @@ const REPORT_TABS: { key: ReportTab; label: string; icon: string }[] = [
   { key: 'revenue', label: 'Revenue', icon: 'dollar-sign' },
   { key: 'clients', label: 'Clients', icon: 'users' },
   { key: 'profitability', label: 'Profit', icon: 'trending-up' },
+  { key: 'aged', label: 'Aged AR', icon: 'clock' },
+  { key: 'payroll', label: 'Payroll', icon: 'credit-card' },
+  { key: 'utilisation', label: 'Utilisation', icon: 'activity' },
   { key: 'export', label: 'Export', icon: 'share' },
 ];
 
@@ -572,6 +575,112 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
   },
+  bucketCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  bucketLabel: {
+    flex: 1,
+  },
+  bucketLabelText: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+  },
+  bucketCountText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  bucketAmount: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: colors.muted,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: radius.pill,
+  },
+  workerCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  workerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  workerName: {
+    ...typography.cardTitle,
+    color: colors.foreground,
+  },
+  workerSubtext: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  workerStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  workerStat: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+  },
+  workerStatValue: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  workerStatLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  utilisationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  utilisationBarTrack: {
+    flex: 1,
+    height: 12,
+    backgroundColor: colors.muted,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  utilisationBarFill: {
+    height: '100%',
+    borderRadius: radius.pill,
+  },
+  utilisationPercent: {
+    ...typography.body,
+    fontWeight: '700',
+    minWidth: 48,
+    textAlign: 'right',
+  },
 });
 
 export default function ReportsScreen() {
@@ -583,6 +692,9 @@ export default function ReportsScreen() {
     revenueReport, 
     clientReport,
     profitabilityReport,
+    agedReceivablesReport,
+    payrollReport,
+    utilisationReport,
     period, 
     setPeriod,
     fetchAllReports, 
@@ -1203,6 +1315,265 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.loadingText}>Loading profitability data...</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {activeReportTab === 'aged' && (
+            <>
+              {agedReceivablesReport ? (
+                <>
+                  <View style={styles.heroCard}>
+                    <View style={styles.heroStatHeader}>
+                      <View style={[styles.statIconContainer, { backgroundColor: colors.destructiveLight }]}>
+                        <Feather name="alert-circle" size={20} color={colors.destructive} />
+                      </View>
+                    </View>
+                    <Text style={styles.heroStatValue}>{formatCurrency(agedReceivablesReport.grandTotal)}</Text>
+                    <Text style={styles.heroStatTitle}>TOTAL OUTSTANDING</Text>
+                    <Text style={styles.heroStatSub}>{agedReceivablesReport.invoiceCount} invoice{agedReceivablesReport.invoiceCount !== 1 ? 's' : ''}</Text>
+                  </View>
+
+                  <Text style={styles.sectionTitle}>AGING BUCKETS</Text>
+                  {([
+                    { key: 'current' as const, label: 'Current', color: colors.success },
+                    { key: '1-30' as const, label: '1-30 Days', color: colors.info },
+                    { key: '31-60' as const, label: '31-60 Days', color: colors.warning },
+                    { key: '61-90' as const, label: '61-90 Days', color: colors.destructive },
+                    { key: '90+' as const, label: '90+ Days', color: colors.destructive },
+                  ]).map((bucket) => {
+                    const data = agedReceivablesReport.buckets[bucket.key];
+                    const pct = agedReceivablesReport.grandTotal > 0 ? (data.total / agedReceivablesReport.grandTotal) * 100 : 0;
+                    return (
+                      <View key={bucket.key} style={styles.workerCard}>
+                        <View style={styles.workerHeader}>
+                          <View>
+                            <Text style={styles.workerName}>{bucket.label}</Text>
+                            <Text style={styles.workerSubtext}>{data.count} invoice{data.count !== 1 ? 's' : ''}</Text>
+                          </View>
+                          <Text style={[styles.bucketAmount, { color: bucket.color }]}>{formatCurrency(data.total)}</Text>
+                        </View>
+                        <View style={styles.progressBarContainer}>
+                          <View style={[styles.progressBar, { width: `${Math.min(pct, 100)}%`, backgroundColor: bucket.color }]} />
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                  {agedReceivablesReport.clientBreakdown.length > 0 && (
+                    <>
+                      <Text style={styles.sectionTitle}>CLIENT BREAKDOWN</Text>
+                      {agedReceivablesReport.clientBreakdown.slice(0, 10).map((client, index) => (
+                        <View key={client.clientId} style={styles.clientCard}>
+                          <View style={styles.clientRank}>
+                            <Text style={styles.clientRankText}>{index + 1}</Text>
+                          </View>
+                          <View style={styles.clientInfo}>
+                            <Text style={styles.clientName} numberOfLines={1}>{client.clientName}</Text>
+                            <Text style={styles.clientMeta}>{client.count} invoice{client.count !== 1 ? 's' : ''}</Text>
+                          </View>
+                          <Text style={[styles.clientRevenue, { color: colors.destructive }]}>{formatCurrency(client.total)}</Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                </>
+              ) : (
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="clock" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Receivables Data</Text>
+                  <Text style={styles.emptyText}>No outstanding invoices to display.</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {activeReportTab === 'payroll' && (
+            <>
+              {payrollReport && payrollReport.workers.length > 0 ? (
+                <>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIconContainer, { backgroundColor: colors.successLight }]}>
+                          <Feather name="dollar-sign" size={20} color={colors.success} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{formatCurrency(payrollReport.totals.totalPay)}</Text>
+                      <Text style={styles.statTitle}>TOTAL PAY</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={styles.statIconContainer}>
+                          <Feather name="clock" size={20} color={colors.primary} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{payrollReport.totals.totalHours.toFixed(1)}h</Text>
+                      <Text style={styles.statTitle}>TOTAL HOURS</Text>
+                    </View>
+                  </View>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIconContainer, { backgroundColor: colors.infoLight }]}>
+                          <Feather name="users" size={20} color={colors.info} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{payrollReport.totals.workerCount}</Text>
+                      <Text style={styles.statTitle}>WORKERS</Text>
+                      {payrollReport.totals.subcontractorCount > 0 && (
+                        <Text style={styles.statSubValue}>{payrollReport.totals.subcontractorCount} subcontractor{payrollReport.totals.subcontractorCount !== 1 ? 's' : ''}</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  <Text style={styles.sectionTitle}>WORKER BREAKDOWN</Text>
+                  {payrollReport.workers.map((worker) => {
+                    const billablePct = worker.totalHours > 0 ? (worker.billableHours / worker.totalHours) * 100 : 0;
+                    return (
+                      <View key={worker.teamMemberId} style={styles.workerCard}>
+                        <View style={styles.workerHeader}>
+                          <View>
+                            <Text style={styles.workerName}>{worker.firstName} {worker.lastName}</Text>
+                            <Text style={styles.workerSubtext}>
+                              ${worker.hourlyRate}/hr{worker.isSubcontractor ? ' (Sub)' : ''}
+                            </Text>
+                          </View>
+                          <Text style={[styles.bucketAmount, { color: colors.success }]}>{formatCurrency(worker.grossPay)}</Text>
+                        </View>
+                        <View style={styles.workerStatsRow}>
+                          <View style={styles.workerStat}>
+                            <Text style={styles.workerStatValue}>{worker.regularHours.toFixed(1)}h</Text>
+                            <Text style={styles.workerStatLabel}>Regular</Text>
+                          </View>
+                          <View style={styles.workerStat}>
+                            <Text style={styles.workerStatValue}>{worker.overtimeHours.toFixed(1)}h</Text>
+                            <Text style={styles.workerStatLabel}>Overtime</Text>
+                          </View>
+                          <View style={styles.workerStat}>
+                            <Text style={styles.workerStatValue}>{billablePct.toFixed(0)}%</Text>
+                            <Text style={styles.workerStatLabel}>Billable</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.progressBarContainer, { marginTop: spacing.sm }]}>
+                          <View style={[styles.progressBar, { width: `${Math.min(billablePct, 100)}%`, backgroundColor: billablePct >= 70 ? colors.success : billablePct >= 40 ? colors.warning : colors.destructive }]} />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              ) : payrollReport && payrollReport.workers.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="credit-card" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Payroll Data</Text>
+                  <Text style={styles.emptyText}>Add team members and track time to see payroll data.</Text>
+                </View>
+              ) : (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Loading payroll data...</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {activeReportTab === 'utilisation' && (
+            <>
+              {utilisationReport && utilisationReport.workers.length > 0 ? (
+                <>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIconContainer, { backgroundColor: utilisationReport.averageUtilisation >= 60 ? colors.successLight : colors.warningLight }]}>
+                          <Feather name="activity" size={20} color={utilisationReport.averageUtilisation >= 60 ? colors.success : colors.warning} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{utilisationReport.averageUtilisation.toFixed(1)}%</Text>
+                      <Text style={styles.statTitle}>AVG UTILISATION</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIconContainer, { backgroundColor: colors.successLight }]}>
+                          <Feather name="dollar-sign" size={20} color={colors.success} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{formatCurrency(utilisationReport.totalRevenue)}</Text>
+                      <Text style={styles.statTitle}>TOTAL REVENUE</Text>
+                    </View>
+                  </View>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIconContainer, { backgroundColor: colors.destructiveLight }]}>
+                          <Feather name="minus-circle" size={20} color={colors.destructive} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{utilisationReport.totalIdleHours.toFixed(1)}h</Text>
+                      <Text style={styles.statTitle}>IDLE HOURS</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIconContainer, { backgroundColor: colors.warningLight }]}>
+                          <Feather name="briefcase" size={20} color={colors.warning} />
+                        </View>
+                      </View>
+                      <Text style={styles.statValue}>{formatCurrency(utilisationReport.totalLabourCost)}</Text>
+                      <Text style={styles.statTitle}>LABOUR COST</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.sectionTitle}>TEAM UTILISATION</Text>
+                  {utilisationReport.workers.map((worker) => {
+                    const utilColor = worker.utilisation >= 75 ? colors.success : worker.utilisation >= 50 ? colors.warning : colors.destructive;
+                    return (
+                      <View key={worker.teamMemberId} style={styles.workerCard}>
+                        <View style={styles.workerHeader}>
+                          <View>
+                            <Text style={styles.workerName}>{worker.firstName} {worker.lastName}</Text>
+                            <Text style={styles.workerSubtext}>{worker.jobsCompleted} job{worker.jobsCompleted !== 1 ? 's' : ''} completed</Text>
+                          </View>
+                          <Text style={[styles.utilisationPercent, { color: utilColor }]}>{worker.utilisation.toFixed(1)}%</Text>
+                        </View>
+                        <View style={styles.utilisationBar}>
+                          <View style={styles.utilisationBarTrack}>
+                            <View style={[styles.utilisationBarFill, { width: `${Math.min(worker.utilisation, 100)}%`, backgroundColor: utilColor }]} />
+                          </View>
+                        </View>
+                        <View style={styles.workerStatsRow}>
+                          <View style={styles.workerStat}>
+                            <Text style={styles.workerStatValue}>{worker.hoursWorked.toFixed(1)}h</Text>
+                            <Text style={styles.workerStatLabel}>Worked</Text>
+                          </View>
+                          <View style={styles.workerStat}>
+                            <Text style={styles.workerStatValue}>{worker.billableHours.toFixed(1)}h</Text>
+                            <Text style={styles.workerStatLabel}>Billable</Text>
+                          </View>
+                          <View style={styles.workerStat}>
+                            <Text style={styles.workerStatValue}>{worker.revenuePerHour > 0 ? `$${worker.revenuePerHour.toFixed(0)}` : '-'}</Text>
+                            <Text style={styles.workerStatLabel}>$/hr</Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              ) : utilisationReport && utilisationReport.workers.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="activity" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Utilisation Data</Text>
+                  <Text style={styles.emptyText}>Add team members and track time to see utilisation metrics.</Text>
+                </View>
+              ) : (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Loading utilisation data...</Text>
                 </View>
               )}
             </>

@@ -30,6 +30,7 @@ export interface TemplateCustomization {
   bodyWeight?: '400' | '500' | '600' | '700';
   headingWeight?: '600' | '700' | '800';
   accentColor?: string;
+  fontStyle?: 'default' | 'serif' | 'mono';
 }
 
 // All templates use system font for React Native

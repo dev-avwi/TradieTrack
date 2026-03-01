@@ -38,6 +38,26 @@ interface XeroStatus {
   message?: string;
 }
 
+interface MyobStatus {
+  configured: boolean;
+  connected: boolean;
+  companyName?: string;
+  companyUri?: string;
+  lastSyncAt?: string;
+  status?: string;
+  message?: string;
+}
+
+interface QuickBooksStatus {
+  configured: boolean;
+  connected: boolean;
+  companyName?: string;
+  companyId?: string;
+  lastSyncAt?: string;
+  status?: string;
+  message?: string;
+}
+
 interface TwilioStatus {
   configured: boolean;
   platformConfigured: boolean;
@@ -364,6 +384,12 @@ export default function IntegrationsScreen() {
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [integrationHealth, setIntegrationHealth] = useState<IntegrationHealth | null>(null);
   const [xeroStatus, setXeroStatus] = useState<XeroStatus | null>(null);
+  const [myobStatus, setMyobStatus] = useState<MyobStatus | null>(null);
+  const [quickBooksStatus, setQuickBooksStatus] = useState<QuickBooksStatus | null>(null);
+  const [isConnectingMyob, setIsConnectingMyob] = useState(false);
+  const [isConnectingQuickBooks, setIsConnectingQuickBooks] = useState(false);
+  const [isSyncingMyob, setIsSyncingMyob] = useState(false);
+  const [isSyncingQuickBooks, setIsSyncingQuickBooks] = useState(false);
   const [googleCalendarStatus, setGoogleCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
   const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
   const [showSmsPreview, setShowSmsPreview] = useState(false);
@@ -372,11 +398,13 @@ export default function IntegrationsScreen() {
   const fetchIntegrationStatus = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [stripeResponse, healthResponse, xeroResponse, calendarResponse] = await Promise.all([
+      const [stripeResponse, healthResponse, xeroResponse, calendarResponse, myobResponse, quickBooksResponse] = await Promise.all([
         api.get<StripeConnectStatus>('/api/stripe-connect/status'),
         api.get<IntegrationHealth>('/api/integrations/health'),
         api.get<XeroStatus>('/api/integrations/xero/status'),
-        api.get<GoogleCalendarStatus>('/api/integrations/google-calendar/status')
+        api.get<GoogleCalendarStatus>('/api/integrations/google-calendar/status'),
+        api.get<MyobStatus>('/api/integrations/myob/status'),
+        api.get<QuickBooksStatus>('/api/integrations/quickbooks/status')
       ]);
       
       if (stripeResponse.data) {
@@ -390,6 +418,12 @@ export default function IntegrationsScreen() {
       }
       if (calendarResponse.data) {
         setGoogleCalendarStatus(calendarResponse.data);
+      }
+      if (myobResponse.data) {
+        setMyobStatus(myobResponse.data);
+      }
+      if (quickBooksResponse.data) {
+        setQuickBooksStatus(quickBooksResponse.data);
       }
       
       await fetchBusinessSettings();
@@ -564,6 +598,166 @@ export default function IntegrationsScreen() {
       Alert.alert('Push Failed', error.response?.data?.error || error.message || 'Failed to push invoices to Xero');
     } finally {
       setIsPushingInvoices(false);
+    }
+  };
+
+  const handleConnectMyob = async () => {
+    try {
+      setIsConnectingMyob(true);
+      const response = await api.post<{ authUrl: string; state: string }>('/api/integrations/myob/mobile-connect');
+      if (!response.data?.authUrl) {
+        Alert.alert('Error', response.error || 'Could not initiate MYOB connection');
+        return;
+      }
+      const result = await WebBrowser.openAuthSessionAsync(
+        response.data.authUrl,
+        'jobrunner://myob-callback'
+      );
+      if (result.type === 'success') {
+        const url = new URL(result.url);
+        const success = url.searchParams.get('success') === 'true';
+        const error = url.searchParams.get('error');
+        if (success) {
+          Alert.alert('Success', 'MYOB account connected successfully!');
+          fetchIntegrationStatus();
+        } else {
+          Alert.alert('Connection Failed', error || 'Failed to connect MYOB account');
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to connect MYOB');
+    } finally {
+      setIsConnectingMyob(false);
+    }
+  };
+
+  const handleDisconnectMyob = async () => {
+    Alert.alert(
+      'Disconnect MYOB',
+      'Are you sure you want to disconnect your MYOB account? Invoice sync will stop working.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post('/api/integrations/myob/disconnect');
+              Alert.alert('Success', 'MYOB has been disconnected');
+              fetchIntegrationStatus();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to disconnect MYOB');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSyncMyob = async () => {
+    setIsSyncingMyob(true);
+    try {
+      const response = await api.post<{
+        success: boolean;
+        synced?: number;
+        skipped?: number;
+        failed?: number;
+        message?: string;
+      }>('/api/integrations/myob/sync');
+      if (response.data?.success) {
+        const { synced = 0, skipped = 0, failed = 0 } = response.data;
+        Alert.alert(
+          'MYOB Sync Complete',
+          `Successfully synced data with MYOB.\n\n${synced} synced\n${skipped} skipped\n${failed} failed`
+        );
+      } else {
+        Alert.alert('Sync Complete', response.data?.message || 'Data synced with MYOB');
+      }
+      fetchIntegrationStatus();
+    } catch (error: any) {
+      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync with MYOB');
+    } finally {
+      setIsSyncingMyob(false);
+    }
+  };
+
+  const handleConnectQuickBooks = async () => {
+    try {
+      setIsConnectingQuickBooks(true);
+      const response = await api.post<{ authUrl: string; state: string }>('/api/integrations/quickbooks/mobile-connect');
+      if (!response.data?.authUrl) {
+        Alert.alert('Error', response.error || 'Could not initiate QuickBooks connection');
+        return;
+      }
+      const result = await WebBrowser.openAuthSessionAsync(
+        response.data.authUrl,
+        'jobrunner://quickbooks-callback'
+      );
+      if (result.type === 'success') {
+        const url = new URL(result.url);
+        const success = url.searchParams.get('success') === 'true';
+        const error = url.searchParams.get('error');
+        if (success) {
+          Alert.alert('Success', 'QuickBooks account connected successfully!');
+          fetchIntegrationStatus();
+        } else {
+          Alert.alert('Connection Failed', error || 'Failed to connect QuickBooks account');
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to connect QuickBooks');
+    } finally {
+      setIsConnectingQuickBooks(false);
+    }
+  };
+
+  const handleDisconnectQuickBooks = async () => {
+    Alert.alert(
+      'Disconnect QuickBooks',
+      'Are you sure you want to disconnect your QuickBooks account? Invoice sync will stop working.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post('/api/integrations/quickbooks/disconnect');
+              Alert.alert('Success', 'QuickBooks has been disconnected');
+              fetchIntegrationStatus();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to disconnect QuickBooks');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSyncQuickBooks = async () => {
+    setIsSyncingQuickBooks(true);
+    try {
+      const response = await api.post<{
+        success: boolean;
+        synced?: number;
+        skipped?: number;
+        failed?: number;
+        message?: string;
+      }>('/api/integrations/quickbooks/sync');
+      if (response.data?.success) {
+        const { synced = 0, skipped = 0, failed = 0 } = response.data;
+        Alert.alert(
+          'QuickBooks Sync Complete',
+          `Successfully synced data with QuickBooks.\n\n${synced} synced\n${skipped} skipped\n${failed} failed`
+        );
+      } else {
+        Alert.alert('Sync Complete', response.data?.message || 'Data synced with QuickBooks');
+      }
+      fetchIntegrationStatus();
+    } catch (error: any) {
+      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync with QuickBooks');
+    } finally {
+      setIsSyncingQuickBooks(false);
     }
   };
 
@@ -1065,6 +1259,250 @@ export default function IntegrationsScreen() {
                 </View>
               </View>
 
+              <View style={styles.integrationCard} data-testid="card-myob-integration">
+                <View style={styles.integrationHeader}>
+                  <View style={[styles.integrationIconContainer, { backgroundColor: '#6b21a820' }]}>
+                    <Text style={[styles.integrationIconText, { color: '#6b21a8' }]}>M</Text>
+                  </View>
+                  <View style={styles.integrationInfo}>
+                    <Text style={styles.integrationTitle}>MYOB AccountRight</Text>
+                    <Text style={styles.integrationSubtitle}>
+                      {myobStatus?.connected ? myobStatus.companyName : 'Accounting sync'}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.integrationBadge,
+                    myobStatus?.connected ? styles.integrationBadgeSuccess : 
+                    myobStatus?.configured ? styles.integrationBadgeWarning : styles.integrationBadgeDisabled
+                  ]}>
+                    <Text style={[
+                      styles.integrationBadgeText,
+                      { color: myobStatus?.connected ? colors.success : 
+                        myobStatus?.configured ? colors.warning : colors.mutedForeground }
+                    ]}>
+                      {myobStatus?.connected ? 'Connected' : 
+                       myobStatus?.configured ? 'Not Connected' : 'Not Configured'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.integrationDetails}>
+                  {myobStatus?.connected ? (
+                    <>
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconContainer}>
+                          <Feather name="check-circle" size={16} color={colors.success} />
+                        </View>
+                        <Text style={styles.detailText}>
+                          Connected to {myobStatus.companyName}
+                        </Text>
+                      </View>
+                      {myobStatus.lastSyncAt && (
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIconContainer}>
+                            <Feather name="clock" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={styles.detailText}>
+                            Last synced: {new Date(myobStatus.lastSyncAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={styles.detailSubtext}>
+                        Invoices and contacts are synced with your MYOB AccountRight company file.
+                      </Text>
+                      <View style={{ gap: 8, marginTop: 8 }}>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonPrimary]}
+                          onPress={handleSyncMyob}
+                          disabled={isSyncingMyob}
+                          data-testid="button-sync-myob"
+                        >
+                          {isSyncingMyob ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                          )}
+                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                            {isSyncingMyob ? 'Syncing...' : 'Sync Now'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonSecondary]}
+                          onPress={handleDisconnectMyob}
+                          data-testid="button-disconnect-myob"
+                        >
+                          <Feather name="link-2" size={16} color={colors.destructive} />
+                          <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
+                            Disconnect MYOB
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.detailSubtext}>
+                        {myobStatus?.configured 
+                          ? 'Connect your MYOB AccountRight account to sync invoices and contacts.'
+                          : 'MYOB integration is not configured. Contact support to enable this feature.'}
+                      </Text>
+                      <View style={styles.featureList}>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Sync invoices to MYOB</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Import contacts and accounts</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Automatic reconciliation</Text>
+                        </View>
+                      </View>
+                      {myobStatus?.configured && (
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonPrimary]}
+                          onPress={handleConnectMyob}
+                          disabled={isConnectingMyob}
+                          data-testid="button-connect-myob"
+                        >
+                          {isConnectingMyob ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Feather name="link" size={16} color={colors.primaryForeground} />
+                          )}
+                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                            {isConnectingMyob ? 'Connecting...' : 'Connect MYOB'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.integrationCard} data-testid="card-quickbooks-integration">
+                <View style={styles.integrationHeader}>
+                  <View style={[styles.integrationIconContainer, { backgroundColor: '#2ca01c20' }]}>
+                    <Text style={[styles.integrationIconText, { color: '#2ca01c' }]}>QB</Text>
+                  </View>
+                  <View style={styles.integrationInfo}>
+                    <Text style={styles.integrationTitle}>QuickBooks Online</Text>
+                    <Text style={styles.integrationSubtitle}>
+                      {quickBooksStatus?.connected ? quickBooksStatus.companyName : 'Accounting sync'}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.integrationBadge,
+                    quickBooksStatus?.connected ? styles.integrationBadgeSuccess : 
+                    quickBooksStatus?.configured ? styles.integrationBadgeWarning : styles.integrationBadgeDisabled
+                  ]}>
+                    <Text style={[
+                      styles.integrationBadgeText,
+                      { color: quickBooksStatus?.connected ? colors.success : 
+                        quickBooksStatus?.configured ? colors.warning : colors.mutedForeground }
+                    ]}>
+                      {quickBooksStatus?.connected ? 'Connected' : 
+                       quickBooksStatus?.configured ? 'Not Connected' : 'Not Configured'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.integrationDetails}>
+                  {quickBooksStatus?.connected ? (
+                    <>
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconContainer}>
+                          <Feather name="check-circle" size={16} color={colors.success} />
+                        </View>
+                        <Text style={styles.detailText}>
+                          Connected to {quickBooksStatus.companyName}
+                        </Text>
+                      </View>
+                      {quickBooksStatus.lastSyncAt && (
+                        <View style={styles.detailRow}>
+                          <View style={styles.detailIconContainer}>
+                            <Feather name="clock" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={styles.detailText}>
+                            Last synced: {new Date(quickBooksStatus.lastSyncAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={styles.detailSubtext}>
+                        Invoices and contacts are synced with your QuickBooks Online account.
+                      </Text>
+                      <View style={{ gap: 8, marginTop: 8 }}>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonPrimary]}
+                          onPress={handleSyncQuickBooks}
+                          disabled={isSyncingQuickBooks}
+                          data-testid="button-sync-quickbooks"
+                        >
+                          {isSyncingQuickBooks ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                          )}
+                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                            {isSyncingQuickBooks ? 'Syncing...' : 'Sync Now'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonSecondary]}
+                          onPress={handleDisconnectQuickBooks}
+                          data-testid="button-disconnect-quickbooks"
+                        >
+                          <Feather name="link-2" size={16} color={colors.destructive} />
+                          <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
+                            Disconnect QuickBooks
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.detailSubtext}>
+                        {quickBooksStatus?.configured 
+                          ? 'Connect your QuickBooks Online account to sync invoices and contacts.'
+                          : 'QuickBooks integration is not configured. Contact support to enable this feature.'}
+                      </Text>
+                      <View style={styles.featureList}>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Sync invoices to QuickBooks</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Import customers and vendors</Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                          <Feather name="check" size={14} color={colors.success} />
+                          <Text style={styles.featureText}>Track payments and expenses</Text>
+                        </View>
+                      </View>
+                      {quickBooksStatus?.configured && (
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonPrimary]}
+                          onPress={handleConnectQuickBooks}
+                          disabled={isConnectingQuickBooks}
+                          data-testid="button-connect-quickbooks"
+                        >
+                          {isConnectingQuickBooks ? (
+                            <ActivityIndicator size="small" color={colors.primaryForeground} />
+                          ) : (
+                            <Feather name="link" size={16} color={colors.primaryForeground} />
+                          )}
+                          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                            {isConnectingQuickBooks ? 'Connecting...' : 'Connect QuickBooks'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+
               <Text style={styles.sectionTitle}>SMS Notifications</Text>
 
               <View style={styles.integrationCard} data-testid="card-sms-integration">
@@ -1245,9 +1683,9 @@ export default function IntegrationsScreen() {
 
               <View style={styles.comingSoonCard}>
                 <Feather name="zap" size={24} color={colors.mutedForeground} style={{ marginBottom: 8 }} />
-                <Text style={styles.comingSoonTitle}>More Integrations Coming</Text>
+                <Text style={styles.comingSoonTitle}>Need Another Integration?</Text>
                 <Text style={styles.comingSoonText}>
-                  We're working on integrations with more tools to help you run your business. Got a request? Let us know!
+                  We're always adding new integrations. Got a request? Let us know and we'll prioritise it!
                 </Text>
               </View>
             </>

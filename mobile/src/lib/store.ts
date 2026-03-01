@@ -42,6 +42,7 @@ interface TemplateCustomization {
   bodyWeight?: 400 | 500 | 600 | 700;
   headingWeight?: 600 | 700 | 800;
   accentColor?: string;
+  fontStyle?: 'default' | 'serif' | 'mono';
 }
 
 interface BusinessSettings {
@@ -2075,11 +2076,83 @@ interface ProfitabilityByJobTypeReport {
   worst: { jobType: string; avgMargin: number } | null;
 }
 
+interface AgedReceivablesReport {
+  asOf: string;
+  buckets: {
+    current: { count: number; total: number; invoices: any[] };
+    '1-30': { count: number; total: number; invoices: any[] };
+    '31-60': { count: number; total: number; invoices: any[] };
+    '61-90': { count: number; total: number; invoices: any[] };
+    '90+': { count: number; total: number; invoices: any[] };
+  };
+  clientBreakdown: { clientId: string; clientName: string; total: number; count: number }[];
+  grandTotal: number;
+  invoiceCount: number;
+}
+
+interface PayrollReport {
+  period: { start: string; end: string };
+  workers: {
+    teamMemberId: string;
+    memberId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    hourlyRate: number;
+    isSubcontractor: boolean;
+    regularHours: number;
+    overtimeHours: number;
+    breakHours: number;
+    totalHours: number;
+    billableHours: number;
+    nonBillableHours: number;
+    grossPay: number;
+    overtimePay: number;
+    jobCount: number;
+    entryCount: number;
+    approved: number;
+    unapproved: number;
+  }[];
+  totals: {
+    totalHours: number;
+    totalPay: number;
+    workerCount: number;
+    subcontractorCount: number;
+  };
+}
+
+interface UtilisationReport {
+  period: { start: string; end: string; workingDays: number };
+  workers: {
+    teamMemberId: string;
+    memberId: string;
+    firstName: string;
+    lastName: string;
+    hoursWorked: number;
+    billableHours: number;
+    capacityHours: number;
+    utilisation: number;
+    billableUtilisation: number;
+    jobsCompleted: number;
+    revenue: number;
+    labourCost: number;
+    revenuePerHour: number;
+    idleHours: number;
+  }[];
+  averageUtilisation: number;
+  totalRevenue: number;
+  totalLabourCost: number;
+  totalIdleHours: number;
+}
+
 interface ReportsState {
   summary: ReportSummary | null;
   revenueReport: RevenueReport | null;
   clientReport: ClientReport | null;
   profitabilityReport: ProfitabilityByJobTypeReport | null;
+  agedReceivablesReport: AgedReceivablesReport | null;
+  payrollReport: PayrollReport | null;
+  utilisationReport: UtilisationReport | null;
   period: ReportPeriod;
   isLoading: boolean;
   error: string | null;
@@ -2089,6 +2162,9 @@ interface ReportsState {
   fetchRevenueReport: (year?: number) => Promise<void>;
   fetchClientReport: (limit?: number) => Promise<void>;
   fetchProfitabilityReport: () => Promise<void>;
+  fetchAgedReceivables: () => Promise<void>;
+  fetchPayroll: () => Promise<void>;
+  fetchUtilisation: () => Promise<void>;
   fetchAllReports: () => Promise<void>;
 }
 
@@ -2124,6 +2200,9 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
   revenueReport: null,
   clientReport: null,
   profitabilityReport: null,
+  agedReceivablesReport: null,
+  payrollReport: null,
+  utilisationReport: null,
   period: 'month',
   isLoading: false,
   error: null,
@@ -2238,6 +2317,70 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     }
   },
 
+  fetchAgedReceivables: async () => {
+    set({ isLoading: true, error: null });
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    try {
+      const response = await api.get<AgedReceivablesReport>('/api/reports/receivables');
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load aged receivables' });
+        return;
+      }
+      set({ agedReceivablesReport: response.data || null, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching aged receivables:', e);
+      set({ isLoading: false, error: 'Failed to load aged receivables' });
+    }
+  },
+
+  fetchPayroll: async () => {
+    set({ isLoading: true, error: null });
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    const { period } = get();
+    const { startDate, endDate } = getDateRangeForPeriod(period);
+    try {
+      const response = await api.get<PayrollReport>(`/api/payroll/summary?start=${startDate}&end=${endDate}`);
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load payroll report' });
+        return;
+      }
+      set({ payrollReport: response.data || null, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching payroll:', e);
+      set({ isLoading: false, error: 'Failed to load payroll report' });
+    }
+  },
+
+  fetchUtilisation: async () => {
+    set({ isLoading: true, error: null });
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    const { period } = get();
+    const { startDate, endDate } = getDateRangeForPeriod(period);
+    try {
+      const response = await api.get<UtilisationReport>(`/api/reports/utilisation?start=${startDate}&end=${endDate}`);
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load utilisation report' });
+        return;
+      }
+      set({ utilisationReport: response.data || null, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching utilisation:', e);
+      set({ isLoading: false, error: 'Failed to load utilisation report' });
+    }
+  },
+
   fetchAllReports: async () => {
     set({ isLoading: true, error: null });
     
@@ -2252,11 +2395,14 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     const currentYear = new Date().getFullYear();
     
     try {
-      const [summaryRes, revenueRes, clientRes, profitabilityRes] = await Promise.all([
+      const [summaryRes, revenueRes, clientRes, profitabilityRes, agedRes, payrollRes, utilisationRes] = await Promise.all([
         api.get<ReportSummary>(`/api/reports/summary?startDate=${startDate}&endDate=${endDate}`),
         api.get<RevenueReport>(`/api/reports/revenue?year=${currentYear}`),
         api.get<ClientReport>('/api/reports/clients?limit=5'),
         api.get<ProfitabilityByJobTypeReport>(`/api/reports/profitability/by-job-type?startDate=${startDate}&endDate=${endDate}`),
+        api.get<AgedReceivablesReport>('/api/reports/receivables'),
+        api.get<PayrollReport>(`/api/payroll/summary?start=${startDate}&end=${endDate}`),
+        api.get<UtilisationReport>(`/api/reports/utilisation?start=${startDate}&end=${endDate}`),
       ]);
       
       set({
@@ -2264,6 +2410,9 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
         revenueReport: revenueRes.data || null,
         clientReport: clientRes.data || null,
         profitabilityReport: profitabilityRes.data || null,
+        agedReceivablesReport: agedRes.data || null,
+        payrollReport: payrollRes.data || null,
+        utilisationReport: utilisationRes.data || null,
         isLoading: false,
         error: null,
       });

@@ -25,7 +25,7 @@ import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, sizes, pageShell, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
@@ -325,6 +325,11 @@ export default function JobsScreen() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [actionSheetJob, setActionSheetJob] = useState<any>(null);
 
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [batchConfirmVisible, setBatchConfirmVisible] = useState(false);
+  const [batchProcessing, setBatchProcessing] = useState(false);
+
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
@@ -428,6 +433,77 @@ export default function JobsScreen() {
       setSortDirection('asc');
     }
   }, [sortField]);
+
+  const completedJobs = useMemo(() => {
+    return jobs.filter(j => j.status === 'done');
+  }, [jobs]);
+
+  const selectedJobsList = useMemo(() => {
+    return completedJobs
+      .filter(j => selectedJobIds.has(j.id))
+      .map(j => ({
+        ...j,
+        clientName: j.clientName || (j.clientId ? clients.find(c => c.id === j.clientId)?.name : undefined),
+      }));
+  }, [completedJobs, selectedJobIds, clients]);
+
+  const toggleJobSelection = useCallback((jobId: string) => {
+    setSelectedJobIds(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllCompleted = useCallback(() => {
+    const visibleCompletedIds = sortedJobs
+      .filter(j => j.status === 'done')
+      .map(j => j.id);
+    setSelectedJobIds(new Set(visibleCompletedIds));
+  }, [sortedJobs]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedJobIds(new Set());
+  }, []);
+
+  const toggleBatchMode = useCallback(() => {
+    if (batchMode) {
+      setSelectedJobIds(new Set());
+    }
+    setBatchMode(prev => !prev);
+  }, [batchMode]);
+
+  const handleBatchInvoice = useCallback(async () => {
+    if (selectedJobIds.size === 0) return;
+    setBatchProcessing(true);
+    try {
+      const response = await api.post<{ invoices: any[]; created: number; skipped: number; errors: string[] }>(
+        '/api/invoices/batch',
+        { jobIds: Array.from(selectedJobIds) }
+      );
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        const data = response.data;
+        const msg = data
+          ? `${data.created} invoice${data.created !== 1 ? 's' : ''} created${data.skipped ? `, ${data.skipped} skipped` : ''}.`
+          : 'Invoices created successfully.';
+        Alert.alert('Batch Invoicing Complete', msg);
+        setBatchMode(false);
+        setSelectedJobIds(new Set());
+        setBatchConfirmVisible(false);
+        refreshData();
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to create batch invoices. Please try again.');
+    } finally {
+      setBatchProcessing(false);
+    }
+  }, [selectedJobIds, refreshData]);
 
   // Sort indicator with stacked up/down chevrons (matching Documents page)
   const SortIndicator = ({ field, isActive }: { field: SortField; isActive: boolean }) => (
@@ -691,6 +767,15 @@ export default function JobsScreen() {
           <Text style={styles.pageSubtitle}>{jobs.length} jobs total</Text>
         </View>
         <View style={styles.headerRight}>
+          {completedJobs.length > 0 && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.batchToggleBtn, batchMode && styles.batchToggleBtnActive]}
+              onPress={toggleBatchMode}
+            >
+              <Feather name="check-square" size={iconSizes.md} color={batchMode ? colors.white : colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
           <View style={styles.viewToggle}>
             <TouchableOpacity
               activeOpacity={0.8}
@@ -1080,6 +1165,37 @@ export default function JobsScreen() {
         </TouchableOpacity>
       </View>
 
+      {batchMode && (
+        <View style={styles.batchBar}>
+          <View style={styles.batchBarLeft}>
+            <TouchableOpacity onPress={selectedJobIds.size > 0 ? clearSelection : selectAllCompleted} activeOpacity={0.7}>
+              <Feather
+                name={selectedJobIds.size > 0 ? 'check-square' : 'square'}
+                size={iconSizes.xl}
+                color={selectedJobIds.size > 0 ? colors.primary : colors.mutedForeground}
+              />
+            </TouchableOpacity>
+            <Text style={styles.batchBarText}>
+              {selectedJobIds.size > 0
+                ? `${selectedJobIds.size} completed job${selectedJobIds.size !== 1 ? 's' : ''} selected`
+                : 'Select completed jobs to invoice'}
+            </Text>
+          </View>
+          <View style={styles.batchBarRight}>
+            {selectedJobIds.size > 0 && (
+              <TouchableOpacity
+                style={styles.batchInvoiceBtn}
+                onPress={() => setBatchConfirmVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="file-text" size={iconSizes.sm} color={colors.white} />
+                <Text style={styles.batchInvoiceBtnText}>Create Invoices</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
+
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
@@ -1116,7 +1232,7 @@ export default function JobsScreen() {
         </View>
       )}
     </View>
-  ), [jobs.length, viewMode, searchQuery, activeFilter, statusCounts, colors, styles, sortField, sortDirection, sortedJobs.length, advancedOpen, advancedFilters, hasAdvancedFilters, activeFilterCount, savedFilters, teamMembers, clients, saveDialogOpen]);
+  ), [jobs.length, viewMode, searchQuery, activeFilter, statusCounts, colors, styles, sortField, sortDirection, sortedJobs.length, advancedOpen, advancedFilters, hasAdvancedFilters, activeFilterCount, savedFilters, teamMembers, clients, saveDialogOpen, batchMode, selectedJobIds.size, completedJobs.length]);
 
   const listEmptyComponent = useMemo(() => {
     if (isLoading) {
@@ -1143,28 +1259,70 @@ export default function JobsScreen() {
 
   const renderItem = useCallback(({ item: job }: { item: any }) => {
     const jobWithClient = { ...job, clientName: job.clientName || getClientName(job.clientId) };
+    const isCompleted = job.status === 'done';
+    const isSelected = selectedJobIds.has(job.id);
+
+    const handlePress = () => {
+      if (batchMode && isCompleted) {
+        toggleJobSelection(job.id);
+      } else {
+        router.push(`/job/${job.id}`);
+      }
+    };
+
     if (viewMode === 'grid') {
       return (
-        <JobCard
-          job={jobWithClient}
-          onPress={() => router.push(`/job/${job.id}`)}
-          onQuickAction={handleQuickAction}
-          onShowActionSheet={setActionSheetJob}
-        />
+        <View style={{ position: 'relative' }}>
+          {batchMode && isCompleted && (
+            <TouchableOpacity
+              style={[
+                styles.batchCheckbox,
+                isSelected && styles.batchCheckboxSelected,
+              ]}
+              onPress={() => toggleJobSelection(job.id)}
+              activeOpacity={0.7}
+            >
+              {isSelected && <Feather name="check" size={14} color={colors.white} />}
+            </TouchableOpacity>
+          )}
+          <JobCard
+            job={jobWithClient}
+            onPress={handlePress}
+            onQuickAction={handleQuickAction}
+            onShowActionSheet={setActionSheetJob}
+          />
+        </View>
       );
     }
     return (
-      <View style={{ marginBottom: spacing.sm }}>
-        <JobListRow
-          job={jobWithClient}
-          onPress={() => router.push(`/job/${job.id}`)}
-          onDelete={handleDeleteJob}
-          onQuickAction={handleQuickAction}
-          onShowActionSheet={setActionSheetJob}
-        />
+      <View style={{ marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        {batchMode && isCompleted && (
+          <TouchableOpacity
+            style={[
+              styles.batchCheckboxInline,
+              isSelected && styles.batchCheckboxSelected,
+            ]}
+            onPress={() => toggleJobSelection(job.id)}
+            activeOpacity={0.7}
+          >
+            {isSelected && <Feather name="check" size={14} color={colors.white} />}
+          </TouchableOpacity>
+        )}
+        {batchMode && !isCompleted && (
+          <View style={styles.batchCheckboxPlaceholder} />
+        )}
+        <View style={{ flex: 1 }}>
+          <JobListRow
+            job={jobWithClient}
+            onPress={handlePress}
+            onDelete={handleDeleteJob}
+            onQuickAction={handleQuickAction}
+            onShowActionSheet={setActionSheetJob}
+          />
+        </View>
       </View>
     );
-  }, [viewMode, handleQuickAction, handleDeleteJob, clients]);
+  }, [viewMode, handleQuickAction, handleDeleteJob, clients, batchMode, selectedJobIds, toggleJobSelection]);
 
   return (
     <View style={styles.container}>
@@ -1238,6 +1396,74 @@ export default function JobsScreen() {
                       <ActivityIndicator size="small" color={colors.white} />
                     ) : (
                       <Text style={styles.modalSaveText}>Save Filter</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
+        visible={batchConfirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBatchConfirmVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => !batchProcessing && setBatchConfirmVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+                  <View style={{ width: 40, height: 40, borderRadius: radius.lg, backgroundColor: colorWithOpacity(colors.primary, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="file-text" size={iconSizes.xl} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalTitle}>Create Batch Invoices</Text>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                      {selectedJobIds.size} completed job{selectedJobIds.size !== 1 ? 's' : ''} selected
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ backgroundColor: colors.muted, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg, maxHeight: 200 }}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {selectedJobsList.map((job, idx) => (
+                      <View key={job.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs, borderBottomWidth: idx < selectedJobsList.length - 1 ? 1 : 0, borderBottomColor: colors.cardBorder }}>
+                        <View style={{ flex: 1, marginRight: spacing.sm }}>
+                          <Text style={{ ...typography.body, fontWeight: '500', color: colors.foreground }} numberOfLines={1}>{job.title || 'Untitled Job'}</Text>
+                          {job.clientName && <Text style={{ ...typography.captionSmall, color: colors.mutedForeground }} numberOfLines={1}>{job.clientName}</Text>}
+                        </View>
+                        <StatusBadge status="done" size="sm" />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.lg }}>
+                  An invoice will be created for each selected job. Jobs that already have invoices will be skipped.
+                </Text>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setBatchConfirmVisible(false)}
+                    disabled={batchProcessing}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalSaveBtn, batchProcessing && { opacity: 0.5 }]}
+                    onPress={handleBatchInvoice}
+                    disabled={batchProcessing}
+                    activeOpacity={0.7}
+                  >
+                    {batchProcessing ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <Text style={styles.modalSaveText}>Create {selectedJobIds.size} Invoice{selectedJobIds.size !== 1 ? 's' : ''}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1880,5 +2106,95 @@ const createStyles = (colors: ThemeColors, contentWidth: number, horizontalPaddi
   kpiLabel: {
     fontSize: 11,
     color: colors.mutedForeground,
+  },
+
+  batchToggleBtn: {
+    width: sizes.searchBarHeight,
+    height: sizes.searchBarHeight,
+    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  batchToggleBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  batchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colorWithOpacity(colors.primary, 0.08),
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colorWithOpacity(colors.primary, 0.2),
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  batchBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  batchBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  batchBarText: {
+    ...typography.caption,
+    color: colors.foreground,
+    fontWeight: '500',
+    flex: 1,
+  },
+  batchInvoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  batchInvoiceBtnText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  batchCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    zIndex: 10,
+  },
+  batchCheckboxSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  batchCheckboxInline: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  batchCheckboxPlaceholder: {
+    width: 24,
+    height: 24,
   },
 });

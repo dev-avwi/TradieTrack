@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -51,6 +51,54 @@ interface ActivityLogEntry {
   createdAt: string | null;
   errorMessage: string | null;
 }
+
+const TRIGGER_TYPES: { value: string; label: string; icon: string; description: string }[] = [
+  { value: 'status_change', label: 'Status Change', icon: 'refresh-cw', description: 'When a status changes on an entity' },
+  { value: 'time_delay', label: 'Time Delay', icon: 'clock', description: 'After a set number of days' },
+  { value: 'no_response', label: 'No Response', icon: 'alert-circle', description: 'When no reply is received' },
+  { value: 'payment_received', label: 'Payment Received', icon: 'dollar-sign', description: 'When a payment is recorded' },
+];
+
+const ENTITY_TYPES: { value: string; label: string; icon: string }[] = [
+  { value: 'job', label: 'Job', icon: 'briefcase' },
+  { value: 'quote', label: 'Quote', icon: 'file-text' },
+  { value: 'invoice', label: 'Invoice', icon: 'file' },
+  { value: 'client', label: 'Client', icon: 'users' },
+];
+
+const ACTION_TYPES: { value: string; label: string; icon: string; description: string }[] = [
+  { value: 'send_email', label: 'Send Email', icon: 'mail', description: 'Send an email notification' },
+  { value: 'create_job', label: 'Create Job', icon: 'briefcase', description: 'Auto-create a new job' },
+  { value: 'create_invoice', label: 'Create Invoice', icon: 'file-plus', description: 'Auto-generate an invoice' },
+  { value: 'send_notification', label: 'Send Notification', icon: 'bell', description: 'Send a push notification' },
+  { value: 'update_status', label: 'Update Status', icon: 'edit-3', description: 'Change entity status' },
+  { value: 'send_sms', label: 'Send SMS', icon: 'message-square', description: 'Send an SMS message' },
+];
+
+const STATUS_OPTIONS: Record<string, string[]> = {
+  job: ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'cancelled'],
+  quote: ['draft', 'sent', 'accepted', 'rejected', 'expired'],
+  invoice: ['draft', 'sent', 'paid', 'overdue', 'cancelled'],
+  client: ['active', 'inactive'],
+};
+
+type EditorStep = 'details' | 'trigger' | 'actions' | 'review';
+
+interface AutomationFormData {
+  name: string;
+  description: string;
+  isActive: boolean;
+  trigger: AutomationTrigger;
+  actions: AutomationAction[];
+}
+
+const EMPTY_FORM: AutomationFormData = {
+  name: '',
+  description: '',
+  isActive: true,
+  trigger: { type: '', entityType: '' },
+  actions: [{ type: '' }],
+};
 
 const AUTOMATION_TYPE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   quote_followup: { label: 'Quote follow-up', icon: 'file-text', color: '#3b82f6' },
@@ -438,6 +486,163 @@ const createStyles = (colors: any) => StyleSheet.create({
   templateGrid: {
     gap: spacing.sm,
   },
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: spacing.lg,
+    width: sizes.fabSize,
+    height: sizes.fabSize,
+    borderRadius: sizes.fabSize / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    borderTopLeftRadius: radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
+    maxHeight: '92%',
+    ...shadows.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    ...typography.cardTitle,
+    fontSize: 18,
+  },
+  modalBody: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingBottom: 40,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  stepDot: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+  },
+  inputLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+    marginTop: spacing.md,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...typography.body,
+  },
+  textInputMultiline: {
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...typography.body,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderRadius: radius.xl,
+    marginBottom: spacing.sm,
+  },
+  optionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  optionDescription: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+  },
+  footerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.xl,
+  },
+  footerButtonText: {
+    ...typography.button,
+  },
+  reviewSection: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+  },
+  reviewLabel: {
+    ...typography.label,
+    marginBottom: spacing.xs,
+  },
+  reviewValue: {
+    ...typography.body,
+    fontWeight: '500',
+  },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    marginBottom: spacing.sm,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+  },
+  delayInput: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    width: 80,
+    textAlign: 'center',
+    ...typography.body,
+  },
 });
 
 export default function AutopilotScreen() {
@@ -454,6 +659,11 @@ export default function AutopilotScreen() {
   const [error, setError] = useState<string | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [enablingIds, setEnablingIds] = useState<Set<string>>(new Set());
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [editorStep, setEditorStep] = useState<EditorStep>('details');
+  const [formData, setFormData] = useState<AutomationFormData>({ ...EMPTY_FORM });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const activeCount = useMemo(() => automations.filter(a => a.isActive).length, [automations]);
   const totalCount = automations.length;
@@ -537,6 +747,526 @@ export default function AutopilotScreen() {
     }
   }, [fetchData]);
 
+  const openCreateEditor = useCallback(() => {
+    setFormData({ ...EMPTY_FORM, actions: [{ type: '' }] });
+    setEditingId(null);
+    setEditorStep('details');
+    setEditorVisible(true);
+  }, []);
+
+  const openEditEditor = useCallback((automation: Automation) => {
+    setFormData({
+      name: automation.name,
+      description: automation.description || '',
+      isActive: automation.isActive,
+      trigger: { ...automation.trigger },
+      actions: automation.actions.length > 0 ? automation.actions.map(a => ({ ...a })) : [{ type: '' }],
+    });
+    setEditingId(automation.id);
+    setEditorStep('details');
+    setEditorVisible(true);
+  }, []);
+
+  const closeEditor = useCallback(() => {
+    setEditorVisible(false);
+    setEditingId(null);
+    setFormData({ ...EMPTY_FORM });
+  }, []);
+
+  const handleSaveAutomation = useCallback(async () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Validation', 'Please enter a name for this automation');
+      return;
+    }
+    if (!formData.trigger.type) {
+      Alert.alert('Validation', 'Please select a trigger type');
+      return;
+    }
+    if (!formData.trigger.entityType) {
+      Alert.alert('Validation', 'Please select an entity type');
+      return;
+    }
+    if (!formData.actions[0]?.type) {
+      Alert.alert('Validation', 'Please add at least one action');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        isActive: formData.isActive,
+        trigger: formData.trigger,
+        actions: formData.actions.filter(a => a.type),
+      };
+
+      let res;
+      if (editingId) {
+        res = await api.patch(`/api/automations/${editingId}`, payload);
+      } else {
+        res = await api.post('/api/automations', payload);
+      }
+
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        Alert.alert('Success', editingId ? 'Automation updated' : 'Automation created');
+        closeEditor();
+        fetchData();
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to save automation');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [formData, editingId, closeEditor, fetchData]);
+
+  const handleDeleteAutomation = useCallback((automation: Automation) => {
+    Alert.alert(
+      'Delete Automation',
+      `Are you sure you want to delete "${automation.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await api.delete(`/api/automations/${automation.id}`);
+              if (res.error) {
+                Alert.alert('Error', res.error);
+              } else {
+                fetchData();
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to delete automation');
+            }
+          },
+        },
+      ]
+    );
+  }, [fetchData]);
+
+  const updateFormTrigger = useCallback((updates: Partial<AutomationTrigger>) => {
+    setFormData(prev => ({ ...prev, trigger: { ...prev.trigger, ...updates } }));
+  }, []);
+
+  const updateFormAction = useCallback((index: number, updates: Partial<AutomationAction>) => {
+    setFormData(prev => {
+      const actions = [...prev.actions];
+      actions[index] = { ...actions[index], ...updates };
+      return { ...prev, actions };
+    });
+  }, []);
+
+  const addAction = useCallback(() => {
+    setFormData(prev => ({ ...prev, actions: [...prev.actions, { type: '' }] }));
+  }, []);
+
+  const removeAction = useCallback((index: number) => {
+    setFormData(prev => {
+      if (prev.actions.length <= 1) return prev;
+      return { ...prev, actions: prev.actions.filter((_, i) => i !== index) };
+    });
+  }, []);
+
+  const STEPS: EditorStep[] = ['details', 'trigger', 'actions', 'review'];
+  const currentStepIndex = STEPS.indexOf(editorStep);
+  const canGoNext = (() => {
+    if (editorStep === 'details') return formData.name.trim().length > 0;
+    if (editorStep === 'trigger') return !!formData.trigger.type && !!formData.trigger.entityType;
+    if (editorStep === 'actions') return formData.actions.some(a => !!a.type);
+    return true;
+  })();
+
+  const goNext = useCallback(() => {
+    const idx = STEPS.indexOf(editorStep);
+    if (idx < STEPS.length - 1) setEditorStep(STEPS[idx + 1]);
+  }, [editorStep]);
+
+  const goBack = useCallback(() => {
+    const idx = STEPS.indexOf(editorStep);
+    if (idx > 0) setEditorStep(STEPS[idx - 1]);
+  }, [editorStep]);
+
+  const renderEditorModal = () => {
+    const stepTitles: Record<EditorStep, string> = {
+      details: 'Automation Details',
+      trigger: 'Choose Trigger',
+      actions: 'Set Actions',
+      review: 'Review & Save',
+    };
+
+    return (
+      <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={closeEditor}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                  {editingId ? 'Edit Automation' : 'Create Automation'}
+                </Text>
+                <TouchableOpacity onPress={closeEditor} activeOpacity={0.7}>
+                  <Feather name="x" size={22} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.stepIndicator}>
+                {STEPS.map((step, i) => (
+                  <View
+                    key={step}
+                    style={[
+                      styles.stepDot,
+                      { backgroundColor: i <= currentStepIndex ? colors.primary : colors.border },
+                    ]}
+                  />
+                ))}
+              </View>
+
+              <Text style={[styles.inputLabel, { color: colors.primary, paddingHorizontal: spacing.lg, marginTop: spacing.sm }]}>
+                {stepTitles[editorStep]}
+              </Text>
+
+              <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+                {editorStep === 'details' && (
+                  <>
+                    <Text style={[styles.inputLabel, { color: colors.foreground, marginTop: 0 }]}>Name</Text>
+                    <TextInput
+                      style={[styles.textInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                      value={formData.name}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
+                      placeholder="e.g. Follow up on sent quotes"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+
+                    <Text style={[styles.inputLabel, { color: colors.foreground }]}>Description (optional)</Text>
+                    <TextInput
+                      style={[styles.textInputMultiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                      value={formData.description}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+                      placeholder="Describe what this automation does..."
+                      placeholderTextColor={colors.mutedForeground}
+                      multiline
+                    />
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md }}>
+                      <Text style={[styles.inputLabel, { color: colors.foreground, marginTop: 0, marginBottom: 0 }]}>Enable immediately</Text>
+                      <Switch
+                        value={formData.isActive}
+                        onValueChange={(val) => setFormData(prev => ({ ...prev, isActive: val }))}
+                        trackColor={{ false: colors.border, true: colors.primary + '80' }}
+                        thumbColor={formData.isActive ? colors.primary : colors.mutedForeground}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {editorStep === 'trigger' && (
+                  <>
+                    <Text style={[styles.inputLabel, { color: colors.foreground, marginTop: 0 }]}>Trigger Type</Text>
+                    {TRIGGER_TYPES.map((t) => {
+                      const selected = formData.trigger.type === t.value;
+                      return (
+                        <TouchableOpacity
+                          key={t.value}
+                          style={[
+                            styles.optionCard,
+                            {
+                              borderColor: selected ? colors.primary : colors.border,
+                              backgroundColor: selected ? colors.primary + '08' : 'transparent',
+                            },
+                          ]}
+                          onPress={() => updateFormTrigger({ type: t.value })}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.optionIconContainer, { backgroundColor: selected ? colors.primary + '18' : colors.border + '40' }]}>
+                            <Feather name={t.icon as any} size={iconSizes.xl} color={selected ? colors.primary : colors.mutedForeground} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.optionTitle, { color: colors.foreground }]}>{t.label}</Text>
+                            <Text style={[styles.optionDescription, { color: colors.mutedForeground }]}>{t.description}</Text>
+                          </View>
+                          {selected && <Feather name="check-circle" size={iconSizes.xl} color={colors.primary} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <Text style={[styles.inputLabel, { color: colors.foreground }]}>Entity Type</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                      {ENTITY_TYPES.map((e) => {
+                        const selected = formData.trigger.entityType === e.value;
+                        return (
+                          <TouchableOpacity
+                            key={e.value}
+                            style={[
+                              styles.optionCard,
+                              {
+                                borderColor: selected ? colors.primary : colors.border,
+                                backgroundColor: selected ? colors.primary + '08' : 'transparent',
+                                flex: 0,
+                                paddingHorizontal: spacing.md,
+                                marginBottom: 0,
+                              },
+                            ]}
+                            onPress={() => updateFormTrigger({ entityType: e.value })}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name={e.icon as any} size={iconSizes.md} color={selected ? colors.primary : colors.mutedForeground} />
+                            <Text style={[styles.optionTitle, { color: selected ? colors.primary : colors.foreground, fontSize: 14 }]}>{e.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {formData.trigger.type === 'status_change' && formData.trigger.entityType && (
+                      <>
+                        <Text style={[styles.inputLabel, { color: colors.foreground }]}>From Status (optional)</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+                          <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                            {(STATUS_OPTIONS[formData.trigger.entityType] || []).map(s => {
+                              const selected = formData.trigger.fromStatus === s;
+                              return (
+                                <TouchableOpacity
+                                  key={s}
+                                  onPress={() => updateFormTrigger({ fromStatus: selected ? undefined : s })}
+                                  style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={[styles.statusBadgeText, { color: selected ? colors.primary : colors.mutedForeground }]}>
+                                    {s.replace(/_/g, ' ')}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </ScrollView>
+
+                        <Text style={[styles.inputLabel, { color: colors.foreground }]}>To Status</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                          <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                            {(STATUS_OPTIONS[formData.trigger.entityType] || []).map(s => {
+                              const selected = formData.trigger.toStatus === s;
+                              return (
+                                <TouchableOpacity
+                                  key={s}
+                                  onPress={() => updateFormTrigger({ toStatus: selected ? undefined : s })}
+                                  style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={[styles.statusBadgeText, { color: selected ? colors.primary : colors.mutedForeground }]}>
+                                    {s.replace(/_/g, ' ')}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </ScrollView>
+                      </>
+                    )}
+
+                    {(formData.trigger.type === 'time_delay' || formData.trigger.type === 'no_response') && (
+                      <>
+                        <Text style={[styles.inputLabel, { color: colors.foreground }]}>Delay (days)</Text>
+                        <TextInput
+                          style={[styles.delayInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                          value={formData.trigger.delayDays?.toString() || ''}
+                          onChangeText={(text) => {
+                            const num = parseInt(text) || undefined;
+                            updateFormTrigger({ delayDays: num });
+                          }}
+                          keyboardType="number-pad"
+                          placeholder="3"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {editorStep === 'actions' && (
+                  <>
+                    {formData.actions.map((action, idx) => (
+                      <View key={idx} style={{ marginBottom: spacing.md }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                          <Text style={[styles.inputLabel, { color: colors.foreground, marginTop: 0, marginBottom: 0 }]}>
+                            Action {formData.actions.length > 1 ? `${idx + 1}` : ''}
+                          </Text>
+                          {formData.actions.length > 1 && (
+                            <TouchableOpacity onPress={() => removeAction(idx)} activeOpacity={0.7}>
+                              <Feather name="trash-2" size={iconSizes.md} color={colors.destructive || '#ef4444'} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        {ACTION_TYPES.map((a) => {
+                          const selected = action.type === a.value;
+                          return (
+                            <TouchableOpacity
+                              key={a.value}
+                              style={[
+                                styles.optionCard,
+                                {
+                                  borderColor: selected ? colors.primary : colors.border,
+                                  backgroundColor: selected ? colors.primary + '08' : 'transparent',
+                                },
+                              ]}
+                              onPress={() => updateFormAction(idx, { type: a.value })}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[styles.optionIconContainer, { backgroundColor: selected ? colors.primary + '18' : colors.border + '40' }]}>
+                                <Feather name={a.icon as any} size={iconSizes.xl} color={selected ? colors.primary : colors.mutedForeground} />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.optionTitle, { color: colors.foreground }]}>{a.label}</Text>
+                                <Text style={[styles.optionDescription, { color: colors.mutedForeground }]}>{a.description}</Text>
+                              </View>
+                              {selected && <Feather name="check-circle" size={iconSizes.xl} color={colors.primary} />}
+                            </TouchableOpacity>
+                          );
+                        })}
+
+                        {action.type === 'update_status' && formData.trigger.entityType && (
+                          <>
+                            <Text style={[styles.inputLabel, { color: colors.foreground }]}>New Status</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                              <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+                                {(STATUS_OPTIONS[formData.trigger.entityType] || []).map(s => {
+                                  const selected = action.newStatus === s;
+                                  return (
+                                    <TouchableOpacity
+                                      key={s}
+                                      onPress={() => updateFormAction(idx, { newStatus: s })}
+                                      style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
+                                      activeOpacity={0.7}
+                                    >
+                                      <Text style={[styles.statusBadgeText, { color: selected ? colors.primary : colors.mutedForeground }]}>
+                                        {s.replace(/_/g, ' ')}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </ScrollView>
+                          </>
+                        )}
+
+                        {(action.type === 'send_email' || action.type === 'send_sms' || action.type === 'send_notification') && (
+                          <>
+                            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Message (optional)</Text>
+                            <TextInput
+                              style={[styles.textInputMultiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                              value={action.message || ''}
+                              onChangeText={(text) => updateFormAction(idx, { message: text })}
+                              placeholder="Custom message template..."
+                              placeholderTextColor={colors.mutedForeground}
+                              multiline
+                            />
+                          </>
+                        )}
+                      </View>
+                    ))}
+
+                    <TouchableOpacity
+                      style={[styles.deleteButton, { borderColor: colors.primary }]}
+                      onPress={addAction}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="plus" size={iconSizes.md} color={colors.primary} />
+                      <Text style={[styles.footerButtonText, { color: colors.primary }]}>Add Another Action</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                {editorStep === 'review' && (
+                  <>
+                    <View style={[styles.reviewSection, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                      <Text style={[styles.reviewLabel, { color: colors.mutedForeground }]}>NAME</Text>
+                      <Text style={[styles.reviewValue, { color: colors.foreground }]}>{formData.name}</Text>
+                      {formData.description ? (
+                        <>
+                          <Text style={[styles.reviewLabel, { color: colors.mutedForeground, marginTop: spacing.sm }]}>DESCRIPTION</Text>
+                          <Text style={[styles.reviewValue, { color: colors.foreground }]}>{formData.description}</Text>
+                        </>
+                      ) : null}
+                    </View>
+
+                    <View style={[styles.reviewSection, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                      <Text style={[styles.reviewLabel, { color: colors.mutedForeground }]}>TRIGGER</Text>
+                      <Text style={[styles.reviewValue, { color: colors.foreground }]}>{getTriggerSummary(formData.trigger)}</Text>
+                    </View>
+
+                    <View style={[styles.reviewSection, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                      <Text style={[styles.reviewLabel, { color: colors.mutedForeground }]}>ACTIONS</Text>
+                      <Text style={[styles.reviewValue, { color: colors.foreground }]}>{getActionSummary(formData.actions)}</Text>
+                    </View>
+
+                    <View style={[styles.reviewSection, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                      <Text style={[styles.reviewLabel, { color: colors.mutedForeground }]}>STATUS</Text>
+                      <Text style={[styles.reviewValue, { color: formData.isActive ? '#22c55e' : colors.mutedForeground }]}>
+                        {formData.isActive ? 'Active (enabled immediately)' : 'Inactive (disabled)'}
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+
+              <View style={[styles.modalFooter, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
+                {currentStepIndex > 0 ? (
+                  <TouchableOpacity
+                    style={[styles.footerButton, { backgroundColor: colors.border + '40' }]}
+                    onPress={goBack}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="arrow-left" size={iconSizes.md} color={colors.foreground} />
+                    <Text style={[styles.footerButtonText, { color: colors.foreground }]}>Back</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.footerButton, { backgroundColor: colors.border + '40' }]}
+                    onPress={closeEditor}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.footerButtonText, { color: colors.foreground }]}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+
+                {editorStep === 'review' ? (
+                  <TouchableOpacity
+                    style={[styles.footerButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
+                    onPress={handleSaveAutomation}
+                    disabled={isSaving}
+                    activeOpacity={0.7}
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground || '#fff'} />
+                    ) : (
+                      <>
+                        <Feather name="check" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
+                        <Text style={[styles.footerButtonText, { color: colors.primaryForeground || '#fff' }]}>
+                          {editingId ? 'Update' : 'Create'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.footerButton, { backgroundColor: canGoNext ? colors.primary : colors.border, opacity: canGoNext ? 1 : 0.5 }]}
+                    onPress={goNext}
+                    disabled={!canGoNext}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.footerButtonText, { color: canGoNext ? (colors.primaryForeground || '#fff') : colors.mutedForeground }]}>Next</Text>
+                    <Feather name="arrow-right" size={iconSizes.md} color={canGoNext ? (colors.primaryForeground || '#fff') : colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    );
+  };
+
   const renderStatsRow = () => (
     <View style={styles.statsRow}>
       <View style={styles.statCard}>
@@ -598,11 +1328,27 @@ export default function AutopilotScreen() {
           </View>
         </View>
 
-        <View style={styles.cardFooter}>
+        <View style={[styles.cardFooter, { justifyContent: 'space-between' }]}>
           <View style={[styles.statusBadge, { backgroundColor: isActive ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)' }]}>
             <Text style={[styles.statusBadgeText, { color: isActive ? '#22c55e' : '#6b7280' }]}>
               {isActive ? 'Active' : 'Inactive'}
             </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <TouchableOpacity
+              onPress={() => openEditEditor(automation)}
+              activeOpacity={0.7}
+              style={{ padding: spacing.xs }}
+            >
+              <Feather name="edit-2" size={iconSizes.lg} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDeleteAutomation(automation)}
+              activeOpacity={0.7}
+              style={{ padding: spacing.xs }}
+            >
+              <Feather name="trash-2" size={iconSizes.lg} color={colors.destructive || '#ef4444'} />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -679,14 +1425,24 @@ export default function AutopilotScreen() {
           : 'Templates will appear here when available. Check back soon for ready-made automations.'}
       </Text>
       {type === 'automations' && (
-        <TouchableOpacity
-          style={styles.emptyCta}
-          onPress={() => setActiveTab('templates')}
-          activeOpacity={0.7}
-        >
-          <Feather name="copy" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
-          <Text style={styles.emptyCtaText}>Browse Templates</Text>
-        </TouchableOpacity>
+        <View style={{ gap: spacing.sm, alignItems: 'center' }}>
+          <TouchableOpacity
+            style={styles.emptyCta}
+            onPress={openCreateEditor}
+            activeOpacity={0.7}
+          >
+            <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
+            <Text style={styles.emptyCtaText}>Create Automation</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveTab('templates')}
+            activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm }}
+          >
+            <Feather name="copy" size={iconSizes.md} color={colors.primary} />
+            <Text style={[styles.emptyCtaText, { color: colors.primary }]}>Browse Templates</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -912,6 +1668,16 @@ export default function AutopilotScreen() {
             </>
           )}
         </ScrollView>
+
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.primary }]}
+          onPress={openCreateEditor}
+          activeOpacity={0.7}
+        >
+          <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground || '#fff'} />
+        </TouchableOpacity>
+
+        {renderEditorModal()}
       </View>
     </>
   );
