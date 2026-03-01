@@ -649,8 +649,92 @@ export default function MoneyHubScreen() {
     );
   };
 
+  const monthlyRevenue = useMemo(() => {
+    const now = new Date();
+    const months: { label: string; amount: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const label = d.toLocaleDateString('en-AU', { month: 'short' });
+      const monthPaid = invoices.filter(inv => {
+        if (inv.status !== 'paid' || !inv.paidAt) return false;
+        const paidDate = new Date(inv.paidAt);
+        return paidDate >= d && paidDate <= monthEnd;
+      });
+      const amount = monthPaid.reduce((sum, inv) => {
+        const num = typeof inv.total === 'string' ? parseFloat(inv.total) : (inv.total || 0);
+        return sum + (isNaN(num) ? 0 : num);
+      }, 0);
+      months.push({ label, amount });
+    }
+    return months;
+  }, [invoices]);
+
+  const renderRevenueChart = () => {
+    const maxAmount = Math.max(1, ...monthlyRevenue.map(m => m.amount));
+    const totalRevenue = monthlyRevenue.reduce((sum, m) => sum + m.amount, 0);
+    const currentMonth = monthlyRevenue[monthlyRevenue.length - 1];
+    const prevMonth = monthlyRevenue[monthlyRevenue.length - 2];
+    const trend = prevMonth && prevMonth.amount > 0 
+      ? Math.round(((currentMonth.amount - prevMonth.amount) / prevMonth.amount) * 100) 
+      : 0;
+
+    return (
+      <View style={styles.revenueChartCard}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md }}>
+          <View>
+            <Text style={styles.sectionTitle}>Revenue (6 months)</Text>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: colors.foreground, marginTop: 4 }}>
+              {formatCurrency(totalRevenue)}
+            </Text>
+          </View>
+          {trend !== 0 && (
+            <View style={{ 
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              backgroundColor: trend > 0 ? '#22c55e15' : '#ef444415',
+              paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill,
+            }}>
+              <Feather name={trend > 0 ? 'trending-up' : 'trending-down'} size={14} color={trend > 0 ? '#22c55e' : '#ef4444'} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: trend > 0 ? '#22c55e' : '#ef4444' }}>
+                {trend > 0 ? '+' : ''}{trend}%
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 100, gap: spacing.xs }}>
+          {monthlyRevenue.map((month, idx) => {
+            const barHeight = maxAmount > 0 ? (month.amount / maxAmount) * 80 : 0;
+            const isCurrent = idx === monthlyRevenue.length - 1;
+            return (
+              <View key={month.label} style={{ flex: 1, alignItems: 'center' }}>
+                {month.amount > 0 && (
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: colors.foreground, marginBottom: 3 }}>
+                    ${Math.round(month.amount / 1000)}k
+                  </Text>
+                )}
+                <View
+                  style={{
+                    width: '65%',
+                    height: Math.max(4, barHeight),
+                    borderRadius: radius.md,
+                    backgroundColor: isCurrent ? colors.primary : colors.primary + '50',
+                  }}
+                />
+                <Text style={{ fontSize: 10, fontWeight: isCurrent ? '700' : '500', color: isCurrent ? colors.primary : colors.mutedForeground, marginTop: 4 }}>
+                  {month.label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   const renderOverview = () => (
     <View style={styles.overviewContainer}>
+      {renderRevenueChart()}
+
       <View style={styles.sectionHeader}>
         <Feather name="alert-triangle" size={iconSizes.md} color={colors.destructive} />
         <Text style={styles.sectionTitle}>Needs Attention</Text>
@@ -1229,6 +1313,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   overviewContainer: {
     gap: spacing.lg,
+  },
+  revenueChartCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius['2xl'],
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
