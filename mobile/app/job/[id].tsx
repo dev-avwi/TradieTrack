@@ -6388,11 +6388,11 @@ export default function JobDetailScreen() {
                   >
                     <View style={[styles.clientAvatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18 }]}>
                       <Text style={[styles.clientAvatarText, { fontSize: 14 }]}>
-                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        {(member.name || member.email || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.cardContent}>
-                      <Text style={styles.cardLabel}>{member.name}</Text>
+                      <Text style={styles.cardLabel}>{member.name || member.email || 'Team Member'}</Text>
                       {member.role && <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{member.role}</Text>}
                     </View>
                     {isAssigned && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
