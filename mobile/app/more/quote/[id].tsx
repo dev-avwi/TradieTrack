@@ -1154,6 +1154,13 @@ ${businessName}`;
           <View style={styles.quickActions}>
             <TouchableOpacity 
               style={styles.quickAction}
+              onPress={() => router.push(`/more/quote/new?editQuoteId=${id}`)}
+            >
+              <Feather name="edit-2" size={20} color={colors.primary} />
+              <Text style={styles.quickActionText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.quickAction}
               onPress={() => setShowPreview(true)}
             >
               <Feather name="eye" size={20} color={colors.primary} />

@@ -691,11 +691,11 @@ export default function MoneyHubScreen() {
           {trend !== 0 && (
             <View style={{ 
               flexDirection: 'row', alignItems: 'center', gap: 4,
-              backgroundColor: trend > 0 ? '#22c55e15' : '#ef444415',
+              backgroundColor: trend > 0 ? (colors.successLight || `${colors.success}15`) : (colors.destructiveLight || `${colors.destructive}15`),
               paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill,
             }}>
-              <Feather name={trend > 0 ? 'trending-up' : 'trending-down'} size={14} color={trend > 0 ? '#22c55e' : '#ef4444'} />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: trend > 0 ? '#22c55e' : '#ef4444' }}>
+              <Feather name={trend > 0 ? 'trending-up' : 'trending-down'} size={14} color={trend > 0 ? colors.success : colors.destructive} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: trend > 0 ? colors.success : colors.destructive }}>
                 {trend > 0 ? '+' : ''}{trend}%
               </Text>
             </View>

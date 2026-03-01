@@ -400,17 +400,17 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
   conflictBanner: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.destructiveLight || '#FEF2F2',
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: `${colors.destructive}30`,
     gap: spacing.sm,
   },
   conflictBannerDark: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: `${colors.destructive}18`,
+    borderColor: `${colors.destructive}40`,
   },
   conflictBannerContent: {
     flex: 1,
@@ -418,27 +418,27 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
   conflictBannerTitle: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#DC2626',
+    color: colors.destructive,
     marginBottom: 2,
   },
   conflictBannerText: {
     fontSize: 12,
-    color: '#B91C1C',
+    color: colors.destructive,
   },
   conflictDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.destructive,
     marginTop: 2,
   },
   conflictJobCard: {
-    borderLeftColor: '#EF4444',
+    borderLeftColor: colors.destructive,
   },
   conflictJobBadge: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.destructiveLight || '#FEF2F2',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.md,
@@ -448,7 +448,7 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
   conflictJobBadgeText: {
     fontSize: 11,
     fontWeight: '500' as const,
-    color: '#DC2626',
+    color: colors.destructive,
   },
 });
 
@@ -720,7 +720,7 @@ export default function CalendarScreen() {
 
               {selectedDateConflicts.length > 0 && (
                 <View style={styles.conflictBanner}>
-                  <Feather name="alert-triangle" size={20} color="#EF4444" />
+                  <Feather name="alert-triangle" size={20} color={colors.destructive} />
                   <View style={styles.conflictBannerContent}>
                     <Text style={styles.conflictBannerTitle}>
                       Schedule Conflict{selectedDateConflicts.length > 1 ? 's' : ''}
@@ -756,7 +756,7 @@ export default function CalendarScreen() {
                       <Text style={styles.jobTitle}>{job.title}</Text>
                       {conflictingJobIds.has(job.id) && (
                         <View style={styles.conflictJobBadge}>
-                          <Feather name="alert-triangle" size={11} color="#DC2626" />
+                          <Feather name="alert-triangle" size={11} color={colors.destructive} />
                           <Text style={styles.conflictJobBadgeText}>Overlapping</Text>
                         </View>
                       )}
@@ -893,7 +893,7 @@ export default function CalendarScreen() {
 
               {selectedDateConflicts.length > 0 && (
                 <View style={styles.conflictBanner}>
-                  <Feather name="alert-triangle" size={20} color="#EF4444" />
+                  <Feather name="alert-triangle" size={20} color={colors.destructive} />
                   <View style={styles.conflictBannerContent}>
                     <Text style={styles.conflictBannerTitle}>
                       Schedule Conflict{selectedDateConflicts.length > 1 ? 's' : ''}
@@ -929,7 +929,7 @@ export default function CalendarScreen() {
                       <Text style={styles.jobTitle}>{job.title}</Text>
                       {conflictingJobIds.has(job.id) && (
                         <View style={styles.conflictJobBadge}>
-                          <Feather name="alert-triangle" size={11} color="#DC2626" />
+                          <Feather name="alert-triangle" size={11} color={colors.destructive} />
                           <Text style={styles.conflictJobBadgeText}>Overlapping</Text>
                         </View>
                       )}

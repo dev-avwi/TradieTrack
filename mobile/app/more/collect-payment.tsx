@@ -2764,11 +2764,11 @@ export default function CollectScreen() {
           <PaymentMethodCard
             icon={<Feather name="radio" size={24} color={colors.mutedForeground} />}
             title="Tap to Pay"
-            description="Contactless payments - Coming Soon"
-            badge="Coming Soon"
+            description="Contactless NFC payments via Stripe Terminal"
+            badge="Requires Stripe Terminal"
             badgeVariant="warning"
-            onPress={() => {}}
-            disabled={true}
+            onPress={() => Alert.alert('Tap to Pay', 'Tap to Pay requires a Stripe Terminal reader paired with your device. Connect a Stripe Terminal reader in Settings to enable contactless payments.')}
+            disabled={false}
             colors={colors}
           />
 

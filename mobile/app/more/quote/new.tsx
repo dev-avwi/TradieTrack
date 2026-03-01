@@ -579,11 +579,12 @@ interface LineItem {
 
 export default function NewQuoteScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ jobId?: string; clientId?: string }>();
+  const params = useLocalSearchParams<{ jobId?: string; clientId?: string; editQuoteId?: string }>();
   const { user, businessSettings } = useAuthStore();
   const { clients, fetchClients } = useClientsStore();
-  const { fetchQuotes } = useQuotesStore();
+  const { fetchQuotes, getQuote } = useQuotesStore();
   const { colors, isDark } = useTheme();
+  const isEditing = !!params.editQuoteId;
   const { isOnline, pendingSyncCount } = useOfflineStore();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isLoading, setIsLoading] = useState(false);
@@ -649,7 +650,44 @@ export default function NewQuoteScreen() {
     fetchJobAndSetClient();
   }, [params.jobId, params.clientId]);
 
-  // Auto-fill client name when clientId is provided via URL params or clients are loaded
+  useEffect(() => {
+    const loadQuoteForEditing = async (quoteId: string) => {
+      try {
+        const response = await api.get(`/api/quotes/${quoteId}`);
+        const q = response.data;
+        if (q) {
+          setForm({
+            clientId: q.clientId || '',
+            clientName: '',
+            title: q.title || '',
+            description: q.description || '',
+            notes: q.notes || '',
+            terms: q.terms || '',
+            validUntil: q.validUntil ? new Date(q.validUntil).toISOString().split('T')[0] : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            quoteDate: q.quoteDate ? new Date(q.quoteDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            requireDeposit: !!q.depositRequired || !!q.depositAmount,
+            depositPercent: q.depositPercent ? String(q.depositPercent) : '50',
+          });
+          if (q.jobId) setJobId(q.jobId);
+          if (q.lineItems && Array.isArray(q.lineItems)) {
+            setLineItems(q.lineItems.map((item: any, idx: number) => ({
+              id: item.id || `edit-${idx}`,
+              description: item.description || '',
+              quantity: String(item.quantity || 1),
+              unitPrice: String(item.unitPrice || 0),
+            })));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load quote for editing:', error);
+        Alert.alert('Error', 'Could not load quote for editing');
+      }
+    };
+    if (params.editQuoteId) {
+      loadQuoteForEditing(params.editQuoteId);
+    }
+  }, [params.editQuoteId]);
+
   useEffect(() => {
     if (form.clientId && clients.length > 0 && !form.clientName) {
       const client = clients.find(c => c.id === form.clientId);
@@ -826,17 +864,18 @@ export default function NewQuoteScreen() {
       return;
     }
     
-    // Online: try API first, fallback to offline if network error
     try {
-      const response = await api.post('/api/quotes', quoteData);
+      const response = isEditing
+        ? await api.patch(`/api/quotes/${params.editQuoteId}`, quoteData)
+        : await api.post('/api/quotes', quoteData);
 
       if (response.data) {
         await fetchQuotes();
-        Alert.alert('Success', 'Quote created successfully', [
+        Alert.alert('Success', isEditing ? 'Quote updated successfully' : 'Quote created successfully', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
-        Alert.alert('Error', response.error || 'Failed to create quote');
+        Alert.alert('Error', response.error || `Failed to ${isEditing ? 'update' : 'create'} quote`);
       }
     } catch (error: any) {
       // Network error - save offline
@@ -953,7 +992,7 @@ export default function NewQuoteScreen() {
             >
               <Feather name="chevron-left" size={24} color={colors.foreground} />
             </Pressable>
-            <Text style={styles.headerTitle}>New Quote</Text>
+            <Text style={styles.headerTitle}>{isEditing ? 'Edit Quote' : 'New Quote'}</Text>
             <View style={styles.totalBadge}>
               <Text style={styles.totalBadgeText}>{formatCurrency(total)}</Text>
             </View>
@@ -1344,7 +1383,7 @@ export default function NewQuoteScreen() {
                 ) : (
                   <>
                     <Feather name="check" size={18} color={colors.primaryForeground} />
-                    <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>Create Quote</Text>
+                    <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>{isEditing ? 'Update Quote' : 'Create Quote'}</Text>
                   </>
                 )}
               </TouchableOpacity>
