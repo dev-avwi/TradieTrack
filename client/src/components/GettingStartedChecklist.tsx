@@ -116,14 +116,26 @@ export default function GettingStartedChecklist({
     });
   };
   
-  const { data: businessSettings } = useQuery({ queryKey: ["/api/business-settings"] });
-  const { data: user } = useQuery({ queryKey: ["/api/auth/me"] });
-  const { data: clients = [] } = useQuery({ queryKey: ["/api/clients"] });
-  const { data: quotes = [] } = useQuery({ queryKey: ["/api/quotes"] });
-  const { data: health } = useQuery<any>({ 
-    queryKey: ["/api/integrations/health"],
-    staleTime: 30000,
+  const { data: businessSettings, isLoading: settingsLoading } = useQuery({ 
+    queryKey: ["/api/business-settings"],
+    staleTime: 60000,
   });
+  const { data: user } = useQuery({ queryKey: ["/api/auth/me"] });
+  const { data: clients = [], isLoading: clientsLoading } = useQuery({ 
+    queryKey: ["/api/clients"],
+    staleTime: 60000,
+  });
+  const { data: quotes = [], isLoading: quotesLoading } = useQuery({ 
+    queryKey: ["/api/quotes"],
+    staleTime: 60000,
+  });
+  const { data: health, isLoading: healthLoading } = useQuery<any>({ 
+    queryKey: ["/api/integrations/health"],
+    staleTime: 120000,
+    refetchOnWindowFocus: false,
+  });
+  
+  const dataLoading = settingsLoading || clientsLoading || quotesLoading || healthLoading;
 
   const connectStripeMutation = useMutation({
     mutationFn: async () => {
@@ -267,8 +279,8 @@ export default function GettingStartedChecklist({
   const allComplete = completedCount === steps.length;
   const highPriorityIncomplete = steps.filter(s => s.priority === 'high' && !s.completed);
 
-  // Hide when tour is active, dismissed (session or permanent), or all steps are complete
-  if (isTourActive || dismissed || permanentlyDismissed || allComplete) {
+  // Hide when loading (prevents flash), tour is active, dismissed, or all steps complete
+  if (dataLoading || isTourActive || dismissed || permanentlyDismissed || allComplete) {
     return null;
   }
 
