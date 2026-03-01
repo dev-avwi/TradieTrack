@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { randomUUID } from "crypto";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
@@ -8,6 +9,28 @@ import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
 import { setupWebSocket } from "./websocket";
+
+process.on('uncaughtException', (error: Error) => {
+  console.error(JSON.stringify({
+    level: 'fatal',
+    type: 'uncaughtException',
+    message: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+  }));
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  console.error(JSON.stringify({
+    level: 'error',
+    type: 'unhandledRejection',
+    message,
+    stack,
+    timestamp: new Date().toISOString(),
+  }));
+});
 
 const app = express();
 
@@ -110,6 +133,13 @@ if (process.env.DATABASE_URL) {
     proxy: isReplit || isProduction
   }));
 
+  app.use((req, _res, next) => {
+    if (!req.headers['x-request-id']) {
+      req.headers['x-request-id'] = randomUUID().substring(0, 8);
+    }
+    next();
+  });
+
   app.use((req, res, next) => {
     const start = Date.now();
     const path = req.path;
@@ -156,14 +186,6 @@ if (process.env.DATABASE_URL) {
 
   // Set up WebSocket for real-time location tracking with session auth
   setupWebSocket(server, sessionStore);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
 
   if (app.get("env") === "development") {
     await setupVite(app, server);

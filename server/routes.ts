@@ -10665,6 +10665,16 @@ Be specific about materials, colors, and features that would be included.`
         clients = clients.filter(c => assignedClientIds.includes(c.id));
       }
       
+      const totalCount = clients.length;
+      res.setHeader('X-Total-Count', totalCount);
+
+      const limitParam = parseInt(req.query.limit as string);
+      const offsetParam = parseInt(req.query.offset as string);
+      if (!isNaN(limitParam) && limitParam > 0) {
+        const offset = !isNaN(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+        clients = clients.slice(offset, offset + limitParam);
+      }
+      
       res.json(clients);
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -11862,12 +11872,21 @@ Be specific about materials, colors, and features that would be included.`
       // Filter for unassigned jobs if requested
       const { unassigned } = req.query;
       if (unassigned === 'true') {
-        const unassignedJobs = jobs.filter(job => 
+        jobs = jobs.filter(job => 
           !job.assignedTo && 
           job.status !== 'done' && 
           job.status !== 'invoiced'
         );
-        return res.json(unassignedJobs);
+      }
+      
+      const totalCount = jobs.length;
+      res.setHeader('X-Total-Count', totalCount);
+
+      const limitParam = parseInt(req.query.limit as string);
+      const offsetParam = parseInt(req.query.offset as string);
+      if (!isNaN(limitParam) && limitParam > 0) {
+        const offset = !isNaN(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+        jobs = jobs.slice(offset, offset + limitParam);
       }
       
       res.json(jobs);
@@ -17202,9 +17221,19 @@ Be specific about materials, colors, and features that would be included.`
       
       // Filter by quoteId if provided
       const quoteIdFilter = req.query.quoteId as string | undefined;
-      const filtered = quoteIdFilter
+      let filtered = quoteIdFilter
         ? enrichedInvoices.filter((inv: any) => inv.quoteId === quoteIdFilter)
         : enrichedInvoices;
+
+      const totalCount = filtered.length;
+      res.setHeader('X-Total-Count', totalCount);
+
+      const limitParam = parseInt(req.query.limit as string);
+      const offsetParam = parseInt(req.query.offset as string);
+      if (!isNaN(limitParam) && limitParam > 0) {
+        const offset = !isNaN(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+        filtered = filtered.slice(offset, offset + limitParam);
+      }
 
       res.json(filtered);
     } catch (error) {
@@ -35708,23 +35737,32 @@ Respond with JSON in this format:
     }
   });
 
-  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-    const errorContext = {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    const statusCode = err.status || err.statusCode || 500;
+    const requestId = req.headers['x-request-id'] || randomUUID().substring(0, 8);
+
+    const logEntry = {
+      level: statusCode >= 500 ? 'error' : 'warn',
       timestamp: new Date().toISOString(),
+      requestId,
       method: req.method,
       path: req.path,
-      statusCode: err.status || err.statusCode || 500,
+      statusCode,
       message: err.message || 'Internal server error',
+      stack: err.stack,
       userId: (req as any).session?.userId || 'anonymous',
-      requestId: req.headers['x-request-id'] || randomUUID().substring(0, 8),
     };
 
-    console.error('[ERROR]', JSON.stringify(errorContext));
+    console.error(JSON.stringify(logEntry));
 
     if (!res.headersSent) {
-      res.status(errorContext.statusCode).json({
-        error: errorContext.message,
-        requestId: errorContext.requestId
+      const safeMessage = statusCode >= 500
+        ? 'Internal server error'
+        : (err.message || 'Internal server error');
+
+      res.status(statusCode).json({
+        error: safeMessage,
+        requestId,
       });
     }
   });

@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   ScrollView, 
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
@@ -422,7 +423,9 @@ export default function InvoicesScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <ScrollView
+        <FlatList
+          data={sortedInvoices}
+          keyExtractor={(item) => item.id.toString()}
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -433,136 +436,153 @@ export default function InvoicesScreen() {
               tintColor={colors.primary}
             />
           }
-        >
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Invoices</Text>
-              <Text style={styles.pageSubtitle}>{invoices.length} total</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.newButton}
-              onPress={navigateToCreateInvoice}
-            >
-              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-              <Text style={styles.newButtonText}>New Invoice</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.kpiGrid}>
-            <TouchableOpacity 
-              style={styles.kpiCard}
-              onPress={() => setActiveFilter('all')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
-                <Feather name="dollar-sign" size={16} color={colors.primary} />
-              </View>
-              <Text style={styles.kpiLabel}>Total Value</Text>
-              <Text style={styles.kpiValue}>{formatCurrency(totalAll)}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.kpiCard}
-              onPress={() => setActiveFilter('sent')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
-                <Feather name="alert-circle" size={16} color={colors.warning} />
-              </View>
-              <Text style={styles.kpiLabel}>Unpaid</Text>
-              <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding)}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.kpiCard}
-              onPress={() => setActiveFilter('paid')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
-                <Feather name="check-circle" size={16} color={colors.success} />
-              </View>
-              <Text style={styles.kpiLabel}>Paid</Text>
-              <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid)}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.kpiCard}
-              onPress={() => setActiveFilter('overdue')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
-                <Feather name="clock" size={16} color={colors.destructive} />
-              </View>
-              <Text style={styles.kpiLabel}>Overdue</Text>
-              <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue)}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchBar}>
-            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search invoices..."
-              placeholderTextColor={colors.mutedForeground}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filtersScroll}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {FILTERS.map((filter) => {
-              const count = filterCounts[filter.key];
-              const isActive = activeFilter === filter.key;
-              
-              return (
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <Text style={styles.pageTitle}>Invoices</Text>
+                  <Text style={styles.pageSubtitle}>{invoices.length} total</Text>
+                </View>
                 <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive
-                  ]}
+                  activeOpacity={0.8}
+                  style={styles.newButton}
+                  onPress={navigateToCreateInvoice}
                 >
-                  <Text style={[
-                    styles.filterPillText,
-                    isActive && styles.filterPillTextActive
-                  ]}>
-                    {filter.label}
-                  </Text>
-                  <View style={[
-                    styles.filterCount,
-                    isActive && styles.filterCountActive
-                  ]}>
-                    <Text style={[
-                      styles.filterCountText,
-                      isActive && styles.filterCountTextActive
-                    ]}>
-                      {count}
-                    </Text>
-                  </View>
+                  <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+                  <Text style={styles.newButtonText}>New Invoice</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
-              <Text style={styles.sectionTitle}>ALL INVOICES</Text>
-            </View>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : sortedInvoices.length === 0 ? (
+
+              <View style={styles.kpiGrid}>
+                <TouchableOpacity 
+                  style={styles.kpiCard}
+                  onPress={() => setActiveFilter('all')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
+                    <Feather name="dollar-sign" size={16} color={colors.primary} />
+                  </View>
+                  <Text style={styles.kpiLabel}>Total Value</Text>
+                  <Text style={styles.kpiValue}>{formatCurrency(totalAll)}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.kpiCard}
+                  onPress={() => setActiveFilter('sent')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
+                    <Feather name="alert-circle" size={16} color={colors.warning} />
+                  </View>
+                  <Text style={styles.kpiLabel}>Unpaid</Text>
+                  <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding)}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.kpiCard}
+                  onPress={() => setActiveFilter('paid')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
+                    <Feather name="check-circle" size={16} color={colors.success} />
+                  </View>
+                  <Text style={styles.kpiLabel}>Paid</Text>
+                  <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid)}</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.kpiCard}
+                  onPress={() => setActiveFilter('overdue')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
+                    <Feather name="clock" size={16} color={colors.destructive} />
+                  </View>
+                  <Text style={styles.kpiLabel}>Overdue</Text>
+                  <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue)}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.searchBar}>
+                <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search invoices..."
+                  placeholderTextColor={colors.mutedForeground}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.filtersScroll}
+                contentContainerStyle={styles.filtersContent}
+              >
+                {FILTERS.map((filter) => {
+                  const count = filterCounts[filter.key];
+                  const isActive = activeFilter === filter.key;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={filter.key}
+                      onPress={() => setActiveFilter(filter.key)}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.filterPill,
+                        isActive && styles.filterPillActive
+                      ]}
+                    >
+                      <Text style={[
+                        styles.filterPillText,
+                        isActive && styles.filterPillTextActive
+                      ]}>
+                        {filter.label}
+                      </Text>
+                      <View style={[
+                        styles.filterCount,
+                        isActive && styles.filterCountActive
+                      ]}>
+                        <Text style={[
+                          styles.filterCountText,
+                          isActive && styles.filterCountTextActive
+                        ]}>
+                          {count}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.sectionHeader}>
+                <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
+                <Text style={styles.sectionTitle}>ALL INVOICES</Text>
+              </View>
+
+              {isLoading && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              )}
+            </>
+          }
+          renderItem={({ item: invoice }) => (
+            <View style={styles.invoiceItemWrapper}>
+              <InvoiceCard
+                invoice={invoice}
+                clientName={getClientName(invoice.clientId)}
+                jobTitle={(invoice as any).description || (invoice as any).title || ''}
+                onPress={() => router.push(`/more/invoice/${invoice.id}`)}
+                onSend={() => handleSendInvoice(invoice.id)}
+                onMarkPaid={() => handleMarkPaid(invoice.id)}
+                onDelete={() => handleDeleteInvoice(invoice.id)}
+              />
+            </View>
+          )}
+          ListEmptyComponent={
+            !isLoading ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyStateIcon}>
                   <Feather name="file-text" size={iconSizes['4xl']} color={colors.mutedForeground} />
@@ -574,24 +594,9 @@ export default function InvoicesScreen() {
                     : 'Create your first invoice to get started'}
                 </Text>
               </View>
-            ) : (
-              <View style={styles.invoicesList}>
-                {sortedInvoices.map((invoice) => (
-                  <InvoiceCard
-                    key={invoice.id}
-                    invoice={invoice}
-                    clientName={getClientName(invoice.clientId)}
-                    jobTitle={(invoice as any).description || (invoice as any).title || ''}
-                    onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-                    onSend={() => handleSendInvoice(invoice.id)}
-                    onMarkPaid={() => handleMarkPaid(invoice.id)}
-                    onDelete={() => handleDeleteInvoice(invoice.id)}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        </ScrollView>
+            ) : null
+          }
+        />
       </View>
       
       {/* Inline Email Compose Modal */}
@@ -814,6 +819,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   invoicesList: {
     gap: spacing.md,
+  },
+  invoiceItemWrapper: {
+    marginBottom: spacing.md,
   },
   
   // === WEB-MATCHING CARD STYLES ===

@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   ScrollView, 
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
@@ -314,24 +315,155 @@ export default function ClientsScreen() {
     );
   };
 
-  const renderClientList = () => {
+  const renderItem = useCallback(({ item }: { item: any }) => (
+    <View style={styles.clientItemWrapper}>
+      <ClientCard
+        client={item}
+        onPress={() => router.push(`/more/client/${item.id}`)}
+        onCall={() => item.phone && handleCall(item.phone)}
+        onEmail={() => item.email && handleEmail(item.email)}
+        onSms={() => item.phone && handleSms(item.phone)}
+        onCreateJob={() => handleCreateJob(item.id)}
+        onDelete={() => handleDeleteClient(item)}
+      />
+    </View>
+  ), [styles, handleCall, handleEmail, handleSms, handleCreateJob, handleDeleteClient]);
+
+  const ListHeaderComponent = useMemo(() => (
+    <>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.pageTitle}>Clients</Text>
+          <Text style={styles.pageSubtitle}>{clients.length} total</Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.newButton}
+          onPress={handleCreateClient}
+        >
+          <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+          <Text style={styles.newButtonText}>New Client</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.searchBar}>
+        <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search clients..."
+          placeholderTextColor={colors.mutedForeground}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.filtersScroll}
+        contentContainerStyle={styles.filtersContent}
+      >
+        {FILTERS.map((filter) => {
+          const count = filterCounts[filter.key];
+          const isActive = activeFilter === filter.key;
+          
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              onPress={() => setActiveFilter(filter.key)}
+              activeOpacity={0.7}
+              style={[
+                styles.filterPill,
+                isActive && styles.filterPillActive
+              ]}
+            >
+              <Text style={[
+                styles.filterPillText,
+                isActive && styles.filterPillTextActive
+              ]}>
+                {filter.label}
+              </Text>
+              <View style={[
+                styles.filterCount,
+                isActive && styles.filterCountActive
+              ]}>
+                <Text style={[
+                  styles.filterCountText,
+                  isActive && styles.filterCountTextActive
+                ]}>
+                  {count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.kpiRow}>
+        <KPIBox 
+          icon="users" 
+          title="Total" 
+          value={filterCounts.all.toString()} 
+          onPress={() => setActiveFilter('all')}
+        />
+        <KPIBox 
+          icon="mail" 
+          title="With Email" 
+          value={filterCounts.with_email.toString()} 
+          onPress={() => setActiveFilter('with_email')}
+        />
+        <KPIBox 
+          icon="phone" 
+          title="With Phone" 
+          value={filterCounts.with_phone.toString()} 
+          onPress={() => setActiveFilter('with_phone')}
+        />
+        <KPIBox 
+          icon="map-pin" 
+          title="With Addr" 
+          value={filterCounts.with_address.toString()} 
+          onPress={() => setActiveFilter('with_address')}
+        />
+      </View>
+
+      <View style={styles.sectionHeader}>
+        <Feather name="users" size={iconSizes.md} color={colors.primary} />
+        <Text style={styles.sectionTitle}>ALL CLIENTS</Text>
+      </View>
+
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+    </>
+  ), [styles, clients.length, searchQuery, activeFilter, filterCounts, isLoading, colors]);
+
+  const ListEmptyComponent = useMemo(() => {
+    if (isLoading) return null;
     return (
-      <View style={styles.clientsList}>
-        {filteredClients.map((client) => (
-          <ClientCard
-            key={client.id}
-            client={client}
-            onPress={() => router.push(`/more/client/${client.id}`)}
-            onCall={() => client.phone && handleCall(client.phone)}
-            onEmail={() => client.email && handleEmail(client.email)}
-            onSms={() => client.phone && handleSms(client.phone)}
-            onCreateJob={() => handleCreateJob(client.id)}
-            onDelete={() => handleDeleteClient(client)}
-          />
-        ))}
+      <View style={styles.emptyState}>
+        <View style={styles.emptyStateIcon}>
+          <Feather name="users" size={iconSizes['4xl']} color={colors.mutedForeground} />
+        </View>
+        <Text style={styles.emptyStateTitle}>No clients found</Text>
+        <Text style={styles.emptyStateSubtitle}>
+          {searchQuery || activeFilter !== 'all'
+            ? 'Try adjusting your search or filters'
+            : 'Save client details once, use them everywhere. Makes quoting and invoicing a breeze.'}
+        </Text>
+        {!searchQuery && activeFilter === 'all' && (
+          <TouchableOpacity 
+            style={styles.emptyStateButton}
+            onPress={handleCreateClient}
+          >
+            <Feather name="plus" size={16} color={colors.white} />
+            <Text style={styles.emptyStateButtonText}>Add Your First Client</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
-  };
+  }, [isLoading, styles, colors, searchQuery, activeFilter]);
 
   // Dynamic content container style for iPad-responsive padding
   const responsiveContentStyle = useMemo(() => ({
@@ -344,10 +476,15 @@ export default function ClientsScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <ScrollView
+        <FlatList
+          data={filteredClients}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
           style={styles.scrollView}
           contentContainerStyle={responsiveContentStyle}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={ListHeaderComponent}
+          ListEmptyComponent={ListEmptyComponent}
           refreshControl={
             <RefreshControl
               refreshing={isLoading}
@@ -355,138 +492,7 @@ export default function ClientsScreen() {
               tintColor={colors.primary}
             />
           }
-        >
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Clients</Text>
-              <Text style={styles.pageSubtitle}>{clients.length} total</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.newButton}
-              onPress={handleCreateClient}
-            >
-              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-              <Text style={styles.newButtonText}>New Client</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchBar}>
-            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search clients..."
-              placeholderTextColor={colors.mutedForeground}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filtersScroll}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {FILTERS.map((filter) => {
-              const count = filterCounts[filter.key];
-              const isActive = activeFilter === filter.key;
-              
-              return (
-                <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive
-                  ]}
-                >
-                  <Text style={[
-                    styles.filterPillText,
-                    isActive && styles.filterPillTextActive
-                  ]}>
-                    {filter.label}
-                  </Text>
-                  <View style={[
-                    styles.filterCount,
-                    isActive && styles.filterCountActive
-                  ]}>
-                    <Text style={[
-                      styles.filterCountText,
-                      isActive && styles.filterCountTextActive
-                    ]}>
-                      {count}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <View style={styles.kpiRow}>
-            <KPIBox 
-              icon="users" 
-              title="Total" 
-              value={filterCounts.all.toString()} 
-              onPress={() => setActiveFilter('all')}
-            />
-            <KPIBox 
-              icon="mail" 
-              title="With Email" 
-              value={filterCounts.with_email.toString()} 
-              onPress={() => setActiveFilter('with_email')}
-            />
-            <KPIBox 
-              icon="phone" 
-              title="With Phone" 
-              value={filterCounts.with_phone.toString()} 
-              onPress={() => setActiveFilter('with_phone')}
-            />
-            <KPIBox 
-              icon="map-pin" 
-              title="With Addr" 
-              value={filterCounts.with_address.toString()} 
-              onPress={() => setActiveFilter('with_address')}
-            />
-          </View>
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="users" size={iconSizes.md} color={colors.primary} />
-              <Text style={styles.sectionTitle}>ALL CLIENTS</Text>
-            </View>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-              </View>
-            ) : filteredClients.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyStateIcon}>
-                  <Feather name="users" size={iconSizes['4xl']} color={colors.mutedForeground} />
-                </View>
-                <Text style={styles.emptyStateTitle}>No clients found</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  {searchQuery || activeFilter !== 'all'
-                    ? 'Try adjusting your search or filters'
-                    : 'Save client details once, use them everywhere. Makes quoting and invoicing a breeze.'}
-                </Text>
-                {!searchQuery && activeFilter === 'all' && (
-                  <TouchableOpacity 
-                    style={styles.emptyStateButton}
-                    onPress={handleCreateClient}
-                  >
-                    <Feather name="plus" size={16} color={colors.white} />
-                    <Text style={styles.emptyStateButtonText}>Add Your First Client</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              renderClientList()
-            )}
-          </View>
-        </ScrollView>
+        />
       </View>
     </>
   );
@@ -704,6 +710,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   clientsList: {
     gap: spacing.md,
+  },
+  clientItemWrapper: {
+    marginBottom: spacing.md,
   },
   clientCardFull: {
     backgroundColor: colors.card,

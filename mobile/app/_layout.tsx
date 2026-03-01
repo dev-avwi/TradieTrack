@@ -27,6 +27,7 @@ import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { isTablet, useShouldUseSidebar, isIPad, useOrientation } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
+import ErrorBoundary from '../src/components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -570,17 +571,19 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <ScrollProvider>
-            <TerminalProvider>
-              <RootLayoutContent />
-            </TerminalProvider>
-          </ScrollProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <ScrollProvider>
+              <TerminalProvider>
+                <RootLayoutContent />
+              </TerminalProvider>
+            </ScrollProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

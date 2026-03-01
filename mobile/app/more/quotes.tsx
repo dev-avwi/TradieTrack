@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   ScrollView, 
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
@@ -415,7 +416,9 @@ export default function QuotesScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <ScrollView
+        <FlatList
+          data={sortedQuotes}
+          keyExtractor={(item) => item.id.toString()}
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -426,128 +429,144 @@ export default function QuotesScreen() {
               tintColor={colors.primary}
             />
           }
-        >
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Quotes</Text>
-              <Text style={styles.pageSubtitle}>{quotes.length} total</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.newButton}
-              onPress={navigateToCreateQuote}
-            >
-              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-              <Text style={styles.newButtonText}>New Quote</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchBar}>
-            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search quotes..."
-              placeholderTextColor={colors.mutedForeground}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Feather name="x" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filtersScroll}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {FILTERS.map((filter) => {
-              const count = filterCounts[filter.key];
-              const isActive = activeFilter === filter.key;
-              
-              return (
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <Text style={styles.pageTitle}>Quotes</Text>
+                  <Text style={styles.pageSubtitle}>{quotes.length} total</Text>
+                </View>
                 <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive
-                  ]}
+                  activeOpacity={0.8}
+                  style={styles.newButton}
+                  onPress={navigateToCreateQuote}
                 >
-                  <Feather 
-                    name={filter.icon as any} 
-                    size={12} 
-                    color={isActive ? colors.white : colors.foreground} 
-                  />
-                  <Text style={[
-                    styles.filterPillText,
-                    isActive && styles.filterPillTextActive
-                  ]}>
-                    {filter.label}
-                  </Text>
-                  <View style={[
-                    styles.filterCount,
-                    isActive && styles.filterCountActive
-                  ]}>
-                    <Text style={[
-                      styles.filterCountText,
-                      isActive && styles.filterCountTextActive
-                    ]}>
-                      {count}
-                    </Text>
-                  </View>
+                  <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+                  <Text style={styles.newButtonText}>New Quote</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* KPI Stats Cards - 2x2 grid like web */}
-          <View style={styles.kpiGrid}>
-            <KPICard
-              title="Total Quotes"
-              value={filterCounts.all}
-              icon="file-text"
-              onPress={() => setActiveFilter('all')}
-              colors={colors}
-            />
-            <KPICard
-              title="Draft"
-              value={filterCounts.draft}
-              icon="clock"
-              onPress={() => setActiveFilter('draft')}
-              colors={colors}
-            />
-            <KPICard
-              title="Sent"
-              value={filterCounts.sent}
-              icon="send"
-              onPress={() => setActiveFilter('sent')}
-              colors={colors}
-            />
-            <KPICard
-              title="Accepted"
-              value={filterCounts.accepted}
-              icon="check-circle"
-              onPress={() => setActiveFilter('accepted')}
-              colors={colors}
-            />
-          </View>
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
-              <Text style={styles.sectionTitle}>{getSectionTitle()}</Text>
-            </View>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : sortedQuotes.length === 0 ? (
+
+              <View style={styles.searchBar}>
+                <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search quotes..."
+                  placeholderTextColor={colors.mutedForeground}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Feather name="x" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.filtersScroll}
+                contentContainerStyle={styles.filtersContent}
+              >
+                {FILTERS.map((filter) => {
+                  const count = filterCounts[filter.key];
+                  const isActive = activeFilter === filter.key;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={filter.key}
+                      onPress={() => setActiveFilter(filter.key)}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.filterPill,
+                        isActive && styles.filterPillActive
+                      ]}
+                    >
+                      <Feather 
+                        name={filter.icon as any} 
+                        size={12} 
+                        color={isActive ? colors.white : colors.foreground} 
+                      />
+                      <Text style={[
+                        styles.filterPillText,
+                        isActive && styles.filterPillTextActive
+                      ]}>
+                        {filter.label}
+                      </Text>
+                      <View style={[
+                        styles.filterCount,
+                        isActive && styles.filterCountActive
+                      ]}>
+                        <Text style={[
+                          styles.filterCountText,
+                          isActive && styles.filterCountTextActive
+                        ]}>
+                          {count}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.kpiGrid}>
+                <KPICard
+                  title="Total Quotes"
+                  value={filterCounts.all}
+                  icon="file-text"
+                  onPress={() => setActiveFilter('all')}
+                  colors={colors}
+                />
+                <KPICard
+                  title="Draft"
+                  value={filterCounts.draft}
+                  icon="clock"
+                  onPress={() => setActiveFilter('draft')}
+                  colors={colors}
+                />
+                <KPICard
+                  title="Sent"
+                  value={filterCounts.sent}
+                  icon="send"
+                  onPress={() => setActiveFilter('sent')}
+                  colors={colors}
+                />
+                <KPICard
+                  title="Accepted"
+                  value={filterCounts.accepted}
+                  icon="check-circle"
+                  onPress={() => setActiveFilter('accepted')}
+                  colors={colors}
+                />
+              </View>
+
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
+                  <Text style={styles.sectionTitle}>{getSectionTitle()}</Text>
+                </View>
+              </View>
+
+              {isLoading && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              )}
+            </>
+          }
+          renderItem={({ item: quote }) => (
+            <QuoteCard
+              quote={quote}
+              clientName={getClientName(quote.clientId)}
+              jobTitle={quote.title || quote.description || ''}
+              onPress={() => router.push(`/more/quote/${quote.id}`)}
+              onSend={() => handleSendQuote(quote.id)}
+              onConvertToInvoice={() => handleConvertToInvoice(quote.id)}
+              onDelete={() => handleDeleteQuote(quote.id)}
+            />
+          )}
+          ListEmptyComponent={
+            !isLoading ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyStateIcon}>
                   <Feather name="file-text" size={iconSizes['4xl']} color={colors.mutedForeground} />
@@ -573,24 +592,9 @@ export default function QuotesScreen() {
                   </>
                 )}
               </View>
-            ) : (
-              <View style={styles.quotesList}>
-                {sortedQuotes.map((quote) => (
-                  <QuoteCard
-                    key={quote.id}
-                    quote={quote}
-                    clientName={getClientName(quote.clientId)}
-                    jobTitle={quote.title || quote.description || ''}
-                    onPress={() => router.push(`/more/quote/${quote.id}`)}
-                    onSend={() => handleSendQuote(quote.id)}
-                    onConvertToInvoice={() => handleConvertToInvoice(quote.id)}
-                    onDelete={() => handleDeleteQuote(quote.id)}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        </ScrollView>
+            ) : null
+          }
+        />
       </View>
       
       {/* Inline Email Compose Modal */}

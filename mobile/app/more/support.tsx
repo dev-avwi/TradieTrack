@@ -9,13 +9,21 @@ import {
   Linking,
   LayoutAnimation,
   Platform,
-  UIManager
+  UIManager,
+  Alert
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import AppTour from '../../src/components/AppTour';
+import * as Clipboard from 'expo-clipboard';
+import * as Device from 'expo-device';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
+import { useOfflineStore } from '../../src/lib/offline-storage';
+import { useAuthStore } from '../../src/lib/store';
+import api from '../../src/lib/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -371,6 +379,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: spacing.xs,
   },
+  debugRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  debugLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    flex: 1,
+  },
+  debugValue: {
+    ...typography.caption,
+    color: colors.foreground,
+    flex: 1,
+    textAlign: 'right',
+  },
+  copyDebugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    marginTop: spacing.md,
+  },
+  copyDebugText: {
+    ...typography.bodySmall,
+    fontWeight: '600' as const,
+  },
 });
 
 interface AccordionCategoryProps {
@@ -529,6 +568,40 @@ export default function SupportScreen() {
     });
   };
 
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime } = useOfflineStore();
+  const user = useAuthStore((state: any) => state.user);
+
+  const debugInfo = useMemo(() => {
+    const appVersion = Application.nativeApplicationVersion || '1.1.0';
+    const buildNumber = Application.nativeBuildVersion || 'dev';
+    const sdkVersion = Constants.expoConfig?.sdkVersion || 'unknown';
+    const deviceModel = Device.modelName || 'unknown';
+    const osName = Platform.OS;
+    const osVersion = Platform.Version?.toString() || 'unknown';
+    const apiUrl = api?.defaults?.baseURL || process.env.EXPO_PUBLIC_API_URL || 'default';
+    const lastSync = lastSyncTime ? new Date(lastSyncTime).toLocaleString('en-AU') : 'Never';
+    
+    return {
+      'App Version': `${appVersion} (${buildNumber})`,
+      'Expo SDK': sdkVersion,
+      'Platform': `${osName} ${osVersion}`,
+      'Device': deviceModel,
+      'User ID': user?.id?.toString() || 'Not logged in',
+      'Online': isOnline ? 'Yes' : 'No',
+      'Syncing': isSyncing ? 'Yes' : 'No',
+      'Pending Sync': pendingSyncCount.toString(),
+      'Last Sync': lastSync,
+      'API Endpoint': apiUrl,
+    };
+  }, [isOnline, isSyncing, pendingSyncCount, lastSyncTime, user]);
+
+  const handleCopyDebugInfo = async () => {
+    const lines = Object.entries(debugInfo).map(([key, value]) => `${key}: ${value}`);
+    const text = `--- JobRunner Debug Info ---\n${lines.join('\n')}\nTimestamp: ${new Date().toISOString()}\n---`;
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied', 'Debug info copied to clipboard. You can paste it in a support email.');
+  };
+
   const handleEmailSupport = () => {
     Linking.openURL('mailto:admin@avwebinnovation.com');
   };
@@ -644,9 +717,33 @@ export default function SupportScreen() {
             </View>
           </View>
 
+          <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>DEBUG INFO</Text>
+          <View style={styles.contactCard}>
+            {Object.entries(debugInfo).map(([key, value], index, arr) => (
+              <View
+                key={key}
+                style={[
+                  styles.debugRow,
+                  index < arr.length - 1 && styles.contactItemBorder,
+                ]}
+              >
+                <Text style={styles.debugLabel}>{key}</Text>
+                <Text style={styles.debugValue} selectable>{value}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.copyDebugButton, { backgroundColor: colors.primary }]}
+            onPress={handleCopyDebugInfo}
+            activeOpacity={0.8}
+          >
+            <Feather name="copy" size={iconSizes.md} color={colors.white} />
+            <Text style={[styles.copyDebugText, { color: colors.white }]}>Copy Debug Info</Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>JobRunner Mobile</Text>
-            <Text style={styles.versionText}>Version 1.1.0</Text>
+            <Text style={styles.versionText}>Version {debugInfo['App Version']}</Text>
           </View>
         </View>
       </ScrollView>

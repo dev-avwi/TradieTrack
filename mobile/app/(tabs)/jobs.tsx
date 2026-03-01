@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   ScrollView, 
+  FlatList,
   RefreshControl,
   TouchableOpacity,
   TextInput,
@@ -271,12 +272,12 @@ export default function JobsScreen() {
   const isTabletDevice = isTablet();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
-  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollRef = useRef<FlatList | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      scrollRef.current?.scrollToOffset({ offset: 0, animated: true });
     }
   }, [scrollToTopTrigger]);
   
@@ -531,10 +532,251 @@ export default function JobsScreen() {
     paddingBottom: responsiveShell.paddingBottom,
   }), [responsiveShell]);
 
+  const listHeaderComponent = useMemo(() => (
+    <View>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.pageTitle}>Work</Text>
+          <Text style={styles.pageSubtitle}>{jobs.length} jobs total</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
+              onPress={() => setViewMode('grid')}
+            >
+              <Feather name="grid" size={iconSizes.md} color={viewMode === 'grid' ? colors.primary : colors.mutedForeground} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+              onPress={() => setViewMode('list')}
+            >
+              <Feather name="list" size={iconSizes.md} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.newJobButton}
+            onPress={navigateToCreateJob}
+          >
+            <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <UsageLimitBanner />
+
+      <View style={styles.searchBar}>
+        <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search jobs, clients, addresses..."
+          placeholderTextColor={colors.mutedForeground}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.filtersScroll}
+        contentContainerStyle={styles.filtersContent}
+      >
+        {STATUS_FILTERS.map((filter) => {
+          const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
+          const isActive = activeFilter === filter.key;
+          
+          return (
+            <TouchableOpacity
+              key={filter.key}
+              onPress={() => setActiveFilter(filter.key)}
+              activeOpacity={0.7}
+              style={[
+                styles.filterPill,
+                isActive && styles.filterPillActive
+              ]}
+            >
+              <Text style={[
+                styles.filterPillText,
+                isActive && styles.filterPillTextActive
+              ]}>
+                {filter.label}
+              </Text>
+              <View style={[
+                styles.filterCount,
+                isActive && styles.filterCountActive
+              ]}>
+                <Text style={[
+                  styles.filterCountText,
+                  isActive && styles.filterCountTextActive
+                ]}>
+                  {count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.kpiGrid}>
+        <TouchableOpacity 
+          style={styles.kpiCard} 
+          onPress={() => setActiveFilter('all')}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.kpiIcon, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="briefcase" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.kpiValue}>{statusCounts.all}</Text>
+            <Text style={styles.kpiLabel}>Total Jobs</Text>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.kpiCard} 
+          onPress={() => setActiveFilter('scheduled')}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.kpiIcon, { backgroundColor: `${colors.scheduled}15` }]}>
+            <Feather name="calendar" size={iconSizes.lg} color={colors.scheduled} />
+          </View>
+          <View>
+            <Text style={styles.kpiValue}>{statusCounts.scheduled}</Text>
+            <Text style={styles.kpiLabel}>Scheduled</Text>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.kpiCard} 
+          onPress={() => setActiveFilter('in_progress')}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.kpiIcon, { backgroundColor: `${colors.inProgress}15` }]}>
+            <Feather name="play" size={iconSizes.lg} color={colors.inProgress} />
+          </View>
+          <View>
+            <Text style={styles.kpiValue}>{statusCounts.in_progress}</Text>
+            <Text style={styles.kpiLabel}>In Progress</Text>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.kpiCard} 
+          onPress={() => setActiveFilter('done')}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.kpiIcon, { backgroundColor: `${colors.done}15` }]}>
+            <Feather name="check-circle" size={iconSizes.lg} color={colors.done} />
+          </View>
+          <View>
+            <Text style={styles.kpiValue}>{statusCounts.done}</Text>
+            <Text style={styles.kpiLabel}>Completed</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
+          <Text style={styles.sectionTitle}>ALL JOBS</Text>
+        </View>
+      </View>
+
+      {viewMode === 'list' && sortedJobs.length > 0 && (
+        <View style={styles.listHeader}>
+          <TouchableOpacity
+            style={styles.sortHeaderTitleColumn}
+            onPress={() => handleSortChange('title')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.listHeaderCol, sortField === 'title' && styles.listHeaderColActive]}>Job</Text>
+            <SortIndicator field="title" isActive={sortField === 'title'} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortHeaderStatusColumn, { width: 80 }]}
+            onPress={() => handleSortChange('status')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.listHeaderCol, styles.listHeaderColStatus, sortField === 'status' && styles.listHeaderColActive]}>Status</Text>
+            <SortIndicator field="status" isActive={sortField === 'status'} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortHeaderDateColumn, { width: 70 }]}
+            onPress={() => handleSortChange('date')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.listHeaderCol, styles.listHeaderColDate, sortField === 'date' && styles.listHeaderColActive]}>Date</Text>
+            <SortIndicator field="date" isActive={sortField === 'date'} />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  ), [jobs.length, viewMode, searchQuery, activeFilter, statusCounts, colors, styles, sortField, sortDirection, sortedJobs.length]);
+
+  const listEmptyComponent = useMemo(() => {
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyStateIcon}>
+          <Feather name="briefcase" size={iconSizes['4xl']} color={colors.mutedForeground} />
+        </View>
+        <Text style={styles.emptyStateTitle}>No jobs found</Text>
+        <Text style={styles.emptyStateSubtitle}>
+          {searchQuery || activeFilter !== 'all'
+            ? 'Try adjusting your search or filters'
+            : 'Create your first job to get started'}
+        </Text>
+      </View>
+    );
+  }, [isLoading, searchQuery, activeFilter, colors, styles]);
+
+  const renderItem = useCallback(({ item: job }: { item: any }) => {
+    const jobWithClient = { ...job, clientName: job.clientName || getClientName(job.clientId) };
+    if (viewMode === 'grid') {
+      return (
+        <JobCard
+          job={jobWithClient}
+          onPress={() => router.push(`/job/${job.id}`)}
+          onQuickAction={handleQuickAction}
+          onShowActionSheet={setActionSheetJob}
+        />
+      );
+    }
+    return (
+      <View style={{ marginBottom: spacing.sm }}>
+        <JobListRow
+          job={jobWithClient}
+          onPress={() => router.push(`/job/${job.id}`)}
+          onDelete={handleDeleteJob}
+          onQuickAction={handleQuickAction}
+          onShowActionSheet={setActionSheetJob}
+        />
+      </View>
+    );
+  }, [viewMode, handleQuickAction, handleDeleteJob, clients]);
+
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <FlatList
         ref={scrollRef}
+        key={viewMode}
+        data={sortedJobs}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        columnWrapperStyle={viewMode === 'grid' ? styles.jobsGrid : undefined}
+        ListHeaderComponent={listHeaderComponent}
+        ListEmptyComponent={listEmptyComponent}
         style={styles.scrollView}
         contentContainerStyle={responsiveContentStyle}
         showsVerticalScrollIndicator={false}
@@ -545,234 +787,7 @@ export default function JobsScreen() {
             tintColor={colors.primary}
           />
         }
-      >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.pageTitle}>Work</Text>
-            <Text style={styles.pageSubtitle}>{jobs.length} jobs total</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <View style={styles.viewToggle}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
-                onPress={() => setViewMode('grid')}
-              >
-                <Feather name="grid" size={iconSizes.md} color={viewMode === 'grid' ? colors.primary : colors.mutedForeground} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
-                onPress={() => setViewMode('list')}
-              >
-                <Feather name="list" size={iconSizes.md} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.newJobButton}
-              onPress={navigateToCreateJob}
-            >
-              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Usage Limit Warning - Free Plan Users */}
-        <UsageLimitBanner />
-
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search jobs, clients, addresses..."
-            placeholderTextColor={colors.mutedForeground}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Filter Pills with Counts */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersScroll}
-          contentContainerStyle={styles.filtersContent}
-        >
-          {STATUS_FILTERS.map((filter) => {
-            const count = statusCounts[filter.key as keyof typeof statusCounts] || 0;
-            const isActive = activeFilter === filter.key;
-            
-            return (
-              <TouchableOpacity
-                key={filter.key}
-                onPress={() => setActiveFilter(filter.key)}
-                activeOpacity={0.7}
-                style={[
-                  styles.filterPill,
-                  isActive && styles.filterPillActive
-                ]}
-              >
-                <Text style={[
-                  styles.filterPillText,
-                  isActive && styles.filterPillTextActive
-                ]}>
-                  {filter.label}
-                </Text>
-                <View style={[
-                  styles.filterCount,
-                  isActive && styles.filterCountActive
-                ]}>
-                  <Text style={[
-                    styles.filterCountText,
-                    isActive && styles.filterCountTextActive
-                  ]}>
-                    {count}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* KPI Stats Grid */}
-        <View style={styles.kpiGrid}>
-          <TouchableOpacity 
-            style={styles.kpiCard} 
-            onPress={() => setActiveFilter('all')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.kpiIcon, { backgroundColor: `${colors.primary}15` }]}>
-              <Feather name="briefcase" size={iconSizes.lg} color={colors.primary} />
-            </View>
-            <View>
-              <Text style={styles.kpiValue}>{statusCounts.all}</Text>
-              <Text style={styles.kpiLabel}>Total Jobs</Text>
-            </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.kpiCard} 
-            onPress={() => setActiveFilter('scheduled')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.kpiIcon, { backgroundColor: `${colors.scheduled}15` }]}>
-              <Feather name="calendar" size={iconSizes.lg} color={colors.scheduled} />
-            </View>
-            <View>
-              <Text style={styles.kpiValue}>{statusCounts.scheduled}</Text>
-              <Text style={styles.kpiLabel}>Scheduled</Text>
-            </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.kpiCard} 
-            onPress={() => setActiveFilter('in_progress')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.kpiIcon, { backgroundColor: `${colors.inProgress}15` }]}>
-              <Feather name="play" size={iconSizes.lg} color={colors.inProgress} />
-            </View>
-            <View>
-              <Text style={styles.kpiValue}>{statusCounts.in_progress}</Text>
-              <Text style={styles.kpiLabel}>In Progress</Text>
-            </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.kpiCard} 
-            onPress={() => setActiveFilter('done')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.kpiIcon, { backgroundColor: `${colors.done}15` }]}>
-              <Feather name="check-circle" size={iconSizes.lg} color={colors.done} />
-            </View>
-            <View>
-              <Text style={styles.kpiValue}>{statusCounts.done}</Text>
-              <Text style={styles.kpiLabel}>Completed</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* All Jobs Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
-            <Text style={styles.sectionTitle}>ALL JOBS</Text>
-          </View>
-          
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : sortedJobs.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIcon}>
-                <Feather name="briefcase" size={iconSizes['4xl']} color={colors.mutedForeground} />
-              </View>
-              <Text style={styles.emptyStateTitle}>No jobs found</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                {searchQuery || activeFilter !== 'all'
-                  ? 'Try adjusting your search or filters'
-                  : 'Create your first job to get started'}
-              </Text>
-            </View>
-          ) : viewMode === 'grid' ? (
-            <View style={styles.jobsGrid}>
-              {sortedJobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
-                  onPress={() => router.push(`/job/${job.id}`)}
-                  onQuickAction={handleQuickAction}
-                  onShowActionSheet={setActionSheetJob}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.jobsList}>
-              <View style={styles.listHeader}>
-                <TouchableOpacity
-                  style={styles.sortHeaderTitleColumn}
-                  onPress={() => handleSortChange('title')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.listHeaderCol, sortField === 'title' && styles.listHeaderColActive]}>Job</Text>
-                  <SortIndicator field="title" isActive={sortField === 'title'} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.sortHeaderStatusColumn, { width: 80 }]}
-                  onPress={() => handleSortChange('status')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.listHeaderCol, styles.listHeaderColStatus, sortField === 'status' && styles.listHeaderColActive]}>Status</Text>
-                  <SortIndicator field="status" isActive={sortField === 'status'} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.sortHeaderDateColumn, { width: 70 }]}
-                  onPress={() => handleSortChange('date')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.listHeaderCol, styles.listHeaderColDate, sortField === 'date' && styles.listHeaderColActive]}>Date</Text>
-                  <SortIndicator field="date" isActive={sortField === 'date'} />
-                </TouchableOpacity>
-              </View>
-              {sortedJobs.map((job) => (
-                <JobListRow
-                  key={job.id}
-                  job={{ ...job, clientName: job.clientName || getClientName(job.clientId) }}
-                  onPress={() => router.push(`/job/${job.id}`)}
-                  onDelete={handleDeleteJob}
-                  onQuickAction={handleQuickAction}
-                  onShowActionSheet={setActionSheetJob}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+      />
 
       <QuickActionSheet
         visible={actionSheetJob !== null}
@@ -965,8 +980,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number, horizontalPaddi
 
   jobsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   jobsList: {
     gap: spacing.sm,
