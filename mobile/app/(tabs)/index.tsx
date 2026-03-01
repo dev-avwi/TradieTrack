@@ -1389,7 +1389,12 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
-      refreshData();
+      if (!jobsLoading && !statsLoading && todaysJobs && todaysJobs.length >= 0) {
+        setInitialLoadComplete(true);
+        refreshData();
+      } else {
+        refreshData();
+      }
     }
   }, [refreshData]);
 

@@ -530,9 +530,19 @@ function RootLayoutContent() {
     }
   }, [isInitialized, isLoading, isAuthenticated]);
 
+  const [renderReady, setRenderReady] = useState(false);
+  
   const showLoading = !isInitialized || isLoading || !appReady || !minTimeElapsed;
   
-  if (showLoading) {
+  useEffect(() => {
+    if (!showLoading && !renderReady) {
+      InteractionManager.runAfterInteractions(() => {
+        setRenderReady(true);
+      });
+    }
+  }, [showLoading, renderReady]);
+  
+  if (showLoading || !renderReady) {
     return <LoadingScreen colors={colors} />;
   }
 
