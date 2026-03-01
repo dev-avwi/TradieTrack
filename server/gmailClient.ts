@@ -342,11 +342,17 @@ export async function sendViaGmailAPI(options: {
       }
     }
     
-    // 3. If we still don't have an email, we'll try sending anyway
+    // 3. If we still don't have a from email, try using replyTo as the from address
+    // This ensures the display name (business name) shows correctly in the recipient's inbox
+    if (!fromEmail && options.replyTo) {
+      console.log(`[Gmail] Using replyTo as from email for display name: ${options.fromName || 'none'}`);
+      fromEmail = options.replyTo;
+    }
+
+    // 4. If we still don't have an email, try sending anyway
     // Gmail API will use the authenticated user's email as the From address
     if (!fromEmail) {
       console.log(`[Gmail] No from email available, attempting send with auto-from (fromName: ${options.fromName || 'none'}, replyTo: ${options.replyTo || 'none'})`);
-      // Create a message with display name - Gmail will add the email address
       const raw = createRawMessageWithoutFrom({
         to: options.to,
         subject: options.subject,
