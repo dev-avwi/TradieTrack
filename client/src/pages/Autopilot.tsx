@@ -22,6 +22,14 @@ import {
   Plus,
   Settings,
   TrendingUp,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
+  Mail,
+  MessageSquare,
+  Activity,
 } from "lucide-react";
 
 interface AutopilotProps {
@@ -87,6 +95,164 @@ interface AutomationConfig {
   icon: typeof FileText;
   color: string;
   category: "communications" | "fieldwork" | "billing";
+}
+
+const FIELD_TO_API_TYPE: Record<AutomationField, string> = {
+  quoteFollowUpEnabled: "quote_followup",
+  jobReminderEnabled: "job_reminder",
+  invoiceReminderEnabled: "invoice_reminder",
+  photoRequirementsEnabled: "photo_requirement",
+  gpsAutoCheckInEnabled: "gps_checkin",
+  autoInvoiceOnComplete: "auto_invoice",
+  autoReviewRequest: "review_request",
+};
+
+const AUTOMATION_TYPE_LABELS: Record<string, string> = {
+  quote_followup: "Quote follow-up",
+  job_reminder: "Job reminder",
+  invoice_reminder: "Invoice reminder",
+  auto_invoice: "Auto-invoice",
+  review_request: "Review request",
+  photo_requirement: "Photo prompt",
+  gps_checkin: "GPS check-in",
+  sms_automation: "SMS automation",
+  general: "Automation",
+};
+
+interface ActivityLogEntry {
+  id: string;
+  automationType: string;
+  entityType: string;
+  entityId: string;
+  entityLabel: string;
+  channel: string;
+  status: string;
+  recipientName: string;
+  createdAt: string | null;
+  errorMessage: string | null;
+}
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+}
+
+function ChannelBadge({ channel }: { channel: string }) {
+  if (channel === "sms") return <Badge variant="outline" className="text-[10px] gap-0.5"><MessageSquare className="h-2.5 w-2.5" />SMS</Badge>;
+  if (channel === "email") return <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="h-2.5 w-2.5" />Email</Badge>;
+  if (channel === "both") return <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="h-2.5 w-2.5" />Both</Badge>;
+  return null;
+}
+
+function ActivityLogItem({ entry }: { entry: ActivityLogEntry }) {
+  const isFailed = entry.status === "failed" || entry.status === "error";
+  return (
+    <div className={`flex items-start gap-2.5 py-2 ${isFailed ? "opacity-80" : ""}`}>
+      <div className="mt-0.5 flex-shrink-0">
+        {isFailed ? (
+          <XCircle className="h-3.5 w-3.5 text-destructive" />
+        ) : (
+          <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "hsl(142 76% 36%)" }} />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-medium truncate max-w-[200px]">
+            {entry.entityLabel}
+          </span>
+          <ChannelBadge channel={entry.channel} />
+          {isFailed && <Badge variant="destructive" className="text-[10px]">Failed</Badge>}
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[11px] text-muted-foreground truncate">
+            to {entry.recipientName}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {timeAgo(entry.createdAt)}
+          </span>
+        </div>
+        {isFailed && entry.errorMessage && (
+          <p className="text-[11px] text-destructive mt-0.5 truncate">{entry.errorMessage}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AutomationActivityLog({ field, color }: { field: AutomationField; color: string }) {
+  const apiType = FIELD_TO_API_TYPE[field];
+  const [expanded, setExpanded] = useState(false);
+  const limit = expanded ? 20 : 5;
+
+  const { data: logs, isLoading, refetch } = useQuery<ActivityLogEntry[]>({
+    queryKey: ["/api/autopilot/activity-log", apiType, limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/autopilot/activity-log?type=${apiType}&limit=${limit}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="pt-3 border-t border-border/50 mt-1">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Activity className="h-3 w-3 text-muted-foreground" />
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Recent Activity</span>
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-3/4" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!logs || logs.length === 0) {
+    return (
+      <div className="pt-3 border-t border-border/50 mt-1">
+        <div className="flex items-center gap-1.5">
+          <Activity className="h-3 w-3 text-muted-foreground" />
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Recent Activity</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1.5 italic">No activity yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-3 border-t border-border/50 mt-1">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Activity className="h-3 w-3" style={{ color: `hsl(${color})` }} />
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Recent Activity</span>
+        <Badge variant="secondary" className="text-[9px] ml-auto">{logs.length}</Badge>
+      </div>
+      <div className="divide-y divide-border/30">
+        {logs.map((entry) => (
+          <ActivityLogItem key={entry.id} entry={entry} />
+        ))}
+      </div>
+      {logs.length >= 5 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1.5 hover:text-foreground transition-colors"
+        >
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          {expanded ? "Show less" : "View all"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 const automations: AutomationConfig[] = [
@@ -627,12 +793,110 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
                       />
                     </div>
                   )}
+                  {isEnabled && (
+                    <div className="mt-3 rounded-xl bg-muted/30 p-3">
+                      <AutomationActivityLog field={item.field} color={item.color} />
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      <GlobalActivityFeed />
     </PageShell>
+  );
+}
+
+function GlobalActivityFeed() {
+  const [showAll, setShowAll] = useState(false);
+  const limit = showAll ? 50 : 15;
+
+  const { data: logs, isLoading } = useQuery<ActivityLogEntry[]>({
+    queryKey: ["/api/autopilot/activity-log", "global", limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/autopilot/activity-log?limit=${limit}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div>
+        <SectionTitle className="mb-3">Activity Feed</SectionTitle>
+        <div className="feed-card p-4 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!logs || logs.length === 0) {
+    return (
+      <div>
+        <SectionTitle className="mb-3">Activity Feed</SectionTitle>
+        <div className="feed-card p-6 flex flex-col items-center text-center">
+          <Clock className="h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">No automation activity yet</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Activity will appear here when automations fire</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <SectionTitle className="mb-3">
+        <span className="flex items-center gap-2">
+          Activity Feed
+          <Badge variant="secondary" className="text-[10px]">{logs.length}</Badge>
+        </span>
+      </SectionTitle>
+      <div className="feed-card p-4">
+        <div className="divide-y divide-border/30">
+          {logs.map((entry) => (
+            <div key={entry.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+              <div className="mt-0.5 flex-shrink-0">
+                {entry.status === "failed" || entry.status === "error" ? (
+                  <XCircle className="h-4 w-4 text-destructive" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" style={{ color: "hsl(142 76% 36%)" }} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px]">
+                    {AUTOMATION_TYPE_LABELS[entry.automationType] || entry.automationType}
+                  </Badge>
+                  <span className="text-xs font-medium truncate">{entry.entityLabel}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground">to {entry.recipientName}</span>
+                  <ChannelBadge channel={entry.channel} />
+                  <span className="text-[11px] text-muted-foreground ml-auto">{timeAgo(entry.createdAt)}</span>
+                </div>
+                {(entry.status === "failed" || entry.status === "error") && entry.errorMessage && (
+                  <p className="text-[11px] text-destructive mt-0.5 truncate">{entry.errorMessage}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {logs.length >= 15 && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="flex items-center gap-1 text-xs text-muted-foreground mt-3 mx-auto hover:text-foreground transition-colors"
+          >
+            {showAll ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {showAll ? "Show less" : "View more"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

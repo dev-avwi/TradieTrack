@@ -39,7 +39,47 @@ interface AutomationTemplate {
   category?: string;
 }
 
-type TabType = 'automations' | 'templates';
+interface ActivityLogEntry {
+  id: string;
+  automationType: string;
+  entityType: string;
+  entityId: string;
+  entityLabel: string;
+  channel: string;
+  status: string;
+  recipientName: string;
+  createdAt: string | null;
+  errorMessage: string | null;
+}
+
+const AUTOMATION_TYPE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  quote_followup: { label: 'Quote follow-up', icon: 'file-text', color: '#3b82f6' },
+  job_reminder: { label: 'Job reminder', icon: 'calendar', color: '#22c55e' },
+  invoice_reminder: { label: 'Invoice reminder', icon: 'dollar-sign', color: '#ef4444' },
+  auto_invoice: { label: 'Auto-invoice', icon: 'file-plus', color: '#14b8a6' },
+  review_request: { label: 'Review request', icon: 'star', color: '#eab308' },
+  photo_requirement: { label: 'Photo prompt', icon: 'camera', color: '#f59e0b' },
+  gps_checkin: { label: 'GPS check-in', icon: 'map-pin', color: '#8b5cf6' },
+  sms_automation: { label: 'SMS automation', icon: 'message-square', color: '#6b7280' },
+  general: { label: 'Automation', icon: 'zap', color: '#6b7280' },
+};
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
+type TabType = 'automations' | 'templates' | 'activity';
 
 const CATEGORY_COLORS: Record<string, { color: string; bgColor: string }> = {
   'communication': { color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
@@ -407,6 +447,8 @@ export default function AutopilotScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('automations');
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [templates, setTemplates] = useState<AutomationTemplate[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -420,9 +462,10 @@ export default function AutopilotScreen() {
   const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const [automationsRes, templatesRes] = await Promise.all([
+      const [automationsRes, templatesRes, activityRes] = await Promise.all([
         api.get<Automation[]>('/api/automations'),
         api.get<AutomationTemplate[]>('/api/automation-templates'),
+        api.get<ActivityLogEntry[]>('/api/autopilot/activity-log?limit=50'),
       ]);
 
       if (automationsRes.error) {
@@ -431,6 +474,7 @@ export default function AutopilotScreen() {
         setAutomations(automationsRes.data || []);
       }
       setTemplates(templatesRes.data || []);
+      setActivityLogs(activityRes.data || []);
     } catch (err) {
       setError('Failed to load automations');
       console.error('Error fetching automations:', err);
@@ -709,6 +753,26 @@ export default function AutopilotScreen() {
                 <Text style={styles.tabBadgeText}>{templates.length}</Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'activity' && styles.activeTab]}
+              onPress={() => setActiveTab('activity')}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="activity"
+                size={iconSizes.md}
+                color={activeTab === 'activity' ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[styles.tabText, activeTab === 'activity' && styles.activeTabText]}>
+                Activity
+              </Text>
+              {activityLogs.length > 0 && (
+                <View style={[styles.tabBadge, { backgroundColor: '#22c55e' }]}>
+                  <Text style={styles.tabBadgeText}>{activityLogs.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
           {error && automations.length === 0 && (
@@ -750,6 +814,101 @@ export default function AutopilotScreen() {
                   ? renderEmptyState('templates')
                   : templates.map(renderTemplateCard)}
               </View>
+            </>
+          )}
+
+          {!isLoading && activeTab === 'activity' && (
+            <>
+              <Text style={styles.sectionTitle}>AUTOMATION ACTIVITY</Text>
+              {activityLogs.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+                    <Feather name="clock" size={40} color="#22c55e" />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Activity Yet</Text>
+                  <Text style={styles.emptyDescription}>
+                    Activity will appear here when your automations fire — showing what was sent, to whom, and when.
+                  </Text>
+                </View>
+              ) : (
+                activityLogs.map((entry) => {
+                  const typeInfo = AUTOMATION_TYPE_LABELS[entry.automationType] || AUTOMATION_TYPE_LABELS.general;
+                  const isFailed = entry.status === 'failed' || entry.status === 'error';
+                  const isExpanded = expandedLogId === entry.id;
+                  return (
+                    <TouchableOpacity
+                      key={entry.id}
+                      style={styles.card}
+                      onPress={() => setExpandedLogId(isExpanded ? null : entry.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+                        <View style={[styles.automationIconContainer, { backgroundColor: isFailed ? 'rgba(239,68,68,0.1)' : (typeInfo.color + '18') }]}>
+                          {isFailed ? (
+                            <Feather name="x-circle" size={iconSizes.xl} color="#ef4444" />
+                          ) : (
+                            <Feather name="check-circle" size={iconSizes.xl} color="#22c55e" />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                            <View style={[styles.statusBadge, { backgroundColor: typeInfo.color + '18' }]}>
+                              <Text style={[styles.statusBadgeText, { color: typeInfo.color }]}>{typeInfo.label}</Text>
+                            </View>
+                            {isFailed && (
+                              <View style={[styles.statusBadge, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                                <Text style={[styles.statusBadgeText, { color: '#ef4444' }]}>Failed</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={[styles.cardTitle, { marginTop: spacing.xs, fontSize: 14 }]} numberOfLines={1}>
+                            {entry.entityLabel}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs }}>
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                              to {entry.recipientName}
+                            </Text>
+                            <View style={[styles.statusBadge, { backgroundColor: colors.border + '40', paddingHorizontal: spacing.sm, paddingVertical: 2 }]}>
+                              <Text style={{ fontSize: 10, color: colors.mutedForeground, fontWeight: '500' }}>
+                                {entry.channel === 'sms' ? 'SMS' : entry.channel === 'email' ? 'Email' : entry.channel === 'both' ? 'Both' : entry.channel}
+                              </Text>
+                            </View>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: 'auto' }}>
+                              {timeAgo(entry.createdAt)}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {isExpanded && (
+                        <View style={{ marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border + '40' }}>
+                          <View style={styles.detailRow}>
+                            <Feather name="clock" size={iconSizes.sm} color={colors.mutedForeground} />
+                            <Text style={styles.detailText}>
+                              {entry.createdAt ? new Date(entry.createdAt).toLocaleString('en-AU', {
+                                day: 'numeric', month: 'short', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              }) : '—'}
+                            </Text>
+                          </View>
+                          <View style={styles.detailRow}>
+                            <Feather name="tag" size={iconSizes.sm} color={colors.mutedForeground} />
+                            <Text style={styles.detailText}>
+                              {entry.entityType.charAt(0).toUpperCase() + entry.entityType.slice(1)} ID: {entry.entityId.slice(0, 8)}...
+                            </Text>
+                          </View>
+                          {isFailed && entry.errorMessage && (
+                            <View style={styles.detailRow}>
+                              <Feather name="alert-triangle" size={iconSizes.sm} color="#ef4444" />
+                              <Text style={[styles.detailText, { color: '#ef4444' }]}>{entry.errorMessage}</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
             </>
           )}
         </ScrollView>

@@ -120,9 +120,16 @@ import {
   invoiceEdits,
   type InsertInvoiceEdit,
   type InvoiceEdit,
+  // Autopilot activity log tables
+  invoiceReminderLogs,
+  smsAutomationLogs,
+  smsAutomationRules,
+  jobReminders,
+  automationLogs,
+  automations as automationsTable,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq, sql, desc, and, gte, lte, isNotNull, isNull, inArray } from "drizzle-orm";
+import { eq, sql, desc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError,
@@ -34062,6 +34069,207 @@ Respond with JSON in this format:
       res.json(settings);
     } catch (error: any) {
       console.error('Error updating automation settings:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Unified Autopilot Activity Log — aggregates all automation execution history
+  app.get("/api/autopilot/activity-log", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const typeFilter = req.query.type as string | undefined;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+      interface ActivityLogEntry {
+        id: string;
+        automationType: string;
+        entityType: string;
+        entityId: string;
+        entityLabel: string;
+        channel: string;
+        status: string;
+        recipientName: string;
+        createdAt: Date | null;
+        errorMessage: string | null;
+      }
+
+      const results: ActivityLogEntry[] = [];
+
+      function normalizeStatus(raw: string | null): string {
+        if (!raw) return 'sent';
+        const lower = raw.toLowerCase();
+        if (lower === 'failed' || lower === 'error' || lower === 'skipped') return 'failed';
+        return 'sent';
+      }
+
+      // 1. Invoice reminder logs (raw SQL to avoid Drizzle orderSelectedFields issue)
+      if (!typeFilter || typeFilter === 'invoice_reminder') {
+        const reminderRows = await db.execute(sql`
+          SELECT irl.id, irl.invoice_id as "invoiceId", irl.sent_via as "sentVia",
+                 irl.email_sent as "emailSent", irl.sms_sent as "smsSent",
+                 irl.created_at as "createdAt",
+                 i.number as "invoiceNumber", i.client_id as "clientId",
+                 c.name as "clientName"
+          FROM invoice_reminder_logs irl
+          LEFT JOIN invoices i ON irl.invoice_id = i.id
+          LEFT JOIN clients c ON i.client_id = c.id
+          WHERE irl.user_id = ${userId}
+          ORDER BY irl.created_at DESC
+          LIMIT ${limit}
+        `);
+
+        for (const r of reminderRows.rows || reminderRows) {
+          const channel = r.sentVia || (r.emailSent && r.smsSent ? 'both' : r.emailSent ? 'email' : r.smsSent ? 'sms' : 'email');
+          results.push({
+            id: r.id,
+            automationType: 'invoice_reminder',
+            entityType: 'invoice',
+            entityId: r.invoiceId,
+            entityLabel: `Invoice ${r.invoiceNumber || r.invoiceId}`,
+            channel,
+            status: 'sent',
+            recipientName: r.clientName || 'Client',
+            createdAt: r.createdAt,
+            errorMessage: null,
+          });
+        }
+      }
+
+      // 2. SMS automation logs (raw SQL)
+      if (!typeFilter || typeFilter === 'quote_followup' || typeFilter === 'sms_automation' || typeFilter === 'job_reminder' || typeFilter === 'invoice_reminder') {
+        const smsRows = await db.execute(sql`
+          SELECT sal.id, sal.entity_type as "entityType", sal.entity_id as "entityId",
+                 sal.status, sal.error_message as "errorMessage", sal.created_at as "createdAt",
+                 sar.trigger_type as "triggerType",
+                 COALESCE(j.title, i.number, q.number, sal.entity_id) as "entityLabel",
+                 COALESCE(cj.name, ci.name, cq.name, 'Client') as "clientName"
+          FROM sms_automation_logs sal
+          INNER JOIN sms_automation_rules sar ON sal.rule_id = sar.id
+          LEFT JOIN jobs j ON sal.entity_type = 'job' AND sal.entity_id = j.id
+          LEFT JOIN clients cj ON j.client_id = cj.id
+          LEFT JOIN invoices i ON sal.entity_type = 'invoice' AND sal.entity_id = i.id
+          LEFT JOIN clients ci ON i.client_id = ci.id
+          LEFT JOIN quotes q ON sal.entity_type = 'quote' AND sal.entity_id = q.id
+          LEFT JOIN clients cq ON q.client_id = cq.id
+          WHERE sar.user_id = ${userId}
+          ORDER BY sal.created_at DESC
+          LIMIT ${limit}
+        `);
+
+        for (const log of (smsRows.rows || smsRows) as any[]) {
+          let automationType = 'sms_automation';
+          if (log.triggerType === 'quote_follow_up') automationType = 'quote_followup';
+          else if (log.triggerType === 'job_day_before' || log.triggerType === 'job_scheduled') automationType = 'job_reminder';
+          else if (log.triggerType === 'invoice_overdue' || log.triggerType === 'invoice_sent') automationType = 'invoice_reminder';
+
+          if (typeFilter && typeFilter !== automationType && typeFilter !== 'sms_automation') continue;
+
+          const prefix = log.entityType === 'invoice' ? 'Invoice ' : log.entityType === 'quote' ? 'Quote ' : '';
+          results.push({
+            id: log.id,
+            automationType,
+            entityType: log.entityType,
+            entityId: log.entityId,
+            entityLabel: `${prefix}${log.entityLabel}`,
+            channel: 'sms',
+            status: normalizeStatus(log.status),
+            recipientName: log.clientName || 'Client',
+            createdAt: log.createdAt,
+            errorMessage: log.errorMessage,
+          });
+        }
+      }
+
+      // 3. Job reminders (raw SQL)
+      if (!typeFilter || typeFilter === 'job_reminder') {
+        const jrRows = await db.execute(sql`
+          SELECT jr.id, jr.job_id as "jobId", jr.type, jr.status,
+                 jr.sent_at as "sentAt", jr.error_message as "errorMessage",
+                 jr.created_at as "createdAt",
+                 j.title as "jobTitle", c.name as "clientName"
+          FROM job_reminders jr
+          LEFT JOIN jobs j ON jr.job_id = j.id
+          LEFT JOIN clients c ON j.client_id = c.id
+          WHERE jr.user_id = ${userId}
+            AND jr.status IN ('sent', 'failed')
+          ORDER BY jr.created_at DESC
+          LIMIT ${limit}
+        `);
+
+        for (const r of (jrRows.rows || jrRows) as any[]) {
+          results.push({
+            id: r.id,
+            automationType: 'job_reminder',
+            entityType: 'job',
+            entityId: r.jobId,
+            entityLabel: r.jobTitle || `Job ${r.jobId}`,
+            channel: r.type || 'sms',
+            status: normalizeStatus(r.status),
+            recipientName: r.clientName || 'Client',
+            createdAt: r.sentAt || r.createdAt,
+            errorMessage: r.errorMessage,
+          });
+        }
+      }
+
+      // 4. General automation logs (raw SQL)
+      if (!typeFilter || typeFilter === 'auto_invoice' || typeFilter === 'review_request' || typeFilter === 'general' || typeFilter === 'photo_requirement' || typeFilter === 'gps_checkin') {
+        const alRows = await db.execute(sql`
+          SELECT al.id, al.automation_id as "automationId", al.entity_type as "entityType",
+                 al.entity_id as "entityId", al.processed_at as "processedAt",
+                 al.result, al.error_message as "errorMessage",
+                 a.name as "automationName",
+                 COALESCE(j.title, i.number, q.number, al.entity_id) as "entityLabel",
+                 COALESCE(cj.name, ci.name, cq.name, 'Client') as "clientName"
+          FROM automation_logs al
+          INNER JOIN automations a ON al.automation_id = a.id
+          LEFT JOIN jobs j ON al.entity_type = 'job' AND al.entity_id = j.id
+          LEFT JOIN clients cj ON j.client_id = cj.id
+          LEFT JOIN invoices i ON al.entity_type = 'invoice' AND al.entity_id = i.id
+          LEFT JOIN clients ci ON i.client_id = ci.id
+          LEFT JOIN quotes q ON al.entity_type = 'quote' AND al.entity_id = q.id
+          LEFT JOIN clients cq ON q.client_id = cq.id
+          WHERE a.user_id = ${userId}
+          ORDER BY al.processed_at DESC
+          LIMIT ${limit}
+        `);
+
+        for (const log of (alRows.rows || alRows) as any[]) {
+          let automationType = 'general';
+          const name = (log.automationName || '').toLowerCase();
+          if (name.includes('invoice')) automationType = 'auto_invoice';
+          else if (name.includes('review')) automationType = 'review_request';
+          else if (name.includes('photo')) automationType = 'photo_requirement';
+          else if (name.includes('gps') || name.includes('check-in')) automationType = 'gps_checkin';
+
+          if (typeFilter && typeFilter !== automationType && typeFilter !== 'general') continue;
+
+          const prefix = log.entityType === 'invoice' ? 'Invoice ' : log.entityType === 'quote' ? 'Quote ' : '';
+          results.push({
+            id: log.id,
+            automationType,
+            entityType: log.entityType,
+            entityId: log.entityId,
+            entityLabel: `${prefix}${log.entityLabel}`,
+            channel: 'email',
+            status: normalizeStatus(log.result),
+            recipientName: log.clientName || 'Client',
+            createdAt: log.processedAt,
+            errorMessage: log.errorMessage,
+          });
+        }
+      }
+
+      // Sort all results by createdAt descending and limit
+      results.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      res.json(results.slice(0, limit));
+    } catch (error: any) {
+      console.error('Error fetching autopilot activity log:', error);
       res.status(500).json({ error: error.message });
     }
   });
