@@ -14,8 +14,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius } from '../../src/lib/design-tokens';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import api from '../../src/lib/api';
 
 interface SmsMessage {
@@ -167,35 +169,44 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'right',
   },
   composerContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: spacing.sm,
-    backgroundColor: colors.card,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  composerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: spacing.xs,
   },
-  composerInput: {
+  composerInputWrapper: {
     flex: 1,
     backgroundColor: colors.muted,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  composerInput: {
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     fontSize: 15,
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: 40,
+    minHeight: 36,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 2,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   loadingContainer: {
     flex: 1,
@@ -240,6 +251,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function SmsConversationScreen() {
   const { id, phone, name } = useLocalSearchParams<{ id: string; phone: string; name: string }>();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -446,33 +459,37 @@ export default function SmsConversationScreen() {
           </View>
         )}
 
-        <View style={styles.composerContainer}>
-          <TouchableOpacity
-            style={styles.quickRepliesToggle}
-            onPress={() => setShowQuickReplies(!showQuickReplies)}
-          >
-            <Feather name="zap" size={18} color={showQuickReplies ? colors.primary : colors.mutedForeground} />
-          </TouchableOpacity>
-          <TextInput
-            style={styles.composerInput}
-            placeholder="Type an SMS..."
-            placeholderTextColor={colors.mutedForeground}
-            value={messageText}
-            onChangeText={setMessageText}
-            multiline
-            returnKeyType="default"
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!messageText.trim() || isSending}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color={colors.primaryForeground} />
-            ) : (
-              <Feather name="send" size={18} color={colors.primaryForeground} />
-            )}
-          </TouchableOpacity>
+        <View style={[styles.composerContainer, { paddingBottom: bottomNavHeight + spacing.xs }]}>
+          <View style={styles.composerRow}>
+            <TouchableOpacity
+              style={styles.quickRepliesToggle}
+              onPress={() => setShowQuickReplies(!showQuickReplies)}
+            >
+              <Feather name="zap" size={18} color={showQuickReplies ? colors.primary : colors.mutedForeground} />
+            </TouchableOpacity>
+            <View style={styles.composerInputWrapper}>
+              <TextInput
+                style={styles.composerInput}
+                placeholder="Type an SMS..."
+                placeholderTextColor={colors.mutedForeground}
+                value={messageText}
+                onChangeText={setMessageText}
+                multiline
+                returnKeyType="default"
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={!messageText.trim() || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <Feather name="send" size={18} color={colors.primaryForeground} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </>

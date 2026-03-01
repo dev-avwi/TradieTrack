@@ -17,8 +17,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 
@@ -366,43 +368,53 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   composerContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: spacing.sm,
-    backgroundColor: colors.card,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  composerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: spacing.xs,
   },
   attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 2,
   },
-  composerInput: {
+  composerInputWrapper: {
     flex: 1,
     backgroundColor: colors.muted,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  composerInput: {
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     fontSize: 15,
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: 40,
+    minHeight: 36,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 2,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   modalOverlay: {
     flex: 1,
@@ -495,6 +507,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function JobChatScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuthStore();
   const scrollRef = useRef<ScrollView>(null);
@@ -1009,35 +1023,39 @@ export default function JobChatScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.composerContainer}>
-          <TouchableOpacity 
-            style={styles.attachButton} 
-            onPress={() => setShowAttachModal(true)}
-            activeOpacity={0.7}
-          >
-            <Feather name="plus" size={22} color={colors.mutedForeground} />
-          </TouchableOpacity>
-          <TextInput
-            style={styles.composerInput}
-            value={messageText}
-            onChangeText={setMessageText}
-            placeholder="Type a message..."
-            placeholderTextColor={colors.mutedForeground}
-            multiline
-            maxLength={1000}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!messageText.trim() || isSending}
-            activeOpacity={0.8}
-          >
-            {isSending ? (
-              <ActivityIndicator size={16} color={colors.primaryForeground} />
-            ) : (
-              <Feather name="send" size={18} color={colors.primaryForeground} />
-            )}
-          </TouchableOpacity>
+        <View style={[styles.composerContainer, { paddingBottom: bottomNavHeight + spacing.xs }]}>
+          <View style={styles.composerRow}>
+            <TouchableOpacity 
+              style={styles.attachButton} 
+              onPress={() => setShowAttachModal(true)}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            <View style={styles.composerInputWrapper}>
+              <TextInput
+                style={styles.composerInput}
+                value={messageText}
+                onChangeText={setMessageText}
+                placeholder="Type a message..."
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                maxLength={1000}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={!messageText.trim() || isSending}
+              activeOpacity={0.8}
+            >
+              {isSending ? (
+                <ActivityIndicator size={16} color={colors.primaryForeground} />
+              ) : (
+                <Feather name="send" size={18} color={colors.primaryForeground} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
 
